@@ -138,6 +138,45 @@ export type StepOutline = {
 	steps?: StepOutline[];
 };
 
+export type ActionMetadataProblem = {
+	message: string;
+	path: string;
+	/** One-based manifest coordinates; zero means unavailable. */
+	start: Position;
+	end: Position;
+};
+export type ActionMetadataSelection = {
+	host: string;
+	repository: string;
+	repository_id: number;
+	commit: string;
+	directory?: string;
+	observed_at?: string;
+	manifest: string;
+	selected_object: string;
+	selected_ref?: string;
+};
+export type ActionMetadata =
+	& { reference: string }
+	& (
+		| {
+			state: 'unavailable';
+			reason:
+				| 'not-fetched'
+				| 'offline'
+				| 'lookup-disabled'
+				| 'denied'
+				| 'failed'
+				| 'not-found'
+				| 'unsupported'
+				| 'cache-miss'
+				| 'not-found-or-inaccessible'
+				| 'limit-exceeded';
+		}
+		| (ActionMetadataSelection & { state: 'available'; reason?: never; problems?: never })
+		| (ActionMetadataSelection & { state: 'invalid'; reason?: never; problems: ActionMetadataProblem[] })
+	);
+
 export type ResultData = {
 	schema_version: 1;
 	file_count: number | null;
@@ -145,6 +184,8 @@ export type ResultData = {
 	configurations: ResultConfig[];
 	hints: string[];
 	documents?: DocumentOutline[];
+	/** Outcomes for distinct remote references requested by metadata checks. */
+	action_metadata?: ActionMetadata[];
 	sarif?: Record<string, unknown>;
 	error?: string;
 };

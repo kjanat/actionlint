@@ -174,14 +174,24 @@ func migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool, error) {
 	if overrides := field(root, "overrides"); overrides != nil && overrides.Kind == yaml.SequenceNode {
 		entries := *overrides
 		entries.Content = append([]*yaml.Node{}, overrides.Content...)
+		convertedEntries := false
 		for i, entry := range entries.Content {
 			migrated, converted, err := migrateRepositoryFacts(entry)
 			if err != nil {
 				return nil, false, err
 			}
-			entries.Content[i], changed = migrated, changed || converted
+			if converted {
+				entries.Content[i] = migrated
+				convertedEntries = true
+			}
 		}
-		setField(next, "overrides", &entries)
+		if convertedEntries {
+			setField(next, "overrides", &entries)
+			changed = true
+		}
+	}
+	if !changed {
+		return root, false, nil
 	}
 	return next, changed, nil
 }

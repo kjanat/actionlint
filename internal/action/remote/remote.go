@@ -4,11 +4,13 @@ package remote
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 
 	"actionlint.kjanat.dev/v2/actions"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/knowledge"
 )
 
 type repositoryKey struct {
@@ -28,88 +30,219 @@ type (
 type Service struct {
 	provider   actions.Provider
 	mu         sync.Mutex
-	references map[actions.Reference]actionmeta.Definition
-	manifests  map[contentKey]actionmeta.Definition
+	references map[actions.Reference]Result
+	pending    map[actions.Reference]*pendingLookup
+	manifests  map[contentKey]actionmeta.DefinitionInspection
 	content    map[contentKey]string
 	names      map[repositoryKey]string
 	identities map[location]uint64
 }
 
 func New(provider actions.Provider) *Service {
-	return &Service{provider: provider, references: make(map[actions.Reference]actionmeta.Definition), manifests: make(map[contentKey]actionmeta.Definition), content: make(map[contentKey]string), names: make(map[repositoryKey]string), identities: make(map[location]uint64)}
+	return &Service{provider: provider, references: make(map[actions.Reference]Result), pending: make(map[actions.Reference]*pendingLookup), manifests: make(map[contentKey]actionmeta.DefinitionInspection), content: make(map[contentKey]string), names: make(map[repositoryKey]string), identities: make(map[location]uint64)}
 }
+
+type pendingLookup struct {
+	ready   chan struct{}
+	result  Result
+	failure lookupFailure
+}
+
+// Shared acquisition publishes immutable error data, never a retained error
+// interface through which callers could reach request-owned state.
+type lookupFailure struct {
+	message                     string
+	present, canceled, deadline bool
+}
+
+func failureOf(err error) lookupFailure {
+	if err == nil {
+		return lookupFailure{}
+	}
+	return lookupFailure{message: err.Error(), present: true, canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded)}
+}
+func (f lookupFailure) Error() string { return f.message }
+func (f lookupFailure) Is(target error) bool {
+	return f.canceled && target == context.Canceled || f.deadline && target == context.DeadlineExceeded
+}
+
+func (f lookupFailure) err() error {
+	if !f.present {
+		return nil
+	}
+	return f
+}
+
+// Result keeps validated call-site facts beside their complete availability.
+type Result struct {
+	definition   actionmeta.Definition
+	availability actions.MetadataAvailability
+}
+
+func (r Result) Definition() actionmeta.Definition          { return r.definition }
+func (r Result) Availability() actions.MetadataAvailability { return r.availability }
 
 // Lookup validates references even when metadata fetching is disabled. An absent
 // definition leaves only metadata-dependent checks unavailable.
 func (s *Service) Lookup(ctx context.Context, spec string) (actionmeta.Definition, error) {
+	result, err := s.Inspect(ctx, spec)
+	return result.definition, err
+}
+
+// Inspect retains unavailable reasons and invalid manifest diagnostics.
+func (s *Service) Inspect(ctx context.Context, spec string) (Result, error) {
 	if err := ctx.Err(); err != nil {
-		return actionmeta.Definition{}, err
+		return Result{}, err
 	}
 	reference, err := actions.ParseReference("github.com", spec)
 	if err != nil {
-		return actionmeta.Definition{}, nil
+		return Result{}, nil
 	}
-	if s == nil || s.provider == nil {
-		return actionmeta.Definition{}, nil
+	if s == nil {
+		return Result{availability: actions.MissingMetadata(knowledge.LookupDisabled())}, nil
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
-		return actionmeta.Definition{}, err
+		s.mu.Unlock()
+		return Result{}, err
 	}
 	if cached, ok := s.references[reference]; ok {
+		s.mu.Unlock()
 		return cached, nil
 	}
+	if pending, exists := s.pending[reference]; exists {
+		s.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return Result{}, ctx.Err()
+		case <-pending.ready:
+			if err := ctx.Err(); err != nil {
+				return Result{}, err
+			}
+			return pending.result, pending.failure.err()
+		}
+	}
+	pending := &pendingLookup{ready: make(chan struct{})}
+	s.pending[reference] = pending
+	s.mu.Unlock()
 	metadata, err := s.fetch(ctx, reference)
+	s.mu.Lock()
 	if err == nil {
 		s.references[reference] = metadata
 	}
-	return metadata, err
+	pending.result, pending.failure = metadata, failureOf(err)
+	delete(s.pending, reference)
+	close(pending.ready)
+	s.mu.Unlock()
+	return metadata, pending.failure.err()
 }
 
-func (s *Service) fetch(ctx context.Context, reference actions.Reference) (actionmeta.Definition, error) {
+func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Result, error) {
+	if s.provider == nil {
+		return Result{availability: actions.MissingMetadata(knowledge.LookupDisabled())}, nil
+	}
 	result, err := s.provider.Lookup(ctx, reference)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return actionmeta.Definition{}, context.Canceled
+			return Result{}, context.Canceled
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
-			return actionmeta.Definition{}, context.DeadlineExceeded
+			return Result{}, context.DeadlineExceeded
 		}
-		return actionmeta.Definition{}, nil
+		return Result{availability: actions.MissingMetadata(knowledge.Failed())}, nil
 	}
 	if err := ctx.Err(); err != nil {
-		return actionmeta.Definition{}, err
+		return Result{}, err
 	}
 	manifest, available := result.Value()
 	if !available {
-		return actionmeta.Definition{}, nil
+		return Result{availability: actions.MissingMetadata(reasonOf(result.Reason()))}, nil
 	}
 	identity := manifest.Identity()
 	if identity.Commit() == "" || identity.Host() != reference.Host() || !strings.EqualFold(identity.Repository(), reference.Repository()) || identity.Directory() != reference.Directory() {
-		return actionmeta.Definition{}, errors.New("remote action provider returned a foreign manifest identity")
+		return Result{}, errors.New("remote action provider returned a foreign manifest identity")
 	}
 	if manifest.Selection().Request() != reference {
-		return actionmeta.Definition{}, errors.New("remote action provider returned a selection for another request")
+		return Result{}, errors.New("remote action provider returned a selection for another request")
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	repository := repositoryKey{host: identity.Host(), id: identity.RepositoryID()}
 	name := location{host: identity.Host(), name: strings.ToLower(identity.Repository())}
 	if previous, exists := s.names[repository]; exists && !strings.EqualFold(previous, identity.Repository()) {
-		return actionmeta.Definition{}, errors.New("remote action repository name changed during analysis")
+		return Result{}, errors.New("remote action repository name changed during analysis")
 	}
 	if previous, exists := s.identities[name]; exists && previous != identity.RepositoryID() {
-		return actionmeta.Definition{}, errors.New("remote action repository identity changed during analysis")
+		return Result{}, errors.New("remote action repository identity changed during analysis")
 	}
 	s.names[repository], s.identities[name] = identity.Repository(), identity.RepositoryID()
 	key := contentKey{repository: repository, commit: identity.Commit(), directory: identity.Directory()}
 	if previous, exists := s.content[key]; exists {
-		if previous != manifest.Content() {
-			return actionmeta.Definition{}, errors.New("remote action provider changed content for one immutable identity")
+		if previous != manifest.Filename()+"\x00"+manifest.Content() {
+			return Result{}, errors.New("remote action provider changed content for one immutable identity")
 		}
-		return s.manifests[key], nil
+		return inspected(manifest, s.manifests[key]), nil
 	}
-	s.content[key] = manifest.Content()
-	definition := actionmeta.ParseDefinition([]byte(manifest.Content()))
-	s.manifests[key] = definition
-	return definition, nil
+	s.content[key] = manifest.Filename() + "\x00" + manifest.Content()
+	inspection := actionmeta.InspectDefinition([]byte(manifest.Content()))
+	s.manifests[key] = inspection
+	return inspected(manifest, inspection), nil
+}
+
+func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspection) Result {
+	if definition, valid := inspection.Definition(); valid {
+		return Result{definition: definition, availability: actions.AvailableMetadata(manifest)}
+	}
+	var problems []actions.ManifestProblem
+	manifestPath := manifest.Filename()
+	if manifest.Identity().Directory() != "" {
+		manifestPath = manifest.Identity().Directory() + "/" + manifestPath
+	}
+	for _, d := range inspection.Diagnostics() {
+		problems = append(problems, actions.ManifestProblem{Message: d.Message, Path: manifestPath, Start: d.Start, End: d.End})
+	}
+	return Result{availability: actions.InvalidMetadata(manifest, problems)}
+}
+
+func reasonOf(reason knowledge.Reason) knowledge.Unavailability {
+	switch reason {
+	case knowledge.OfflineReason:
+		return knowledge.Offline()
+	case knowledge.LookupDisabledReason:
+		return knowledge.LookupDisabled()
+	case knowledge.DeniedReason:
+		return knowledge.Denied()
+	case knowledge.FailedReason:
+		return knowledge.Failed()
+	case knowledge.NotFoundReason:
+		return knowledge.NotFound()
+	case knowledge.UnsupportedReason:
+		return knowledge.Unsupported()
+	case knowledge.CacheMissReason:
+		return knowledge.CacheMiss()
+	case knowledge.InaccessibleReason:
+		return knowledge.Inaccessible()
+	case knowledge.LimitReason:
+		return knowledge.Limit()
+	default:
+		return knowledge.NotFetched()
+	}
+}
+
+func (s *Service) Coverage() []actions.Coverage {
+	if s == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	coverage := make([]actions.Coverage, 0, len(s.references))
+	for ref, result := range s.references {
+		name := ref.Repository()
+		if ref.Directory() != "" {
+			name += "/" + ref.Directory()
+		}
+		coverage = append(coverage, actions.Coverage{Reference: name + "@" + ref.Ref(), Availability: result.availability})
+	}
+	slices.SortFunc(coverage, func(a, b actions.Coverage) int { return strings.Compare(a.Reference, b.Reference) })
+	return coverage
 }

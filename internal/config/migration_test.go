@@ -84,6 +84,24 @@ func TestMigrationPolicyNullRemainsReset(t *testing.T) {
 	}
 }
 
+func TestMigrationPolicyResetClearsInheritedActionMetadata(t *testing.T) {
+	directory := t.TempDir()
+	base := filepath.Join(directory, "base.yaml")
+	leaf := filepath.Join(directory, "config.yaml")
+	loaded, err := Read(leaf, func(name string) ([]byte, error) {
+		if name == base {
+			return []byte("policy: {require-action-metadata: true}\n"), nil
+		}
+		return []byte("extends: [base.yaml]\npolicy: null\n"), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if DiagnosticLevel(loaded.Config, "require-action-metadata") != "off" {
+		t.Fatal("policy reset retained inherited metadata enforcement")
+	}
+}
+
 func TestMigrationConflicts(t *testing.T) {
 	for _, test := range []struct{ source, target string }{
 		{"policy: {cache-operation: false}\nlint: {rules: {correctness: {cache-operation: on}}}", "lint.rules.correctness.cache-operation"},

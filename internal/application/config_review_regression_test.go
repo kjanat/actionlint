@@ -1,11 +1,13 @@
 package application
 
 import (
+	"context"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/actions"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
@@ -15,6 +17,37 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/source"
 )
+
+func checkoutManifestProvider(t *testing.T) actions.Provider {
+	t.Helper()
+	const commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	identity, err := actions.NewIdentity("github.com", "actions/checkout", 1, commit, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reference, err := actions.ParseReference("github.com", "actions/checkout@v5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	route, err := actions.RefRoute("refs/tags/v5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := actions.NewSelection(reference, identity, commit, route, "test-fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := actions.NewManifest(selection, []byte("name: checkout\ndescription: checkout fixture\ninputs: {}\nruns: {using: composite, steps: []}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manifestProvider(func(_ context.Context, requested actions.Reference) (actions.Manifest, error) {
+		if requested.Repository() != "actions/checkout" || requested.Ref() != "v5" {
+			t.Errorf("unexpected checkout request: %+v", requested)
+		}
+		return manifest, nil
+	})
+}
 
 func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
 	for _, dependency := range []string{"local/action.yml", "scripts/lib.sh"} {
@@ -163,7 +196,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, Sources: []sourceUnit{{
+			result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, RemoteActions: checkoutManifestProvider(t), Sources: []sourceUnit{{
 				Path: ".github/workflows/ci.yml", Config: cfg, Project: workspace.Identity(root),
 				Content: []byte(`on: push
 jobs:

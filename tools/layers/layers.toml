@@ -42,19 +42,19 @@ isolated = true
 deny-std = ["os/exec"]
 
 [[layer]]
-name     = "repository-contracts"
-doc      = "Repository knowledge and immutable remote action manifests. Hosts supply facts; these contracts perform no fetching."
-packages = ["repository", "actions"]
-allow    = ["contract-leaves"]
-deny-std = ["os/exec"]
-
-[[layer]]
 name     = "analysis-contracts"
 doc      = "The public diagnostic and analyzer contracts. They never import internal packages."
 packages = ["diagnostic", "analyzer"]
 allow    = ["source", "contract-leaves"]
 deny-std = ["os/exec"]
 tests    = ["documents", "examples", "public-analysis"]
+
+[[layer]]
+name     = "repository-contracts"
+doc      = "Repository knowledge and immutable remote action manifests. Hosts supply facts; these contracts perform no fetching."
+packages = ["repository", "actions"]
+allow    = ["contract-leaves", "analysis-contracts"]
+deny-std = ["os/exec"]
 
 [[layer]]
 name     = "document-contracts"
@@ -241,17 +241,17 @@ packages       = [
   "syntax",
 ]
 allow          = [
-  "source",
-  "repository-contracts",
-  "contract-leaves",
   "analysis-contracts",
-  "document-contracts",
-  "leaves",
+  "contract-leaves",
   "core-helpers",
-  "yaml-codec",
+  "document-contracts",
   "expression",
+  "leaves",
+  "repository-contracts",
+  "source",
   "workflow-base",
   "workflow-model",
+  "yaml-codec",
 ]
 deny-std       = ["os/exec"]
 tests          = ["fixtures", "language"]
@@ -285,19 +285,19 @@ packages       = [
   "internal/workflow/runner",
 ]
 allow          = [
-  "source",
-  "analysis-contracts",
-  "document-contracts",
-  "leaves",
   "action-reference",
+  "analysis-contracts",
   "core-helpers",
-  "yaml-codec",
+  "document-contracts",
+  "documents",
   "expression",
-  "semantics",
   "invocation",
+  "leaves",
+  "semantics",
+  "source",
   "workflow-base",
   "workflow-model",
-  "documents",
+  "yaml-codec",
 ]
 externals      = ["github.com/robfig/cron/v3", "mvdan.cc/sh/v3"]
 deny-std       = ["os/exec"]
@@ -341,19 +341,19 @@ name     = "tool-contracts"
 doc      = "Tool integration contracts and tool execution over invocations. They do not reach tool backends, providers or the application."
 packages = ["internal/tools", "internal/tools/execution"]
 allow    = [
-  "source",
-  "contract-leaves",
   "analysis-contracts",
-  "leaves",
+  "analyzer-host",
   "config",
+  "contract-leaves",
+  "documents",
   "invocation",
   "invocation-view",
+  "language",
+  "leaves",
+  "source",
+  "tool-profiles",
   "workflow-base",
   "workflow-model",
-  "documents",
-  "language",
-  "analyzer-host",
-  "tool-profiles",
 ]
 tests    = ["fixtures", "policy", "core-helpers"]
 
@@ -362,18 +362,18 @@ name      = "tool-backends"
 doc       = "Tool backends, managed tools and the tool registry."
 packages  = ["internal/tools/backend", "internal/tools/managed", "internal/tools/registry"]
 allow     = [
-  "contract-leaves",
   "analysis-contracts",
-  "leaves",
-  "provider-data",
-  "config",
-  "process-config",
-  "workflow-base",
-  "workflow-model",
   "analyzer-host",
+  "config",
+  "contract-leaves",
+  "leaves",
+  "process-config",
+  "provider-data",
+  "tool-contracts",
   "tool-profiles",
   "tool-providers",
-  "tool-contracts",
+  "workflow-base",
+  "workflow-model",
 ]
 externals = ["golang.org/x/sync"]
 tests     = ["source", "core-helpers", "yaml-codec", "documents", "fixtures", "workspace", "application", "test-harness"]
@@ -383,18 +383,18 @@ name     = "builtins"
 doc      = "Built-in diagnostic adapters and the semantic passes configured from them. They receive observations through callbacks and do not reach hosts, tools or presentation."
 packages = ["internal/builtin", "internal/checks"]
 allow    = [
-  "contract-leaves",
-  "repository-contracts",
   "analysis-contracts",
-  "leaves",
-  "core-helpers",
   "config",
+  "contract-leaves",
+  "core-helpers",
+  "documents",
   "expression",
   "invocation",
+  "language",
+  "leaves",
+  "repository-contracts",
   "workflow-base",
   "workflow-model",
-  "documents",
-  "language",
 ]
 deny-std = ["os/exec"]
 tests    = ["document-contracts", "semantics", "engine", "fixtures"]
@@ -404,19 +404,19 @@ name     = "composition"
 doc      = "Analysis of workflow and action invocations with prepared checks. It does not reach the application, workspaces, diagnostic policy, tool backends or presentation."
 packages = ["internal/workflow/composition"]
 allow    = [
-  "source",
   "analysis-contracts",
-  "leaves",
-  "expression",
+  "builtins",
   "config",
+  "documents",
+  "engine",
+  "expression",
   "invocation",
+  "language",
+  "leaves",
+  "source",
+  "tool-contracts",
   "workflow-base",
   "workflow-model",
-  "engine",
-  "documents",
-  "language",
-  "tool-contracts",
-  "builtins",
 ]
 tests    = ["core-helpers", "fixtures"]
 
@@ -424,7 +424,7 @@ tests    = ["core-helpers", "fixtures"]
 name     = "results"
 doc      = "The result model. It does not reach configuration or presentation."
 packages = ["internal/report"]
-allow    = ["source", "contract-leaves", "analysis-contracts", "document-contracts"]
+allow    = ["source", "contract-leaves", "repository-contracts", "analysis-contracts", "document-contracts"]
 deny-std = ["os/exec"]
 
 [[layer]]
@@ -432,17 +432,17 @@ name     = "policy"
 doc      = "Suppression, ignore and severity policy over results. It does not reach hosts, tools or presentation."
 packages = ["internal/diagnosticpolicy"]
 allow    = [
-  "source",
-  "contract-leaves",
   "analysis-contracts",
-  "leaves",
   "catalog",
   "config",
+  "contract-leaves",
   "core-helpers",
-  "expression",
-  "workflow-model",
   "documents",
+  "expression",
+  "leaves",
   "results",
+  "source",
+  "workflow-model",
 ]
 deny-std = ["os/exec"]
 tests    = ["yaml-codec", "workflow-base", "fixtures"]
@@ -451,7 +451,7 @@ tests    = ["yaml-codec", "workflow-base", "fixtures"]
 name      = "presentation"
 doc       = "Rendering of results. It does not reach configuration."
 packages  = ["internal/render"]
-allow     = ["contract-leaves", "analysis-contracts", "document-contracts", "leaves", "core-helpers", "results"]
+allow     = ["contract-leaves", "repository-contracts", "analysis-contracts", "document-contracts", "leaves", "core-helpers", "results"]
 externals = ["github.com/fatih/color", "github.com/mattn/go-runewidth"]
 deny-std  = ["os/exec"]
 tests     = ["catalog", "workflow-model", "public-config"]
@@ -462,6 +462,13 @@ doc      = "Injected dependency resolvers and their analyzer adapters."
 packages = ["internal/resolution"]
 allow    = ["contract-leaves", "analysis-contracts", "document-contracts"]
 tests    = ["source"]
+
+[[layer]]
+name     = "action-acquisition"
+doc      = "Explicit host acquisition of remote action manifests. Network access and the immutable source cache stay outside semantic analysis."
+packages = ["internal/actionhost"]
+allow    = ["repository-contracts", "contract-leaves"]
+deny-std = ["os/exec"]
 
 [[layer]]
 name     = "editing"
@@ -492,26 +499,26 @@ name      = "plugin-runtime"
 doc       = "The WebAssembly plugin runtime and its generated bindings."
 packages  = ["internal/plugins/component/...", "internal/plugins/core", "internal/plugins/wasmbudget"]
 allow     = [
-  "source",
-  "contract-leaves",
   "analysis-contracts",
+  "catalog",
+  "contract-leaves",
+  "core-helpers",
   "document-contracts",
   "leaves",
-  "core-helpers",
-  "catalog",
   "plugin-artifacts",
+  "source",
 ]
 externals = ["github.com/kjanat/wacogo", "github.com/kjanat/wazero", "golang.org/x/sync"]
 deny-std  = ["os/exec"]
 tests     = [
   "analyzer-host",
+  "examples",
   "provider-data",
-  "tool-providers",
-  "tool-contracts",
-  "tool-backends",
-  "public-config",
   "public-analysis",
-  "examples"
+  "public-config",
+  "tool-backends",
+  "tool-contracts",
+  "tool-providers",
 ]
 
 [[layer]]
@@ -527,39 +534,39 @@ name           = "application"
 doc            = "The application boundary. It does not reach terminal adapters, presentation, plugin runtimes, tool backends or providers."
 packages       = ["internal/application"]
 allow          = [
-  "source",
-  "contract-leaves",
-  "repository-contracts",
   "analysis-contracts",
-  "document-contracts",
-  "leaves",
-  "catalog",
-  "config",
-  "core-helpers",
-  "expression",
-  "workflow-model",
-  "documents",
-  "language",
   "analyzer-host",
-  "tool-contracts",
   "builtins",
+  "catalog",
   "composition",
-  "results",
-  "policy",
-  "resolution",
+  "config",
+  "contract-leaves",
+  "core-helpers",
+  "document-contracts",
+  "documents",
+  "expression",
+  "language",
+  "leaves",
   "plugin-artifacts",
+  "policy",
+  "repository-contracts",
+  "resolution",
+  "results",
+  "source",
+  "tool-contracts",
+  "workflow-model",
   "workspace",
 ]
 externals      = ["golang.org/x/sync"]
 tests          = [
-  "process-config",
-  "invocation",
-  "workflow-base",
   "engine",
   "fixtures",
-  "tool-providers",
-  "tool-backends",
+  "invocation",
   "presentation",
+  "process-config",
+  "tool-backends",
+  "tool-providers",
+  "workflow-base",
 ]
 test-externals = ["github.com/fatih/color", "golang.org/x/sys"]
 
@@ -568,25 +575,25 @@ name      = "local-host"
 doc       = "The local application host: plugins, tools and editors around the application. It does not reach terminal adapters."
 packages  = ["internal/localapp"]
 allow     = [
-  "source",
-  "contract-leaves",
   "analysis-contracts",
-  "document-contracts",
-  "catalog",
-  "leaves",
-  "config",
-  "process-config",
-  "core-helpers",
-  "language",
-  "tool-contracts",
-  "tool-backends",
-  "tool-providers",
-  "editing",
-  "plugin-artifacts",
-  "plugin-transport",
-  "plugin-runtime",
-  "workspace",
   "application",
+  "catalog",
+  "config",
+  "contract-leaves",
+  "core-helpers",
+  "document-contracts",
+  "editing",
+  "language",
+  "leaves",
+  "plugin-artifacts",
+  "plugin-runtime",
+  "plugin-transport",
+  "process-config",
+  "source",
+  "tool-backends",
+  "tool-contracts",
+  "tool-providers",
+  "workspace",
 ]
 externals = ["github.com/kjanat/go-yaml/v4", "github.com/pelletier/go-toml/v2"]
 tests     = ["fixtures", "results", "test-harness"]
@@ -612,16 +619,16 @@ name     = "public-analysis"
 doc      = "The public analysis API and the root package. They use the application boundary, not the engine or plugin runtimes."
 packages = [".", "analysis"]
 allow    = [
-  "contract-leaves",
-  "repository-contracts",
   "analysis-contracts",
-  "document-contracts",
+  "application",
   "catalog",
+  "contract-leaves",
+  "document-contracts",
   "process-config",
+  "public-config",
+  "repository-contracts",
   "tool-backends",
   "workspace",
-  "application",
-  "public-config",
 ]
 tests    = ["documents", "fixtures", "public-plugin"]
 
@@ -630,26 +637,28 @@ name      = "adapters"
 doc       = "Terminal, GitHub Action and browser adapters. They consume the application and presentation and do not construct the engine or plugin runtimes."
 packages  = ["internal/cli", "internal/githubaction", "playground"]
 allow     = [
-  "contract-leaves",
+  "action-acquisition",
   "analysis-contracts",
-  "document-contracts",
-  "leaves",
+  "analyzer-host",
+  "application",
   "catalog",
   "config",
+  "contract-leaves",
+  "document-contracts",
+  "editing",
+  "editor-schema",
+  "leaves",
+  "local-host",
+  "plugin-artifacts",
+  "presentation",
   "process-config",
   "provider-data",
-  "analyzer-host",
-  "tool-providers",
-  "editor-schema",
-  "tool-backends",
-  "presentation",
-  "resolution",
-  "editing",
-  "plugin-artifacts",
-  "workspace",
-  "application",
-  "local-host",
   "public-analysis",
+  "repository-contracts",
+  "resolution",
+  "tool-backends",
+  "tool-providers",
+  "workspace",
 ]
 externals = [
   "github.com/fatih/color",
@@ -686,7 +695,7 @@ packages  = [
   "internal/webhook/generate",
 ]
 allow     = ["leaves", "yaml-codec", "documents"]
-externals = ["github.com/yuin/goldmark", "golang.org/x/net", "golang.org/x/tools"]
+externals = ["github.com/yuin/goldmark", "golang.org/x/net", "golang.org/x/tools", "mvdan.cc/gofumpt"]
 
 [[layer]]
 name           = "dev-commands"
@@ -702,18 +711,18 @@ packages       = [
   "tools/release/bump-version",
 ]
 allow          = [
-  "leaves",
+  "application",
   "catalog",
   "config",
+  "leaves",
+  "plugin-artifacts",
+  "presentation",
   "process-config",
-  "tool-support",
+  "tool-backends",
   "tool-profiles",
   "tool-providers",
-  "tool-backends",
-  "presentation",
-  "plugin-artifacts",
+  "tool-support",
   "workspace",
-  "application",
 ]
 externals      = [
   "github.com/fatih/color",
@@ -735,36 +744,37 @@ name           = "test-suites"
 doc            = "Packages that hold only tests: integration suites, fuzz targets, architecture and toolchain checks. They exercise the application boundary, never the engine."
 packages       = ["fuzz", "internal/architecture", "internal/integration/...", "tools/toolchain"]
 tests          = [
-  "source",
-  "contract-leaves",
+  "adapters",
   "analysis-contracts",
-  "document-contracts",
-  "leaves",
-  "provider-data",
+  "analyzer-host",
+  "application",
   "catalog",
   "config",
-  "process-config",
+  "contract-leaves",
   "core-helpers",
-  "yaml-codec",
-  "expression",
-  "semantics",
-  "workflow-base",
-  "workflow-model",
+  "document-contracts",
   "documents",
+  "editing",
+  "expression",
   "fixtures",
   "language",
-  "analyzer-host",
-  "tool-providers",
-  "tool-contracts",
-  "tool-backends",
-  "presentation",
-  "editing",
+  "leaves",
   "plugin-artifacts",
-  "workspace",
-  "application",
+  "presentation",
+  "process-config",
+  "provider-data",
   "public-analysis",
-  "adapters",
+  "repository-contracts",
+  "semantics",
+  "source",
   "test-harness",
+  "tool-backends",
+  "tool-contracts",
+  "tool-providers",
+  "workflow-base",
+  "workflow-model",
+  "workspace",
+  "yaml-codec",
 ]
 test-externals = [
   "github.com/fatih/color",

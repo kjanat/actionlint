@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/actions"
+
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
@@ -16,6 +18,7 @@ import (
 // Result is a completed analysis prepared for rendering. Findings carry the
 // sources text output needs; Diagnostics is the complete machine-readable list.
 type Result struct {
+	ActionMetadata []actions.Coverage
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic
 	Findings       []Finding
@@ -28,7 +31,8 @@ type Result struct {
 // to inclusive columns.
 func Prepare(analysis report.Analysis) Result {
 	r := Result{
-		FileCount: analysis.FileCount, Diagnostics: analysis.Diagnostics,
+		ActionMetadata: analysis.ActionMetadata,
+		FileCount:      analysis.FileCount, Diagnostics: analysis.Diagnostics,
 		Documents: analysis.Documents, Configurations: analysis.Configurations, Rules: analysis.Rules,
 	}
 	for i, d := range analysis.Diagnostics {
@@ -48,18 +52,23 @@ func Prepare(analysis report.Analysis) Result {
 // ExitCode describes analysis, even when a caller chooses not to fail on findings.
 // Consumers should tolerate unknown fields within a supported schema version.
 type CheckResult struct {
-	SchemaVersion int                     `json:"schema_version"`
-	Status        string                  `json:"status"`
-	Completed     bool                    `json:"completed"`
-	ExitCode      int                     `json:"exit_code"`
-	FileCount     *int                    `json:"file_count"`
-	Diagnostics   []diagnostic.Diagnostic `json:"diagnostics"`
-	Documents     documentmodel.Outlines  `json:"documents"`
-	Configs       []ResultConfig          `json:"configurations"`
-	Hints         []string                `json:"hints"`
-	SARIF         json.RawMessage         `json:"sarif,omitempty"`
-	Error         string                  `json:"error,omitempty"`
+	ActionMetadata []ActionMetadataResult  `json:"action_metadata"`
+	SchemaVersion  int                     `json:"schema_version"`
+	Status         string                  `json:"status"`
+	Completed      bool                    `json:"completed"`
+	ExitCode       int                     `json:"exit_code"`
+	FileCount      *int                    `json:"file_count"`
+	Diagnostics    []diagnostic.Diagnostic `json:"diagnostics"`
+	Documents      documentmodel.Outlines  `json:"documents"`
+	Configs        []ResultConfig          `json:"configurations"`
+	Hints          []string                `json:"hints"`
+	SARIF          json.RawMessage         `json:"sarif,omitempty"`
+	Error          string                  `json:"error,omitempty"`
 }
+
+// ActionMetadataResult describes inspected evidence for one distinct requested
+// action reference. Unavailable metadata has a reason, never an invented identity.
+type ActionMetadataResult = actions.MetadataReport
 
 // ResultConfig identifies the configuration used for a project, including overlays.
 type ResultConfig struct {
@@ -78,7 +87,7 @@ type CheckSummary struct {
 
 // NewCheckResult initializes a result with a consistent status and non-null lists.
 func NewCheckResult(code int) CheckResult {
-	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []diagnostic.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}}
+	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []diagnostic.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}, ActionMetadata: []ActionMetadataResult{}}
 	switch code {
 	case ExitSuccessNoProblem:
 		r.Status, r.Completed = "success", true
@@ -125,6 +134,9 @@ func (r Result) CheckResult() CheckResult {
 	count := r.FileCount
 	result.FileCount = &count
 	result.Documents = r.Documents
+	for _, coverage := range r.ActionMetadata {
+		result.ActionMetadata = append(result.ActionMetadata, coverage.Report())
+	}
 	if r.Diagnostics != nil {
 		result.Diagnostics = r.Diagnostics
 	}

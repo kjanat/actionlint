@@ -197,6 +197,7 @@ func generate(data []byte, revision string) ([]byte, error) {
 		fmt.Fprintln(&out, "},\n},")
 	}
 	fmt.Fprintln(&out, "}")
+	fmt.Fprintln(&out)
 	fmt.Fprintln(&out, "var actionMetadataKeys = map[string][]string{")
 	for _, name := range slices.Sorted(maps.Keys(t.Keys)) {
 		if name == "run-step" || name == "uses-step" {
@@ -204,15 +205,18 @@ func generate(data []byte, revision string) ([]byte, error) {
 		}
 	}
 	fmt.Fprintln(&out, "}")
-	fmt.Fprintf(&out, "var actionMetadataSpecialFunctions = %#v\n", t.Functions)
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "var (")
+	fmt.Fprintf(&out, "actionMetadataSpecialFunctions = %#v\n", t.Functions)
 	if err := generateSchema(&out, defs); err != nil {
 		return nil, err
 	}
+	fmt.Fprintln(&out, ")")
 	return format.Source(out.Bytes())
 }
 
 func generateSchema(out *bytes.Buffer, defs map[string]definition) error {
-	fmt.Fprintln(out, "var actionMetadataSchema = map[string]actionSchemaDefinition{")
+	fmt.Fprintln(out, "actionMetadataSchema = map[string]actionSchemaDefinition{")
 	for _, name := range slices.Sorted(maps.Keys(defs)) {
 		d := defs[name]
 		fmt.Fprintf(out, "%q: {\n", name)

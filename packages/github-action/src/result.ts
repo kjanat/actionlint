@@ -1,5 +1,7 @@
 import type {
 	ActionInputOutline,
+	ActionMetadata,
+	ActionMetadataProblem,
 	ActionOutputOutline,
 	ActionRunsOutline,
 	CheckResult,
@@ -196,6 +198,39 @@ function documentOutline(value: unknown): value is DocumentOutline {
 		&& Array.isArray(value.outputs) && value.outputs.every(actionOutput) && actionRuns(value.runs);
 }
 
+function actionMetadataProblem(value: unknown): value is ActionMetadataProblem {
+	return object(value) && typeof value.message === 'string' && typeof value.path === 'string'
+		&& object(value.start) && integer(value.start.line, 0) && integer(value.start.column, 0)
+		&& object(value.end) && integer(value.end.line, 0) && integer(value.end.column, 0);
+}
+
+function actionMetadata(value: unknown): value is ActionMetadata {
+	if (!object(value) || typeof value.reference !== 'string') return false;
+	if (value.state === 'unavailable') {
+		return typeof value.reason === 'string' && [
+			'not-fetched',
+			'offline',
+			'lookup-disabled',
+			'denied',
+			'failed',
+			'not-found',
+			'unsupported',
+			'cache-miss',
+			'not-found-or-inaccessible',
+			'limit-exceeded',
+		].includes(value.reason);
+	}
+	if (
+		typeof value.host !== 'string' || typeof value.repository !== 'string' || !integer(value.repository_id, 1)
+		|| typeof value.commit !== 'string' || typeof value.manifest !== 'string'
+		|| typeof value.selected_object !== 'string' || value.reason !== undefined
+		|| !optionalStrings(value, ['directory', 'observed_at', 'selected_ref'])
+	) return false;
+	if (value.state === 'available') return value.problems === undefined;
+	return value.state === 'invalid' && Array.isArray(value.problems) && value.problems.length > 0
+		&& value.problems.every(actionMetadataProblem);
+}
+
 export function parseResult(value: unknown): ActionResult {
 	if (
 		!object(value) || value.schema_version !== 1
@@ -206,6 +241,8 @@ export function parseResult(value: unknown): ActionResult {
 		|| (value.sarif !== undefined && !sarif(value.sarif))
 		|| (value.error !== undefined && typeof value.error !== 'string')
 		|| (value.documents !== undefined && (!Array.isArray(value.documents) || !value.documents.every(documentOutline)))
+		|| (value.action_metadata !== undefined
+			&& (!Array.isArray(value.action_metadata) || !value.action_metadata.every(actionMetadata)))
 	) throw new Error('actionlint returned an invalid or unsupported persisted result');
 	const data: ResultData = {
 		// Forward additive schema fields to reporters.
@@ -219,6 +256,7 @@ export function parseResult(value: unknown): ActionResult {
 	if (value.sarif !== undefined) data.sarif = value.sarif;
 	if (value.error !== undefined) data.error = value.error;
 	if (value.documents !== undefined) data.documents = value.documents;
+	if (value.action_metadata !== undefined) data.action_metadata = value.action_metadata;
 	if (
 		value.completed === true && value.status === 'success' && value.exit_code === 0 && value.diagnostics.length === 0
 	) {

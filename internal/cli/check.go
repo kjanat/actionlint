@@ -64,6 +64,10 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if c.ResolverCommand != "" {
 		options.Resolver = resolution.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 	}
+	options.RemoteActions, err = c.actionMetadata()
+	if err != nil {
+		return 0, err
+	}
 	options.Runners, err = c.runners()
 	if err != nil {
 		return 0, err

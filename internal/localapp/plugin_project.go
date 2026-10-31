@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
@@ -123,6 +124,19 @@ func (p *PluginProject) selectedPins(ctx context.Context, refs []pluginref.Refer
 			}
 			continue
 		}
+		if digest := ref.CandidateDigest(); digest != "" {
+			client, err := pluginregistry.New(ref.Registry())
+			if err != nil {
+				return pluginregistry.Lock{}, err
+			}
+			client.StatusOptions = p.StatusOptions
+			pin, err := client.LookupCandidate(ctx, ref.Name(), ref.Version(), digest)
+			if err != nil {
+				return pluginregistry.Lock{}, err
+			}
+			selected.Plugins = append(selected.Plugins, pin)
+			continue
+		}
 		if p.Lock.Exists() {
 			// Existing projects may still declare an alias/latest alongside their
 			// old exact lock. Honor those bytes read-only until explicit migration.
@@ -188,14 +202,24 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 				break
 			}
 		}
+		candidate := strings.HasPrefix(ref.Registry(), "file:")
+		updating := slices.Contains(update, ref)
 		switch {
-		case previous != nil && !slices.Contains(update, ref):
+		case candidate && !updating && ref.CandidateDigest() != "":
+			pin, err = client.LookupCandidate(ctx, ref.Name(), ref.Version(), ref.CandidateDigest())
+		case candidate && !updating && previous != nil && previous.Origin == "candidate":
+			pin, err = client.LookupCandidate(ctx, previous.Name, previous.Version, previous.SHA256)
+		case candidate:
+			// Explicit install resolves the current staging bytes. Only update can
+			// replace an existing bound digest.
+			pin, err = client.Resolve(ctx, ref.Name(), ref.Version())
+		case previous != nil && !updating:
 			// Migration freezes the recorded release, including old latest selectors.
 			pin, err = client.Lookup(ctx, previous.Name, previous.Version)
 			if err == nil && !pin.SameRelease(*previous) {
 				return fmt.Errorf("registry release disagrees with legacy lock for %s@%s", previous.Name, previous.Version)
 			}
-		case ref.Version() != "latest" && !ref.IsAlias() && !slices.Contains(update, ref):
+		case ref.Version() != "latest" && !ref.IsAlias() && !updating:
 			pin, err = client.Lookup(ctx, ref.Name(), ref.Version())
 		default:
 			pin, err = client.Resolve(ctx, ref.Name(), ref.Version())
@@ -222,7 +246,23 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 	if err := p.Lock.Lock.CheckStatuses(ctx, p.StatusOptions); err != nil {
 		return err
 	}
-	return SyncPlugins(ctx, p.Lock.Lock)
+	if err := SyncPlugins(ctx, p.Lock.Lock); err != nil {
+		return err
+	}
+	for _, pin := range p.Lock.Lock.Plugins {
+		if pin.Origin != "candidate" {
+			continue
+		}
+		client, err := pluginregistry.New(pin.Registry)
+		if err != nil {
+			return err
+		}
+		client.StatusOptions = p.StatusOptions
+		if err := client.RememberCandidate(ctx, pin); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Configured releases retain publisher, immutable-version and downgrade checks
@@ -238,7 +278,16 @@ func (p *PluginProject) checkConfiguredRelease(ctx context.Context, pin pluginre
 			return err
 		}
 		client.StatusOptions = p.StatusOptions
-		previous, err := client.Lookup(ctx, configured.Name(), configured.Version())
+		var previous pluginregistry.Pin
+		if configured.CandidateDigest() != "" {
+			previous, err = client.LookupCandidate(ctx, configured.Name(), configured.Version(), configured.CandidateDigest())
+		} else if strings.HasPrefix(configured.Registry(), "file:") {
+			// A new candidate declaration has no previous release evidence to
+			// compare. Its bytes are verified during installation and then pinned.
+			continue
+		} else {
+			previous, err = client.Lookup(ctx, configured.Name(), configured.Version())
+		}
 		if err != nil {
 			return err
 		}
@@ -278,14 +327,24 @@ func (p *PluginProject) resolvedDeclarations(ctx context.Context, refs []pluginr
 			return nil, err
 		}
 		client.StatusOptions = p.StatusOptions
-		verified, err := client.Lookup(ctx, selected.Name, selected.Version)
+		var verified pluginregistry.Pin
+		if selected.Origin == "candidate" {
+			verified, err = client.LookupCandidate(ctx, selected.Name, selected.Version, selected.SHA256)
+		} else {
+			verified, err = client.Lookup(ctx, selected.Name, selected.Version)
+		}
 		if err != nil {
 			return nil, err
 		}
 		if !verified.SameRelease(*selected) {
 			return nil, fmt.Errorf("registry release disagrees with selected artifact for %s@%s", selected.Name, selected.Version)
 		}
-		declaration, err := pluginref.New(selected.Name, selected.Version, selected.Registry)
+		var declaration pluginref.Reference
+		if selected.Origin == "candidate" {
+			declaration, err = pluginref.NewCandidate(selected.Name, selected.Version, selected.Registry, selected.SHA256)
+		} else {
+			declaration, err = pluginref.New(selected.Name, selected.Version, selected.Registry)
+		}
 		if err != nil {
 			return nil, err
 		}

@@ -27,6 +27,11 @@ type Result struct {
 	ObservedAt   string          `json:"observed_at"`
 	Evidence     json.RawMessage `json:"evidence"`
 	Error        string          `json:"error,omitempty"`
+	// SelectedObject and SelectedRef retain an action profile's original object
+	// and exact lookup key. Optional for existing providers; metadata acquisition
+	// cannot infer a named route when this evidence is omitted.
+	SelectedObject string `json:"selected_object,omitempty"`
+	SelectedRef    string `json:"selected_ref,omitempty"`
 }
 
 type Resolver interface {

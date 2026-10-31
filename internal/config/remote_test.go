@@ -33,13 +33,14 @@ func TestRemoteConfigPaths(t *testing.T) {
 					return nil, fmt.Errorf("unexpected source %q", name)
 				}
 			})
-			if test.want != "" {
+			switch {
+			case test.want != "":
 				if err == nil || !strings.Contains(err.Error(), test.want) || !strings.Contains(err.Error(), remote) {
 					t.Fatalf("error = %v, want %q and origin", err, test.want)
 				}
-			} else if err != nil {
+			case err != nil:
 				t.Fatal(err)
-			} else if loaded.Config.Sources()[0] != remote {
+			case loaded.Config.Sources()[0] != remote:
 				t.Fatalf("sources = %v", loaded.Config.Sources())
 			}
 		})

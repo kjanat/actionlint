@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -123,7 +124,7 @@ func ValidateSourcePaths(origin string, node *yaml.Node) error {
 	if plugins := field(node, "plugins"); plugins != nil {
 		for _, entry := range plugins.Content {
 			if registry := field(entry, "registry"); registry != nil && strings.HasPrefix(strings.ToLower(registry.Value), "file:") {
-				return fmt.Errorf("plugins.registry: remote config cannot select a local file registry")
+				return errors.New("plugins.registry: remote config cannot select a local file registry")
 			}
 		}
 	}
@@ -187,7 +188,7 @@ func rejectRemoteConfigDir(node *yaml.Node) error {
 			break
 		}
 		if strings.EqualFold(strings.TrimSpace(name), "configdir") {
-			return fmt.Errorf("configdir is unavailable in a remote config; use github.workspace, gitdir or github.action_path")
+			return errors.New("configdir is unavailable in a remote config; use github.workspace, gitdir or github.action_path")
 		}
 		value = after
 	}

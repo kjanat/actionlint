@@ -9,12 +9,16 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 // Lookup resolves a canonical exact release, reusing a previously verified
 // registry resolution without network access. Floating requests belong to
 // explicit install/update, which call Resolve before writing configuration.
 func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) {
+	if c.base.Scheme == "file" {
+		return Pin{}, errors.New("local candidate lookup requires a configured SHA256 digest; run actionlint plugin install to bind it")
+	}
 	if !pluginref.ValidRepository(name) || !pluginref.ValidVersion(version) || version == "latest" {
 		return Pin{}, errors.New("registry plugins require a canonical package and exact version; run actionlint plugin install to resolve the declaration")
 	}
@@ -82,6 +86,112 @@ func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, 
 		return Pin{}, false, errors.New("cached registry release disagrees with its authority or requested identity")
 	}
 	return pin, true, nil
+}
+
+// LookupCandidate returns only the previously selected bytes for an exact
+// local candidate digest. An uncached selection may be restored from staging
+// only when the staged artifact still has that digest.
+func (c *Client) LookupCandidate(ctx context.Context, name, version, digest string) (Pin, error) {
+	if c.base.Scheme != "file" || !pluginref.ValidRepository(name) || !pluginref.ValidVersion(version) || version == "latest" || !digestPattern.MatchString(digest) {
+		return Pin{}, errors.New("candidate lookup requires a local registry, canonical package, exact version, and SHA256 digest")
+	}
+	if err := ctx.Err(); err != nil {
+		return Pin{}, err
+	}
+	pin, exists, err := c.cachedCandidate(ctx, name, version, digest)
+	if err != nil {
+		return Pin{}, err
+	}
+	if !exists {
+		pin, err = c.resolveCandidate(ctx, name, version)
+		if err != nil {
+			return Pin{}, fmt.Errorf("candidate %s@%s is not cached; restore its matching local staging artifact or run actionlint plugin update: %w", name, version, err)
+		}
+		if pin.SHA256 != digest {
+			return Pin{}, fmt.Errorf("candidate %s@%s changed; run actionlint plugin update to select the rebuilt bytes", name, version)
+		}
+		pin.Selector = version
+	}
+	return pin, nil
+}
+
+// RememberCandidate stores verified candidate metadata under an immutable
+// per-digest key. It never changes a mutable name/version alias.
+func (c *Client) RememberCandidate(ctx context.Context, pin Pin) error {
+	if c.base.Scheme != "file" || pin.Origin != "candidate" || !SameRegistry(pin.Registry, c.base.String()) {
+		return errors.New("candidate pin belongs to another registry")
+	}
+	pin.Selector = pin.Version
+	if err := pin.Validate(); err != nil {
+		return err
+	}
+	artifact, err := artifact.Resolve(ctx, pin.Source(), candidateArtifactOptions())
+	if err != nil {
+		return fmt.Errorf("candidate artifact is not verified in the artifact cache: %w", err)
+	}
+	if err := pin.Verify(artifact.Info); err != nil {
+		return err
+	}
+	path, err := c.candidateCachePath(pin.Name, pin.Version, pin.SHA256)
+	if err != nil {
+		return err
+	}
+	if err := writeCacheFile(path, pin, true); err != nil {
+		if !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		previous, exists, readErr := c.cachedCandidate(ctx, pin.Name, pin.Version, pin.SHA256)
+		if readErr != nil {
+			return readErr
+		}
+		if !exists || !sameCandidate(previous, pin) {
+			return errors.New("concurrent immutable candidate cache conflict")
+		}
+	}
+	return nil
+}
+
+func (c *Client) cachedCandidate(ctx context.Context, name, version, digest string) (Pin, bool, error) {
+	path, err := c.candidateCachePath(name, version, digest)
+	if err != nil {
+		return Pin{}, false, err
+	}
+	data, err := readLockBytes(ctx, path)
+	if err != nil || data == nil {
+		return Pin{}, false, err
+	}
+	var pin Pin
+	if err := jsonv2.Unmarshal(data, &pin, jsonv2.RejectUnknownMembers(true)); err != nil {
+		return Pin{}, false, err
+	}
+	if err := pin.Validate(); err != nil {
+		return Pin{}, false, fmt.Errorf("cached candidate pin: %w", err)
+	}
+	if pin.Origin != "candidate" || !SameRegistry(pin.Registry, c.base.String()) || pin.Name != name || pin.Version != version || pin.Selector != version || pin.SHA256 != digest {
+		return Pin{}, false, errors.New("cached candidate pin disagrees with its authority or requested identity")
+	}
+	return pin, true, nil
+}
+
+func (c *Client) candidateCachePath(name, version, digest string) (string, error) {
+	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(directory, "candidates", hash(name+"\n"+version+"\n"+digest)+".json"), nil
+}
+
+func candidateArtifactOptions() artifact.Options {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return artifact.Options{}
+	}
+	return artifact.Options{CacheDir: filepath.Join(base, "actionlint", "artifacts")}
+}
+
+func sameCandidate(left, right Pin) bool {
+	left.Selector, right.Selector = left.Version, right.Version
+	return left == right && SameRegistry(left.Registry, right.Registry)
 }
 
 func sameRelease(left, right Pin) bool {

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/actions"
+
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
@@ -88,11 +90,16 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	metadata, err := rule.remote.Lookup(ctx, spec)
+	inspection, err := rule.remote.Inspect(ctx, spec)
 	if err != nil {
 		return err
 	}
-	rule.Report(actioncheck.Repository(e, metadata)...)
+	if inspection.Availability().State() == actions.MetadataInvalid {
+		for _, problem := range inspection.Availability().Problems() {
+			rule.Report(findingmodel.Errorf(declarationPosition(e.Uses()), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message))
+		}
+	}
+	rule.Report(actioncheck.Repository(e, inspection.Definition())...)
 	return nil
 }
 

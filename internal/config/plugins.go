@@ -52,7 +52,7 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 	values := map[string]string{}
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key, value := node.Content[i], node.Content[i+1]
-		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry" && key.Value != "source") {
+		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry" && key.Value != "source" && key.Value != "sha256") {
 			return pluginref.Reference{}, fmt.Errorf("unknown plugin field %q", key.Value)
 		}
 		if _, exists := values[key.Value]; exists {
@@ -65,7 +65,7 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 	}
 	if source, exists := values["source"]; exists {
 		if len(values) != 1 {
-			return pluginref.Reference{}, errors.New("a direct plugin source cannot also declare name, version, or registry")
+			return pluginref.Reference{}, errors.New("a direct plugin source cannot also declare name, version, registry, or sha256")
 		}
 		ref, err := pluginref.Parse(source)
 		if err != nil {
@@ -75,6 +75,9 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 			return pluginref.Reference{}, errors.New("plugin source requires a digest-pinned HTTPS or OCI artifact")
 		}
 		return ref, nil
+	}
+	if digest, ok := values["sha256"]; ok {
+		return pluginref.NewCandidate(values["name"], values["version"], values["registry"], digest)
 	}
 	return pluginref.New(values["name"], values["version"], values["registry"])
 }
@@ -87,11 +90,13 @@ func (p PluginDeclarations) MarshalYAML() (any, error) {
 			entries = append(entries, ref.String())
 			continue
 		}
-		entries = append(entries, struct {
+		declaration := struct {
 			Name     string `yaml:"name"`
 			Version  string `yaml:"version,omitempty"`
 			Registry string `yaml:"registry"`
-		}{ref.Name(), ref.Version(), ref.Registry()})
+			SHA256   string `yaml:"sha256,omitempty"`
+		}{ref.Name(), ref.Version(), ref.Registry(), ref.CandidateDigest()}
+		entries = append(entries, declaration)
 	}
 	return entries, nil
 }

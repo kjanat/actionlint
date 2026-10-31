@@ -187,10 +187,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	if err := f.Remove(pin.Name); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Save(t.Context()); err != nil {
+	if err := project.Save(t.Context(), nil); err != nil {
 		t.Fatal(err)
 	}
 	r.SetOffline(true)

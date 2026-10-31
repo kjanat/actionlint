@@ -11,6 +11,10 @@ const (
 	DeniedReason         Reason = "denied"
 	FailedReason         Reason = "failed"
 	NotFoundReason       Reason = "not-found"
+	UnsupportedReason    Reason = "unsupported"
+	CacheMissReason      Reason = "cache-miss"
+	InaccessibleReason   Reason = "not-found-or-inaccessible"
+	LimitReason          Reason = "limit-exceeded"
 )
 
 // Unavailability is a closed set of missing-fact outcomes. Its zero value is
@@ -23,6 +27,10 @@ func LookupDisabled() Unavailability { return Unavailability{cause: LookupDisabl
 func Denied() Unavailability         { return Unavailability{cause: DeniedReason} }
 func Failed() Unavailability         { return Unavailability{cause: FailedReason} }
 func NotFound() Unavailability       { return Unavailability{cause: NotFoundReason} }
+func Unsupported() Unavailability    { return Unavailability{cause: UnsupportedReason} }
+func CacheMiss() Unavailability      { return Unavailability{cause: CacheMissReason} }
+func Inaccessible() Unavailability   { return Unavailability{cause: InaccessibleReason} }
+func Limit() Unavailability          { return Unavailability{cause: LimitReason} }
 func (u Unavailability) Reason() Reason {
 	if u.cause == "" {
 		return NotFetchedReason

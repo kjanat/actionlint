@@ -100,6 +100,7 @@ func Rules() []Rule {
 		{Name: "empty-job"},
 		{Name: "empty-run"},
 		{Name: "require-commit-hash", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
+		{Name: "require-action-metadata", Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata })},
 		{Name: "require-job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
 		{Name: "require-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
 		{Name: "required-actions", Options: func() any { return &RequiredActionsOptions{} }, Configure: configureRequiredActions},

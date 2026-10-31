@@ -31,6 +31,7 @@ require (
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
 	golang.org/x/tools v0.51.0
+	mvdan.cc/gofumpt v0.12.0
 	mvdan.cc/sh/v3 v3.14.1
 )
 

@@ -33,6 +33,7 @@ type checkInvocation struct {
 	RunnerScope           string
 	ResolverCommand       string
 	ResolverArguments     []string
+	ActionMetadata        string
 	Fix                   bool
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool

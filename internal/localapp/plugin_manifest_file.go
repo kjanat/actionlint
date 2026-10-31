@@ -361,7 +361,11 @@ func pluginManifestSequence(refs []pluginref.Reference) (*yaml.Node, error) {
 			continue
 		}
 		entry := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		for _, pair := range [][2]string{{"name", normalized.Name()}, {"version", normalized.Version()}, {"registry", normalized.Registry()}} {
+		pairs := [][2]string{{"name", normalized.Name()}, {"version", normalized.Version()}, {"registry", normalized.Registry()}}
+		if digest := normalized.CandidateDigest(); digest != "" {
+			pairs = append(pairs, [2]string{"sha256", digest})
+		}
+		for _, pair := range pairs {
 			entry.Content = append(entry.Content,
 				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: pair[0]},
 				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: pair[1]})
@@ -757,6 +761,9 @@ func pluginTOMLTables(sequence *yaml.Node, newline string) ([]byte, error) {
 			fields = append(fields, [2]string{"name", ref.Name()}, [2]string{"version", ref.Version()})
 			if ref.Registry() != pluginref.DefaultRegistry {
 				fields = append(fields, [2]string{"registry", ref.Registry()})
+			}
+			if digest := ref.CandidateDigest(); digest != "" {
+				fields = append(fields, [2]string{"sha256", digest})
 			}
 		}
 		for _, field := range fields {

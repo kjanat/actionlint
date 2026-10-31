@@ -4,6 +4,15 @@
 !go.mod
 !go.sum
 !*.go
+!actionlint.schema.json
+!schemas
+!schemas/**
+!actions
+!actions/**
+!knowledge
+!knowledge/**
+!repository
+!repository/**
 !cmd
 !cmd/**
 !internal

@@ -161,14 +161,16 @@ actionlint check
 
 On Windows, use `file:///C:/path/to/candidate/`. The registry's candidate exporter creates this directory
 from a packaged artifact. Installation writes configuration, verifies the artifact's
-digest and metadata, and imports it into the shared cache. The lock identifies the source as `candidate`;
-it makes no claim about publisher authentication or publication. Candidate catalogues are accepted only through
-an explicit local file URI. Their records and artifacts must stay within that directory.
+digest and metadata, and binds the declaration to the verified SHA256 digest. The digest is part of the
+configuration entry and does not make a claim about publisher authentication or publication. Candidate
+catalogues are accepted only through an explicit local file URI. Their records and artifacts must stay within
+that directory.
 
-Checking uses the imported bytes even after the candidate directory is removed. A missing cache entry fails;
-`plugin sync` can restore it from the local catalogue. Use `plugin update owner/plugin` after rebuilding a candidate
-at the same version. Published versions still reject replacement. Run candidate checks in a temporary project
-to keep local paths out of a project's production configuration.
+Checking uses the selected digest's imported bytes even after the candidate directory is removed. Pins are kept
+in a per-digest user cache, so rebuilding a candidate at the same version does not change installed projects.
+Use `plugin update owner/plugin` to select rebuilt bytes; that updates the digest in configuration. A cold cache
+can restore only when the local catalogue still contains the selected bytes. Published versions still reject
+replacement. Run candidate checks in a temporary project to keep local paths out of a production configuration.
 
 ### Deprecated, withdrawn and revoked releases
 

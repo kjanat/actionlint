@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -57,11 +58,8 @@ jobs:
 				if !present {
 					t.Fatal("workflow source snapshot unavailable")
 				}
-				rule := builtin.NewRuleRunnerLabel()
-				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
-					t.Fatal(err)
-				}
-				errs := rule.Errs()
+				declaration := matrixJob(t, snapshot, "test")
+				errs := runnerlang.CheckWithLabels(declaration, runnerlang.KnownLabels(nil))
 				knowledge, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 				if err != nil {
 					t.Fatal(err)
@@ -89,8 +87,16 @@ jobs:
 				if err := production.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
-				if !reflect.DeepEqual(production.Errs(), errs) {
-					t.Fatalf("production knowledge and direct check diverged: production=%v direct=%v", production.Errs(), errs)
+				findings := production.Errs()
+				var got []diagnostic.Diagnostic
+				if len(findings) != 0 {
+					got = make([]diagnostic.Diagnostic, len(findings))
+				}
+				for i, finding := range findings {
+					got[i] = finding.Diagnostic
+				}
+				if !reflect.DeepEqual(got, errs) {
+					t.Fatalf("production knowledge and direct check diverged: production=%v direct=%v", got, errs)
 				}
 				if len(errs) != tc.want {
 					t.Fatalf("wanted %d runner-label diagnostics, got %v", tc.want, errs)

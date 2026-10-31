@@ -91,6 +91,9 @@ type Policy struct {
 	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; the check is
 	// disabled by default. Local references and references built with expressions are skipped.
 	RequireCommitHash *bool `yaml:"require-commit-hash" jsonschema:"nullable"`
+	// RequireActionMetadata requires usable fetched metadata for remote action
+	// references. Disabled by default; this does not enable network access.
+	RequireActionMetadata *bool `yaml:"require-action-metadata" jsonschema:"nullable"`
 	// RequireJobTimeout requires jobs to declare `timeout-minutes` when set to `true`.
 	//
 	// Use `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes.
@@ -165,6 +168,8 @@ func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
 			err = v.Decode(&p.DisallowSuppressions)
 		case "require-commit-hash":
 			err = v.Decode(&p.RequireCommitHash)
+		case "require-action-metadata":
+			err = v.Decode(&p.RequireActionMetadata)
 		case "require-job-timeout":
 			err = v.Decode(&p.RequireJobTimeout)
 		case "require-permissions":

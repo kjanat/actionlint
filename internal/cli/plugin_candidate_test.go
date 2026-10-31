@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/testutil"
@@ -54,17 +55,37 @@ func candidateCatalogue(t *testing.T) (string, string, string, *testutil.PluginR
 	return root, u.String(), fmt.Sprintf("%x", sha256.Sum256(data)), r
 }
 
-func candidateProject(t *testing.T) {
+func candidateProject(t *testing.T) string {
 	t.Helper()
-	t.Chdir(t.TempDir())
+	testutil.IsolateUserCache(t)
+	directory := t.TempDir()
+	candidateProjectAt(t, directory)
+	t.Chdir(directory)
+	return directory
+}
+
+func candidateProjectAt(t *testing.T, directory string) {
+	t.Helper()
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	t.Setenv("ACTIONLINT_CONFIG", "")
-	if err := os.Mkdir(".git", 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(directory, ".git"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "workflow.yml"), []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func candidateDigest(t *testing.T, path string) string {
+	t.Helper()
+	loaded, err := repoconfig.Read(path, os.ReadFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.Config.Plugins) != 1 {
+		t.Fatalf("config declares %d plugins, want one", len(loaded.Config.Plugins))
+	}
+	return loaded.Config.Plugins[0].CandidateDigest()
 }
 
 // Local installation must create the normal project files and execute the exact
@@ -76,26 +97,14 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	pluginCommandTest(t, 0, "plugin", "search", "sudo", "--registry", registry)
 	pluginCommandTest(t, 0, "plugin", "versions", "publisher/plugin", "--registry", registry)
 	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
-	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(".github", pluginregistry.LockName))
-	if err != nil {
-		t.Fatal(err)
+	configPath := filepath.Join(".github", "actionlint.yaml")
+	if got := candidateDigest(t, configPath); got != digest {
+		t.Fatalf("candidate config digest = %q, want %q", got, digest)
 	}
-	if len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Origin != "candidate" || lock.Lock.Plugins[0].SHA256 != digest || lock.Lock.Plugins[0].OwnerID != "" || lock.Lock.Plugins[0].RepositoryID != "" {
-		t.Fatalf("wrong candidate lock: %+v", lock.Lock)
+	if _, err := os.Stat(filepath.Join(".github", pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("candidate install created a project lock: %v", err)
 	}
-	for _, change := range []func(*pluginregistry.Pin){
-		func(p *pluginregistry.Pin) { p.Registry = "https://example.com/" },
-		func(p *pluginregistry.Pin) { p.Origin = "" },
-		func(p *pluginregistry.Pin) { p.RepositoryID = "12" },
-		func(p *pluginregistry.Pin) { p.OwnerID = "34" },
-	} {
-		pin := lock.Lock.Plugins[0]
-		change(&pin)
-		if err := pin.Validate(); err == nil {
-			t.Fatalf("mixed candidate authority accepted: %+v", pin)
-		}
-	}
-	if _, err := os.Stat(filepath.Join(".github", "actionlint.yaml")); err != nil {
+	if _, err := os.Stat(configPath); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.RemoveAll(root); err != nil {
@@ -109,9 +118,6 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(filepath.Join(cache, "actionlint", "artifacts", digest)); err != nil {
-		t.Fatal(err)
-	}
 	selected, err := (localapp.PluginSelection{}).SelectForCache(t.Context(), ".", application.Input{Kind: application.Files, Paths: []string{"workflow.yml"}})
 	if err != nil {
 		t.Fatal(err)
@@ -123,17 +129,21 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	if plan.Directory != filepath.Join(cache, "actionlint", "artifacts") || len(plan.Artifacts) != 1 || plan.Artifacts[0] != digest {
 		t.Fatalf("candidate missing from restore plan: %+v", plan)
 	}
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
+	if err := os.Remove(filepath.Join(cache, "actionlint", "artifacts", digest)); err != nil {
+		t.Fatal(err)
+	}
 	pluginCommandTest(t, 3, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
-	beforeSync, err := os.ReadFile(lock.Path)
+	beforeSync, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if output := pluginCommandTest(t, 3, "plugin", "sync"); !strings.Contains(output, "publisher/plugin@v1.0.0") {
 		t.Fatalf("missing staging error lost the plugin identity: %s", output)
 	}
-	afterSync, err := os.ReadFile(lock.Path)
+	afterSync, err := os.ReadFile(configPath)
 	if err != nil || !bytes.Equal(afterSync, beforeSync) {
-		t.Fatalf("failed sync changed the installed lock: %v", err)
+		t.Fatalf("failed sync changed the candidate declaration: %v", err)
 	}
 	if len(network.Requests()) != 0 {
 		t.Fatalf("local candidate contacted network: %v", network.Requests())
@@ -170,21 +180,13 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
-	lockPath := filepath.Join(".github", pluginregistry.LockName)
-	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if lock.Lock.Plugins[0].SHA256 != digest {
-		t.Fatal("checking updated candidate lock")
+	configPath := filepath.Join(".github", "actionlint.yaml")
+	if got := candidateDigest(t, configPath); got != digest {
+		t.Fatalf("ordinary check changed candidate digest to %q", got)
 	}
 	pluginCommandTest(t, 0, "plugin", "update", "publisher/plugin")
-	lock, err = pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if lock.Lock.Plugins[0].SHA256 != next {
-		t.Fatal("explicit update did not import rebuilt candidate")
+	if got := candidateDigest(t, configPath); got != next {
+		t.Fatalf("explicit update digest = %q, want %q", got, next)
 	}
 	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	cache, err := os.UserCacheDir()
@@ -199,6 +201,66 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 }
 
+func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
+	root, registry, firstDigest, network := candidateCatalogue(t)
+	testutil.IsolateUserCache(t)
+	firstProject, secondProject := t.TempDir(), t.TempDir()
+	candidateProjectAt(t, firstProject)
+	candidateProjectAt(t, secondProject)
+	t.Chdir(firstProject)
+	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
+	firstConfig := filepath.Join(firstProject, ".github", "actionlint.yaml")
+	if got := candidateDigest(t, firstConfig); got != firstDigest {
+		t.Fatalf("first install digest = %q, want %q", got, firstDigest)
+	}
+
+	artifactPath := filepath.Join(root, "artifacts", "plugin.wasm")
+	original, err := os.ReadFile(artifactPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rebuilt := bytes.Replace(original, []byte("Test plugin"), []byte("Next plugin"), 1)
+	if bytes.Equal(original, rebuilt) {
+		t.Fatal("candidate rebuild did not change bytes")
+	}
+	secondDigest := fmt.Sprintf("%x", sha256.Sum256(rebuilt))
+	if err := os.WriteFile(artifactPath, rebuilt, 0600); err != nil {
+		t.Fatal(err)
+	}
+	recordPath := filepath.Join(root, "plugins", "no-sudo", "versions", "v1.json")
+	record, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(firstDigest), []byte(secondDigest)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(secondProject)
+	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
+	secondConfig := filepath.Join(secondProject, ".github", "actionlint.yaml")
+	if got := candidateDigest(t, secondConfig); got != secondDigest {
+		t.Fatalf("second install digest = %q, want %q", got, secondDigest)
+	}
+	if err := os.RemoveAll(root); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, project := range []struct {
+		name, config, digest string
+	}{{"first", firstConfig, firstDigest}, {"second", secondConfig, secondDigest}} {
+		t.Run(project.name, func(t *testing.T) {
+			t.Chdir(filepath.Dir(filepath.Dir(project.config)))
+			output := pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
+			if !strings.Contains(output, "[no-sudo]") || candidateDigest(t, project.config) != project.digest {
+				t.Fatalf("project lost its selected candidate %s: %s", project.digest, output)
+			}
+		})
+	}
+	if len(network.Requests()) != 0 {
+		t.Fatalf("local candidates contacted the network: %v", network.Requests())
+	}
+}
+
 // A broken rebuild must leave an installed candidate usable. Repairing its
 // declaration should then allow an explicit update without resetting the project.
 func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
@@ -206,12 +268,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	candidateProject(t)
 	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 	configPath := filepath.Join(".github", "actionlint.yaml")
-	lockPath := filepath.Join(".github", pluginregistry.LockName)
 	beforeConfig, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	beforeLock, err := os.ReadFile(lockPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,11 +297,9 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	if !strings.Contains(output, "SHA256 mismatch") {
 		t.Fatalf("wrong candidate failure: %s", output)
 	}
-	for path, before := range map[string][]byte{configPath: beforeConfig, lockPath: beforeLock} {
-		after, err := os.ReadFile(path)
-		if err != nil || !bytes.Equal(after, before) {
-			t.Fatalf("failed update changed %s: %v", path, err)
-		}
+	afterConfig, err := os.ReadFile(configPath)
+	if err != nil || !bytes.Equal(afterConfig, beforeConfig) || candidateDigest(t, configPath) != digest {
+		t.Fatalf("failed update changed candidate declaration: %v", err)
 	}
 	cache, err := os.UserCacheDir()
 	if err != nil {
@@ -263,9 +318,8 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, 0, "plugin", "update", "publisher/plugin")
-	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].SHA256 != next {
-		t.Fatalf("repaired rebuild did not update lock: %+v, %v", lock, err)
+	if got := candidateDigest(t, configPath); got != next {
+		t.Fatalf("repaired rebuild digest = %q, want %q", got, next)
 	}
 	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	if len(network.Requests()) != 0 {

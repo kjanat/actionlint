@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/config/report"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/report"
@@ -13,15 +12,15 @@ import (
 func TestConfigurationReportPublicAliasesAndJSON(t *testing.T) {
 	// Existing callers can keep constructing the public config aliases and pass
 	// them directly through the completed report and render contracts.
-	selected := config.Report{
+	selected := configreport.Report{
 		Project: "project", File: "actionlint.yml", Explicit: true,
 		Overrides: []string{"tools"},
-		Inspection: config.Inspection{
+		Inspection: configreport.Inspection{
 			Path: "actionlint.yml", Config: map[string]any{"tools": false},
-			Origins: map[string]config.Origin{
+			Origins: map[string]configreport.Origin{
 				"/tools": {Source: "input", Input: "tools", State: "value", Line: 2, Column: 3},
 			},
-			Warnings: []config.Warning{{File: "base.yml", Message: "ignored setting", Line: 4, Column: 5}},
+			Warnings: []configreport.Warning{{File: "base.yml", Message: "ignored setting", Line: 4, Column: 5}},
 		},
 	}
 	result := render.Prepare(report.Analysis{Configurations: []configreport.Report{selected}}).CheckResult()

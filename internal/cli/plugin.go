@@ -215,6 +215,9 @@ func requestedPlugin(name string, options pluginInvocation, existing []pluginref
 	if err != nil {
 		return pluginref.Reference{}, err
 	}
+	if index >= 0 && !strings.Contains(name, "@") && options.Version == "" && options.Registry == "" {
+		return existing[index], nil
+	}
 	version, registry := ref.Version(), ref.Registry()
 	if index >= 0 {
 		registry = existing[index].Registry()

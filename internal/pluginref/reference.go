@@ -70,13 +70,14 @@ func ValidRepository(name string) bool {
 }
 
 // Reference declares a registry alias or repository, requested release, and catalogue.
-// Only Parse and New build one, so every Reference holds normalized values.
+// Only Parse, New and NewCandidate build one, so values remain normalized.
 // The zero Reference declares nothing.
 type Reference struct {
-	name     string
-	version  string
-	registry string
-	direct   string
+	name            string
+	version         string
+	registry        string
+	direct          string
+	candidateDigest string
 }
 
 // Name returns the registry alias or forge-qualified repository. For a direct
@@ -90,6 +91,10 @@ func (r Reference) Version() string { return r.version }
 // Registry returns the normalized catalogue URL, ending in "/". It is empty
 // for a direct declaration.
 func (r Reference) Registry() string { return r.registry }
+
+// CandidateDigest binds a local candidate declaration to one verified artifact.
+// It is empty for unpinned local install requests and published registries.
+func (r Reference) CandidateDigest() string { return r.candidateDigest }
 
 // Parse accepts a registry alias, owner/repo or a supported forge-qualified
 // repository, optionally followed by @latest or an exact release tag.
@@ -124,7 +129,34 @@ func (r Reference) Normalize() (Reference, error) {
 	if r.direct != "" {
 		return directURL(r.direct)
 	}
+	if r.candidateDigest != "" {
+		return NewCandidate(r.name, r.version, r.registry, r.candidateDigest)
+	}
 	return New(r.name, r.version, r.registry)
+}
+
+// NewCandidate binds an exact canonical package from an explicit local registry
+// to the SHA256 digest verified during installation.
+func NewCandidate(name, version, registry, digest string) (Reference, error) {
+	ref, err := New(name, version, registry)
+	if err != nil {
+		return Reference{}, err
+	}
+	if ref.IsAlias() || !ValidRepository(ref.Name()) {
+		return Reference{}, errors.New("candidate digest requires a canonical plugin repository")
+	}
+	if ref.Version() == "latest" {
+		return Reference{}, errors.New("candidate digest requires an exact plugin version")
+	}
+	if _, err := LocalRegistryDirectory(ref.Registry()); err != nil {
+		return Reference{}, errors.New("candidate digest requires a local file registry")
+	}
+	decoded, err := hex.DecodeString(digest)
+	if err != nil || len(decoded) != 32 {
+		return Reference{}, errors.New("candidate digest must be 64 hexadecimal SHA256 digits")
+	}
+	ref.candidateDigest = strings.ToLower(digest)
+	return ref, nil
 }
 
 func directURL(value string) (Reference, error) {

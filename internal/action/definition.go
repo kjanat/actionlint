@@ -1,6 +1,12 @@
 package action
 
-import "slices"
+import (
+	"maps"
+	"slices"
+
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+)
 
 // ParseDefinition extracts call-site facts. Invalid or empty manifests leave
 // metadata-dependent checks unavailable; their declarations are not workflow errors.
@@ -10,6 +16,78 @@ func ParseDefinition(content []byte) Definition {
 		return Definition{}
 	}
 	return NewDefinition(metadata)
+}
+
+// DefinitionInspection is an immutable result of inspecting an action manifest.
+// A definition is available only when parsing and manifest validation succeed.
+type DefinitionInspection struct {
+	definition  *Definition
+	diagnostics []diagnostic.Diagnostic
+}
+
+// InspectDefinition parses and validates an action manifest before exposing its
+// call-site facts. Diagnostics retain locations in the supplied manifest.
+func InspectDefinition(content []byte) DefinitionInspection {
+	metadata, err := Parse("action.yml", content)
+	if err != nil {
+		loadDiagnostics := codec.LoadDiagnostics(err)
+		diagnostics := make([]diagnostic.Diagnostic, 0, len(loadDiagnostics))
+		for _, item := range loadDiagnostics {
+			mark := item.Mark()
+			diagnostics = append(diagnostics, diagnostic.Diagnostic{
+				Rule: "action", Path: "action.yml", Message: item.Message(),
+				Start: diagnostic.Position{Line: mark.Line, Column: mark.Column},
+			})
+		}
+		if len(diagnostics) == 0 {
+			diagnostics = append(diagnostics, diagnostic.Diagnostic{Rule: "action", Path: "action.yml", Message: err.Error()})
+		}
+		return DefinitionInspection{diagnostics: diagnostics}
+	}
+	if metadata == nil || metadata.Root == nil {
+		return DefinitionInspection{diagnostics: []diagnostic.Diagnostic{{Rule: "action", Path: "action.yml", Message: "action metadata is empty"}}}
+	}
+	diagnostics := Validate(metadata)
+	if len(diagnostics) != 0 {
+		return DefinitionInspection{diagnostics: cloneDiagnostics(diagnostics)}
+	}
+	definition := NewDefinition(metadata)
+	return DefinitionInspection{definition: &definition}
+}
+
+// Definition returns the validated call-site definition when the manifest is valid.
+func (i DefinitionInspection) Definition() (Definition, bool) {
+	if i.definition == nil {
+		return Definition{}, false
+	}
+	return *i.definition, true
+}
+
+// Diagnostics returns an owned copy of manifest diagnostics.
+func (i DefinitionInspection) Diagnostics() []diagnostic.Diagnostic {
+	return cloneDiagnostics(i.diagnostics)
+}
+
+func cloneDiagnostics(diagnostics []diagnostic.Diagnostic) []diagnostic.Diagnostic {
+	cloned := slices.Clone(diagnostics)
+	for index := range cloned {
+		d := &cloned[index]
+		if d.Reference != nil {
+			reference := *d.Reference
+			d.Reference = &reference
+		}
+		d.Related = slices.Clone(d.Related)
+		d.Fixes = slices.Clone(d.Fixes)
+		for fixIndex := range d.Fixes {
+			d.Fixes[fixIndex].Edits = slices.Clone(d.Fixes[fixIndex].Edits)
+			if d.Fixes[fixIndex].Revisions != nil {
+				revisions := make(map[string]string, len(d.Fixes[fixIndex].Revisions))
+				maps.Copy(revisions, d.Fixes[fixIndex].Revisions)
+				d.Fixes[fixIndex].Revisions = revisions
+			}
+		}
+	}
+	return cloned
 }
 
 // Definition owns the immutable facts used to validate an action call.

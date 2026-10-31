@@ -169,50 +169,6 @@ allow     = [
   "golang.org/x/tools/",
 ]
 
-# Layer repository-contracts: Repository knowledge and immutable remote action manifests. Hosts
-# supply facts; these contracts perform no fetching.
-# Imports: itself, contract-leaves.
-[linters.settings.depguard.rules.layer-repository-contracts]
-files     = [
-  "**/actions/*.go",
-  "**/repository/*.go",
-  "!$test",
-]
-list-mode = "strict"
-allow     = [
-  "$gostd",
-  "actionlint.kjanat.dev/v2/actions$",
-  "actionlint.kjanat.dev/v2/config/report$",
-  "actionlint.kjanat.dev/v2/knowledge$",
-  "actionlint.kjanat.dev/v2/repository$",
-  "actionlint.kjanat.dev/v2/resolver$",
-  "actionlint.kjanat.dev/v2/rule$",
-]
-deny      = [
-  { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
-]
-
-[linters.settings.depguard.rules.layer-repository-contracts-tests]
-files     = [
-  "**/actions/*_test.go",
-  "**/repository/*_test.go",
-  "!**/internal/integration/actions/*_test.go",
-]
-list-mode = "strict"
-allow     = [
-  "$gostd",
-  "actionlint.kjanat.dev/v2/actions$",
-  "actionlint.kjanat.dev/v2/config/report$",
-  "actionlint.kjanat.dev/v2/knowledge$",
-  "actionlint.kjanat.dev/v2/repository$",
-  "actionlint.kjanat.dev/v2/resolver$",
-  "actionlint.kjanat.dev/v2/rule$",
-  "github.com/google/go-cmp$",
-  "github.com/google/go-cmp/",
-  "golang.org/x/tools$",
-  "golang.org/x/tools/",
-]
-
 # Layer analysis-contracts: The public diagnostic and analyzer contracts. They never import internal
 # packages.
 # Imports: itself, source, contract-leaves.
@@ -261,6 +217,54 @@ allow     = [
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
   "actionlint.kjanat.dev/v2/syntax$",
+  "github.com/google/go-cmp$",
+  "github.com/google/go-cmp/",
+  "golang.org/x/tools$",
+  "golang.org/x/tools/",
+]
+
+# Layer repository-contracts: Repository knowledge and immutable remote action manifests. Hosts
+# supply facts; these contracts perform no fetching.
+# Imports: itself, contract-leaves, analysis-contracts.
+[linters.settings.depguard.rules.layer-repository-contracts]
+files     = [
+  "**/actions/*.go",
+  "**/repository/*.go",
+  "!$test",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/diagnostic$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+]
+deny      = [
+  { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
+]
+
+[linters.settings.depguard.rules.layer-repository-contracts-tests]
+files     = [
+  "**/actions/*_test.go",
+  "**/repository/*_test.go",
+  "!**/internal/integration/actions/*_test.go",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/diagnostic$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
   "golang.org/x/tools$",
@@ -1242,7 +1246,7 @@ allow     = [
 
 # Layer documents: Parsing of workflow and action documents, provider metadata, suppression comments
 # and the public syntax package.
-# Imports: itself, source, repository-contracts, contract-leaves, analysis-contracts, document-contracts, leaves, core-helpers, yaml-codec, expression, workflow-base, workflow-model.
+# Imports: itself, analysis-contracts, contract-leaves, core-helpers, document-contracts, expression, leaves, repository-contracts, source, workflow-base, workflow-model, yaml-codec.
 [linters.settings.depguard.rules.layer-documents]
 files     = [
   "**/internal/action/*.go",
@@ -1529,7 +1533,7 @@ allow     = [
 
 # Layer language: Workflow and action analysis: runners, execution, calls, expressions, event
 # payloads, editing support, checks and local actions.
-# Imports: itself, source, analysis-contracts, document-contracts, leaves, action-reference, core-helpers, yaml-codec, expression, semantics, invocation, workflow-base, workflow-model, documents.
+# Imports: itself, action-reference, analysis-contracts, core-helpers, document-contracts, documents, expression, invocation, leaves, semantics, source, workflow-base, workflow-model, yaml-codec.
 [linters.settings.depguard.rules.layer-language]
 files     = [
   "**/internal/action/local/*.go",
@@ -2050,7 +2054,7 @@ allow     = [
 
 # Layer tool-contracts: Tool integration contracts and tool execution over invocations. They do not
 # reach tool backends, providers or the application.
-# Imports: itself, source, contract-leaves, analysis-contracts, leaves, config, invocation, invocation-view, workflow-base, workflow-model, documents, language, analyzer-host, tool-profiles.
+# Imports: itself, analysis-contracts, analyzer-host, config, contract-leaves, documents, invocation, invocation-view, language, leaves, source, tool-profiles, workflow-base, workflow-model.
 [linters.settings.depguard.rules.layer-tool-contracts]
 files     = [
   "**/internal/tools/*.go",
@@ -2212,7 +2216,7 @@ allow     = [
 ]
 
 # Layer tool-backends: Tool backends, managed tools and the tool registry.
-# Imports: itself, contract-leaves, analysis-contracts, leaves, provider-data, config, process-config, workflow-base, workflow-model, analyzer-host, tool-profiles, tool-providers, tool-contracts.
+# Imports: itself, analysis-contracts, analyzer-host, config, contract-leaves, leaves, process-config, provider-data, tool-contracts, tool-profiles, tool-providers, workflow-base, workflow-model.
 [linters.settings.depguard.rules.layer-tool-backends]
 files     = [
   "**/internal/tools/backend/*.go",
@@ -2368,7 +2372,7 @@ allow     = [
 
 # Layer builtins: Built-in diagnostic adapters and the semantic passes configured from them. They
 # receive observations through callbacks and do not reach hosts, tools or presentation.
-# Imports: itself, contract-leaves, repository-contracts, analysis-contracts, leaves, core-helpers, config, expression, invocation, workflow-base, workflow-model, documents, language.
+# Imports: itself, analysis-contracts, config, contract-leaves, core-helpers, documents, expression, invocation, language, leaves, repository-contracts, workflow-base, workflow-model.
 [linters.settings.depguard.rules.layer-builtins]
 files     = [
   "**/internal/builtin/*.go",
@@ -2542,7 +2546,7 @@ allow     = [
 
 # Layer composition: Analysis of workflow and action invocations with prepared checks. It does not
 # reach the application, workspaces, diagnostic policy, tool backends or presentation.
-# Imports: itself, source, analysis-contracts, leaves, expression, config, invocation, workflow-base, workflow-model, engine, documents, language, tool-contracts, builtins.
+# Imports: itself, analysis-contracts, builtins, config, documents, engine, expression, invocation, language, leaves, source, tool-contracts, workflow-base, workflow-model.
 [linters.settings.depguard.rules.layer-composition]
 files     = [
   "**/internal/workflow/composition/*.go",
@@ -2692,7 +2696,7 @@ allow     = [
 ]
 
 # Layer results: The result model. It does not reach configuration or presentation.
-# Imports: itself, source, contract-leaves, analysis-contracts, document-contracts.
+# Imports: itself, source, contract-leaves, repository-contracts, analysis-contracts, document-contracts.
 [linters.settings.depguard.rules.layer-results]
 files     = [
   "**/internal/report/*.go",
@@ -2701,12 +2705,14 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/report$",
   "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2718,7 +2724,7 @@ deny      = [
 
 # Layer policy: Suppression, ignore and severity policy over results. It does not reach hosts, tools
 # or presentation.
-# Imports: itself, source, contract-leaves, analysis-contracts, leaves, catalog, config, core-helpers, expression, workflow-model, documents, results.
+# Imports: itself, analysis-contracts, catalog, config, contract-leaves, core-helpers, documents, expression, leaves, results, source, workflow-model.
 [linters.settings.depguard.rules.layer-policy]
 files     = [
   "**/internal/diagnosticpolicy/*.go",
@@ -2851,7 +2857,7 @@ allow     = [
 ]
 
 # Layer presentation: Rendering of results. It does not reach configuration.
-# Imports: itself, contract-leaves, analysis-contracts, document-contracts, leaves, core-helpers, results.
+# Imports: itself, contract-leaves, repository-contracts, analysis-contracts, document-contracts, leaves, core-helpers, results.
 [linters.settings.depguard.rules.layer-presentation]
 files     = [
   "**/internal/render/*.go",
@@ -2860,6 +2866,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
@@ -2886,6 +2893,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2905,6 +2913,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config$",
   "actionlint.kjanat.dev/v2/config/report$",
@@ -2939,6 +2948,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2990,6 +3000,49 @@ allow     = [
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
   "actionlint.kjanat.dev/v2/source$",
+  "github.com/google/go-cmp$",
+  "github.com/google/go-cmp/",
+  "golang.org/x/tools$",
+  "golang.org/x/tools/",
+]
+
+# Layer action-acquisition: Explicit host acquisition of remote action manifests. Network access and
+# the immutable source cache stay outside semantic analysis.
+# Imports: itself, repository-contracts, contract-leaves.
+[linters.settings.depguard.rules.layer-action-acquisition]
+files     = [
+  "**/internal/actionhost/*.go",
+  "!$test",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/internal/actionhost$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+]
+deny      = [
+  { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
+]
+
+[linters.settings.depguard.rules.layer-action-acquisition-tests]
+files     = [
+  "**/internal/actionhost/*_test.go",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/internal/actionhost$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
   "golang.org/x/tools$",
@@ -3191,7 +3244,7 @@ allow     = [
 ]
 
 # Layer plugin-runtime: The WebAssembly plugin runtime and its generated bindings.
-# Imports: itself, source, contract-leaves, analysis-contracts, document-contracts, leaves, core-helpers, catalog, plugin-artifacts.
+# Imports: itself, analysis-contracts, catalog, contract-leaves, core-helpers, document-contracts, leaves, plugin-artifacts, source.
 [linters.settings.depguard.rules.layer-plugin-runtime]
 files     = [
   "**/internal/plugins/component/*.go",
@@ -3425,7 +3478,7 @@ allow     = [
 
 # Layer application: The application boundary. It does not reach terminal adapters, presentation,
 # plugin runtimes, tool backends or providers.
-# Imports: itself, source, contract-leaves, repository-contracts, analysis-contracts, document-contracts, leaves, catalog, config, core-helpers, expression, workflow-model, documents, language, analyzer-host, tool-contracts, builtins, composition, results, policy, resolution, plugin-artifacts, workspace.
+# Imports: itself, analysis-contracts, analyzer-host, builtins, catalog, composition, config, contract-leaves, core-helpers, document-contracts, documents, expression, language, leaves, plugin-artifacts, policy, repository-contracts, resolution, results, source, tool-contracts, workflow-model, workspace.
 [linters.settings.depguard.rules.layer-application]
 files     = [
   "**/internal/application/*.go",
@@ -3626,7 +3679,7 @@ allow     = [
 
 # Layer local-host: The local application host: plugins, tools and editors around the application.
 # It does not reach terminal adapters.
-# Imports: itself, source, contract-leaves, analysis-contracts, document-contracts, catalog, leaves, config, process-config, core-helpers, language, tool-contracts, tool-backends, tool-providers, editing, plugin-artifacts, plugin-transport, plugin-runtime, workspace, application.
+# Imports: itself, analysis-contracts, application, catalog, config, contract-leaves, core-helpers, document-contracts, editing, language, leaves, plugin-artifacts, plugin-runtime, plugin-transport, process-config, source, tool-backends, tool-contracts, tool-providers, workspace.
 [linters.settings.depguard.rules.layer-local-host]
 files     = [
   "**/internal/localapp/*.go",
@@ -3948,7 +4001,7 @@ allow     = [
 
 # Layer public-analysis: The public analysis API and the root package. They use the application
 # boundary, not the engine or plugin runtimes.
-# Imports: itself, contract-leaves, repository-contracts, analysis-contracts, document-contracts, catalog, process-config, tool-backends, workspace, application, public-config.
+# Imports: itself, analysis-contracts, application, catalog, contract-leaves, document-contracts, process-config, public-config, repository-contracts, tool-backends, workspace.
 [linters.settings.depguard.rules.layer-public-analysis]
 files     = [
   "**/actionlint.go",
@@ -4038,7 +4091,7 @@ allow     = [
 
 # Layer adapters: Terminal, GitHub Action and browser adapters. They consume the application and
 # presentation and do not construct the engine or plugin runtimes.
-# Imports: itself, contract-leaves, analysis-contracts, document-contracts, leaves, catalog, config, process-config, provider-data, analyzer-host, tool-providers, editor-schema, tool-backends, presentation, resolution, editing, plugin-artifacts, workspace, application, local-host, public-analysis.
+# Imports: itself, action-acquisition, analysis-contracts, analyzer-host, application, catalog, config, contract-leaves, document-contracts, editing, editor-schema, leaves, local-host, plugin-artifacts, presentation, process-config, provider-data, public-analysis, repository-contracts, resolution, tool-backends, tool-providers, workspace.
 [linters.settings.depguard.rules.layer-adapters]
 files     = [
   "**/internal/cli/*.go",
@@ -4050,11 +4103,13 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2$",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/actionhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -4098,6 +4153,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/playground$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -4128,11 +4184,13 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2$",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/actionhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -4181,6 +4239,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/playground$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -4284,6 +4343,8 @@ allow     = [
   "golang.org/x/net/",
   "golang.org/x/tools$",
   "golang.org/x/tools/",
+  "mvdan.cc/gofumpt$",
+  "mvdan.cc/gofumpt/",
 ]
 
 [linters.settings.depguard.rules.layer-data-generators-tests]
@@ -4327,11 +4388,13 @@ allow     = [
   "golang.org/x/net/",
   "golang.org/x/tools$",
   "golang.org/x/tools/",
+  "mvdan.cc/gofumpt$",
+  "mvdan.cc/gofumpt/",
 ]
 
 # Layer dev-commands: Development commands: documentation checks, catalog and schema generation,
 # conformance downloads, release tooling and this layer table.
-# Imports: itself, leaves, catalog, config, process-config, tool-support, tool-profiles, tool-providers, tool-backends, presentation, plugin-artifacts, workspace, application.
+# Imports: itself, application, catalog, config, leaves, plugin-artifacts, presentation, process-config, tool-backends, tool-profiles, tool-providers, tool-support, workspace.
 [linters.settings.depguard.rules.layer-dev-commands]
 files     = [
   "**/internal/conformance/fetch/*.go",
@@ -4574,6 +4637,7 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2$",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
@@ -4669,6 +4733,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/playground$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -4719,6 +4784,7 @@ files = [
   "!**/internal/action/reference/*.go",
   "!**/internal/action/remote/*.go",
   "!**/internal/action/validation/*.go",
+  "!**/internal/actionhost/*.go",
   "!**/internal/analyzerhost/*.go",
   "!**/internal/analyzerref/*.go",
   "!**/internal/application/*.go",

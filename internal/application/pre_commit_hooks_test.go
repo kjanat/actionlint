@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -9,6 +10,7 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/repository"
 )
 
 func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
@@ -17,6 +19,10 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 			root := t.TempDir()
 			write := func(path, content string) { writeFixture(t, root, path, content) }
 			writeGitRepository(t, root)
+			labels, err := repository.NewNames()
+			if err != nil {
+				t.Fatal(err)
+			}
 			actionPath := ".github/actions/build/action.yml"
 			if kind == "action.yaml" {
 				actionPath = ".github/actions/build/action.yaml"
@@ -33,6 +39,9 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				t.Helper()
 				session := application.Options{WorkingDir: root}
 				var err error
+				session.Repository = func(context.Context, string) repository.Snapshot {
+					return repository.Snapshot{RunnerLabels: labels}
+				}
 
 				result, err := application.Check(t.Context(), session, application.Input{Kind: application.Repository, Directory: ""})
 				if err != nil {

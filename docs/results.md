@@ -33,6 +33,14 @@ failed run does **not** mean the inputs are clean. `error` explains failure.
 warnings. `hints` contains advice. Producers may attach a `sarif` report.
 The Action includes SARIF only when `format: sarif` or `sarif: true` requests it.
 
+`action_metadata` records `available`, `unavailable` or `invalid` evidence for
+distinct remote references requested by metadata-dependent checks. Unavailable
+entries carry a reason; available and invalid entries identify the selected
+repository, commit and manifest. Invalid entries include manifest problems;
+their coordinates refer to that manifest, with zero meaning unavailable.
+An empty list does not establish complete coverage. See
+[remote action metadata](remote-actions.md) for acquisition and cache limits.
+
 Diagnostics contain `rule`, `message`, `path`, `start`, and `end`. Optional `code`
 and `severity` preserve analyzer metadata; `snippet` contains source text. Optional
 `fixes` describe alternatives, each containing edits that must be applied together.

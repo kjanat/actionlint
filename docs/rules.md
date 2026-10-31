@@ -697,6 +697,20 @@ jobs:
       - run: echo ok
 ```
 
+## require-action-metadata
+
+Require usable metadata for remote action references without enabling network access.
+
+Select --action-metadata=online to acquire full SHA-1 manifests, or warm the immutable cache and select offline. Named refs require an action-profile resolver with selection evidence. Invalid parse/schema metadata retains its diagnostics; this does not prove execution or transitive dependency coverage.
+
+- Category: `policy/dependencies`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.policy.require-action-metadata`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## require-commit-hash
 
 Require full commit SHAs for actions and workflows, and digests for images.

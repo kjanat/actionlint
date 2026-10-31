@@ -4,8 +4,11 @@ ARG ALPINE_VER=3.24
 FROM golang:${GOLANG_VER} AS builder
 WORKDIR /go/src/app
 COPY go.* *.go ./
+COPY actionlint.schema.json ./
+COPY schemas schemas/
 COPY analyzer analyzer/
 COPY analysis analysis/
+COPY actions actions/
 COPY config config/
 COPY diagnostic diagnostic/
 COPY document document/
@@ -16,6 +19,8 @@ COPY source source/
 COPY syntax syntax/
 COPY cmd cmd/
 COPY internal internal/
+COPY knowledge knowledge/
+COPY repository repository/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
 RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/v2/internal/buildinfo.InstallOrigin=official Docker image'" -o . ./cmd/actionlint

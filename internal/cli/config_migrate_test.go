@@ -20,7 +20,7 @@ func TestConfigMigrationCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	preview := pluginCommandTest(t, 0, "config", "migrate", "--config", path)
-	if !strings.Contains(preview, "expression-reference") || !strings.Contains(preview, "presets and --strict") {
+	if !strings.Contains(preview, "repository") || !strings.Contains(preview, "variables") || !strings.Contains(preview, "presets and --strict") {
 		t.Fatal(preview)
 	}
 	current, _ := os.ReadFile(path)

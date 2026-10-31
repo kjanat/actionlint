@@ -152,6 +152,7 @@
                   "empty-job",
                   "empty-run",
                   "require-commit-hash",
+                  "require-action-metadata",
                   "require-job-timeout",
                   "require-permissions",
                   "required-actions",
@@ -2456,6 +2457,7 @@
                           "empty-job",
                           "empty-run",
                           "require-commit-hash",
+                          "require-action-metadata",
                           "require-job-timeout",
                           "require-permissions",
                           "required-actions",
@@ -3070,6 +3072,7 @@
                                                           "numeric-values",
                                                           "parallel-steps",
                                                           "permissions",
+                                                          "require-action-metadata",
                                                           "require-commit-hash",
                                                           "require-job-timeout",
                                                           "require-permissions",
@@ -3138,6 +3141,75 @@
                                 "recommended",
                                 "all",
                                 "none"
+                              ]
+                            },
+                            "require-action-metadata": {
+                              "title": "require-action-metadata",
+                              "description": "Require inspected metadata for remote actions. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Require inspected metadata for remote actions. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
                               ]
                             },
                             "require-commit-hash": {
@@ -6863,6 +6935,7 @@
                                     "empty-job",
                                     "empty-run",
                                     "require-commit-hash",
+                                    "require-action-metadata",
                                     "require-job-timeout",
                                     "require-permissions",
                                     "required-actions",
@@ -7477,6 +7550,7 @@
                                                                     "numeric-values",
                                                                     "parallel-steps",
                                                                     "permissions",
+                                                                    "require-action-metadata",
                                                                     "require-commit-hash",
                                                                     "require-job-timeout",
                                                                     "require-permissions",
@@ -7545,6 +7619,75 @@
                                           "recommended",
                                           "all",
                                           "none"
+                                        ]
+                                      },
+                                      "require-action-metadata": {
+                                        "title": "require-action-metadata",
+                                        "description": "Require inspected metadata for remote actions. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Require inspected metadata for remote actions. Stable; not enabled by the recommended preset.",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         ]
                                       },
                                       "require-commit-hash": {
@@ -9022,6 +9165,8 @@
                               "properties": {
                                 "secrets": {
                                   "title": "secrets",
+                                  "description": "Available secret names for this environment. Values are never accepted.",
+                                  "markdownDescription": "Available secret names for this environment. Values are never accepted.",
                                   "oneOf": [
                                     {
                                       "type": "array",
@@ -9036,6 +9181,8 @@
                                 },
                                 "variables": {
                                   "title": "variables",
+                                  "description": "Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics.",
+                                  "markdownDescription": "Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics.",
                                   "oneOf": [
                                     {
                                       "type": "object",
@@ -9726,6 +9873,13 @@
                     "type": "string",
                     "minLength": 1
                   },
+                  "sha256": {
+                    "title": "sha256",
+                    "description": "Verified SHA256 digest binding an exact version from a local file candidate registry. Not accepted for HTTPS registries.",
+                    "markdownDescription": "Verified SHA256 digest binding an exact version from a local file candidate registry. Not accepted for HTTPS registries.",
+                    "type": "string",
+                    "pattern": "^[a-fA-F0-9]{64}$"
+                  },
                   "version": {
                     "title": "version",
                     "description": "Exact release tag or latest stable. Omission selects latest.",
@@ -9798,6 +9952,8 @@
                     "properties": {
                       "secrets": {
                         "title": "secrets",
+                        "description": "Available secret names for this environment. Values are never accepted.",
+                        "markdownDescription": "Available secret names for this environment. Values are never accepted.",
                         "oneOf": [
                           {
                             "type": "array",
@@ -9812,6 +9968,8 @@
                       },
                       "variables": {
                         "title": "variables",
+                        "description": "Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics.",
+                        "markdownDescription": "Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics.",
                         "oneOf": [
                           {
                             "type": "object",

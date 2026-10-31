@@ -2,6 +2,7 @@
 package report
 
 import (
+	"actionlint.kjanat.dev/v2/actions"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	documentmodel "actionlint.kjanat.dev/v2/document"
@@ -14,6 +15,7 @@ import (
 // values only: no live rules, parser nodes, process handles, or rendering policy.
 // Sources aligns with Diagnostics and contains the analyzed text for each finding.
 type Analysis struct {
+	ActionMetadata []actions.Coverage
 	RunnerEvidence []runner.Report
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic

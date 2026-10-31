@@ -113,6 +113,38 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
+func TestCandidateBinding(t *testing.T) {
+	directory := t.TempDir()
+	registryPath := filepath.ToSlash(directory)
+	if !strings.HasPrefix(registryPath, "/") {
+		registryPath = "/" + registryPath
+	}
+	registry := (&url.URL{Scheme: "file", Path: registryPath}).String()
+	digest := strings.Repeat("ab", 32)
+	ref, err := NewCandidate("Owner/Plugin", "v1.2.3", registry, digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ref.Name() != "github.com/owner/plugin" || ref.Version() != "v1.2.3" || ref.CandidateDigest() != digest || ref.Registry() != registry+"/" {
+		t.Fatalf("unexpected candidate binding: %+v", ref)
+	}
+	normalized, err := ref.Normalize()
+	if err != nil || !normalized.Equal(ref) {
+		t.Fatalf("candidate normalization lost binding: %+v, %v", normalized, err)
+	}
+	for _, invalid := range []struct{ name, version, registry, digest string }{
+		{"alias", "v1", registry, digest},
+		{"owner/plugin", "latest", registry, digest},
+		{"owner/plugin", "v1", "https://example.com/", digest},
+		{"owner/plugin", "v1", "", digest},
+		{"owner/plugin", "v1", registry, "bad"},
+	} {
+		if _, err := NewCandidate(invalid.name, invalid.version, invalid.registry, invalid.digest); err == nil {
+			t.Errorf("accepted candidate binding %+v", invalid)
+		}
+	}
+}
+
 func TestRegistryPreservesIPv6Zone(t *testing.T) {
 	for _, source := range []string{
 		"https://[FE80::1%25Ethernet]/",

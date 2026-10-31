@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -44,6 +45,14 @@ func TestPluginManifestFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	catalogue := filepath.ToSlash(t.TempDir())
+	if !strings.HasPrefix(catalogue, "/") {
+		catalogue = "/" + catalogue
+	}
+	candidate, err := pluginref.NewCandidate("owner/candidate", "v1.2.3", (&url.URL{Scheme: "file", Path: catalogue}).String(), strings.Repeat("ab", 32))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, test := range []struct {
 		name, source, expectedFragment string
 	}{
@@ -73,7 +82,7 @@ func TestPluginManifestFormats(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			refs := []pluginref.Reference{ref, custom}
+			refs := []pluginref.Reference{ref, custom, candidate}
 			if err := manifest.Save(t.Context(), refs); err != nil {
 				t.Fatal(err)
 			}

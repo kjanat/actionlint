@@ -102,12 +102,13 @@ type Request struct {
 // Result contains findings and selected document outlines. It may accompany an
 // error when analysis completed only partially. FileCount includes clean sources.
 type Result struct {
-	RunnerEvidence []runner.Report         `json:"runner_evidence"`
-	Diagnostics    []diagnostic.Diagnostic `json:"diagnostics"`
-	Documents      document.Outlines       `json:"documents"`
-	Inputs         []string                `json:"inputs"`
-	Configurations []configreport.Report   `json:"configurations"`
-	FileCount      int                     `json:"file_count"`
+	ActionMetadata []actions.MetadataReport `json:"action_metadata"`
+	RunnerEvidence []runner.Report          `json:"runner_evidence"`
+	Diagnostics    []diagnostic.Diagnostic  `json:"diagnostics"`
+	Documents      document.Outlines        `json:"documents"`
+	Inputs         []string                 `json:"inputs"`
+	Configurations []configreport.Report    `json:"configurations"`
+	FileCount      int                      `json:"file_count"`
 }
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
@@ -219,7 +220,11 @@ func applicationResultView(result *application.Result) *Result {
 	if result == nil {
 		return nil
 	}
-	return &Result{RunnerEvidence: result.RunnerEvidence, Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
+	metadata := make([]actions.MetadataReport, 0, len(result.ActionMetadata))
+	for _, coverage := range result.ActionMetadata {
+		metadata = append(metadata, coverage.Report())
+	}
+	return &Result{ActionMetadata: metadata, RunnerEvidence: result.RunnerEvidence, Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
 }
 
 func backendProcessOptions(tool Tool, configured bool) *processconfig.Options {

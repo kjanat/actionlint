@@ -8,7 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T) {
@@ -56,8 +58,12 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				if !available {
 					t.Fatal("workflow is unavailable")
 				}
+				runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+				if err != nil {
+					t.Fatal(err)
+				}
 				callRule := builtin.NewRuleWorkflowCall(snapshot, cache)
-				labelRule := builtin.NewRuleRunnerLabel()
+				labelRule := productionRunnerRule(t, snapshot, runners)
 				if err := engine.Visit(workflow, engine.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
 					t.Fatalf("metadata cache failure stopped recovered entry traversal: %v", err)
 				}

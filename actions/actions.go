@@ -141,18 +141,26 @@ func (s Selection) ObservedAt() string { return s.observedAt }
 type Manifest struct {
 	selection Selection
 	content   string
+	filename  string
 	missing   knowledge.Unavailability
 }
 
 func NewManifest(selection Selection, content []byte) (Manifest, error) {
+	return NewManifestFile(selection, "action.yml", content)
+}
+
+// NewManifestFile preserves the selected metadata filename, including empty
+// files which analysis must classify as invalid rather than unavailable.
+func NewManifestFile(selection Selection, filename string, content []byte) (Manifest, error) {
 	if selection.identity.commit == "" {
 		return Manifest{}, errors.New("action manifest has no provider selection")
 	}
-	if len(content) == 0 {
-		return Manifest{}, errors.New("action manifest is empty")
+	if filename != "action.yml" && filename != "action.yaml" {
+		return Manifest{}, errors.New("invalid action manifest filename")
 	}
-	return Manifest{selection: selection, content: string(content)}, nil
+	return Manifest{selection: selection, content: string(content), filename: filename}, nil
 }
+func (m Manifest) Filename() string        { return m.filename }
 func (m Manifest) Identity() Identity      { return m.selection.identity }
 func (m Manifest) Selection() Selection    { return m.selection }
 func (m Manifest) Content() string         { return m.content }

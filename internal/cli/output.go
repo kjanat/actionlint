@@ -86,6 +86,7 @@ func (a *commandApp) reportError(err error) int {
 			result := render.NewCheckResult(status)
 			result.Error = err.Error()
 			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
+				result.ActionMetadata = render.Prepare(*failure.result).CheckResult().ActionMetadata
 				result.Diagnostics = failure.result.Diagnostics
 				result.Documents = failure.result.Documents
 				count := failure.result.FileCount

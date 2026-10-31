@@ -75,6 +75,144 @@
         }
       }
     },
+    "actionMetadata": {
+      "description": "Evidence for one distinct remote reference requested by metadata-dependent checks. This does not establish execution or transitive coverage.",
+      "type": "object",
+      "required": [
+        "reference",
+        "state"
+      ],
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "directory": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string"
+        },
+        "problems": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/actionMetadataProblem"
+          }
+        },
+        "reason": {
+          "enum": [
+            "not-fetched",
+            "offline",
+            "lookup-disabled",
+            "denied",
+            "failed",
+            "not-found",
+            "unsupported",
+            "cache-miss",
+            "not-found-or-inaccessible",
+            "limit-exceeded"
+          ]
+        },
+        "reference": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "repository_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_object": {
+          "type": "string"
+        },
+        "selected_ref": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "available",
+            "unavailable",
+            "invalid"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "reason"
+          ],
+          "properties": {
+            "state": {
+              "const": "unavailable"
+            }
+          }
+        },
+        {
+          "required": [
+            "commit",
+            "host",
+            "manifest",
+            "repository",
+            "repository_id",
+            "selected_object"
+          ],
+          "properties": {
+            "problems": false,
+            "reason": false,
+            "state": {
+              "const": "available"
+            }
+          }
+        },
+        {
+          "required": [
+            "commit",
+            "host",
+            "manifest",
+            "problems",
+            "repository",
+            "repository_id",
+            "selected_object"
+          ],
+          "properties": {
+            "reason": false,
+            "state": {
+              "const": "invalid"
+            }
+          }
+        }
+      ]
+    },
+    "actionMetadataProblem": {
+      "type": "object",
+      "required": [
+        "end",
+        "message",
+        "path",
+        "start"
+      ],
+      "properties": {
+        "end": {
+          "$ref": "#/definitions/manifestPosition"
+        },
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/definitions/manifestPosition"
+        }
+      }
+    },
     "actionOutput": {
       "type": "object",
       "required": [
@@ -456,6 +594,24 @@
         },
         "uses": {
           "type": "string"
+        }
+      }
+    },
+    "manifestPosition": {
+      "description": "One-based coordinates in the selected manifest; zero means unavailable.",
+      "type": "object",
+      "required": [
+        "column",
+        "line"
+      ],
+      "properties": {
+        "column": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -874,6 +1030,12 @@
     "status"
   ],
   "properties": {
+    "action_metadata": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/actionMetadata"
+      }
+    },
     "completed": {
       "type": "boolean"
     },

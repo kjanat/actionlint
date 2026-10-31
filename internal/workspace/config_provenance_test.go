@@ -95,7 +95,7 @@ config-secrets: [SECRET]
 			if _, err := session.ConfigForProject(nil); err != nil {
 				t.Fatal(err)
 			}
-			origin := report.Inspection.Origins["/lint/rules/correctness/expression-reference/options/variables"]
+			origin := report.Inspection.Origins["/repository/variables"]
 			if strings.HasPrefix(overlayText, "config-variables:") {
 				if origin.Source != "input" || origin.Input != "config" || origin.File != "" {
 					t.Fatalf("overlay origin=%+v", origin)
@@ -103,7 +103,7 @@ config-secrets: [SECRET]
 			} else if origin.File != base || origin.Line != 2 || origin.Source != "config" {
 				t.Fatalf("inherited origin=%+v", origin)
 			}
-			if origin := report.Inspection.Origins["/lint/rules/correctness/expression-reference/options/secrets"]; origin.File != leaf || origin.Line != 2 {
+			if origin := report.Inspection.Origins["/repository/secrets"]; origin.File != leaf || origin.Line != 2 {
 				t.Fatalf("leaf origin=%+v", origin)
 			}
 			warnings := report.Inspection.Warnings
@@ -145,7 +145,7 @@ func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
 			if got := inspection.Origins[pointer]; got != want {
 				t.Fatalf("origin=%+v, want %+v", got, want)
 			}
-			if got := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; got != (repoconfig.Origin{Source: "default", State: "missing"}) {
+			if got, exists := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; exists && got != (repoconfig.Origin{Source: "default", State: "missing"}) {
 				t.Fatalf("implicit knowledge level acquired a source origin: %+v", got)
 			}
 			cfg, err := repoconfig.Load(leaf)

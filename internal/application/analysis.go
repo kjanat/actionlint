@@ -518,6 +518,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	result.Inputs = inputs.list()
+	result.ActionMetadata = session.remoteActions.Coverage()
 	return result, err
 }
 

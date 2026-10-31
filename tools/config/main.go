@@ -56,6 +56,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
 			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
 			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue or absolute file URI for an unpublished local candidate. Omission uses the public actionlint registry."`
+			SHA256   string `yaml:"sha256,omitempty" jsonschema:"pattern=^[a-fA-F0-9]{64}$,description=Verified SHA256 digest binding an exact version from a local file candidate registry. Not accepted for HTTPS registries."`
 		}{})
 		direct := reflectMapping(struct {
 			Source string `yaml:"source" jsonschema:"required,minLength=1,description=Independent artifact URL with a mandatory SHA256 pin, or an OCI digest reference. Cannot be combined with registry declaration fields."`
@@ -202,8 +203,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Variables    map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics."`
 			Secrets      []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets."`
 			Environments map[string]struct {
-				Variables map[string]*string `yaml:"variables" jsonschema:"nullable"`
-				Secrets   []string           `yaml:"secrets" jsonschema:"nullable"`
+				Variables map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics."`
+				Secrets   []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names for this environment. Values are never accepted."`
 			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
 		}{})
 		mapping.Version, mapping.ID = "", ""
