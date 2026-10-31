@@ -115,12 +115,15 @@ layers:
 layers-check:
 	go run ./tools/layers -check
 
-# Both runners execute before the target fails.
+# The layer check and both runners execute before the target fails. The layer
+# check catches unplaced packages that depguard's path globs cannot tell apart
+# from placed ones.
 lint: lint-build
 ifeq ($(OS),Windows_NT)
-	./custom-gcl run; $$status = $$LASTEXITCODE; ./.bin/actionlintarch$(EXE) ./...; if ($$LASTEXITCODE -ne 0) { $$status = $$LASTEXITCODE }; if ($$status -ne 0) { exit $$status }
+	go run ./tools/layers -check; $$status = $$LASTEXITCODE; ./custom-gcl run; if ($$LASTEXITCODE -ne 0) { $$status = $$LASTEXITCODE }; ./.bin/actionlintarch$(EXE) ./...; if ($$LASTEXITCODE -ne 0) { $$status = $$LASTEXITCODE }; if ($$status -ne 0) { exit $$status }
 else
 	@status=0; \
+	go run ./tools/layers -check || status=$$?; \
 	./custom-gcl run || status=$$?; \
 	./.bin/actionlintarch ./... || status=$$?; \
 	exit $$status

@@ -207,6 +207,13 @@ func catchAll(g *graph) rule {
 		comment: []string{
 			"# Files of a package that no layer holds may not import module packages.",
 			"# Add the package to a layer in tools/layers/layers.toml.",
+			"#",
+			"# depguard matches globs against absolute paths, so a glob cannot start at the",
+			"# module root. A new package whose directory ends with a placed package's path",
+			"# (internal/x/config ends with config) or that has a file named like a root",
+			"# package file (generate.go) falls under that package's rule instead of this one.",
+			"# `go run ./tools/layers -check`, which `make lint` runs, reports every package",
+			"# that is in no layer.",
 		},
 		files: []string{"$all"},
 		deny:  []denial{{pkg: g.module, desc: "the package is in no layer; add it to tools/layers/layers.toml"}},
