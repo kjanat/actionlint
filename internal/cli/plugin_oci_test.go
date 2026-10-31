@@ -26,8 +26,8 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := ocitest.New(t)
-	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, []byte(`{"schema_version":1,"id":"example.com/oci-tool"}`))
 	executable := registry.Blob("application/octet-stream", []byte("executable"))
+	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProviderManifest(t, executable))
 	index := registry.Index(t, map[string]ocitest.Descriptor{pluginartifact.HostPlatform(): registry.Manifest(t, manifest, executable)})
 	registry.Tag("v1", index)
 	reference := registry.Reference(index)
@@ -67,5 +67,47 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	pluginCommandTest(t, 0, "plugin", "sync")
 	if output := pluginCommandTest(t, 0, "plugin", "list"); !strings.Contains(output, reference) {
 		t.Fatalf("list output lacks %s:\n%s", reference, output)
+	}
+}
+
+// ociProviderManifest returns a process tool provider manifest whose
+// executable for this host is the blob executable.
+func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
+	t.Helper()
+	manifest, err := json.Marshal(map[string]any{
+		"schema_version": 1, "id": "example.com/oci-tool", "version": "1.0.0", "role": "script", "scope": "source", "transport": "process",
+		"rule":         map[string]any{"name": "oci-tool", "description": "A tool from an OCI registry", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "oci-tool"},
+		"artifacts":    []map[string]any{{"platform": pluginartifact.HostPlatform(), "digest": executable.Digest, "filename": "oci-tool", "size": executable.Size}},
+		"preparation":  "kjanat:actionlint/expression-mask@0.1.0",
+		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
+		"capabilities": map[string]any{"fixes": false, "reported_sources": false},
+		"process":      map[string]any{"entry": "oci-tool", "args": []string{}, "stdin": "source", "config": map[string]any{"render": "none"}, "output": map[string]any{"format": "sarif@2.1.0"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manifest
+}
+
+// plugin install refuses an OCI package whose provider manifest layer is not
+// a valid tool provider manifest, and declares nothing.
+func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
+	testutil.IsolateUserCache(t)
+	root := t.TempDir()
+	t.Chdir(root)
+	t.Setenv("ACTIONLINT_CONFIG", "")
+	t.Setenv("ACTIONLINT_NO_CONFIG", "")
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	registry := ocitest.New(t)
+	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, []byte(`{"schema_version":1,"id":"example.com/oci-tool"}`))
+	reference := registry.Reference(registry.Manifest(t, manifest))
+	output := pluginCommandTest(t, 3, "plugin", "install", reference)
+	if !strings.Contains(output, reference) || !strings.Contains(output, "invalid tool provider manifest") {
+		t.Fatalf("install error does not name the source:\n%s", output)
+	}
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("install declared an invalid provider: %v", err)
 	}
 }

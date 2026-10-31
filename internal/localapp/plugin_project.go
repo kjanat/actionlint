@@ -150,6 +150,12 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 			if err != nil {
 				return err
 			}
+			if pulled.Info.Kind == artifact.ProviderManifest {
+				// Refuse a broken provider now rather than at check time.
+				if _, err := pulledProvider(pulled); err != nil {
+					return err
+				}
+			}
 			if artifact.IsOCI(source) {
 				pin, err := describeSource(ctx, source)
 				if err != nil {
