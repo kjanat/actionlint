@@ -88,7 +88,10 @@ func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	if !pin.Matches(ref) {
 		t.Fatal("recorded alias does not match")
 	}
-	ref.Registry = pluginref.DefaultRegistry
+	ref, err = pluginref.New("check", "", pluginref.DefaultRegistry)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if pin.Matches(ref) {
 		t.Fatal("custom registry alias escaped its registry")
 	}

@@ -65,7 +65,7 @@ func TestRegistryCLI(t *testing.T) {
 		}
 		return cfg.Plugins
 	}
-	if refs := readDeclarations(); len(refs) != 1 || refs[0] != (pluginref.Reference{Name: testutil.FixturePluginName, Version: "v1.9.0", Registry: testutil.FixtureRegistryURL}) {
+	if refs := readDeclarations(); len(refs) != 1 || refs[0] != testReference(t, testutil.FixturePluginName, "v1.9.0", testutil.FixtureRegistryURL) {
 		t.Fatalf("install did not declare exact dependency: %#v", refs)
 	}
 	readPin := func() pluginregistry.Pin {
@@ -129,7 +129,7 @@ func TestRegistryCLI(t *testing.T) {
 	if readPin().Version != "v1.10.0" {
 		t.Fatal("latest sorted lexically")
 	}
-	if refs := readDeclarations(); len(refs) != 1 || refs[0].Version != "latest" {
+	if refs := readDeclarations(); len(refs) != 1 || refs[0].Version() != "latest" {
 		t.Fatalf("update did not persist requested selector: %#v", refs)
 	}
 	configBefore, err := os.ReadFile(configPath)
@@ -199,7 +199,7 @@ func TestRegistryManifestInstallAndMigration(t *testing.T) {
 	}
 	pluginCommandTest(t, 0, "plugin", "install", "--config", "custom.yaml")
 	cfg, err := repoconfig.Load("custom.yaml")
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != testutil.FixturePluginName {
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != testutil.FixturePluginName {
 		t.Fatalf("lock migration did not declare plugin: %#v, %v", cfg, err)
 	}
 	if len(r.Requests) != requests {
@@ -234,7 +234,7 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 }
 
 func TestRequestedPlugin(t *testing.T) {
-	existing := []pluginref.Reference{{Name: testutil.FixturePluginName, Version: "v1", Registry: testutil.FixtureRegistryURL}}
+	existing := []pluginref.Reference{testReference(t, testutil.FixturePluginName, "v1", testutil.FixtureRegistryURL)}
 	for _, tc := range []struct {
 		name    string
 		options pluginInvocation
@@ -245,7 +245,7 @@ func TestRequestedPlugin(t *testing.T) {
 		{"publisher/plugin", pluginInvocation{Version: "latest"}, "latest"},
 	} {
 		ref, err := requestedPlugin(tc.name, tc.options, existing)
-		if err != nil || ref.Name != testutil.FixturePluginName || ref.Registry != testutil.FixtureRegistryURL || ref.Version != tc.version {
+		if err != nil || ref.Name() != testutil.FixturePluginName || ref.Registry() != testutil.FixtureRegistryURL || ref.Version() != tc.version {
 			t.Fatalf("request %q: %#v, %v", tc.name, ref, err)
 		}
 	}

@@ -105,7 +105,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name != pin.Name || migrated.Plugins[0].Version != pin.Selector || migrated.Plugins[0].Registry != pin.Registry {
+	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name() != pin.Name || migrated.Plugins[0].Version() != pin.Selector || migrated.Plugins[0].Registry() != pin.Registry {
 		t.Fatalf("lock-only plugin selection changed: %+v, %v", migrated.Plugins, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), pluginregistry.LockName))
@@ -144,7 +144,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name != "github.com/publisher/base" || manifest.References[1].Name != "github.com/publisher/next" {
+	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name() != "github.com/publisher/base" || manifest.References[1].Name() != "github.com/publisher/next" {
 		t.Fatalf("leaf stopped inheriting plugins: %+v", manifest.References)
 	}
 }
@@ -414,7 +414,7 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg, err := config.Load(path)
-			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != name || cfg.Plugins[0].Version != pin.Selector || cfg.Plugins[0].Registry != pin.Registry {
+			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != name || cfg.Plugins[0].Version() != pin.Selector || cfg.Plugins[0].Registry() != pin.Registry {
 				t.Fatalf("locked selection changed: %+v, %v", cfg, err)
 			}
 			lock, err := pluginregistry.OpenLock(t.Context(), project.Lock.Path)

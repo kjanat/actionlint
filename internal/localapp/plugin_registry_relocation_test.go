@@ -32,7 +32,10 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 			}
 			other.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			maps.Copy(registry.Files, other.Files)
-			ref.Registry = mirror
+			ref, err = pluginref.New("ruff", "v1.0.0", mirror)
+			if err != nil {
+				t.Fatal(err)
+			}
 			err = project.Resolve(t.Context(), []pluginref.Reference{ref}, nil)
 			if repositoryID != 11 {
 				if err == nil {

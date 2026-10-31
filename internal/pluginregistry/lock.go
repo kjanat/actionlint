@@ -336,14 +336,14 @@ func (f *LockFile) SetResolved(pin Pin, ref pluginref.Reference) error {
 // CheckResolved verifies a selected pin against the original lock entries.
 // Project resolution validates the final selection's uniqueness separately.
 func (f *LockFile) CheckResolved(pin Pin, ref pluginref.Reference) error {
-	selected, err := pluginref.New(ref.Name, ref.Version, ref.Registry)
+	selected, err := pluginref.New(ref.Name(), ref.Version(), ref.Registry())
 	if err != nil {
 		return err
 	}
-	if !pin.Matches(selected) || pin.Selector != selected.Version {
+	if !pin.Matches(selected) || pin.Selector != selected.Version() {
 		return fmt.Errorf("resolved pin does not match selected dependency %s", selected.String())
 	}
-	return f.checkReplacement(pin, selected.Registry)
+	return f.checkReplacement(pin, selected.Registry())
 }
 
 func (f *LockFile) checkReplacement(pin Pin, selectedRegistry string) error {

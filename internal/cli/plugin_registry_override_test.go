@@ -34,7 +34,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	lockPath := filepath.Join(".github", pluginregistry.LockName)
 	cfg, err := repoconfig.Load(configPath)
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry != mirror || cfg.Plugins[0].Version != "v1.0.0" {
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry() != mirror || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("registry declaration: %#v, %v", cfg, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
@@ -95,8 +95,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			two := one
-			two.Registry, two.Version = second, "v2"
+			two := testReference(t, test.name, "v2", second)
 			refs := []pluginref.Reference{one, two}[:test.count]
 			ref, err := requestedPlugin(test.name, pluginInvocation{Registry: test.registry}, refs)
 			if test.invalid {
@@ -105,7 +104,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || ref.Version != test.version || ref.Registry != test.registry {
+			if err != nil || ref.Version() != test.version || ref.Registry() != test.registry {
 				t.Fatalf("selection: %+v, %v", ref, err)
 			}
 			index, err := requestedPluginIndex(ref, test.registry, refs)

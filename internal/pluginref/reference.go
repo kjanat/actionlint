@@ -70,13 +70,26 @@ func ValidRepository(name string) bool {
 }
 
 // Reference declares a registry alias or repository, requested release, and catalogue.
-// Version is "latest" or an exact release tag, never a resolved artifact.
+// Only Parse and New build one, so every Reference holds normalized values.
+// The zero Reference declares nothing.
 type Reference struct {
-	Name     string
-	Version  string
-	Registry string
+	name     string
+	version  string
+	registry string
 	direct   string
 }
+
+// Name returns the registry alias or forge-qualified repository. For a direct
+// declaration it returns the artifact URL without its #sha256= pin.
+func (r Reference) Name() string { return r.name }
+
+// Version returns "latest" or an exact release tag, never a resolved artifact.
+// It is empty for a direct declaration.
+func (r Reference) Version() string { return r.version }
+
+// Registry returns the normalized catalogue URL, ending in "/". It is empty
+// for a direct declaration.
+func (r Reference) Registry() string { return r.registry }
 
 // Parse accepts a registry alias, owner/repo or a supported forge-qualified
 // repository, optionally followed by @latest or an exact release tag.
@@ -97,7 +110,7 @@ func (r Reference) DirectSource() string { return r.direct }
 
 // IsAlias reports a registry-assigned shorthand, whose repository is resolved
 // by that registry and recorded in the project lock.
-func (r Reference) IsAlias() bool { return r.direct == "" && ValidAlias(r.Name) }
+func (r Reference) IsAlias() bool { return r.direct == "" && ValidAlias(r.name) }
 
 // ValidAlias checks the shared catalogue and declaration shorthand syntax.
 func ValidAlias(name string) bool { return shortNamePattern.MatchString(name) }
@@ -110,7 +123,7 @@ func (r Reference) Normalize() (Reference, error) {
 	if r.direct != "" {
 		return directURL(r.direct)
 	}
-	return New(r.Name, r.Version, r.Registry)
+	return New(r.name, r.version, r.registry)
 }
 
 func directURL(value string) (Reference, error) {
@@ -127,7 +140,7 @@ func directURL(value string) (Reference, error) {
 	u.Fragment, u.RawFragment = "", ""
 	name := u.String()
 	u.Fragment = "sha256=" + strings.ToLower(digest)
-	return Reference{Name: name, direct: u.String()}, nil
+	return Reference{name: name, direct: u.String()}, nil
 }
 
 // New validates and normalizes a plugin declaration. Empty version and registry
@@ -156,7 +169,7 @@ func New(name, version, registry string) (Reference, error) {
 		}
 		u.Path = strings.TrimSuffix(path.Clean(u.Path), "/") + "/"
 		u.RawPath = ""
-		return Reference{Name: name, Version: version, Registry: u.String()}, nil
+		return Reference{name: name, version: version, registry: u.String()}, nil
 	}
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil ||
 		u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" ||
@@ -170,7 +183,7 @@ func New(name, version, registry string) (Reference, error) {
 	}
 	u.Path = strings.TrimSuffix(path.Clean("/"+strings.TrimPrefix(u.Path, "/")), "/") + "/"
 	u.RawPath = ""
-	return Reference{Name: name, Version: version, Registry: u.String()}, nil
+	return Reference{name: name, version: version, registry: u.String()}, nil
 }
 
 // LocalRegistryDirectory accepts an explicit absolute file URI. Local candidate
@@ -196,9 +209,9 @@ func (r Reference) String() string {
 	if r.direct != "" {
 		return r.direct
 	}
-	name := r.Name
-	if r.Version == "latest" {
+	name := r.name
+	if r.version == "latest" {
 		return name
 	}
-	return name + "@" + r.Version
+	return name + "@" + r.version
 }

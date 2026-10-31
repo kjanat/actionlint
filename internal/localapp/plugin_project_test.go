@@ -39,7 +39,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 		t.Fatalf("legacy lock silently activated: %v", err)
 	}
 	refs, err := project.Dependencies(true)
-	if err != nil || len(refs) != 1 || refs[0].Name != pin.Name {
+	if err != nil || len(refs) != 1 || refs[0].Name() != pin.Name {
 		t.Fatalf("migration: %v %v", refs, err)
 	}
 	if err := project.Save(t.Context(), refs); err != nil {
@@ -53,7 +53,11 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0] != pin {
 		t.Fatalf("migration changed pin: %+v %v", selected, err)
 	}
-	project.Manifest.References[0].Version = "v2.0.0"
+	declared := project.Manifest.References[0]
+	project.Manifest.References[0], err = pluginref.New(declared.Name(), "v2.0.0", declared.Registry())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := project.SelectedLock(); err == nil || !strings.Contains(err.Error(), "plugin install") {
 		t.Fatalf("changed declaration accepted stale pin: %v", err)
 	}

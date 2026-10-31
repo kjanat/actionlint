@@ -14,10 +14,21 @@ import (
 	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
+// testReference builds a declaration through pluginref.New and fails the test
+// when name, version or registry is invalid.
+func testReference(t *testing.T, name, version, registry string) pluginref.Reference {
+	t.Helper()
+	ref, err := pluginref.New(name, version, registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ref
+}
+
 func TestRegistryAliasCommandScope(t *testing.T) {
 	refs := []pluginref.Reference{
-		{Name: "check", Registry: pluginref.DefaultRegistry, Version: "latest"},
-		{Name: "check", Registry: testutil.FixtureRegistryURL, Version: "v1.0.0"},
+		testReference(t, "check", "latest", pluginref.DefaultRegistry),
+		testReference(t, "check", "v1.0.0", testutil.FixtureRegistryURL),
 	}
 	project := &localapp.PluginProject{Lock: &pluginregistry.LockFile{Lock: pluginregistry.Lock{
 		Plugins: []pluginregistry.Pin{
@@ -45,7 +56,7 @@ func TestRegistryAliasCommandScope(t *testing.T) {
 		t.Fatal("install selected ambiguous alias registry")
 	}
 	ref, err := requestedPlugin("check", pluginInvocation{Registry: testutil.FixtureRegistryURL}, refs)
-	if err != nil || ref.Registry != testutil.FixtureRegistryURL || ref.Version != "v1.0.0" {
+	if err != nil || ref.Registry() != testutil.FixtureRegistryURL || ref.Version() != "v1.0.0" {
 		t.Fatalf("scoped install: %+v %v", ref, err)
 	}
 }
@@ -72,7 +83,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	lockPath := filepath.Join(".github", pluginregistry.LockName)
 	cfg, err := config.Load(configPath)
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != "community-check" {
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != "community-check" {
 		t.Fatalf("alias declaration lost: %+v %v", cfg, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
@@ -89,7 +100,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	registry.Offline = false
 	pluginCommandTest(t, 0, "plugin", "update", testutil.FixturePluginName, "--version", "v1.1.0")
 	cfg, err = config.Load(configPath)
-	if err != nil || cfg.Plugins[0].Name != "community-check" || cfg.Plugins[0].Version != "v1.1.0" {
+	if err != nil || cfg.Plugins[0].Name() != "community-check" || cfg.Plugins[0].Version() != "v1.1.0" {
 		t.Fatalf("canonical update replaced alias declaration: %+v %v", cfg, err)
 	}
 	beforeConfig, err := os.ReadFile(configPath)

@@ -119,7 +119,7 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 		return nil, err
 	}
 	if !project.Manifest.Declared && slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-		return ref.Name == "shellcheck" && ref.Registry == pluginref.DefaultRegistry
+		return ref.Name() == "shellcheck" && ref.Registry() == pluginref.DefaultRegistry
 	}) {
 		migration.Notes = append(migration.Notes, "ShellCheck now uses the isolated Wasm plugin; implicit source-file following stops. Explicit native source/rc configuration retains the native backend.")
 	}

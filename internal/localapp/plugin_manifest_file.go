@@ -320,12 +320,12 @@ func pluginManifestSequence(refs []pluginref.Reference) (*yaml.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		if normalized.DirectSource() != "" || normalized.Registry == pluginref.DefaultRegistry {
+		if normalized.DirectSource() != "" || normalized.Registry() == pluginref.DefaultRegistry {
 			sequence.Content = append(sequence.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: normalized.String()})
 			continue
 		}
 		entry := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		for _, pair := range [][2]string{{"name", normalized.Name}, {"version", normalized.Version}, {"registry", normalized.Registry}} {
+		for _, pair := range [][2]string{{"name", normalized.Name()}, {"version", normalized.Version()}, {"registry", normalized.Registry()}} {
 			entry.Content = append(entry.Content,
 				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: pair[0]},
 				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: pair[1]})

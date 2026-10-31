@@ -100,7 +100,7 @@ func (p *PluginProject) Dependencies(migrate bool) ([]pluginref.Reference, error
 }
 
 func pluginPinMatches(pin pluginregistry.Pin, ref pluginref.Reference) bool {
-	return pin.Matches(ref) && pin.Selector == ref.Version
+	return pin.Matches(ref) && pin.Selector == ref.Version()
 }
 
 // SelectedLock ignores stale extra pins: only declarations authorize loading.
@@ -153,12 +153,12 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 			}
 		}
 		if !found || slices.Contains(update, ref) {
-			client, err := pluginregistry.New(ref.Registry)
+			client, err := pluginregistry.New(ref.Registry())
 			if err != nil {
 				return err
 			}
 			client.StatusOptions = p.StatusOptions
-			pin, err = client.Resolve(ctx, ref.Name, ref.Version)
+			pin, err = client.Resolve(ctx, ref.Name(), ref.Version())
 			if err != nil {
 				return err
 			}
