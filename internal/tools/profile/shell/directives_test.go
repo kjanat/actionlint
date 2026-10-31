@@ -43,3 +43,37 @@ func TestRenderDirectivesOfNoneIsEmpty(t *testing.T) {
 		t.Fatalf("got %q, %v", rendered, err)
 	}
 }
+
+// ShellCheck reads quotes in a directive value literally, so a path is
+// wrapped in a quote type it does not contain, and left bare only when it
+// holds both types and no whitespace that would start another directive key.
+func TestDirectivePathQuotesWithAQuoteThePathDoesNotContain(t *testing.T) {
+	for path, want := range map[string]string{
+		"lib":      `"lib"`,
+		"lib dir":  `"lib dir"`,
+		"it's":     `"it's"`,
+		`say "hi"`: `'say "hi"'`,
+		`a"b'c`:    `a"b'c`,
+	} {
+		if got, err := directivePath(path); got != want || err != nil {
+			t.Errorf("directivePath(%q) = %q, %v; want %q", path, got, err, want)
+		}
+	}
+}
+
+func TestDirectivePathRejectsPathsShellCheckCannotRead(t *testing.T) {
+	for _, path := range []string{
+		"",
+		"a\nb",
+		"a\rb",
+		"a\x00b",
+		`a"b' c`,
+		"a\"b'\tc",
+		`"a'b`,
+		`'a"b`,
+	} {
+		if got, err := directivePath(path); err == nil {
+			t.Errorf("directivePath(%q) = %q, want an error", path, got)
+		}
+	}
+}
