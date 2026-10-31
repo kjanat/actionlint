@@ -70,7 +70,7 @@ Verified true unless noted. Format: **item → decision → change (stage)**.
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Binary+jq usable only at stage 6 (`Sniff` rejects non-wasm)                                                                                                                                                                                        | **Accept; re-ordered.** Stage 2 adds a *local manifest source*: `--tool ID=path/to/manifest.json`, `tools.<id>.manifest: <path>`, PATH-discovered binary, no artifacts, no store. Usable end of stage 2                                                                                                                             |
 | K2 for repo-pinned binaries on untrusted PRs                                                                                                                                                                                                       | Process transports selected by repository config or lockfile need `--allow-config-processes`; the Action never sets it; Wasm needs nothing. Documented in `plugins.md`                                                                                                                                                              |
-| Public API                                                                                                                                                                                                                                         | Stage 4: `analysis.Options.Providers []analysis.Provider{Manifest plugin.Manifest, Backend analyzer.ScriptBackend, Process *analysis.Process}`; `plugin.ParseManifest([]byte) (Manifest, error)` (re-export of `provider.Manifest`). `analysis.Options.{ShellCheck,Ruff}` become deprecated aliases (A.2). Examples updated         |
+| Public API                                                                                                                                                                                                                                         | Stage 4: `analysis.Options.Providers []analysis.Provider{Manifest plugin.Manifest, Backend analyzer.ScriptBackend, Process *analysis.Process}`; `plugin.ParseManifest([]byte) (Manifest, error)` (re-export of `provider.Manifest`). `analysis.Options.{ShellCheck,Ruff}` are removed (A.2). Examples updated                       |
 | CI/Docker/Action/packaging users (`ci.yml:175,358,381-383,432,468,481,588`, `docker-nightly.yml:88-90`, `distribution/docker/*`, `packages/github-action/src/runtime.ts:55-59`, `tools/release/check-packaged-cli.bash:20,28`, `action.yml:53-62`) | Added to stage 5 as an explicit table; migrated to `--tool/--no-tool` in stage 5b. `Dockerfile:23-46` **keeps** bundling shellcheck/ruff — they are the bundled providers' PATH defaults                                                                                                                                            |
 | ~140 test matches                                                                                                                                                                                                                                  | Aliases make stage 5a zero-churn; stage 5b is the sweep                                                                                                                                                                                                                                                                             |
 | Config schema (`actionlint.schema.json:8842,9293`, `tools/config/main.go:24,213-235`)                                                                                                                                                              | Stage 1: the generator stitches each bundled manifest's `config_schema` under `tools.<id>.config` (Ruff's = today's reflected text moved into `bundled/ruff/config.schema.json`; ShellCheck's `$ref`s `schemas/shellcheck/0.11.0.schema.json`). Installed providers: `actionlint config schema` (stage 6) emits the stitched schema |
@@ -80,14 +80,14 @@ Verified true unless noted. Format: **item → decision → change (stage)**.
 
 ### A.2 Surface compatibility — decided
 
-**Deprecated aliases for exactly this release, then removed in the next (Rust host).** Not hard removal, not keep.
+**Only what v1.17.0 released gets a deprecated alias, for exactly this release; it is removed in the next (Rust host).** Surfaces that only unreleased v2 builds had are removed without an alias.
 
-- Flags `--ruff`, `--shellcheck`, `--no-ruff`, `--no-shellcheck`, `--pyflakes`: hidden, each prints one `deprecated: use --tool/--no-tool` warning, mapped 1:1 (`--ruff=CMD` → `--tool ruff=CMD`, `--ruff=` → `--no-tool ruff`, `--pyflakes` → `--tool ruff` + warning).
-- Env `ACTIONLINT_RUFF_*`/`ACTIONLINT_SHELLCHECK_*`: read as aliases of `ACTIONLINT_TOOL_RUFF_*` etc. (`externalToolEnvironment` is already prefix-parameterised `env.go:201-231`), new names win on conflict.
-- Action inputs `shellcheck`, `ruff`, `pyflakes`: kept and mapped to `disable-tools`/`tools`; `action.yml` marks them `deprecationMessage`.
-- `analysis.Options.{ShellCheck,Ruff}`: kept, deprecated, folded into `Providers`.
+- Flags: `--shellcheck=COMMAND` and `--pyflakes=COMMAND`, the two v1.17.0 shipped, stay as hidden aliases that print one deprecation warning. They come from each bundled manifest's `deprecated_flags`, not from host code: ShellCheck declares `shellcheck` (`--shellcheck=CMD` → `--tool shellcheck=CMD`, `--shellcheck=` → `--no-tool shellcheck`); Ruff declares `pyflakes` (the command is ignored and Ruff runs with `--select F`; `--pyflakes=` → `--no-tool ruff`). The host generates no `--ID` or `--no-ID` alias, so `--ruff`, `--no-ruff` and `--no-shellcheck` are gone.
+- Env: only `ACTIONLINT_TOOL_<ID>_*` is read. `ACTIONLINT_RUFF_*` and `ACTIONLINT_SHELLCHECK_*` were never released and have no alias.
+- Action inputs `shellcheck`, `ruff`, `pyflakes`: kept in `action.yml` with a `deprecationMessage` pointing to `disable-tools`, and ignored. No code reads them and nothing maps them to `disable-tools`; GitHub shows the deprecation message.
+- `analysis.Options.{ShellCheck,Ruff}`: removed. The Go module `actionlint.kjanat.dev/v2` was never released, so it gets no shims; callers set `Options.Tools` keyed by tool id.
 - Ruff launcher grammar: the *grammar* (executable + user flags, shell-word split) is kept as `{user-args}` + `UserArgs.Forbidden` data; the Go in `ruff/command.go` is deleted. Users lose nothing.
-- Reason: 140 test sites + 8 external consumers make a hard cut unreviewable in one PR; a one-release alias costs ~60 lines and lets stage 5b be a mechanical sweep.
+- Reason: an alias exists to keep a released interface working for one release. v1.17.0 users keep their two flags; nothing unreleased needs that protection, and aliases for it would put tool names back into host code.
 - **11770d95: not reverted now; replaced in stage 5** (above).
 
 ### A.3 Knots re-cut
@@ -96,7 +96,7 @@ Verified true unless noted. Format: **item → decision → change (stage)**.
 - **K2** + `env_passthrough` is the only route for ambient env (`SHELLCHECK_OPTS`); untrusted-PR policy above.
 - **K3 changed**: oras-go v3, pinned at the `v3.0.0-rc.4` release candidate the owner accepted, is the OCI pull transport, imported only by `internal/plugins/artifact/oci`; the content-addressed store stays the cache. The claim that oras-go pulls the docker module graph was wrong (measured: v2.7.0 needs `opencontainers/go-digest`, `opencontainers/image-spec` and `x/sync`; v3 adds `toml`, `yaml.v3`, `ProtonMail/go-crypto`, `circl` and `x/crypto`).
 - **K4** + `FromComponentMetadata` derivation; managed route is primary this release.
-- **K5 changed**: deprecated aliases (A.2). `docs/migration-v2.md` table lists old → new.
+- **K5 changed**: deprecated aliases only for the two v1.17.0 flags; nothing unreleased gets one (A.2). `docs/migration-v2.md` table lists old → new.
 - **K6** scope unchanged (stages 0-6 + host side of 7), but binary+jq usable at end of stage 2.
 - **K7** unchanged + fix-eligibility fixture.
 - **K8 changed**: `internal/tools/provider/bundled`.
@@ -104,7 +104,7 @@ Verified true unless noted. Format: **item → decision → change (stage)**.
 
 ### A.4 Stage order (changes only)
 
-0 → 1 → **2 (+ local manifest source, + `ScriptRequest.Directory`, + concurrency, + c1-c11,c13 data fields)** → 3 (+ `Prepared.Skip`, `LineMap` origins) → 4 (+ public API, severity map, renderer cleanup, parity gate incl. c4-c7) → **5a aliases + CI/Docker/Action/packaging/LSP + 11770d95 replacement** → **5b test/docs sweep** → 6 (+ `config schema`) → 7 (+ `excluded: list<string>`, `directory`).
+0 → 1 → **2 (+ local manifest source, + `ScriptRequest.Directory`, + concurrency, + c1-c11,c13 data fields)** → 3 (+ `Prepared.Skip`, `LineMap` origins) → 4 (+ public API, severity map, renderer cleanup, parity gate incl. c4-c7) → **5a v1.17.0 flag aliases + CI/Docker/Action/packaging/LSP + 11770d95 replacement** → **5b test/docs sweep** → 6 (+ `config schema`) → 7 (+ `excluded: list<string>`, `directory`).
 
 ---
 
@@ -180,7 +180,7 @@ First three are small enough to start now.
 10. Stage 2: generic process transport + runner absorption (c1-c11, c13-c15) + `ScriptRequest.Directory` + **local manifest source** (binary+jq usable here).
 11. Stage 3: profiles (`Prepared.Skip`, `LineMap` origins, K7 masker + fix-eligibility fixture).
 12. Stage 4: register from manifests, public API `Options.Providers`/`plugin.ParseManifest`, severity map + renderer cleanup, `FromComponentMetadata`, parity gate (snapshots include c4-c7), delete bespoke adapters, testutil literals.
-13. Stage 5a: `--tool/--no-tool`, env prefix, doctor, Action inputs, deprecated aliases with warnings, 11770d95 replacement (three-point id disabling), LSP wiring.
+13. Stage 5a: `--tool/--no-tool`, env prefix, doctor, Action inputs, deprecated aliases for the v1.17.0 flags, 11770d95 replacement (three-point id disabling), LSP wiring.
 14. Stage 5b: sweep of ~140 test sites, `ci.yml`/Docker/packaging/`runtime.ts`/`action.yml`, docs incl. `migration-v2.md`, `plugin/plugin.go` doc, design docs.
 15. Stage 6: OCI pull-by-digest, `Materialize`, lock v2, `actionlint config schema`.
 16. Stage 7 (host side): `script-engine@0.3.0` with `fixes`, `source`, `directory`, `excluded: list<string>`; 0.2.0 still accepted.
