@@ -95,7 +95,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	}
 	// The synthetic producer observes bytes captured before traversal by the
 	// same owner used for workflow analysis and final publication.
-	dependencySource, err := cache.snapshots.Sources.Capture(path, []byte("dependency content"), coordinates)
+	dependencySource, err := cache.snapshots.Capture(path, []byte("dependency content"), coordinates)
 	if err != nil {
 		return nil, err
 	}
@@ -116,22 +116,22 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	if err != nil {
 		return nil, err
 	}
-	entry, state, err := cache.snapshots.Store.Lookup(cache.snapshots.Sources.Path(workflow.Path))
+	entry, state, err := cache.captures.Lookup(cache.snapshots.Path(workflow.Path))
 	if err != nil {
 		return nil, err
 	}
 	if state != capture.Captured {
 		t.Fatalf("workflow fixture was not captured: %s", state)
 	}
-	if err := cache.snapshots.Store.Close(t.Context()); err != nil {
+	if err := cache.captures.Close(t.Context()); err != nil {
 		return nil, err
 	}
-	rows, err := cache.snapshots.Store.Sources()
+	rows, err := cache.captures.Sources()
 	if err != nil {
 		return nil, err
 	}
 	result := &analysisResult{files: []analyzedFile{{captured: entry, source: workflow, errors: findings}}}
-	if err := result.revalidateCaptures(cache.snapshots.Store, rows, root, nil); err != nil {
+	if err := result.revalidateCaptures(cache.captures, rows, root, nil); err != nil {
 		return result, err
 	}
 	result.collectDiagnostics()

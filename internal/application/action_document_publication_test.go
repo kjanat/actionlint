@@ -39,9 +39,9 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 					paths = []string{alias, physical}
 				}
 				documents := actionDocuments{byPath: map[string]documentmodel.Action{}}
-				captures := newCapturedSnapshots(t, filepath.Dir(physical))
+				_, _, captures := newCapturedSnapshots(t, filepath.Dir(physical))
 				add := func(path string) {
-					captured, err := captures.Sources.Capture(path, nil, source.YAML)
+					captured, err := captures.Capture(path, nil, source.YAML)
 					if err != nil {
 						t.Error(err)
 						return

@@ -13,5 +13,6 @@ type capturedSnapshots = declarations.CapturedSnapshots
 
 func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
 	t.Helper()
-	return declarations.NewCapturedSnapshots(t, base)
+	_, _, snapshots := declarations.NewCapturedSnapshots(t, base)
+	return snapshots
 }

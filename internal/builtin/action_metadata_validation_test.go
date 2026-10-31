@@ -54,7 +54,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 		}
 		t.Fatal(err)
 	}
-	registry := declarations.NewCapturedSnapshots(t, root)
+	_, store, registry := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := registry.Document(alias, content, documentparse.Action(alias, alias, content))
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	finding := &findingmodel.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
 	document := snapshot.Reference().Document
 	before := metadataFindingKey(metadata, document, finding)
-	if err := registry.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(alias); err != nil {
@@ -88,7 +88,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	}
 	path := filepath.Join(root, "action.yml")
 	content := []byte("name: source\nruns: {using: node24, main: index.js}\n")
-	registry := declarations.NewCapturedSnapshots(t, root)
+	_, _, registry := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)

@@ -28,13 +28,13 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "source", "action.yml")
 	content := []byte("name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n    - shell: sh\n      run: echo second\n")
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	document := documentparse.Action(path, path, content)
 	snapshot, err := snapshots.Document(path, content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshots.SourceSnapshots, snapshot, path, path, mapped)
+	deployment, err := NewDeployment(registry, snapshot, path, path, mapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 	}
 	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &repoconfig.Config{}}
 	workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
-	collection := Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Collected: true}
+	collection := Collection{Declarations: registry, Scopes: []*Scope{scope}, Collected: true}
 	body, available := snapshot.ActionView()
 	steps := slices.Collect(body.Steps())
 	if !available || len(steps) != 2 {
@@ -226,12 +226,12 @@ func TestBatchRetainsPartialScriptsAfterCancellation(t *testing.T) {
 func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: node\ndescription: node\nruns: {using: node24, main: index.js}\n")
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, path, path, false)
+	deployment, err := NewDeployment(registry, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,16 +290,16 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, store, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
 	content := snapshot.Content()
-	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
+	snapshot, err := fixture.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := registry.Sources.Capture(alias, content, source.YAML); err != nil {
+	if _, err := fixture.Capture(alias, content, source.YAML); err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, alias, alias, false)
+	deployment, err := NewDeployment(registry, snapshot, alias, alias, false)
 	if err != nil || deployment.SourcePath() != alias || deployment.reference != snapshot.Reference() {
 		t.Fatalf("stable symlink alias rejected: %+v %v", deployment, err)
 	}
@@ -313,13 +313,13 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if err := os.Symlink(other, alias); err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
+	if deployment, err := NewDeployment(registry, snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
 		t.Fatalf("retargeted alias changed its captured identity after sealing: %+v %v", deployment, err)
 	}
-	if _, err := NewDeployment(registry.SourceSnapshots, snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
+	if _, err := NewDeployment(registry, snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
 		t.Fatalf("uncaptured target address accepted: %v", err)
 	}
 }

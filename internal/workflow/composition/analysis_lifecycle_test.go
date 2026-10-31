@@ -132,12 +132,12 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 					return nil
 				},
 			}
-			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+			registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Document("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"), parsed)
 			if err != nil {
 				t.Fatal(err)
 			}
-			options.SourceSnapshots = snapshots.SourceSnapshots
+			options.SourceSnapshots = registry
 			result, err := Workflow(options, snapshot)
 			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts()) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
 				t.Fatalf("error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)

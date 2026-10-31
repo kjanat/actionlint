@@ -68,7 +68,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	actionSnapshot, err := snapshots.Action("action.yml", meta)
 	if err != nil {
 		t.Fatal(err)
@@ -77,11 +77,11 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshots.SourceSnapshots, actionSnapshot, snapshots.Sources.Path(meta.Path()), meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(registry, actionSnapshot, snapshots.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
-	actionCollector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: snapshots.SourceSnapshots, invocations: workflowGraph}, sourceSnapshot: actionSnapshot, context: workflowGraph.RootContext()}
+	actionCollector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: registry, invocations: workflowGraph}, sourceSnapshot: actionSnapshot, context: workflowGraph.RootContext()}
 	paths := execution.Paths{}
 	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
 	actionCollector.scriptScope = &scriptexecution.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}

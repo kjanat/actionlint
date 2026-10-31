@@ -48,7 +48,7 @@ jobs:
 				if len(parsed.Findings) != 0 {
 					t.Fatal(parsed.Findings)
 				}
-				snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+				_, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 				snapshot, err := snapshots.Document("workflow.yml", content, parsed)
 				if err != nil {
 					t.Fatal(err)

@@ -14,8 +14,10 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -38,8 +40,13 @@ jobs:
       - run: echo '${{ missing.value }}'
 `
 
+// capturedWorkflowCache is a workflow metadata cache reading from captures.
+// checkWithCaches analyzes with the same registry and store, so the cache and
+// the analysis see one capture of each document.
 type capturedWorkflowCache struct {
 	*calls.Cache
+	registry  *documentparse.SourceSnapshots
+	captures  *capture.Store
 	snapshots *capturedSnapshots
 }
 
@@ -48,10 +55,10 @@ func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *
 	if cwd == "" {
 		cwd = sourceFixtureBase(t)
 	}
-	snapshots := newCapturedSnapshots(t, cwd)
+	registry, captures, snapshots := newCapturedSnapshots(t, cwd)
 	cache := calls.NewCache(root, cwd, debug)
-	cache.SetSources(t.Context(), snapshots.Store, cwd)
-	return &capturedWorkflowCache{Cache: cache, snapshots: snapshots}
+	cache.SetSources(t.Context(), captures, cwd)
+	return &capturedWorkflowCache{Cache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
@@ -65,18 +72,20 @@ func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest,
 	if session.workingDir == "" {
 		session.workingDir = sourceFixtureBase(t)
 	}
-	declarations := newCapturedSnapshots(t, session.workingDir)
+	var declarations *capturedSnapshots
 	var workflowCache *calls.Cache
 	if workflows != nil {
-		declarations, workflowCache = workflows.snapshots, workflows.Cache
+		session.snapshots, session.captures, declarations = workflows.registry, workflows.captures, workflows.snapshots
+		workflowCache = workflows.Cache
+	} else {
+		session.snapshots, session.captures, declarations = newCapturedSnapshots(t, session.workingDir)
 	}
-	session.captures, session.snapshots = declarations.Store, declarations.SourceSnapshots
 	address := source.InputPath
 	if address == "" {
 		address = source.Path
 	}
-	address = declarations.Sources.Path(address)
-	captured, err := declarations.Sources.Capture(address, source.Content, sourcemodel.YAML)
+	address = declarations.Path(address)
+	captured, err := declarations.Capture(address, source.Content, sourcemodel.YAML)
 	if err != nil {
 		return nil, err
 	}

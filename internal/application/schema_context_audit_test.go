@@ -169,7 +169,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	_, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("schema-audit.yml", content, document)
 	if err != nil {
 		t.Fatal(err)

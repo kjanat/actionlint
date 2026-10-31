@@ -103,8 +103,8 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	}
 	metadata := *lookup.Metadata()
 	metadata.SourceMapped = false
-	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-	f.options.SourceSnapshots = declarations.SourceSnapshots
+	registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+	f.options.SourceSnapshots = registry
 	result, err := standaloneActionForTest(t, f.options, &metadata, declarations)
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +114,7 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
 	scopes[0].Paths.ActionPath = "foreign"
-	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: declarations.SourceSnapshots, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
+	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
 	if !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
 		t.Fatalf("forged action entry accepted: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	requests[0], requests[1] = requests[1], requests[0]
 	scopes[1], scopes[2] = scopes[2], scopes[1]
 	rebuilt, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{
-		Declarations: f.snapshots.SourceSnapshots, Scopes: scopes, Scripts: requests, Collected: true,
+		Declarations: f.registry, Scopes: scopes, Scripts: requests, Collected: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -219,8 +219,8 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-				options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots, CollectScripts: collect}
+				registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+				options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
 				result, err := standaloneActionForTest(t, options, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
@@ -252,13 +252,13 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
 	failure := errors.New("invocation entry failure")
 	joinFailure := errors.New("join failure")
 	joined := false
 	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
 	options := Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots,
+		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 		Join: func() error { joined = true; return joinFailure },
 	}
@@ -301,7 +301,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 				scopes[1].Paths.ActionIndependent = !scopes[1].Paths.ActionIndependent
 				want = "action paths disagree"
 			}
-			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.snapshots.SourceSnapshots, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
+			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.registry, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
 				t.Fatalf("%s accepted: %v", change, err)
 			}
 		})

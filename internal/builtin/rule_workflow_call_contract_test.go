@@ -109,9 +109,9 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	cwd := filepath.Join(sourceFixtureBase(t), "path", "to", "project")
 	path := filepath.Join(cwd, "test-workflow.yaml")
 	content := []byte("on:\n  workflow_call:\n    inputs:\n      input1: {type: string}\n    outputs:\n      output1: {value: '${{ jobs.test.outputs.value }}'}\n    secrets:\n      secret1: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
-	declarations := newCapturedSnapshots(t, cwd)
+	store, snapshots := newCapturedSnapshots(t, cwd)
 	parsed := documentparse.Workflow(path, content)
-	snapshot, err := declarations.Document(path, content, parsed)
+	snapshot, err := snapshots.Document(path, content, parsed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 		t.Fatal("captured workflow unavailable")
 	}
 	c := calls.NewCache(cwd, cwd, nil)
-	c.SetSources(t.Context(), declarations.Store, cwd)
+	c.SetSources(t.Context(), store, cwd)
 	r := builtin.NewRuleWorkflowCall(snapshot, c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {

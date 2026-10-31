@@ -75,7 +75,7 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot documentpar
 	path := filepath.Join(filepath.Dir(snapshot.Reference().Document), "workflow.yml")
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n" + strings.Repeat("      - uses: $/source\n", len(deployments)))
 	document := documentparse.Workflow(path, content)
-	declarations := newCapturedSnapshots(t, filepath.Dir(path))
+	registry, _, declarations := newCapturedSnapshots(t, filepath.Dir(path))
 	actionPath := snapshot.Capture().Aliases()[0]
 	actionContent := snapshot.Content()
 	var err error
@@ -83,7 +83,7 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot documentpar
 	if err != nil {
 		t.Fatal(err)
 	}
-	collection.Declarations = declarations.SourceSnapshots
+	collection.Declarations = registry
 	root, err := declarations.Document(path, content, document)
 	if err != nil {
 		t.Fatal(err)

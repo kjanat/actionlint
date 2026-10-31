@@ -22,8 +22,8 @@ func TestBatchRejectsUnboundSource(t *testing.T) {
 			graph, collection := batchFixture(t, false)
 			snapshot, _ := collection.Declarations.Lookup(graph.Entry().Reference)
 			content, identity := snapshot.Content(), "ci.yml"
-			declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-			collection.Declarations = declarations.SourceSnapshots
+			registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+			collection.Declarations = registry
 			switch change {
 			case "missing registry":
 				collection.Declarations = nil
@@ -171,7 +171,7 @@ func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Gr
 	if len(parsed.Findings) != 0 {
 		t.Fatal(parsed.Findings)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, parsed)
 	if err != nil {
 		t.Fatal(err)
@@ -205,7 +205,7 @@ func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Gr
 	if err != nil {
 		t.Fatal(err)
 	}
-	return graph, Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Scripts: requests, Collected: true}, parsed.Workflow
+	return graph, Collection{Declarations: registry, Scopes: []*Scope{scope}, Scripts: requests, Collected: true}, parsed.Workflow
 }
 
 func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
@@ -331,8 +331,8 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if !document.CanAnalyze() {
 				t.Fatalf("parsed fixture cannot be analyzed: %v", document.Findings)
 			}
-			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-			snapshot, err := registry.Document(tc.identity, content, document)
+			registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := fixture.Document(tc.identity, content, document)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -380,7 +380,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			}
 			scope := &Scope{Context: builder.RootContext(), Composite: tc.kind == invocation.EntryAction}
 			if tc.kind == invocation.EntryAction {
-				scope.Deployment, err = NewDeployment(registry.SourceSnapshots, snapshot, registry.Sources.Path(tc.identity), tc.identity, false)
+				scope.Deployment, err = NewDeployment(registry, snapshot, fixture.Path(tc.identity), tc.identity, false)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -390,7 +390,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if tc.scriptKind == invocation.ScriptActionInput {
 				request.Input = &analyzer.ScriptInput{Action: "actions/github-script", Input: tc.input, Language: "javascript"}
 			}
-			collection := Collection{Declarations: registry.SourceSnapshots, Scopes: []*Scope{scope}, Scripts: []ScriptRequest{request}, Collected: true}
+			collection := Collection{Declarations: registry, Scopes: []*Scope{scope}, Scripts: []ScriptRequest{request}, Collected: true}
 			if _, err := NewBatch(graph, collection); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("unmapped parsed %s accepted: %v", tc.name, err)
 			}

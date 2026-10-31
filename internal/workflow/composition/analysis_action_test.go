@@ -27,8 +27,7 @@ func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta
 		fixture = fixtures[0]
 	}
 	if registry == nil {
-		fixture = newCapturedSnapshots(t, sourceFixtureBase(t))
-		registry = fixture.SourceSnapshots
+		registry, _, fixture = newCapturedSnapshots(t, sourceFixtureBase(t))
 		options.SourceSnapshots = registry
 	}
 	bytes := []byte(content)
@@ -49,7 +48,7 @@ func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta
 	}
 	address := metadata.Path()
 	if fixture != nil {
-		address = fixture.Sources.Path(address)
+		address = fixture.Path(address)
 	}
 	deployment, err := scriptexecution.NewDeployment(registry, snapshot, address, metadata.Path(), metadata.SourceMapped)
 	if err != nil {
@@ -79,18 +78,18 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if document.Metadata == nil || !document.CanAnalyze() {
 		t.Fatal("fixture action metadata unavailable")
 	}
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document(fsread.PhysicalPath(path), content, document)
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(registry.SourceSnapshots, snapshot, path, path, false)
+	deployment, err := scriptexecution.NewDeployment(registry, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rule := &mutatingStandaloneMetadata{Base: workflowvisit.NewBase("mutate", "")}
 	options := Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry.SourceSnapshots,
+		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 	}
 	result, err := Action(options, snapshot, deployment, document.Metadata)

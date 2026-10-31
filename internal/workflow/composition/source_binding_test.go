@@ -22,7 +22,7 @@ func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
-	registry := f.snapshots.SourceSnapshots
+	registry := f.registry
 	f.options.SourceSnapshots = nil
 	if _, err := Workflow(f.options, f.root); err == nil {
 		t.Fatal("workflow analysis derived a registry from its entry snapshot")
@@ -55,16 +55,16 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	firstDocument := documentparse.Workflow("ci.yml", content)
 	secondDocument := documentparse.Workflow("ci.yml", content)
-	firstRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	secondRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	if _, err := firstRegistry.Document("ci.yml", content, firstDocument); err != nil {
+	firstRegistry, _, firstFixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	_, _, secondFixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	if _, err := firstFixture.Document("ci.yml", content, firstDocument); err != nil {
 		t.Fatal(err)
 	}
-	secondSnapshot, err := secondRegistry.Document("ci.yml", content, secondDocument)
+	secondSnapshot, err := secondFixture.Document("ci.yml", content, secondDocument)
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: firstRegistry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil)}
+	options := Options{Context: t.Context(), SourceSnapshots: firstRegistry, Actions: actionlocal.NewResolver(nil, nil)}
 	if _, err := Workflow(options, secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
 		t.Fatalf("different source registry was accepted: %v", err)
 	}
@@ -91,12 +91,12 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 			if len(document.Findings) != 0 {
 				t.Fatalf("empty workflow script was rejected by the parser: %v", document.Findings)
 			}
-			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-			snapshot, err := registry.Document("ci.yml", content, document)
+			registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := fixture.Document("ci.yml", content, document)
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+			options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
 			result, err := Workflow(options, snapshot)
 			if err != nil {
 				t.Fatal(err)
@@ -189,7 +189,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	}
 	job := workflowJob(t, workflow, "build")
 	analysis := &compositeAnalyzer{compositionSession: &compositionSession{
-		ctx: t.Context(), sourceSnapshots: f.snapshots.SourceSnapshots,
+		ctx: t.Context(), sourceSnapshots: f.registry,
 		collectScripts: true,
 	}, actions: f.options.Actions}
 	analysis.budget = invocation.DefaultBudget()
@@ -254,19 +254,19 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Action(fsread.PhysicalPath(meta.Path()), meta)
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Action(fsread.PhysicalPath(meta.Path()), meta)
 	if err != nil {
 		t.Fatal(err)
 	}
-	analysis := &compositeAnalyzer{compositionSession: &compositionSession{sourceSnapshots: registry.SourceSnapshots}}
+	analysis := &compositeAnalyzer{compositionSession: &compositionSession{sourceSnapshots: registry}}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryAction, snapshot); err != nil {
 		t.Fatal(err)
 	}
 	foreign := *meta
 	foreign.Directory = "foreign"
-	deployment, err := scriptexecution.NewDeployment(registry.SourceSnapshots, snapshot, registry.Sources.Path(meta.Path()), meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(registry, snapshot, fixture.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: registry.SourceSnapshots, Scopes: analysis.scriptScopes})
+	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: registry, Scopes: analysis.scriptScopes})
 	if !errors.Is(returnedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes()) != 0 {
 		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v returned=%v batch=%v scopes=%+v", originalErr, returnedErr, batchErr, batch.Scopes())
 	}
@@ -288,8 +288,8 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	document := documentparse.Workflow("ci.yml", content)
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document("ci.yml", content, document)
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if !ok {
 		t.Fatal("workflow snapshot unavailable")
 	}
-	analysis := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, sourceSnapshots: registry.SourceSnapshots}, sourceSnapshot: snapshot}
+	analysis := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, sourceSnapshots: registry}, sourceSnapshot: snapshot}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 		t.Fatal(err)
@@ -329,12 +329,12 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	if len(document.Findings) == 0 {
 		t.Fatal("rejected value produced no syntax diagnostic")
 	}
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document("ci.yml", content, document)
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)

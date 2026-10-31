@@ -24,7 +24,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			if _, err := calls.ParseMetadata(calleeBytes); err == nil {
 				t.Fatal("fixture must fail reusable metadata parsing")
 			}
-			registry := newCapturedSnapshots(t, root)
+			store, registry := newCapturedSnapshots(t, root)
 			callee, err := registry.Document(calleePath, calleeBytes, documentparse.Workflow(calleePath, calleeBytes))
 			if err != nil {
 				t.Fatal(err)
@@ -49,7 +49,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				t.Fatal(err)
 			}
 			cache := calls.NewCache(root, root, nil)
-			cache.SetSources(t.Context(), registry.Store, root)
+			cache.SetSources(t.Context(), store, root)
 			visit := func(snapshot documentparse.SourceSnapshot) (int, int) {
 				t.Helper()
 				workflow, available := snapshot.WorkflowView()

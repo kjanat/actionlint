@@ -14,7 +14,7 @@ func matrixTestWorkflow(t *testing.T, source string) (*workflowlang.Workflow, do
 	if !document.CanAnalyze() {
 		t.Fatalf("workflow parse failed: %v", document.Findings)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	_, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("test.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
