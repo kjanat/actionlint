@@ -48,7 +48,7 @@ func CheckSources(ctx context.Context, options application.Options, input applic
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
-	options, err = plugins.configure(options)
+	options, err = plugins.configure(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func RequiredToolsSources(ctx context.Context, options application.Options, path
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, loaded.close(context.WithoutCancel(ctx))) }()
-	options, err = loaded.configure(options)
+	options, err = loaded.configure(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (l *loadedPlugins) configureManaged(options application.Options) (applicati
 	return configured, nil
 }
 
-func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {
+func (l *loadedPlugins) configure(ctx context.Context, options application.Options) (application.Options, error) {
 	seen := map[string]bool{}
 	for _, engine := range l.engines {
 		metadata := engine.descriptor
@@ -145,6 +145,14 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 		seen[name] = true
 		if local.repository && !options.AllowConfigProcesses {
 			return options, &PluginLoadError{fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.source)}
+		}
+		if local.source != "" {
+			// Only now, after the check above, download the executable.
+			fetched, err := local.fetch(ctx)
+			if err != nil {
+				return options, &PluginLoadError{fmt.Errorf("plugin %s: %w", local.source, err)}
+			}
+			local = fetched
 		}
 		selection := backend.Selection{Command: name}
 		if local.executable != "" {

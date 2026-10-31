@@ -205,13 +205,18 @@ The registry is reached anonymously, answering its bearer challenge as public GH
 
 `plugin install` and `plugin update` also record each OCI declaration in the lock (schema version 2), with the
 image manifest and layer digests of every platform it serves; `plugin sync` and analysis check a pull against
-that record. The GitHub Action uses the list to restore the executable from its cache before analysis.
+that record. The GitHub Action restores the listed blobs from its cache before analysis.
 Version 1 locks are still read and are rewritten as version 2 by the next install.
 
 A tool provider from an OCI source runs a native executable, which no sandbox contains. One declared in
 repository configuration runs only with `--allow-config-processes`; the GitHub Action never sets it. A source
-passed with `--plugin` is an explicit choice and needs no opt-in. `--no-tool ID` skips a provider whose
-`rule.name` is `ID` before it is materialized.
+passed with `--plugin` is an explicit choice and needs no opt-in.
+
+Analysis first reads only the provider manifest layer. The executable and transform layers are downloaded
+after the `--allow-config-processes` check passes, so a refused provider never downloads its executable.
+`--no-tool ID` skips a provider whose `rule.name` is `ID` the same way: its manifest layer is read to learn
+the name, its executable is not. `plugin install` and `plugin sync` download every layer for this host, so
+analysis can run offline afterwards.
 
 ### GitHub Action caching
 

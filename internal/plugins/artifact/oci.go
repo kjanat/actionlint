@@ -15,8 +15,10 @@ import (
 // The selected image manifest has exactly one layer with a primary media
 // type: a WebAssembly module or a tool provider manifest. Every other layer
 // is a blob that primary layer names by digest, such as the provider's
-// executable or a transform program. All layers of the selected image
-// manifest are stored, so a provider can run offline afterwards.
+// executable or a transform program. Resolving the source stores the
+// manifests and the primary layer only; the other layers are stored when the
+// provider is prepared to run, or by plugin install and plugin sync, so a
+// provider can run offline afterwards.
 //
 // This package parses oci:// sources but does not pull them: the oci
 // subpackage does, through oras-go, and callers pass its Pull as

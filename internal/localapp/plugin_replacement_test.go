@@ -109,7 +109,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if enabled {
 					selections = registry.Selections{engine: {Command: engine}}
 				}
-				options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(selections)})
+				options, err := plugins.configure(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(selections)})
 				if err != nil {
 					t.Fatal(err)
 				}

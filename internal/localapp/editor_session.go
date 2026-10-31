@@ -45,7 +45,7 @@ func newEditorSources(ctx context.Context, options application.Options, sources 
 		return nil, err
 	}
 	sources.artifacts = nil
-	options, err = plugins.configure(options)
+	options, err = plugins.configure(ctx, options)
 	if err != nil {
 		return nil, errors.Join(err, plugins.close(context.WithoutCancel(ctx)))
 	}

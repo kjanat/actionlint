@@ -50,7 +50,7 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 			plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: engine, descriptor: analyzer.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 			}}}}
-			options, err := plugins.configure(application.Options{WorkingDir: root, Tools: []tools.Registration{tc.registration}})
+			options, err := plugins.configure(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -89,7 +89,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 			plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: backend, descriptor: analyzer.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []analyzer.ScriptInput{site}, TemplateContract: analyzer.TemplateEffectsContract,
 			}}}}
-			options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
+			options, err := plugins.configure(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}

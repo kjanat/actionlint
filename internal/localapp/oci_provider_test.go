@@ -105,22 +105,52 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	}
 }
 
+// A binary provider declared in repository configuration, found
+// automatically or through --config, runs only with
+// --allow-config-processes. Without it the executable is never downloaded
+// or materialized.
 func TestOCIBinaryProviderFromConfigurationNeedsOptIn(t *testing.T) {
-	testutil.IsolateUserCache(t)
-	pkg := publishOCIProvider(t)
-	input := func() application.Input {
-		return application.Input{Kind: application.Stdin, Reader: strings.NewReader(ociProviderInput)}
-	}
-	sources := PluginSources{Paths: []string{pkg.reference}, repository: true}
-	if _, err := CheckSources(t.Context(), application.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
-		t.Fatalf("repository-selected binary provider ran without opt-in: %v", err)
-	}
-	result, err := CheckSources(t.Context(), application.Options{AllowConfigProcesses: true}, input(), sources)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(ociFindings(t, result)) != 1 {
-		t.Fatalf("findings = %+v", result.Diagnostics)
+	for _, explicit := range []bool{false, true} {
+		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
+			testutil.IsolateUserCache(t)
+			pkg := publishOCIProvider(t)
+			root := pluginRepository(t)
+			path := filepath.Join(root, ".github", "actionlint.yaml")
+			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeManifestTest(t, path, "plugins: ['"+pkg.reference+"']\n")
+			selection := PluginSelection{}
+			if explicit {
+				selection.ConfigFile = path
+			}
+			input := func() application.Input {
+				return application.Input{Kind: application.Stdin, Reader: strings.NewReader(ociProviderInput)}
+			}
+			sources, err := selection.Resolve(t.Context(), root, application.Input{Kind: application.Repository})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(sources.Paths, []string{pkg.reference}) {
+				t.Fatalf("selected %q", sources.Paths)
+			}
+			if _, err := CheckSources(t.Context(), application.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
+				t.Fatalf("repository-selected binary provider ran without opt-in: %v", err)
+			}
+			if got := pkg.registry.Fetches(pkg.executable); got != 0 {
+				t.Fatalf("executable downloaded %d times without opt-in", got)
+			}
+			if _, err := os.Stat(filepath.Join(artifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
+				t.Fatalf("executable materialized without opt-in: %v", err)
+			}
+			result, err := CheckSources(t.Context(), application.Options{AllowConfigProcesses: true}, input(), sources)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(ociFindings(t, result)) != 1 {
+				t.Fatalf("findings = %+v", result.Diagnostics)
+			}
+		})
 	}
 }
 
@@ -137,6 +167,9 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(artifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
 		t.Fatalf("disabled provider's executable was materialized: %v", err)
+	}
+	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
+		t.Fatalf("disabled provider's executable was downloaded %d times", got)
 	}
 }
 
@@ -163,12 +196,21 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if !slices.Contains(plan.Artifacts, root) || !slices.Contains(plan.Artifacts, pkg.executable.Hex()) || len(plan.Artifacts) != 5 {
 		t.Fatalf("locked plan = %q", plan.Artifacts)
 	}
+	// Hydrate runs before every check, so it stores what selecting the
+	// provider reads and leaves the executable to an opted-in run.
 	if err := locked.Hydrate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
+		t.Fatalf("hydrate downloaded the executable %d times", got)
+	}
+	// plugin sync stores everything, so a check can run offline.
+	if err := SyncPlugins(t.Context(), *locked.lock); err != nil {
 		t.Fatal(err)
 	}
 	for _, digest := range plan.Artifacts {
 		if _, err := os.Stat(filepath.Join(plan.Directory, digest)); err != nil {
-			t.Fatalf("hydrate did not store %s: %v", digest, err)
+			t.Fatalf("sync did not store %s: %v", digest, err)
 		}
 	}
 }

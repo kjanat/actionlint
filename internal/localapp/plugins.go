@@ -44,9 +44,12 @@ type loadedPlugins struct {
 // or pulled from an oci:// source.
 type localProvider struct {
 	manifest provider.Manifest
+	// programs are the manifest's transform programs. For a pulled
+	// manifest, fetch reads them.
 	programs provider.Programs
 	// executable is the path of the provider's executable materialized from
-	// the artifact store. Empty runs the manifest's process entry from PATH.
+	// the artifact store by fetch. Empty runs the manifest's process entry
+	// from PATH.
 	executable string
 	// source is the oci:// source of a pulled manifest, empty for a local one.
 	source string
@@ -97,20 +100,17 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 		}
 		path = artifact.Info.Source
 		if artifact.Info.Kind == pluginartifact.ProviderManifest {
-			manifest, err := provider.Parse(artifact.Bytes)
+			manifest, err := pulledProvider(artifact)
 			if err != nil {
-				return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
+				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 			}
 			if slices.Contains(sources.disabledTools, manifest.Rule.Name) {
 				loaded.skipped = append(loaded.skipped, manifest.Rule.Name)
 				continue
 			}
-			stored, err := storedProvider(ctx, manifest, path)
-			if err != nil {
-				return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
-			}
-			stored.repository = sources.repository
-			loaded.providers = append(loaded.providers, stored)
+			// configure fetches the executable and transform programs after
+			// the --allow-config-processes check.
+			loaded.providers = append(loaded.providers, localProvider{manifest: manifest, source: path, repository: sources.repository})
 			continue
 		}
 		// Metadata is read only when --tool or --no-tool named an id, so
@@ -245,38 +245,57 @@ func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, 
 	return engine, nil
 }
 
-// storedProvider prepares the tool provider manifest the oci:// source
-// pulled, dispatching on its transport. A process provider runs the
-// executable its artifacts list for this host, materialized from the
-// artifact store, or its process entry from PATH when it lists no artifacts.
-// Its transform programs come from the store too.
-func storedProvider(ctx context.Context, manifest provider.Manifest, source string) (localProvider, error) {
-	options := artifactOptions()
-	store := pluginartifact.Store{Dir: options.CacheDir}
-	if manifest.Transport != provider.TransportProcess {
-		return localProvider{}, fmt.Errorf("tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", manifest.Rule.Name, manifest.Transport, pluginartifact.MediaTypeWasm)
-	}
-	programs, err := provider.LoadPrograms(manifest, func(digest string) ([]byte, error) {
-		return store.Read(ctx, strings.TrimPrefix(digest, "sha256:"), artifactMaxBytes)
-	})
+// pulledProvider parses the tool provider manifest layer of an oci://
+// artifact. The manifest must use the process transport: a WebAssembly
+// plugin is published as a wasm layer instead.
+func pulledProvider(artifact *pluginartifact.Artifact) (provider.Manifest, error) {
+	manifest, err := provider.Parse(artifact.Bytes)
 	if err != nil {
-		return localProvider{}, err
+		return provider.Manifest{}, fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
 	}
-	stored := localProvider{manifest: manifest, programs: programs, source: source}
-	if len(manifest.Artifacts) == 0 {
-		return stored, nil
+	if manifest.Transport != provider.TransportProcess {
+		return provider.Manifest{}, fmt.Errorf("plugin %s: tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", artifact.Info.Source, manifest.Rule.Name, manifest.Transport, pluginartifact.MediaTypeWasm)
+	}
+	return manifest, nil
+}
+
+// fetch returns p with its transform programs and executable read from the
+// layers of its oci:// source, through the artifact store. The executable
+// is the one manifest.artifacts lists for this host, materialized from the
+// store; without artifacts the process entry runs from PATH.
+func (p localProvider) fetch(ctx context.Context) (localProvider, error) {
+	options := artifactOptions()
+	layer := func(digest string) ([]byte, error) {
+		return oci.Layer(ctx, p.source, strings.TrimPrefix(digest, "sha256:"), options)
+	}
+	name := p.manifest.Rule.Name
+	programs, err := provider.LoadPrograms(p.manifest, layer)
+	if err != nil {
+		return localProvider{}, fmt.Errorf("tool provider %s: %w", name, err)
+	}
+	p.programs = programs
+	if len(p.manifest.Artifacts) == 0 {
+		return p, nil
 	}
 	platform := pluginartifact.HostPlatform()
-	index := slices.IndexFunc(manifest.Artifacts, func(a provider.Artifact) bool { return a.Platform == platform })
+	index := slices.IndexFunc(p.manifest.Artifacts, func(a provider.Artifact) bool { return a.Platform == platform })
 	if index < 0 {
-		return localProvider{}, fmt.Errorf("tool provider %s has no executable for %s", manifest.Rule.Name, platform)
+		return localProvider{}, fmt.Errorf("tool provider %s has no executable for %s", name, platform)
 	}
-	executable := manifest.Artifacts[index]
-	stored.executable, err = store.Materialize(ctx, strings.TrimPrefix(executable.Digest, "sha256:"), executable.Filename, artifactMaxBytes)
+	executable := p.manifest.Artifacts[index]
+	digest := strings.TrimPrefix(executable.Digest, "sha256:")
+	store := pluginartifact.Store{Dir: options.CacheDir}
+	p.executable, err = store.Materialize(ctx, digest, executable.Filename, artifactMaxBytes)
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, pluginartifact.ErrCorrupt) {
+		// Fetch a missing or half-written executable, then copy it again.
+		if _, err = layer(executable.Digest); err == nil {
+			p.executable, err = store.Materialize(ctx, digest, executable.Filename, artifactMaxBytes)
+		}
+	}
 	if err != nil {
-		return localProvider{}, fmt.Errorf("tool provider %s: %w", manifest.Rule.Name, err)
+		return localProvider{}, fmt.Errorf("tool provider %s: %w", name, err)
 	}
-	return stored, nil
+	return p, nil
 }
 
 // artifactMaxBytes bounds a stored transform program or executable, as

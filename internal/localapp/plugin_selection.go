@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
@@ -421,6 +422,18 @@ func pluginProjectRoot(path string) string {
 	return root
 }
 
+// SyncPlugins downloads every locked plugin and, for each oci:// source the
+// lock lists, every layer this host reads, such as a provider's executable.
+// Afterwards the plugins run offline from the artifact store.
 func SyncPlugins(ctx context.Context, lock pluginregistry.Lock) error {
-	return lock.Sync(ctx, artifactOptions())
+	options := artifactOptions()
+	if err := lock.Sync(ctx, options); err != nil {
+		return err
+	}
+	for _, pin := range lock.Sources {
+		if err := oci.PullLayers(ctx, pin.Source(), options); err != nil {
+			return err
+		}
+	}
+	return nil
 }

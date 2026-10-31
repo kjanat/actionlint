@@ -62,14 +62,52 @@ func TestPullSelectsHostPlatform(t *testing.T) {
 		t.Fatalf("blobs = %q", info.Blobs)
 	}
 	store := artifact.Store{Dir: cache}
-	for _, digest := range append([]string{info.SHA256, info.Manifest}, info.Blobs...) {
+	for _, digest := range []string{info.SHA256, info.Manifest, pkg.manifest.Hex()} {
 		if _, err := store.Read(t.Context(), digest, 1<<20); err != nil {
 			t.Fatalf("store lacks %s: %v", digest, err)
 		}
 	}
+	// Resolving reads the provider manifest only; the executable waits
+	// until the provider runs.
+	if got := registry.Fetches(pkg.executable); got != 0 {
+		t.Fatalf("Resolve fetched the executable %d times", got)
+	}
+	executable, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache))
+	if err != nil || string(executable) != "executable for "+artifact.HostPlatform() {
+		t.Fatalf("Layer = %q, %v", executable, err)
+	}
 	registry.Close()
 	if _, err := artifact.Resolve(t.Context(), pkg.reference, options(cache)); err != nil {
 		t.Fatalf("stored package not usable offline: %v", err)
+	}
+	if _, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache)); err != nil {
+		t.Fatalf("stored executable not usable offline: %v", err)
+	}
+}
+
+func TestPullLayersStoresEveryHostLayer(t *testing.T) {
+	registry := ocitest.New(t)
+	pkg := publishProvider(t, registry)
+	cache := t.TempDir()
+	if err := oci.PullLayers(t.Context(), pkg.reference, options(cache)); err != nil {
+		t.Fatal(err)
+	}
+	for _, layer := range []ocitest.Descriptor{pkg.manifest, pkg.executable} {
+		if _, err := (artifact.Store{Dir: cache}).Read(t.Context(), layer.Hex(), 1<<20); err != nil {
+			t.Fatalf("store lacks %s: %v", layer.Hex(), err)
+		}
+	}
+}
+
+func TestLayerRefusesDigestOutsideManifest(t *testing.T) {
+	registry := ocitest.New(t)
+	pkg := publishProvider(t, registry)
+	other := registry.Blob("application/octet-stream", []byte("not a layer"))
+	if _, err := oci.Layer(t.Context(), pkg.reference, other.Hex(), options("")); err == nil || !strings.Contains(err.Error(), "is not a layer") {
+		t.Fatalf("error = %v", err)
+	}
+	if registry.Fetches(other) != 0 {
+		t.Fatal("Layer fetched a blob its image manifest does not list")
 	}
 }
 
@@ -91,7 +129,7 @@ func TestPullRejectsBlobNotMatchingDigest(t *testing.T) {
 	pkg := publishProvider(t, registry)
 	registry.Tamper(pkg.executable, bytes.Repeat([]byte("x"), int(pkg.executable.Size)))
 	cache := t.TempDir()
-	_, err := artifact.Resolve(t.Context(), pkg.reference, options(cache))
+	_, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache))
 	if err == nil || !strings.Contains(err.Error(), "digest") {
 		t.Fatalf("forged blob accepted: %v", err)
 	}
@@ -104,7 +142,7 @@ func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
-	if _, err := artifact.Resolve(t.Context(), pkg.reference, options(cache)); err != nil {
+	if err := oci.PullLayers(t.Context(), pkg.reference, options(cache)); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(cache, pkg.executable.Hex())
@@ -119,7 +157,7 @@ func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
 	if _, err := (artifact.Store{Dir: cache}).Read(t.Context(), pkg.executable.Hex(), 1<<20); !errors.Is(err, artifact.ErrCorrupt) {
 		t.Fatalf("half-written blob read as %v", err)
 	}
-	if _, err := artifact.Resolve(t.Context(), pkg.reference, options(cache)); err != nil {
+	if _, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache)); err != nil {
 		t.Fatal(err)
 	}
 	if got := registry.Fetches(pkg.executable); got != 2 {

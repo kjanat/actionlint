@@ -44,7 +44,7 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			engine := &inputReplacementBackend{}
 			plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: engine, descriptor: analyzer.ScriptEngineDescriptor{Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}}}}}}
-			options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
+			options, err := plugins.configure(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -187,7 +187,7 @@ func (pythonInputBackend) Check(_ context.Context, request analyzer.ScriptReques
 }
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 	plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: pythonInputBackend{}, descriptor: analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: analyzer.TemplateEffectsContract, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
-	options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})}})
+	options, err := plugins.configure(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})}})
 	if err != nil {
 		t.Fatal(err)
 	}

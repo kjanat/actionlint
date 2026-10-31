@@ -49,7 +49,8 @@ type Info struct {
 	// was pulled from.
 	Manifest string `json:"manifest,omitempty"`
 	// Blobs are the SHA256 hex digests of every layer of that image
-	// manifest; the Store holds each of them.
+	// manifest. The Store holds the primary layer; the oci subpackage's
+	// Layer and PullLayers fetch the others.
 	Blobs []string `json:"blobs,omitempty"`
 }
 

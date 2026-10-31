@@ -237,10 +237,41 @@ func (p *puller) layers(ctx context.Context, digest string) ([]ocispec.Descripto
 	return parsed.Layers, primary, nil
 }
 
-// Pull pulls the image manifest of ref for this host and every layer it
-// lists into the store, and returns its primary layer: a WebAssembly module,
-// whose kind Sniff detects, or a tool provider manifest, which is also the
-// artifact's metadata. It implements artifact.PullOCI.
+// hostManifest returns the platform key and the image manifest digest the
+// root serves this host: its own platform, or artifact.AnyPlatform.
+func (p *puller) hostManifest(ctx context.Context) (platform, manifest string, err error) {
+	platforms, err := p.platforms(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	platform = artifact.HostPlatform()
+	if manifest, ok := platforms[platform]; ok {
+		return platform, manifest, nil
+	}
+	if manifest, ok := platforms[artifact.AnyPlatform]; ok {
+		return artifact.AnyPlatform, manifest, nil
+	}
+	return "", "", fmt.Errorf("no image manifest for platform %s; the index serves %s", platform, strings.Join(slices.Sorted(maps.Keys(platforms)), ", "))
+}
+
+// hostLayers returns the layers of the image manifest the root serves this
+// host.
+func (p *puller) hostLayers(ctx context.Context) ([]ocispec.Descriptor, error) {
+	_, manifest, err := p.hostManifest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	layers, _, err := p.layers(ctx, manifest)
+	return layers, err
+}
+
+// Pull pulls the image manifest of ref for this host and its primary layer
+// into the store, and returns that layer: a WebAssembly module, whose kind
+// Sniff detects, or a tool provider manifest, which is also the artifact's
+// metadata. Info.Blobs lists every layer digest, but Pull fetches no other
+// layer: Layer and PullLayers do, so an executable is downloaded only when
+// the provider is about to run, or by an explicit install, sync or cache
+// fill. It implements artifact.PullOCI.
 func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Options) (*artifact.Artifact, error) {
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
@@ -248,37 +279,25 @@ func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Optio
 	if err != nil {
 		return nil, err
 	}
-	platforms, err := pull.platforms(ctx)
+	platform, manifest, err := pull.hostManifest(ctx)
 	if err != nil {
 		return nil, err
-	}
-	platform := artifact.HostPlatform()
-	manifest, ok := platforms[platform]
-	if !ok {
-		platform = artifact.AnyPlatform
-		if manifest, ok = platforms[artifact.AnyPlatform]; !ok {
-			return nil, fmt.Errorf("no image manifest for platform %s; the index serves %s", artifact.HostPlatform(), strings.Join(slices.Sorted(maps.Keys(platforms)), ", "))
-		}
 	}
 	layers, primary, err := pull.layers(ctx, manifest)
 	if err != nil {
 		return nil, err
 	}
 	info := artifact.Info{Source: ref.String(), SHA256: ref.Digest(), Manifest: manifest, Platform: platform}
-	var data []byte
-	for i, layer := range layers {
-		blob, err := pull.blob(ctx, layer)
-		if err != nil {
-			return nil, err
-		}
+	for _, layer := range layers {
 		digest, err := descriptorDigest(layer)
 		if err != nil {
 			return nil, err
 		}
 		info.Blobs = append(info.Blobs, digest)
-		if i == primary {
-			data = blob
-		}
+	}
+	data, err := pull.blob(ctx, layers[primary])
+	if err != nil {
+		return nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -297,6 +316,57 @@ func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Optio
 		return nil, err
 	}
 	return &artifact.Artifact{Info: info, Bytes: data}, nil
+}
+
+// Layer returns the verified bytes of the layer with SHA256 digest hex in
+// the image manifest the oci:// source serves this host. It reads the store
+// first and fetches and publishes a missing or corrupt blob. A digest that
+// is not a layer of that manifest is refused.
+func Layer(ctx context.Context, source, digest string, options artifact.Options) ([]byte, error) {
+	ctx, cancel := withTimeout(ctx, options)
+	defer cancel()
+	ref, err := artifact.ParseOCI(source)
+	if err != nil {
+		return nil, err
+	}
+	pull, err := newPuller(ref, options)
+	if err != nil {
+		return nil, err
+	}
+	layers, err := pull.hostLayers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("plugin artifact %s: %w", ref, err)
+	}
+	index := slices.IndexFunc(layers, func(layer ocispec.Descriptor) bool { return layer.Digest.String() == "sha256:"+digest })
+	if index < 0 {
+		return nil, fmt.Errorf("plugin artifact %s: sha256:%s is not a layer of its image manifest for %s", ref, digest, artifact.HostPlatform())
+	}
+	return pull.blob(ctx, layers[index])
+}
+
+// PullLayers pulls every layer of the image manifest the oci:// source
+// serves this host into the store, so the source can run offline later.
+func PullLayers(ctx context.Context, source string, options artifact.Options) error {
+	ctx, cancel := withTimeout(ctx, options)
+	defer cancel()
+	ref, err := artifact.ParseOCI(source)
+	if err != nil {
+		return err
+	}
+	pull, err := newPuller(ref, options)
+	if err != nil {
+		return err
+	}
+	layers, err := pull.hostLayers(ctx)
+	if err != nil {
+		return fmt.Errorf("plugin artifact %s: %w", ref, err)
+	}
+	for _, layer := range layers {
+		if _, err := pull.blob(ctx, layer); err != nil {
+			return fmt.Errorf("plugin artifact %s: %w", ref, err)
+		}
+	}
+	return nil
 }
 
 // Describe returns the image manifest and layer digests of every platform
