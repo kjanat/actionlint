@@ -169,6 +169,12 @@ source-file and fix capabilities. Those are not silently promised to injected en
 and rc-file requests fail until an explicit resource capability exists. Extending that contract needs source
 identity, content, dependencies and edit provenance.
 
+`script-engine@0.3.0` and core check 3 add those capabilities on the wire: declared `fixes` and
+`reported-sources`, per-diagnostic fixes and sources, excluded codes, and a `directory` resource that mounts the
+working directory read-only for one check. The shell preparation profile still prepares engine snippets without
+source following; enabling it for engines that hold the directory grant comes with the ShellCheck component
+rebuilt against 0.3.0.
+
 Backend completion is synchronous and diagnostics can accompany failure. The host bounds concurrent work,
 waits for every started operation, and rejects diagnostics that refer to a different virtual input. Caller-owned
 backends can be reused across documents; an adapter must serialize or pool instances when its runtime is not

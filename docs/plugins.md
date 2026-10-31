@@ -4,7 +4,9 @@ actionlint runs WebAssembly components that implement the `kjanat:actionlint/ana
 [`crates/actionlint-extension-api/wit/analyzer.wit`](../crates/actionlint-extension-api/wit/analyzer.wit). A plugin describes itself once, then receives one document per
 call with the facts it declared and returns diagnostics. Components may instead implement the independent
 `kjanat:actionlint/runner-provider@0.1.0` interface or the
-[`kjanat:actionlint/script-engine@0.1.0`](../crates/actionlint-extension-api/wit/script-engine.wit) interface. Components can implement multiple
+`kjanat:actionlint/script-engine` interface, version
+[0.2.0](../crates/actionlint-extension-api/wit/script-engine.wit) or
+[0.3.0](../crates/actionlint-extension-api/wit/0.3.0/script-engine.wit). Components can implement multiple
 roles. Any language with a component toolchain can implement them.
 
 Tool integrations are discovered through the optional
@@ -601,7 +603,30 @@ The preferred component interface is [`script-engine.wit`](../crates/actionlint-
 `script-engine-plugin`. It has typed `describe`, `validate-config` and `check` operations. Plugin-specific
 configuration is an engine-validated JSON object; shared descriptors, diagnostics and outcomes use WIT
 records. Coordinates count one-based Unicode scalar values, with exclusive range ends. An outcome can contain
-both findings and an incomplete-analysis error. This interface does not provide fix edits.
+both findings and an incomplete-analysis error.
+
+The host accepts two versions of the interface. A component exports exactly one of them; the host checks the
+exported version's complete type graph before running guest code and rejects any other version.
+
+- `kjanat:actionlint/script-engine@0.2.0` ([`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit))
+  returns diagnostics without fix edits and reads no files. It is the only version the optional
+  [`template-effects`](../crates/actionlint-extension-api/wit/template-effects.wit) export pairs with.
+- `kjanat:actionlint/script-engine@0.3.0` ([`0.3.0/script-engine.wit`](../crates/actionlint-extension-api/wit/0.3.0/script-engine.wit))
+  is the same contract as the process route's: what a manifest says about a native tool, the engine says in its
+  descriptor. The descriptor's `capabilities` record declares `fixes`, `reported-sources` and the `resources` the
+  engine needs for each check. The request adds `excluded`, the diagnostic codes the host's preparation profile
+  excludes (strings such as `SC1091`), and `directory`. Each diagnostic adds `fixes`, edits in snippet coordinates,
+  and `source`, a file the engine read besides the snippet. The diagnostic severity is the engine's own string,
+  such as `style`; the host maps it as it maps a process tool's severity.
+
+Resource negotiation: the only resource kind is `directory`, the script's working directory. When the engine
+requests it and the working directory is known, the host mounts that directory read-only at the guest path
+`/directory` for that one call and sets the request's `directory` to it. Otherwise `directory` is none and the
+engine sees no files. A `source` is a relative slash-separated path below the request directory, without `..`,
+backslashes or colons, and the host accepts it only when the engine declares `reported-sources` and the directory
+was granted for that check. A finding in a source has that file's positions and no fixes. The host rejects
+diagnostics that carry fixes or sources the engine did not declare. Files the engine reads without reporting a
+finding in them are not recorded for watch mode.
 
 [actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) supplies a component and a legacy core
 module built from the same analysis implementation. Both use the existing Ruff expression sanitizer, configuration
@@ -621,7 +646,9 @@ typed interface, runtime descriptor and static declaration before registering th
 the same component execution limits and lifecycle as the other component roles.
 
 Core modules use the version 1 JSON ABI: `check`, `validate_config` and `metadata` exports, no imports,
-and UTF-8 JSON in linear memory. The host checks the ABI version, export signatures and advertised operation versions,
+and UTF-8 JSON in linear memory. Check version 3 carries the same additions as script-engine 0.3.0 and is preferred
+when a module advertises it; modules that advertise only check 1 or 2 work unchanged (see
+[`core-json-abi.md`](../crates/actionlint-extension-api/wit/core-json-abi.md)). The host checks the ABI version, export signatures and advertised operation versions,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
 limit. Defined tables require finite maxima; conservative reservations for their maximum size and growth buffers share
 that memory budget with linear memory. Components charge each core instance, including repeated and nested modules;

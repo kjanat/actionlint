@@ -189,8 +189,12 @@ source or rc-file capability: requests for those features fail explicitly. Use n
 sourced-file diagnostics and fixes.
 
 These Go types are the host API. Component script engines use the typed
-[`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit) interface; legacy core engines keep their existing JSON ABI.
-The host adapts either transport to `analyzer.ScriptBackend`.
+[`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit) interface, version 0.2.0 or
+[0.3.0](../crates/actionlint-extension-api/wit/0.3.0/script-engine.wit); legacy core engines keep their existing JSON ABI,
+whose check version 3 matches 0.3.0. The host adapts either transport to `analyzer.ScriptBackend`. Engines on 0.3.0 or
+check 3 declare `Fixes`, `ReportedSources` and `Resources` in `analyzer.ScriptEngineDescriptor`, receive
+`ScriptRequest.Excluded`, and receive `ScriptRequest.Directory` when they request `analyzer.ToolDirectory`; their
+diagnostics may carry `Fixes` and `Source` as a process provider's do.
 
 ## Catalogue and source identity
 
