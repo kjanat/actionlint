@@ -27,7 +27,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("script source snapshot is unavailable")
 	}
 	if action, ok := declaration.Action(); ok {
@@ -67,7 +67,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 		}
 		request.Execution = scriptexecution.Execution{
 			Shell:     execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell),
-			Directory: paths.Resolve(paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir)),
+			Directory: paths.Resolve(paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir), analysis.reader),
 		}
 	}
 	analysis.scripts = append(analysis.scripts, request)
@@ -104,7 +104,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepVie
 		if site.Language == "" {
 			continue
 		}
-		if analysis.sourceSnapshot == nil {
+		if !analysis.sourceSnapshot.Present() {
 			return errors.New("action-input source snapshot is unavailable")
 		}
 		occurrence, err := analysis.invocations.AddScript(analysis.context, step.Reference(), invocation.ScriptActionInput, site.Input)

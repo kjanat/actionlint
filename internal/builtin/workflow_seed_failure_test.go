@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T) {
@@ -23,7 +24,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			if _, err := calls.ParseMetadata(calleeBytes); err == nil {
 				t.Fatal("fixture must fail reusable metadata parsing")
 			}
-			registry := newCapturedSnapshots(t, root)
+			store, registry := newCapturedSnapshots(t, root)
 			callee, err := registry.Document(calleePath, calleeBytes, documentparse.Workflow(calleePath, calleeBytes))
 			if err != nil {
 				t.Fatal(err)
@@ -48,8 +49,8 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				t.Fatal(err)
 			}
 			cache := calls.NewCache(root, root, nil)
-			cache.SetSources(t.Context(), registry.Sources.Store, root)
-			visit := func(snapshot *documentparse.SourceSnapshot) (int, int) {
+			cache.SetSources(t.Context(), store, root)
+			visit := func(snapshot documentparse.SourceSnapshot) (int, int) {
 				t.Helper()
 				workflow, available := snapshot.WorkflowView()
 				if !available {
@@ -57,10 +58,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				}
 				callRule := builtin.NewRuleWorkflowCall(snapshot, cache)
 				labelRule := builtin.NewRuleRunnerLabel()
-				visitor := engine.NewVisitor()
-				visitor.AddPass(callRule)
-				visitor.AddPass(labelRule)
-				if err := visitor.Visit(workflow); err != nil {
+				if err := engine.Visit(workflow, engine.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
 					t.Fatalf("metadata cache failure stopped recovered entry traversal: %v", err)
 				}
 				return len(callRule.Errs()), len(labelRule.Errs())

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // SnapshotFS exposes bounded, read-only file snapshots beneath an open root.
@@ -31,13 +32,61 @@ type SnapshotBudget struct {
 	mu             sync.Mutex
 	bytes          int64
 	files, lookups int
-	failure        error
+	failure        budgetError
+}
+
+// budgetError is the condition that invalidated a budget; every grant
+// sharing the budget reports it from Close. The zero value means none.
+type budgetError string
+
+const (
+	errIdentityChanged budgetError = "plugin source identity changed during lookup"
+	errTooManyFiles    budgetError = "plugin source files exceed 256 files"
+	errTooManyBytes    budgetError = "plugin source files exceed 8 MiB"
+	errTooManyLookups  budgetError = "plugin source files exceed 4096 lookups"
+)
+
+func (f budgetError) Error() string { return string(f) }
+
+// fail records failure and returns it. The caller holds b.mu.
+func (b *SnapshotBudget) fail(failure budgetError) error {
+	b.failure = failure
+	return failure
+}
+
+// err returns the recorded failure, or nil. The caller holds b.mu.
+func (b *SnapshotBudget) err() error {
+	if b.failure == "" {
+		return nil
+	}
+	return b.failure
 }
 
 type snapshotData struct {
 	content []byte
-	info    fs.FileInfo
+	info    fileInfo
 }
+
+// fileInfo is the metadata a guest sees: plain values detached from the host
+// stat result, whose Sys buffer would otherwise be shared by every holder.
+type fileInfo struct {
+	name                 string
+	size                 int64
+	mode                 fs.FileMode
+	seconds, nanoseconds int64
+}
+
+func detachInfo(info fs.FileInfo) fileInfo {
+	modified := info.ModTime()
+	return fileInfo{name: info.Name(), size: info.Size(), mode: info.Mode(), seconds: modified.Unix(), nanoseconds: int64(modified.Nanosecond())}
+}
+
+func (i fileInfo) Name() string       { return i.name }
+func (i fileInfo) Size() int64        { return i.size }
+func (i fileInfo) Mode() fs.FileMode  { return i.mode }
+func (i fileInfo) ModTime() time.Time { return time.Unix(i.seconds, i.nanoseconds) }
+func (i fileInfo) IsDir() bool        { return i.mode.IsDir() }
+func (fileInfo) Sys() any             { return nil }
 
 type snapshotName struct {
 	path string
@@ -73,7 +122,7 @@ func newSnapshot(ctx context.Context, root *os.Root, reader *Reader, budget *Sna
 func (s *SnapshotFS) Close() error {
 	s.budget.mu.Lock()
 	defer s.budget.mu.Unlock()
-	return errors.Join(s.root.Close(), s.budget.failure)
+	return errors.Join(s.root.Close(), s.budget.err())
 }
 
 func (s *SnapshotFS) Open(name string) (fs.File, error) {
@@ -117,8 +166,7 @@ func (s *SnapshotFS) open(name string) (fs.File, error) {
 	}
 	if !os.SameFile(resolved.info, info) {
 		s.budget.mu.Lock()
-		s.budget.failure = errors.New("plugin source identity changed during lookup")
-		err = s.budget.failure
+		err = s.budget.fail(errIdentityChanged)
 		s.budget.mu.Unlock()
 		return nil, errors.Join(err, file.Close())
 	}
@@ -126,7 +174,7 @@ func (s *SnapshotFS) open(name string) (fs.File, error) {
 		if err := file.Close(); err != nil {
 			return nil, err
 		}
-		return snapshotDirectory{fs: s, name: name, info: info}, nil
+		return snapshotDirectory{fs: s, name: name, info: detachInfo(info)}, nil
 	}
 	if !info.Mode().IsRegular() {
 		return nil, errors.Join(fs.ErrPermission, file.Close())
@@ -134,8 +182,7 @@ func (s *SnapshotFS) open(name string) (fs.File, error) {
 	s.budget.mu.Lock()
 	defer s.budget.mu.Unlock()
 	if s.budget.files >= 256 {
-		s.budget.failure = errors.New("plugin source files exceed 256 files")
-		return nil, errors.Join(s.budget.failure, file.Close())
+		return nil, errors.Join(s.budget.fail(errTooManyFiles), file.Close())
 	}
 	const limit = 8 << 20
 	data, err := io.ReadAll(io.LimitReader(file, limit-s.budget.bytes+1))
@@ -144,22 +191,21 @@ func (s *SnapshotFS) open(name string) (fs.File, error) {
 		return nil, err
 	}
 	if int64(len(data))+s.budget.bytes > limit {
-		s.budget.failure = errors.New("plugin source files exceed 8 MiB")
-		return nil, s.budget.failure
+		return nil, s.budget.fail(errTooManyBytes)
 	}
 	s.budget.bytes += int64(len(data))
 	s.budget.files++
-	s.files[name] = &snapshotData{content: data, info: info}
+	detached := detachInfo(info)
+	s.files[name] = &snapshotData{content: data, info: detached}
 	s.reader.Record(filepath.Join(s.root.Name(), filepath.FromSlash(name)))
-	return &snapshotFile{Reader: bytes.NewReader(data), info: info}, nil
+	return &snapshotFile{Reader: bytes.NewReader(data), info: detached}, nil
 }
 
 func (s *SnapshotFS) lookup(name string) error {
 	s.budget.mu.Lock()
 	defer s.budget.mu.Unlock()
 	if s.budget.lookups >= 4096 {
-		s.budget.failure = errors.New("plugin source files exceed 4096 lookups")
-		return s.budget.failure
+		return s.budget.fail(errTooManyLookups)
 	}
 	s.budget.lookups++
 	s.reader.Record(filepath.Join(s.root.Name(), filepath.FromSlash(name)))
@@ -286,7 +332,7 @@ func sourceSpelling(name string) string {
 
 type snapshotFile struct {
 	*bytes.Reader
-	info fs.FileInfo
+	info fileInfo
 }
 
 func (f *snapshotFile) Stat() (fs.FileInfo, error) { return f.info, nil }
@@ -295,7 +341,7 @@ func (*snapshotFile) Close() error                 { return nil }
 type snapshotDirectory struct {
 	fs   *SnapshotFS
 	name string
-	info fs.FileInfo
+	info fileInfo
 }
 
 func (d snapshotDirectory) Stat() (fs.FileInfo, error) { return d.info, nil }
@@ -342,5 +388,9 @@ func (d snapshotDirectory) StatAt(name string) (fs.FileInfo, error) {
 	if data := d.fs.files[name]; data != nil {
 		return data.info, nil
 	}
-	return d.fs.root.Stat(filepath.FromSlash(name))
+	info, err := d.fs.root.Stat(filepath.FromSlash(name))
+	if err != nil {
+		return nil, err
+	}
+	return detachInfo(info), nil
 }

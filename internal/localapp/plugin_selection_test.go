@@ -193,7 +193,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := f.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	r.Offline = true
+	r.SetOffline(true)
 	for range 2 {
 		result, err := analyzeDocuments(t.Context(), session.options, map[string]langserver.Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"}})
 		if err != nil {

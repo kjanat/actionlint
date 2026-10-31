@@ -147,15 +147,15 @@ func Suppressible(name string, additional ...string) bool {
 }
 
 func boolRuleOption(field func(*Policy) **bool) func(*Config, Setting) {
-	return func(c *Config, s Setting) { *field(&c.Policy) = new(s.Level != "off") }
+	return func(c *Config, s Setting) { *field(&c.Policy) = new(s.Level() != "off") }
 }
 
 func configureJobTimeout(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.RequireJobTimeout = nil
 		return
 	}
-	if options, ok := s.Options.(*JobTimeoutPolicy); ok {
+	if options := new(JobTimeoutPolicy); loadOptions(s, options) {
 		c.Policy.RequireJobTimeout = options
 	} else if !c.Policy.RequireJobTimeout.Enabled() {
 		c.Policy.RequireJobTimeout = RequireJobTimeout(0)
@@ -163,11 +163,11 @@ func configureJobTimeout(c *Config, s Setting) {
 }
 
 func configurePermissions(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.RequirePermissions = nil
 		return
 	}
-	if options, ok := s.Options.(*PermissionsPolicy); ok {
+	if options := new(PermissionsPolicy); loadOptions(s, options) {
 		c.Policy.RequirePermissions = options
 	} else if !c.Policy.RequirePermissions.Enabled() {
 		c.Policy.RequirePermissions, _ = RequirePermissions("workflow")
@@ -175,11 +175,11 @@ func configurePermissions(c *Config, s Setting) {
 }
 
 func configureSuppressionsPolicy(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.DisallowSuppressions = nil
 		return
 	}
-	if options, ok := s.Options.(*SuppressionsPolicy); ok {
+	if options := new(SuppressionsPolicy); loadOptions(s, options) {
 		c.Policy.DisallowSuppressions = options
 	} else if !c.Policy.DisallowSuppressions.Enabled() {
 		c.Policy.DisallowSuppressions, _ = DisallowSuppressions("all")
@@ -187,11 +187,11 @@ func configureSuppressionsPolicy(c *Config, s Setting) {
 }
 
 func configureRequiredActions(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.RequiredActions = nil
 		return
 	}
-	if options, ok := s.Options.(*RequiredActionsOptions); ok {
+	if options := new(RequiredActionsOptions); loadOptions(s, options) {
 		c.Policy.RequiredActions = options.Actions
 	}
 }

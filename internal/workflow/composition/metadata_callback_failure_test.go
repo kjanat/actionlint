@@ -18,7 +18,7 @@ type failingMetadataParticipant struct {
 	failure error
 }
 
-func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error {
+func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error {
 	return nil
 }
 
@@ -44,15 +44,15 @@ func TestMetadataCallbackFailurePreservesFindingAndSource(t *testing.T) {
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
 	failure := errors.New("metadata validation failed")
-	f.service.options.Rules = []workflowvisit.Rule{&failingMetadataParticipant{Base: workflowvisit.NewBase("metadata-probe", ""), failure: failure}}
-	result, err := f.service.Workflow(f.root)
+	f.options.Rules = []workflowvisit.Rule{&failingMetadataParticipant{Base: workflowvisit.NewBase("metadata-probe", ""), failure: failure}}
+	result, err := Workflow(f.options, f.root)
 	if !errors.Is(err, failure) || len(result.Findings) != 1 {
 		t.Fatalf("partial metadata result lost: error=%v findings=%v", err, result.Findings)
 	}
 	snapshot := f.actionSnapshot(t, "$/outer")
 	step := actionStepViews(t, snapshot)[0]
 	finding := result.Findings[0]
-	if finding.Message != "partial metadata result" || finding.Path != filepath.Join(f.service.options.Paths.Workspace, "outer", "action.yml") || !bytes.Equal(finding.Source, []byte(outer)) || finding.Reference == nil || *finding.Reference != step.Reference() {
+	if finding.Message != "partial metadata result" || finding.Path != filepath.Join(f.options.Paths.Workspace, "outer", "action.yml") || !bytes.Equal(finding.Source, []byte(outer)) || finding.Reference == nil || *finding.Reference != step.Reference() {
 		t.Fatalf("partial metadata result has incorrect provenance: %+v", finding)
 	}
 }

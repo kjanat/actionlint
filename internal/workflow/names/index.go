@@ -15,10 +15,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
-// Names is a complete inventory only when every workflow name could be read.
+// Names is an immutable workflow-name inventory handle shared by concurrent
+// checks. It is complete only when every workflow name could be read.
 type Names struct {
-	Values   map[string]bool
-	Complete bool
+	values   map[string]bool
+	complete bool
 }
 
 // Index shares immutable inventories across concurrent workflow checks.
@@ -194,11 +195,11 @@ func (i *Index) ForRoot(root string) (Names, error) {
 	}
 	if !exists {
 		load = sync.OnceValues(func() (Names, error) {
-			names := Names{Values: map[string]bool{}, Complete: true}
+			names := Names{values: map[string]bool{}, complete: true}
 			dir := filepath.Join(root, ".github", "workflows")
 			entries, err := i.reader.ReadDir(dir)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				names.Complete = false
+				names.complete = false
 			}
 			var candidates []string
 			for _, entry := range entries {
@@ -219,11 +220,11 @@ func (i *Index) ForRoot(root string) (Names, error) {
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 						return names, err
 					}
-					names.Complete = false
+					names.complete = false
 					continue
 				}
 				if !known {
-					names.Complete = false
+					names.complete = false
 					continue
 				}
 				if name == "" {
@@ -236,7 +237,7 @@ func (i *Index) ForRoot(root string) (Names, error) {
 					}
 					name = ".github/workflows/" + filename
 				}
-				names.Values[name] = true
+				names.values[name] = true
 			}
 			return names, nil
 		})

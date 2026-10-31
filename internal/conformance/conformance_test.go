@@ -373,7 +373,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		checker := exprlang.NewChecker(false, nil)
 		contexts := map[string]exprlang.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = exprlang.AnyType{}
+			contexts[strings.ToLower(name)] = exprlang.AnyType()
 		}
 		checker.SetContextTypes(contexts)
 		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
@@ -389,16 +389,20 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				diagnostics = append(diagnostics, errs...)
 			case *exprlang.FuncCallNode:
 				callChecker := exprlang.NewChecker(false, nil)
-				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType{}})
+				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
 				args := make([]exprlang.Node, len(n.Args))
 				for i := range args {
-					argument, err := parser.Parse(exprlang.NewLexer("argument}}"))
+					parsed, err := parser.Parse(exprlang.NewLexer("argument}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					*argument.Token() = *n.Args[i].Token()
+					argument, ok := parsed.(*exprlang.VariableNode)
+					if !ok {
+						t.Fatalf("argument placeholder parsed as %T", parsed)
+					}
+					argument.First = n.Args[i].Token()
 					args[i] = argument
 				}
 				call := *n

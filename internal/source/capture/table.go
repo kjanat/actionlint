@@ -35,7 +35,7 @@ type Source struct {
 
 func state(e *entry) State {
 	switch {
-	case e.conflict != nil:
+	case e.conflicted():
 		return Conflicted
 	case e.done == nil:
 		return Absent

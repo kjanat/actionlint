@@ -31,7 +31,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if !plan.Changed || !bytes.Contains(plan.Content, []byte("shellcheck")) || !bytes.Contains(plan.Content, []byte("ruff")) {
 		t.Fatalf("missing defaults: %s", plan.Content)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 	if err := plan.Apply(t.Context()); err == nil {
 		t.Fatal("offline default resolution succeeded")
 	}
@@ -42,7 +42,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
 		t.Fatalf("failed migration wrote lock: %v", err)
 	}
-	registry.Offline = false
+	registry.SetOffline(false)
 	if err := plan.Apply(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +54,12 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err != nil || len(lock.Lock.Plugins) != 2 {
 		t.Fatalf("default pins: %+v %v", lock, err)
 	}
-	registry.Offline = true
-	before := len(registry.Requests)
+	registry.SetOffline(true)
+	before := len(registry.Requests())
 	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
-	if len(registry.Requests) != before {
+	if len(registry.Requests()) != before {
 		t.Fatal("already migrated config contacted registry")
 	}
 }
@@ -96,7 +96,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 
 	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name != pin.Name || migrated.Plugins[0].Version != pin.Selector || migrated.Plugins[0].Registry != pin.Registry {
+	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name() != pin.Name || migrated.Plugins[0].Version() != pin.Selector || migrated.Plugins[0].Registry() != pin.Registry {
 		t.Fatalf("lock-only plugin selection changed: %+v, %v", migrated.Plugins, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), pluginregistry.LockName))
@@ -144,7 +144,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name != "github.com/publisher/base" || manifest.References[1].Name != "github.com/publisher/next" {
+	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name() != "github.com/publisher/base" || manifest.References[1].Name() != "github.com/publisher/next" {
 		t.Fatalf("leaf stopped inheriting plugins: %+v", manifest.References)
 	}
 }
@@ -375,7 +375,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	if err != nil || len(cfg.Plugins) != 2 {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 	if _, err := InitializeConfig(t.Context(), root, "2.0.0"); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
 	}
@@ -414,7 +414,7 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg, err := config.Load(path)
-			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != name || cfg.Plugins[0].Version != pin.Selector || cfg.Plugins[0].Registry != pin.Registry {
+			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != name || cfg.Plugins[0].Version() != pin.Selector || cfg.Plugins[0].Registry() != pin.Registry {
 				t.Fatalf("locked selection changed: %+v, %v", cfg, err)
 			}
 			lock, err := pluginregistry.OpenLock(t.Context(), project.Lock.Path)

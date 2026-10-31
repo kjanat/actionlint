@@ -14,14 +14,14 @@ func ValidPattern(pattern string) bool {
 // Missing reports positive workflow filters that match no known producer.
 // Invalid patterns and exclusion filters cannot establish a missing producer.
 func (n Names) Missing(pattern string) bool {
-	if !n.Complete || strings.HasPrefix(pattern, "!") {
+	if !n.complete || strings.HasPrefix(pattern, "!") {
 		return false
 	}
 	rx, ok := compilePattern(pattern)
 	if !ok {
 		return false
 	}
-	for name := range n.Values {
+	for name := range n.values {
 		if rx.MatchString(name) {
 			return false
 		}
@@ -32,7 +32,7 @@ func (n Names) Missing(pattern string) bool {
 // ExcludesAll reports when an ordered filter list removes all its positive matches.
 // Incomplete inventories and invalid patterns leave the result uncertain.
 func (n Names) ExcludesAll(patterns []string) bool {
-	if !n.Complete {
+	if !n.complete {
 		return false
 	}
 	selected := make(map[string]bool)
@@ -43,7 +43,7 @@ func (n Names) ExcludesAll(patterns []string) bool {
 		if !valid {
 			return false
 		}
-		for name := range n.Values {
+		for name := range n.values {
 			if !rx.MatchString(name) {
 				continue
 			}

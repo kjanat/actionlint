@@ -150,7 +150,7 @@ func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 type sharedCompositeObserver struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
-	snapshots *[]*documentparse.SourceSnapshot
+	snapshots *[]documentparse.SourceSnapshot
 	steps     *[]workflowdecl.StepView
 }
 
@@ -180,7 +180,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	}
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 	var mu sync.Mutex
-	var snapshots []*documentparse.SourceSnapshot
+	var snapshots []documentparse.SourceSnapshot
 	var steps []workflowdecl.StepView
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
@@ -197,7 +197,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	if err != nil || result == nil {
 		t.Fatalf("shared composite analysis failed: %v", err)
 	}
-	if len(snapshots) != 2 || snapshots[0] != snapshots[1] || snapshots[0] == nil || len(steps) != 2 || steps[0] != steps[1] {
+	if len(snapshots) != 2 || snapshots[0] != snapshots[1] || !snapshots[0].Present() || len(steps) != 2 || steps[0] != steps[1] {
 		t.Fatalf("default rules did not traverse one shared composite AST: snapshots=%p steps=%p", snapshots, steps)
 	}
 	if toolCalls.Load() != 2 {
@@ -214,7 +214,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	directory := t.TempDir()
 	badPath, goodPath := filepath.Join(directory, "bad.yml"), filepath.Join(directory, "good.yml")
 	content := []byte(commandGoodWorkflow)
-	fixture := capturefixture.NewCapturedSources(t, directory)
+	store, fixture := capturefixture.NewCapturedSources(t, directory)
 	bad, err := fixture.Capture(badPath, content, source.YAML)
 	if err != nil {
 		t.Fatal(err)
@@ -232,19 +232,19 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: badPath})},
 		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: goodPath})},
 	}}
-	_, err = fixture.Store.Read(t.Context(), badPath, source.RawLF)
-	conflict, conflicted := errors.AsType[*capture.ConflictError](err)
+	_, err = store.Read(t.Context(), badPath, source.RawLF)
+	conflict, conflicted := errors.AsType[capture.ConflictError](err)
 	if !conflicted {
 		t.Fatalf("model disagreement accepted: %v", err)
 	}
-	if err := fixture.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := fixture.Store.Sources()
+	rows, err := store.Sources()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := result.revalidateCaptures(fixture.Store, rows, directory, nil); !errors.Is(err, conflict) {
+	if err := result.revalidateCaptures(store, rows, directory, nil); !errors.Is(err, conflict) {
 		t.Fatalf("publication lost source conflict: %v", err)
 	}
 	if result.files[0].outline != nil || len(result.files[0].errors) != 0 {

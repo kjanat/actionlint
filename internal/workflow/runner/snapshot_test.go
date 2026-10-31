@@ -89,7 +89,7 @@ func TestSnapshotSelectionAndIdentity(t *testing.T) {
 	workflow := runnerWorkflow(t, "desktop-pool")
 	options := runnerapi.Options{Snapshot: runnerapi.Snapshot{Content: desktopInventory, Scope: "repo", Freshness: runnerapi.Fresh, Complete: true}}
 	knowledge, err := Prepare(t.Context(), workflow.Snapshot, nil, options, "repo")
-	if err != nil || knowledge.Report.Provider.Name != "github" || len(knowledge.Job(workflow.Views["test"]).Findings) != 1 {
+	if err != nil || knowledge.Report().Provider.Name != "github" || len(knowledge.Job(workflow.Views["test"]).Findings) != 1 {
 		t.Fatalf("snapshot silently selected provider: %+v, %v", knowledge, err)
 	}
 	options.Provider = "snapshot"
@@ -97,14 +97,14 @@ func TestSnapshotSelectionAndIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity := knowledge.Report.Identity
+	identity := knowledge.Report().Identity
 	options.Snapshot.Content = `{"runners":[{"name":"desktop","labels":["desktop-pool"]}]}`
 	knowledge, err = Prepare(t.Context(), workflow.Snapshot, nil, options, "repo")
 	if err != nil {
 		t.Fatal(err)
 	}
 	job := knowledge.Job(workflow.Views["test"])
-	if knowledge.Report.Identity == identity || job.Platform != Any || job.Shell != "" || job.PathsKnown {
+	if knowledge.Report().Identity == identity || job.Platform != Any || job.Shell != "" || job.PathsKnown {
 		t.Fatalf("missing facts or changed identity mishandled: %+v", knowledge)
 	}
 	options.Snapshot = runnerapi.Snapshot{}

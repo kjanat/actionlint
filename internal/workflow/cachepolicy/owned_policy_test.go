@@ -56,13 +56,13 @@ func TestReusableMetadataGrantBoundary(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name               string
-		mode               *workflowlang.CacheMode
+		mode               calls.CacheModeDeclaration
 		ceiling, operation int
 	}{
-		{"inherited", nil, 0, 1},
-		{"invalid", &workflowlang.CacheMode{Kind: workflowlang.CacheModeInvalid}, 0, 0},
-		{"explicit read", &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead}, 0, 0},
-		{"explicit write exceeds caller", &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite}, 1, 0},
+		{"inherited", calls.CacheModeDeclaration{}, 0, 1},
+		{"invalid", calls.DeclaredCacheMode(workflowlang.CacheModeInvalid), 0, 0},
+		{"explicit read", calls.DeclaredCacheMode(workflowlang.CacheModeRead), 0, 0},
+		{"explicit write exceeds caller", calls.DeclaredCacheMode(workflowlang.CacheModeWrite), 1, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			metadata := &calls.Metadata{JobCacheAccess: map[string]calls.CacheAccess{

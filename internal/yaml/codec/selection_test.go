@@ -105,8 +105,8 @@ func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
 	if !gotOK || !wantOK {
 		t.Fatalf("selection cycle error = %T %v; upstream = %T %v", gotErr, gotErr, wantErr, wantErr)
 	}
-	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || gotLoad.Error() != wantLoad.Error() {
-		t.Fatalf("selection cycle error (%q, %+v), upstream (%q, %+v)", gotLoad.Error(), gotLoad.Mark, wantLoad.Error(), wantLoad.Mark)
+	if gotLoad.Message() != wantLoad.Message || gotLoad.Mark().Line != wantLoad.Mark.Line || gotLoad.Mark().Column != wantLoad.Mark.Column || gotLoad.Error() != wantLoad.Error() {
+		t.Fatalf("selection cycle error (%q, %+v), upstream (%q, %+v)", gotLoad.Error(), gotLoad.Mark(), wantLoad.Error(), wantLoad.Mark)
 	}
 	if root.Content[0].Content[3] != copyNode || copyNode.Alias != root.Content[0].Content[1] {
 		t.Fatal("selection changed the caller's alias graph")
@@ -268,7 +268,7 @@ func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
 	if !gotOK || !wantOK {
 		t.Fatalf("selection error = %T %v; upstream = %T %v", gotErr, gotErr, wantErr, wantErr)
 	}
-	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Index != wantLoad.Mark.Index || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || gotLoad.Error() != wantLoad.Error() {
+	if gotLoad.Message() != wantLoad.Message || gotLoad.Mark().Index != wantLoad.Mark.Index || gotLoad.Mark().Line != wantLoad.Mark.Line || gotLoad.Mark().Column != wantLoad.Mark.Column || gotLoad.Error() != wantLoad.Error() {
 		t.Fatalf("selection limit=%v, upstream=%v", gotLoad, wantLoad)
 	}
 	if !strings.Contains(gotErr.Error(), "document contains excessive aliasing") {

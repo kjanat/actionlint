@@ -113,8 +113,8 @@ func assertCursorAliasErrorMatchesUpstream(t *testing.T, got, want error) {
 	if !gotOK || !wantOK {
 		t.Fatalf("codec error = %T %v; upstream error = %T %v", got, got, want, want)
 	}
-	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column {
-		t.Errorf("codec alias diagnostic (%q, %+v), upstream (%q, %+v)", gotLoad.Message, gotLoad.Mark, wantLoad.Message, wantLoad.Mark)
+	if gotLoad.Message() != wantLoad.Message || gotLoad.Mark().Line != wantLoad.Mark.Line || gotLoad.Mark().Column != wantLoad.Mark.Column {
+		t.Errorf("codec alias diagnostic (%q, %+v), upstream (%q, %+v)", gotLoad.Message(), gotLoad.Mark(), wantLoad.Message, wantLoad.Mark)
 	}
 	if gotLoad.Error() != wantLoad.Error() {
 		t.Errorf("codec alias error text = %q, upstream = %q", gotLoad.Error(), wantLoad.Error())

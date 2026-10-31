@@ -267,7 +267,7 @@ func onlyUnknownInputFields(err error) bool {
 		return false
 	}
 	for _, issue := range issues.Errors {
-		if !strings.HasPrefix(issue.Message, "unexpected key ") || !strings.Contains(issue.Message, " for definition of input ") {
+		if !strings.HasPrefix(issue.Message(), "unexpected key ") || !strings.Contains(issue.Message(), " for definition of input ") {
 			return false
 		}
 	}

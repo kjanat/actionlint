@@ -76,7 +76,7 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 			if tc.index {
 				url = testutil.FixtureRegistryURL + "index.json"
 			}
-			r.Files[url] = bytes.Replace(r.Files[url], []byte(tc.before), []byte(tc.after), 1)
+			r.SetFile(url, bytes.Replace(r.File(url), []byte(tc.before), []byte(tc.after), 1))
 			if _, err := registryClient(t).Resolve(t.Context(), testutil.FixturePluginName, "v1.0.0"); err == nil {
 				t.Fatal("accepted inconsistent registry response")
 			}
@@ -88,14 +88,14 @@ func TestRegistryLegacyAndUnknownContract(t *testing.T) {
 	r := testutil.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
 	url := r.RecordURL("v1.0.0")
-	data := bytes.ReplaceAll(r.Files[url], []byte("kjanat:actionlint/analyzer@0.1.0"), []byte("vendor:future/analyzer@9.0.0"))
+	data := bytes.ReplaceAll(r.File(url), []byte("kjanat:actionlint/analyzer@0.1.0"), []byte("vendor:future/analyzer@9.0.0"))
 	data = bytes.Replace(data, []byte(`"metadata_version":1`), []byte(`"metadata_version":1,"abi_version":{"vendor":"extension"}`), 1)
-	r.Files[url] = data
+	r.SetFile(url, data)
 	if _, err := registryClient(t).Resolve(t.Context(), testutil.FixturePluginName, "v1.0.0"); err != nil {
 		t.Fatalf("admission coupled to host: %v", err)
 	}
 	data = bytes.Replace(data, []byte(`"record_version":2,`), nil, 1)
-	r.Files[url] = bytes.Replace(data, []byte(`"artifact":`), []byte(`"validation":`), 1)
+	r.SetFile(url, bytes.Replace(data, []byte(`"artifact":`), []byte(`"validation":`), 1))
 	if _, err := registryClient(t).Resolve(t.Context(), testutil.FixturePluginName, "v1.0.0"); err != nil {
 		t.Fatalf("legacy: %v", err)
 	}
@@ -127,12 +127,12 @@ func TestPinnedSyncAndLockTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	if err := stale.Lock.Sync(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("offline sync contacted network")
 	}
 	changed := p
@@ -227,13 +227,13 @@ func TestCompressedRegistryArtifact(t *testing.T) {
 	}
 	oldHash := fmt.Sprintf("%x", sha256.Sum256(raw))
 	newHash := fmt.Sprintf("%x", sha256.Sum256(compressed.Bytes()))
-	for url, data := range r.Files {
+	for url, data := range r.Files() {
 		if strings.HasPrefix(url, testutil.FixtureRegistryURL) {
 			data = bytes.ReplaceAll(data, []byte("plugin.wasm"), []byte("plugin.wasm.gz"))
-			r.Files[url] = bytes.ReplaceAll(data, []byte(oldHash), []byte(newHash))
+			r.SetFile(url, bytes.ReplaceAll(data, []byte(oldHash), []byte(newHash)))
 		}
 	}
-	r.Files["https://"+testutil.FixturePluginName+"/releases/download/v1.0.0/plugin.wasm.gz"] = compressed.Bytes()
+	r.SetFile("https://"+testutil.FixturePluginName+"/releases/download/v1.0.0/plugin.wasm.gz", compressed.Bytes())
 	p, err := registryClient(t).Resolve(t.Context(), testutil.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)

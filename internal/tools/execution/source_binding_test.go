@@ -19,22 +19,22 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string) {
+func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, documentparse.SourceSnapshot, string) {
 	graph, collection, snapshot, path, _ := actionBatchFixtureWithDocument(t, mapped)
 	return graph, collection, snapshot, path
 }
 
-func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string, documentparse.Document) {
+func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph, Collection, documentparse.SourceSnapshot, string, documentparse.Document) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "source", "action.yml")
 	content := []byte("name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n    - shell: sh\n      run: echo second\n")
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	document := documentparse.Action(path, path, content)
 	snapshot, err := snapshots.Document(path, content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, path, path, mapped)
+	deployment, err := NewDeployment(registry, snapshot, path, path, mapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 	}
 	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &repoconfig.Config{}}
 	workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
-	collection := Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Collected: true}
+	collection := Collection{Declarations: registry, Scopes: []*Scope{scope}, Collected: true}
 	body, available := snapshot.ActionView()
 	steps := slices.Collect(body.Steps())
 	if !available || len(steps) != 2 {
@@ -115,7 +115,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			if !isRun || !present || run.Run().Value() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
 				t.Fatal("returned declaration mutated the registry")
 			}
-			originalRun := originalDocument.Facts().Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)
+			originalRun := originalDocument.Facts.Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)
 			originalRun.Run.Value = "changed original"
 
 			*collection.Scripts[0].DefaultShell = "changed default"
@@ -129,23 +129,23 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 }
 
 func TestDeploymentRejectsForeignSources(t *testing.T) {
-	_, _, action, path := actionBatchFixture(t, false)
+	_, actionCollection, action, path := actionBatchFixture(t, false)
 	graph, workflow := batchFixture(t, false)
 	root, _ := workflow.Declarations.Lookup(graph.Entry().Reference)
-	for name, snapshot := range map[string]*documentparse.SourceSnapshot{"nil": nil, "workflow": root, "zero": {}} {
+	for name, snapshot := range map[string]documentparse.SourceSnapshot{"workflow": root, "zero": {}} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := NewDeployment(snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
+			if _, err := NewDeployment(actionCollection.Declarations, snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("foreign deployment accepted: %v", err)
 			}
 		})
 	}
 	for _, wrong := range []string{"", filepath.Join(filepath.Dir(path), "other.yml")} {
-		if _, err := NewDeployment(action, wrong, wrong, false); !errors.Is(err, ErrInvalidBatch) {
+		if _, err := NewDeployment(actionCollection.Declarations, action, wrong, wrong, false); !errors.Is(err, ErrInvalidBatch) {
 			t.Fatalf("foreign display path accepted: %v", err)
 		}
 	}
 	foreignGraph, foreign, _, _ := actionBatchFixture(t, false)
-	deployment, err := NewDeployment(action, path, path, false)
+	deployment, err := NewDeployment(actionCollection.Declarations, action, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,12 +226,12 @@ func TestBatchRetainsPartialScriptsAfterCancellation(t *testing.T) {
 func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: node\ndescription: node\nruns: {using: node24, main: index.js}\n")
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, path, path, false)
+	deployment, err := NewDeployment(registry, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,12 +263,12 @@ func TestDeploymentPreservesWindowsDisplaySeparators(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows path separator equivalence")
 	}
-	_, _, snapshot, path := actionBatchFixture(t, false)
+	_, collection, snapshot, path := actionBatchFixture(t, false)
 	if !strings.Contains(path, `\`) {
 		t.Fatal("fixture did not provide a Windows display path")
 	}
 	for _, display := range []string{path, filepath.ToSlash(path)} {
-		deployment, err := NewDeployment(snapshot, path, display, false)
+		deployment, err := NewDeployment(collection.Declarations, snapshot, path, display, false)
 		if err != nil || deployment.SourcePath() != display || deployment.reference != snapshot.Reference() {
 			t.Fatalf("display separator normalization changed source identity: %+v %v", deployment, err)
 		}
@@ -290,16 +290,16 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, store, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
 	content := snapshot.Content()
-	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
+	snapshot, err := fixture.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := registry.Sources.Capture(alias, content, source.YAML); err != nil {
+	if _, err := fixture.Capture(alias, content, source.YAML); err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, alias, alias, false)
+	deployment, err := NewDeployment(registry, snapshot, alias, alias, false)
 	if err != nil || deployment.SourcePath() != alias || deployment.reference != snapshot.Reference() {
 		t.Fatalf("stable symlink alias rejected: %+v %v", deployment, err)
 	}
@@ -313,13 +313,13 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if err := os.Symlink(other, alias); err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.Sources.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if deployment, err := NewDeployment(snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
+	if deployment, err := NewDeployment(registry, snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
 		t.Fatalf("retargeted alias changed its captured identity after sealing: %+v %v", deployment, err)
 	}
-	if _, err := NewDeployment(snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
+	if _, err := NewDeployment(registry, snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
 		t.Fatalf("uncaptured target address accepted: %v", err)
 	}
 }

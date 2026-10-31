@@ -44,7 +44,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	if err := lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Requests = nil
+	registry.ResetRequests()
 	selection := SelectionWithTools(PluginSelection{LockFile: lock.Path}, []string{"no-sudo"}, []string{"no-sudo"})
 	sources, err := selection.Resolve(t.Context(), t.TempDir(), application.Input{})
 	if err != nil {
@@ -59,8 +59,8 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	if slices.ContainsFunc(result.Diagnostics, func(finding diagnostic.Diagnostic) bool { return finding.Rule == "no-sudo" }) {
 		t.Fatalf("disabled plugin analyzed the script: %+v", result.Diagnostics)
 	}
-	if slices.Contains(registry.Requests, pin.URL) {
-		t.Fatalf("disabled plugin was downloaded: %v", registry.Requests)
+	if requests := registry.Requests(); slices.Contains(requests, pin.URL) {
+		t.Fatalf("disabled plugin was downloaded: %v", requests)
 	}
 }
 

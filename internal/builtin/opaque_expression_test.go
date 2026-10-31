@@ -16,7 +16,7 @@ func TestOpaqueActionExpressionsUseInvocationFrameWithoutWorkflowDuplicates(t *t
 			root := t.TempDir()
 			path := filepath.Join(root, "action.yml")
 			content := []byte("name: opaque\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with:\n        script: ${{ github.event.issue.title }}\n")
-			registry := declarations.NewCapturedSnapshots(t, root)
+			_, _, registry := declarations.NewCapturedSnapshots(t, root)
 			snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
 			if err != nil {
 				t.Fatal(err)
@@ -26,7 +26,7 @@ func TestOpaqueActionExpressionsUseInvocationFrameWithoutWorkflowDuplicates(t *t
 			if !present || len(steps) != 1 {
 				t.Fatal("captured opaque action step absent")
 			}
-			rule := NewRuleExpression(nil, nil)
+			rule := newRuleExpression(nil, nil, nil)
 			if inside {
 				builder, err := invocation.NewBuilder(invocation.EntryAction, snapshot.Reference(), invocation.DefaultBudget())
 				if err != nil {

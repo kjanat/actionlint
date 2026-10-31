@@ -121,8 +121,8 @@ jobs:
 			if len(rule.Findings()) != 0 {
 				t.Fatal(rule.Findings())
 			}
-			if got := ty.Props["item"].String(); got != tc.want {
-				t.Fatalf("want %s, got %s", tc.want, got)
+			if item, _ := ty.Property("item"); item.String() != tc.want {
+				t.Fatalf("want %s, got %s", tc.want, item)
 			}
 		})
 	}

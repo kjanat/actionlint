@@ -6,7 +6,7 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
-func Type(workflow workflowdecl.WorkflowView) *expr.ObjectType {
+func Type(workflow workflowdecl.WorkflowView) expr.ObjectType {
 	if !workflow.Present() {
 		return expr.NewEmptyObjectType()
 	}

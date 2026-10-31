@@ -13,9 +13,9 @@ func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {
 	if !document.CanAnalyze() || document.Metadata == nil || document.Workflow != nil {
 		t.Fatalf("action entered workflow representation: %+v", document)
 	}
-	facts := document.Facts()
-	if facts == nil || len(facts.Jobs[""].Steps) != 1 || document.Facts() != facts {
-		t.Fatal("action facts are missing or unstable across consumers")
+	facts := document.Facts
+	if facts == nil || len(facts.Jobs[""].Steps) != 1 {
+		t.Fatal("action facts are missing")
 	}
 	refs := References("/project/action.yml", source, document, nil, filepath.Clean)
 	steps := refs["/project/action.yml"].Steps

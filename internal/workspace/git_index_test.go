@@ -58,16 +58,16 @@ exec "$ACTIONLINT_TEST_REAL_GIT" "$@"
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("ACTIONLINT_TEST_INDEX_MODE", tc.mode)
 			t.Setenv("ACTIONLINT_TEST_INDEX_OUTPUT", tc.output)
-			snapshot := (&workspace.IndexCache{}).Load(t.Context(), root)
+			snapshot, err := workspace.ReadIndex(t.Context(), root)
 			if tc.invalid {
-				if snapshot.Err == nil || snapshot.Path != "" {
-					t.Fatalf("invalid index location accepted: %q, %v", snapshot.Path, snapshot.Err)
+				if err == nil || snapshot.Path != "" {
+					t.Fatalf("invalid index location accepted: %q, %v", snapshot.Path, err)
 				}
 				return
 			}
 			want := filepath.Join(root, ".git", "index")
-			if snapshot.Err != nil || snapshot.Path != want || snapshot.Modes["bad.sh"] != "100644" {
-				t.Fatalf("index location = %q, %v; want %q with parsed modes", snapshot.Path, snapshot.Err, want)
+			if err != nil || snapshot.Path != want || snapshot.Modes["bad.sh"] != "100644" {
+				t.Fatalf("index location = %q, %v; want %q with parsed modes", snapshot.Path, err, want)
 			}
 		})
 	}
@@ -84,9 +84,9 @@ func TestRepositoryGitDisablesFSMonitor(t *testing.T) {
 	if err != nil || strings.TrimSpace(string(output)) != "false" {
 		t.Fatalf("index queries must disable repository fsmonitor: %q, %v", output, err)
 	}
-	snapshot := (&workspace.IndexCache{}).Load(t.Context(), root)
-	if snapshot.Err != nil || snapshot.Modes["bad.sh"] != "100644" {
-		t.Fatalf("index mode query failed: %v, %v", snapshot.Modes, snapshot.Err)
+	snapshot, err := workspace.ReadIndex(t.Context(), root)
+	if err != nil || snapshot.Modes["bad.sh"] != "100644" {
+		t.Fatalf("index mode query failed: %v, %v", snapshot.Modes, err)
 	}
 }
 
@@ -104,9 +104,9 @@ func TestGitIndexSeparateDirectory(t *testing.T) {
 	if output, err := workspace.GitCommand(t.Context(), git, root, "add", "file.sh").CombinedOutput(); err != nil {
 		t.Fatalf("index file: %v: %s", err, output)
 	}
-	snapshot := (&workspace.IndexCache{}).Load(t.Context(), root)
-	if snapshot.Err != nil {
-		t.Fatal(snapshot.Err)
+	snapshot, err := workspace.ReadIndex(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
 	}
 	actual, err := os.Stat(snapshot.Path)
 	if err != nil {
@@ -137,9 +137,9 @@ func TestGitModesIntentToAdd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot := (&workspace.IndexCache{}).Load(t.Context(), root)
-	if snapshot.Err != nil {
-		t.Fatal(snapshot.Err)
+	snapshot, err := workspace.ReadIndex(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
 	}
 	for _, name := range []string{"intent.sh", "intent with spaces.sh", "deleted-intent.sh"} {
 		if mode := snapshot.Modes[name]; mode != "" {
@@ -170,9 +170,9 @@ func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
 	git("commit", "--no-gpg-sign", "-m", "baseline")
 	git("rm", "--cached", "bad.sh", "empty.sh")
 	git("add", "-N", "bad.sh", "empty.sh")
-	snapshot := (&workspace.IndexCache{}).Load(t.Context(), root)
-	if snapshot.Err != nil {
-		t.Fatal(snapshot.Err)
+	snapshot, err := workspace.ReadIndex(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
 	}
 	for _, name := range []string{"bad.sh", "empty.sh"} {
 		if mode := snapshot.Modes[name]; mode != "" {
@@ -181,24 +181,5 @@ func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
 	}
 	if mode := snapshot.Modes["good.sh"]; mode != "100755" {
 		t.Errorf("unchanged committed file lost mode: %q", mode)
-	}
-}
-
-func TestIndexCacheRetainsOneSessionSnapshot(t *testing.T) {
-	root, git := executableFixture(t)
-	cache := &workspace.IndexCache{}
-	first := cache.Load(t.Context(), root)
-	if first.Err != nil {
-		t.Fatal(first.Err)
-	}
-	writeIndexFixture(t, root, "later.sh", "echo later\n")
-	git("add", "later.sh")
-	again := cache.Load(t.Context(), root)
-	if again != first || again.Modes["later.sh"] != "" {
-		t.Fatal("session snapshot changed after repository mutation")
-	}
-	fresh := (&workspace.IndexCache{}).Load(t.Context(), root)
-	if fresh.Err != nil || fresh.Modes["later.sh"] != "100644" {
-		t.Fatalf("new session lost index update: %+v", fresh)
 	}
 }

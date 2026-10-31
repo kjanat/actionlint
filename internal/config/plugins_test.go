@@ -44,11 +44,11 @@ func TestPluginDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := PluginDeclarations{
-		{Name: "github.com/kjanat/shellcheck", Version: "v1", Registry: pluginref.DefaultRegistry},
-		{Name: "gitlab.com/group/subgroup/plugin", Version: "latest", Registry: "https://example.com/catalog/"},
+	want := [][3]string{
+		{"github.com/kjanat/shellcheck", "v1", pluginref.DefaultRegistry},
+		{"gitlab.com/group/subgroup/plugin", "latest", "https://example.com/catalog/"},
 	}
-	if diff := cmp.Diff(want, cfg.Plugins); diff != "" {
+	if diff := cmp.Diff(want, declarationFields(cfg.Plugins)); diff != "" {
 		t.Fatal(diff)
 	}
 	data, err := yaml.Marshal(cfg)
@@ -59,9 +59,18 @@ func TestPluginDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff(want, roundTrip.Plugins); diff != "" {
+	if diff := cmp.Diff(want, declarationFields(roundTrip.Plugins)); diff != "" {
 		t.Fatal(diff)
 	}
+}
+
+// declarationFields lists the name, version and registry of each declaration.
+func declarationFields(refs PluginDeclarations) [][3]string {
+	fields := make([][3]string, 0, len(refs))
+	for _, ref := range refs {
+		fields = append(fields, [3]string{ref.Name(), ref.Version(), ref.Registry()})
+	}
+	return fields
 }
 
 func TestPluginAliasRegistryScope(t *testing.T) {
@@ -74,7 +83,7 @@ func TestPluginAliasRegistryScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.Plugins) != 3 || cfg.Plugins[0].Name != "community-check" || cfg.Plugins[1].Name != "community-check" ||
+	if len(cfg.Plugins) != 3 || cfg.Plugins[0].Name() != "community-check" || cfg.Plugins[1].Name() != "community-check" ||
 		cfg.Plugins[2].String() != "github.com/kjanat/actionlint-plugin-ruff" {
 		t.Fatalf("alias scope or explicit repository rewritten: %+v", cfg.Plugins)
 	}
@@ -156,7 +165,7 @@ func TestPluginDeclarationsExtends(t *testing.T) {
 		if cfg.Plugins == nil || len(cfg.Plugins) != tc.count {
 			t.Fatalf("%q produced %#v", tc.suffix, cfg.Plugins)
 		}
-		if tc.count > 0 && cfg.Plugins[0].Name != tc.name {
+		if tc.count > 0 && cfg.Plugins[0].Name() != tc.name {
 			t.Fatalf("unexpected inherited list: %#v", cfg.Plugins)
 		}
 	}

@@ -12,18 +12,26 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
-func workflowSnapshot(t *testing.T, content []byte, document documentparse.Document) *documentparse.SourceSnapshot {
+func workflowSnapshot(t *testing.T, content []byte, document documentparse.Document) documentparse.SourceSnapshot {
 	t.Helper()
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	_, snapshot := registeredWorkflowSnapshot(t, content, document)
+	return snapshot
+}
+
+// registeredWorkflowSnapshot also returns the registry that admitted the snapshot.
+func registeredWorkflowSnapshot(t *testing.T, content []byte, document documentparse.Document) (*documentparse.SourceSnapshots, documentparse.SourceSnapshot) {
+	t.Helper()
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("fixture.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return snapshot
+	return registry, snapshot
 }
 
-func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, snapshot *documentparse.SourceSnapshot) {
+func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, registry *documentparse.SourceSnapshots, snapshot documentparse.SourceSnapshot) {
 	t.Helper()
+	analysis.sourceSnapshots = registry
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 		t.Fatal(err)
@@ -53,14 +61,14 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			if len(document.Findings) != 0 {
 				t.Fatal(document.Findings)
 			}
-			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+			registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			rootSnapshot, err := snapshots.Document("fixture.yml", content, document)
 			if err != nil {
 				t.Fatal(err)
 			}
 			workflow := workflowView(t, rootSnapshot)
 			calls := workflowStepViews(t, workflow, "test")
-			startWorkflowEntry(t, analysis, rootSnapshot)
+			startWorkflowEntry(t, analysis, registry, rootSnapshot)
 			if err := analysis.beginWorkflow(workflow); err != nil {
 				t.Fatal(err)
 			}

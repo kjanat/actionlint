@@ -38,7 +38,7 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding)}
 }
 
-func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, source actionlocal.SourceDocument, action workflowdecl.ExecActionView, displaySpec string) error {
+func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source actionlocal.SourceDocument, action workflowdecl.ExecActionView, displaySpec string) error {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]

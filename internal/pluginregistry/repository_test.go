@@ -27,7 +27,7 @@ func TestRepositoryDeclarationCatalogueConsistency(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			r.Files[testutil.FixtureRegistryURL+"index.json"] = data
+			r.SetFile(testutil.FixtureRegistryURL+"index.json", data)
 			_, declarationErr := pluginref.Parse(name)
 			plugins, catalogueErr := registryClient(t).Search(t.Context(), "")
 			if (declarationErr == nil) != (catalogueErr == nil) {

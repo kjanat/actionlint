@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
@@ -231,6 +232,38 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 		}
 		if got := repoconfig.ResolveRules(repoconfig.Presets{}, cfg).RequiredActions(); len(got) != 0 {
 			t.Fatalf("empty selection invented required actions: %v", got)
+		}
+	}
+}
+
+func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
+	for name, options := range map[string]any{
+		"required-actions":    &repoconfig.RequiredActionsOptions{Actions: []string{"["}},
+		"require-job-timeout": map[string]any{"max-minute": 5},
+	} {
+		t.Run(name, func(t *testing.T) {
+			setting, err := repoconfig.NewSetting("error", options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg := &repoconfig.Config{Lint: repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
+				Policy: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{name: setting}),
+			}}}
+			if err := repoconfig.ValidateRuleNames(cfg); err == nil || !strings.Contains(err.Error(), name) {
+				t.Fatalf("invalid options for %s accepted: %v", name, err)
+			}
+		})
+	}
+}
+
+func TestNewSettingRejectsDisabledPolicies(t *testing.T) {
+	for name, policy := range map[string]any{
+		"require-job-timeout":   &repoconfig.JobTimeoutPolicy{},
+		"require-permissions":   &repoconfig.PermissionsPolicy{},
+		"disallow-suppressions": &repoconfig.SuppressionsPolicy{},
+	} {
+		if _, err := repoconfig.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "!!bool") {
+			t.Fatalf("%s: disabled policy accepted as options: %v", name, err)
 		}
 	}
 }

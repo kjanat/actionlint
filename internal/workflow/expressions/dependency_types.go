@@ -10,9 +10,9 @@ import (
 )
 
 // Get type of `outputs.<output name>`
-func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) *exprlang.ObjectType {
+func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) exprlang.ObjectType {
 	if !spec.Present() {
-		return exprlang.NewMapObjectType(exprlang.StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType())
 	}
 
 	localSpec := spec.Value()
@@ -24,10 +24,10 @@ func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) *exprlan
 		if err != nil {
 			// The action rule reports metadata failures.
 			rule.debug("Could not infer action outputs: %v", err)
-			return exprlang.NewMapObjectType(exprlang.StringType{})
+			return exprlang.NewMapObjectType(exprlang.StringType())
 		}
 		if meta == nil {
-			return exprlang.NewMapObjectType(exprlang.StringType{})
+			return exprlang.NewMapObjectType(exprlang.StringType())
 		}
 
 		return typeOfActionOutputs(meta)
@@ -45,58 +45,59 @@ func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) *exprlan
 		return typeOfActionOutputs(meta)
 	}
 
-	return exprlang.NewMapObjectType(exprlang.StringType{})
+	return exprlang.NewMapObjectType(exprlang.StringType())
 }
 
-func (rule *Checker) getWorkflowCallOutputsType(call workflowdecl.WorkflowCallView) *exprlang.ObjectType {
+func (rule *Checker) getWorkflowCallOutputsType(call workflowdecl.WorkflowCallView) exprlang.ObjectType {
 	if !call.Uses().Present() {
-		return exprlang.NewMapObjectType(exprlang.StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType())
 	}
 
 	m, err := rule.workflowMetadata(call.Uses().Value())
 	if err != nil {
 		// The workflow-call rule reports metadata failures.
 		rule.debug("Could not infer workflow outputs: %v", err)
-		return exprlang.NewMapObjectType(exprlang.StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType())
 	}
 	if m == nil {
-		return exprlang.NewMapObjectType(exprlang.StringType{})
+		return exprlang.NewMapObjectType(exprlang.StringType())
 	}
 
 	p := make(map[string]exprlang.Type, len(m.Outputs))
 	for n := range m.Outputs {
-		p[n] = exprlang.StringType{}
+		p[n] = exprlang.StringType()
 	}
 	return exprlang.NewStrictObjectType(p)
 }
 
-func (rule *Checker) calcNeedsType(job workflowdecl.JobView) *exprlang.ObjectType {
-	object := exprlang.NewEmptyStrictObjectType()
+func (rule *Checker) calcNeedsType(job workflowdecl.JobView) exprlang.ObjectType {
+	var object exprlang.ObjectBuilder
 	for id := range job.Needs() {
 		name := strings.ToLower(id.Value())
 		if name == job.ID().Value() {
 			continue
 		}
-		if _, exists := object.Props[name]; exists {
+		if object.Has(name) {
 			continue
 		}
 		dependency, exists := rule.workflow.Job(name)
 		if !exists {
 			continue
 		}
-		var outputs *exprlang.ObjectType
+		var outputs exprlang.ObjectType
 		if call := dependency.WorkflowCall(); call.Present() {
 			outputs = rule.getWorkflowCallOutputsType(call)
 		} else {
-			outputs = exprlang.NewEmptyStrictObjectType()
+			var declared exprlang.ObjectBuilder
 			for name := range dependency.Outputs() {
-				outputs.Props[name] = exprlang.StringType{}
+				declared.Set(name, exprlang.StringType())
 			}
+			outputs = declared.Build()
 		}
-		object.Props[name] = exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": outputs, "result": exprlang.StringType{}})
+		object.Set(name, exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": outputs.Type(), "result": exprlang.StringType()}).Type())
 		// Needs contains direct dependencies, not grandparents (#151).
 	}
-	return object
+	return object.Build()
 }
 
 func (rule *Checker) checkWorkflowCallOutputs(call workflowdecl.WorkflowCallEventView, workflow workflowdecl.WorkflowView) {
@@ -110,36 +111,36 @@ func (rule *Checker) checkWorkflowCallOutputs(call workflowdecl.WorkflowCallEven
 	}
 	properties := map[string]exprlang.Type{}
 	for name, job := range workflow.Jobs() {
-		var outputs *exprlang.ObjectType
+		var outputs exprlang.ObjectType
 		if job.WorkflowCall().Present() {
 			outputs = exprlang.NewEmptyObjectType()
 		} else {
 			values := map[string]exprlang.Type{}
 			for name := range job.Outputs() {
-				values[name] = exprlang.StringType{}
+				values[name] = exprlang.StringType()
 			}
 			outputs = exprlang.NewStrictObjectType(values)
 		}
-		properties[name] = exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": outputs, "result": exprlang.StringType{}})
+		properties[name] = exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": outputs.Type(), "result": exprlang.StringType()}).Type()
 	}
 	if len(properties) == 0 {
 		return
 	}
-	rule.jobsTy = exprlang.NewStrictObjectType(properties)
+	rule.jobsTy = new(exprlang.NewStrictObjectType(properties))
 	for _, output := range call.Outputs() {
 		rule.checkString(output.Value(), "on.workflow_call.outputs.<output_id>.value")
 	}
 }
 
-func typeOfActionOutputs(meta *actionmeta.Metadata) *exprlang.ObjectType {
+func typeOfActionOutputs(meta *actionmeta.Metadata) exprlang.ObjectType {
 	// Some action sets outputs dynamically. Such outputs are not defined in action.yml. actionlint
 	// cannot check such outputs statically so it allows any props (#18)
 	if meta.SkipOutputs {
 		return exprlang.NewEmptyObjectType()
 	}
-	object := exprlang.NewEmptyStrictObjectType()
+	var object exprlang.ObjectBuilder
 	for n := range meta.Outputs {
-		object.SetProperty(n, exprlang.StringType{})
+		object.SetProperty(n, exprlang.StringType())
 	}
-	return object
+	return object.Build()
 }

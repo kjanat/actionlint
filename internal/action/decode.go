@@ -33,7 +33,6 @@ func Decode(root *syntax.Node, metadata *Metadata) error {
 	if !isNull(entered.Node()) {
 		metadata.Root = entered.Node()
 	}
-	metadata.positions = &metadataPositionCache{}
 	return session.Finish(decodeErr)
 }
 
@@ -103,7 +102,7 @@ func (d manifestDecoder) fields(root codec.Entered, where string, handlers map[s
 		}
 		name := strings.ToLower(Key(kn.Node()))
 		if seen[name] {
-			errs = append(errs, d.session.Wrap(kn.Node(), &codec.LoadError{Message: fmt.Sprintf("duplicate %s key %q", where, Key(kn.Node())), Mark: codec.Mark{Line: kn.Node().Line, Column: kn.Node().Column}}))
+			errs = append(errs, d.session.Wrap(kn.Node(), codec.NewLoadError(fmt.Sprintf("duplicate %s key %q", where, Key(kn.Node())), codec.Mark{Line: kn.Node().Line, Column: kn.Node().Column})))
 			continue
 		}
 		seen[name] = true
@@ -181,10 +180,10 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 				continue
 			}
 			if seen[field] {
-				fieldErrors = append(fieldErrors, &codec.LoadError{
-					Message: fmt.Sprintf("duplicate input definition key %q", Key(fkn.Node())),
-					Mark:    codec.Mark{Line: fieldKey.Node().Line, Column: fieldKey.Node().Column},
-				})
+				fieldErrors = append(fieldErrors, codec.NewLoadError(
+					fmt.Sprintf("duplicate input definition key %q", Key(fkn.Node())),
+					codec.Mark{Line: fieldKey.Node().Line, Column: fieldKey.Node().Column},
+				))
 				continue
 			}
 			seen[field] = true

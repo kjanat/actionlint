@@ -36,7 +36,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 				return k
 			}
 			value, pointer := prepare(tc.value), prepare(tc.pointer)
-			if !reflect.DeepEqual(value.Report, pointer.Report) || !reflect.DeepEqual(value.Job(workflow.Views["test"]), pointer.Job(workflow.Views["test"])) {
+			if !reflect.DeepEqual(value.Report(), pointer.Report()) || !reflect.DeepEqual(value.Job(workflow.Views["test"]), pointer.Job(workflow.Views["test"])) {
 				t.Fatalf("pointer changed semantic evidence: value=%+v pointer=%+v", value, pointer)
 			}
 		})
@@ -73,9 +73,9 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 			continue
 		}
 		partial++
-		unknown, ok := k.Report.Answers[i].Resolution.(runnerapi.Unknown)
+		unknown, ok := k.Report().Answers[i].Resolution.(runnerapi.Unknown)
 		if !ok || !strings.Contains(unknown.Reason, "incomplete") {
-			t.Fatalf("pointer supplied false completeness: %+v", k.Report.Answers[i])
+			t.Fatalf("pointer supplied false completeness: %+v", k.Report().Answers[i])
 		}
 	}
 	if partial == 0 || k.Job(w.Views["test"]).Shell != "" {
@@ -103,9 +103,9 @@ func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, ok := k.Report.Answers[0].Resolution.(runnerapi.Resolved)
+			resolved, ok := k.Report().Answers[0].Resolution.(runnerapi.Resolved)
 			if !ok || len(resolved.Candidates) != 1 {
-				t.Fatalf("resolution=%+v", k.Report.Answers[0])
+				t.Fatalf("resolution=%+v", k.Report().Answers[0])
 			}
 			candidate := resolved.Candidates[0]
 			known := tc.caseMode != runnerapi.UnknownCase

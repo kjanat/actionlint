@@ -20,12 +20,24 @@ import (
 // interpolation or credential discovery occurs. Each session caches exact
 // requests, including consumer kind and expected repository identity.
 type Process struct {
-	Executable string
-	Arguments  []string
-	Timeout    time.Duration
+	executable string
+	arguments  []string
+	timeout    time.Duration
 	mu         sync.Mutex
 	cache      map[resolver.Request]resolver.Result
 	pending    map[resolver.Request]*pendingResolution
+}
+
+// defaultProcessTimeout bounds one provider run when NewProcess gets no timeout.
+const defaultProcessTimeout = 30 * time.Second
+
+// NewProcess returns a resolver that runs executable with a copy of arguments.
+// A zero timeout means 30 seconds per provider run.
+func NewProcess(executable string, arguments []string, timeout time.Duration) *Process {
+	if timeout == 0 {
+		timeout = defaultProcessTimeout
+	}
+	return &Process{executable: executable, arguments: slices.Clone(arguments), timeout: timeout}
 }
 
 type pendingResolution struct {
@@ -33,16 +45,20 @@ type pendingResolution struct {
 	result resolver.Result
 	err    error
 }
+
+// boundedOutput collects provider stdout and fails the write that would take
+// it past limit bytes.
 type boundedOutput struct {
-	bytes.Buffer
+	data  []byte
 	limit int
 }
 
 func (b *boundedOutput) Write(p []byte) (int, error) {
-	if b.Len()+len(p) > b.limit {
+	if len(b.data)+len(p) > b.limit {
 		return 0, fmt.Errorf("resolver response exceeds %d bytes", b.limit)
 	}
-	return b.Buffer.Write(p)
+	b.data = append(b.data, p...)
+	return len(p), nil
 }
 
 func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolver.Result, error) {
@@ -101,13 +117,9 @@ func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolv
 	if err != nil {
 		return resolver.Result{}, err
 	}
-	timeout := p.Timeout
-	if timeout == 0 {
-		timeout = 30 * time.Second
-	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, p.Executable, p.Arguments...)
+	command := exec.CommandContext(ctx, p.executable, p.arguments...)
 	command.WaitDelay = time.Second
 	command.Stdin = bytes.NewReader(data)
 	output := &boundedOutput{limit: 2 << 20}
@@ -118,7 +130,7 @@ func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolv
 		return resolver.Result{}, fmt.Errorf("resolver process: %w", err)
 	}
 	var result resolver.Result
-	if err := jsonv2.Unmarshal(output.Bytes(), &result); err != nil {
+	if err := jsonv2.Unmarshal(output.data, &result); err != nil {
 		return result, fmt.Errorf("invalid resolver response: %w", err)
 	}
 	if err := validateResult(request, result); err != nil {
@@ -129,7 +141,7 @@ func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolv
 }
 
 func (p *Process) NewSession() resolver.Resolver {
-	return &Process{Executable: p.Executable, Arguments: slices.Clone(p.Arguments), Timeout: p.Timeout}
+	return &Process{executable: p.executable, arguments: slices.Clone(p.arguments), timeout: p.timeout}
 }
 
 func validateResult(request resolver.Request, result resolver.Result) error {

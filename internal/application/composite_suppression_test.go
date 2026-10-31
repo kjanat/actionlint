@@ -42,8 +42,8 @@ jobs:
 	workflows := calls.NewCache(project.RootDir(), root, nil)
 	process := analyzerhost.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}
-	declarations := newCapturedSnapshots(t, root)
-	session.captures, session.snapshots = declarations.Sources.Store, declarations.SourceSnapshots
+	var declarations *capturedSnapshots
+	session.snapshots, session.captures, declarations = newCapturedSnapshots(t, root)
 	actions.Configure(actionlocal.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
 	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {
@@ -52,7 +52,7 @@ jobs:
 			t.Fatal(err)
 		}
 		var rules []rule.Descriptor
-		captured, err := declarations.Sources.Capture(workflow, source, sourcemodel.YAML)
+		captured, err := declarations.Capture(workflow, source, sourcemodel.YAML)
 		if err != nil {
 			t.Fatal(err)
 		}

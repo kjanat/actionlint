@@ -153,7 +153,7 @@ func toolGateConfig(name string, config *repoconfig.Config) toolGateState {
 		}
 	}
 	rules := config.Lint.Rules
-	rule, explicit := rules.External.Rules[name]
+	rule, explicit := rules.External.Rule(name)
 	resolution, resolved := rules.ResolvedLevel(name)
 	return toolGateState{
 		tool:    enabled == nil || *enabled,
@@ -161,7 +161,7 @@ func toolGateConfig(name string, config *repoconfig.Config) toolGateState {
 		toolSet: enabled != nil, lintSet: config.Lint.Enabled != nil,
 		backend:  kind,
 		disabled: slices.Contains(rules.Disable, name), explicit: explicit, resolved: resolved,
-		preset: rules.Preset, groupPreset: rules.External.Preset,
-		group: rules.External.Level, rule: rule.Level, resolution: resolution,
+		preset: rules.Preset, groupPreset: rules.External.Preset(),
+		group: rules.External.Level(), rule: rule.Level(), resolution: resolution,
 	}
 }

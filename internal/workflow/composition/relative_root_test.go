@@ -20,17 +20,17 @@ func TestCompositeCarriesCaptureAcrossRelativeDisplayPaths(t *testing.T) {
 	if err := os.WriteFile(manifest, []byte("name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo relative}]}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	registry := newCapturedSnapshots(t, base)
+	registry, store, fixture := newCapturedSnapshots(t, base)
 	path := filepath.Join(base, "ci.yml")
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n")
-	snapshot, err := registry.Document(path, content, documentparse.Workflow(path, content))
+	snapshot, err := fixture.Document(path, content, documentparse.Workflow(path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
 	cache := actionlocal.NewCache(t.Context(), "repository", nil)
-	cache.Configure(actionlocal.Options{Captures: registry.Sources.Store, Context: t.Context(), WorkingDir: base})
-	service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(cache, nil), CollectScripts: true, Paths: execution.Paths{Workspace: root, Analysis: base}})
-	result, err := service.Workflow(snapshot)
+	cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: base})
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(cache, nil), CollectScripts: true, Paths: execution.Paths{Workspace: root, Analysis: base}}
+	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,7 +7,6 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
@@ -41,7 +40,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 		return nil, err
 	}
 	parsed, _ := workflowparser.Parse(src)
-	metadata.recordWorkflowFacts(parsed)
+	metadata.JobPermissions, metadata.JobCacheAccess = jobFacts(parsed)
 	return metadata, nil
 }
 
@@ -177,16 +176,16 @@ func (d metadataDecoder) inputs(root codec.Entered, out *Metadata) error {
 		if err := value.Decode(&definition); err != nil {
 			return err
 		}
-		input := &Input{Name: name.Node().Value, Required: definition.Required && definition.Default == nil}
+		input := Input{Name: name.Node().Value, Required: definition.Required && definition.Default == nil}
 		switch definition.Type {
 		case "boolean":
-			input.Type = exprlang.BoolType{}
+			input.Type = InputTypeBoolean
 		case "number":
-			input.Type = exprlang.NumberType{}
+			input.Type = InputTypeNumber
 		case "string":
-			input.Type = exprlang.StringType{}
+			input.Type = InputTypeString
 		default:
-			input.Type = exprlang.AnyType{}
+			input.Type = InputTypeAny
 		}
 		inputs[strings.ToLower(input.Name)] = input
 	}
@@ -209,7 +208,7 @@ func (d metadataDecoder) secrets(root codec.Entered, out *Metadata) error {
 			return err
 		}
 		secret.Name = name.Node().Value
-		secrets[strings.ToLower(secret.Name)] = &secret
+		secrets[strings.ToLower(secret.Name)] = secret
 	}
 	out.Secrets = secrets
 	return nil
@@ -225,23 +224,32 @@ func (d metadataDecoder) outputs(root codec.Entered, out *Metadata) error {
 		if err != nil {
 			return err
 		}
-		outputs[strings.ToLower(name.Node().Value)] = &Output{Name: name.Node().Value}
+		outputs[strings.ToLower(name.Node().Value)] = Output{Name: name.Node().Value}
 	}
 	out.Outputs = outputs
 	return nil
 }
 
-func (m *Metadata) recordWorkflowFacts(w *workflowlang.Workflow) {
+// jobFacts collects the permissions and cache access each job of w requires.
+// Jobs without either have no entry; a map without entries is nil.
+func jobFacts(w *workflowlang.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
 	if w == nil {
-		return
+		return nil, nil
 	}
+	var permissionsByJob map[string]PermissionScopeLevels
+	var cacheByJob map[string]CacheAccess
 	permissions := resolvePermissionsModel(w.Permissions)
 	for _, job := range w.Jobs {
 		uses := ""
 		if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
 			uses = job.WorkflowCall.Uses.Value
 		}
-		m.recordJobCacheAccess(job.ID.Value, workflowlang.EffectiveCacheMode(w.CacheMode, job.CacheMode), uses, job.Steps)
+		if access, ok := jobCacheAccess(workflowlang.EffectiveCacheMode(w.CacheMode, job.CacheMode), uses, job.Steps); ok {
+			if cacheByJob == nil {
+				cacheByJob = map[string]CacheAccess{}
+			}
+			cacheByJob[job.ID.Value] = access
+		}
 		resolved := permissions
 		if job.Permissions != nil {
 			resolved = resolvePermissionsModel(job.Permissions)
@@ -249,9 +257,10 @@ func (m *Metadata) recordWorkflowFacts(w *workflowlang.Workflow) {
 		if resolved.Kind != PermissionsDeclared || len(resolved.Levels) == 0 {
 			continue
 		}
-		if m.JobPermissions == nil {
-			m.JobPermissions = map[string]PermissionScopeLevels{}
+		if permissionsByJob == nil {
+			permissionsByJob = map[string]PermissionScopeLevels{}
 		}
-		m.JobPermissions[job.ID.Value] = resolved.Levels
+		permissionsByJob[job.ID.Value] = resolved.Levels
 	}
+	return permissionsByJob, cacheByJob
 }

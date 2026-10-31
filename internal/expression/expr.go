@@ -27,3 +27,23 @@ func (e *Error) Error() string {
 func (e *Error) String() string {
 	return e.Error()
 }
+
+// detached copies e for a caller. Callers rebase positions onto their
+// documents in place; a copy keeps that from rewriting the error a lexer,
+// parser or checker still holds and may report again.
+func (e *Error) detached() *Error {
+	if e == nil {
+		return nil
+	}
+	copied := *e
+	return &copied
+}
+
+// detachErrors copies each error in errs into fresh storage.
+func detachErrors(errs []*Error) []*Error {
+	out := make([]*Error, len(errs))
+	for i, err := range errs {
+		out[i] = err.detached()
+	}
+	return out
+}

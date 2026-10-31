@@ -15,17 +15,20 @@ var (
 )
 
 // ConflictError quarantines a document whose admitted source evidence disagrees.
+// It is an immutable value: every holder receives its own copy of the sticky
+// conflict, and equal conflicts match under errors.Is. Match it with
+// errors.AsType[ConflictError]. The zero value records no conflict.
 type ConflictError struct {
 	document string
 	reason   string
 }
 
-func (e *ConflictError) Error() string {
+func (e ConflictError) Error() string {
 	return fmt.Sprintf("source-revision-conflict: %q: %s", e.document, e.reason)
 }
 
-func (e *ConflictError) Document() string { return e.document }
-func (*ConflictError) Code() string       { return "source-revision-conflict" }
+func (e ConflictError) Document() string { return e.document }
+func (ConflictError) Code() string       { return "source-revision-conflict" }
 
 // CaptureError preserves a backing failure together with its canonical identity.
 type CaptureError struct {
@@ -51,19 +54,24 @@ func (e *CaptureError) Unwrap() error { return e.cause }
 // instead of its code and canonical document identity. The error itself
 // stays in the chain for errors.As and Code.
 type ReadError struct {
-	Context string
-	Err     error
+	context string
+	err     error
+}
+
+// NewReadError presents err, which must be non-nil, under context.
+func NewReadError(context string, err error) *ReadError {
+	return &ReadError{context: context, err: err}
 }
 
 func (e *ReadError) Error() string {
-	shown := e.Err
-	if captured, ok := errors.AsType[*CaptureError](e.Err); ok {
+	shown := e.err
+	if captured, ok := errors.AsType[*CaptureError](e.err); ok {
 		shown = captured.cause
 	}
-	return e.Context + ": " + shown.Error()
+	return e.context + ": " + shown.Error()
 }
 
-func (e *ReadError) Unwrap() error { return e.Err }
+func (e *ReadError) Unwrap() error { return e.err }
 
 // ClosedError rejects work started after Close begins.
 type ClosedError struct{}

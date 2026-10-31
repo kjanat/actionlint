@@ -10,7 +10,9 @@ import (
 	"actionlint.kjanat.dev/v2/rule"
 )
 
-// Policy applies source-specific suppressions and severity after all analyzers finish.
+// Policy is the resolved input record for one document's diagnostic policy:
+// paths, source content, configurations and reporting hooks. It owns no state
+// and carries no invariants; [Apply] consumes it after all analyzers finish.
 // It has no access to traversal, process scheduling or backend lifetimes.
 type Policy struct {
 	Path, ConfigPath, Root, WorkingDir string
@@ -27,7 +29,9 @@ type Policy struct {
 }
 
 // Apply filters completed findings using each source's resolved policy and normalizes their output order.
-func (p Policy) Apply(all []*findingmodel.Finding, metadataSources map[string][]byte, compositeConfigs map[string]*repoconfig.Config) ([]*findingmodel.Finding, error) {
+// It updates the caller-owned findings and metadataSources in place; findings
+// without a path take p's path and, for action metadata, share p.Content.
+func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]byte, compositeConfigs map[string]*repoconfig.Config) ([]*findingmodel.Finding, error) {
 	path, configPath, root, content, cfg, projectConfig, metadata := p.Path, p.ConfigPath, p.Root, p.Content, p.Config, p.ProjectConfig, p.Metadata
 	additionalRules := p.AdditionalRules
 	var suppressionPolicy *repoconfig.SuppressionsPolicy
@@ -134,7 +138,7 @@ func (p Policy) Apply(all []*findingmodel.Finding, metadataSources map[string][]
 			return false
 		})
 		for _, finding := range findings {
-			all = append(all, p.filterErrors([]*findingmodel.Finding{finding}, cfg.PathConfigs(findingKey(finding.Path)))...)
+			all = append(all, filterErrors(p, []*findingmodel.Finding{finding}, cfg.PathConfigs(findingKey(finding.Path)))...)
 		}
 	}
 
@@ -153,7 +157,7 @@ func (p Policy) Apply(all []*findingmodel.Finding, metadataSources map[string][]
 	return all, nil
 }
 
-func (p Policy) filterErrors(errs []*findingmodel.Finding, cfgs []repoconfig.PathConfig) []*findingmodel.Finding {
+func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []repoconfig.PathConfig) []*findingmodel.Finding {
 	if len(p.IgnorePatterns) == 0 && len(cfgs) == 0 {
 		return errs
 	}
@@ -162,30 +166,30 @@ func (p Policy) filterErrors(errs []*findingmodel.Finding, cfgs []repoconfig.Pat
 Loop:
 	for _, err := range errs {
 		if p.IgnorePatterns.Match(err.Message) {
-			p.debug("Error %q is ignored due to -ignore command line option", err.Message)
+			debug(p, "Error %q is ignored due to -ignore command line option", err.Message)
 			continue Loop
 		}
 		for _, c := range cfgs {
 			if c.Ignore.Match(err.Message) {
-				p.debug("Error %q is ignored due to the \"ignore\" config in the config file", err.Message)
+				debug(p, "Error %q is ignored due to the \"ignore\" config in the config file", err.Message)
 				continue Loop
 			}
 		}
 		filtered = append(filtered, err)
 	}
 	if len(filtered) != len(errs) {
-		p.log("Filtered", len(errs)-len(filtered), "error(s) due to \"-ignore\" command line option and \"ignore\" configuration")
+		log(p, "Filtered", len(errs)-len(filtered), "error(s) due to \"-ignore\" command line option and \"ignore\" configuration")
 	}
 	return filtered
 }
 
-func (p Policy) debug(format string, args ...any) {
+func debug(p Policy, format string, args ...any) {
 	if p.Debug != nil {
 		p.Debug(format, args...)
 	}
 }
 
-func (p Policy) log(args ...any) {
+func log(p Policy, args ...any) {
 	if p.Log != nil {
 		p.Log(args...)
 	}

@@ -88,7 +88,7 @@ func TestNormalizedDuplicateFieldPreservesFirstAndOtherMetadata(t *testing.T) {
 		t.Fatalf("partial metadata lost: %+v", metadata)
 	}
 	decoded, ok := errors.AsType[*codec.DecodeError](err)
-	if !ok || len(decoded.Errors) != 1 || decoded.Errors[0].Mark.Line != 2 || decoded.Errors[0].Mark.Column != 1 {
+	if !ok || len(decoded.Errors) != 1 || decoded.Errors[0].Mark().Line != 2 || decoded.Errors[0].Mark().Column != 1 {
 		t.Fatalf("duplicate error = %#v", err)
 	}
 	const want = "yaml: construct errors: line 2: duplicate action metadata key \"Name\""

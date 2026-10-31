@@ -25,6 +25,9 @@ type Directory struct {
 	Path string
 }
 
+// Paths is the checkout geometry of one execution scope: a plain value record
+// relating runner paths to local analysis paths. Filesystem lookups take the
+// recording reader as an argument, so copies of Paths never share I/O state.
 type Paths struct {
 	Platform          runnerlang.Platform
 	Workspace         string
@@ -36,7 +39,6 @@ type Paths struct {
 	ActionIndependent bool
 	Placements        CheckoutPlacement
 	CaseInsensitive   bool
-	Reader            *fsread.Reader
 }
 
 func DirectoryValue(semantic value.Value) Directory {
@@ -127,13 +129,15 @@ func (paths Paths) WorkingDirectory(semantic value.Value) Directory {
 	return Directory{DirectoryKnown, base + suffix}
 }
 
-func (paths Paths) Resolve(directory Directory) Directory {
+// Resolve maps directory to an existing local directory, reading case-insensitive
+// checkouts through reader.
+func (paths Paths) Resolve(directory Directory, reader *fsread.Reader) Directory {
 	unknown := Directory{DirectoryUnknown, paths.Analysis}
 	if directory.Kind == DirectoryUnknown {
 		return unknown
 	}
 	paths = paths.DirectoryOrigin(directory)
-	local, ok := paths.AnalysisPath(directory.Path)
+	local, ok := paths.AnalysisPath(directory.Path, reader)
 	if !ok {
 		return unknown
 	}
@@ -175,12 +179,12 @@ func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
 }
 
 // Local translates a workspace-relative runner path to the local self checkout.
-func (paths Paths) Local(relativePath string) (string, bool) {
+func (paths Paths) Local(relativePath string, reader *fsread.Reader) (string, bool) {
 	relativePath, representable := RunnerRelativePath(relativePath, paths.Platform)
 	if !representable {
 		return "", false
 	}
-	path, known := paths.AnalysisPath(relativePath)
+	path, known := paths.AnalysisPath(relativePath, reader)
 	if !known {
 		return "", false
 	}
@@ -188,8 +192,9 @@ func (paths Paths) Local(relativePath string) (string, bool) {
 	return path, err == nil && filepath.IsLocal(relative)
 }
 
-// AnalysisPath resolves available files, including those outside the indexed repository.
-func (paths Paths) AnalysisPath(value string) (string, bool) {
+// AnalysisPath resolves available files, including those outside the indexed
+// repository. Case-insensitive checkouts are canonicalized through reader.
+func (paths Paths) AnalysisPath(value string, reader *fsread.Reader) (string, bool) {
 	relativePath, known := LocalDirectoryPath(value, paths.Platform)
 	if !known {
 		return "", false
@@ -217,7 +222,7 @@ func (paths Paths) AnalysisPath(value string) (string, bool) {
 		}
 	}
 	if caseInsensitive && filepath.IsLocal(relativePath) {
-		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), paths.Reader)
+		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), reader)
 		if !known {
 			return "", false
 		}

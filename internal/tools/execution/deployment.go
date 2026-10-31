@@ -17,11 +17,16 @@ type Deployment struct {
 	actionPath string
 }
 
-func NewDeployment(snapshot *documentparse.SourceSnapshot, address, displayPath string, mapped bool) (Deployment, error) {
-	if snapshot == nil || address == "" || displayPath == "" {
+// NewDeployment requires snapshot to be admitted by snapshots and address to
+// resolve to its captured revision.
+func NewDeployment(snapshots *documentparse.SourceSnapshots, snapshot documentparse.SourceSnapshot, address, displayPath string, mapped bool) (Deployment, error) {
+	if !snapshot.Present() || address == "" || displayPath == "" {
 		return Deployment{}, fmt.Errorf("%w: action deployment needs a source and path", ErrInvalidBatch)
 	}
-	captured, err := snapshot.Registry().Capture(address)
+	if !snapshots.OwnsSnapshot(snapshot) {
+		return Deployment{}, fmt.Errorf("%w: action deployment source belongs to a different registry", ErrInvalidBatch)
+	}
+	captured, err := snapshots.Capture(address)
 	if err != nil {
 		return Deployment{}, fmt.Errorf("%w: action deployment address: %w", ErrInvalidBatch, err)
 	}

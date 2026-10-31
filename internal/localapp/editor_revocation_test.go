@@ -67,17 +67,17 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry.Files[testutil.FixtureRegistryURL+"statuses.json"] = data
+	registry.SetFile(testutil.FixtureRegistryURL+"statuses.json", data)
 	if _, err := client.RefreshStatuses(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
-	requests := len(registry.Requests)
+	registry.SetOffline(true)
+	requests := len(registry.Requests())
 	result, err = session.analyze(t.Context(), documents)
 	if _, ok := errors.AsType[*PluginLoadError](err); !ok || !strings.Contains(err.Error(), "revoked") {
 		t.Fatalf("revocation became clean analysis: %+v %v", result, err)
 	}
-	if len(result.Diagnostics) != 0 || len(registry.Requests) != requests {
+	if len(result.Diagnostics) != 0 || len(registry.Requests()) != requests {
 		t.Fatalf("revoked plugin ran or accessed network: %+v", result)
 	}
 	// Startup must also refuse cached revocation before loading any guest.
@@ -87,7 +87,7 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 		}
 		t.Fatal("new session accepted revoked plugin")
 	}
-	if len(registry.Requests) != requests {
+	if len(registry.Requests()) != requests {
 		t.Fatal("revocation guard accessed the registry")
 	}
 }

@@ -75,7 +75,7 @@ func TestPartialDecodeAndErrors(t *testing.T) {
 		t.Fatalf("%+v %v", result, err)
 	}
 	decoded, ok := errors.AsType[*DecodeError](err)
-	if !ok || len(decoded.Errors) != 1 || decoded.Errors[0].Mark.Line != 2 || decoded.Errors[0].Mark.Column != 4 {
+	if !ok || len(decoded.Errors) != 1 || decoded.Errors[0].Mark().Line != 2 || decoded.Errors[0].Mark().Column != 4 {
 		t.Fatalf("decode error = %#v, want type error at 2:4", err)
 	}
 }

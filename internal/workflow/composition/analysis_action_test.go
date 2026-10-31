@@ -15,25 +15,24 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-func standaloneActionForTest(t *testing.T, service *Service, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Result, error) {
+func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Result, error) {
 	t.Helper()
 	content, available := metadata.OriginalSource()
 	if !available {
 		t.Fatal("action fixture has no original source")
 	}
-	registry := service.options.SourceSnapshots
+	registry := options.SourceSnapshots
 	var fixture *capturedSnapshots
 	if len(fixtures) != 0 {
 		fixture = fixtures[0]
 	}
 	if registry == nil {
-		fixture = newCapturedSnapshots(t, sourceFixtureBase(t))
-		registry = fixture.SourceSnapshots
-		service.options.SourceSnapshots = registry
+		registry, _, fixture = newCapturedSnapshots(t, sourceFixtureBase(t))
+		options.SourceSnapshots = registry
 	}
 	bytes := []byte(content)
 	document := documentparse.Action(metadata.Path(), metadata.Path(), bytes)
-	var snapshot *documentparse.SourceSnapshot
+	var snapshot documentparse.SourceSnapshot
 	var err error
 	if fixture != nil {
 		snapshot, err = fixture.Document(metadata.Path(), bytes, document)
@@ -49,20 +48,20 @@ func standaloneActionForTest(t *testing.T, service *Service, metadata *actionmet
 	}
 	address := metadata.Path()
 	if fixture != nil {
-		address = fixture.Sources.Path(address)
+		address = fixture.Path(address)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, address, metadata.Path(), metadata.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(registry, snapshot, address, metadata.Path(), metadata.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return service.Action(snapshot, deployment, metadata)
+	return Action(options, snapshot, deployment, metadata)
 }
 
 type mutatingStandaloneMetadata struct {
 	workflowvisit.Base
 }
 
-func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ *documentparse.SourceSnapshot) error {
+func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ documentparse.SourceSnapshot) error {
 	metadata.Runs.Using = "node24"
 	metadata.Source[0] = 'x'
 	return nil
@@ -79,21 +78,21 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if document.Metadata == nil || !document.CanAnalyze() {
 		t.Fatal("fixture action metadata unavailable")
 	}
-	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document(fsread.PhysicalPath(path), content, document)
+	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := fixture.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, path, path, false)
+	deployment, err := scriptexecution.NewDeployment(registry, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rule := &mutatingStandaloneMetadata{Base: workflowvisit.NewBase("mutate", "")}
-	service := New(Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry.SourceSnapshots,
+	options := Options{
+		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
-	})
-	result, err := service.Action(snapshot, deployment, document.Metadata)
+	}
+	result, err := Action(options, snapshot, deployment, document.Metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,8 +126,8 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
 			resolver := actionlocal.NewResolver(nil, nil)
-			service := New(Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}})
-			result, err := standaloneActionForTest(t, service, metadata)
+			options := Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}}
+			result, err := standaloneActionForTest(t, options, metadata)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -157,8 +156,8 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolver := actionlocal.NewResolver(nil, nil)
-	service := New(Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}})
-	result, err := standaloneActionForTest(t, service, metadata)
+	options := Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}}
+	result, err := standaloneActionForTest(t, options, metadata)
 	if err != nil {
 		t.Fatal(err)
 	}

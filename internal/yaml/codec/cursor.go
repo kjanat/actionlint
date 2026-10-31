@@ -22,10 +22,15 @@ type Session struct {
 	closed                 bool
 }
 
+// constructionLimits checks the alias and construction counts a session
+// accumulates across all of its loads.
 type constructionLimits interface {
-	CheckDepth(int, *upstream.DepthContext) error
-	CheckAlias(int, int) error
+	CheckAlias(aliases, constructions int) error
 }
+
+// nestingLimit checks each load's nesting depth with go-yaml's default limit.
+// Depth does not accumulate across loads, so it is not part of the session.
+var nestingLimit = limit.New()
 
 // Cursor identifies a source occurrence together with its enclosing aliases.
 type Cursor struct {
@@ -112,7 +117,7 @@ func (c Cursor) check() error {
 
 func (s *Session) fail(n *syntax.Node, stage upstream.Stage, err error) error {
 	raw := upstream.NewLoadError(stage, err.Error(), upstream.Mark{Line: n.Line, Column: n.Column}, err)
-	s.fatal = &LoadError{Message: raw.Message, Mark: Mark{Line: n.Line, Column: n.Column}, text: raw.Error(), cause: raw}
+	s.fatal = &LoadError{message: raw.Message, mark: Mark{Line: n.Line, Column: n.Column}, text: raw.Error(), cause: raw}
 	return s.fatal
 }
 
@@ -291,7 +296,7 @@ type leafBudget struct {
 }
 
 func (b *leafBudget) CheckDepth(depth int, ctx *upstream.DepthContext) error {
-	return b.session.limits.CheckDepth(depth, ctx)
+	return nestingLimit.CheckDepth(depth, ctx)
 }
 
 func (b *leafBudget) CheckAlias(aliases, constructions int) error {

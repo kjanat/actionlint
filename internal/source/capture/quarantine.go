@@ -20,12 +20,12 @@ func (s *Store) Quarantine(snapshot Snapshot, reason string) error {
 	defer s.mu.Unlock()
 	document := snapshot.value.revision.Document()
 	e := s.docs[document]
-	if e.conflict != nil {
+	if e.conflicted() {
 		return e.conflict
 	}
 	if s.sealed {
 		return &ClosedError{}
 	}
-	e.conflict = &ConflictError{document, reason}
+	e.conflict = ConflictError{document, reason}
 	return e.conflict
 }

@@ -65,7 +65,7 @@ func sourceFollowingNotes(refs []pluginref.Reference) ([]string, error) {
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
 		if !manifest.Capabilities.ReportedSources || !slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-			return ref.Name == id && ref.Registry == pluginref.DefaultRegistry
+			return ref.Name() == id && ref.Registry() == pluginref.DefaultRegistry
 		}) {
 			continue
 		}

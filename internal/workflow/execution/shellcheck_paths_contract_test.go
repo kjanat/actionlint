@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
@@ -60,7 +61,7 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
 				paths := execution.Paths{}
 				paths.Workspace, paths.Analysis = workspace, analyzer
-				got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: directory})
+				got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: directory}, fsread.New(t.Context(), nil, nil))
 				if directory != "broken" {
 					target := outside
 					if directory == "internal" {

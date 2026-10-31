@@ -3,6 +3,8 @@ package application
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 
@@ -14,7 +16,9 @@ func sourceFixtureBase(t testing.TB) string { return capturefixture.CurrentDir(t
 
 type capturedSnapshots = declarations.CapturedSnapshots
 
-func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
+// newCapturedSnapshots returns the registry and capture store for code under
+// test and the fixture that admits documents into them.
+func newCapturedSnapshots(t testing.TB, base string) (*documentparse.SourceSnapshots, *capture.Store, *capturedSnapshots) {
 	t.Helper()
 	return declarations.NewCapturedSnapshots(t, base)
 }

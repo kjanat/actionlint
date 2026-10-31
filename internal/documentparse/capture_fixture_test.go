@@ -7,12 +7,13 @@ import (
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	testutil "actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func snapshotWorkflow(t testing.TB, snapshot *SourceSnapshot) workflowdecl.WorkflowView {
+func snapshotWorkflow(t testing.TB, snapshot SourceSnapshot) workflowdecl.WorkflowView {
 	t.Helper()
 	workflow, present := snapshot.WorkflowView()
 	if !present {
@@ -21,7 +22,7 @@ func snapshotWorkflow(t testing.TB, snapshot *SourceSnapshot) workflowdecl.Workf
 	return workflow
 }
 
-func snapshotJobSteps(t testing.TB, snapshot *SourceSnapshot, key string) []workflowdecl.StepView {
+func snapshotJobSteps(t testing.TB, snapshot SourceSnapshot, key string) []workflowdecl.StepView {
 	t.Helper()
 	job, present := snapshotWorkflow(t, snapshot).JobsAt(key)
 	if !present {
@@ -30,7 +31,7 @@ func snapshotJobSteps(t testing.TB, snapshot *SourceSnapshot, key string) []work
 	return slices.Collect(job.Steps())
 }
 
-func snapshotActionSteps(t testing.TB, snapshot *SourceSnapshot) []workflowdecl.StepView {
+func snapshotActionSteps(t testing.TB, snapshot SourceSnapshot) []workflowdecl.StepView {
 	t.Helper()
 	action, present := snapshot.ActionView()
 	if !present {
@@ -52,49 +53,50 @@ func sourceFixtureBase(t testing.TB) string {
 
 type capturedSnapshots struct {
 	*SourceSnapshots
+	store   *capture.Store
 	sources *testutil.CapturedSources
 }
 
 func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
 	t.Helper()
-	sources := testutil.NewCapturedSources(t, base)
-	registry, err := NewSourceSnapshots(sources.Store)
+	store, sources := testutil.NewCapturedSources(t, base)
+	registry, err := NewSourceSnapshots(store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &capturedSnapshots{registry, sources}
+	return &capturedSnapshots{registry, store, sources}
 }
 
-func (s *capturedSnapshots) Document(path string, content []byte, document Document) (*SourceSnapshot, error) {
+func (s *capturedSnapshots) Document(path string, content []byte, document Document) (SourceSnapshot, error) {
 	if path == "" {
-		return nil, errors.New("fixture source identity is empty")
+		return SourceSnapshot{}, errors.New("fixture source identity is empty")
 	}
 	captured, err := s.sources.Capture(path, content, source.YAML)
 	if err != nil {
-		return nil, err
+		return SourceSnapshot{}, err
 	}
 	return s.SourceSnapshots.Document(captured, document)
 }
 
-func (s *capturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (*SourceSnapshot, error) {
+func (s *capturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
 	if path == "" || metadata == nil {
-		return nil, errors.New("fixture action source is unavailable")
+		return SourceSnapshot{}, errors.New("fixture action source is unavailable")
 	}
 	text, parsed := metadata.OriginalSource()
 	if !parsed {
-		return nil, errors.New("fixture action has no parse provenance")
+		return SourceSnapshot{}, errors.New("fixture action has no parse provenance")
 	}
 	captured, err := s.sources.Capture(path, []byte(text), source.YAML)
 	if err != nil {
-		return nil, err
+		return SourceSnapshot{}, err
 	}
 	return s.SourceSnapshots.Action(captured, metadata)
 }
 
-func (s *capturedSnapshots) LookupDocument(path string) (*SourceSnapshot, bool) {
-	captured, _, err := s.sources.Store.Lookup(s.sources.Path(path))
+func (s *capturedSnapshots) LookupDocument(path string) (SourceSnapshot, bool) {
+	captured, _, err := s.store.Lookup(s.sources.Path(path))
 	if err != nil || !captured.Valid() {
-		return nil, false
+		return SourceSnapshot{}, false
 	}
 	return s.SourceSnapshots.LookupDocument(captured.Revision().Document())
 }

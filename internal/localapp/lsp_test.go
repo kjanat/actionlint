@@ -117,7 +117,7 @@ func TestEditorConflictingAliasesWithholdOnlyConflictedSource(t *testing.T) {
 			good:     {Text: goodText}, actionPath: {Text: a}, alias: {Text: b},
 		}
 		result, err := analyzeDocuments(t.Context(), application.Options{WorkingDir: root, SkipProjectConfig: true}, documents)
-		if _, conflicted := errors.AsType[*capture.ConflictError](err); !conflicted {
+		if _, conflicted := errors.AsType[capture.ConflictError](err); !conflicted {
 			t.Fatalf("alias conflict lost typed cause: %v", err)
 		}
 		if _, exposed := result.Sources[actionPath]; exposed {

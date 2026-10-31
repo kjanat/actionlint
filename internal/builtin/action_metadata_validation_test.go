@@ -54,7 +54,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 		}
 		t.Fatal(err)
 	}
-	registry := declarations.NewCapturedSnapshots(t, root)
+	_, store, registry := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := registry.Document(alias, content, documentparse.Action(alias, alias, content))
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	finding := &findingmodel.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
 	document := snapshot.Reference().Document
 	before := metadataFindingKey(metadata, document, finding)
-	if err := registry.Sources.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(alias); err != nil {
@@ -88,7 +88,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 	}
 	path := filepath.Join(root, "action.yml")
 	content := []byte("name: source\nruns: {using: node24, main: index.js}\n")
-	registry := declarations.NewCapturedSnapshots(t, root)
+	_, _, registry := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +98,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	rule := NewRuleAction(nil)
-	if err := rule.CheckStandaloneMetadata(metadata, nil); err == nil {
+	if err := rule.CheckStandaloneMetadata(metadata, documentparse.SourceSnapshot{}); err == nil {
 		t.Fatal("missing source was accepted")
 	}
 	other, err := actionmeta.Parse(path, append([]byte("# another revision\n"), content...))
@@ -121,7 +121,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(newCapturedLocalCache(t, root, &cacheLog))
+	rule := newRuleAction(newCapturedLocalCache(t, root, &cacheLog))
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
 		if err := rule.checkLocalAction("./inner", "./inner", ownedActionFixture(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}})); err != nil {
@@ -138,26 +138,47 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 
 func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	root := t.TempDir()
-	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
-	writeFixture(t, root, "inner/index.js", "")
+	// The missing description is positioned at each caller; the composite step
+	// without a shell is positioned in the metadata and carries an ignore origin.
+	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
 	cache := newCapturedLocalCache(t, root, nil)
-	rule := NewRuleAction(cache)
+	rule := newRuleAction(cache)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}
 		if err := rule.checkLocalAction("./inner", "./inner", ownedActionFixture(action)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if len(rule.validation.templates) != 1 || len(rule.Errs()) != 3 {
-		t.Fatalf("templates=%d findings=%d", len(rule.validation.templates), len(rule.Errs()))
+	templates := rule.validation.templates[filepath.Join(root, "inner", "action.yml")]
+	if len(rule.validation.templates) != 1 || len(templates) != 2 || len(rule.Errs()) != 3*len(templates) {
+		t.Fatalf("documents=%d templates=%d findings=%d", len(rule.validation.templates), len(templates), len(rule.Errs()))
 	}
+	described, originated := 0, 0
 	for i, finding := range rule.Errs() {
-		if finding.Start.Line != i+1 || !strings.Contains(finding.Message, "description is required") {
-			t.Fatalf("%+v", finding)
+		if strings.Contains(finding.Message, "description is required") {
+			described++
+			if finding.Start.Line != i/len(templates)+1 {
+				t.Fatalf("description finding not at its caller: %+v", finding)
+			}
+		}
+		if finding.IgnoreOrigin != nil {
+			originated++
 		}
 	}
-	rule.Errs()[0].Message = "mutated caller"
-	if rule.validation.templates[filepath.Join(root, "inner", "action.yml")][0].Message == "mutated caller" {
-		t.Fatal("caller mutated cached template")
+	if described != 3 || originated != 3 {
+		t.Fatalf("description findings=%d origin findings=%d", described, originated)
+	}
+	// Annotation is the only write path into recorded findings; it must not
+	// reach the cached templates the next visit replays.
+	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
+		finding.Message = "mutated caller"
+		if finding.IgnoreOrigin != nil {
+			finding.IgnoreOrigin.Job = "mutated caller"
+		}
+	})
+	for _, template := range templates {
+		if template.Message == "mutated caller" || template.IgnoreOrigin != nil && template.IgnoreOrigin.Job == "mutated caller" {
+			t.Fatalf("annotation mutated cached template: %+v", template)
+		}
 	}
 }

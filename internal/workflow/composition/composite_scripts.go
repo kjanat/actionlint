@@ -15,6 +15,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -28,7 +29,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("action call source snapshot is unavailable")
 	}
 	declaration := call
@@ -113,14 +114,14 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call workflowdecl.StepView,
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted *documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []builtin.InvocationParticipant) (err error) {
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []builtin.InvocationParticipant) (err error) {
 	if !analysis.invocations.Owns(callContext) {
 		return invocation.ErrForeignContext
 	}
 	if analysis.sourceSnapshots == nil {
 		return errors.New("action source registry is unavailable")
 	}
-	if admitted == nil || admitted.Registry() != analysis.sourceSnapshots {
+	if !analysis.sourceSnapshots.OwnsSnapshot(admitted) {
 		return errors.New("action source snapshot belongs to a different registry")
 	}
 	snapshot, err := analysis.sourceSnapshots.Action(admitted.Capture(), meta)
@@ -145,12 +146,12 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 			return err
 		}
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, address, meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(analysis.sourceSnapshots, snapshot, address, meta.Path(), meta.SourceMapped)
 	if err != nil {
 		return err
 	}
 	parentScope := analysis.scriptScope
-	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: scriptConfig, Deployment: deployment, Composite: true, Context: callContext}
+	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, Deployment: deployment, Composite: true, Context: callContext}
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}
@@ -214,7 +215,7 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepVi
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("metadata step source snapshot is unavailable")
 	}
 	declaration := step
@@ -236,15 +237,11 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *actionlocal.Resolv
 	if !ok {
 		return
 	}
-	compositeCheckoutScope(participant.CheckoutPaths(), actions)
-}
-
-func compositeCheckoutScope(paths *execution.Paths, actions *actionlocal.Resolver) {
-	*paths = actions.ApplyCheckout(*paths)
+	participant.ApplyCheckout(actions)
 }
 
 func (analysis *compositeAnalyzer) describeCall(step workflowdecl.StepView) (source.Reference, invocation.Facts, error) {
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
 	}
 	site := step.Reference()
@@ -253,21 +250,18 @@ func (analysis *compositeAnalyzer) describeCall(step workflowdecl.StepView) (sou
 	return site, facts, err
 }
 
-func invocationOutput(rule workflowvisit.Rule, snapshot *documentparse.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
-	before := len(rule.Errs())
-	defer func() {
-		for _, finding := range rule.Errs()[before:] {
-			if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
-				origin.Path = path
-			}
-			if finding.Path == "" {
-				finding.Path = path
-				finding.Source = snapshot.Content()
-				if finding.Reference == nil {
-					finding.Reference = new(reference)
-				}
+func invocationOutput(rule workflowvisit.Rule, snapshot documentparse.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
+	defer rule.AnnotateSince(rule.FindingCount(), func(finding *findingmodel.Finding) {
+		if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
+			origin.Path = path
+		}
+		if finding.Path == "" {
+			finding.Path = path
+			finding.Source = snapshot.Content()
+			if finding.Reference == nil {
+				finding.Reference = new(reference)
 			}
 		}
-	}()
+	})
 	return visit()
 }

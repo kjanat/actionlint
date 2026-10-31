@@ -28,7 +28,7 @@ func candidateCatalogue(t *testing.T) (string, string, string, *testutil.PluginR
 	var record struct {
 		Artifact json.RawMessage `json:"artifact"`
 	}
-	if err := json.Unmarshal(r.Files[r.RecordURL("v1.0.0")], &record); err != nil {
+	if err := json.Unmarshal(r.File(r.RecordURL("v1.0.0")), &record); err != nil {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
@@ -135,8 +135,8 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	if err != nil || !bytes.Equal(afterSync, beforeSync) {
 		t.Fatalf("failed sync changed the installed lock: %v", err)
 	}
-	if len(network.Requests) != 0 {
-		t.Fatalf("local candidate contacted network: %v", network.Requests)
+	if len(network.Requests()) != 0 {
+		t.Fatalf("local candidate contacted network: %v", network.Requests())
 	}
 }
 
@@ -268,8 +268,8 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 		t.Fatalf("repaired rebuild did not update lock: %+v, %v", lock, err)
 	}
 	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
-	if len(network.Requests) != 0 {
-		t.Fatalf("candidate update contacted the registry: %v", network.Requests)
+	if len(network.Requests()) != 0 {
+		t.Fatalf("candidate update contacted the registry: %v", network.Requests())
 	}
 }
 

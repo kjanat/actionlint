@@ -66,7 +66,7 @@ type node struct {
 	items            []Value
 	props            []Prop
 	source           string
-	err              error
+	problem          string // why an Invalid value failed; text, so no mutable error can be stored
 	templateFragment bool
 }
 
@@ -221,11 +221,13 @@ func (v Value) Source() string {
 	return v.p.source
 }
 
+// Err explains why an Invalid value could not be built and is nil for every
+// other state. Each call returns a fresh error carrying the stored message.
 func (v Value) Err() error {
-	if v.p == nil {
+	if v.p == nil || v.p.state != Invalid {
 		return nil
 	}
-	return v.p.err
+	return errors.New(v.p.problem)
 }
 
 func (v Value) Origin() Origin {
@@ -343,7 +345,7 @@ func Template(text string, origin Origin) Value {
 	if expression == nil {
 		_, parseErr, _ := exprlang.ParseConditionExpression(text)
 		if parseErr != nil {
-			return invalid(text, expressionOrigin, parseErr)
+			return invalid(text, expressionOrigin, parseErr.Error())
 		}
 		value := makeValue(Dynamic, String, expressionOrigin)
 		value.p.source = text
@@ -358,7 +360,7 @@ func Template(text string, origin Origin) Value {
 	}
 	value := FromJSON(constant, expressionOrigin)
 	if value.State() == Invalid {
-		return invalid(text, expressionOrigin, value.Err())
+		return invalid(text, expressionOrigin, value.p.problem)
 	}
 	return value
 }
@@ -367,7 +369,7 @@ func Condition(text string, origin Origin) Value {
 	expressionOrigin := Origin{Span: origin.Span, FromExpression: true}
 	expression, parseErr, _ := exprlang.ParseConditionExpression(text)
 	if parseErr != nil {
-		return invalid(text, expressionOrigin, parseErr)
+		return invalid(text, expressionOrigin, parseErr.Error())
 	}
 	if expression == nil {
 		value := makeValue(Dynamic, KindUnknown, expressionOrigin)
@@ -382,7 +384,7 @@ func Condition(text string, origin Origin) Value {
 	}
 	value := FromJSON(constant, expressionOrigin)
 	if value.State() == Invalid {
-		return invalid(text, expressionOrigin, value.Err())
+		return invalid(text, expressionOrigin, value.p.problem)
 	}
 	return value
 }
@@ -441,7 +443,7 @@ func FromJSON(input any, origin Origin) Value {
 		}
 		return object(Evaluated, origin, props...)
 	default:
-		return invalid("", origin, fmt.Errorf("unsupported JSON value type %T", input))
+		return invalid("", origin, fmt.Sprintf("unsupported JSON value type %T", input))
 	}
 }
 
@@ -465,14 +467,12 @@ func object(state State, origin Origin, props ...Prop) Value {
 	return result
 }
 
-func invalid(source string, origin Origin, err error) Value {
-	if err == nil {
-		err = errors.New("invalid semantic value")
-	} else {
-		err = errors.New(err.Error())
+func invalid(source string, origin Origin, problem string) Value {
+	if problem == "" {
+		problem = "invalid semantic value"
 	}
 	result := makeValue(Invalid, KindUnknown, origin)
 	result.p.source = source
-	result.p.err = err
+	result.p.problem = problem
 	return result
 }

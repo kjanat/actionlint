@@ -23,14 +23,14 @@ import (
 
 func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - uses: ./REPO/child\n      - uses: actions/checkout@v4\n        with: {path: Repo}\n", nil, nil)
-	directory := filepath.Join(f.service.options.Paths.Workspace, "child")
+	directory := filepath.Join(f.options.Paths.Workspace, "child")
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(directory, "action.yml"), []byte("name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
 	if paths.ActionPath != directory || paths.ActionRunnerPath != "repo/child" || !paths.Placements.Present() || !paths.Placements.Details().CaseInsensitive || paths.Placements.Details().Directory.Kind != execution.DirectoryKnown || paths.Placements.Details().Directory.Path != "repo" {
 		t.Fatalf("earlier checkout origin changed: %+v", paths)
 	}
-	current := f.service.options.Actions.CheckoutState()
+	current := f.options.Actions.CheckoutState()
 	if !current.Present() || current.Details().Directory.Path != "Repo" {
 		t.Fatal("fixture did not advance checkout after the child")
 	}
@@ -53,11 +53,11 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner, env: {Path: custom}}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
-	if f.service.options.Actions.Platform() != runnerlang.Any {
+	if f.options.Actions.Platform() != runnerlang.Any {
 		t.Fatal("standalone entry fabricated a runner")
 	}
 	lookup, _ := f.cache.LookupMetadata("$/outer")
-	result, err := standaloneActionForTest(t, f.service, lookup.Metadata())
+	result, err := standaloneActionForTest(t, f.options, lookup.Metadata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,17 +66,17 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 		t.Fatal("standalone fixture lost nested call")
 	}
 	facts, exists := calls[0].Facts()
-	if !exists || !facts.LookupEnvironmentUnknown || !facts.CheckoutEnvironmentUnknown || f.service.options.Actions.Platform() != runnerlang.Any {
+	if !exists || !facts.LookupEnvironmentUnknown || !facts.CheckoutEnvironmentUnknown || f.options.Actions.Platform() != runnerlang.Any {
 		t.Fatalf("unknown platform lost conservative call facts: %+v", facts)
 	}
 }
 
 func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", nil, nil)
-	paths := &f.service.options.Paths
+	paths := &f.options.Paths
 	paths.ActionPath, paths.ActionRunnerPath, paths.ActionIndependent = "stale source", "stale runner", true
 	paths.Placements = execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "checkout"}}, execution.CheckoutPlacement{})
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,9 +103,9 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	}
 	metadata := *lookup.Metadata()
 	metadata.SourceMapped = false
-	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-	f.service.options.SourceSnapshots = declarations.SourceSnapshots
-	result, err := standaloneActionForTest(t, f.service, &metadata, declarations)
+	registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+	f.options.SourceSnapshots = registry
+	result, err := standaloneActionForTest(t, f.options, &metadata, declarations)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
 	scopes[0].Paths.ActionPath = "foreign"
-	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: declarations.SourceSnapshots, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
+	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
 	if !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
 		t.Fatalf("forged action entry accepted: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}, {uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	requests[0], requests[1] = requests[1], requests[0]
 	scopes[1], scopes[2] = scopes[2], scopes[1]
 	rebuilt, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{
-		Declarations: f.root.Registry(), Scopes: scopes, Scripts: requests, Collected: true,
+		Declarations: f.registry, Scopes: scopes, Scripts: requests, Collected: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -219,9 +219,9 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-				service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots, CollectScripts: collect})
-				result, err := standaloneActionForTest(t, service, meta, declarations)
+				registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+				options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
+				result, err := standaloneActionForTest(t, options, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -252,17 +252,17 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
 	failure := errors.New("invocation entry failure")
 	joinFailure := errors.New("join failure")
 	joined := false
 	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
-	service := New(Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots,
+	options := Options{
+		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 		Join: func() error { joined = true; return joinFailure },
-	})
-	result, err := standaloneActionForTest(t, service, meta, declarations)
+	}
+	result, err := standaloneActionForTest(t, options, meta, declarations)
 	if !errors.Is(err, failure) || !errors.Is(err, joinFailure) || !joined || !result.Batch.Valid() || len(result.Batch.Scripts()) != 0 {
 		t.Fatalf("entry failure, cleanup, or prepared action batch lost: error=%v joined=%v result=%+v", err, joined, result)
 	}
@@ -276,11 +276,11 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 	workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n"
 	actions := map[string]string{"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n"}
 	f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
-	first, err := f.service.Workflow(f.root)
+	first, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := f.service.Workflow(f.root)
+	second, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 				scopes[1].Paths.ActionIndependent = !scopes[1].Paths.ActionIndependent
 				want = "action paths disagree"
 			}
-			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.root.Registry(), Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
+			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.registry, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
 				t.Fatalf("%s accepted: %v", change, err)
 			}
 		})
@@ -314,7 +314,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 		"outer/action.yml": line + "\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,10 +354,10 @@ func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
 	linux, linuxPresent := declaration.Job("linux")
 	windows, windowsPresent := declaration.Job("windows")
 	if !available || !declared || !linuxPresent || !windowsPresent ||
-		f.service.options.Runners.Job(linux).Platform != runnerlang.MacOrLinux || f.service.options.Runners.Job(windows).Platform != runnerlang.Windows {
+		f.options.Runners.Job(linux).Platform != runnerlang.MacOrLinux || f.options.Runners.Job(windows).Platform != runnerlang.Windows {
 		t.Fatal("fixture did not resolve distinct runner platforms")
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}

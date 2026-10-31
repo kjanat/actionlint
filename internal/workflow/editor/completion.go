@@ -53,22 +53,22 @@ func Complete(content string, offset int) []expr.Completion {
 	if w.Present() {
 		for event := range w.On() {
 			if dispatch, ok := event.WorkflowDispatchEvent(); ok {
-				inputs := expr.NewEmptyStrictObjectType()
+				var inputs expr.ObjectBuilder
 				for name, input := range dispatch.Inputs() {
-					var ty expr.Type = expr.StringType{}
+					ty := expr.StringType()
 					switch input.Type() {
 					case workflow.WorkflowDispatchEventInputTypeBoolean:
-						ty = expr.BoolType{}
+						ty = expr.BoolType()
 					case workflow.WorkflowDispatchEventInputTypeNumber:
-						ty = expr.NumberType{}
+						ty = expr.NumberType()
 					case workflow.WorkflowDispatchEventInputTypeNone,
 						workflow.WorkflowDispatchEventInputTypeString,
 						workflow.WorkflowDispatchEventInputTypeChoice,
 						workflow.WorkflowDispatchEventInputTypeEnvironment:
 					}
-					inputs.Props[strings.ToLower(name)] = ty
+					inputs.Set(strings.ToLower(name), ty)
 				}
-				c.UpdateDispatchInputs(inputs)
+				c.UpdateDispatchInputs(inputs.Build())
 			}
 		}
 	}

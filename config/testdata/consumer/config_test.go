@@ -23,12 +23,24 @@ func TestTypedRuleOptions(t *testing.T) {
 		{"commit pin", "actions/checkout", "require-commit-hash", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			required, err := config.NewRuleSetting("error", &config.RequiredActionsOptions{Actions: []string{tc.action}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			exclusions, err := config.NewCommitHashOptions(tc.exclude...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			commitHash, err := config.NewRuleSetting("error", exclusions)
+			if err != nil {
+				t.Fatal(err)
+			}
 			cfg := &config.Config{Lint: config.LintConfig{Rules: config.LintRulesConfig{
 				Preset: "none",
-				Policy: config.RuleGroupConfig{Rules: map[string]config.RuleSetting{
-					"required-actions":    {Level: "error", Options: &config.RequiredActionsOptions{Actions: []string{tc.action}}},
-					"require-commit-hash": {Level: "error", Options: &config.CommitHashOptions{Exclude: tc.exclude}},
-				}},
+				Policy: config.NewRuleGroup("", "", map[string]config.RuleSetting{
+					"required-actions":    required,
+					"require-commit-hash": commitHash,
+				}),
 			}}}
 			result, err := analysis.Analyze(t.Context(), analysis.Request{
 				Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}},

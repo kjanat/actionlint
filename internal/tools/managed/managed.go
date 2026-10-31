@@ -146,9 +146,11 @@ func (r documentRoute) negotiationKey(cfg *config.Config, enabled bool) (string,
 	if err != nil {
 		return "", err
 	}
-	var pluginOptions any
+	var pluginOptions map[string]any
 	if cfg != nil {
-		pluginOptions = cfg.Lint.Rules.Plugins.Rules[r.name].Options
+		if pluginOptions, err = cfg.Lint.Rules.PluginOptions(r.name); err != nil {
+			return "", err
+		}
 	}
 	data, err := json.Marshal(struct {
 		Enabled bool             `json:"enabled"`
@@ -217,7 +219,11 @@ func (r documentRoute) negotiate(ctx context.Context, guest analyzer.ToolIntegra
 	}
 	var pluginOptions json.RawMessage
 	if cfg != nil {
-		if value := cfg.Lint.Rules.Plugins.Rules[guest.ToolIntegration().Tool].Options; value != nil {
+		value, err := cfg.Lint.Rules.PluginOptions(guest.ToolIntegration().Tool)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil {
 			pluginOptions, err = json.Marshal(value)
 			if err != nil {
 				return nil, err

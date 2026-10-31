@@ -88,15 +88,16 @@ type lineRange struct{ first, last int }
 // Evaluation contains the source-local exceptions permitted by policy.
 // Invocation/source ownership is supplied by the host before calling Suppresses.
 type Evaluation struct {
-	ranges      map[string][]lineRange
-	Diagnostics []diagnostic.Diagnostic
+	ranges map[string][]lineRange
 }
 
 // Evaluate applies restrictions to already validated directives. A nil policy
-// permits every exception. Grammar diagnostics are evaluated by the same ranges
-// as analyzer diagnostics; policy diagnostics are emitted after filtering.
-func Evaluate(directives []Directive, policy func(string) Decision) Evaluation {
+// permits every exception. It returns the permitted exceptions and the policy
+// diagnostics for prohibited ones. Grammar diagnostics are evaluated by the same
+// ranges as analyzer diagnostics; policy diagnostics are emitted after filtering.
+func Evaluate(directives []Directive, policy func(string) Decision) (Evaluation, []diagnostic.Diagnostic) {
 	result := Evaluation{ranges: make(map[string][]lineRange)}
+	var reports []diagnostic.Diagnostic
 	for _, directive := range directives {
 		var prohibited []string
 		for _, name := range directive.Rules {
@@ -112,10 +113,10 @@ func Evaluate(directives []Directive, policy func(string) Decision) Evaluation {
 			}
 		}
 		if len(prohibited) != 0 {
-			result.Diagnostics = append(result.Diagnostics, diagnostic.Diagnostic{Start: directive.Position, Rule: "disallow-suppressions", Message: "inline suppression of " + strings.Join(prohibited, ", ") + " is disallowed by policy.disallow-suppressions"})
+			reports = append(reports, diagnostic.Diagnostic{Start: directive.Position, Rule: "disallow-suppressions", Message: "inline suppression of " + strings.Join(prohibited, ", ") + " is disallowed by policy.disallow-suppressions"})
 		}
 	}
-	return result
+	return result, reports
 }
 
 // Suppresses reports whether a finding's origin overlaps an allowed exception.

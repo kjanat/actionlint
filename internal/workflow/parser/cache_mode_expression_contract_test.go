@@ -50,9 +50,9 @@ jobs:
 					t.Fatal(err)
 				}
 				project := workspace.Identity(root)
-				snapshots := declarations.NewCapturedSnapshots(t, root)
+				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
 				fileCache := calls.NewCache(project.RootDir(), root, nil)
-				fileCache.SetSources(t.Context(), snapshots.Sources.Store, root)
+				fileCache.SetSources(t.Context(), store, root)
 				fromFile, err := fileCache.FindMetadata("./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
@@ -62,7 +62,7 @@ jobs:
 					t.Fatal("missing workflow_call event")
 				}
 				astCache := calls.NewCache(project.RootDir(), root, nil)
-				astCache.SetSources(t.Context(), snapshots.Sources.Store, root)
+				astCache.SetSources(t.Context(), store, root)
 				path := filepath.Join(root, "callee.yaml")
 				snapshot, err := snapshots.Document(path, []byte(source), documentparse.Workflow(path, []byte(source)))
 				if err != nil {
@@ -79,7 +79,11 @@ jobs:
 					t.Fatal(diff)
 				}
 				for id, line := range map[string]int{"inherited": 2, "explicit": 9, "call": 14} {
-					mode := fromFile.JobCacheAccess[id].Mode
+					if recorded, declared := fromFile.JobCacheAccess[id].Mode.Kind(); !declared || recorded != kind {
+						t.Fatalf("%s: metadata recorded %s (declared %t), want %s", id, recorded, declared, kind)
+					}
+					// Metadata keeps only the mode; the parsed declaration keeps its source.
+					mode := workflowlang.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
 					want := workflowlang.Pos{Line: line, Col: 17}
 					if line == 2 || aliased {
 						want = workflowlang.Pos{Line: 2, Col: 13}

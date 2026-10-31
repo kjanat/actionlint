@@ -16,7 +16,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 		for _, explicit := range []bool{false, true} {
 			t.Run(input+map[bool]string{false: "/discovered", true: "/explicit"}[explicit], func(t *testing.T) {
 				registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-				registry.Offline = true
+				registry.SetOffline(true)
 				root := pluginRepository(t)
 				path := filepath.Join(root, ".github", "actionlint.yaml")
 				if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -34,8 +34,8 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err := selection.Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 					t.Fatal(err)
 				}
-				if len(registry.Requests) != 0 {
-					t.Fatalf("disabled defaults contacted registry: %v", registry.Requests)
+				if len(registry.Requests()) != 0 {
+					t.Fatalf("disabled defaults contacted registry: %v", registry.Requests())
 				}
 				cfg, err := config.Load(path)
 				if err != nil || cfg.ConfigVariables == nil || cfg.Plugins == nil || len(cfg.Plugins) != 0 {

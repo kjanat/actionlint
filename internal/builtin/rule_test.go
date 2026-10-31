@@ -3,21 +3,7 @@ package builtin
 import (
 	"bytes"
 	"testing"
-
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
-
-func TestRuleConfiguration(t *testing.T) {
-	r := Configuration{}
-	if r.Config() != nil {
-		t.Error("Config must be nil after creating a rule")
-	}
-	want := &repoconfig.Config{}
-	r.SetConfig(want)
-	if have := r.Config(); have != want {
-		t.Errorf("Wanted config %v but got %v", want, have)
-	}
-}
 
 func TestRuleLogger(t *testing.T) {
 	r := ruleLogger{tag: "dummy-name"}

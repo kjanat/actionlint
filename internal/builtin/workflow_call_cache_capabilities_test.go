@@ -45,7 +45,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := builtin.NewRuleWorkflowCall(nil, cache)
+	rule := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, cache)
 	if err := rule.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 		t.Fatal(err)
 	}

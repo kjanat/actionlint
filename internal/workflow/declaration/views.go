@@ -293,9 +293,24 @@ func (v JobView) Key() string {
 	}
 	return v.owner.record.jobKeys[v.data()]
 }
+
+// EventName dispatches over the closed set of events instead of calling
+// through the interface, so reading the name cannot reach unsummarized code.
 func (v EventView) EventName() string {
-	if !v.Present() {
+	switch node := v.node.(type) {
+	case *workflowlang.WebhookEvent:
+		return node.EventName()
+	case *workflowlang.ScheduledEvent:
+		return node.EventName()
+	case *workflowlang.WorkflowDispatchEvent:
+		return node.EventName()
+	case *workflowlang.RepositoryDispatchEvent:
+		return node.EventName()
+	case *workflowlang.WorkflowCallEvent:
+		return node.EventName()
+	case *workflowlang.ImageVersionEvent:
+		return node.EventName()
+	default:
 		return ""
 	}
-	return v.node.EventName()
 }

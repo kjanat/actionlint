@@ -47,7 +47,7 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	requests := len(registry.Requests)
+	requests := len(registry.Requests())
 	overlay, err := config.ParseOverlay("config", []byte("plugins: []\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -62,8 +62,8 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if migrated.Plugins == nil || len(migrated.Plugins) != 0 {
 		t.Fatalf("overlay opt-out lost to lock-only pins: %+v", migrated.Plugins)
 	}
-	if len(registry.Requests) != requests {
-		t.Fatalf("overlay opt-out contacted registry: %v", registry.Requests[requests:])
+	if len(registry.Requests()) != requests {
+		t.Fatalf("overlay opt-out contacted registry: %v", registry.Requests()[requests:])
 	}
 	if bytes.Equal(original, mustReadFile(t, path)) {
 		t.Fatal("legacy config was not migrated")
@@ -72,7 +72,7 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-	registry.Offline = true
+	registry.SetOffline(true)
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	firstConfig := filepath.Join(first, ".github", "actionlint.yaml")
@@ -85,8 +85,8 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
-	if len(registry.Requests) != 0 {
-		t.Fatalf("migration resolved plugins before rejecting repository selection: %v", registry.Requests)
+	if len(registry.Requests()) != 0 {
+		t.Fatalf("migration resolved plugins before rejecting repository selection: %v", registry.Requests())
 	}
 	for _, path := range []string{firstConfig, secondConfig} {
 		if got := mustReadFile(t, path); !bytes.Equal(got, []byte("config-variables: []\n")) {
@@ -113,8 +113,8 @@ func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T
 	if err != nil {
 		t.Fatalf("selecting multiple plugin-free repositories: %v", err)
 	}
-	if len(selected.Paths) != 0 || selected.LockFile != "" || len(registry.Requests) != 0 {
-		t.Fatalf("plugin-free selection unexpectedly activated plugins: %+v, requests %v", selected, registry.Requests)
+	if len(selected.Paths) != 0 || selected.LockFile != "" || len(registry.Requests()) != 0 {
+		t.Fatalf("plugin-free selection unexpectedly activated plugins: %+v, requests %v", selected, registry.Requests())
 	}
 	for _, path := range []string{
 		filepath.Join(first, ".github", "actionlint.yaml"),
@@ -175,7 +175,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 
 func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T) {
 	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-	registry.Offline = true
+	registry.SetOffline(true)
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	legacyPath := filepath.Join(root, ".github", "actionlint.yaml")
 	outside := t.TempDir()
@@ -191,8 +191,8 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want unmanaged-input plugin error", err)
 	}
-	if len(registry.Requests) != 0 {
-		t.Fatalf("migration resolved plugins before rejecting unmanaged input: %v", registry.Requests)
+	if len(registry.Requests()) != 0 {
+		t.Fatalf("migration resolved plugins before rejecting unmanaged input: %v", registry.Requests())
 	}
 	if got := mustReadFile(t, legacyPath); !bytes.Equal(got, []byte("config-variables: []\n")) {
 		t.Fatalf("migration changed config before rejecting unmanaged input: %q", got)
@@ -221,7 +221,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 	if len(migrated.Plugins) != 2 {
 		t.Fatalf("active defaults were not migrated through physical alias: %+v", migrated.Plugins)
 	}
-	if len(registry.Requests) == 0 {
+	if len(registry.Requests()) == 0 {
 		t.Fatal("active default plugins did not resolve")
 	}
 }

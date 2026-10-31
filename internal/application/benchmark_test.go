@@ -148,7 +148,11 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 		}
 		b.Run(fmt.Sprintf("%s%s%s-%d", bm.what, sc, fm, len(bm.files)), func(b *testing.B) {
 			for range b.N {
-				session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root})
+				opts := workspace.Options{WorkingDir: root}
+				if bm.what != "our workflows" {
+					opts.Config = &repoconfig.Config{}
+				}
+				session, err := workspace.New(b.Context(), opts)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -158,8 +162,6 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 					if err != nil {
 						b.Fatal(err)
 					}
-				} else {
-					session.DefaultConfig = &repoconfig.Config{}
 				}
 				selected, err := session.Files(bm.files, project)
 				if err != nil {
@@ -210,11 +212,10 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 	}
 
 	for b.Loop() {
-		session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root})
+		session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root, Config: &repoconfig.Config{}})
 		if err != nil {
 			b.Fatal(err)
 		}
-		session.DefaultConfig = &repoconfig.Config{}
 		selected, err := session.Files(files, proj)
 		if err != nil {
 			b.Fatal(err)

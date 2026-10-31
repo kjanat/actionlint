@@ -59,7 +59,7 @@ func TestSelectInheritedAliasBudgetPrefixesMatchUpstream(t *testing.T) {
 			return nil
 		})
 		fatal, ok := FatalLoadError(session.Finish(err))
-		if !ok || fatal.Message != want.Message || fatal.Mark.Index != want.Mark.Index || fatal.Mark.Line != want.Mark.Line || fatal.Mark.Column != want.Mark.Column || fatal.Error() != want.Error() {
+		if !ok || fatal.Message() != want.Message || fatal.Mark().Index != want.Mark.Index || fatal.Mark().Line != want.Mark.Line || fatal.Mark().Column != want.Mark.Column || fatal.Error() != want.Error() {
 			t.Fatalf("enter=%t limit=%v upstream=%v", enterItem, err, want)
 		}
 		if len(completed) != 1 || len(baseline.Items) != 3 || !reflect.DeepEqual(completed[0], baseline.Items[0]) {

@@ -156,3 +156,21 @@ type HandleList struct {
 
 func (l *HandleList) ShallowHandles() []WritableHandle { return slices.Clone(l.writable) } // want "ARC003: ShallowHandles result 1"
 func (l *HandleList) ReadonlyHandles() []Handle        { return slices.Clone(l.readonly) }
+
+// Assigning slice elements by index carries what append carries: a read-only
+// handle shares nothing, a writable handle shares its owner.
+func (l *HandleList) IndexedHandles() []Handle {
+	out := make([]Handle, len(l.readonly))
+	for i, h := range l.readonly {
+		out[i] = h
+	}
+	return out
+}
+
+func (l *HandleList) IndexedWritable() []WritableHandle { // want "ARC003: IndexedWritable result 1"
+	out := make([]WritableHandle, len(l.writable))
+	for i, h := range l.writable {
+		out[i] = h
+	}
+	return out
+}

@@ -4,6 +4,7 @@ import (
 	"io"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
@@ -20,14 +21,17 @@ func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *
 func newCapturedWorkflowCacheAndSnapshots(t testing.TB, root, cwd string, debug io.Writer) (*calls.Cache, *capturedSnapshots) {
 	t.Helper()
 	cache := calls.NewCache(root, cwd, debug)
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-	cache.SetSources(t.Context(), snapshots.Sources.Store, sourceFixtureBase(t))
+	store, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	cache.SetSources(t.Context(), store, sourceFixtureBase(t))
 	return cache, snapshots
 }
 
 type capturedSnapshots = declarations.CapturedSnapshots
 
-func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
+// newCapturedSnapshots returns the capture store for caches under test and
+// the fixture that admits documents into the same store.
+func newCapturedSnapshots(t testing.TB, base string) (*capture.Store, *capturedSnapshots) {
 	t.Helper()
-	return declarations.NewCapturedSnapshots(t, base)
+	_, store, snapshots := declarations.NewCapturedSnapshots(t, base)
+	return store, snapshots
 }

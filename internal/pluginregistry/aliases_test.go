@@ -13,7 +13,7 @@ import (
 
 func TestRegistryAssignedAliases(t *testing.T) {
 	registry := testutil.NewPluginRegistry(t)
-	registry.Aliases = []string{"community-check", "other-name"}
+	registry.SetAliases("community-check", "other-name")
 	registry.Add(t, "v1.0.0", emptyComponent)
 	client := registryClient(t)
 	for _, name := range []string{"community-check", "other-name", testutil.FixturePluginName} {
@@ -46,7 +46,7 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 	for _, aliases := range [][]string{{"UPPER"}, {"under_score"}, {""}, {strings.Repeat("a", 65)}, {"same", "same"}} {
 		t.Run(strings.Join(aliases, ","), func(t *testing.T) {
 			registry := testutil.NewPluginRegistry(t)
-			registry.Aliases = aliases
+			registry.SetAliases(aliases...)
 			registry.Add(t, "v1.0.0", emptyComponent)
 			if _, err := registryClient(t).Search(t.Context(), "unrelated"); err == nil {
 				t.Fatal("invalid aliases outside query accepted")
@@ -54,10 +54,10 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 		})
 	}
 	registry := testutil.NewPluginRegistry(t)
-	registry.Aliases = []string{"shared"}
+	registry.SetAliases("shared")
 	registry.Add(t, "v1.0.0", emptyComponent)
 	var catalog pluginregistry.Catalog
-	if err := json.Unmarshal(registry.Files[testutil.FixtureRegistryURL+"index.json"], &catalog); err != nil {
+	if err := json.Unmarshal(registry.File(testutil.FixtureRegistryURL+"index.json"), &catalog); err != nil {
 		t.Fatal(err)
 	}
 	other := catalog.Plugins[0]
@@ -67,7 +67,7 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry.Files[testutil.FixtureRegistryURL+"index.json"] = data
+	registry.SetFile(testutil.FixtureRegistryURL+"index.json", data)
 	if _, err := registryClient(t).Versions(t.Context(), testutil.FixturePluginName); err == nil {
 		t.Fatal("ambiguous alias accepted even when selecting full repository")
 	}
@@ -75,7 +75,7 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 
 func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	registry := testutil.NewPluginRegistry(t)
-	registry.Aliases = []string{"check"}
+	registry.SetAliases("check")
 	registry.Add(t, "v1.0.0", emptyComponent)
 	pin, err := registryClient(t).Resolve(t.Context(), "check", "latest")
 	if err != nil {
@@ -88,7 +88,10 @@ func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	if !pin.Matches(ref) {
 		t.Fatal("recorded alias does not match")
 	}
-	ref.Registry = pluginref.DefaultRegistry
+	ref, err = pluginref.New("check", "", pluginref.DefaultRegistry)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if pin.Matches(ref) {
 		t.Fatal("custom registry alias escaped its registry")
 	}

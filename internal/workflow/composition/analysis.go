@@ -12,11 +12,11 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
-	"actionlint.kjanat.dev/v2/internal/checks"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -37,6 +37,7 @@ type Options struct {
 	Rules                 []workflowvisit.Rule
 	Scripts               scriptexecution.Service
 	Paths                 execution.Paths
+	Reader                *fsread.Reader // records reads made while resolving script paths
 	Config                *repoconfig.Config
 	// ConfigForFile resolves each logical manifest path once, including no-script scopes.
 	ConfigForFile func(string) (*repoconfig.Config, error)
@@ -47,9 +48,11 @@ type Options struct {
 	Debug                            io.Writer
 }
 
+// Result is a plain record of one composition run. It holds no invariants of
+// its own; AnalyzerInput validates its batch against the entry snapshot.
 type Result struct {
 	Findings         []*findingmodel.Finding
-	EntrySnapshot    *documentparse.SourceSnapshot
+	EntrySnapshot    documentparse.SourceSnapshot
 	Batch            scriptexecution.Batch
 	ResolveExecution bool
 	Sources          map[string][]byte
@@ -58,14 +61,12 @@ type Result struct {
 	Configs map[string]*repoconfig.Config
 }
 
-type Service struct{ options Options }
-
-func New(options Options) *Service { return &Service{options: options} }
-
-// Workflow enters the workflow pass lifecycle. Action never uses this path.
-func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, error) {
-	return s.analyze(func(c *compositeAnalyzer) error {
-		if snapshot == nil {
+// Workflow runs one workflow composition with the caller's collaborators.
+// It enters the workflow pass lifecycle; Action never uses this path.
+// Options.Join runs exactly once per call.
+func Workflow(options Options, snapshot documentparse.SourceSnapshot) (Result, error) {
+	return analyze(options, func(c *compositeAnalyzer) error {
+		if !snapshot.Present() {
 			return errors.New("workflow source snapshot is unavailable")
 		}
 		w, available := snapshot.WorkflowView()
@@ -75,19 +76,19 @@ func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, erro
 		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 			return err
 		}
-		v := engine.NewVisitor()
-		v.Hooks = engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout}
-		for _, pass := range s.options.Rules {
-			v.AddPass(checks.WithOrigins(pass, s.options.Config))
-		}
-		v.EnableDebug(s.options.Debug)
-		return v.Visit(w)
+		return engine.Visit(w, engine.Options{
+			Passes: c.passes,
+			Hooks:  engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, JobPass: c.visitJobPass, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
+			Debug:  options.Debug,
+		})
 	})
 }
 
-func (s *Service) Action(snapshot *documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
-	return s.analyze(func(c *compositeAnalyzer) error {
-		if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+// Action runs one standalone action composition with the caller's collaborators.
+// Options.Join runs exactly once per call.
+func Action(options Options, snapshot documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
+	return analyze(options, func(c *compositeAnalyzer) error {
+		if snapshot.Kind() != documentparse.KindAction {
 			return errors.New("action source snapshot is unavailable")
 		}
 		if metadata == nil {
@@ -96,12 +97,11 @@ func (s *Service) Action(snapshot *documentparse.SourceSnapshot, deployment scri
 		if err := c.startEntry(invocation.EntryAction, snapshot); err != nil {
 			return err
 		}
-		return visitStandaloneAction(metadata, deployment, s.options.Rules, c)
+		return visitStandaloneAction(metadata, deployment, options.Rules, c)
 	})
 }
 
-func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, err error) {
-	options := s.options
+func analyze(options Options, visit func(*compositeAnalyzer) error) (result Result, err error) {
 	// Join even when a visit fails. Collection happens only after all started work ends.
 	joined := false
 	join := func() error {
@@ -131,6 +131,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			ctx: options.Context, passes: passes,
 			runners:        options.Runners,
 			scriptPaths:    options.Paths,
+			reader:         options.Reader,
 			collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
 			budget:                invocation.DefaultBudget(),
 			scriptInputs:          scriptInputs,

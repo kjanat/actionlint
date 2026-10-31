@@ -67,7 +67,7 @@ func (a sourceTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Findi
 	return findings, nil
 }
 
-func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentparse.SourceSnapshot, deployments ...Deployment) (invocation.Graph, Collection) {
+func nestedActionBatch(t *testing.T, collection Collection, snapshot documentparse.SourceSnapshot, deployments ...Deployment) (invocation.Graph, Collection) {
 	t.Helper()
 	if len(deployments) == 0 {
 		deployments = []Deployment{collection.Scopes[0].Deployment}
@@ -75,7 +75,7 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentpa
 	path := filepath.Join(filepath.Dir(snapshot.Reference().Document), "workflow.yml")
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n" + strings.Repeat("      - uses: $/source\n", len(deployments)))
 	document := documentparse.Workflow(path, content)
-	declarations := newCapturedSnapshots(t, filepath.Dir(path))
+	registry, _, declarations := newCapturedSnapshots(t, filepath.Dir(path))
 	actionPath := snapshot.Capture().Aliases()[0]
 	actionContent := snapshot.Content()
 	var err error
@@ -83,7 +83,7 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentpa
 	if err != nil {
 		t.Fatal(err)
 	}
-	collection.Declarations = declarations.SourceSnapshots
+	collection.Declarations = registry
 	root, err := declarations.Document(path, content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -179,7 +179,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 								cfg.Lint.Rules.Disable = []string{"shellcheck"}
 							}
 							policy := diagnosticpolicy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), ProjectConfig: cfg}
-							filtered, err := policy.Apply(findings, map[string][]byte{path: content}, map[string]*repoconfig.Config{path: cfg})
+							filtered, err := diagnosticpolicy.Apply(policy, findings, map[string][]byte{path: content}, map[string]*repoconfig.Config{path: cfg})
 							want := 2
 							if disabled {
 								want = 0

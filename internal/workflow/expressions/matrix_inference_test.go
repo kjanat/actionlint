@@ -29,7 +29,7 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if ty := rule.matrixTy.Props["item"]; ty == nil || ty.String() != tc.wantType {
+			if ty, ok := rule.matrixTy.Property("item"); !ok || ty.String() != tc.wantType {
 				t.Fatalf("matrix item type=%v, want %s", ty, tc.wantType)
 			}
 			if err := rule.VisitStep(testStep(t, job, 0)); err != nil {

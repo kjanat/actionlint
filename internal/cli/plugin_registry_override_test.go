@@ -18,9 +18,9 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const mirror = "https://mirror.example/"
-	for url, data := range r.Files {
+	for url, data := range r.Files() {
 		if relative, ok := strings.CutPrefix(url, testutil.FixtureRegistryURL); ok {
-			r.Files[mirror+relative] = bytes.Clone(data)
+			r.SetFile(mirror+relative, data)
 		}
 	}
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -34,20 +34,20 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	lockPath := filepath.Join(".github", pluginregistry.LockName)
 	cfg, err := repoconfig.Load(configPath)
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry != mirror || cfg.Plugins[0].Version != "v1.0.0" {
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry() != mirror || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("registry declaration: %#v, %v", cfg, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
 	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Registry != mirror || lock.Lock.Plugins[0].Selector != "v1.0.0" || lock.Lock.Plugins[0].Version != "v1.0.0" {
 		t.Fatalf("registry pin: %#v, %v", lock, err)
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "install")
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("repeated installation contacted network")
 	}
-	r.Offline = false
+	r.SetOffline(false)
 	before, err := os.ReadFile(lockPath)
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := r.RecordURL("v1.0.0")
-	r.Files[record] = bytes.ReplaceAll(r.Files[record], []byte(`"owner_id":5`), []byte(`"owner_id":6`))
+	r.SetFile(record, bytes.ReplaceAll(r.File(record), []byte(`"owner_id":5`), []byte(`"owner_id":6`)))
 	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", testutil.FixtureRegistryURL)
 	after, err := os.ReadFile(lockPath)
 	if err != nil || !bytes.Equal(before, after) {
@@ -95,8 +95,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			two := one
-			two.Registry, two.Version = second, "v2"
+			two := testReference(t, test.name, "v2", second)
 			refs := []pluginref.Reference{one, two}[:test.count]
 			ref, err := requestedPlugin(test.name, pluginInvocation{Registry: test.registry}, refs)
 			if test.invalid {
@@ -105,7 +104,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || ref.Version != test.version || ref.Registry != test.registry {
+			if err != nil || ref.Version() != test.version || ref.Registry() != test.registry {
 				t.Fatalf("selection: %+v, %v", ref, err)
 			}
 			index, err := requestedPluginIndex(ref, test.registry, refs)
@@ -123,8 +122,8 @@ func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 			pluginCommandTest(t, 2, append(args, "--registry", registry)...)
 		}
 	}
-	if len(r.Requests) != 0 {
-		t.Fatalf("invalid endpoint reached transport: %v", r.Requests)
+	if len(r.Requests()) != 0 {
+		t.Fatalf("invalid endpoint reached transport: %v", r.Requests())
 	}
 }
 

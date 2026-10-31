@@ -8,7 +8,7 @@ import (
 	stringutil "actionlint.kjanat.dev/v2/internal/stringutil"
 )
 
-func errorAtToken(kind findingKind, t *Token, msg string) *Error {
+func errorAtToken(kind findingKind, t Token, msg string) *Error {
 	return &Error{
 		Message: msg,
 		Rule:    kind.rule, Code: kind.code,
@@ -35,7 +35,7 @@ func NewParser() *Parser {
 
 func (p *Parser) error(msg string) {
 	if p.err == nil {
-		p.err = errorAtToken(syntax, p.cur, msg)
+		p.err = errorAtToken(syntax, *p.cur, msg)
 	}
 }
 
@@ -70,11 +70,12 @@ func (p *Parser) next() *Token {
 
 type parsedExprNode interface {
 	Node
-	setSpan(Span)
+	location() *Location
 }
 
+// node sets n's range from start through the last consumed token.
 func (p *Parser) node(n parsedExprNode, start *Token) parsedExprNode {
-	n.setSpan(Span{start.Offset, p.last.Offset + len(p.last.Value), start.Line, start.Column})
+	n.location().Range = Span{start.Offset, p.last.Offset + len(p.last.Value), start.Line, start.Column}
 	return n
 }
 
@@ -116,19 +117,19 @@ func (p *Parser) parseIdent() parsedExprNode {
 				// continue to next argument
 			}
 		}
-		return p.node(&FuncCallNode{Callee: ident.Value, Args: args, tok: ident}, ident)
+		return p.node(&FuncCallNode{First: *ident, Callee: ident.Value, Args: args}, ident)
 	}
 	// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
 	switch ident.Value {
 	case "null":
-		return p.node(&NullNode{tok: ident}, ident)
+		return p.node(&NullNode{First: *ident}, ident)
 	case "true":
-		return p.node(&BoolNode{Value: true, tok: ident}, ident)
+		return p.node(&BoolNode{First: *ident, Value: true}, ident)
 	case "false":
-		return p.node(&BoolNode{Value: false, tok: ident}, ident)
+		return p.node(&BoolNode{First: *ident, Value: false}, ident)
 	default:
 		// Variable name access is case insensitive. github.event and GITHUB.event are the same.
-		return p.node(&VariableNode{Name: strings.ToLower(ident.Value), tok: ident}, ident)
+		return p.node(&VariableNode{First: *ident, Name: strings.ToLower(ident.Value)}, ident)
 	}
 }
 
@@ -160,7 +161,7 @@ func (p *Parser) parseInt() parsedExprNode {
 
 	p.next() // eat int
 
-	return p.node(&IntNode{Value: int(i), tok: t}, t)
+	return p.node(&IntNode{First: *t, Value: int(i)}, t)
 }
 
 func (p *Parser) parseFloat() parsedExprNode {
@@ -173,7 +174,7 @@ func (p *Parser) parseFloat() parsedExprNode {
 
 	p.next() // eat float
 
-	return p.node(&FloatNode{Value: f, tok: t}, t)
+	return p.node(&FloatNode{First: *t, Value: f}, t)
 }
 
 func (p *Parser) parseString() parsedExprNode {
@@ -181,7 +182,7 @@ func (p *Parser) parseString() parsedExprNode {
 	s := t.Value
 	s = s[1 : len(s)-1]                  // strip first and last single quotes
 	s = strings.ReplaceAll(s, "''", "'") // unescape ''
-	return p.node(&StringNode{Value: s, tok: t}, t)
+	return p.node(&StringNode{First: *t, Value: s}, t)
 }
 
 func (p *Parser) parsePrimaryExpr() parsedExprNode {
@@ -244,7 +245,7 @@ func (p *Parser) parsePostfixOp() parsedExprNode {
 			return nil
 		}
 		p.next() // eat ']'
-		ret = p.node(&IndexAccessNode{Operand: ret, Index: idx}, start)
+		ret = p.node(&IndexAccessNode{First: ret.Token(), Operand: ret, Index: idx}, start)
 	}
 }
 
@@ -252,12 +253,12 @@ func (p *Parser) parsePostfixOp() parsedExprNode {
 func (p *Parser) parseDeref(receiver Node, start *Token) parsedExprNode {
 	if p.peek().Kind == TokenKindStar {
 		p.next() // eat '*'
-		return p.node(&ArrayDerefNode{Receiver: receiver}, start)
+		return p.node(&ArrayDerefNode{First: receiver.Token(), Receiver: receiver}, start)
 	}
 	if p.peek().Kind == TokenKindIdent {
 		t := p.next() // eat 'b' of 'a.b'
 		// Property name is case insensitive. github.event and github.EVENT are the same
-		return p.node(&ObjectDerefNode{Receiver: receiver, Property: strings.ToLower(t.Value), propertyToken: t}, start)
+		return p.node(&ObjectDerefNode{First: receiver.Token(), Receiver: receiver, Property: strings.ToLower(t.Value), PropertyToken: *t}, start)
 	}
 	p.unexpected(
 		"object property dereference like 'a.b' or array element dereference like 'a.*'",
@@ -278,7 +279,7 @@ func (p *Parser) parsePrefixOp() parsedExprNode {
 		return nil
 	}
 
-	return p.node(&NotOpNode{Operand: o, tok: t}, t)
+	return p.node(&NotOpNode{First: *t, Operand: o}, t)
 }
 
 // compareOpTokens maps comparison operator tokens to their node kinds.
@@ -309,7 +310,7 @@ func (p *Parser) parseCompareBinOp() parsedExprNode {
 		return nil
 	}
 
-	return p.node(&CompareOpNode{Kind: k, Left: l, Right: r}, start)
+	return p.node(&CompareOpNode{First: l.Token(), Kind: k, Left: l, Right: r}, start)
 }
 
 func (p *Parser) parseLogicalAnd() parsedExprNode {
@@ -326,7 +327,7 @@ func (p *Parser) parseLogicalAnd() parsedExprNode {
 	if r == nil {
 		return nil
 	}
-	return p.node(&LogicalOpNode{Kind: LogicalOpNodeKindAnd, Left: l, Right: r}, start)
+	return p.node(&LogicalOpNode{First: l.Token(), Kind: LogicalOpNodeKindAnd, Left: l, Right: r}, start)
 }
 
 func (p *Parser) parseLogicalOr() parsedExprNode {
@@ -343,7 +344,7 @@ func (p *Parser) parseLogicalOr() parsedExprNode {
 	if r == nil {
 		return nil
 	}
-	return p.node(&LogicalOpNode{Kind: LogicalOpNodeKindOr, Left: l, Right: r}, start)
+	return p.node(&LogicalOpNode{First: l.Token(), Kind: LogicalOpNodeKindOr, Left: l, Right: r}, start)
 }
 
 // Err returns an error which was caused while previous parsing.
@@ -351,7 +352,7 @@ func (p *Parser) Err() *Error {
 	if err := p.lexer.Err(); err != nil {
 		return err
 	}
-	return p.err
+	return p.err.detached()
 }
 
 // Parse parses token sequence lexed by a given lexer into syntax tree.
@@ -380,11 +381,11 @@ func (p *Parser) Parse(l *Lexer) (Node, *Error) {
 			c++
 		}
 		p.errorf("parser did not reach end of input after parsing the expression. %d remaining token(s) in the input: %s", c, qb.Build())
-		return nil, p.err
+		return nil, p.err.detached()
 	}
 	if node := expressionExceedingDepth(root); node != nil {
 		p.err = errorAtToken(syntax, node.Token(), "exceeded max expression depth 50")
-		return nil, p.err
+		return nil, p.err.detached()
 	}
 
 	return root, nil

@@ -2,9 +2,13 @@ package expression
 
 // Node is a Node of expression syntax tree. To know the syntax, see
 // https://docs.github.com/en/actions/learn-github-actions/expressions
+//
+// Nodes are plain syntax records, as in go/ast: the parser builds each node
+// once and shares no storage with the lexer, so a tree can be read, copied or
+// rewritten without affecting the parser that produced it.
 type Node interface {
 	// Token returns the first Token of the Node. This method is useful to get position of this Node.
-	Token() *Token
+	Token() Token
 }
 
 // Span is a half-open byte range in the expression's decoded source.
@@ -14,13 +18,29 @@ type Span struct {
 	Line, Column int
 }
 
-type exprNodeSpan struct{ span Span }
+// Location places a node in the expression it was parsed from. Every node
+// embeds one. Nodes built outside the parser may leave it zero.
+type Location struct {
+	// First is the node's first token. Operators and dereferences repeat the
+	// first token of their leftmost operand.
+	First Token
+	// Range covers the node in source, including enclosing parentheses. A
+	// zero Line means the range is unknown.
+	Range Span
+}
+
+// Token returns the first Token of the Node. This method is useful to get position of this Node.
+func (l *Location) Token() Token { return l.First }
 
 // Span returns the node's range in the parsed expression.
-func (n *exprNodeSpan) Span() Span { return n.span }
+func (l *Location) Span() Span { return l.Range }
 
-func (n *exprNodeSpan) setSpan(span Span) { n.span = span }
+// location addresses the embedded Location of any node. Parentheses are only
+// known to enclose a node after it is built, so the parser widens its Range.
+func (l *Location) location() *Location { return l }
 
+// ExpressionSpan returns the node's parsed range, or its first token's range
+// when the node carries no range.
 func ExpressionSpan(node Node) Span {
 	if n, ok := node.(interface{ Span() Span }); ok {
 		if span := n.Span(); span.Line != 0 {
@@ -28,9 +48,6 @@ func ExpressionSpan(node Node) Span {
 		}
 	}
 	t := node.Token()
-	if t == nil {
-		return Span{}
-	}
 	return Span{t.Offset, t.Offset + len(t.Value), t.Line, t.Column}
 }
 
@@ -38,148 +55,93 @@ func ExpressionSpan(node Node) Span {
 
 // VariableNode is Node for variable access.
 type VariableNode struct {
-	exprNodeSpan
-	// Name is name of the variable
+	Location
+	// Name is name of the variable in lower case. First holds its spelling.
 	Name string
-	tok  *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *VariableNode) Token() *Token {
-	return n.tok
 }
 
 // Literals
 
 // NullNode is Node for null literal.
 type NullNode struct {
-	exprNodeSpan
-	tok *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *NullNode) Token() *Token {
-	return n.tok
+	Location
 }
 
 // BoolNode is Node for boolean literal, true or false.
 type BoolNode struct {
-	exprNodeSpan
+	Location
 	// Value is value of the boolean literal.
 	Value bool
-	tok   *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *BoolNode) Token() *Token {
-	return n.tok
 }
 
 // IntNode is Node for integer literal.
 type IntNode struct {
-	exprNodeSpan
+	Location
 	// Value is value of the integer literal.
 	Value int
-	tok   *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *IntNode) Token() *Token {
-	return n.tok
 }
 
 // FloatNode is Node for float literal.
 type FloatNode struct {
-	exprNodeSpan
+	Location
 	// Value is value of the float literal.
 	Value float64
-	tok   *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *FloatNode) Token() *Token {
-	return n.tok
 }
 
 // StringNode is Node for String literal.
 type StringNode struct {
-	exprNodeSpan
+	Location
 	// Value is value of the String literal. Escapes are resolved and quotes at both edges are
 	// removed.
 	Value string
-	tok   *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *StringNode) Token() *Token {
-	return n.tok
 }
 
 // Operators
 
 // ObjectDerefNode represents property dereference of object like 'foo.bar'.
 type ObjectDerefNode struct {
-	exprNodeSpan
+	Location
 	// Receiver is an expression at receiver of property dereference.
 	Receiver Node
-	// Property is a name of property to access.
-	Property      string
-	propertyToken *Token
+	// Property is a name of property to access in lower case.
+	Property string
+	// PropertyToken is the property's token. It is zero for nodes built
+	// outside the parser.
+	PropertyToken Token
 }
 
 // PropertyName returns the property's spelling in source.
-func (n ObjectDerefNode) PropertyName() string {
-	if n.propertyToken != nil {
-		return n.propertyToken.Value
+func (n *ObjectDerefNode) PropertyName() string {
+	if n.PropertyToken.Value != "" {
+		return n.PropertyToken.Value
 	}
 	return n.Property
 }
 
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n ObjectDerefNode) Token() *Token {
-	return n.Receiver.Token()
-}
-
 // ArrayDerefNode represents elements dereference of arrays like '*' in 'foo.bar.*.piyo'.
 type ArrayDerefNode struct {
-	exprNodeSpan
+	Location
 	// Receiver is an expression at receiver of array element dereference.
 	Receiver Node
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n ArrayDerefNode) Token() *Token {
-	return n.Receiver.Token()
 }
 
 // IndexAccessNode is Node for index access, which represents dynamic object property access or
 // array index access.
 type IndexAccessNode struct {
-	exprNodeSpan
+	Location
 	// Operand is an expression at operand of index access, which should be array or object.
 	Operand Node
 	// Index is an expression at index, which should be integer or String.
 	Index Node
 }
 
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *IndexAccessNode) Token() *Token {
-	return n.Operand.Token()
-}
-
 // Note: Currently only ! is a logical unary operator
 
 // NotOpNode is Node for unary ! operator.
 type NotOpNode struct {
-	exprNodeSpan
+	Location
 	// Operand is an expression at operand of ! operator.
 	Operand Node
-	tok     *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *NotOpNode) Token() *Token {
-	return n.tok
 }
 
 // CompareOpNodeKind is a kind of compare operators; ==, !=, <, <=, >, >=.
@@ -231,18 +193,13 @@ func (kind CompareOpNodeKind) String() string {
 
 // CompareOpNode is Node for binary expression to compare values; ==, !=, <, <=, > or >=.
 type CompareOpNode struct {
-	exprNodeSpan
+	Location
 	// Kind is a kind of this expression to show which operator is used.
 	Kind CompareOpNodeKind
 	// Left is an expression for left hand side of the binary operator.
 	Left Node
 	// Right is an expression for right hand side of the binary operator.
 	Right Node
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *CompareOpNode) Token() *Token {
-	return n.Left.Token()
 }
 
 // LogicalOpNodeKind is a kind of logical operators; && and ||.
@@ -273,7 +230,7 @@ func (k LogicalOpNodeKind) String() string {
 
 // LogicalOpNode is Node for logical binary operators; && or ||.
 type LogicalOpNode struct {
-	exprNodeSpan
+	Location
 	// Kind is a kind to show which operator is used.
 	Kind LogicalOpNodeKind
 	// Left is an expression for left hand side of the binary operator.
@@ -282,26 +239,15 @@ type LogicalOpNode struct {
 	Right Node
 }
 
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *LogicalOpNode) Token() *Token {
-	return n.Left.Token()
-}
-
 // FuncCallNode represents function call in expression.
 // Note that currently only calling builtin functions is supported.
 type FuncCallNode struct {
-	exprNodeSpan
+	Location
 	// Callee is a name of called function. This is String value because currently only built-in
-	// functions can be called.
+	// functions can be called. First holds the callee token.
 	Callee string
 	// Args is arguments of the function call.
 	Args []Node
-	tok  *Token
-}
-
-// Token returns the first Token of the Node. This method is useful to get position of this Node.
-func (n *FuncCallNode) Token() *Token {
-	return n.tok
 }
 
 // VisitExprNodeFunc is a visitor function for Visit(). The entering argument is set to

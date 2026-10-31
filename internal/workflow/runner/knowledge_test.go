@@ -30,7 +30,7 @@ func (p *testProvider) ResolveRunners(_ context.Context, r runnerapi.Request) ([
 
 type runnerFixture struct {
 	Jobs     map[string]*workflowlang.Job
-	Snapshot *documentparse.SourceSnapshot
+	Snapshot documentparse.SourceSnapshot
 	Views    map[string]workflowdecl.JobView
 }
 
@@ -87,12 +87,12 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 		t.Run(tc.selection, func(t *testing.T) {
 			workflow := runnerWorkflow(t, tc.selection)
 			knowledge, err := Prepare(t.Context(), workflow.Snapshot, tc.custom, runnerapi.Options{}, "scope")
-			if err != nil || len(knowledge.Report.Answers) != 1 {
+			if err != nil || len(knowledge.Report().Answers) != 1 {
 				t.Fatalf("knowledge=%+v err=%v", knowledge, err)
 			}
-			resolved, ok := knowledge.Report.Answers[0].Resolution.(runnerapi.Resolved)
+			resolved, ok := knowledge.Report().Answers[0].Resolution.(runnerapi.Resolved)
 			if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != tc.want {
-				t.Fatalf("resolution=%+v, want OS=%s", knowledge.Report.Answers[0].Resolution, tc.want)
+				t.Fatalf("resolution=%+v, want OS=%s", knowledge.Report().Answers[0].Resolution, tc.want)
 			}
 			if tc.want == runnerapi.UnknownOS {
 				candidate := resolved.Candidates[0]
@@ -219,13 +219,13 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 			if got := k.Job(w.Views["test"]); got.PathsKnown != tc.known || (got.Shell == "pwsh") != tc.known {
 				t.Fatalf("snapshot knowledge = %#v, want known=%t", got, tc.known)
 			}
-			if k.Report.Snapshot != p.request.Snapshot.Identity() {
+			if k.Report().Snapshot != p.request.Snapshot.Identity() {
 				t.Fatal("report does not identify the snapshot supplied to the provider")
 			}
 			if tc.snapshot != (runnerapi.Snapshot{}) {
 				options.Snapshot.Freshness = tc.fresh
 				normalized, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-				if err != nil || normalized.Report.Identity != k.Report.Identity {
+				if err != nil || normalized.Report().Identity != k.Report().Identity {
 					t.Fatalf("equivalent snapshot freshness changed cache identity: %v", err)
 				}
 			}
@@ -242,6 +242,26 @@ func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
 	job := k.Job(w.Views["test"])
 	if !job.PathsKnown || job.Platform != MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].Evidence.Freshness != runnerapi.Fresh {
 		t.Fatalf("absent host snapshot weakened bundled catalogue: %#v", job)
+	}
+}
+
+func TestKnowledgeReadersOwnTheirValues(t *testing.T) {
+	w := runnerWorkflow(t, "ubuntu-lates")
+	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, report := k.Job(w.Views["test"]), k.Report()
+	if len(job.Findings) != 1 || len(job.Answers) != 1 || len(report.Answers) != 1 || len(report.Provider.Targets) == 0 {
+		t.Fatalf("fixture lacks rejected label evidence: job=%#v report=%#v", job, report)
+	}
+	wantJob, wantReport := k.Job(w.Views["test"]), k.Report()
+	job.Findings[0].Message = "changed"
+	job.Answers[0].Resolution.(runnerapi.NoMatch).Rejections[0].Reason = "changed"
+	report.Answers[0].Resolution.(runnerapi.NoMatch).Rejections[0].Reason = "changed"
+	report.Provider.Targets[0] = "changed"
+	if !reflect.DeepEqual(k.Job(w.Views["test"]), wantJob) || !reflect.DeepEqual(k.Report(), wantReport) {
+		t.Fatal("a reader's edit reached prepared runner knowledge")
 	}
 }
 
@@ -274,8 +294,8 @@ func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
 	}}
 	options := runnerapi.Options{Providers: []runnerapi.Registration{{Provider: p, Identity: "first"}}}
 	k, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || k.Report.Provider.Name != "github" || p.request.Target != "" {
-		t.Fatalf("loading a provider changed authority: %v %#v", err, k.Report)
+	if err != nil || k.Report().Provider.Name != "github" || p.request.Target != "" {
+		t.Fatalf("loading a provider changed authority: %v %#v", err, k.Report())
 	}
 	options.Target = "buildkite"
 	first, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
@@ -284,18 +304,18 @@ func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
 	}
 	options.Providers[0].Identity = "second"
 	second, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || first.Report.Identity == second.Report.Identity {
+	if err != nil || first.Report().Identity == second.Report().Identity {
 		t.Fatal("artifact identity not tracked", err)
 	}
 	options.Snapshot.Content = "updated"
 	options.Snapshot.Scope = "scope"
 	third, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || second.Report.Identity == third.Report.Identity {
+	if err != nil || second.Report().Identity == third.Report().Identity {
 		t.Fatal("snapshot identity not tracked", err)
 	}
 	dataset = "v2"
 	fourth, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || third.Report.Identity == fourth.Report.Identity {
+	if err != nil || third.Report().Identity == fourth.Report().Identity {
 		t.Fatal("dataset identity not tracked", err)
 	}
 	options.Providers = append(options.Providers, options.Providers[0])

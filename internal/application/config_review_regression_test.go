@@ -3,9 +3,11 @@ package application
 import (
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -93,7 +95,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	}
 	// The synthetic producer observes bytes captured before traversal by the
 	// same owner used for workflow analysis and final publication.
-	dependencySource, err := cache.snapshots.Sources.Capture(path, []byte("dependency content"), coordinates)
+	dependencySource, err := cache.snapshots.Capture(path, []byte("dependency content"), coordinates)
 	if err != nil {
 		return nil, err
 	}
@@ -103,35 +105,41 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		WorkingDir: root,
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-			rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-			rule.Errs()[0].Path, rule.Errs()[0].Source = path, dependencySource.Bytes()
-			rule.Errs()[0].Reference = &reference
-			rule.Errs()[0].RawScriptSource = coordinates == source.RawLF
+			finding := findingmodel.At(&workflowlang.Pos{Line: 1, Col: 1}, rule.Name(), "dependency finding")
+			finding.Path, finding.Source = path, dependencySource.Bytes()
+			finding.Reference = &reference
+			finding.RawScriptSource = coordinates == source.RawLF
+			rule.Report(finding)
 			return []workflowvisit.Rule{&rule}
 		},
 	}, workflow, nil, nil, cache)
 	if err != nil {
 		return nil, err
 	}
-	entry, state, err := cache.snapshots.Sources.Store.Lookup(cache.snapshots.Sources.Path(workflow.Path))
+	entry, state, err := cache.captures.Lookup(cache.snapshots.Path(workflow.Path))
 	if err != nil {
 		return nil, err
 	}
 	if state != capture.Captured {
 		t.Fatalf("workflow fixture was not captured: %s", state)
 	}
-	if err := cache.snapshots.Sources.Store.Close(t.Context()); err != nil {
+	if err := cache.captures.Close(t.Context()); err != nil {
 		return nil, err
 	}
-	rows, err := cache.snapshots.Sources.Store.Sources()
+	rows, err := cache.captures.Sources()
 	if err != nil {
 		return nil, err
 	}
 	result := &analysisResult{files: []analyzedFile{{captured: entry, source: workflow, errors: findings}}}
-	if err := result.revalidateCaptures(cache.snapshots.Sources.Store, rows, root, nil); err != nil {
+	if err := result.revalidateCaptures(cache.captures, rows, root, nil); err != nil {
 		return result, err
 	}
 	result.collectDiagnostics()
+	for _, diagnostic := range result.Diagnostics {
+		if !strings.HasSuffix(filepath.ToSlash(diagnostic.Path), dependency) {
+			t.Fatalf("synthetic finding reported at %q, not dependency %q", diagnostic.Path, dependency)
+		}
+	}
 	return result, nil
 }
 

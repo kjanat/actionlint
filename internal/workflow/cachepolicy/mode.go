@@ -2,6 +2,7 @@ package cachepolicy
 
 import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
@@ -21,11 +22,9 @@ type modeGrant struct {
 }
 
 func grant(mode declaration.CacheModeView) modeGrant { return modeGrant{mode.Present(), mode.Kind()} }
-func metadataGrant(mode *workflowlang.CacheMode) modeGrant {
-	if mode == nil {
-		return modeGrant{}
-	}
-	return modeGrant{true, mode.Kind}
+func metadataGrant(mode calls.CacheModeDeclaration) modeGrant {
+	kind, declared := mode.Kind()
+	return modeGrant{declared, kind}
 }
 func effectiveGrant(parent, child modeGrant) modeGrant {
 	if child.present {

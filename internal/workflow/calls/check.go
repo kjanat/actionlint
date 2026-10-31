@@ -27,7 +27,7 @@ func CheckArguments(call declaration.WorkflowCallView, m *Metadata) []diagnostic
 	}
 	// Validate inputs
 	for n, i := range m.Inputs {
-		if i != nil && i.Required {
+		if i.Required {
 			if _, ok := call.InputsAt(n); !ok {
 				report(callPosition(u), "input %q is required by %q reusable workflow", i.Name, u.Value())
 			}

@@ -48,7 +48,7 @@ jobs:
 				if len(parsed.Findings) != 0 {
 					t.Fatal(parsed.Findings)
 				}
-				snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+				_, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 				snapshot, err := snapshots.Document("workflow.yml", content, parsed)
 				if err != nil {
 					t.Fatal(err)
@@ -113,7 +113,7 @@ jobs:
 	}
 }
 
-func productionRunnerRule(t *testing.T, snapshot *documentparse.SourceSnapshot, knowledge *runnerlang.Knowledge) workflowvisit.Rule {
+func productionRunnerRule(t *testing.T, snapshot documentparse.SourceSnapshot, knowledge *runnerlang.Knowledge) workflowvisit.Rule {
 	t.Helper()
 	for _, descriptor := range builtin.Descriptors() {
 		if descriptor.Name == "runner-label" {

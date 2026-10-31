@@ -65,7 +65,7 @@ func TestRegistryCLI(t *testing.T) {
 		}
 		return cfg.Plugins
 	}
-	if refs := readDeclarations(); len(refs) != 1 || refs[0] != (pluginref.Reference{Name: testutil.FixturePluginName, Version: "v1.9.0", Registry: testutil.FixtureRegistryURL}) {
+	if refs := readDeclarations(); len(refs) != 1 || refs[0] != testReference(t, testutil.FixturePluginName, "v1.9.0", testutil.FixtureRegistryURL) {
 		t.Fatalf("install did not declare exact dependency: %#v", refs)
 	}
 	readPin := func() pluginregistry.Pin {
@@ -82,17 +82,17 @@ func TestRegistryCLI(t *testing.T) {
 	if readPin().Version != "v1.9.0" {
 		t.Fatal("exact version ignored")
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "install")
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("matching installation contacted registry")
 	}
 	syncOutput := pluginCommandTest(t, 0, "plugin", "sync")
-	if len(r.Requests) != requests+1 || r.Requests[requests] != testutil.FixtureRegistryURL+"statuses.json" || !strings.Contains(syncOutput, "using cached status") {
-		t.Fatalf("offline sync should attempt status refresh only: %v %s", r.Requests[requests:], syncOutput)
+	if len(r.Requests()) != requests+1 || r.Requests()[requests] != testutil.FixtureRegistryURL+"statuses.json" || !strings.Contains(syncOutput, "using cached status") {
+		t.Fatalf("offline sync should attempt status refresh only: %v %s", r.Requests()[requests:], syncOutput)
 	}
-	requests = len(r.Requests)
+	requests = len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "list", "--json")
 	if output := pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
 		t.Fatal(output)
@@ -102,7 +102,7 @@ func TestRegistryCLI(t *testing.T) {
 	}
 	pluginCommandTest(t, 0, "check", "--no-config", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	pluginCommandTest(t, 1, "check", "--no-config", "--plugin-lock", lockPath, "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("pinned offline commands contacted network")
 	}
 	before, err := os.ReadFile(lockPath)
@@ -120,7 +120,7 @@ func TestRegistryCLI(t *testing.T) {
 		t.Fatal("rules ignored no-config environment")
 	}
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
-	r.Offline = false
+	r.SetOffline(false)
 	pluginCommandTest(t, 0, "plugin", "update")
 	if readPin().Version != "v1.9.0" {
 		t.Fatal("update changed exact selector")
@@ -129,7 +129,7 @@ func TestRegistryCLI(t *testing.T) {
 	if readPin().Version != "v1.10.0" {
 		t.Fatal("latest sorted lexically")
 	}
-	if refs := readDeclarations(); len(refs) != 1 || refs[0].Version != "latest" {
+	if refs := readDeclarations(); len(refs) != 1 || refs[0].Version() != "latest" {
 		t.Fatalf("update did not persist requested selector: %#v", refs)
 	}
 	configBefore, err := os.ReadFile(configPath)
@@ -141,7 +141,7 @@ func TestRegistryCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.Add(t, "v1.11.0", wasm)
-	delete(r.Files, "https://"+testutil.FixturePluginName+"/releases/download/v1.11.0/plugin.wasm")
+	r.DeleteFile("https://" + testutil.FixturePluginName + "/releases/download/v1.11.0/plugin.wasm")
 	pluginCommandTest(t, 3, "plugin", "update")
 	after, err = os.ReadFile(lockPath)
 	if err != nil || !bytes.Equal(before, after) {
@@ -160,9 +160,9 @@ func TestRegistryCLI(t *testing.T) {
 	// A fresh checkout/cache restores declared pins without registry metadata, even when the
 	// catalogue itself is missing. It never reselects latest during sync.
 	testutil.IsolateUserCache(t)
-	delete(r.Files, testutil.FixtureRegistryURL+"index.json")
+	r.DeleteFile(testutil.FixtureRegistryURL + "index.json")
 	pluginCommandTest(t, 0, "plugin", "sync")
-	r.Offline = true
+	r.SetOffline(true)
 	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	pluginCommandTest(t, 0, "plugin", "remove", "publisher/plugin")
 	if refs := readDeclarations(); refs == nil || len(refs) != 0 {
@@ -185,8 +185,8 @@ func TestRegistryManifestInstallAndMigration(t *testing.T) {
 	if err != nil || !strings.Contains(string(content), "# keep this comment") || !strings.Contains(string(content), "no-sudo: warn") {
 		t.Fatalf("install changed unrelated configuration: %s, %v", content, err)
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "install", "--config", "custom.yaml")
 	if err := os.Remove("custom.yaml"); err != nil {
 		t.Fatal(err)
@@ -199,10 +199,10 @@ func TestRegistryManifestInstallAndMigration(t *testing.T) {
 	}
 	pluginCommandTest(t, 0, "plugin", "install", "--config", "custom.yaml")
 	cfg, err := repoconfig.Load("custom.yaml")
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != testutil.FixturePluginName {
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != testutil.FixturePluginName {
 		t.Fatalf("lock migration did not declare plugin: %#v, %v", cfg, err)
 	}
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("migration/repeated installation contacted registry despite exact cached lock")
 	}
 	// Environment selection must target the same project for management as checking.
@@ -234,7 +234,7 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 }
 
 func TestRequestedPlugin(t *testing.T) {
-	existing := []pluginref.Reference{{Name: testutil.FixturePluginName, Version: "v1", Registry: testutil.FixtureRegistryURL}}
+	existing := []pluginref.Reference{testReference(t, testutil.FixturePluginName, "v1", testutil.FixtureRegistryURL)}
 	for _, tc := range []struct {
 		name    string
 		options pluginInvocation
@@ -245,7 +245,7 @@ func TestRequestedPlugin(t *testing.T) {
 		{"publisher/plugin", pluginInvocation{Version: "latest"}, "latest"},
 	} {
 		ref, err := requestedPlugin(tc.name, tc.options, existing)
-		if err != nil || ref.Name != testutil.FixturePluginName || ref.Registry != testutil.FixtureRegistryURL || ref.Version != tc.version {
+		if err != nil || ref.Name() != testutil.FixturePluginName || ref.Registry() != testutil.FixtureRegistryURL || ref.Version() != tc.version {
 			t.Fatalf("request %q: %#v, %v", tc.name, ref, err)
 		}
 	}

@@ -149,7 +149,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	rejected, sourceErr := s.admitSourceDocuments(composed, references)
 	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
-		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
+		input, inputErr := composition.AnalyzerInput(composed, path, sourcePath, content, document, references)
 		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()
 		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)
@@ -166,7 +166,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
 	analysisErr = errors.Join(analysisErr, err)
 	policy := diagnosticpolicy.Policy{RuleDescriptors: s.toolDescriptors, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	all, err = policy.Apply(all, composed.Sources, composed.Configs)
+	all, err = diagnosticpolicy.Apply(policy, all, composed.Sources, composed.Configs)
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
 	}
@@ -186,7 +186,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
+func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot documentparse.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
@@ -199,7 +199,6 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			resultErr = errors.Join(resultErr, process.Finish())
 		}
 	}()
-	snapshots := snapshot.Registry()
 	var mappings map[string]string
 	if cfg != nil {
 		mappings = cfg.LocalActions
@@ -210,8 +209,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		customLabels = cfg.SelfHostedRunner.Labels
 	}
 	runners, runnerErr := runnerlang.Prepare(s.ctx, snapshot, customLabels, s.runners, root)
-	if runners.Report.Identity != "" {
-		report := runners.Report
+	if report := runners.Report(); report.Identity != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
 		s.runnerReports = append(s.runnerReports, report)
@@ -241,14 +239,14 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		}
 	}
 	requires := checks.RequiredFacts(registrations)
-	service := composition.New(composition.Options{
-		SourceSnapshots: snapshots,
+	options := composition.Options{
+		SourceSnapshots: s.snapshots,
 		Context:         s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
 		ScriptInputsForConfig: func(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, cfg)
 		},
-		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
+		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader, Config: cfg,
 		ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {
@@ -258,20 +256,20 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),
-	})
+	}
 	if action {
-		deployment, deploymentErr := scriptexecution.NewDeployment(snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
+		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}
-		result, err = service.Action(snapshot, deployment, document.Metadata)
+		result, err = composition.Action(options, snapshot, deployment, document.Metadata)
 	} else {
-		result, err = service.Workflow(snapshot)
+		result, err = composition.Workflow(options, snapshot)
 	}
 	*usedRules = append(*usedRules, selected.ScriptInfo...)
 	*usedRules = append(*usedRules, checks.Describe(selected.Rules)...)
 	for _, r := range selected.Rules {
-		s.debug("%s found %d errors", r.Name(), len(r.Errs()))
+		s.debug("%s found %d errors", r.Name(), r.FindingCount())
 	}
 	return result, err
 }

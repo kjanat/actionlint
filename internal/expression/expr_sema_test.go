@@ -54,7 +54,7 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 			t.Run(receiver+"."+property, func(t *testing.T) {
 				checker := NewChecker(false, nil)
 				checker.ensureVarsCopied()
-				checker.vars[receiver] = NewStrictObjectType(map[string]Type{"declared": BoolType{}})
+				checker.vars[receiver] = NewStrictObjectType(map[string]Type{"declared": BoolType()}).Type()
 				checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
 				checker.availableContexts = append(checker.availableContexts, receiver)
 				expr, err := NewParser().Parse(NewLexer(receiver + "." + property + "}}"))
@@ -66,7 +66,7 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 				if len(errs) != 1 || errs[0].Message != want {
 					t.Fatalf("got %v, want %q", errs, want)
 				}
-				checker.vars[receiver] = NewStrictObjectType(map[string]Type{property: StringType{}})
+				checker.vars[receiver] = NewStrictObjectType(map[string]Type{property: StringType()}).Type()
 				ty, errs := checker.Check(expr)
 				if len(errs) != 0 || ty.String() != "string" {
 					t.Fatalf("declared property: type=%s errors=%v", ty.String(), errs)
@@ -79,16 +79,16 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 func TestExprDeclaredInputSuggestions(t *testing.T) {
 	for _, tc := range []struct {
 		name, expression, key, suggestion string
-		inputs                            *ObjectType
+		inputs                            ObjectType
 	}{
-		{"declared input wins", "github_repository", "jobs.<job_id>.steps.run", "inputs.github_repository", NewStrictObjectType(map[string]Type{"github_repository": StringType{}})},
-		{"case insensitive", "GITHUB_REPOSITORY", "jobs.<job_id>.if", "inputs.github_repository", NewStrictObjectType(map[string]Type{"github_repository": StringType{}})},
-		{"ordinary input", "deploy_target", "jobs.<job_id>.steps.run", "inputs.deploy_target", NewStrictObjectType(map[string]Type{"deploy_target": StringType{}})},
+		{"declared input wins", "github_repository", "jobs.<job_id>.steps.run", "inputs.github_repository", NewStrictObjectType(map[string]Type{"github_repository": StringType()})},
+		{"case insensitive", "GITHUB_REPOSITORY", "jobs.<job_id>.if", "inputs.github_repository", NewStrictObjectType(map[string]Type{"github_repository": StringType()})},
+		{"ordinary input", "deploy_target", "jobs.<job_id>.steps.run", "inputs.deploy_target", NewStrictObjectType(map[string]Type{"deploy_target": StringType()})},
 		{"undeclared input", "github_repository", "jobs.<job_id>.steps.run", "github.repository", NewEmptyStrictObjectType()},
-		{"loose input object", "github_repository", "jobs.<job_id>.steps.run", "github.repository", NewObjectType(map[string]Type{"github_repository": StringType{}})},
-		{"inputs unavailable", "github_repository", "", "github.repository", NewStrictObjectType(map[string]Type{"github_repository": StringType{}})},
-		{"dotted context unchanged", "github.job_workflow_sha", "jobs.<job_id>.steps.run", "job.workflow_sha", NewStrictObjectType(map[string]Type{"job_workflow_sha": StringType{}})},
-		{"declared dotted input", "inputs.github_repository", "jobs.<job_id>.steps.run", "", NewStrictObjectType(map[string]Type{"github_repository": StringType{}})},
+		{"loose input object", "github_repository", "jobs.<job_id>.steps.run", "github.repository", NewObjectType(map[string]Type{"github_repository": StringType()})},
+		{"inputs unavailable", "github_repository", "", "github.repository", NewStrictObjectType(map[string]Type{"github_repository": StringType()})},
+		{"dotted context unchanged", "github.job_workflow_sha", "jobs.<job_id>.steps.run", "job.workflow_sha", NewStrictObjectType(map[string]Type{"job_workflow_sha": StringType()})},
+		{"declared dotted input", "inputs.github_repository", "jobs.<job_id>.steps.run", "", NewStrictObjectType(map[string]Type{"github_repository": StringType()})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checker := NewChecker(false, nil)
@@ -140,7 +140,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 					t.Fatal(err)
 				}
 				checker := NewChecker(false, nil)
-				checker.UpdateInputs(NewStrictObjectType(map[string]Type{"always": BoolType{}}))
+				checker.UpdateInputs(NewStrictObjectType(map[string]Type{"always": BoolType()}))
 				checker.SetWorkflowKeyAvailability(key)
 				_, errs := checker.Check(expr)
 				if tc.want == "" {
@@ -165,10 +165,10 @@ func TestExprBareFunctionNames(t *testing.T) {
 		}
 		checker := NewChecker(false, nil)
 		checker.vars = maps.Clone(checker.vars)
-		checker.vars["always"] = BoolType{}
+		checker.vars["always"] = BoolType()
 		checker.SetContextAvailability([]string{"always"})
 		ty, errs := checker.Check(expr)
-		if len(errs) != 0 || !cmp.Equal(ty, BoolType{}) {
+		if len(errs) != 0 || !cmp.Equal(ty, BoolType()) {
 			t.Fatalf("got %v, %v; want bool without diagnostics", ty, errs)
 		}
 	})
@@ -180,12 +180,12 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		input         string
 		expected      Type
 		funcs         map[string][]*FuncSignature
-		matrix        *ObjectType
-		steps         *ObjectType
-		needs         *ObjectType
-		inputs        *ObjectType
-		secrets       *ObjectType
-		jobs          *ObjectType
+		matrix        ObjectType
+		steps         ObjectType
+		needs         ObjectType
+		inputs        ObjectType
+		secrets       ObjectType
+		jobs          ObjectType
 		availContexts []string
 		availSPFuncs  []string
 		configVars    []string
@@ -194,27 +194,27 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "null",
 			input:    "null",
-			expected: NullType{},
+			expected: NullType(),
 		},
 		{
 			what:     "bool",
 			input:    "true",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "integer",
 			input:    "42",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "float",
 			input:    "-3.14e16",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "string",
 			input:    "'this is string'",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "variable",
@@ -224,16 +224,16 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "object property dereference",
 			input:    "test().bar.piyo",
-			expected: BoolType{},
+			expected: BoolType(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewObjectType(map[string]Type{
 							"bar": NewObjectType(map[string]Type{
-								"piyo": BoolType{},
-							}),
-						}),
+								"piyo": BoolType(),
+							}).Type(),
+						}).Type(),
 					},
 				},
 			},
@@ -241,59 +241,59 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "object property dereference of global variable",
 			input:    "job.container.network",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "job context workflow_repository property",
 			input:    "job.workflow_repository",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "job context workflow_ref property",
 			input:    "job.workflow_ref",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "job context workflow_sha property",
 			input:    "job.workflow_sha",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "job context workflow_file_path property",
 			input:    "job.workflow_file_path",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "github context artifacts property",
 			input:    "github.artifacts",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "github context artifacts_list property",
 			input:    "github.artifacts_list",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "github context retention_days property",
 			input:    "github.retention_days",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "object property dereference for any type",
 			input:    "github.event.labels",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "array element dereference",
 			input:    "test().bar.*",
-			expected: &ArrayType{BoolType{}, true},
+			expected: newFilteredArrayType(BoolType()).Type(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewObjectType(map[string]Type{
-							"bar": &ArrayType{Elem: BoolType{}},
-						}),
+							"bar": NewArrayType(BoolType()).Type(),
+						}).Type(),
 					},
 				},
 			},
@@ -301,20 +301,20 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "filter object property by array element dereference",
 			input:    "test().foo.*.bar.piyo",
-			expected: &ArrayType{StringType{}, true},
+			expected: newFilteredArrayType(StringType()).Type(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewObjectType(map[string]Type{
-							"foo": &ArrayType{
-								Elem: NewObjectType(map[string]Type{
+							"foo": NewArrayType(
+								NewObjectType(map[string]Type{
 									"bar": NewObjectType(map[string]Type{
-										"piyo": StringType{},
-									}),
-								}),
-							},
-						}),
+										"piyo": StringType(),
+									}).Type(),
+								}).Type(),
+							).Type(),
+						}).Type(),
 					},
 				},
 			},
@@ -322,20 +322,20 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "filter strict object property by array element dereference",
 			input:    "test().foo.*.bar.piyo",
-			expected: &ArrayType{StringType{}, true},
+			expected: newFilteredArrayType(StringType()).Type(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewStrictObjectType(map[string]Type{
-							"foo": &ArrayType{
-								Elem: NewStrictObjectType(map[string]Type{
+							"foo": NewArrayType(
+								NewStrictObjectType(map[string]Type{
 									"bar": NewStrictObjectType(map[string]Type{
-										"piyo": StringType{},
-									}),
-								}),
-							},
-						}),
+										"piyo": StringType(),
+									}).Type(),
+								}).Type(),
+							).Type(),
+						}).Type(),
 					},
 				},
 			},
@@ -344,51 +344,51 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "array element dereference with any type",
 			input:    "github.event.labels.*.name",
-			expected: &ArrayType{AnyType{}, true},
+			expected: newFilteredArrayType(AnyType()).Type(),
 		},
 		{
 			what:     "nested array element dereference",
 			input:    "github.event.issues.*.labels.*.name",
-			expected: &ArrayType{AnyType{}, true},
+			expected: newFilteredArrayType(AnyType()).Type(),
 		},
 		{
 			what:     "array element dereference with object type",
 			input:    "github.*.name",
-			expected: &ArrayType{AnyType{}, true},
+			expected: newFilteredArrayType(AnyType()).Type(),
 		},
 		{
 			what:     "function call",
 			input:    "contains('hello', 'll')",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "function call overload",
 			input:    "contains(github.event.labels, 'foo')",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "function call zero arguments",
 			input:    "always()",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "function call variable length parameters",
 			input:    "format('hello {0} {1}', 42, true)",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "object property index access",
 			input:    "test()['bar']['piyo']",
-			expected: BoolType{},
+			expected: BoolType(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewObjectType(map[string]Type{
 							"bar": NewObjectType(map[string]Type{
-								"piyo": BoolType{},
-							}),
-						}),
+								"piyo": BoolType(),
+							}).Type(),
+						}).Type(),
 					},
 				},
 			},
@@ -396,17 +396,17 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "object property index access with any type",
 			input:    "github.event['FOOO']",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "array element dereference",
 			input:    "test()[0]",
-			expected: BoolType{},
+			expected: BoolType(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
-						Ret:  &ArrayType{Elem: BoolType{}},
+						Ret:  NewArrayType(BoolType()).Type(),
 					},
 				},
 			},
@@ -414,23 +414,23 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "array element index access with any type fallback",
 			input:    "github.event.labels[0]",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "index access to dereferenced array",
 			input:    "test().foo.*.bar[0]",
-			expected: StringType{},
+			expected: StringType(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewObjectType(map[string]Type{
-							"foo": &ArrayType{
-								Elem: NewObjectType(map[string]Type{
-									"bar": StringType{},
-								}),
-							},
-						}),
+							"foo": NewArrayType(
+								NewObjectType(map[string]Type{
+									"bar": StringType(),
+								}).Type(),
+							).Type(),
+						}).Type(),
 					},
 				},
 			},
@@ -438,16 +438,16 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "coerce array dereference into array at function parameter",
 			input:    "contains(test().*.x, 10)",
-			expected: BoolType{},
+			expected: BoolType(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
-						Ret: &ArrayType{
-							Elem: NewObjectType(map[string]Type{
-								"x": NumberType{},
-							}),
-						},
+						Ret: NewArrayType(
+							NewObjectType(map[string]Type{
+								"x": NumberType(),
+							}).Type(),
+						).Type(),
 					},
 				},
 				"contains": BuiltinFuncSignatures["contains"],
@@ -456,90 +456,90 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "index access to dereferenced array with any type fallback",
 			input:    "github.event.labels.*.name[0]",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "! operator",
 			input:    "!true",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "! operator with non-bool operand",
 			input:    "!null",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "< operator",
 			input:    "0 < 1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "<= operator",
 			input:    "0 <= 1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "> operator",
 			input:    "0 > 1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     ">= operator",
 			input:    "0 >= 1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "== operator",
 			input:    "0 == 1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "!= operator",
 			input:    "0 != 1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "&& operator",
 			input:    "true && false",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "|| operator",
 			input:    "true || false",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "&& operator with non-bool operands",
 			input:    "10 && 'foo'",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "|| operator with non-bool operands",
 			input:    "'foo' || 42",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:  "coercing two objects on && operator",
 			input: "foo() && bar()",
 			expected: NewStrictObjectType(map[string]Type{
-				"foo": NumberType{},
-				"bar": BoolType{},
-			}),
+				"foo": NumberType(),
+				"bar": BoolType(),
+			}).Type(),
 			funcs: map[string][]*FuncSignature{
 				"foo": {
 					{
 						Name: "foo",
 						Ret: NewStrictObjectType(map[string]Type{
-							"foo": NumberType{},
-						}),
+							"foo": NumberType(),
+						}).Type(),
 					},
 				},
 				"bar": {
 					{
 						Name: "bar",
 						Ret: NewStrictObjectType(map[string]Type{
-							"bar": BoolType{},
-						}),
+							"bar": BoolType(),
+						}).Type(),
 					},
 				},
 			},
@@ -548,24 +548,24 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:  "coercing two objects on || operator",
 			input: "foo() || bar()",
 			expected: NewStrictObjectType(map[string]Type{
-				"foo": NumberType{},
-				"bar": BoolType{},
-			}),
+				"foo": NumberType(),
+				"bar": BoolType(),
+			}).Type(),
 			funcs: map[string][]*FuncSignature{
 				"foo": {
 					{
 						Name: "foo",
 						Ret: NewStrictObjectType(map[string]Type{
-							"foo": NumberType{},
-						}),
+							"foo": NumberType(),
+						}).Type(),
 					},
 				},
 				"bar": {
 					{
 						Name: "bar",
 						Ret: NewStrictObjectType(map[string]Type{
-							"bar": BoolType{},
-						}),
+							"bar": BoolType(),
+						}).Type(),
 					},
 				},
 			},
@@ -573,114 +573,114 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "== operator with loose equality check",
 			input:    "true == 1.1",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "arguments of format() is not checked when first argument is not a literal",
 			input:    "format(github.action, 1, 2, 3)",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "matrix value with typed matrix values",
 			input:    "matrix.foooo",
-			expected: StringType{},
+			expected: StringType(),
 			matrix: NewStrictObjectType(map[string]Type{
-				"foooo": StringType{},
+				"foooo": StringType(),
 			}),
 		},
 		{
 			what:     "step output value with typed steps outputs",
 			input:    "steps.foo.outputs",
-			expected: NewEmptyObjectType(),
+			expected: NewEmptyObjectType().Type(),
 			steps: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
-					"outputs":    NewEmptyObjectType(),
-					"conclusion": StringType{},
-					"outcome":    StringType{},
-				}),
+					"outputs":    NewEmptyObjectType().Type(),
+					"conclusion": StringType(),
+					"outcome":    StringType(),
+				}).Type(),
 			}),
 		},
 		{
 			what:     "step conclusion with typed steps outputs",
 			input:    "steps.foo.conclusion",
-			expected: StringType{},
+			expected: StringType(),
 			steps: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
-					"outputs":    NewEmptyObjectType(),
-					"conclusion": StringType{},
-					"outcome":    StringType{},
-				}),
+					"outputs":    NewEmptyObjectType().Type(),
+					"conclusion": StringType(),
+					"outcome":    StringType(),
+				}).Type(),
 			}),
 		},
 		{
 			what:     "needs context object",
 			input:    "needs",
-			expected: NewEmptyStrictObjectType(),
+			expected: NewEmptyStrictObjectType().Type(),
 		},
 		{
 			what:     "output string in needs context object",
 			input:    "needs.foo.outputs.out1",
-			expected: StringType{},
+			expected: StringType(),
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
 					"outputs": NewStrictObjectType(map[string]Type{
-						"out1": StringType{},
-						"out2": StringType{},
-					}),
-					"result": StringType{},
-				}),
+						"out1": StringType(),
+						"out2": StringType(),
+					}).Type(),
+					"result": StringType(),
+				}).Type(),
 			}),
 		},
 		{
 			what:     "result in needs context object",
 			input:    "needs.foo.result",
-			expected: StringType{},
+			expected: StringType(),
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
 					"outputs": NewStrictObjectType(map[string]Type{
-						"out1": StringType{},
-						"out2": StringType{},
-					}),
-					"result": StringType{},
-				}),
+						"out1": StringType(),
+						"out2": StringType(),
+					}).Type(),
+					"result": StringType(),
+				}).Type(),
 			}),
 		},
 		{
 			what:     "number is coerced into string",
 			input:    "startsWith('42foo', 42)",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "string is coerced into bool",
 			input:    "!'hello'",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "coerce number into bool",
 			input:    "!42",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "coerce null into bool",
 			input:    "!null",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "coerce string into bool",
 			input:    "!'hello'",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "case insensitive comparison for object property",
 			input:    "test().foo-Bar_PIYO",
-			expected: NullType{},
+			expected: NullType(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewObjectType(map[string]Type{
-							"foo-bar_piyo": NullType{},
-						}),
+							"foo-bar_piyo": NullType(),
+						}).Type(),
 					},
 				},
 			},
@@ -688,39 +688,39 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "case insensitive comparison for function name",
 			input:    "toJSON(fromjson(toJson(github)))",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case insensitive comparison for context name",
 			input:    "JOB.CONTAINER.NETWORK",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "format() function arguments validation",
 			input:    "format('{0}{0}{0} {1}{2}{1} {1}{2}{1}{2} {0} {1}{1}{1} {2}{2}{2} {0}{0}{0}{0} {0}', 1, 'foo', true)",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "braces not for placeholders in format string of format() call",
 			input:    "format('{0} {} {x} {', 1)",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "map object dereference",
 			input:    "env.FOO",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "map object dreference on array filter",
 			input:    "test().*.foo",
-			expected: &ArrayType{NumberType{}, true},
+			expected: newFilteredArrayType(NumberType()).Type(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
-						Ret: &ArrayType{
-							Elem: NewMapObjectType(NumberType{}),
-						},
+						Ret: NewArrayType(
+							NewMapObjectType(NumberType()).Type(),
+						).Type(),
 					},
 				},
 			},
@@ -728,14 +728,14 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "map object dreference on object filter",
 			input:    "test().*.foo",
-			expected: &ArrayType{NumberType{}, true},
+			expected: newFilteredArrayType(NumberType()).Type(),
 			funcs: map[string][]*FuncSignature{
 				"test": {
 					{
 						Name: "test",
 						Ret: NewMapObjectType(
-							NewMapObjectType(NumberType{}),
-						),
+							NewMapObjectType(NumberType()).Type(),
+						).Type(),
 					},
 				},
 			},
@@ -743,393 +743,387 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "loose object at object filter",
 			input:    "github.event.*.foo",
-			expected: &ArrayType{AnyType{}, true},
+			expected: newFilteredArrayType(AnyType()).Type(),
 		},
 		{
 			what:     "strict object which has at least one object element at object filter",
 			input:    "github.*.foo",
-			expected: &ArrayType{AnyType{}, true},
+			expected: newFilteredArrayType(AnyType()).Type(),
 		},
 		{
 			what:     "map object index access with string literal",
 			input:    "env['FOO']",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "map object index access with dynamic value",
 			input:    "env[github.action]",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "nested object in map object",
 			input:    "job.services.my_service.network",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "narrowed inputs object",
 			input:    "inputs.hello",
-			expected: NumberType{},
+			expected: NumberType(),
 			inputs: NewStrictObjectType(map[string]Type{
-				"hello": NumberType{},
+				"hello": NumberType(),
 			}),
 		},
 		{
 			what:     "narrowed secrets object",
 			input:    "secrets.token",
-			expected: StringType{},
+			expected: StringType(),
 			secrets: NewStrictObjectType(map[string]Type{
-				"token": StringType{},
+				"token": StringType(),
 			}),
 		},
 		{
 			what:     "default secrets object",
 			input:    "secrets.any_value",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "automatically supplied secret",
 			input:    "secrets.github_token",
-			expected: StringType{},
+			expected: StringType(),
 			secrets: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 		},
 		{
 			what:     "automatically supplied secret",
 			input:    "secrets.ACTIONS_STEP_DEBUG",
-			expected: StringType{},
+			expected: StringType(),
 			secrets: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 		},
 		{
 			what:     "automatically supplied secret",
 			input:    "secrets.ACTIONS_RUNNER_DEBUG",
-			expected: StringType{},
+			expected: StringType(),
 			secrets: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 		},
 		{
 			what:     "jobs object",
 			input:    "jobs.some_job",
-			expected: NewEmptyObjectType(),
+			expected: NewEmptyObjectType().Type(),
 			jobs: NewStrictObjectType(map[string]Type{
-				"some_job": NewEmptyObjectType(),
+				"some_job": NewEmptyObjectType().Type(),
 			}),
 		},
 		{
 			what:          "available context",
 			input:         "strategy.fail-fast",
-			expected:      BoolType{},
+			expected:      BoolType(),
 			availContexts: []string{"strategy"},
 		},
 		{
 			what:          "available contexts",
 			input:         "strategy.fail-fast",
-			expected:      BoolType{},
+			expected:      BoolType(),
 			availContexts: []string{"matrix", "strategy"},
 		},
 		{
 			what:         "special function",
 			input:        "success()",
-			expected:     BoolType{},
+			expected:     BoolType(),
 			availSPFuncs: []string{"success"},
 		},
 		{
 			what:         "non-special function",
 			input:        "contains('hello, world', 'o, w')",
-			expected:     BoolType{},
+			expected:     BoolType(),
 			availSPFuncs: []string{"always"},
 		},
 		{
 			what:         "case-insensitive special function name",
 			input:        "hashFiles('aaa.txt')",
-			expected:     StringType{},
+			expected:     StringType(),
 			availSPFuncs: []string{"hashfiles"},
 		},
 		{
 			what:     "configuration variable",
 			input:    "vars.SOME_VARIABLE",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:       "known configuration variable",
 			input:      "vars.SOME_VARIABLE",
-			expected:   StringType{},
+			expected:   StringType(),
 			configVars: []string{"SOME_VARIABLE"},
 		},
 		{
 			what:       "configuration variable name is case insensitive",
 			input:      "vars.SOME_VARIABLE",
-			expected:   StringType{},
+			expected:   StringType(),
 			configVars: []string{"some_variable"},
 		},
 		{
 			what:     "secret without config",
 			input:    "secrets.MY_SECRET",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:          "known secret",
 			input:         "secrets.MY_SECRET",
-			expected:      StringType{},
+			expected:      StringType(),
 			configSecrets: []string{"MY_SECRET"},
 		},
 		{
 			what:          "secret name is case insensitive",
 			input:         "secrets.MY_SECRET",
-			expected:      StringType{},
+			expected:      StringType(),
 			configSecrets: []string{"My_Secret"},
 		},
 		{
 			what:          "known secret through index access",
 			input:         "secrets['MY_SECRET']",
-			expected:      StringType{},
+			expected:      StringType(),
 			configSecrets: []string{"MY_SECRET"},
 		},
 		{
 			what:       "known configuration variable through index access",
 			input:      "vars['SOME_VARIABLE']",
-			expected:   StringType{},
+			expected:   StringType(),
 			configVars: []string{"SOME_VARIABLE"},
 		},
 		{
 			what:          "builtin secret with allowlist",
 			input:         "secrets.GITHUB_TOKEN",
-			expected:      StringType{},
+			expected:      StringType(),
 			configSecrets: []string{"MY_SECRET"},
 		},
 		{
 			what:          "builtin debug secret with empty allowlist",
 			input:         "secrets.ACTIONS_STEP_DEBUG",
-			expected:      StringType{},
+			expected:      StringType(),
 			configSecrets: []string{},
 		},
 		{
-			what:     "declared secret is not checked against the allowlist",
-			input:    "secrets.FOO",
-			expected: StringType{},
-			secrets: &ObjectType{
-				Props:  map[string]Type{"foo": StringType{}},
-				Mapped: StringType{},
-			},
+			what:          "declared secret is not checked against the allowlist",
+			input:         "secrets.FOO",
+			expected:      StringType(),
+			secrets:       NewStrictObjectType(map[string]Type{"foo": StringType()}).WithMapped(StringType()),
 			configSecrets: []string{"BAR"},
 		},
 		{
 			what:     "open secrets type still allows unknown names without config",
 			input:    "secrets.UNKNOWN_SECRET",
-			expected: StringType{},
-			secrets: &ObjectType{
-				Props:  map[string]Type{"foo": StringType{}},
-				Mapped: StringType{},
-			},
+			expected: StringType(),
+			secrets:  NewStrictObjectType(map[string]Type{"foo": StringType()}).WithMapped(StringType()),
 		},
 		{
 			what:     "narrow type of && operator by assumed value (#384)",
 			input:    "('foo' && 10) || 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "narrow type of || operator by assumed value (#384)",
 			input:    "('foo' || 10) && 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "narrow type of nested && operator",
 			input:    "((('foo' && true) || false) && 10) || 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "narrow type of nested || operator",
 			input:    "((('foo' || true) && false) || 10) && 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "don't narrow type on nested && operator",
 			input:    "('foo' && 10) && 20",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "don't narrow type on nested || operator",
 			input:    "('foo' || 10) || 20",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "narrowed || operator at LHS and && operator at RHS",
 			input:    "('foo' || 10) && (('foo' && 10) || 20)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "narrowed && operator at LHS and || operator at RHS",
 			input:    "('foo' && 10) || (('foo' || 10) && 20)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "not operator negates && operator type narrowing",
 			input:    "!('foo' && 10) && 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "not operator negates || operator type narrowing",
 			input:    "!('foo' || 10) || 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "double not operators does nothing on type narrowing",
 			input:    "!!('foo' || 10) && 20",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "escaped braces in format string",
 			input:    "format('hello {{1}} {0}', 42)",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "format specifier is escaped",
 			input:    "format('hello {{{0}', 'world')", // First {{ is escaped. {0} is not escaped
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:  "fromJSON with JSON constant value",
 			input: `fromJSON('{"foo":true,"bar":["foo", 12.3],"piyo":null}')`,
 			expected: NewStrictObjectType(map[string]Type{
-				"foo":  BoolType{},
-				"bar":  &ArrayType{Elem: StringType{}}, // Element type was merged
-				"piyo": NullType{},
-			}),
+				"foo":  BoolType(),
+				"bar":  NewArrayType(StringType()).Type(), // Element type was merged
+				"piyo": NullType(),
+			}).Type(),
 		},
 		{
 			what:     "case() with single predicate",
 			input:    "case(true, 'a', 'b')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() with multiple predicates",
 			input:    "case(true, 1, false, 2, 3)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "case() with numeric comparison predicate",
 			input:    "case(1 == 1, 'a', 'b')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() with string comparison predicate",
 			input:    "case('yes' != '', 'a', 'b')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() with null comparison predicate",
 			input:    "case(null == null, 'a', 'b')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() case insensitivity",
 			input:    "CASE(true, 1, 2)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "case() with expression as predicate",
 			input:    "case(startsWith('hello', 'he'), 'yes', 'no')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() with many predicates",
 			input:    "case(false, 'a', false, 'b', false, 'c', true, 'd', 'default')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() with boolean results",
 			input:    "case(github.event_name == 'push', true, false)",
-			expected: BoolType{},
+			expected: BoolType(),
 		},
 		{
 			what:     "case() with null results",
 			input:    "case(github.event_name == 'push', null, null)",
-			expected: NullType{},
+			expected: NullType(),
 		},
 		{
 			what:     "case() includes incompatible default",
 			input:    "case(github.event_name == 'push', 1, false)",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "case() includes incompatible middle branch",
 			input:    "case(github.event_name == 'push', 1, github.event_name == 'pull_request', null, 2)",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "case() merges string and number results",
 			input:    "case(github.event_name == 'push', 1, 'fallback')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() unknown default",
 			input:    "case(github.event_name == 'push', 'known', fromJSON(env.DATA))",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "case() unknown branch",
 			input:    "case(github.event_name == 'push', fromJSON(env.DATA), 'known')",
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "case() unknown predicate does not affect result type",
 			input:    "case(fromJSON(env.DATA), 'yes', 'no')",
-			expected: StringType{},
+			expected: StringType(),
 		},
 		{
 			what:     "case() nested results",
 			input:    "case(github.event_name == 'push', case(github.event_name == 'pull_request', 1, 2), 3)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "case() merges array elements",
 			input:    `case(github.event_name == 'push', fromJSON('[1,2]'), fromJSON('[3]'))`,
-			expected: &ArrayType{Elem: NumberType{}},
+			expected: NewArrayType(NumberType()).Type(),
 		},
 		{
 			what:     "case() merges incompatible array elements",
 			input:    `case(github.event_name == 'push', fromJSON('[1]'), fromJSON('[false]'))`,
-			expected: &ArrayType{Elem: AnyType{}},
+			expected: NewArrayType(AnyType()).Type(),
 		},
 		{
 			what:  "case() merges object properties",
 			input: `case(github.event_name == 'push', fromJSON('{"count":1,"name":"one"}'), fromJSON('{"count":2,"enabled":true}'))`,
 			expected: NewStrictObjectType(map[string]Type{
-				"count": NumberType{}, "name": StringType{}, "enabled": BoolType{},
-			}),
+				"count": NumberType(), "name": StringType(), "enabled": BoolType(),
+			}).Type(),
 		},
 		{
 			what:     "case() object property inference",
 			input:    `case(github.event_name == 'push', fromJSON('{"count":1}'), fromJSON('{"count":2}')).count`,
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "case() object and null results",
 			input:    `case(github.event_name == 'push', fromJSON('{"count":1}'), null)`,
-			expected: AnyType{},
+			expected: AnyType(),
 		},
 		{
 			what:     "case() constant true predicate narrows to its branch",
 			input:    "case(true, 1, 'unreachable')",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "case() constant false predicate drops its branch",
 			input:    "case(false, 'unreachable', 1)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 		{
 			what:     "case() constant true predicate drops unreachable fromJSON default",
 			input:    `case(true, fromJSON('[1,2]'), fromJSON('[false]'))`,
-			expected: &ArrayType{Elem: NumberType{}},
+			expected: NewArrayType(NumberType()).Type(),
 		},
 		{
 			what:     "case() constant predicates keep later reachable branches",
 			input:    "case(false, 'a', github.event_name == 'push', 1, 2)",
-			expected: NumberType{},
+			expected: NumberType(),
 		},
 	}
 
@@ -1151,22 +1145,23 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			if tc.funcs != nil {
 				c.funcs = tc.funcs
 			}
-			if tc.matrix != nil {
+			// A zero ObjectType in the table means the context is not replaced.
+			if tc.matrix != (ObjectType{}) {
 				c.UpdateMatrix(tc.matrix)
 			}
-			if tc.steps != nil {
+			if tc.steps != (ObjectType{}) {
 				c.UpdateSteps(tc.steps)
 			}
-			if tc.needs != nil {
+			if tc.needs != (ObjectType{}) {
 				c.UpdateNeeds(tc.needs)
 			}
-			if tc.inputs != nil {
+			if tc.inputs != (ObjectType{}) {
 				c.UpdateInputs(tc.inputs)
 			}
-			if tc.secrets != nil {
+			if tc.secrets != (ObjectType{}) {
 				c.UpdateSecrets(tc.secrets)
 			}
-			if tc.jobs != nil {
+			if tc.jobs != (ObjectType{}) {
 				c.UpdateJobs(tc.jobs)
 			}
 			if len(tc.availContexts) > 0 {
@@ -1198,10 +1193,10 @@ func TestExprSemanticsCheckError(t *testing.T) {
 		input         string
 		expected      []string
 		funcs         map[string][]*FuncSignature
-		matrix        *ObjectType
-		steps         *ObjectType
-		needs         *ObjectType
-		secrets       *ObjectType
+		matrix        ObjectType
+		steps         ObjectType
+		needs         ObjectType
+		secrets       ObjectType
 		availCtx      []string
 		availSP       []string
 		configVars    []string
@@ -1247,11 +1242,11 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"test": {
 					{
 						Name: "test",
-						Ret: &ArrayType{
-							Elem: NewStrictObjectType(map[string]Type{
-								"foo": BoolType{},
-							}),
-						},
+						Ret: NewArrayType(
+							NewStrictObjectType(map[string]Type{
+								"foo": BoolType(),
+							}).Type(),
+						).Type(),
 					},
 				},
 			},
@@ -1266,9 +1261,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"test": {
 					{
 						Name: "test",
-						Ret: &ArrayType{
-							Elem: StringType{},
-						},
+						Ret:  NewArrayType(StringType()).Type(),
 					},
 				},
 			},
@@ -1318,9 +1311,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"test": {
 					{
 						Name: "test",
-						Ret: &ArrayType{
-							Elem: StringType{},
-						},
+						Ret:  NewArrayType(StringType()).Type(),
 					},
 				},
 			},
@@ -1335,9 +1326,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"test": {
 					{
 						Name: "test",
-						Ret: &ArrayType{
-							Elem: StringType{},
-						},
+						Ret:  NewArrayType(StringType()).Type(),
 					},
 				},
 			},
@@ -1471,7 +1460,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"property \"bar\" is not defined in matrix",
 			},
 			matrix: NewStrictObjectType(map[string]Type{
-				"foo": AnyType{},
+				"foo": AnyType(),
 			}),
 		},
 		{
@@ -1481,7 +1470,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\"",
 			},
 			matrix: NewStrictObjectType(map[string]Type{
-				"foo": NullType{},
+				"foo": NullType(),
 			}),
 		},
 		{
@@ -1499,10 +1488,10 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 			steps: NewStrictObjectType(map[string]Type{
 				"bar": NewStrictObjectType(map[string]Type{
-					"outputs":    NewEmptyObjectType(),
-					"conclusion": StringType{},
-					"outcome":    StringType{},
-				}),
+					"outputs":    NewEmptyObjectType().Type(),
+					"conclusion": StringType(),
+					"outcome":    StringType(),
+				}).Type(),
 			}),
 		},
 		{
@@ -1513,10 +1502,10 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 			steps: NewStrictObjectType(map[string]Type{
 				"bar": NewStrictObjectType(map[string]Type{
-					"outputs":    NewEmptyObjectType(),
-					"conclusion": StringType{},
-					"outcome":    StringType{},
-				}),
+					"outputs":    NewEmptyObjectType().Type(),
+					"conclusion": StringType(),
+					"outcome":    StringType(),
+				}).Type(),
 			}),
 		},
 		{
@@ -1535,11 +1524,11 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
 					"outputs": NewStrictObjectType(map[string]Type{
-						"out1": StringType{},
-						"out2": StringType{},
-					}),
-					"result": StringType{},
-				}),
+						"out1": StringType(),
+						"out2": StringType(),
+					}).Type(),
+					"result": StringType(),
+				}).Type(),
 			}),
 		},
 		{
@@ -1551,11 +1540,11 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
 					"outputs": NewStrictObjectType(map[string]Type{
-						"out1": StringType{},
-						"out2": StringType{},
-					}),
-					"result": StringType{},
-				}),
+						"out1": StringType(),
+						"out2": StringType(),
+					}).Type(),
+					"result": StringType(),
+				}).Type(),
 			}),
 		},
 		{
@@ -1567,11 +1556,11 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
 					"outputs": NewStrictObjectType(map[string]Type{
-						"out1": StringType{},
-						"out2": StringType{},
-					}),
-					"result": StringType{},
-				}),
+						"out1": StringType(),
+						"out2": StringType(),
+					}).Type(),
+					"result": StringType(),
+				}).Type(),
 			}),
 		},
 		{
@@ -1704,7 +1693,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			expected: []string{
 				"property \"BAR\" is not defined in secrets",
 			},
-			secrets:       NewStrictObjectType(map[string]Type{"foo": StringType{}}),
+			secrets:       NewStrictObjectType(map[string]Type{"foo": StringType()}),
 			configSecrets: []string{"BAR"},
 		},
 		{
@@ -1764,16 +1753,17 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			if tc.funcs != nil {
 				c.funcs = tc.funcs // Set functions for testing
 			}
-			if tc.matrix != nil {
+			// A zero ObjectType in the table means the context is not replaced.
+			if tc.matrix != (ObjectType{}) {
 				c.UpdateMatrix(tc.matrix)
 			}
-			if tc.steps != nil {
+			if tc.steps != (ObjectType{}) {
 				c.UpdateSteps(tc.steps)
 			}
-			if tc.needs != nil {
+			if tc.needs != (ObjectType{}) {
 				c.UpdateNeeds(tc.needs)
 			}
-			if tc.secrets != nil {
+			if tc.secrets != (ObjectType{}) {
 				c.UpdateSecrets(tc.secrets)
 			}
 			if tc.availCtx != nil {
@@ -1965,15 +1955,13 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 
 					c := NewChecker(false, nil)
 					c.vars = map[string]Type{
-						"number": NumberType{},
-						"string": StringType{},
-						"bool":   BoolType{},
-						"object": NewEmptyObjectType(),
-						"array":  &ArrayType{Elem: NumberType{}},
-						"array_2d": &ArrayType{
-							Elem: &ArrayType{Elem: NumberType{}},
-						},
-						"any": AnyType{},
+						"number":   NumberType(),
+						"string":   StringType(),
+						"bool":     BoolType(),
+						"object":   NewEmptyObjectType().Type(),
+						"array":    NewArrayType(NumberType()).Type(),
+						"array_2d": NewArrayType(NewArrayType(NumberType()).Type()).Type(),
+						"any":      AnyType(),
 					}
 					c.SetContextAvailability([]string{
 						"any",
@@ -1991,7 +1979,7 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 						if len(errs) > 0 {
 							t.Fatal("semantics check failed:", errs)
 						}
-						if _, ok := ty.(BoolType); !ok {
+						if ty.Kind() != KindBool {
 							t.Fatalf("wanted bool type but have %q", ty)
 						}
 					} else {
@@ -2081,67 +2069,84 @@ func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
 }
 
 func TestExprSematincsCheckerUpdateDispatchInputsVarType(t *testing.T) {
-	ty := NewStrictObjectType(map[string]Type{"foo": NullType{}})
+	ty := NewStrictObjectType(map[string]Type{"foo": NullType()})
 	c := NewChecker(false, nil)
 	c.UpdateDispatchInputs(ty)
-	o := c.vars["github"].(*ObjectType).Props["event"].(*ObjectType).Props["inputs"].(*ObjectType)
-	if _, ok := o.Props["foo"]; !ok {
+	o := objectPath(t, c.vars["github"], "event", "inputs")
+	if _, ok := o.Property("foo"); !ok {
 		t.Error("Local github.event.inputs is not updated", o)
 	}
 	if !o.IsStrict() {
 		t.Error("Local github.event.inputs is not strict")
 	}
-	for n, ty := range o.Props {
-		if _, ok := ty.(StringType); !ok {
+	for n, ty := range o.Properties() {
+		if ty.Kind() != KindString {
 			t.Errorf("Type of %q input is not string: %s", n, ty)
 		}
 	}
 
 	// Check global value is not polluted
-	o = BuiltinGlobalVariableTypes["github"].(*ObjectType).Props["event"].(*ObjectType)
-	if _, ok := o.Props["inputs"]; ok {
+	o = objectPath(t, BuiltinGlobalVariableTypes["github"], "event")
+	if _, ok := o.Property("inputs"); ok {
 		t.Error("Global github.event.inputs exists", o)
 	}
 }
 
+// objectPath follows object properties from ty and fails the test when a step
+// is not an object.
+func objectPath(t *testing.T, ty Type, keys ...string) ObjectType {
+	t.Helper()
+	object, ok := ty.Object()
+	if !ok {
+		t.Fatalf("%s is not an object", ty)
+	}
+	for _, key := range keys {
+		next, _ := object.Property(key)
+		if object, ok = next.Object(); !ok {
+			t.Fatalf("property %q is not an object: %s", key, next)
+		}
+	}
+	return object
+}
+
 func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
 	tests := []struct {
-		first  *ObjectType
-		second *ObjectType
-		want   *ObjectType
+		first  ObjectType
+		second ObjectType
+		want   ObjectType
 	}{
 		{
 			first: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 			second: NewStrictObjectType(map[string]Type{
-				"bar": NumberType{},
+				"bar": NumberType(),
 			}),
 			want: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
-				"bar": NumberType{},
+				"foo": StringType(),
+				"bar": NumberType(),
 			}),
 		},
 		{
 			first: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 			second: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 			want: NewStrictObjectType(map[string]Type{
-				"foo": StringType{},
+				"foo": StringType(),
 			}),
 		},
 		{
 			first: NewStrictObjectType(map[string]Type{
-				"foo": BoolType{},
+				"foo": BoolType(),
 			}),
 			second: NewStrictObjectType(map[string]Type{
-				"foo": NumberType{},
+				"foo": NumberType(),
 			}),
 			want: NewStrictObjectType(map[string]Type{
-				"foo": AnyType{},
+				"foo": AnyType(),
 			}),
 		},
 	}
@@ -2153,7 +2158,7 @@ func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
 			c.UpdateInputs(tc.first)
 			c.UpdateDispatchInputs(tc.second)
 			have := c.vars["inputs"]
-			if diff := cmp.Diff(have, tc.want); diff != "" {
+			if diff := cmp.Diff(have, tc.want.Type()); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -2162,9 +2167,8 @@ func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
 
 func testObjectPropertiesAreInLowerCase(t *testing.T, ty Type) {
 	t.Helper()
-	switch ty := ty.(type) {
-	case *ObjectType:
-		for n, ty := range ty.Props {
+	if object, ok := ty.Object(); ok {
+		for n, ty := range object.Properties() {
 			for _, r := range n {
 				if 'A' <= r && r <= 'Z' {
 					t.Errorf("Property of object must not contain uppercase character because comparison is case insensitive but got %q", n)
@@ -2173,8 +2177,9 @@ func testObjectPropertiesAreInLowerCase(t *testing.T, ty Type) {
 			}
 			testObjectPropertiesAreInLowerCase(t, ty)
 		}
-	case *ArrayType:
-		testObjectPropertiesAreInLowerCase(t, ty.Elem)
+	}
+	if array, ok := ty.Array(); ok {
+		testObjectPropertiesAreInLowerCase(t, array.Elem())
 	}
 }
 
@@ -2437,32 +2442,42 @@ func TestExprIsConstant(t *testing.T) {
 // vim: nofoldenable
 
 func TestContextReplacementDispatchInputs(t *testing.T) {
-	for _, github := range []Type{nil, StringType{}, NewStrictObjectType(map[string]Type{"event": NewStrictObjectType(nil)})} {
+	githubContexts := []struct {
+		ty      Type
+		present bool
+	}{
+		{},
+		{StringType(), true},
+		{NewStrictObjectType(map[string]Type{"event": NewStrictObjectType(nil).Type()}).Type(), true},
+	}
+	for _, github := range githubContexts {
 		checker := NewChecker(false, nil)
 		contexts := map[string]Type{}
-		if github != nil {
-			contexts["GITHUB"] = github
+		if github.present {
+			contexts["GITHUB"] = github.ty
 		}
 		checker.SetContextTypes(contexts)
-		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"enabled": BoolType{}}))
-		if inputs, ok := checker.vars["inputs"].(*ObjectType); !ok || inputs.Props["enabled"] == nil {
+		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"enabled": BoolType()}))
+		if inputs, ok := checker.vars["inputs"].Object(); !ok {
+			t.Fatal("dispatch inputs were not installed")
+		} else if _, ok := inputs.Property("enabled"); !ok {
 			t.Fatal("dispatch inputs were not installed")
 		}
-		if github == nil && checker.vars["github"] != nil {
+		if _, ok := checker.vars["github"]; !github.present && ok {
 			t.Fatal("missing github context was introduced")
 		}
-		if original, ok := github.(*ObjectType); ok {
-			if original.Props["event"].(*ObjectType).Props["inputs"] != nil {
+		if original, ok := github.ty.Object(); ok {
+			if _, ok := objectPath(t, original.Type(), "event").Property("inputs"); ok {
 				t.Fatal("caller-owned github context was modified")
 			}
-			copied := checker.vars["github"].(*ObjectType).Props["event"].(*ObjectType).Props["inputs"].(*ObjectType)
-			if _, ok := copied.Props["enabled"].(StringType); !ok {
+			copied := objectPath(t, checker.vars["github"], "event", "inputs")
+			if enabled, _ := copied.Property("enabled"); enabled.Kind() != KindString {
 				t.Fatal("github.event.inputs did not receive string types")
 			}
 		}
 		checker.SetContextTypes(nil)
-		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"again": StringType{}}))
-		if checker.vars["github"] != nil {
+		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"again": StringType()}))
+		if _, ok := checker.vars["github"]; ok {
 			t.Fatal("context replacement left github available")
 		}
 	}

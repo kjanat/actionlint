@@ -16,7 +16,7 @@ func TestResolvedNonCompositeActionIsAdmittedToSourceSnapshots(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{
 		"node/action.yml": "name: node\ndescription: node action\nruns: {using: node20, main: index.js}\n",
 	}, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) 
 	if document.Metadata == nil || len(document.Metadata.Runs.Steps) != 1 {
 		t.Fatalf("parser did not recover the expected partial declaration: %#v", document.Metadata)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	_, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestActionRunKindIgnoresMetadataCallbackMutation(t *testing.T) {
 		metadata.Runs.Using = "composite"
 		metadata.Source[0] = 'X'
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}

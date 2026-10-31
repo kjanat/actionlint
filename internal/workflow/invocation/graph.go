@@ -426,11 +426,12 @@ const (
 	Stopped
 )
 
-// Ticket is the result of Begin.
+// Ticket is the result of Begin. A Stopped ticket carries the budget boundary
+// that rejected it; other tickets carry the admitted call context.
 type Ticket struct {
 	context Context
 	status  Admission
-	err     error
+	stop    Stop
 }
 
 // ID returns the call ID, or empty when the attempt was Stopped.
@@ -447,7 +448,12 @@ func (t Ticket) Context() (Context, bool) {
 func (t Ticket) Status() Admission { return t.status }
 
 // Err returns the original budget error for a stopped admission, otherwise nil.
-func (t Ticket) Err() error { return t.err }
+func (t Ticket) Err() error {
+	if t.status != Stopped {
+		return nil
+	}
+	return budgetError{t.stop}
+}
 
 // Begin admits a call under the entry or an open expanded call context.
 // It checks parent and site validity and duplicate traversal, then the total
@@ -493,13 +499,13 @@ func (b *Builder) Begin(parentContext Context, site source.Reference, facts Fact
 		return Ticket{}, ErrTraversal
 	}
 	if b.hasStop {
-		return Ticket{status: Stopped, err: budgetError{b.stop}}, nil
+		return Ticket{status: Stopped, stop: b.stop}, nil
 	}
 
 	if len(b.records) >= b.budget.MaxCalls {
 		b.stop = Stop{Parent: parent, Site: site, Limit: LimitTotal, Max: b.budget.MaxCalls}
 		b.hasStop = true
-		return Ticket{status: Stopped, err: budgetError{b.stop}}, nil
+		return Ticket{status: Stopped, stop: b.stop}, nil
 	}
 
 	context := Context{data: &contextData{id: id, parent: parent, depth: parentDepth + 1, site: site, facts: facts}}

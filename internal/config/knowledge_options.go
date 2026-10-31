@@ -35,19 +35,19 @@ type WorkflowCallOptions struct {
 }
 
 func configureRunnerLabels(c *Config, s Setting) {
-	if options, ok := s.Options.(*RunnerLabelOptions); ok {
+	if options := new(RunnerLabelOptions); loadOptions(s, options) {
 		c.SelfHostedRunner.Labels = options.Labels
 	}
 }
 
 func configureExpressionReferences(c *Config, s Setting) {
-	if options, ok := s.Options.(*ExpressionReferenceOptions); ok {
+	if options := new(ExpressionReferenceOptions); loadOptions(s, options) {
 		c.ConfigVariables, c.ConfigSecrets = options.Variables, options.Secrets
 	}
 }
 
 func configureWorkflowCall(c *Config, s Setting) {
-	if options, ok := s.Options.(*WorkflowCallOptions); ok {
+	if options := new(WorkflowCallOptions); loadOptions(s, options) {
 		c.AssumeDefaultPermissions = options.DefaultPermissions
 	}
 }
@@ -56,21 +56,21 @@ func configureWorkflowCall(c *Config, s Setting) {
 // serialized configuration has only the grouped rule vocabulary.
 func projectSettings(c *Config) {
 	for _, descriptor := range Rules() {
-		setting, exists := c.Lint.Rules.Groups()[descriptor.Group].Rules[descriptor.Name]
+		setting, exists := c.Lint.Rules.Groups()[descriptor.Group].Rule(descriptor.Name)
 		if !exists || descriptor.Configure == nil {
 			continue
 		}
-		if (setting.Level == "" || setting.Level == "default") && setting.Options == nil {
+		if (setting.Level() == "" || setting.Level() == "default") && !setting.HasOptions() {
 			continue
 		}
-		if setting.Level == "" || setting.Level == "default" {
-			setting.Level = "off"
+		if setting.Level() == "" || setting.Level() == "default" {
+			setting = setting.WithLevel("off")
 			if descriptor.Recommended {
-				setting.Level = "on"
+				setting = setting.WithLevel("on")
 			}
 		}
 		descriptor.Configure(c, setting)
-		if setting.Level == "off" {
+		if setting.Level() == "off" {
 			switch descriptor.Name {
 			case "require-job-timeout":
 				c.Policy.RequireJobTimeout = &JobTimeoutPolicy{}

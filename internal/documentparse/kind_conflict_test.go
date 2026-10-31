@@ -23,7 +23,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				t.Fatal(err)
 			}
 			alias := filepath.Dir(path) + string(filepath.Separator) + "." + string(filepath.Separator) + filepath.Base(path)
-			aliased, err := fixtures.sources.Store.Read(t.Context(), alias, source.YAML)
+			aliased, err := fixtures.store.Read(t.Context(), alias, source.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -33,7 +33,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if order == "action-first" {
 				documents[0], documents[1] = documents[1], documents[0]
 			}
-			var snapshots [2]*SourceSnapshot
+			var snapshots [2]SourceSnapshot
 			var failures [2]error
 			var earlierView workflowdecl.StepView
 			var earlierReference source.Reference
@@ -65,21 +65,21 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				}
 				bind(1)
 			}
-			var previous *SourceSnapshot
+			var previous SourceSnapshot
 			for index, failure := range failures {
 				if failure == nil {
 					previous = snapshots[index]
-				} else if _, ok := errors.AsType[*capture.ConflictError](failure); !ok {
+				} else if _, ok := errors.AsType[capture.ConflictError](failure); !ok {
 					t.Fatalf("kind mismatch returned untyped error: %v", failure)
 				}
 			}
-			if previous == nil {
+			if !previous.Present() {
 				t.Fatal("neither declaration was initially admitted")
 			}
 			for _, document := range documents {
 				if _, err := registry.Document(captured, document); err == nil {
 					t.Fatal("quarantined declaration was readmitted")
-				} else if conflict, ok := errors.AsType[*capture.ConflictError](err); !ok || conflict.Error() != "source-revision-conflict: "+strconv.Quote(captured.Revision().Document())+": conflicting declaration kinds: action, workflow" {
+				} else if conflict, ok := errors.AsType[capture.ConflictError](err); !ok || conflict.Error() != "source-revision-conflict: "+strconv.Quote(captured.Revision().Document())+": conflicting declaration kinds: action, workflow" {
 					t.Fatalf("non-deterministic kind conflict: %v", err)
 				}
 			}
@@ -106,10 +106,10 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if previous.Kind() != KindUnknown || string(previous.Content()) != string(content) {
 				t.Fatal("quarantine changed bytes or exposed a semantic kind")
 			}
-			if err := fixtures.sources.Store.Close(t.Context()); err != nil {
+			if err := fixtures.store.Close(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			rows, err := fixtures.sources.Store.Sources()
+			rows, err := fixtures.store.Sources()
 			if err != nil || len(rows) != 1 || rows[0].State != capture.Conflicted || rows[0].Revision.Valid() || rows[0].Code != "source-revision-conflict" || len(rows[0].Aliases) != 2 {
 				t.Fatalf("published conflicted declaration: rows=%+v error=%v", rows, err)
 			}

@@ -178,7 +178,7 @@ func TestDockerfileReadFailureSurvivesReporting(t *testing.T) {
 }
 
 func TestEmptyParseErrorRetainsItsPath(t *testing.T) {
-	failure := &ParseError{Path: "broken/action.yml"}
+	failure := NewParseError("broken/action.yml", nil)
 	if got := failure.Error(); got != `could not parse action metadata in "broken/action.yml"` {
 		t.Fatal(got)
 	}

@@ -61,8 +61,11 @@ type entry struct {
 	done        chan struct{}
 	value       *captured
 	err         *CaptureError
-	conflict    *ConflictError
+	conflict    ConflictError
 }
+
+// conflicted reports a sticky conflict; the zero ConflictError records none.
+func (e *entry) conflicted() bool { return e.conflict != ConflictError{} }
 
 // New preflights all overlays before making the Store available. Conflicting
 // documents are Store data, exposed by Read, Lookup and the sealed Sources table;
@@ -146,7 +149,7 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 				keys = append(keys, variant)
 			}
 			slices.Sort(keys)
-			e.conflict = &ConflictError{document, "conflicting overlays: " + strings.Join(keys, ", ")}
+			e.conflict = ConflictError{document, "conflicting overlays: " + strings.Join(keys, ", ")}
 		} else {
 			value, err := capture(document, first.Coordinates, first.Content)
 			e.value = value
@@ -335,10 +338,10 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 			go s.read(document, e)
 		}
 	}
-	if e.model != model && e.conflict == nil {
-		e.conflict = &ConflictError{document, "conflicting coordinates: raw-lf, yaml"}
+	if e.model != model && !e.conflicted() {
+		e.conflict = ConflictError{document, "conflicting coordinates: raw-lf, yaml"}
 	}
-	if e.conflict != nil {
+	if e.conflicted() {
 		conflict := e.conflict
 		s.mu.Unlock()
 		return Snapshot{}, conflict
@@ -359,7 +362,7 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if e.conflict != nil {
+	if e.conflicted() {
 		return Snapshot{}, e.conflict
 	}
 	if e.err != nil {
@@ -412,11 +415,11 @@ func (s *Store) verifyHandle(snapshot Snapshot) error {
 	}
 	document := snapshot.value.revision.Document()
 	e := s.docs[document]
-	if e != nil && e.conflict != nil {
+	if e != nil && e.conflicted() {
 		return e.conflict
 	}
 	if e == nil || e.err != nil || e.value != snapshot.value || e.model != snapshot.value.model {
-		return &ConflictError{document, "stale snapshot"}
+		return ConflictError{document, "stale snapshot"}
 	}
 	return nil
 }
@@ -430,7 +433,7 @@ func (s *Store) Verify(snapshot Snapshot, supplied []byte) error {
 		return err
 	}
 	if !bytes.Equal(snapshot.value.content, supplied) {
-		return &ConflictError{snapshot.value.revision.Document(), "supplied bytes differ from captured revision"}
+		return ConflictError{snapshot.value.revision.Document(), "supplied bytes differ from captured revision"}
 	}
 	return nil
 }

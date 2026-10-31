@@ -13,11 +13,11 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	value := &actionmeta.ExprString{Value: "example", Line: 2, Column: 3}
 	checkSourceLess := func(meta *actionmeta.Metadata) {
 		t.Helper()
-		if meta.ScalarSource(value) != nil {
-			t.Fatal("source-less metadata has a position cache")
+		if _, parsed := meta.OriginalSource(); parsed {
+			t.Fatal("source-less metadata has source provenance")
 		}
 		for range 2 {
-			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (workflowlang.Pos{Line: 2, Col: 3}) || meta.ScalarSource(value) != nil {
+			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (workflowlang.Pos{Line: 2, Col: 3}) || actionmeta.ExpressionEndPosition(meta, value, actionmeta.Violation{Offset: 1, EndOffset: 2}) != nil {
 				t.Fatal("source-less metadata did not retain its fallback position")
 			}
 		}
@@ -59,7 +59,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	}
 	writeFixture(t, root, "empty/action.yml", "null\n")
 	empty, _, err := base.FindMetadata("./empty")
-	if err != nil || empty == nil || empty.ScalarSource(value) != nil {
+	if err != nil || empty == nil || actionmeta.ExpressionEndPosition(empty, value, actionmeta.Violation{Offset: 1, EndOffset: 2}) != nil {
 		t.Fatalf("null YAML bypassed cache initialization: %+v, %v", empty, err)
 	}
 

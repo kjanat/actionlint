@@ -33,7 +33,7 @@ func (n Names) CheckWorkflowRun(references []workflowdecl.StringView) []diagnost
 	report := func(pos *workflowlang.Pos, format string, args ...any) {
 		findings = append(findings, diagnostic.Diagnostic{Rule: "workflow-run-names", Message: fmt.Sprintf(format, args...), Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}})
 	}
-	if !n.Complete {
+	if !n.complete {
 		return findings
 	}
 	var patterns []string

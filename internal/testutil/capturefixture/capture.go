@@ -19,14 +19,19 @@ import (
 // Relative fixture names resolve against the explicitly supplied absolute base.
 // Updating fixture bytes never changes an already captured revision.
 type CapturedSources struct {
-	Store   *capture.Store
+	store   *capture.Store
 	base    string
 	ctx     context.Context
 	mu      sync.Mutex
 	content map[string][]byte
 }
 
-func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) *CapturedSources {
+// NewCapturedSources returns a capture store and the fixture that feeds it.
+// The store reads bytes passed to Capture first and the filesystem otherwise.
+// The fixture keeps a private reference to the same store for Capture, so a
+// caller cannot point Capture at a different store. The store is closed when
+// the test ends.
+func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) (*capture.Store, *CapturedSources) {
 	t.Helper()
 	if !filepath.IsAbs(base) {
 		t.Fatalf("capture fixture requires an absolute base: %q", base)
@@ -46,9 +51,9 @@ func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture.Store = store
+	fixture.store = store
 	CloseCaptures(t, store)
-	return fixture
+	return store, fixture
 }
 
 // CurrentDir returns the absolute working directory for relative-path fixtures.
@@ -70,18 +75,18 @@ func (f *CapturedSources) Path(path string) string {
 
 func (f *CapturedSources) Capture(path string, content []byte, coordinates source.Coordinates) (capture.Snapshot, error) {
 	path = f.Path(path)
-	document, err := f.Store.Canonical(f.ctx, path)
+	document, err := f.store.Canonical(f.ctx, path)
 	if err != nil {
 		return capture.Snapshot{}, err
 	}
 	f.mu.Lock()
 	f.content[document] = bytes.Clone(content)
 	f.mu.Unlock()
-	snapshot, err := f.Store.Read(f.ctx, path, coordinates)
+	snapshot, err := f.store.Read(f.ctx, path, coordinates)
 	if err != nil {
 		return capture.Snapshot{}, err
 	}
-	if err := f.Store.Verify(snapshot, content); err != nil {
+	if err := f.store.Verify(snapshot, content); err != nil {
 		return capture.Snapshot{}, err
 	}
 	return snapshot, nil

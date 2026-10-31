@@ -117,7 +117,7 @@ func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
 					err = entered.Decode(&got)
 				}
 				gotLoad, gotOK := errors.AsType[*LoadError](err)
-				if !gotOK || gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || err.Error() != wantErr.Error() {
+				if !gotOK || gotLoad.Message() != wantLoad.Message || gotLoad.Mark().Line != wantLoad.Mark.Line || gotLoad.Mark().Column != wantLoad.Mark.Column || err.Error() != wantErr.Error() {
 					t.Errorf("cursor error = %v, want %v", err, wantErr)
 				}
 				if !reflect.DeepEqual(got, partial()) {

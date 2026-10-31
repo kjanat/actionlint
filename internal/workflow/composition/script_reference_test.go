@@ -17,18 +17,18 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(Options{Context: t.Context(), SourceSnapshots: snapshots.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
-	result, err := service.Workflow(snapshot)
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
 	references := documentparse.References("ci.yml", content, document, nil, func(path string) string { return path })
-	input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, document, references)
+	input, err := AnalyzerInput(result, "ci.yml", "ci.yml", content, document, references)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,20 +60,20 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	registry, store, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cache := actionlocal.NewCache(t.Context(), root, nil)
-	actionCapture, err := snapshots.Sources.Capture(actionPath, actionContent, source.YAML)
+	actionCapture, err := snapshots.Capture(actionPath, actionContent, source.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache.Configure(actionlocal.Options{Captures: snapshots.Sources.Store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
+	cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
 	resolver := actionlocal.NewResolver(cache, map[string]string{"./generated": "./source"})
-	service := New(Options{Context: t.Context(), SourceSnapshots: snapshots.SourceSnapshots, Actions: resolver, CollectScripts: true})
-	result, err := service.Workflow(snapshot)
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: resolver, CollectScripts: true}
+	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
 	if len(analysis.scripts) != 0 {
 		t.Fatal("foreign declaration produced a script fact")
 	}
-	analysis.sourceSnapshot = nil
+	analysis.sourceSnapshot = documentparse.SourceSnapshot{}
 	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
 		t.Fatal("accepted a script without a source snapshot")
 	}

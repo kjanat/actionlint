@@ -65,10 +65,10 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 	} {
 		t.Run(body, func(t *testing.T) {
 			parsed := documentparse.Action("action.yml", "action.yml", []byte("name: parent\ndescription: parent\nruns:\n  using: composite\n  steps:\n"+body))
-			if len(parsed.Findings) != 0 || parsed.Facts() == nil {
+			if len(parsed.Findings) != 0 || parsed.Facts == nil {
 				t.Fatalf("action parse failed: %v", parsed.Findings)
 			}
-			steps := parsed.Facts().Jobs[""].Steps
+			steps := parsed.Facts.Jobs[""].Steps
 			if len(steps) == 0 {
 				t.Fatal("fixture produced no steps")
 			}

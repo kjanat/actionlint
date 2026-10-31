@@ -344,7 +344,7 @@ allow    = [
   "analyzer-host",
   "tool-profiles",
 ]
-tests    = ["fixtures", "policy"]
+tests    = ["fixtures", "policy", "core-helpers"]
 
 [[layer]]
 name      = "tool-backends"
@@ -394,6 +394,7 @@ packages = ["internal/workflow/composition"]
 allow    = [
   "source",
   "analysis-contracts",
+  "leaves",
   "expression",
   "config",
   "invocation",
@@ -405,7 +406,7 @@ allow    = [
   "tool-contracts",
   "builtins",
 ]
-tests    = ["leaves", "core-helpers", "fixtures"]
+tests    = ["core-helpers", "fixtures"]
 
 [[layer]]
 name     = "results"

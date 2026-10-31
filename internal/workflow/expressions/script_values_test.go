@@ -144,8 +144,8 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 	if err := rule.VisitJobPre(job); err != nil {
 		t.Fatal(err)
 	}
-	if got := rule.matrixTy.Props["os"].String(); got != "string" {
-		t.Fatalf("matrix.os type = %s, want string", got)
+	if os, _ := rule.matrixTy.Property("os"); os.String() != "string" {
+		t.Fatalf("matrix.os type = %s, want string", os)
 	}
 	if got := rule.matrixScriptSafe["matrix.os"]; got != scriptLiteralWord {
 		t.Fatalf("matrix.os script proof = %v, want literal word", got)
@@ -232,8 +232,8 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 
 func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 	checker := &Checker{
-		stepsTy: exprlang.NewObjectType(map[string]exprlang.Type{"producer": exprlang.StringType{}}),
-		needsTy: exprlang.NewObjectType(map[string]exprlang.Type{"build": exprlang.StringType{}}),
+		stepsTy: new(exprlang.NewObjectType(map[string]exprlang.Type{"producer": exprlang.StringType()})),
+		needsTy: new(exprlang.NewObjectType(map[string]exprlang.Type{"build": exprlang.StringType()})),
 	}
 	for _, tc := range []struct {
 		expression string
@@ -264,14 +264,14 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 	steps := exprlang.NewObjectType(map[string]exprlang.Type{
 		"producer": exprlang.NewObjectType(map[string]exprlang.Type{
-			"outcome": exprlang.StringType{},
-			"outputs": exprlang.NewObjectType(map[string]exprlang.Type{"value": exprlang.StringType{}}),
-		}),
+			"outcome": exprlang.StringType(),
+			"outputs": exprlang.NewObjectType(map[string]exprlang.Type{"value": exprlang.StringType()}).Type(),
+		}).Type(),
 	})
 	needs := exprlang.NewObjectType(map[string]exprlang.Type{
-		"build": exprlang.NewObjectType(map[string]exprlang.Type{"result": exprlang.StringType{}}),
+		"build": exprlang.NewObjectType(map[string]exprlang.Type{"result": exprlang.StringType()}).Type(),
 	})
-	rule := &Checker{stepsTy: steps, needsTy: needs}
+	rule := &Checker{stepsTy: &steps, needsTy: &needs}
 	for _, tc := range []struct {
 		expression string
 		wordSafe   bool
@@ -296,7 +296,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			semantic.UpdateSteps(steps)
 			semantic.UpdateNeeds(needs)
 			semantic.UpdateInputs(exprlang.NewStrictObjectType(map[string]exprlang.Type{
-				"step": exprlang.StringType{}, "job": exprlang.StringType{},
+				"step": exprlang.StringType(), "job": exprlang.StringType(),
 			}))
 			typeOf, errs := semantic.Check(node)
 			if len(errs) != 0 {

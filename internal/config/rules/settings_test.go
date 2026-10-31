@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -20,8 +21,12 @@ func TestSettingCanonicalLevels(t *testing.T) {
 		{"{level: default}", "default"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
-			var setting Setting
-			if err := yaml.Unmarshal([]byte(tc.input), &setting); err != nil {
+			var document yaml.Node
+			if err := yaml.Unmarshal([]byte(tc.input), &document); err != nil {
+				t.Fatal(err)
+			}
+			setting, err := parseSetting(document.Content[0])
+			if err != nil {
 				t.Fatal(err)
 			}
 			encoded, err := yaml.Marshal(setting)
@@ -38,6 +43,77 @@ func TestSettingCanonicalLevels(t *testing.T) {
 				t.Fatalf("got %s, want %s", normalized.Level, tc.want)
 			}
 		})
+	}
+}
+
+// editingOptions overwrites the node it decodes, as a careless UnmarshalYAML might.
+type editingOptions struct{ name string }
+
+func (o *editingOptions) UnmarshalYAML(n *yaml.Node) error {
+	o.name = n.Content[1].Value
+	n.Content[1].Value = "edited"
+	return nil
+}
+
+func TestLoadOptionsDecodesPrivateCopy(t *testing.T) {
+	setting, err := NewSetting("on", map[string]string{"name": "original"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		var options editingOptions
+		if loaded, err := setting.LoadOptions(&options); !loaded || err != nil || options.name != "original" {
+			t.Fatalf("loaded=%v err=%v name=%q", loaded, err, options.name)
+		}
+	}
+}
+
+func TestNewSettingRejectsNonMappingOptions(t *testing.T) {
+	if _, err := NewSetting("on", []string{"a"}); err == nil {
+		t.Fatal("accepted sequence options")
+	}
+	setting, err := NewSetting("warn", nil)
+	if err != nil || setting.HasOptions() || setting.Level() != "warn" {
+		t.Fatalf("setting=%+v err=%v", setting, err)
+	}
+}
+
+func TestNewSettingParsesJSONRawMessage(t *testing.T) {
+	setting, err := NewSetting("on", json.RawMessage(`{"max-count": 3, "names": ["a"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var options struct {
+		MaxCount int      `yaml:"max-count"`
+		Names    []string `yaml:"names"`
+	}
+	if loaded, err := setting.LoadOptions(&options); !loaded || err != nil || options.MaxCount != 3 || len(options.Names) != 1 || options.Names[0] != "a" {
+		t.Fatalf("loaded=%v err=%v options=%+v", loaded, err, options)
+	}
+	for _, raw := range []json.RawMessage{nil, json.RawMessage("null")} {
+		if setting, err := NewSetting("on", raw); err != nil || setting.HasOptions() {
+			t.Fatalf("%q: setting=%+v err=%v", raw, setting, err)
+		}
+	}
+	for _, raw := range []json.RawMessage{json.RawMessage("[1]"), json.RawMessage("{"), json.RawMessage("max-count: 3")} {
+		if _, err := NewSetting("on", raw); err == nil {
+			t.Fatalf("accepted %q", raw)
+		}
+	}
+}
+
+func TestGroupKeepsItsRulesAndOmitsWhenEmpty(t *testing.T) {
+	rules := map[string]Setting{"expression": {level: "off"}}
+	group := NewGroup("", "warn", rules)
+	rules["expression"] = Setting{level: "on"}
+	if setting, ok := group.Rule("expression"); !ok || setting.Level() != "off" {
+		t.Fatalf("group shares the caller's map: %+v", setting)
+	}
+	encoded, err := yaml.Marshal(struct {
+		Group Group `yaml:"group,omitempty"`
+	}{})
+	if err != nil || string(encoded) != "{}\n" {
+		t.Fatalf("empty group encoded as %q: %v", encoded, err)
 	}
 }
 

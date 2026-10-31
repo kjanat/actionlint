@@ -61,6 +61,32 @@ const (
 	DefaultPermissionsAssumptionPermissive = repoconfig.DefaultPermissionsAssumptionPermissive
 )
 
+// NewRuleSetting returns a rule setting with a level and options, such as
+// &RequiredActionsOptions{...}. An empty level selects the rule's default;
+// nil options mean no options.
+//
+// options must form a mapping. A json.RawMessage is parsed as a JSON object,
+// as in analyzer.Registration.Options. Any other value is encoded as YAML:
+// struct fields are named by their yaml tags, and json tags and MarshalJSON
+// are ignored. A disabled policy, such as &JobTimeoutPolicy{}, encodes as
+// false and is rejected; use level "off" to turn a rule off. Analysis checks
+// the options against the rule and fails if they do not decode.
+func NewRuleSetting(level RuleLevel, options any) (RuleSetting, error) {
+	return repoconfig.NewSetting(level, options)
+}
+
+// NewRuleGroup returns a rule group with a preset, a group level and
+// per-rule settings. Empty preset and level leave the parent selection in place.
+func NewRuleGroup(preset RulePreset, level RuleLevel, rules map[string]RuleSetting) RuleGroupConfig {
+	return repoconfig.NewGroup(preset, level, rules)
+}
+
+// NewCommitHashOptions returns require-commit-hash options that exempt
+// references matching any of the glob patterns. A malformed pattern is an error.
+func NewCommitHashOptions(exclude ...string) (*CommitHashOptions, error) {
+	return lintconfig.NewCommitHashOptions(exclude...)
+}
+
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
 // additionalRules lists registered analyzer names accepted in suppression settings.
 func Parse(source []byte, additionalRules ...string) (*Config, error) {

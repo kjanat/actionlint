@@ -69,13 +69,14 @@ func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec st
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		mode := effectiveGrant(granted, metadataGrant(job.Mode))
+		own := metadataGrant(job.Mode)
+		mode := effectiveGrant(granted, own)
 		want, valid := mode.capabilities()
 		if mode.present && !valid || known && valid && want&^have != 0 {
 			// Invalid declarations and ceiling mismatches have their own diagnostics.
 			continue
 		}
-		if job.Mode == nil && known {
+		if !own.present && known {
 			for _, name := range job.Operations {
 				if operation := disabledCacheOperation(name, have); operation != "" {
 					r.Errorf(pos, "%q in job %q of %q cannot %s with caller-imposed cache-mode %q. GitHub skips the operation; select an action and mode that match the intended cache access, or document a reviewed exception at this call", name, id, sourceSpec, operation, granted.kind.String())
@@ -83,7 +84,7 @@ func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec st
 			}
 		}
 		// An explicit intermediate mode owns its downstream operation diagnostics.
-		if job.Uses != "" && job.Mode == nil {
+		if job.Uses != "" && !own.present {
 			r.checkCallOperations(pos, job.SourceUses, mode, checked)
 		}
 	}

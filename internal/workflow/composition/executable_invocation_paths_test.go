@@ -11,8 +11,34 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
+// executableRule is what the probe needs from the executable-bit rule: the
+// invocation hooks, checkout placement and the current script paths.
+type executableRule interface {
+	builtin.InvocationParticipant
+	builtin.CheckoutParticipant
+	Paths() execution.Paths
+}
+
+// productionExecutableRule builds the executable-bit rule the way analysis
+// does, through its registry descriptor.
+func productionExecutableRule(t *testing.T, c builtin.Context) executableRule {
+	t.Helper()
+	for _, descriptor := range builtin.Descriptors() {
+		if descriptor.Name != "executable-bit" {
+			continue
+		}
+		rule, ok := descriptor.Build(c).(executableRule)
+		if !ok {
+			t.Fatal("executable-bit rule lacks invocation, checkout or path hooks")
+		}
+		return rule
+	}
+	t.Fatal("executable-bit descriptor absent")
+	return nil
+}
+
 type executablePathsProbe struct {
-	*builtin.RuleExecutableBit
+	executableRule
 	t       *testing.T
 	want    execution.Paths
 	entered int
@@ -21,14 +47,14 @@ type executablePathsProbe struct {
 func (p *executablePathsProbe) checkPaths() {
 	p.t.Helper()
 	got := p.Paths()
-	if got.Platform != p.want.Platform || got.Workspace != p.want.Workspace || got.Analysis != p.want.Analysis || got.Reader != p.want.Reader {
+	if got.Platform != p.want.Platform || got.Workspace != p.want.Workspace || got.Analysis != p.want.Analysis {
 		p.t.Fatalf("invocation replaced job paths: got %+v, wanted %+v", got, p.want)
 	}
 }
 
 func (p *executablePathsProbe) EnterInvocation(call builtin.Invocation) error {
 	p.checkPaths()
-	if err := p.RuleExecutableBit.EnterInvocation(call); err != nil {
+	if err := p.executableRule.EnterInvocation(call); err != nil {
 		return err
 	}
 	p.checkPaths()
@@ -40,7 +66,7 @@ func (p *executablePathsProbe) EnterInvocation(call builtin.Invocation) error {
 }
 
 func (p *executablePathsProbe) LeaveInvocation(call invocation.Context) error {
-	if err := p.RuleExecutableBit.LeaveInvocation(call); err != nil {
+	if err := p.executableRule.LeaveInvocation(call); err != nil {
 		return err
 	}
 	p.checkPaths()
@@ -53,12 +79,12 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inside}]}\n",
 	}, nil)
 	reader := &fsread.Reader{}
-	want := execution.Paths{Workspace: f.service.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux, Reader: reader}
-	p := &executablePathsProbe{RuleExecutableBit: &builtin.RuleExecutableBit{ExecutableChecker: execution.NewExecutableChecker(execution.ExecutableContext{
+	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
+	p := &executablePathsProbe{executableRule: productionExecutableRule(t, builtin.Context{
 		Context: t.Context(), ProjectRoot: want.Workspace, WorkingDir: want.Analysis, Reader: reader,
-	})}, t: t, want: want}
-	f.service.options.Rules = []workflowvisit.Rule{p}
-	_, err := f.service.Workflow(f.root)
+	}), t: t, want: want}
+	f.options.Rules = []workflowvisit.Rule{p}
+	_, err := Workflow(f.options, f.root)
 	if err != nil || p.entered != 2 {
 		t.Fatalf("error=%v, invocations=%d", err, p.entered)
 	}

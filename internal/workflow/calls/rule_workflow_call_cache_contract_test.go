@@ -54,8 +54,8 @@ jobs:
 		t.Fatal(diff)
 	}
 	for id, want := range map[string]workflowlang.CacheModeKind{"base": workflowlang.CacheModeRead, "alias": workflowlang.CacheModeRead, "save": workflowlang.CacheModeWriteOnly, "none": workflowlang.CacheModeNone, "invalid": workflowlang.CacheModeInvalid, "scalar-alias": workflowlang.CacheModeRead} {
-		if mode := fromFile.JobCacheAccess[id].Mode; mode == nil || mode.Kind != want {
-			t.Errorf("%s: wanted %v, got %v", id, want, mode)
+		if kind, declared := fromFile.JobCacheAccess[id].Mode.Kind(); !declared || kind != want {
+			t.Errorf("%s: wanted %v, got %v (declared %t)", id, want, kind, declared)
 		}
 	}
 }

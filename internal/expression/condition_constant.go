@@ -34,7 +34,7 @@ func ConditionConstantValue(expr Node) (any, bool) {
 	case *BoolNode:
 		return n.Value, true
 	case *IntNode:
-		if n.Value == 0 && n.tok != nil && strings.HasPrefix(n.tok.Value, "-") {
+		if n.Value == 0 && strings.HasPrefix(n.First.Value, "-") {
 			return math.Copysign(0, -1), true
 		}
 		return float64(n.Value), true

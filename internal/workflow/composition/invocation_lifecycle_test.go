@@ -87,12 +87,12 @@ func TestOpaqueInvocationCallbackBindsSource(t *testing.T) {
 			}, nil)
 			var events []string
 			probe := &invocationLifecycleProbe{Base: workflowvisit.NewBase("opaque-probe", ""), t: t, events: &events, stepFailure: callbackError}
-			f.service.options.Rules = []workflowvisit.Rule{probe}
-			_, err := f.service.Workflow(f.root)
+			f.options.Rules = []workflowvisit.Rule{probe}
+			_, err := Workflow(f.options, f.root)
 			if !errors.Is(err, callbackError) || len(probe.frames) != 0 {
 				t.Fatalf("opaque callback error=%v, wanted=%v; frames=%d", err, callbackError, len(probe.frames))
 			}
-			path := filepath.Join(f.service.options.Paths.Workspace, "outer", "action.yml")
+			path := filepath.Join(f.options.Paths.Workspace, "outer", "action.yml")
 			want := []string{"opaque-probe:enter:" + path, "opaque-probe:opaque:" + path, "opaque-probe:leave:" + path}
 			if !slices.Equal(events, want) {
 				t.Fatalf("events=%v, wanted=%v", events, want)
@@ -130,16 +130,16 @@ func TestInvocationLifecycleUnwindsAndBindsFindings(t *testing.T) {
 				a.stepFailure, wantError = stepFailure, stepFailure
 				b.leaveFailure = leaveFailure
 			}
-			f.service.options.Rules = []workflowvisit.Rule{a, b}
-			_, err := f.service.Workflow(f.root)
+			f.options.Rules = []workflowvisit.Rule{a, b}
+			_, err := Workflow(f.options, f.root)
 			if !errors.Is(err, wantError) || len(a.frames) != 0 || len(b.frames) != 0 {
 				t.Fatalf("error=%v, wanted=%v; remaining frames a=%d b=%d", err, wantError, len(a.frames), len(b.frames))
 			}
 			if b.leaveFailure != nil && !errors.Is(err, leaveFailure) {
 				t.Fatalf("exit failure lost: %v", err)
 			}
-			outer := filepath.Join(f.service.options.Paths.Workspace, "outer", "action.yml")
-			inner := filepath.Join(f.service.options.Paths.Workspace, "inner", "action.yml")
+			outer := filepath.Join(f.options.Paths.Workspace, "outer", "action.yml")
+			inner := filepath.Join(f.options.Paths.Workspace, "inner", "action.yml")
 			want := []string{"a:enter:" + outer, "b:enter:" + outer, "a:enter:" + inner, "b:enter:" + inner}
 			if phase != "entry" {
 				want = append(want, "a:step:"+inner)

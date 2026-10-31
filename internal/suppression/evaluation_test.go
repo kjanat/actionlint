@@ -20,7 +20,7 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 		{"report both", Decision{Report: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := Evaluate(directives, func(rule string) Decision {
+			result, reports := Evaluate(directives, func(rule string) Decision {
 				if rule == "expression" {
 					return tc.decision
 				}
@@ -41,11 +41,11 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 			if tc.decision.Report {
 				wantReports = 1
 			}
-			if len(result.Diagnostics) != wantReports {
-				t.Fatalf("policy diagnostics: %+v", result.Diagnostics)
+			if len(reports) != wantReports {
+				t.Fatalf("policy diagnostics: %+v", reports)
 			}
-			if wantReports != 0 && (result.Diagnostics[0].Rule != "disallow-suppressions" || result.Diagnostics[0].Start.Line != 1 || result.Diagnostics[0].Message != "inline suppression of expression is disallowed by policy.disallow-suppressions") {
-				t.Fatalf("lost policy diagnostic identity: %+v", result.Diagnostics)
+			if wantReports != 0 && (reports[0].Rule != "disallow-suppressions" || reports[0].Start.Line != 1 || reports[0].Message != "inline suppression of expression is disallowed by policy.disallow-suppressions") {
+				t.Fatalf("lost policy diagnostic identity: %+v", reports)
 			}
 		})
 	}
@@ -61,7 +61,7 @@ func TestInvalidDirectiveDoesNotSuppress(t *testing.T) {
 		if len(directives) != 0 || len(invalid) != 1 || invalid[0].Rule != "inline-suppression" {
 			t.Fatalf("invalid directive accepted: %q: %+v, %+v", source, directives, invalid)
 		}
-		if Evaluate(directives, nil).Suppresses("expression", 1, 1) {
+		if evaluation, _ := Evaluate(directives, nil); evaluation.Suppresses("expression", 1, 1) {
 			t.Fatalf("invalid directive hid a finding: %q", source)
 		}
 	}

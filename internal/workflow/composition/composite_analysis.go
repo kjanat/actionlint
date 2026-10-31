@@ -15,6 +15,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
@@ -35,6 +36,7 @@ type compositionSession struct {
 	scripts                []scriptexecution.ScriptRequest
 	scriptScopes           []*scriptexecution.Scope
 	scriptPaths            execution.Paths
+	reader                 *fsread.Reader
 	collectScripts         bool
 	ctx                    context.Context
 	passes                 []workflowvisit.Pass
@@ -51,7 +53,7 @@ type compositionSession struct {
 type compositeAnalyzer struct {
 	*compositionSession
 	actions                           *actionlocal.Resolver
-	sourceSnapshot                    *documentparse.SourceSnapshot
+	sourceSnapshot                    documentparse.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
 	scriptConfig                      *repoconfig.Config
 	context                           invocation.Context
@@ -75,7 +77,7 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("workflow source snapshot is unavailable")
 	}
 	analysis.beginEntryScope(scriptexecution.Deployment{})
@@ -88,10 +90,10 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 }
 
 func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deployment) error {
-	if analysis.sourceSnapshot == nil || analysis.sourceSnapshot.Kind() != documentparse.KindAction {
+	if analysis.sourceSnapshot.Kind() != documentparse.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
-	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
+	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
 	if err != nil || validated != deployment {
 		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
 	}
@@ -101,7 +103,7 @@ func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deploy
 
 func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.Deployment) {
 	analysis.scriptScope = &scriptexecution.Scope{
-		Paths: analysis.scriptPaths, Config: analysis.scriptConfig,
+		Paths: analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig,
 		Deployment: deployment, Context: analysis.context,
 	}
 	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, deployment.ActionPath())
@@ -146,7 +148,7 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("step source snapshot is unavailable")
 	}
 	declaration := step
@@ -171,7 +173,7 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) e
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("step source snapshot is unavailable")
 	}
 	declaration := step
@@ -185,8 +187,16 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) e
 	return nil
 }
 
+// visitJobPass attributes what a pass reports while visiting a job to that job.
+func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflowdecl.JobView, visit func() error) error {
+	return checks.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), checks.HasConfiguredIgnores(analysis.scriptConfig), visit)
+}
+
 func canonicalStepOrigin(step workflowdecl.StepView, job string) *findingmodel.IgnoreOrigin {
-	owned := step.Origin(job)
+	return canonicalOrigin(step.Origin(job))
+}
+
+func canonicalOrigin(owned workflowdecl.Origin) *findingmodel.IgnoreOrigin {
 	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
 	if owned.HasPosition {
 		position := owned.Position

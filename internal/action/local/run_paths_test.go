@@ -28,7 +28,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actions := &Resolver{caseInsensitive: true}
 			actions.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true}, execution.CheckoutPlacement{}))
-			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState(), Reader: fsread.New(t.Context(), nil, nil)}
+			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState()}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.spec + "\n")
 			parsed := documentparse.Workflow("fixture.yml", content)
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -59,7 +59,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			if paths.ActionRunnerPath != tc.want {
 				t.Fatalf("runner action path=%q, want %q", paths.ActionRunnerPath, tc.want)
 			}
-			directory := paths.Resolve(paths.WorkingDirectory(value.Template("${{ github.action_path }}", value.Origin{})))
+			directory := paths.Resolve(paths.WorkingDirectory(value.Template("${{ github.action_path }}", value.Origin{})), fsread.New(t.Context(), nil, nil))
 			if directory.Kind != execution.DirectoryKnown || directory.Path != wantDirectory {
 				t.Fatalf("action source directory unresolved: %+v", directory)
 			}

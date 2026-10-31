@@ -22,7 +22,7 @@ import (
 // It contains no process pool, application session or engine implementation.
 // Context is the analysis lifetime; rules that read the filesystem require it.
 type Context struct {
-	SourceSnapshot                *documentparse.SourceSnapshot
+	SourceSnapshot                documentparse.SourceSnapshot
 	Runners                       *runnerlang.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
@@ -53,18 +53,10 @@ func ruleBehaviours() map[string]behaviour {
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {
 			return &workflowRunNamesRule{Base: builtinRuleBase("workflow-run-names"), root: absolutePath(c.ProjectRoot), index: c.WorkflowNames}
 		}, Enabled: workflowRunNamesAvailable},
-		"matrix":      {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
-		"credentials": {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
-		"shell-name": {Build: func(c Context) workflowvisit.Rule {
-			r := NewRuleShellName()
-			r.runners = c.Runners
-			return r
-		}},
-		"runner-label": {Build: func(c Context) workflowvisit.Rule {
-			r := NewRuleRunnerLabel()
-			r.runners = c.Runners
-			return r
-		}},
+		"matrix":         {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
+		"credentials":    {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
+		"shell-name":     {Build: func(c Context) workflowvisit.Rule { return newRuleShellName(c.Runners) }},
+		"runner-label":   {Build: func(c Context) workflowvisit.Rule { return newRuleRunnerLabel(c.Runners) }},
 		"events":         {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
 		"job-needs":      {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
 		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
@@ -87,9 +79,14 @@ func ruleBehaviours() map[string]behaviour {
 		"empty-job":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyJob() }},
 		"empty-run":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyRun() }},
 		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {
-			var options *lintconfig.CommitHashOptions
+			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {
-				options, _ = c.Config.Lint.Rules.Policy.Rules["require-commit-hash"].Options.(*lintconfig.CommitHashOptions)
+				// Parsing and ValidateRuleNames reject options that do not load
+				// here; without that check they leave no exclusions.
+				setting, _ := c.Config.Lint.Rules.Policy.Rule("require-commit-hash")
+				if _, err := setting.LoadOptions(options); err != nil {
+					options = new(lintconfig.CommitHashOptions)
+				}
 			}
 			return NewRuleRequireCommitHash(options.Excludes)
 		}, Enabled: func(c Context) bool { return c.Config.RequiresCommitHash() }},

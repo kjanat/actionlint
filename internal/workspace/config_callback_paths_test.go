@@ -41,11 +41,16 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 				if inherited {
 					want = append(want, base)
 				}
-				if !slices.Equal(reads, want) || repoconfig.DiagnosticLevel(session.DefaultConfig, "if-cond") != "warn" {
+				selection, err := session.Content("workflow.yml", nil, nil, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				config := selection.Sources[0].Config
+				if !slices.Equal(reads, want) || repoconfig.DiagnosticLevel(config, "if-cond") != "warn" {
 					t.Fatalf("callback paths=%v, want=%v", reads, want)
 				}
-				if !slices.Contains(session.DefaultConfig.Sources(), filepath.Join(root, "config.yml")) {
-					t.Fatalf("config origin did not remain absolute: %v", session.DefaultConfig.Sources())
+				if !slices.Contains(config.Sources(), filepath.Join(root, "config.yml")) {
+					t.Fatalf("config origin did not remain absolute: %v", config.Sources())
 				}
 			})
 		}

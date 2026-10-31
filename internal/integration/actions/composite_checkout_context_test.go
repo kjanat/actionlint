@@ -69,14 +69,15 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, checkout := range []string{"", "source"} {
-		paths := execution.Paths{Workspace: root, Analysis: root, Reader: fsread.New(t.Context(), nil, nil), Placements: execution.NewCheckoutPlacement(execution.Checkout{
+		reader := fsread.New(t.Context(), nil, nil)
+		paths := execution.Paths{Workspace: root, Analysis: root, Placements: execution.NewCheckoutPlacement(execution.Checkout{
 			Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: checkout}, CaseInsensitive: true,
 		}, execution.CheckoutPlacement{})}
-		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"))
+		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"), reader)
 		if !known || mapped != filepath.Join(root, "scripts", "Nested") {
 			t.Fatalf("checkout %q: mapped=%q, known=%v", checkout, mapped, known)
 		}
-		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")})
+		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")}, reader)
 		if got.Kind != execution.DirectoryKnown || got.Path != want {
 			t.Fatalf("checkout %q: directory=%+v, want %q", checkout, got, want)
 		}

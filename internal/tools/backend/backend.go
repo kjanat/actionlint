@@ -229,7 +229,10 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 		} else {
 			prepared.Source = mask.Expressions(script.Text)
 			if script.Config != nil {
-				settings := script.Config.Lint.Rules.Plugins.Rules[r.descriptor.Name].Options
+				settings, err := script.Config.Lint.Rules.PluginOptions(r.descriptor.Name)
+				if err != nil {
+					return checks, errors.Join(failures, err)
+				}
 				if settings != nil {
 					data, err := json.Marshal(settings)
 					if err != nil {

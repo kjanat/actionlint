@@ -56,8 +56,8 @@ type conflictDetails struct {
 
 func requireConflict(t *testing.T, err error) conflictDetails {
 	t.Helper()
-	var conflict *ConflictError
-	if !errors.As(err, &conflict) || conflict.Code() != "source-revision-conflict" {
+	conflict, ok := errors.AsType[ConflictError](err)
+	if !ok || conflict.Code() != "source-revision-conflict" {
 		t.Fatalf("expected source-revision-conflict, got %v", err)
 	}
 	return conflictDetails{document: conflict.Document(), message: conflict.Error()}
@@ -408,7 +408,7 @@ func TestReadErrorShowsCaptureCause(t *testing.T) {
 	if err == nil {
 		t.Fatal("missing file was read")
 	}
-	failure := &ReadError{Context: "could not read workflow", Err: err}
+	failure := NewReadError("could not read workflow", err)
 	if want := "could not read workflow: " + cause.Error(); failure.Error() != want {
 		t.Fatalf("message = %q, want %q", failure.Error(), want)
 	}
@@ -417,7 +417,7 @@ func TestReadErrorShowsCaptureCause(t *testing.T) {
 		t.Fatalf("read failure lost the capture error or its cause: %v", failure)
 	}
 	other := errors.New("not a capture")
-	if got := (&ReadError{Context: "ctx", Err: other}).Error(); got != "ctx: not a capture" {
+	if got := NewReadError("ctx", other).Error(); got != "ctx: not a capture" {
 		t.Fatalf("non-capture message = %q", got)
 	}
 }

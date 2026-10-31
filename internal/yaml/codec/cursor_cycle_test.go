@@ -100,8 +100,8 @@ func compareCycleFailure(t *testing.T, got, want error) {
 	if !gotOK || !wantOK {
 		t.Fatalf("cursor error = %T %v, upstream error = %T %v", got, got, want, want)
 	}
-	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || got.Error() != want.Error() {
-		t.Errorf("cycle failure differs:\n cursor: %q at %+v\n upstream: %q at %+v", got.Error(), gotLoad.Mark, want.Error(), wantLoad.Mark)
+	if gotLoad.Message() != wantLoad.Message || gotLoad.Mark().Line != wantLoad.Mark.Line || gotLoad.Mark().Column != wantLoad.Mark.Column || got.Error() != want.Error() {
+		t.Errorf("cycle failure differs:\n cursor: %q at %+v\n upstream: %q at %+v", got.Error(), gotLoad.Mark(), want.Error(), wantLoad.Mark)
 	}
 }
 

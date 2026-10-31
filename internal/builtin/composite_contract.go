@@ -6,7 +6,6 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
-	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -18,7 +17,7 @@ type Invocation struct {
 	ActionPath string
 	Config     *repoconfig.Config
 	Path       string
-	Source     *documentparse.SourceSnapshot
+	Source     documentparse.SourceSnapshot
 }
 
 // InvocationParticipant observes resolved action execution without producing child rules.
@@ -30,14 +29,16 @@ type InvocationParticipant interface {
 	LeaveInvocation(invocation.Context) error
 }
 
-type CheckoutParticipant interface{ CheckoutPaths() *execution.Paths }
+// CheckoutParticipant adapts its own script paths to the checkout placement
+// that actions resolved for the current invocation.
+type CheckoutParticipant interface{ ApplyCheckout(*actionlocal.Resolver) }
 
 type (
 	MetadataParticipant interface {
 		workflowvisit.Rule
-		CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error
+		CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error
 		ForMetadata(*actionlocal.Resolver) workflowvisit.Rule
 	}
 )
 
-var _ InvocationParticipant = (*RuleExecutableBit)(nil)
+var _ InvocationParticipant = (*ruleExecutableBit)(nil)

@@ -526,7 +526,7 @@ func (lex *Lexer) Offset() int {
 
 // Err returns an error while lexing. When multiple errors occur, the first one is returned.
 func (lex *Lexer) Err() *Error {
-	return lex.lexErr
+	return lex.lexErr.detached()
 }
 
 // LexExpression lexes the given String as expression syntax. The parameter must contain '}}' which

@@ -20,8 +20,8 @@ type configState struct {
 func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error) {
 	var cfg *repoconfig.Config
 	var source *repoconfig.Loaded
-	if a.DefaultConfig != nil {
-		cfg = a.DefaultConfig
+	if a.defaultConfig != nil {
+		cfg = a.defaultConfig
 		if a.configState != nil {
 			source = a.configState.source
 		}
@@ -43,7 +43,7 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 	if loaded, ok := s.loaded[project]; ok {
 		return loaded, nil
 	}
-	report := configreport.Report{Explicit: a.DefaultConfig != nil}
+	report := configreport.Report{Explicit: a.defaultConfig != nil}
 	if project != nil {
 		report.Project = project.RootDir()
 	}

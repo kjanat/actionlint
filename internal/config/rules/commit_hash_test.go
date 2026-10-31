@@ -23,11 +23,19 @@ func TestCommitHashExclusions(t *testing.T) {
 		{"docker://alpine:*", "docker://ubuntu:24.04", false},
 	} {
 		t.Run(tc.pattern+"/"+tc.spec, func(t *testing.T) {
-			options := &CommitHashOptions{Exclude: []string{tc.pattern}}
+			options, err := NewCommitHashOptions(tc.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got := options.Excludes(tc.spec); got != tc.want {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 		})
+	}
+	for _, pattern := range []string{"[", ""} {
+		if _, err := NewCommitHashOptions(pattern); err == nil {
+			t.Fatalf("accepted pattern %q", pattern)
+		}
 	}
 	for _, input := range []string{"exclude: ['[']", "exclude: ['']", "excluded: [org/*]"} {
 		var options CommitHashOptions

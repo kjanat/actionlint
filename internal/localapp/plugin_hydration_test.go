@@ -36,7 +36,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 	if err := lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Requests = nil
+	registry.ResetRequests()
 	sources, err := (PluginSelection{LockFile: lock.Path}).Resolve(t.Context(), t.TempDir(), application.Input{})
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Remove the remote bytes: every later consumer must use the verified snapshot.
-	delete(registry.Files, pin.URL)
+	registry.DeleteFile(pin.URL)
 	if _, err := RulesSources(t.Context(), sources); err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	downloads := 0
-	for _, request := range registry.Requests {
+	for _, request := range registry.Requests() {
 		if request == pin.URL {
 			downloads++
 		}

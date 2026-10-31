@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
@@ -68,11 +70,11 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			}
 			spec := "./.github/workflows/callee.yml"
 			seeded, err, found := cache.Lookup(spec)
-			if err != nil || !found || seeded == nil || seeded.Inputs["message"] == nil || !seeded.Inputs["message"].Required {
+			if err != nil || !found || seeded == nil || !seeded.Inputs["message"].Required {
 				t.Fatalf("workflow was not seeded: metadata=%+v error=%v found=%v", seeded, err, found)
 			}
 			loaded, err := cache.FindMetadata(spec)
-			if err != nil || loaded != seeded || reads.Load() != 0 {
+			if err != nil || !cmp.Equal(loaded, seeded) || reads.Load() != 0 {
 				t.Fatalf("seed fell back to a second source path: metadata=%+v error=%v reads=%d", loaded, err, reads.Load())
 			}
 			if err := store.Quarantine(captured, "conflicting declaration kinds: action, workflow"); err == nil {
@@ -80,7 +82,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			}
 			if metadata, err := cache.FindMetadata(spec); metadata != nil {
 				t.Fatal("cached callee metadata outlived its capture")
-			} else if _, ok := errors.AsType[*capture.ConflictError](err); !ok {
+			} else if _, ok := errors.AsType[capture.ConflictError](err); !ok {
 				t.Fatalf("cached capture conflict was lost: %v", err)
 			}
 			if err := store.Close(t.Context()); err != nil {

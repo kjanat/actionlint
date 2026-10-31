@@ -208,26 +208,27 @@ func requestedPlugin(name string, options pluginInvocation, existing []pluginref
 		}
 		return ref, nil
 	}
-	if strings.Contains(name, "@") && options.Version != "" && ref.Version != options.Version {
+	if strings.Contains(name, "@") && options.Version != "" && ref.Version() != options.Version {
 		return pluginref.Reference{}, commandUsageError{errors.New("plugin @version conflicts with --version")}
 	}
 	index, err := requestedPluginIndex(ref, options.Registry, existing)
 	if err != nil {
 		return pluginref.Reference{}, err
 	}
+	version, registry := ref.Version(), ref.Registry()
 	if index >= 0 {
-		ref.Registry = existing[index].Registry
+		registry = existing[index].Registry()
 		if !strings.Contains(name, "@") {
-			ref.Version = existing[index].Version
+			version = existing[index].Version()
 		}
 	}
 	if options.Version != "" {
-		ref.Version = options.Version
+		version = options.Version
 	}
 	if options.Registry != "" {
-		ref.Registry = options.Registry
+		registry = options.Registry
 	}
-	ref, err = pluginref.New(ref.Name, ref.Version, ref.Registry)
+	ref, err = pluginref.New(ref.Name(), version, registry)
 	if err != nil {
 		return pluginref.Reference{}, commandUsageError{err}
 	}
@@ -239,21 +240,21 @@ func requestedPlugin(name string, options pluginInvocation, existing []pluginref
 func requestedPluginIndex(ref pluginref.Reference, registry string, existing []pluginref.Reference) (int, error) {
 	index, named, count := -1, -1, 0
 	for i, old := range existing {
-		if old.Name != ref.Name {
+		if old.Name() != ref.Name() {
 			continue
 		}
 		named, count = i, count+1
-		if registry != "" && !pluginregistry.SameRegistry(old.Registry, registry) {
+		if registry != "" && !pluginregistry.SameRegistry(old.Registry(), registry) {
 			continue
 		}
 		if index >= 0 {
-			return -1, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select --registry", ref.Name)}
+			return -1, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select --registry", ref.Name())}
 		}
 		index = i
 	}
 	if index < 0 && registry != "" && !ref.IsAlias() {
 		if count > 1 {
-			return -1, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select an existing --registry", ref.Name)}
+			return -1, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select an existing --registry", ref.Name())}
 		}
 		index = named
 	}
@@ -310,8 +311,12 @@ func (r pluginRegistryRequest) update(ctx context.Context, project *localapp.Plu
 			return err
 		}
 		ref := refs[index]
-		if r.Options.Version != "" || strings.Contains(name, "@") {
-			ref.Version = requested.Version
+		// A direct URL pins its artifact and has no version to replace.
+		if ref.DirectSource() == "" && (r.Options.Version != "" || strings.Contains(name, "@")) {
+			ref, err = pluginref.New(ref.Name(), requested.Version(), ref.Registry())
+			if err != nil {
+				return commandUsageError{err}
+			}
 		}
 		refs[index] = ref
 		update = []pluginref.Reference{ref}
@@ -354,12 +359,12 @@ func declaredPlugin(project *localapp.PluginProject, refs []pluginref.Reference,
 	}
 	index := -1
 	for i, ref := range refs {
-		if registry != "" && !pluginregistry.SameRegistry(ref.Registry, registry) {
+		if registry != "" && !pluginregistry.SameRegistry(ref.Registry(), registry) {
 			continue
 		}
-		matches := requested.Name == ref.Name
+		matches := requested.Name() == ref.Name()
 		for _, pin := range project.Lock.Lock.Plugins {
-			if pin.Matches(ref) && (strings.EqualFold(pin.Name, requested.Name) || pin.Alias != "" && pin.Alias == requested.Name) {
+			if pin.Matches(ref) && (strings.EqualFold(pin.Name, requested.Name()) || pin.Alias != "" && pin.Alias == requested.Name()) {
 				matches = true
 			}
 		}
@@ -404,7 +409,7 @@ func (r pluginRegistryRequest) discover(ctx context.Context, streams Command, re
 	if err != nil {
 		return commandUsageError{err}
 	}
-	versions, err := client.Versions(ctx, ref.Name)
+	versions, err := client.Versions(ctx, ref.Name())
 	if err != nil {
 		return err
 	}

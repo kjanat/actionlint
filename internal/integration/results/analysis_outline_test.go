@@ -245,7 +245,11 @@ jobs:
       - uses: ./local
 `
 	bogus := func(include string) *repoconfig.Config {
-		lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.Group{Rules: map[string]repoconfig.Setting{"inline-suppression": {Level: "bogus"}}}}}
+		setting, err := repoconfig.NewSetting("bogus", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": setting})}}
 		return &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{include}, Lint: lint}}}
 	}
 	action := filepath.FromSlash("local/action.yml") + ":complete"

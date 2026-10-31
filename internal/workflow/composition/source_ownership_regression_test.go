@@ -48,7 +48,7 @@ func (r *sourceMutationRule) ForMetadata(*actionlocal.Resolver) workflowvisit.Ru
 	r.metadata++
 	return r
 }
-func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error {
+func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error {
 	return nil
 }
 
@@ -57,8 +57,8 @@ var _ builtin.InvocationParticipant = (*sourceMutationRule)(nil)
 
 type canonicalFactObserver struct {
 	workflowvisit.Base
-	source     *documentparse.SourceSnapshot
-	parents    []*documentparse.SourceSnapshot
+	source     documentparse.SourceSnapshot
+	parents    []documentparse.SourceSnapshot
 	uses       *[]string
 	runs       *[]string
 	conditions *[]string
@@ -66,7 +66,7 @@ type canonicalFactObserver struct {
 	valid      *bool
 }
 
-func newCanonicalFactObserver(snapshot *documentparse.SourceSnapshot) *canonicalFactObserver {
+func newCanonicalFactObserver(snapshot documentparse.SourceSnapshot) *canonicalFactObserver {
 	uses := []string{}
 	runs := []string{}
 	conditions := []string{}
@@ -138,8 +138,8 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 					mutations++
 				}
 			}}
-			f.service.options.Rules = append(f.service.options.Rules, probe)
-			result, err := f.service.Workflow(f.root)
+			f.options.Rules = append(f.options.Rules, probe)
+			result, err := Workflow(f.options, f.root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -170,8 +170,8 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflowdecl.StepView) {
 				defaults.Run.Shell.Value = "pwsh"
 			}}
-			f.service.options.Rules = append(f.service.options.Rules, probe)
-			result, err := f.service.Workflow(f.root)
+			f.options.Rules = append(f.options.Rules, probe)
+			result, err := Workflow(f.options, f.root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -209,8 +209,8 @@ func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.
 					mutations++
 				}
 			}}
-			f.service.options.Rules = append([]workflowvisit.Rule{probe}, f.service.options.Rules...)
-			result, err := f.service.Workflow(f.root)
+			f.options.Rules = append([]workflowvisit.Rule{probe}, f.options.Rules...)
+			result, err := Workflow(f.options, f.root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -248,8 +248,8 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 			mutations++
 		}
 	}}
-	f.service.options.Rules = append([]workflowvisit.Rule{probe}, f.service.options.Rules...)
-	result, err := f.service.Workflow(f.root)
+	f.options.Rules = append([]workflowvisit.Rule{probe}, f.options.Rules...)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,8 +315,8 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	probe := &workflowPreCallMutation{original: f.original, Base: workflowvisit.NewBase("pre-mutate-call", "")}
-	f.service.options.Rules = append(f.service.options.Rules, probe)
-	result, err := f.service.Workflow(f.root)
+	f.options.Rules = append(f.options.Rules, probe)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +350,7 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T) {
 	content := "on: push\nenv: {ROOT_VALUE: original}\ndefaults: {run: {shell: bash, working-directory: source-dir}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: {JOB_VALUE: original}\n    container: alpine\n    steps:\n      - run: echo original\n"
 	f := newInvocationFixture(t, t.Context(), content, nil, nil)
-	baseline, err := f.service.Workflow(f.root)
+	baseline, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,8 +372,8 @@ func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T)
 		job.Container.Image.Value = "mutated-image"
 		job.Steps[0].Exec.(*workflowlang.ExecRun).Run.Value = "echo mutated"
 	}}
-	f.service.options.Rules = append([]workflowvisit.Rule{probe}, f.service.options.Rules...)
-	mutated, err := f.service.Workflow(f.root)
+	f.options.Rules = append([]workflowvisit.Rule{probe}, f.options.Rules...)
+	mutated, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +391,7 @@ func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T)
 func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	content := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - run: echo original\n"
 	f := newInvocationFixture(t, t.Context(), content, nil, nil)
-	baseline, err := f.service.Workflow(f.root)
+	baseline, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,8 +402,8 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 		checkout.Uses.Value = "actions/checkout@v5"
 		checkout.Inputs["path"].Value.Value = "mutated-repo"
 	}}
-	f.service.options.Rules = append([]workflowvisit.Rule{probe}, f.service.options.Rules...)
-	mutated, err := f.service.Workflow(f.root)
+	f.options.Rules = append([]workflowvisit.Rule{probe}, f.options.Rules...)
+	mutated, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,10 +419,10 @@ func TestParallelChildrenStayBoundToCanonicalVariantsBeforeTraversal(t *testing.
 	content := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - if: ${{ true }}\n            run: echo original\n          - uses: $/a\n"
 	actions := map[string]string{"a/action.yml": "name: a\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo action-a}]}\n", "b/action.yml": "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo action-b}]}\n"}
 	f := newInvocationFixture(t, t.Context(), content, actions, nil)
-	baseRules := f.service.options.Rules
+	baseRules := f.options.Rules
 	baselineObserver := newCanonicalFactObserver(f.root)
-	f.service.options.Rules = append([]workflowvisit.Rule{baselineObserver}, baseRules...)
-	baseline, err := f.service.Workflow(f.root)
+	f.options.Rules = append([]workflowvisit.Rule{baselineObserver}, baseRules...)
+	baseline, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,8 +438,8 @@ func TestParallelChildrenStayBoundToCanonicalVariantsBeforeTraversal(t *testing.
 		action := parallel.Steps[1].Exec.(*workflowlang.ExecAction)
 		action.Uses.Value = "$/b"
 	}}
-	f.service.options.Rules = append([]workflowvisit.Rule{probe, observer}, baseRules...)
-	mutated, err := f.service.Workflow(f.root)
+	f.options.Rules = append([]workflowvisit.Rule{probe, observer}, baseRules...)
+	mutated, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}

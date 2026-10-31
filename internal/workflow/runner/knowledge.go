@@ -17,35 +17,98 @@ import (
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
-// JobKnowledge is a conservative join of the alternatives for one job. It is
-// computed before visitors run and never invokes a provider during traversal.
-type JobKnowledge struct {
+// Traits are the execution guarantees shared by every alternative of a job.
+type Traits struct {
 	PathsKnown                           bool
 	Platform                             Platform
 	Shell                                string
 	CaseInsensitive, ShIsDash, Ephemeral bool
-	Findings                             []diagnostic.Diagnostic
-	Answers                              []runnerapi.Answer
+}
+
+// JobKnowledge is a conservative join of the alternatives for one job. It is
+// computed before visitors run and never invokes a provider during traversal.
+// Each value is owned by its reader.
+type JobKnowledge struct {
+	Traits
+	Findings []diagnostic.Diagnostic
+	Answers  []runnerapi.Answer
+}
+
+// jobRecord is the stored form of JobKnowledge. Runner findings are always
+// runner-label rejections, so they are held as plain values; every reader
+// receives fresh diagnostics and answers and cannot alter another's view.
+type jobRecord struct {
+	traits     Traits
+	rejections []runnerapi.Rejection
+	answers    []runnerapi.Answer
+}
+
+func (r jobRecord) knowledge() JobKnowledge {
+	return JobKnowledge{Traits: r.traits, Findings: labelFindings(r.rejections), Answers: detachAnswers(r.answers)}
 }
 
 // Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
-	jobs   map[workflowdecl.JobView]JobKnowledge
-	Report runnerapi.Report
+	jobs   map[workflowdecl.JobView]jobRecord
+	report runnerapi.Report
 }
 
 func (k *Knowledge) Job(job workflowdecl.JobView) JobKnowledge {
 	if k == nil {
 		return builtinJob(job)
 	}
-	return k.jobs[job]
+	return k.jobs[job].knowledge()
+}
+
+// Report binds the prepared answers to the selected provider. A zero Identity
+// means no provider was consulted. The result is detached from k.
+func (k *Knowledge) Report() runnerapi.Report {
+	if k == nil {
+		return runnerapi.Report{}
+	}
+	report := k.report
+	report.Provider = detachDescriptor(report.Provider)
+	report.Answers = detachAnswers(report.Answers)
+	return report
+}
+
+func detachDescriptor(descriptor runnerapi.Descriptor) runnerapi.Descriptor {
+	descriptor.Targets = slices.Clone(descriptor.Targets)
+	return descriptor
+}
+
+// detachAnswers deep-copies answers. Stored answers hold only the value
+// resolutions normalized by resolutionValue.
+func detachAnswers(answers []runnerapi.Answer) []runnerapi.Answer {
+	if answers == nil {
+		return nil
+	}
+	detached := make([]runnerapi.Answer, len(answers))
+	for i, answer := range answers {
+		detached[i] = runnerapi.Answer{Resolution: detachResolution(answer.Resolution), Evidence: answer.Evidence}
+	}
+	return detached
+}
+
+func detachResolution(resolution runnerapi.Resolution) runnerapi.Resolution {
+	switch value := resolution.(type) {
+	case runnerapi.Resolved:
+		return runnerapi.Resolved{Candidates: slices.Clone(value.Candidates)}
+	case runnerapi.NoMatch:
+		return runnerapi.NoMatch{Rejections: slices.Clone(value.Rejections)}
+	case runnerapi.Unknown:
+		return value
+	case runnerapi.NotApplicable:
+		return value
+	}
+	return nil
 }
 
 // Prepare resolves a document against the session's selected, immutable evidence.
 // Failed resolution leaves unknown facts while independent checks can continue.
-func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
-	k := &Knowledge{jobs: make(map[workflowdecl.JobView]JobKnowledge)}
-	if snapshot == nil {
+func Prepare(ctx context.Context, snapshot documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
+	k := &Knowledge{jobs: make(map[workflowdecl.JobView]jobRecord)}
+	if !snapshot.Present() {
 		return k, nil
 	}
 	workflow, available := snapshot.WorkflowView()
@@ -131,7 +194,7 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 	if err != nil {
 		return k, err
 	}
-	k.Report = runnerapi.Report{Identity: fmt.Sprintf("%x", sha256.Sum256(dependency)), Provider: descriptor, Artifact: identity, Target: options.Target, Scope: scope, Snapshot: options.Snapshot.Identity()}
+	k.report = runnerapi.Report{Identity: fmt.Sprintf("%x", sha256.Sum256(dependency)), Provider: descriptor, Artifact: identity, Target: options.Target, Scope: scope, Snapshot: options.Snapshot.Identity()}
 	answers, err := selected.ResolveRunners(ctx, request)
 	if err != nil {
 		return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
@@ -179,15 +242,15 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 			}
 		}
 	}
-	k.Report.Answers = answers
+	k.report.Answers = answers
 	evidence, err := json.Marshal(answers)
 	if err != nil {
 		return k, err
 	}
-	k.Report.Identity = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
-	jobs := make(map[workflowdecl.JobView]JobKnowledge, len(ranges))
+	k.report.Identity = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
+	jobs := make(map[workflowdecl.JobView]jobRecord, len(ranges))
 	for _, span := range ranges {
-		knowledge, err := joinAnswers(span.job, answers[span.start:span.end])
+		record, err := joinAnswers(span.job, answers[span.start:span.end])
 		if err != nil {
 			return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
 		}
@@ -196,9 +259,9 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 		if builtinLabels && (!hasSnapshot || options.Snapshot.Freshness == runnerapi.Fresh && options.Snapshot.Complete) {
 			// Provider answers describe execution alternatives. Built-in declaration
 			// spelling and execution compatibility share Check's diagnostic owner.
-			knowledge.Findings = Check(span.job, custom)
+			record.rejections = labelRejections(span.job, custom)
 		}
-		jobs[span.job] = knowledge
+		jobs[span.job] = record
 	}
 	k.jobs = jobs
 	return k, nil
@@ -230,8 +293,8 @@ func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, err
 	return nil, errors.New("invalid runner resolution")
 }
 
-func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (JobKnowledge, error) {
-	k := JobKnowledge{Answers: slices.Clone(answers)}
+func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecord, error) {
+	record := jobRecord{answers: slices.Clone(answers)}
 	var candidates []runnerapi.Candidate
 	uncertain := false
 	for _, answer := range answers {
@@ -242,7 +305,7 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (JobKnowl
 		switch result := answer.Resolution.(type) {
 		case runnerapi.Resolved:
 			if len(result.Candidates) == 0 {
-				return k, errors.New("resolved runner answer has no candidates")
+				return jobRecord{}, errors.New("resolved runner answer has no candidates")
 			}
 			if !answer.Evidence.Complete {
 				uncertain = true
@@ -251,53 +314,51 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (JobKnowl
 			candidates = append(candidates, result.Candidates...)
 		case runnerapi.NoMatch:
 			if len(result.Rejections) == 0 {
-				return k, errors.New("no-match runner answer has no rejections")
+				return jobRecord{}, errors.New("no-match runner answer has no rejections")
 			}
 			if !answer.Evidence.Complete {
 				uncertain = true
 				continue
 			}
 			for _, rejection := range result.Rejections {
-				pos := rejection.Position
-				if pos.Line == 0 {
+				if rejection.Position.Line == 0 {
 					if declaration, present := job.Pos(); present {
-						pos = diagnostic.Position{Line: declaration.Line, Column: declaration.Col}
+						rejection.Position = diagnostic.Position{Line: declaration.Line, Column: declaration.Col}
 					}
 				}
-				finding := diagnostic.Diagnostic{Rule: "runner-label", Message: rejection.Reason, Start: pos}
-				if !slices.ContainsFunc(k.Findings, func(d diagnostic.Diagnostic) bool { return d.Start == finding.Start && d.Message == finding.Message }) {
-					k.Findings = append(k.Findings, finding)
+				if !slices.Contains(record.rejections, rejection) {
+					record.rejections = append(record.rejections, rejection)
 				}
 			}
 			uncertain = true
 		case runnerapi.Unknown, runnerapi.NotApplicable:
 			uncertain = true
 		default:
-			return k, errors.New("invalid runner resolution")
+			return jobRecord{}, errors.New("invalid runner resolution")
 		}
 	}
 	if uncertain || len(candidates) == 0 {
-		return k, nil
+		return record, nil
 	}
-	k.Platform, k.Shell = candidatePlatform(candidates[0]), candidates[0].DefaultShell
+	record.traits.Platform, record.traits.Shell = candidatePlatform(candidates[0]), candidates[0].DefaultShell
 	caseSensitivity := candidates[0].CaseSensitivity
-	k.ShIsDash, k.Ephemeral = candidates[0].ShIsDash, candidates[0].Ephemeral
+	record.traits.ShIsDash, record.traits.Ephemeral = candidates[0].ShIsDash, candidates[0].Ephemeral
 	for _, candidate := range candidates[1:] {
-		if candidatePlatform(candidate) != k.Platform {
-			k.Platform = Any
+		if candidatePlatform(candidate) != record.traits.Platform {
+			record.traits.Platform = Any
 		}
-		if candidate.DefaultShell != k.Shell {
-			k.Shell = ""
+		if candidate.DefaultShell != record.traits.Shell {
+			record.traits.Shell = ""
 		}
 		if caseSensitivity != candidate.CaseSensitivity {
 			caseSensitivity = runnerapi.UnknownCase
 		}
-		k.ShIsDash = k.ShIsDash && candidate.ShIsDash
-		k.Ephemeral = k.Ephemeral && candidate.Ephemeral
+		record.traits.ShIsDash = record.traits.ShIsDash && candidate.ShIsDash
+		record.traits.Ephemeral = record.traits.Ephemeral && candidate.Ephemeral
 	}
-	k.PathsKnown = k.Platform != Any && (caseSensitivity == runnerapi.CaseSensitive || caseSensitivity == runnerapi.CaseInsensitive)
-	k.CaseInsensitive = caseSensitivity == runnerapi.CaseInsensitive
-	return k, nil
+	record.traits.PathsKnown = record.traits.Platform != Any && (caseSensitivity == runnerapi.CaseSensitive || caseSensitivity == runnerapi.CaseInsensitive)
+	record.traits.CaseInsensitive = caseSensitivity == runnerapi.CaseInsensitive
+	return record, nil
 }
 
 func candidatePlatform(c runnerapi.Candidate) Platform {
@@ -316,11 +377,11 @@ func builtinJob(job workflowdecl.JobView) JobKnowledge {
 		return JobKnowledge{}
 	}
 	selection := job.RunsOn().Selection()
-	return builtinKnowledge(selection, Labels(selection))
+	return JobKnowledge{Traits: builtinTraits(selection, Labels(selection))}
 }
 
-func builtinKnowledge(selection value.Value, labels []value.Value) JobKnowledge {
-	k := JobKnowledge{Platform: PlatformOf(selection), Ephemeral: Hosted(selection)}
+func builtinTraits(selection value.Value, labels []value.Value) Traits {
+	k := Traits{Platform: PlatformOf(selection), Ephemeral: Hosted(selection)}
 	// Preserve GitHub's established default-shell behavior. External unknown
 	// answers never reach these label-based assumptions.
 	if k.Platform == MacOrLinux {

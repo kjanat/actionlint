@@ -75,10 +75,11 @@ func TestPayloadExpressions(t *testing.T) {
 func TestDefaultVariants(t *testing.T) {
 	for _, event := range []string{"pull_request", "pull_request_target"} {
 		projected := FromTriggers([]Trigger{{Name: event}})
-		if len(projected.EventVariants) != 3 {
-			t.Fatalf("%s: want three default actions, got %d", event, len(projected.EventVariants))
+		variants := projected.EventVariants()
+		if len(variants) != 3 {
+			t.Fatalf("%s: want three default actions, got %d", event, len(variants))
 		}
-		for _, variant := range projected.EventVariants {
+		for _, variant := range variants {
 			if variant.Event != event {
 				t.Errorf("lost trigger identity: %#v", variant)
 			}

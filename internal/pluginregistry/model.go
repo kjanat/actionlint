@@ -143,13 +143,13 @@ func (p Pin) Source() string {
 // Matches binds declaration intent to the recorded registry and repository.
 // An alias is accepted only when the lock explicitly records that lookup.
 func (p Pin) Matches(ref pluginref.Reference) bool {
-	if !SameRegistry(p.Registry, ref.Registry) {
+	if !SameRegistry(p.Registry, ref.Registry()) {
 		return false
 	}
 	if ref.IsAlias() {
-		return p.Alias == ref.Name
+		return p.Alias == ref.Name()
 	}
-	return strings.EqualFold(p.Name, ref.Name)
+	return strings.EqualFold(p.Name, ref.Name())
 }
 
 // SameRegistry compares catalogue endpoints with case-insensitive hosts and

@@ -73,10 +73,7 @@ func TestProcessCoalescesConcurrentRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	p := &Process{
-		Executable: executable, Timeout: 10 * time.Second,
-		Arguments: []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", "count:" + directory},
-	}
+	p := NewProcess(executable, []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", "count:" + directory}, 10*time.Second)
 	request := resolver.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
 	const callers = 8
 	start := make(chan struct{})
@@ -154,10 +151,11 @@ func TestProcessBoundsAndIdentity(t *testing.T) {
 	request := resolver.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
 	for _, mode := range []string{"ok", "wrong-repository", "tree-and-commit", "oversize", "sleep"} {
 		t.Run(mode, func(t *testing.T) {
-			p := &Process{Executable: executable, Arguments: []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", mode}, Timeout: 10 * time.Second}
+			timeout := 10 * time.Second
 			if mode == "sleep" {
-				p.Timeout = 30 * time.Millisecond
+				timeout = 30 * time.Millisecond
 			}
+			p := NewProcess(executable, []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", mode}, timeout)
 			result, err := p.Resolve(t.Context(), request)
 			if (err == nil) != (mode == "ok") {
 				t.Fatalf("result=%+v err=%v", result, err)

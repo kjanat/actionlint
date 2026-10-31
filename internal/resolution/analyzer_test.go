@@ -38,7 +38,7 @@ func (f *fakeResolver) Resolve(_ context.Context, r resolver.Request) (resolver.
 
 func TestConsumerAndPinProvenance(t *testing.T) {
 	provider := &fakeResolver{}
-	rule := Analyzer{Resolver: provider}
+	rule := NewAnalyzer(provider)
 	ref := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "step", Address: "jobs.build.steps[0]"}
 	input := analyzer.Input{Path: "workflow.yml", Reference: ref, Dependencies: []analyzer.Dependency{
 		{Reference: ref, Uses: "owner/repo/path@v1", Kind: "action", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 24}},
@@ -64,7 +64,7 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 
 func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 	provider := &fakeResolver{ids: []uint64{42, 43, 43}}
-	rule := Analyzer{Resolver: provider}
+	rule := NewAnalyzer(provider)
 	first := analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
 	second := analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
 	if findings, err := rule.Analyze(t.Context(), first); err != nil || len(findings) != 1 {
@@ -76,7 +76,7 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 	if provider.requests[0].ExpectedRepositoryID != 0 || provider.requests[1].ExpectedRepositoryID != 42 {
 		t.Fatalf("repository identity not forwarded: %+v", provider.requests)
 	}
-	fresh := Analyzer{Resolver: provider}
+	fresh := NewAnalyzer(provider)
 	if findings, err := fresh.Analyze(t.Context(), second); err != nil || len(findings) != 1 || provider.requests[2].ExpectedRepositoryID != 0 {
 		t.Fatalf("identity leaked into fresh session: %v, %v, %+v", findings, err, provider.requests)
 	}
@@ -84,7 +84,7 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 
 func TestRepositoryIdentityRetainsPartialFindings(t *testing.T) {
 	provider := &fakeResolver{ids: []uint64{42, 43}}
-	rule := Analyzer{Resolver: provider}
+	rule := NewAnalyzer(provider)
 	input := analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
 	findings, err := rule.Analyze(t.Context(), input)
 	if err == nil || len(findings) != 1 {
@@ -111,7 +111,7 @@ func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request resolv
 
 func TestRepositoryIdentityConcurrentFirstResults(t *testing.T) {
 	provider := &concurrentIdentityResolver{started: make(chan struct{}, 2), release: make(chan struct{})}
-	rule := Analyzer{Resolver: provider}
+	rule := NewAnalyzer(provider)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	type outcome struct {
@@ -156,7 +156,7 @@ func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
 	} {
 		t.Run(uses, func(t *testing.T) {
 			provider := &fakeResolver{err: errors.New("unsupported reference reached provider")}
-			rule := Analyzer{Resolver: provider}
+			rule := NewAnalyzer(provider)
 			findings, err := rule.Analyze(t.Context(), analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: uses, Kind: "action"}}})
 			if err != nil || len(findings) != 0 || len(provider.requests) != 0 {
 				t.Fatalf("unsupported reference resolved: requests=%v findings=%v error=%v", provider.requests, findings, err)
@@ -169,7 +169,7 @@ func TestConsumerPreservesSubpathAndRef(t *testing.T) {
 	for _, kind := range []string{"action", "workflow"} {
 		t.Run(kind, func(t *testing.T) {
 			provider := &fakeResolver{}
-			rule := Analyzer{Resolver: provider}
+			rule := NewAnalyzer(provider)
 			uses := "Owner/Repo/.github/workflows/build.yml@feature/release"
 			findings, err := rule.Analyze(t.Context(), analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: uses, Kind: kind}}})
 			if err != nil || len(findings) != 1 || len(provider.requests) != 1 {

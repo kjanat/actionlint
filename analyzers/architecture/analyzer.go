@@ -3,6 +3,7 @@
 package architecture
 
 import (
+	"errors"
 	"go/ast"
 	"go/build"
 	"go/token"
@@ -33,7 +34,10 @@ func run(pass *analysis.Pass) (any, error) {
 	if strings.HasPrefix(pass.Fset.Position(pass.Files[0].Pos()).Filename, filepath.Join(build.Default.GOROOT, "src")+string(filepath.Separator)) {
 		return nil, nil
 	}
-	program := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
+	program, ok := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
+	if !ok {
+		return nil, errors.New("architecture: buildssa result is not an SSA program")
+	}
 	flows := solve(pass, program.SrcFuncs)
 	owned := map[*types.Named]bool{}
 	possiblyOwned := map[*types.Named]bool{}
@@ -137,7 +141,6 @@ func writableFields(pkg *types.Package, owner *types.Named, fields *types.Struct
 		}
 		seen[fields] = true
 		for field := range fields.Fields() {
-			field := field
 			at := embeddedAt
 			if at == token.NoPos {
 				at = field.Pos()

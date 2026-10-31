@@ -3,8 +3,6 @@ package calls
 import (
 	"strings"
 	"testing"
-
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 )
 
 func TestMetadataDecoderDuplicateAndAliasKeys(t *testing.T) {
@@ -32,19 +30,22 @@ func TestMetadataDecoderDuplicateAndAliasKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.Inputs) != 2 || got.Inputs["name"] == nil || got.Inputs["aliased"] == nil {
+	_, hasName := got.Inputs["name"]
+	_, hasAliased := got.Inputs["aliased"]
+	if len(got.Inputs) != 2 || !hasName || !hasAliased {
 		t.Fatalf("inputs = %#v, want case-insensitive keys name and aliased", got.Inputs)
 	}
-	if in := got.Inputs["name"]; in.Name != "name" || in.Required || in.Type != (exprlang.NumberType{}) {
+	if in := got.Inputs["name"]; in.Name != "name" || in.Required || in.Type != InputTypeNumber {
 		t.Errorf("last duplicate input = %#v, want name, optional number", in)
 	}
-	if in := got.Inputs["aliased"]; in.Name != "Aliased" || in.Required || in.Type != (exprlang.NumberType{}) {
+	if in := got.Inputs["aliased"]; in.Name != "Aliased" || in.Required || in.Type != InputTypeNumber {
 		t.Errorf("alias-key input = %#v, want resolved key spelling Aliased and last number value", in)
 	}
-	if len(got.Outputs) != 2 || got.Outputs["result"] == nil || got.Outputs["result"].Name != "result" || got.Outputs["other"] == nil {
+	_, hasOther := got.Outputs["other"]
+	if len(got.Outputs) != 2 || got.Outputs["result"].Name != "result" || !hasOther {
 		t.Errorf("outputs = %#v, want last case-insensitive result key and ignored arbitrary payload", got.Outputs)
 	}
-	if len(got.Secrets) != 1 || got.Secrets["token"] == nil || got.Secrets["token"].Name != "token" || !got.Secrets["token"].Required {
+	if len(got.Secrets) != 1 || got.Secrets["token"].Name != "token" || !got.Secrets["token"].Required {
 		t.Errorf("secrets = %#v, want last case-insensitive token definition", got.Secrets)
 	}
 }
@@ -72,25 +73,25 @@ func TestMetadataDecoderAliasesAndNullBodies(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"definition", "first", "second"} {
-		in := got.Inputs[name]
-		if in == nil || !in.Required || in.Type != (exprlang.BoolType{}) {
+		in, ok := got.Inputs[name]
+		if !ok || !in.Required || in.Type != InputTypeBoolean {
 			t.Errorf("input %q = %#v, want required boolean", name, in)
 		}
 	}
-	if in := got.Inputs["empty"]; in == nil || in.Required || in.Type != (exprlang.AnyType{}) {
+	if in, ok := got.Inputs["empty"]; !ok || in.Required || in.Type != InputTypeAny {
 		t.Errorf("null input = %#v, want optional any", in)
 	}
 	for _, name := range []string{"definition", "copied"} {
-		secret := got.Secrets[name]
-		if secret == nil || !secret.Required {
+		secret, ok := got.Secrets[name]
+		if !ok || !secret.Required {
 			t.Errorf("secret %q = %#v, want required", name, secret)
 		}
 	}
-	if secret := got.Secrets["empty"]; secret == nil || secret.Required {
+	if secret, ok := got.Secrets["empty"]; !ok || secret.Required {
 		t.Errorf("null secret = %#v, want optional", secret)
 	}
 	for _, name := range []string{"copied", "alias", "empty"} {
-		if got.Outputs[name] == nil {
+		if _, ok := got.Outputs[name]; !ok {
 			t.Errorf("output %q missing from %#v", name, got.Outputs)
 		}
 	}
@@ -109,7 +110,7 @@ on:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.Inputs) != 1 || got.Inputs["shared"] == nil || got.Inputs["shared"].Type != (exprlang.StringType{}) {
+	if shared, ok := got.Inputs["shared"]; len(got.Inputs) != 1 || !ok || shared.Type != InputTypeString {
 		t.Fatalf("inputs = %#v, want alias-expanded Shared string input", got.Inputs)
 	}
 }
@@ -133,16 +134,16 @@ func TestMetadataDecoderMergeKeys(t *testing.T) {
 		}
 		want := map[string]struct {
 			required bool
-			typ      exprlang.Type
+			typ      InputType
 		}{
-			"single":          {true, exprlang.NumberType{}},
-			"sequence_first":  {true, exprlang.BoolType{}},
-			"sequence_second": {false, exprlang.NumberType{}},
+			"single":          {true, InputTypeNumber},
+			"sequence_first":  {true, InputTypeBoolean},
+			"sequence_second": {false, InputTypeNumber},
 		}
 		for name, expected := range want {
-			in := got.Inputs[name]
-			if in == nil || in.Required != expected.required || in.Type != expected.typ {
-				t.Errorf("input %q = %#v, want required=%t type=%T", name, in, expected.required, expected.typ)
+			in, ok := got.Inputs[name]
+			if !ok || in.Required != expected.required || in.Type != expected.typ {
+				t.Errorf("input %q = %#v, want required=%t type=%s", name, in, expected.required, expected.typ)
 			}
 		}
 	})
@@ -171,18 +172,18 @@ on:
 		if err != nil {
 			t.Fatal(err)
 		}
-		for name, typ := range map[string]exprlang.Type{
-			"explicit":   exprlang.BoolType{},
-			"overridden": exprlang.BoolType{},
+		for name, typ := range map[string]InputType{
+			"explicit":   InputTypeBoolean,
+			"overridden": InputTypeBoolean,
 		} {
-			if in := got.Inputs[name]; in == nil || in.Type != typ {
-				t.Errorf("input %q = %#v, want type %T", name, in, typ)
+			if in, ok := got.Inputs[name]; !ok || in.Type != typ {
+				t.Errorf("input %q = %#v, want type %s", name, in, typ)
 			}
 		}
 		if len(got.Inputs) != 2 {
 			t.Errorf("inputs = %#v, want explicit Inputs map to replace merged map", got.Inputs)
 		}
-		if len(got.Outputs) != 1 || got.Outputs["overridden"] == nil || got.Outputs["overridden"].Name != "Overridden" {
+		if len(got.Outputs) != 1 || got.Outputs["overridden"].Name != "Overridden" {
 			t.Errorf("outputs = %#v, want first merged declaration spelling Overridden", got.Outputs)
 		}
 	})
@@ -201,10 +202,10 @@ on:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if in := got.Inputs["inherited"]; in == nil || in.Type != (exprlang.StringType{}) {
+		if in, ok := got.Inputs["inherited"]; !ok || in.Type != InputTypeString {
 			t.Errorf("merged input = %#v, want string input", in)
 		}
-		if out := got.Outputs["inherited"]; out == nil || out.Name != "inherited" {
+		if out := got.Outputs["inherited"]; out.Name != "inherited" {
 			t.Errorf("merged output = %#v, want key-only output metadata", out)
 		}
 	})

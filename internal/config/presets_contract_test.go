@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"reflect"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
@@ -27,7 +28,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := repoconfig.SettingFor(cfg, descriptor, tc.presets, false).Level; got != tc.want {
+		if got := repoconfig.SettingFor(cfg, descriptor, tc.presets, false).Level(); got != tc.want {
 			t.Fatalf("%s: got %s, want %s", tc.rules, got, tc.want)
 		}
 	}
@@ -49,8 +50,12 @@ lint: {rules: {disable: [require-commit-hash], suspicious: {case-insensitive-con
 		t.Fatal(err)
 	}
 	got := repoconfig.ResolveRules(repoconfig.Presets{Strict: true, Experimental: new(true)}, cfg)
-	if got.Policy.RequireJobTimeout != cfg.Policy.RequireJobTimeout || got.Policy.RequirePermissions != cfg.Policy.RequirePermissions || got.Policy.DisallowSuppressions != cfg.Policy.DisallowSuppressions {
+	// Each resolution decodes its own copy of the options, so compare values.
+	if !reflect.DeepEqual(got.Policy.RequireJobTimeout, cfg.Policy.RequireJobTimeout) || !reflect.DeepEqual(got.Policy.RequirePermissions, cfg.Policy.RequirePermissions) || !reflect.DeepEqual(got.Policy.DisallowSuppressions, cfg.Policy.DisallowSuppressions) {
 		t.Fatal("preset replaced configured options")
+	}
+	if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 || got.RequiresPermissions().Scope() != "job" || got.Policy.DisallowSuppressions.Report() != "violation" {
+		t.Fatal("configured options lost")
 	}
 	if len(got.Lint.Rules.Disable) != 1 || repoconfig.DiagnosticLevel(got, "case-insensitive-conditions") != "off" || repoconfig.DiagnosticLevel(got, "string-conditions") == "off" {
 		t.Fatal(got.Lint.Rules)

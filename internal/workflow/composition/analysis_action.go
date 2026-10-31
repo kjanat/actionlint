@@ -16,7 +16,7 @@ import (
 // declarations directly, then use the same composite script lifecycle as uses:.
 func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
 	snapshot := analysis.sourceSnapshot
-	if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+	if snapshot.Kind() != documentparse.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
 	view, available := snapshot.ActionView()

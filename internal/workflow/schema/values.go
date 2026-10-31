@@ -3,6 +3,7 @@ package schema
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strings"
@@ -20,7 +21,7 @@ type Shape interface {
 type workflowExpressionScalar string
 
 func (shape workflowExpressionScalar) ValidateType(ty exprlang.Type, path string) []string {
-	if _, unknown := ty.(exprlang.AnyType); unknown {
+	if ty.Kind() == exprlang.KindAny {
 		return nil
 	}
 	valid := false
@@ -29,14 +30,15 @@ func (shape workflowExpressionScalar) ValidateType(ty exprlang.Type, path string
 		valid = true
 	case "string", "non-empty string", "concurrency queue":
 		// TemplateReader converts scalar literals to strings in string definitions.
-		switch ty.(type) {
-		case exprlang.StringType, exprlang.NumberType, exprlang.BoolType, exprlang.NullType:
+		switch ty.Kind() {
+		case exprlang.KindString, exprlang.KindNumber, exprlang.KindBool, exprlang.KindNull:
 			valid = true
+		case exprlang.KindAny, exprlang.KindObject, exprlang.KindArray:
 		}
 	case "bool":
-		_, valid = ty.(exprlang.BoolType)
+		valid = ty.Kind() == exprlang.KindBool
 	case "positive integer":
-		_, valid = ty.(exprlang.NumberType)
+		valid = ty.Kind() == exprlang.KindNumber
 	}
 	if valid {
 		return nil
@@ -57,7 +59,7 @@ func validate(shape Shape, ty exprlang.Type, path string) []string {
 	case workflowExpressionUnion:
 		return shape.ValidateType(ty, path)
 	default:
-		return []string{fmt.Sprintf("%s has an unsupported schema shape", path)}
+		return []string{path + " has an unsupported schema shape"}
 	}
 }
 
@@ -67,11 +69,11 @@ type workflowExpressionArray struct {
 }
 
 func (shape workflowExpressionArray) ValidateType(ty exprlang.Type, path string) []string {
-	if _, unknown := ty.(exprlang.AnyType); unknown {
+	if ty.Kind() == exprlang.KindAny {
 		return nil
 	}
-	if array, ok := ty.(*exprlang.ArrayType); ok {
-		return validate(shape.elem, array.Elem, path+"[]")
+	if array, ok := ty.Array(); ok {
+		return validate(shape.elem, array.Elem(), path+"[]")
 	}
 	return []string{fmt.Sprintf("%s must be array but found %s", path, ty.String())}
 }
@@ -83,16 +85,16 @@ type workflowExpressionObject struct {
 }
 
 func (shape workflowExpressionObject) ValidateType(ty exprlang.Type, path string) []string {
-	if _, unknown := ty.(exprlang.AnyType); unknown {
+	if ty.Kind() == exprlang.KindAny {
 		return nil
 	}
-	object, ok := ty.(*exprlang.ObjectType)
+	object, ok := ty.Object()
 	if !ok {
 		return []string{fmt.Sprintf("%s must be object but found %s", path, ty.String())}
 	}
 	var errors []string
 	seen := map[string]bool{}
-	for name, value := range object.Props {
+	for name, value := range object.Properties() {
 		if name == "" {
 			errors = append(errors, path+" has an empty property name")
 			continue
@@ -118,8 +120,8 @@ func (shape workflowExpressionObject) ValidateType(ty exprlang.Type, path string
 				errors = append(errors, fmt.Sprintf("%s requires property %q", path, required))
 			}
 		}
-	} else if shape.mapped != nil {
-		errors = append(errors, validate(shape.mapped, object.Mapped, path+".*")...)
+	} else if mapped, ok := object.Mapped(); ok && shape.mapped != nil {
+		errors = append(errors, validate(shape.mapped, mapped, path+".*")...)
 	}
 	slices.Sort(errors)
 	return errors
@@ -137,11 +139,11 @@ func (shape workflowExpressionUnion) ValidateType(ty exprlang.Type, path string)
 	for _, candidate := range shape {
 		switch candidate.(type) {
 		case workflowExpressionObject:
-			if _, ok := ty.(*exprlang.ObjectType); ok {
+			if ty.Kind() == exprlang.KindObject {
 				return validate(candidate, ty, path)
 			}
 		case workflowExpressionArray:
-			if _, ok := ty.(*exprlang.ArrayType); ok {
+			if ty.Kind() == exprlang.KindArray {
 				return validate(candidate, ty, path)
 			}
 		}
@@ -252,52 +254,76 @@ func LiteralErrors(shape Shape, value any, path string) []string {
 }
 
 // Property finds a case-insensitive schema property, including evaluated keys.
+// It returns the zero value when no key matches.
 func Property[T any](properties map[string]T, name string) T {
+	value, _ := LookupProperty(properties, name)
+	return value
+}
+
+// LookupProperty finds a case-insensitive schema property, including evaluated
+// keys. An exact key match wins over a case-insensitive one. ok is false when
+// no key matches.
+func LookupProperty[T any](properties map[string]T, name string) (value T, ok bool) {
 	if value, ok := properties[name]; ok {
-		return value
+		return value, true
 	}
 	for key, value := range properties {
 		if strings.EqualFold(key, name) {
-			return value
+			return value, true
 		}
 	}
-	var zero T
-	return zero
+	return value, false
 }
 
-func MatrixType(ty exprlang.Type) *exprlang.ObjectType {
-	object, ok := ty.(*exprlang.ObjectType)
+// MatrixType returns the type of the matrix context for an evaluated matrix
+// declaration of type ty. Each row's array element type becomes the property
+// type, and include combinations add or merge properties.
+func MatrixType(ty exprlang.Type) exprlang.ObjectType {
+	object, ok := ty.Object()
 	if !ok {
 		return exprlang.NewEmptyObjectType()
 	}
-	result := &exprlang.ObjectType{Props: map[string]exprlang.Type{}, Mapped: object.Mapped}
-	for name, value := range object.Props {
+	props := map[string]exprlang.Type{}
+	for name, value := range object.Properties() {
 		name = strings.ToLower(name)
 		if name == "include" || name == "exclude" {
 			continue
 		}
-		if array, ok := value.(*exprlang.ArrayType); ok {
-			value = array.Elem
+		if array, ok := value.Array(); ok {
+			value = array.Elem()
 		}
-		result.Props[name] = value
+		props[name] = value
 	}
-	includeType := Property(object.Props, "include")
-	if include, ok := includeType.(*exprlang.ArrayType); ok {
-		if combination, ok := include.Elem.(*exprlang.ObjectType); ok {
-			for name, value := range combination.Props {
+	loose := false
+	includeType, hasInclude := LookupProperty(maps.Collect(object.Properties()), "include")
+	if include, ok := includeType.Array(); ok {
+		if combination, ok := include.Elem().Object(); ok {
+			for name, value := range combination.Properties() {
 				name = strings.ToLower(name)
-				if current, ok := result.Props[name]; ok {
+				if current, ok := props[name]; ok {
 					value = current.Merge(value)
 				}
-				result.Props[name] = value
+				props[name] = value
 			}
 		} else {
-			result.Loose()
+			loose = true
 		}
-	} else if _, unknown := includeType.(exprlang.AnyType); unknown {
-		result.Loose()
+	} else if hasInclude && includeType.Kind() == exprlang.KindAny {
+		loose = true
 	}
-	return result
+
+	var result exprlang.ObjectBuilder
+	for name, value := range props {
+		result.Set(name, value)
+	}
+	if mapped, ok := object.Mapped(); ok {
+		result.SetMapped(mapped)
+	}
+	// Rows added by an include of unknown shape may introduce any property.
+	if loose {
+		result.SetMapped(exprlang.AnyType())
+	}
+	return result.Build()
 }
 
 // Services is the mapping of named job services to their container declarations.

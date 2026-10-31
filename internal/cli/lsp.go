@@ -42,7 +42,7 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	}
 	var provider resolver.Resolver
 	if c.ResolverCommand != "" {
-		provider = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
+		provider = resolution.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 	}
 	return 0, localapp.LanguageServer(ctx, streams.Stdin, streams.Stdout, application.Options{AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}, plugins)
 }

@@ -21,7 +21,7 @@ func TestOpaqueCompositeInputsKeepExpressionFindingsAfterCycleFrontier(t *testin
 					}
 					content += "    - uses: actions/github-script@v7\n      with:\n        script: ${{ " + sink.expression + " }}\n"
 					fixture := newInvocationFixture(t, t.Context(), "on: issues\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{"outer/action.yml": content}, nil)
-					fixture.service.options.Rules = []workflowvisit.Rule{builtin.NewRuleExpression(fixture.service.options.Actions, nil)}
+					fixture.options.Rules = []workflowvisit.Rule{builtin.NewRuleExpression(fixture.options.Actions, nil)}
 					var result Result
 					var err error
 					if standalone {
@@ -29,9 +29,9 @@ func TestOpaqueCompositeInputsKeepExpressionFindingsAfterCycleFrontier(t *testin
 						if lookup.Metadata() == nil {
 							t.Fatal("standalone action metadata absent")
 						}
-						result, err = standaloneActionForTest(t, fixture.service, lookup.Metadata())
+						result, err = standaloneActionForTest(t, fixture.options, lookup.Metadata())
 					} else {
-						result, err = fixture.service.Workflow(fixture.root)
+						result, err = Workflow(fixture.options, fixture.root)
 						if err != nil {
 							t.Fatal(err)
 						}

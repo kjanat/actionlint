@@ -64,23 +64,26 @@ func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 	return nil
 }
 
-func NewRuleEnvVar() *declarationRule      { return newDeclarationRule("env-var") }
-func NewRuleID() *declarationRule          { return newDeclarationRule("id") }
-func NewRuleJobNeeds() *declarationRule    { return newDeclarationRule("job-needs") }
-func NewRulePermissions() *declarationRule { return newDeclarationRule("permissions") }
-func NewRuleIfCond() *declarationRule      { return newDeclarationRule("if-cond") }
+// The NewRule functions below build the declaration checks that need no host
+// lookups. Each returns the catalogue rule of the same name.
 
-func NewRuleEmptyTriggers() *declarationRule { return newDeclarationRule("empty-triggers") }
-func NewRuleEmptyJob() *declarationRule      { return newDeclarationRule("empty-job") }
-func NewRuleEmptyRun() *declarationRule      { return newDeclarationRule("empty-run") }
-func NewRuleNumericValues() *declarationRule { return newDeclarationRule("numeric-values") }
+func NewRuleEnvVar() workflowvisit.Rule      { return newDeclarationRule("env-var") }
+func NewRuleID() workflowvisit.Rule          { return newDeclarationRule("id") }
+func NewRuleJobNeeds() workflowvisit.Rule    { return newDeclarationRule("job-needs") }
+func NewRulePermissions() workflowvisit.Rule { return newDeclarationRule("permissions") }
+func NewRuleIfCond() workflowvisit.Rule      { return newDeclarationRule("if-cond") }
 
-func NewRuleCredentials() *declarationRule   { return newDeclarationRule("credentials") }
-func NewRuleEvents() *declarationRule        { return newDeclarationRule("events") }
-func NewRuleGlob() *declarationRule          { return newDeclarationRule("glob") }
-func NewRuleParallelSteps() *declarationRule { return newDeclarationRule("parallel-steps") }
+func NewRuleEmptyTriggers() workflowvisit.Rule { return newDeclarationRule("empty-triggers") }
+func NewRuleEmptyJob() workflowvisit.Rule      { return newDeclarationRule("empty-job") }
+func NewRuleEmptyRun() workflowvisit.Rule      { return newDeclarationRule("empty-run") }
+func NewRuleNumericValues() workflowvisit.Rule { return newDeclarationRule("numeric-values") }
 
-func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) *declarationRule {
+func NewRuleCredentials() workflowvisit.Rule   { return newDeclarationRule("credentials") }
+func NewRuleEvents() workflowvisit.Rule        { return newDeclarationRule("events") }
+func NewRuleGlob() workflowvisit.Rule          { return newDeclarationRule("glob") }
+func NewRuleParallelSteps() workflowvisit.Rule { return newDeclarationRule("parallel-steps") }
+
+func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) workflowvisit.Rule {
 	options := checks.TimeoutPolicy{Enabled: policy.Enabled()}
 	if lower, ok := policy.MinMinutes(); ok {
 		options.Min = new(lower)
@@ -93,7 +96,7 @@ func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) *declarationR
 	return r
 }
 
-func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) *declarationRule {
+func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) workflowvisit.Rule {
 	scope := policy.Scope()
 	r := newDeclarationRule("require-permissions")
 	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding {
@@ -103,13 +106,13 @@ func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) *declaratio
 	return r
 }
 
-func NewRuleRequiredActions(required []string) *declarationRule {
+func NewRuleRequiredActions(required []string) workflowvisit.Rule {
 	r := newDeclarationRule("required-actions")
 	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding { return checks.RequiredActions(w, required) }
 	return r
 }
 
-func NewRuleRequireCommitHash(excluded func(string) bool) *declarationRule {
+func NewRuleRequireCommitHash(excluded func(string) bool) workflowvisit.Rule {
 	r := newDeclarationRule("require-commit-hash")
 	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.CommitHashJob(j, excluded) }
 	r.stepCheck = func(s workflowdecl.StepView) []checks.Finding { return checks.CommitHashStep(s, excluded) }

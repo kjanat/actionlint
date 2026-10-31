@@ -20,29 +20,40 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
+// metadataSource records where a manifest was read, its captured bytes and the
+// provenance of its parse. The decoded Metadata is kept in the cached
+// MetadataResult; admitting the source to the snapshot registry needs only the
+// provenance.
 type metadataSource struct {
-	path     string
-	address  string
-	captured capture.Snapshot
-	document documentparse.Document
+	path       string
+	address    string
+	captured   capture.Snapshot
+	provenance documentparse.Provenance
 }
 
+// ParseError reports an action manifest that was read but could not be parsed.
+// It is immutable once created: the cache stores it and reports the same value
+// to every lookup of the manifest.
 type ParseError struct {
-	Path      string
-	Cause     error
-	directory string
+	path  string
+	cause error
 }
+
+// NewParseError records that the manifest at path failed to parse with cause.
+func NewParseError(path string, cause error) *ParseError {
+	return &ParseError{path: path, cause: cause}
+}
+
+// Path is the manifest file that failed to parse.
+func (e *ParseError) Path() string { return e.path }
 
 func (e *ParseError) Error() string {
-	if e.Cause == nil {
-		return fmt.Sprintf("could not parse action metadata in %q", e.Path)
+	if e.cause == nil {
+		return fmt.Sprintf("could not parse action metadata in %q", e.path)
 	}
-	if e.directory == "" {
-		return e.Cause.Error()
-	}
-	return fmt.Sprintf("could not parse action metadata in %q: %s", e.directory, codec.FormatLoadError(e.Cause))
+	return fmt.Sprintf("could not parse action metadata in %q: %s", filepath.Dir(e.path), codec.FormatLoadError(e.cause))
 }
-func (e *ParseError) Unwrap() error { return e.Cause }
+func (e *ParseError) Unwrap() error { return e.cause }
 
 // Cache shares parsed manifests and raw source snapshots for one repository.
 // Configure it before concurrent analysis; callers use separate Resolver instances.
@@ -219,11 +230,11 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	}
 	loadedSource := metadataSource{path: filepath.Join(dir, f), address: filepath.Join(address, f), captured: captured}
 	document := documentparse.Action(loadedSource.path, loadedSource.path, captured.Bytes())
-	loadedSource.document = document
-	meta, parseErr := document.Metadata, document.ActionParseError()
+	loadedSource.provenance = document.Provenance
+	meta, parseErr := document.Metadata, document.ParseError
 	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {
-		cause := &ParseError{Path: filepath.Join(dir, f), Cause: err, directory: dir}
+		cause := NewParseError(loadedSource.path, err)
 		loaded = MetadataResult{status: MetadataParseFailed, cause: cause}
 	} else {
 		c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
@@ -270,7 +281,7 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.Snapshot, strin
 			continue
 		}
 		if err != nil {
-			return capture.Snapshot{}, "", &capture.ReadError{Context: fmt.Sprintf("could not read action metadata in %q", dir), Err: err}
+			return capture.Snapshot{}, "", capture.NewReadError(fmt.Sprintf("could not read action metadata in %q", dir), err)
 		}
 		return captured, name, nil
 	}

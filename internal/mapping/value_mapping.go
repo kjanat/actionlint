@@ -146,9 +146,11 @@ func (m Mapping) Entries() iter.Seq2[string, value.Value] {
 }
 
 // KeyedEntries yields canonical key values with their declaration origins.
+// Like Declarations, the iterator walks a snapshot detached from the receiver.
 func (m Mapping) KeyedEntries() iter.Seq2[value.Value, value.Value] {
+	entries := slices.Clone(m.entries)
 	return func(yield func(value.Value, value.Value) bool) {
-		for _, entry := range m.entries {
+		for _, entry := range entries {
 			if !yield(entry.name, entry.value) {
 				return
 			}

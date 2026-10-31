@@ -6,7 +6,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 
@@ -45,7 +44,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
 			c := newCapturedWorkflowCache(t, "", "", nil)
-			r := builtin.NewRuleWorkflowCall(nil, c)
+			r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, c)
 			j := &workflowlang.Job{
 				WorkflowCall: &workflowlang.WorkflowCall{
 					Uses: &workflowlang.String{
@@ -90,7 +89,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	}
 
 	c := newCapturedWorkflowCache(t, "", "", nil)
-	r := builtin.NewRuleWorkflowCall(nil, c)
+	r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, c)
 
 	if err := r.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 		t.Fatal(err)
@@ -110,9 +109,9 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	cwd := filepath.Join(sourceFixtureBase(t), "path", "to", "project")
 	path := filepath.Join(cwd, "test-workflow.yaml")
 	content := []byte("on:\n  workflow_call:\n    inputs:\n      input1: {type: string}\n    outputs:\n      output1: {value: '${{ jobs.test.outputs.value }}'}\n    secrets:\n      secret1: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
-	declarations := newCapturedSnapshots(t, cwd)
+	store, snapshots := newCapturedSnapshots(t, cwd)
 	parsed := documentparse.Workflow(path, content)
-	snapshot, err := declarations.Document(path, content, parsed)
+	snapshot, err := snapshots.Document(path, content, parsed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +120,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 		t.Fatal("captured workflow unavailable")
 	}
 	c := calls.NewCache(cwd, cwd, nil)
-	c.SetSources(t.Context(), declarations.Sources.Store, cwd)
+	c.SetSources(t.Context(), store, cwd)
 	r := builtin.NewRuleWorkflowCall(snapshot, c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
@@ -140,7 +139,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 
 	want := &calls.Metadata{
 		Inputs: calls.Inputs{
-			"input1": {Name: "input1", Required: false, Type: exprlang.StringType{}},
+			"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
 		},
 		Outputs: calls.Outputs{
 			"output1": {Name: "output1"},

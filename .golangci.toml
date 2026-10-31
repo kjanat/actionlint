@@ -2010,6 +2010,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action/validation$",
   "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
+  "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
   "actionlint.kjanat.dev/v2/internal/config/rules$",
@@ -2024,8 +2025,13 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/invocationview$",
   "actionlint.kjanat.dev/v2/internal/mapping$",
   "actionlint.kjanat.dev/v2/internal/pluginref$",
+  "actionlint.kjanat.dev/v2/internal/related$",
   "actionlint.kjanat.dev/v2/internal/schemapath$",
+  "actionlint.kjanat.dev/v2/internal/scriptcoords$",
+  "actionlint.kjanat.dev/v2/internal/source/capture$",
+  "actionlint.kjanat.dev/v2/internal/source/position$",
   "actionlint.kjanat.dev/v2/internal/source/text$",
+  "actionlint.kjanat.dev/v2/internal/sourceid$",
   "actionlint.kjanat.dev/v2/internal/stringutil$",
   "actionlint.kjanat.dev/v2/internal/suppression$",
   "actionlint.kjanat.dev/v2/internal/testutil/capturefixture$",
@@ -2061,6 +2067,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workflow/value$",
   "actionlint.kjanat.dev/v2/internal/workflow/visit$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
+  "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -2387,7 +2394,7 @@ allow     = [
 
 # Layer composition: Analysis of workflow and action invocations with prepared checks. It does not
 # reach the application, workspaces, diagnostic policy, tool backends or presentation.
-# Imports: itself, source, analysis-contracts, expression, config, invocation, workflow-base, workflow-model, engine, documents, language, tool-contracts, builtins.
+# Imports: itself, source, analysis-contracts, leaves, expression, config, invocation, workflow-base, workflow-model, engine, documents, language, tool-contracts, builtins.
 [linters.settings.depguard.rules.layer-composition]
 files     = [
   "**/internal/workflow/composition/*.go",
@@ -2402,6 +2409,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action/local$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
   "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/builtin$",
   "actionlint.kjanat.dev/v2/internal/checks$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -2411,12 +2419,20 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/documentparse$",
   "actionlint.kjanat.dev/v2/internal/engine$",
   "actionlint.kjanat.dev/v2/internal/expression$",
+  "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/finding$",
+  "actionlint.kjanat.dev/v2/internal/fsread$",
   "actionlint.kjanat.dev/v2/internal/mapping$",
+  "actionlint.kjanat.dev/v2/internal/pluginref$",
+  "actionlint.kjanat.dev/v2/internal/schemapath$",
+  "actionlint.kjanat.dev/v2/internal/source/text$",
+  "actionlint.kjanat.dev/v2/internal/stringutil$",
   "actionlint.kjanat.dev/v2/internal/suppression$",
   "actionlint.kjanat.dev/v2/internal/tools$",
   "actionlint.kjanat.dev/v2/internal/tools/execution$",
+  "actionlint.kjanat.dev/v2/internal/webhook$",
+  "actionlint.kjanat.dev/v2/internal/webhook/payload$",
   "actionlint.kjanat.dev/v2/internal/workflow$",
   "actionlint.kjanat.dev/v2/internal/workflow/cachepolicy$",
   "actionlint.kjanat.dev/v2/internal/workflow/calls$",
@@ -2438,6 +2454,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workflow/schema$",
   "actionlint.kjanat.dev/v2/internal/workflow/value$",
   "actionlint.kjanat.dev/v2/internal/workflow/visit$",
+  "actionlint.kjanat.dev/v2/internal/yaml/schema$",
+  "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/source$",
   "actionlint.kjanat.dev/v2/syntax$",
 ]

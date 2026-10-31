@@ -21,6 +21,15 @@ func newExecutableState(hosted, callerRepositoryUnknown bool) executableState {
 	}
 }
 
+// fork copies the state for a composite entry or call. The copy gets its own
+// changed and actionChanged maps, so the child's mode observations reach the
+// caller only through JoinComposite.
+func (state *executableState) fork() executableState {
+	forked := *state
+	forked.changed, forked.actionChanged = maps.Clone(state.changed), maps.Clone(state.actionChanged)
+	return forked
+}
+
 func (state *executableState) afterPossibleFailure() {
 	state.pristine, state.repositoryUnknown = false, true
 	state.actionPristine = false
@@ -44,9 +53,10 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 }
 
 // ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
+// The fork shares the caller's ExecutableContext, so its findings go to the same Report.
 func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
-	scoped.executableState = rule.executableState
+	scoped.executableState = rule.fork()
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
 	effects, isCall := context.Facts()
 	if isCall && effects.AfterFailure {
@@ -60,11 +70,6 @@ func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionP
 		return scoped
 	}
 	scoped.skipFindings = rule.skipFindings || effects.Condition == invocation.ConditionSkipped
-	// Conditional calls cannot mutate their caller's maps until branches join.
-	if effects.Condition != invocation.ConditionEnabled {
-		scoped.changed = maps.Clone(rule.changed)
-		scoped.actionChanged = maps.Clone(rule.actionChanged)
-	}
 	scoped.jobEnv = rule.jobEnv || effects.ShellEnvironmentUnknown
 	scoped.jobGitEnv = rule.jobGitEnv || effects.CheckoutEnvironmentUnknown
 	scoped.jobPathUnknown = rule.jobPathUnknown || effects.ShellPathUnknown
@@ -74,9 +79,14 @@ func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionP
 	return scoped
 }
 
-// JoinComposite merges conditional mode changes of a call back into the caller.
+// JoinComposite merges the mode changes of an entry or call back into the caller.
 func (rule *ExecutableChecker) JoinComposite(context invocation.Context, child *ExecutableChecker) {
 	effects, isCall := context.Facts()
+	if !isCall || effects.Condition == invocation.ConditionEnabled {
+		// An entry or unconditional call ran in the caller's place, so its mode
+		// observations replace the caller's even when it may have failed.
+		rule.changed, rule.actionChanged = child.changed, child.actionChanged
+	}
 	if !isCall || effects.Condition == invocation.ConditionSkipped {
 		return
 	}
@@ -104,5 +114,5 @@ func (rule *ExecutableChecker) JoinComposite(context invocation.Context, child *
 	child.paths.ActionPath = rule.paths.ActionPath
 	child.paths.ActionRunnerPath = rule.paths.ActionRunnerPath
 	child.paths.ActionIndependent = rule.paths.ActionIndependent
-	rule.paths, rule.changed, rule.actionChanged = child.paths, child.changed, child.actionChanged
+	rule.paths = child.paths
 }

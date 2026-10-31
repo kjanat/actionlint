@@ -35,12 +35,12 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				t.Fatal("admission discarded decoded declarations")
 			}
 			document := Action("action.yml", "action.yml", content)
-			if document.CanAnalyze() || document.record != nil && document.record.Bind("rejected-action").ActionBody().Present() {
+			if document.CanAnalyze() || document.Provenance.record != nil && document.Provenance.record.Bind("rejected-action").ActionBody().Present() {
 				t.Fatal("rejected action supplied semantic input")
 			}
 			for _, documentFirst := range []bool{false, true} {
 				snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-				bind := func(fromDocument bool) (*SourceSnapshot, error) {
+				bind := func(fromDocument bool) (SourceSnapshot, error) {
 					if fromDocument {
 						return snapshots.Document("action.yml", content, document)
 					}
@@ -48,7 +48,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				}
 				first, firstErr := bind(documentFirst)
 				second, secondErr := bind(!documentFirst)
-				if firstErr != nil || secondErr != nil || first == nil || first != second {
+				if firstErr != nil || secondErr != nil || !first.Present() || first != second {
 					t.Fatalf("source-only snapshot depends on entry order: first=%p/%v second=%p/%v", first, firstErr, second, secondErr)
 				}
 				if body, ok := first.ActionView(); ok {
@@ -109,8 +109,8 @@ func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
 	}
 	source.WriteString("      parallel: *a8\n")
 	document := Action("action.yml", "action.yml", []byte(source.String()))
-	if _, rejected := errors.AsType[*codec.AdmissionError](document.ActionParseError()); !rejected || document.CanAnalyze() || document.record != nil && document.record.Bind("rejected-action").ActionBody().Present() {
-		t.Fatal("parallel expansion bypassed action admission", document.ActionParseError())
+	if _, rejected := errors.AsType[*codec.AdmissionError](document.ParseError); !rejected || document.CanAnalyze() || document.Provenance.record != nil && document.Provenance.record.Bind("rejected-action").ActionBody().Present() {
+		t.Fatal("parallel expansion bypassed action admission", document.ParseError)
 	}
 	if findings := actionmeta.Validate(document.Metadata); len(findings) == 0 {
 		t.Fatal("source-only schema validation lost physical alias findings")
@@ -120,8 +120,8 @@ func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
 func TestActionAdmissionKeepsRecursiveStepsOpaque(t *testing.T) {
 	const source = "name: cycle\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n      unknown: &cycle [*cycle]\n"
 	document := Action("action.yml", "action.yml", []byte(source))
-	if document.ActionParseError() != nil || !document.CanAnalyze() {
-		t.Fatal("recursive recovery became an admission failure", document.ActionParseError())
+	if document.ParseError != nil || !document.CanAnalyze() {
+		t.Fatal("recursive recovery became an admission failure", document.ParseError)
 	}
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("action.yml", []byte(source), document)
@@ -162,7 +162,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 		}
 		for _, documentFirst := range []bool{false, true} {
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-			bind := func(fromDocument bool) (*SourceSnapshot, error) {
+			bind := func(fromDocument bool) (SourceSnapshot, error) {
 				if fromDocument {
 					return snapshots.Document("action.yml", content, document)
 				}
@@ -170,7 +170,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 			}
 			first, firstErr := bind(documentFirst)
 			second, secondErr := bind(!documentFirst)
-			if firstErr != nil || secondErr != nil || first == nil || first != second {
+			if firstErr != nil || secondErr != nil || !first.Present() || first != second {
 				t.Fatal("recovered snapshot depends on entry order", firstErr, secondErr)
 			}
 			steps := snapshotActionSteps(t, first)
@@ -193,7 +193,7 @@ func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 	}
 	for _, documentFirst := range []bool{false, true} {
 		snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-		bind := func(fromDocument bool) (*SourceSnapshot, error) {
+		bind := func(fromDocument bool) (SourceSnapshot, error) {
 			if fromDocument {
 				return snapshots.Document("action.yml", content, document)
 			}
@@ -201,7 +201,7 @@ func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 		}
 		first, firstErr := bind(documentFirst)
 		second, secondErr := bind(!documentFirst)
-		if firstErr != nil || secondErr != nil || first == nil || first != second {
+		if firstErr != nil || secondErr != nil || !first.Present() || first != second {
 			t.Fatal("schema-error declaration binding depends on entry order", firstErr, secondErr)
 		}
 		steps := snapshotActionSteps(t, first)
@@ -218,8 +218,8 @@ func TestFatalDecodePrecedesAnIndependentAdmissionFailure(t *testing.T) {
 		fmt.Fprintf(&source, "      a%d: &a%d [*a%d, *a%d, *a%d]\n", level, level, level-1, level-1, level-1)
 	}
 	document := Action("action.yml", "action.yml", []byte(source.String()))
-	if _, rejected := errors.AsType[*codec.AdmissionError](document.ActionParseError()); !rejected || document.CanAnalyze() {
-		t.Fatal("independent resource rejection did not gate analysis", document.ActionParseError())
+	if _, rejected := errors.AsType[*codec.AdmissionError](document.ParseError); !rejected || document.CanAnalyze() {
+		t.Fatal("independent resource rejection did not gate analysis", document.ParseError)
 	}
 	if len(document.Findings) != 1 || !strings.Contains(document.Findings[0].Message, "contains itself") {
 		t.Fatal("first fatal decode lost diagnostic precedence", document.Findings)
