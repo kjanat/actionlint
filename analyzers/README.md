@@ -20,7 +20,9 @@ Returning an alias through another package does not establish ownership.
 storage. Shallow clones containing exposed references still share storage.
 Fresh byte copies using `make`/`copy` or `append` are also allowed. Value handles
 with only private representation can share their internal storage; their public
-methods are checked separately. A constructor returning fresh storage is allowed.
+methods are checked separately. A returned struct copy may keep such a handle
+in one field after cloning the slice in another. A constructor returning fresh
+storage is allowed.
 `context.Context.Err` only reads its context and returns nil,
 `context.Canceled` or `context.DeadlineExceeded`, as the Context contract
 documents, so a stored context's error aliases nothing. Its other methods have
@@ -98,7 +100,7 @@ possible write. The analyzer assumes that code changes a handle only through its
 exported methods, so an interface implementation in the same package that
 writes a handle's private fields is missed. So is code in the same package that
 writes the private fields of handles collected by `append`, a clone, an
-assignment to a slice element or an unknown call, or of handles a helper function receives through an iterator
+assignment to a slice element, a field of a returned struct copy or an unknown call, or of handles a helper function receives through an iterator
 parameter. A write into a container whose freshness cannot be proven, such as a
 slice element, also counts the values stored into that container as written.
 Aggregate value copies use

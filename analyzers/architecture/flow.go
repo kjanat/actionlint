@@ -751,7 +751,8 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 	stored := func(destination, value ssa.Value) { storedOrigins(destination, get(value)) }
 
 	// A value copy can detach its reference fields before publication. Its
-	// origins come from the field stores dominating the load.
+	// origins come from the field stores dominating the load, for fields
+	// whose type exposes storage.
 	returned := func(value ssa.Value) origins {
 		load, ok := value.(*ssa.UnOp)
 		if !ok || load.Op != token.MUL {
@@ -804,9 +805,12 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 				}
 			}
 		}
+		// A field holding a read-only value handle carries nothing, as with
+		// append: callers change such a handle only through its methods,
+		// which are checked on their own.
 		out := origins{}
 		for i, field := range fields {
-			if storage(structure.Field(i).Type()) {
+			if visible(structure.Field(i).Type()) {
 				out.add(field)
 			}
 		}
