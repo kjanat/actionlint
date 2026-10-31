@@ -130,7 +130,8 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 			return err
 		}
 	}
-	if roles.script {
+	if roles.script != "" {
+		p.scriptInterface = roles.script
 		if err := p.loadScriptEngine(ctx, staticMetadata); err != nil {
 			return err
 		}
@@ -139,7 +140,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		if err := p.loadTemplateEffects(ctx, staticMetadata); err != nil {
 			return err
 		}
-	} else if roles.script {
+	} else if roles.script != "" {
 		if err := verifyTemplateMetadata(staticMetadata, ""); err != nil {
 			return err
 		}

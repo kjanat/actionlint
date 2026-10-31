@@ -3,6 +3,7 @@ package component
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
@@ -24,20 +25,41 @@ func validateSuppressionRuleName(name string) error {
 }
 
 type extensionRoleSet struct {
-	analyzer        bool
-	runner          bool
-	script          bool
+	analyzer bool
+	runner   bool
+	// script is the exported script-engine interface, empty without the role.
+	script          string
 	toolIntegration bool
 	templateEffects bool
 }
 
+// scriptEngineInterfaces are the script-engine versions this host accepts.
+var scriptEngineInterfaces = []string{ScriptEngineInterface, ScriptEngine03Interface}
+
+// extensionRoles negotiates the roles a component exports. A component
+// exports one script-engine version; template effects pair only with 0.2.0,
+// whose check they replace.
 func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	var roles extensionRoleSet
 	supported := []struct {
 		name string
 		role *bool
-	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ScriptEngineInterface, &roles.script}, {ToolIntegrationInterface, &roles.toolIntegration}, {TemplateEffectsInterface, &roles.templateEffects}}
+	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ToolIntegrationInterface, &roles.toolIntegration}, {TemplateEffectsInterface, &roles.templateEffects}}
+	scriptPrefix, _, _ := strings.Cut(ScriptEngineInterface, "@")
 	for _, export := range exports {
+		if strings.HasPrefix(export.Name, scriptPrefix+"@") {
+			if !slices.Contains(scriptEngineInterfaces, export.Name) {
+				return roles, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, strings.Join(scriptEngineInterfaces, " and "))
+			}
+			if export.Kind != wacogo.SortInstance {
+				return roles, fmt.Errorf("plugin export %s must be an interface instance", export.Name)
+			}
+			if roles.script != "" {
+				return roles, fmt.Errorf("plugin exports %s and %s; export one script-engine version", roles.script, export.Name)
+			}
+			roles.script = export.Name
+			continue
+		}
 		for _, candidate := range supported {
 			prefix, _, _ := strings.Cut(candidate.name, "@")
 			if !strings.HasPrefix(export.Name, prefix+"@") {
@@ -52,14 +74,14 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 			*candidate.role = true
 		}
 	}
-	if !roles.analyzer && !roles.runner && !roles.script {
-		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, ScriptEngineInterface)
+	if !roles.analyzer && !roles.runner && roles.script == "" {
+		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(scriptEngineInterfaces, " or "))
 	}
 	if roles.toolIntegration && !roles.analyzer {
 		return roles, errors.New("tool integration requires analyzer interface")
 	}
-	if roles.templateEffects && !roles.script {
-		return roles, errors.New("template effects requires script engine interface")
+	if roles.templateEffects && roles.script != ScriptEngineInterface {
+		return roles, fmt.Errorf("template effects requires %s", ScriptEngineInterface)
 	}
 	return roles, nil
 }

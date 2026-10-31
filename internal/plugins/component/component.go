@@ -34,6 +34,8 @@ type Plugin struct {
 	runnerDescriptor   *runner.Descriptor
 	scriptDescriptor   *analyzer.ScriptEngineDescriptor
 	toolIntegration    *analyzer.ToolIntegration
+	// scriptInterface is the negotiated script-engine version.
+	scriptInterface string
 
 	digest string
 	path   string

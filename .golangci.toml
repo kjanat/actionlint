@@ -3002,7 +3002,7 @@ allow     = [
 ]
 
 # Layer plugin-runtime: The WebAssembly plugin runtime and its generated bindings.
-# Imports: itself, source, contract-leaves, analysis-contracts, document-contracts, core-helpers, catalog, plugin-artifacts.
+# Imports: itself, source, contract-leaves, analysis-contracts, document-contracts, leaves, core-helpers, catalog, plugin-artifacts.
 [linters.settings.depguard.rules.layer-plugin-runtime]
 files     = [
   "**/internal/plugins/component/*.go",
@@ -3023,6 +3023,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
+  "actionlint.kjanat.dev/v2/internal/buildinfo$",
+  "actionlint.kjanat.dev/v2/internal/expression/context$",
+  "actionlint.kjanat.dev/v2/internal/fsread$",
+  "actionlint.kjanat.dev/v2/internal/pluginref$",
   "actionlint.kjanat.dev/v2/internal/pluginregistry$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact$",
   "actionlint.kjanat.dev/v2/internal/plugins/component$",
@@ -3035,11 +3039,18 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/plugins/wasmbudget$",
   "actionlint.kjanat.dev/v2/internal/related$",
   "actionlint.kjanat.dev/v2/internal/rulecatalog$",
+  "actionlint.kjanat.dev/v2/internal/schemapath$",
   "actionlint.kjanat.dev/v2/internal/scriptcoords$",
   "actionlint.kjanat.dev/v2/internal/source/capture$",
   "actionlint.kjanat.dev/v2/internal/source/position$",
+  "actionlint.kjanat.dev/v2/internal/source/text$",
   "actionlint.kjanat.dev/v2/internal/sourceid$",
+  "actionlint.kjanat.dev/v2/internal/stringutil$",
+  "actionlint.kjanat.dev/v2/internal/webhook$",
+  "actionlint.kjanat.dev/v2/internal/webhook/payload$",
+  "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
+  "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3101,6 +3112,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/tools/backend$",
   "actionlint.kjanat.dev/v2/internal/tools/execution$",
   "actionlint.kjanat.dev/v2/internal/tools/managed$",
+  "actionlint.kjanat.dev/v2/internal/tools/provider$",
+  "actionlint.kjanat.dev/v2/internal/tools/provider/bundled$",
+  "actionlint.kjanat.dev/v2/internal/tools/provider/configschema$",
+  "actionlint.kjanat.dev/v2/internal/tools/provider/process$",
   "actionlint.kjanat.dev/v2/internal/tools/registry$",
   "actionlint.kjanat.dev/v2/internal/webhook$",
   "actionlint.kjanat.dev/v2/internal/webhook/payload$",

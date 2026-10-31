@@ -37,6 +37,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "actionlint-plugin-script-engine-0-3-0"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"

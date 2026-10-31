@@ -483,13 +483,23 @@ allow     = [
   "contract-leaves",
   "analysis-contracts",
   "document-contracts",
+  "leaves",
   "core-helpers",
   "catalog",
   "plugin-artifacts",
 ]
 externals = ["github.com/kjanat/wacogo", "github.com/kjanat/wazero", "golang.org/x/sync"]
 deny-std  = ["os/exec"]
-tests     = ["leaves", "analyzer-host", "tool-contracts", "tool-backends", "public-config", "public-analysis", "examples"]
+tests     = [
+  "analyzer-host",
+  "provider-data",
+  "tool-providers",
+  "tool-contracts",
+  "tool-backends",
+  "public-config",
+  "public-analysis",
+  "examples"
+]
 
 [[layer]]
 name      = "workspace"
