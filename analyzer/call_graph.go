@@ -14,14 +14,20 @@ var ErrInvalidCallGraph = errors.New("analyzer: invalid invocation graph")
 // OccurrenceID is an opaque identity supplied by the host.
 type OccurrenceID string
 
+// OptionalValue lists the invocation graph records that may be absent. Each
+// holds only strings and integers, so an Optional copy shares no storage.
+type OptionalValue interface {
+	InvocationStop | Interruption | source.Reference
+}
+
 // Optional distinguishes absence from a present zero value.
-type Optional[T any] struct {
+type Optional[T OptionalValue] struct {
 	value   T
 	present bool
 }
 
-func Present[T any](value T) Optional[T] { return Optional[T]{value: value, present: true} }
-func (value Optional[T]) Get() (T, bool) { return value.value, value.present }
+func Present[T OptionalValue](value T) Optional[T] { return Optional[T]{value: value, present: true} }
+func (value Optional[T]) Get() (T, bool)           { return value.value, value.present }
 
 type InvocationEntryKind string
 
@@ -105,33 +111,46 @@ type CallGraphData struct {
 }
 
 func (graph CallGraphData) clone() CallGraphData {
-	graph.Calls = slices.Clone(graph.Calls)
-	graph.Scripts = slices.Clone(graph.Scripts)
-	total := 0
-	for _, call := range graph.Calls {
-		total += len(call.Ancestry)
-	}
-	for _, script := range graph.Scripts {
-		total += len(script.Ancestry)
-	}
-	storage := make([]OccurrenceID, total)
-	copyAncestry := func(original []OccurrenceID) []OccurrenceID {
-		if original == nil {
-			return nil
-		}
-		length := len(original)
-		cloned := storage[:length:length]
-		copy(cloned, original)
-		storage = storage[length:]
-		return cloned
-	}
-	for i := range graph.Calls {
-		graph.Calls[i].Ancestry = copyAncestry(graph.Calls[i].Ancestry)
-	}
-	for i := range graph.Scripts {
-		graph.Scripts[i].Ancestry = copyAncestry(graph.Scripts[i].Ancestry)
-	}
+	graph.Calls = detachedCalls(graph.Calls)
+	graph.Scripts = detachedScripts(graph.Scripts)
 	return graph
+}
+
+// detached copies call with its own Ancestry. Outcome is an immutable value
+// handle and stays shared.
+func (call Call) detached() Call {
+	call.Ancestry = slices.Clone(call.Ancestry)
+	return call
+}
+
+// detached copies script with its own Ancestry.
+func (script ScriptOccurrence) detached() ScriptOccurrence {
+	script.Ancestry = slices.Clone(script.Ancestry)
+	return script
+}
+
+// detachedCalls copies calls and each call's Ancestry, keeping nil as nil.
+func detachedCalls(calls []Call) []Call {
+	if calls == nil {
+		return nil
+	}
+	out := make([]Call, 0, len(calls))
+	for _, call := range calls {
+		out = append(out, call.detached())
+	}
+	return out
+}
+
+// detachedScripts copies scripts and each script's Ancestry, keeping nil as nil.
+func detachedScripts(scripts []ScriptOccurrence) []ScriptOccurrence {
+	if scripts == nil {
+		return nil
+	}
+	out := make([]ScriptOccurrence, 0, len(scripts))
+	for _, script := range scripts {
+		out = append(out, script.detached())
+	}
+	return out
 }
 
 // CallGraph is a value handle to validated, immutable occurrence records.
@@ -211,9 +230,7 @@ func (graph CallGraph) Call(id OccurrenceID) (Call, bool) {
 	if !found {
 		return Call{}, false
 	}
-	call := graph.data.records.Calls[index]
-	call.Ancestry = slices.Clone(call.Ancestry)
-	return call, true
+	return graph.data.records.Calls[index].detached(), true
 }
 func (graph CallGraph) script(id OccurrenceID) (ScriptOccurrence, bool) {
 	if !graph.Valid() {
@@ -227,8 +244,7 @@ func (graph CallGraph) script(id OccurrenceID) (ScriptOccurrence, bool) {
 }
 func (graph CallGraph) Script(id OccurrenceID) (ScriptOccurrence, bool) {
 	script, found := graph.script(id)
-	script.Ancestry = slices.Clone(script.Ancestry)
-	return script, found
+	return script.detached(), found
 }
 
 // ValidateOccurrence checks every supplied field against the registered execution.
@@ -262,11 +278,7 @@ func (graph CallGraph) CallsPage(offset, limit int) ([]Call, error) {
 	if offset == end {
 		return nil, nil
 	}
-	records := slices.Clone(graph.data.records.Calls[offset:end])
-	for index := range records {
-		records[index].Ancestry = slices.Clone(records[index].Ancestry)
-	}
-	return records, nil
+	return detachedCalls(graph.data.records.Calls[offset:end]), nil
 }
 
 // ScriptsPage returns up to limit records in registration order; an end page is nil.
@@ -278,11 +290,7 @@ func (graph CallGraph) ScriptsPage(offset, limit int) ([]ScriptOccurrence, error
 	if offset == end {
 		return nil, nil
 	}
-	records := slices.Clone(graph.data.records.Scripts[offset:end])
-	for index := range records {
-		records[index].Ancestry = slices.Clone(records[index].Ancestry)
-	}
-	return records, nil
+	return detachedScripts(graph.data.records.Scripts[offset:end]), nil
 }
 
 func invalidGraph(format string, values ...any) error {

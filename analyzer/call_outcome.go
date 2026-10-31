@@ -83,6 +83,8 @@ func (InterruptedCall) callResolution()  {}
 // CallOutcome retains a validated value payload. Its zero value is invalid.
 type CallOutcome struct{ value CallResolution }
 
+// Value returns the payload, or nil for the zero outcome. Every variant holds
+// only strings, integers and Optional values, so the copy shares no storage.
 func (outcome CallOutcome) Value() CallResolution { return outcome.value }
 
 // NewCallOutcome accepts value variants only, so the stored payload is immutable.

@@ -40,9 +40,6 @@ func (graph CallGraphData) validate() error {
 		if call.Step.Line < 0 || call.Step.Column < 0 || (call.Step.Line == 0) != (call.Step.Column == 0) {
 			return invalidGraph("call %q has invalid position", call.ID)
 		}
-		if _, err := NewCallOutcome(call.Outcome.Value()); err != nil {
-			return err
-		}
 		owner := graphOwner{depth: call.Depth, ancestry: call.Ancestry}
 		switch outcome := call.Outcome.Value().(type) {
 		case ExpandedCall:
@@ -66,7 +63,9 @@ func (graph CallGraphData) validate() error {
 		case UnavailableCall, UnresolvedCall, DynamicCall:
 			complete = false
 		default:
-			return invalidGraph("unsupported outcome %T", outcome)
+			// NewCallOutcome builds and validates every non-zero outcome, so
+			// only the zero outcome reaches this case.
+			return invalidGraph("call %q has no outcome", call.ID)
 		}
 		if _, limited := call.Outcome.Value().(DepthLimitedCall); !limited && call.Depth > budget.MaxDepth {
 			return invalidGraph("call %q exceeds depth budget", call.ID)
