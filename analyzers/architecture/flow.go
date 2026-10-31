@@ -989,7 +989,15 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					}
 				case *ssa.Store:
 					write(v.Addr)
-					if storage(v.Val.Type()) {
+					// Assigning a slice element carries what append and copy
+					// carry: nothing for a read-only value handle.
+					carried := storage(v.Val.Type())
+					if element, ok := v.Addr.(*ssa.IndexAddr); ok {
+						if _, ok := element.X.Type().Underlying().(*types.Slice); ok {
+							carried = visible(v.Val.Type())
+						}
+					}
+					if carried {
 						stored(v.Addr, v.Val)
 						put(root(v.Addr), get(v.Val))
 					}

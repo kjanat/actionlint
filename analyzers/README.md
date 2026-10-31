@@ -90,8 +90,8 @@ only what it hands its loop body. Passing a read-only value handle to an unknown
 possible write. The analyzer assumes that code changes a handle only through its
 exported methods, so an interface implementation in the same package that
 writes a handle's private fields is missed. So is code in the same package that
-writes the private fields of handles collected by `append`, a clone or an
-unknown call, or of handles a helper function receives through an iterator
+writes the private fields of handles collected by `append`, a clone, an
+assignment to a slice element or an unknown call, or of handles a helper function receives through an iterator
 parameter. A write into a container whose freshness cannot be proven, such as a
 slice element, also counts the values stored into that container as written.
 Aggregate value copies use
