@@ -58,7 +58,7 @@ func TestCheckInputModesPreserveConfigurationAndOrder(t *testing.T) {
 		})
 	}
 	t.Run("directory snapshots", func(t *testing.T) {
-		session, err := workspace.New(workspace.Options{WorkingDir: root})
+		session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 		if err != nil {
 			t.Fatal(err)
 		}

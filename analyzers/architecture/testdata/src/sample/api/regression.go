@@ -1,0 +1,175 @@
+package api
+
+import (
+	"math/big"
+	"sample/helper"
+	"sample/internal/detail"
+	"sync/atomic"
+)
+
+func AliasLeak() helper.Alias[detail.Record]     { return nil } // want "ARC001: public API AliasLeak exposes internal type sample/internal/detail.Record"
+func PhantomLeak() helper.Phantom[detail.Record] { return 0 }   // want "ARC001: public API PhantomLeak exposes internal type sample/internal/detail.Record"
+func AliasValue() helper.Alias[int]              { return nil }
+
+type AtomicCounter struct {
+	Value int64 // want "ARC004: type AtomicCounter exposes writable field Value"
+}
+
+func (c *AtomicCounter) Inc() { atomic.AddInt64(&c.Value, 1) }
+
+type CallbackCounter struct {
+	Value int64 // want "ARC004: type CallbackCounter exposes writable field Value"
+}
+
+func (c *CallbackCounter) Change(f func(*int64)) { f(&c.Value) }
+
+type ForwardCounter struct {
+	Value int64 // want "ARC004: type ForwardCounter exposes writable field Value"
+}
+
+func (c *ForwardCounter) Change(f func(*int64)) { forward(f, &c.Value) }
+func forward(f func(*int64), p *int64)          { f(p) }
+
+type DetachedCounter struct{ Value int64 }
+
+type ImportedCounter struct {
+	Value int64 // want "ARC004: type ImportedCounter exposes writable field Value"
+}
+
+func (c *ImportedCounter) Change(f func(*int64)) { helper.Forward(f, &c.Value) }
+
+type Mutator interface{ Change(*int64) }
+type InterfaceCounter struct {
+	Value int64 // want "ARC004: type InterfaceCounter exposes writable field Value"
+}
+
+func (c *InterfaceCounter) Change(m Mutator) { m.Change(&c.Value) }
+
+type HandleOwner struct{ value int64 }
+
+func (c *HandleOwner) Handle() helper.Handle { return helper.NewHandle(&c.value) } // want "ARC003: Handle result 1"
+
+func (c DetachedCounter) Change(f func(*int64)) { f(&c.Value) }
+
+type ScalarCounter struct{ Value int64 }
+
+func (c *ScalarCounter) Read(f func(int64)) { f(c.Value) }
+
+type Pipe struct {
+	Ch chan int // want "ARC002: state-owning type Pipe exposes writable field Ch"
+}
+
+func (p *Pipe) Stop() { close(p.Ch) }
+
+type Queue struct {
+	Ch chan int // want "ARC002: state-owning type Queue exposes writable field Ch"
+}
+
+func (q *Queue) Put(v int) { q.Ch <- v }
+
+type SelectQueue struct {
+	Ch chan int // want "ARC002: state-owning type SelectQueue exposes writable field Ch"
+}
+
+func (q *SelectQueue) TryPut(v int) bool {
+	select {
+	case q.Ch <- v:
+		return true
+	default:
+		return false
+	}
+}
+
+type DeferredCounter struct {
+	Value int64 // want "ARC004: type DeferredCounter exposes writable field Value"
+}
+
+func (c *DeferredCounter) Inc() { defer atomic.AddInt64(&c.Value, 1) }
+
+type SpawnedCounter struct {
+	Value int64 // want "ARC002: state-owning type SpawnedCounter exposes writable field Value"
+}
+
+func (c *SpawnedCounter) Inc() { go bump(&c.Value) }
+func bump(p *int64)            { *p++ }
+
+type DeferredPipe struct {
+	Ch chan int // want "ARC002: state-owning type DeferredPipe exposes writable field Ch"
+}
+
+func (p *DeferredPipe) Stop() { defer close(p.Ch) }
+
+type ExternalCounter struct {
+	Value int64 // want "ARC004: type ExternalCounter exposes writable field Value"
+}
+
+func (c *ExternalCounter) Inc() { mutate(&c.Value) }
+func mutate(*int64)
+
+type Token[T interface{ Use(detail.Record) }] int        // want "ARC001: public API Token exposes internal type sample/internal/detail.Record"
+type TokenAlias[T interface{ Use(detail.Record) }] = int // want "ARC001: public API TokenAlias exposes internal type sample/internal/detail.Record"
+
+type embedded struct{}
+
+func (embedded) Leak() detail.Record { return detail.Record{} }
+
+type Promoter struct{ embedded } // want "ARC001: public API Promoter exposes internal type sample/internal/detail.Record"
+
+type SelectOwner struct{ ch chan []byte }
+
+func (s *SelectOwner) Take() []byte { // want "ARC003: Take result 1"
+	select {
+	case b := <-s.ch:
+		return b
+	default:
+		return nil
+	}
+}
+
+type BigOwner struct{ n big.Int }
+
+func (o *BigOwner) Number() big.Int { return o.n } // want "ARC004: Number result 1"
+
+type hiddenFields struct{ Public int }
+
+type PromotedOwner struct {
+	hiddenFields // want "ARC002: state-owning type PromotedOwner exposes writable field Public"
+	private      int
+}
+
+type Scalar[T ~int | ~string] struct{ value T }
+
+func (s *Scalar[T]) Value() T { return s.value }
+
+type Box struct{ Data []byte }
+
+type FillOwner struct{ private []byte }
+
+func fill(dst *Box, src []byte) { dst.Data = src }
+
+func (s *FillOwner) Boxed() *Box { // want "ARC003: Boxed result 1"
+	b := new(Box)
+	fill(b, s.private)
+	return b
+}
+
+type ClosureCounter struct {
+	Value int64 // want "ARC004: type ClosureCounter exposes writable field Value"
+}
+
+func (c *ClosureCounter) Inc(up bool) {
+	inc := func() { c.Value++ }
+	dec := func() { c.Value-- }
+	f := dec
+	if up {
+		f = inc
+	}
+	f()
+}
+
+type hiddenRecord struct {
+	private int
+	Value   int
+}
+
+type PublicRecord = hiddenRecord // want "ARC002: state-owning type PublicRecord exposes writable field Value"

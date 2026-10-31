@@ -3,21 +3,22 @@
 The Go library has one module, `actionlint.kjanat.dev/v2`, with packages for distinct responsibilities. The v2 API
 intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
 
-Update Go imports from `actionlint.kjanat.dev/...` to `actionlint.kjanat.dev/v2/...`, then run
-`go get actionlint.kjanat.dev/v2@latest` and `go mod tidy`. The unversioned module path continues to select v1.
+| Package                                  | Responsibility                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `actionlint.kjanat.dev/v2`               | Convenience `Analyze` entry point                                     |
+| `actionlint.kjanat.dev/v2/analysis`      | Source requests, file/repository discovery and results                |
+| `actionlint.kjanat.dev/v2/analyzer`      | Analyzer input, required facts, registration and returned diagnostics |
+| `actionlint.kjanat.dev/v2/document`      | Workflow/action outlines and structured action references             |
+| `actionlint.kjanat.dev/v2/diagnostic`    | Diagnostics, source positions and suggested edits                     |
+| `actionlint.kjanat.dev/v2/config`        | Configuration values, loading, composition and inspection             |
+| `actionlint.kjanat.dev/v2/config/report` | Value-only configuration reports and inspection provenance            |
+| `actionlint.kjanat.dev/v2/rule`          | Shared rule metadata, categories, examples and capabilities           |
+| `actionlint.kjanat.dev/v2/source`        | Document revision, node identity and structural address               |
+| `actionlint.kjanat.dev/v2/resolver`      | Optional dependency resolver contract and provenance                  |
+| `actionlint.kjanat.dev/v2/syntax`        | Workflow syntax model and parser                                      |
 
-| Package                               | Responsibility                                                        |
-| ------------------------------------- | --------------------------------------------------------------------- |
-| `actionlint.kjanat.dev/v2`            | Convenience `Analyze` entry point                                     |
-| `actionlint.kjanat.dev/v2/analysis`   | Source requests, file/repository discovery and results                |
-| `actionlint.kjanat.dev/v2/analyzer`   | Analyzer input, required facts, registration and returned diagnostics |
-| `actionlint.kjanat.dev/v2/document`   | Workflow/action outlines and structured action references             |
-| `actionlint.kjanat.dev/v2/diagnostic` | Diagnostics, source positions and suggested edits                     |
-| `actionlint.kjanat.dev/v2/config`     | Configuration values, loading, composition and inspection             |
-| `actionlint.kjanat.dev/v2/rule`       | Shared rule metadata, categories, examples and capabilities           |
-| `actionlint.kjanat.dev/v2/source`     | Document revision, node identity and structural address               |
-| `actionlint.kjanat.dev/v2/resolver`   | Optional dependency resolver contract and provenance                  |
-| `actionlint.kjanat.dev/v2/syntax`     | Workflow syntax model and parser                                      |
+`config/report` defines `Report`, `Inspection`, `Origin` and `Warning`. The existing names in `config` alias those exact
+types.
 
 ## Analyze loaded sources
 
@@ -38,7 +39,9 @@ non-nil result may still contain useful findings and document outlines. Always i
 
 `result.FileCount` includes clean documents. `result.Documents` uses `document.Outlines`. The `document` package can
 encode and decode workflow/action outlines and parse `uses` references without importing the parser or execution engine.
-Outlines contain selected declarations.
+Outlines contain selected declarations. Workflow, job, step, action and runtime outlines are immutable values: read them
+through accessor methods, which return detached copies, and build them with `NewWorkflow`, `NewJob`, `NewStep`,
+`NewAction`, `NewCompositeRuns` and `NewDockerRuns`. A job or step `Reference` is derived from its `uses` value.
 Positions are one-based Unicode character positions; range ends are exclusive. The library result can be marshalled to
 JSON, but it is not the CLI's versioned result envelope.
 
@@ -57,14 +60,16 @@ in-memory requests.
 
 Construct invocation overlays with `config.ParseOverlay("config", source)` for a complete document, or
 `config.ParseOverlay("tools", source)` for one configuration section. Assign them to `FileOptions.ConfigOverlays`.
-`config.DisallowSuppressions("all", "expression")` constructs an enabled policy for
-`Config.Policy.DisallowSuppressions`; it validates the report mode and selected rules.
+Rule options are validated while parsing the document. For example, configure
+`lint.rules.policy.disallow-suppressions` with `level: on` and
+`options: {report: all, rules: [expression]}`.
 
 `Options.ReadFile` supplies a concurrent-safe file reader for files read by actionlint. It does not sandbox external tools.
-External tools are disabled by default in the library. Enable them explicitly with `Options.ShellCheck` or `Options.Ruff`:
+External tools are disabled by default in the library. Enable them explicitly in `Options.Tools`, keyed by tool id;
+`analysis.Tools()` lists the ids of the bundled tools, and any other key is an error:
 
 ```go
-options.Ruff = analysis.Tool{Process: &analysis.Process{Executable: "ruff"}}
+options.Tools = map[string]analysis.Tool{"ruff": {Process: &analysis.Process{Executable: "ruff"}}}
 ```
 
 `Executable` is a literal executable name or path. `Arguments` supplies separate arguments; no shell command-line parsing
@@ -83,13 +88,17 @@ type Analyzer interface {
 
 A descriptor names the analyzer and declares required facts: source content, declared run scripts, resolved mapping
 names, scripts invoked through composite action calls, or runtime execution facts. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
-Scripts expose their declared shell; omitted declarations remain unknown. Mapping entries distinguish known, unknown and
-invalid keys and retain source text and evaluated-data provenance. `Complete` indicates whether all mapping names are
+Scripts expose the declared shell, or an empty value when omitted. Mapping entries classify keys as known, unknown or
+invalid and associate them with source text and evaluation status. `Complete` indicates whether all mapping names are
 statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
 
-`Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path` and carries an
-`Invocation` with the calling step, the `uses` reference and the nesting depth; findings for such a script name that
-path. `Script.Spans` map script text back to the declaring document and `Script.Position` resolves a line and column,
+`Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path`;
+findings for such a script name that path. With the `invocations` fact, `Script.Occurrence` identifies the execution
+and its complete ancestry in `Input.CallGraph`. Declare `invocations` when requesting call-site data. Resolve the
+occurrence's `Owner` through `CallGraph.Call` for the calling step, `uses` reference and depth. Entry-owned scripts
+and action inputs have `Owner == CallGraph.Entry().ID`; `Call` reports not-found for that entry ID. Repeated calls
+share a declaration reference while retaining distinct occurrence IDs.
+`Script.Spans` map script text back to the declaring document and `Script.Position` resolves a line and column,
 reporting false for text without a source. With the `execution` fact, `Script.Runtime` carries the effective shell and
 working directory, each with an explicit known flag. The host collects these facts only when a registered analyzer
 requires them.
@@ -100,19 +109,40 @@ analyzer name and input path. Findings and errors from one analyzer do not disca
 
 An analyzer must finish its own work before returning and honor cancellation. The same instance may be called
 concurrently for different documents. The contract does not expose traversal callbacks, mutable built-in rules,
-process schedulers or caches. Built-in visitor adapters remain an internal implementation detail.
+process schedulers or caches.
+`Descriptor` and `Analyze` must not panic; the host does not recover analyzer panics.
 
 The same contract is available to other languages as the WebAssembly component interface described in
 [Plugins](plugins.md). The CLI loads such components with `--plugin`.
 
 ## Configuration and syntax
 
-Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration
-constructors include `RequireJobTimeout`, `RequireJobTimeoutRange` and `RequirePermissions`.
+Use `config.Parse`, `config.Load`, `config.ParseOverlay` and `config.Inspect` to validate
+configuration. `config.Config` is opaque; its zero value selects defaults.
+`MarshalText` returns owned YAML bytes. Build configuration as YAML or JSON and validate
+it once at this boundary. Internal policy and tool representations are not public API.
+Registry plugin declarations select canonical packages and exact versions. Registry
+evidence is cached by the host; no project lockfile is required. Direct artifact
+declarations retain their mandatory digest pins.
 `syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
+The returned tree is a detached value copy owned by the caller; it shares no storage with the parser.
 
-The configuration and syntax packages alias standalone implementations that do not import the analysis engine. Their
-public names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
+`analysis.Options.Repository` supplies a `repository.Snapshot` once per project root.
+Each fact has a concrete immutable type: available values and unavailable reasons are distinct.
+An available empty name set remains different from unavailable knowledge. Collection
+constructors and accessors copy their storage. Configured repository fields override
+these host facts after configuration inheritance and file overrides.
+
+`analysis.Options.RemoteActions` accepts an `actions.Provider`. It receives a parsed
+reference and returns a manifest bound to a host, repository ID, full commit ID and
+action directory. One request-scoped service supplies input/runtime checks and output
+inference. Its immutable-content cache uses that full identity; mutable references are
+cached only within the analysis request. Cancellation propagates; transport failures
+leave metadata unavailable. No built-in network fetcher or popular-action list is used.
+
+`actionlint.Schema(name)` returns a published JSON schema by path: `actionlint.schema.json`, which validates
+configuration files, or a file under `schemas/`, such as those it references. `actionlint config schema` prints the configuration schema with
+those references inlined and the tool providers of the selected plugins added.
 
 ## Migration from the flat API
 
@@ -129,7 +159,7 @@ public names are the supported import surface. Treat unexported state as opaque 
 | `Linter`, `AnalysisRenderer`, CLI output selection         | Run the CLI for its presentation contract; consume library diagnostics directly |
 | Expression checker internals, process and cache types      | Internal implementation; no compatibility re-export                             |
 
-The architecture decision and remaining implementation boundaries are recorded in
+The architecture and migration status are documented in
 [the analysis contracts ADR](design/analysis-contracts.md).
 
 ### Script engine backends
@@ -166,17 +196,21 @@ options.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.Scri
 Each analysis loads a path once, shares it between documents, and closes loaded engines before returning.
 Cleanup errors accompany the result. The loader owns artifact access and runtime limits; `ReadFile` does
 not constrain its filesystem access. Supplying a loader does not enable repository-selected processes.
-Explicit `Tool.Backend` instances remain caller-owned.
+Callers manage the lifetime of explicitly supplied `Tool.Backend` instances.
 
 Ruff receives its native options (`target-version`, `lint`, etc.). The native process adapter implements
 this same contract. ShellCheck backends receive `shell`, `exclude`, and `external-sources: false`; the
 source includes resolved inline directives and runner startup options. That backend route has no external
-source or rc-file capability: requests for those features fail explicitly. Native ShellCheck retains its
-filesystem-aware integration, including sourced-file diagnostics and fixes.
+source or rc-file capability: requests for those features fail explicitly. Use native ShellCheck for
+sourced-file diagnostics and fixes.
 
 These Go types are the host API. Component script engines use the typed
-[`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit) interface; legacy core engines keep their existing JSON ABI.
-The host adapts either transport to `analyzer.ScriptBackend`.
+[`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit) interface, version 0.2.0 or
+[0.3.0](../crates/actionlint-extension-api/wit/0.3.0/script-engine.wit); legacy core engines keep their existing JSON ABI,
+whose check version 3 matches 0.3.0. The host adapts either transport to `analyzer.ScriptBackend`. Engines on 0.3.0 or
+check 3 declare `Fixes`, `ReportedSources` and `Resources` in `analyzer.ScriptEngineDescriptor`, receive
+`ScriptRequest.Excluded`, and receive `ScriptRequest.Directory` when they request `analyzer.ToolDirectory`; their
+diagnostics may carry `Fixes` and `Source` as a process provider's do.
 
 ## Catalogue and source identity
 
@@ -191,6 +225,17 @@ nodes use content and occurrence identity. Anonymous content edits create a new 
 Addresses distinguish sibling and parallel steps within a snapshot.
 
 Diagnostic help, related locations and fix applicability are structured fields.
+`diagnostic.Related` binds `Revision` and `Coordinates` together; both zero means
+unbound, while mixed values are rejected. `analyzer.Input.Revision` and
+`Coordinates` supply the captured evidence for that request's own `Path`,
+independent of the invocation graph's `Reference`. Native and component adapters
+bind an unbound related location only when its path exactly equals `Input.Path`.
+Other unbound locations are withheld, never resolved from a path or legacy
+reference. Sealed publication revalidates revision, model, admitted alias and
+strict range against captured UTF-8 bytes. Rejection preserves the primary and
+reports the exact withheld count through a typed `admission-rejected` failure.
+Document identities are absolute, apart from the reserved `<stdin>` identity;
+display-path rewriting does not alter revision or coordinate fields.
 Fix revisions bind edits to the checked content. Missing applicability requires review.
 The CLI and editor adapters validate ranges, revisions and overlaps before applying or
 offering edits.

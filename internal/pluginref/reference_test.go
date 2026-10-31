@@ -14,7 +14,7 @@ func TestDirectURL(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := "https://example.com/Plugin.wasm?version=1#sha256=" + strings.Repeat("ab", 32)
-	if ref.DirectSource() != want || ref.String() != want || ref.Registry != "" || ref.Version != "" {
+	if ref.DirectSource() != want || ref.String() != want || ref.Registry() != "" || ref.Version() != "" {
 		t.Fatalf("unexpected direct declaration: %+v", ref)
 	}
 	if normalized, err := ref.Normalize(); err != nil || !ref.Equal(normalized) {
@@ -56,7 +56,7 @@ func TestParse(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if ref.Name != tc.name || ref.Version != tc.version || ref.Registry != DefaultRegistry || ref.String() != tc.canonical {
+			if ref.Name() != tc.name || ref.Version() != tc.version || ref.Registry() != DefaultRegistry || ref.String() != tc.canonical {
 				t.Fatalf("unexpected reference: %#v (%s)", ref, ref.String())
 			}
 		})
@@ -86,8 +86,8 @@ func TestRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ref.Registry != "https://example.com/catalog/" {
-		t.Fatalf("unexpected registry: %s", ref.Registry)
+	if ref.Registry() != "https://example.com/catalog/" {
+		t.Fatalf("unexpected registry: %s", ref.Registry())
 	}
 	directory := t.TempDir()
 	local := url.URL{Scheme: "file", Path: filepath.ToSlash(directory)}
@@ -98,7 +98,7 @@ func TestRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := LocalRegistryDirectory(ref.Registry); err != nil || got != directory {
+	if got, err := LocalRegistryDirectory(ref.Registry()); err != nil || got != directory {
 		t.Fatalf("local catalogue: %s, %v", got, err)
 	}
 	for _, registry := range []string{
@@ -123,8 +123,8 @@ func TestRegistryPreservesIPv6Zone(t *testing.T) {
 			t.Fatal(err)
 		}
 		want := strings.Replace(source, "FE80", "fe80", 1)
-		if ref.Registry != want {
-			t.Fatalf("registry=%q, want %q", ref.Registry, want)
+		if ref.Registry() != want {
+			t.Fatalf("registry=%q, want %q", ref.Registry(), want)
 		}
 	}
 }
@@ -143,10 +143,10 @@ func TestLocalRegistryNormalization(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if ref.Registry != want {
-			t.Fatalf("registry %q normalized to %q, want %q", suffix, ref.Registry, want)
+		if ref.Registry() != want {
+			t.Fatalf("registry %q normalized to %q, want %q", suffix, ref.Registry(), want)
 		}
-		got, err := LocalRegistryDirectory(ref.Registry)
+		got, err := LocalRegistryDirectory(ref.Registry())
 		if err != nil || got != directory {
 			t.Fatalf("directory changed: %q, %v", got, err)
 		}

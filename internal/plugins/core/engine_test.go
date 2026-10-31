@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -16,8 +17,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/api"
+	"github.com/kjanat/wazero/experimental"
 )
 
 func enginePath(name string) string {
@@ -56,7 +57,7 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 		Location: analyzer.ScriptPosition{Row: 1, Column: 21}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 28},
 		URL: "https://docs.astral.sh/ruff/rules/undefined-name/",
 	}
-	if len(diagnostics) != 1 || diagnostics[0] != want {
+	if len(diagnostics) != 1 || !reflect.DeepEqual(diagnostics[0], want) {
 		t.Fatalf("diagnostics=%+v", diagnostics)
 	}
 	clean, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "print('ok')\n", Filename: "step.py"})
@@ -212,10 +213,10 @@ func TestConcurrentChecks(t *testing.T) {
 func TestLoadRefusesIncompatibleModules(t *testing.T) {
 	for name, want := range map[string]string{
 		"imports":        "module imports env.host; a core engine must not import",
-		"missing-export": "metadata advertises no check version this host supports (version 1)",
+		"missing-export": "metadata advertises no check version this host supports (versions 1 and 3)",
 		"signature":      "export abi_version has signature [] -> [i64]; ABI version 1 needs [] -> [i32]",
 		"abi-version":    "module reports ABI version 2; this host implements 1",
-		"no-check":       "metadata advertises no check version this host supports (version 1)",
+		"no-check":       "metadata advertises no check version this host supports (versions 1 and 3)",
 	} {
 		engine, err := corewasm.Load(t.Context(), filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{})
 		if err == nil {

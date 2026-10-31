@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestCachePolicyEventGuards(t *testing.T) {
@@ -123,7 +122,7 @@ func TestCachePolicyInheritedEventUnion(t *testing.T) {
 func TestCacheEventGuardUnknownSyntax(t *testing.T) {
 	events := []string{"pull_request_target"}
 	for _, condition := range []string{"github.event_name ==", "prefix ${{ false }}", "${{ false }} suffix", "${{ false }}${{ false }}", " ${{ false }}", "${{ false }} "} {
-		got := cacheReachableEvents(events, &workflowlang.Job{If: &workflowlang.String{Value: condition}})
+		got := cacheReachableEvents(events, condition)
 		if !slices.Equal(got, events) {
 			t.Errorf("condition %q: want events %v, got %v", condition, events, got)
 		}

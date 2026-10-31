@@ -28,7 +28,7 @@ func TestCompositeScriptKeywordPositions(t *testing.T) {
 				{"ordinary word", "'echo'", "if true; then\n  %s\nfi", false},
 			} {
 				t.Run(fmt.Sprintf("standalone=%t/%s/%s", standalone, shell, tc.name), func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					config := "tools: {shellcheck: false, ruff: false}\n"
 					testutil.WriteFixture(t, root, ".github/actionlint.yaml", config)
 					script := fmt.Sprintf(tc.script, "${{ "+tc.expression+" }}")

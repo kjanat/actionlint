@@ -10,12 +10,12 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, B018]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ jobs:
         run: print(second_missing)
 `
 				}
-				result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
+				result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -97,7 +97,7 @@ jobs:
 }
 
 func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {target-version: py314}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -142,7 +142,7 @@ jobs:
 }
 
 func TestRuffAPINonDiagnosticModes(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -152,7 +152,7 @@ jobs:
         run: print(missing)
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
-		_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
 			t.Fatalf("mode not rejected: flag=%s error=%v", flag, err)
 		}

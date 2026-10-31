@@ -48,6 +48,8 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 			force = true
 		case render.ColorNever:
 			return false
+		case render.ColorAuto:
+			// Fall back to terminal detection.
 		}
 	}
 	// Help runs before capture and prepareInvocation, but its flags are parsed.
@@ -100,7 +102,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		}
 		out := a.streams.Stdout
 		if a.inv.Render.PrettyJSON {
-			out = &prettyJSONOutput{Writer: out, ctx: c.Context(), color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
+			out = &prettyJSONOutput{Writer: out, ctx: a.ctx, color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
 		}
 		if err := writeCommandJSON(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)
@@ -146,22 +148,8 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		flags.AddFlagSet(c.Flags())
 		flags.AddFlagSet(c.InheritedFlags())
 		flags.VisitAll(func(f *pflag.Flag) {
-			if name, negated := strings.CutPrefix(f.Name, "no-"); negated {
-				if positive := flags.Lookup(name); positive != nil && len(positive.Annotations[commandOptionalValueAnnotation]) > 0 {
-					return
-				}
-			}
 			if groups := f.Annotations[commandGroupAnnotation]; len(groups) > 0 && groups[0] == group {
-				display := *f
-				if value := f.Annotations[commandOptionalValueAnnotation]; len(value) > 0 {
-					display.Name += "[=" + value[0] + "]"
-					if flags.Lookup("no-"+f.Name) != nil {
-						display.Name = "[no-]" + display.Name
-					}
-					display.NoOptDefVal, display.DefValue = "", ""
-					display.Value = helpOptionalValue{Value: f.Value}
-				}
-				fs.AddFlag(&display)
+				fs.AddFlag(f)
 			}
 		})
 		if usage := fs.FlagUsagesWrapped(width); usage != "" {
@@ -172,8 +160,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	writeHelpDestinations(out, heading, links)
 }
 
-// Root help is an overview. The registered flags remain available to the parser,
-// completions and JSON help, while check --help lists all checking options.
+// Root help shows an overview; check --help lists the checking options.
 func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)
@@ -181,7 +168,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	name := terminalLink(links, "actionlint", projectURL)
 	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s — Check workflows, actions and embedded scripts", buildinfo.Version()))
 	_, _ = fmt.Fprintf(out, "\n%s\n  %s [flags] [files...]\n  %s [flags] -\n  %s <command>\n", heading.Sprint("Usage:"), command.Sprint(name), command.Sprint(name), command.Sprint(name))
-	_, _ = fmt.Fprintln(out, "\nNo files: discover workflows and actions. Use - for stdin.\nUse -- before filenames beginning with a dash.")
+	_, _ = fmt.Fprintln(out, "\nNo arguments: show help. Run actionlint check to discover workflows and actions.\nUse - for stdin. Use -- before filenames beginning with a dash.")
 	_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
 	for _, sub := range a.root.Commands() {
 		if !sub.Hidden && sub.Name() != "help" {
@@ -202,7 +189,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 			{"config", "Read configuration from `PATH`"},
 			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
 			{"json", "Write JSON results"},
-			{"output-format", "Output `FMT`: text, oneline, json, jsonl, sarif, github"},
+			{"output-format", "Output `FMT`: text, pretty, oneline, json, jsonl, sarif, github"},
 			{"output-file", "Write results to `PATH`"},
 			{"quiet", "Suppress progress and summaries"},
 			{"help", "Show help"},
@@ -223,11 +210,6 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	_, _ = fmt.Fprintln(out, "Docs: "+terminalLink(links, "https://actionlint.kjanat.dev", "https://actionlint.kjanat.dev"))
 }
 
-// The optional value is already part of the display name, so omit its type label.
-type helpOptionalValue struct{ pflag.Value }
-
-func (helpOptionalValue) Type() string { return "" }
-
 func (a *commandApp) legacyHelp(c *cobra.Command) {
 	a.helpShown = true
 	out, colored, restore := a.helpOutput(c)
@@ -245,10 +227,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -version                version
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
-  -shellcheck[=COMMAND]   false or an empty value disables ShellCheck
-  -ruff[=COMMAND]         false or an empty value disables Ruff
-  -pyflakes COMMAND       Select Pyflakes rules through Ruff unless Ruff is selected
-  -stdin-filename PATH    unchanged
+`+deprecatedFlagHelp()+`  -stdin-filename PATH
 
 Options may appear before or after filenames. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win

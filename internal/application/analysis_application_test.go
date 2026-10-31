@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
@@ -105,7 +105,7 @@ type analysisFailingRule struct {
 	err error
 }
 
-func (r *analysisFailingRule) VisitWorkflowPre(*workflowlang.Workflow) error { return r.err }
+func (r *analysisFailingRule) VisitWorkflowPre(workflowdecl.WorkflowView) error { return r.err }
 
 func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
 	cause := errors.New("custom analysis failed")

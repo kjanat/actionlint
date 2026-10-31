@@ -1,16 +1,18 @@
 // Package action owns action-manifest syntax, source positions, schema validation,
-// expression availability and runtime metadata. It does not load repository files
-// or retain workflow caller state.
+// expression availability and runtime metadata.
 package action
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // Input is input metadata in "inputs" section in action.yml metadata file.
@@ -31,62 +33,6 @@ type Input struct {
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#inputs
 type Inputs map[string]*Input
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (inputs *Inputs) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.MappingNode {
-		return expectedMapping("inputs", n)
-	}
-
-	type actionInputMetadata struct {
-		Required           bool    `yaml:"required"`
-		Default            *string `yaml:"default"`
-		DeprecationMessage string  `yaml:"deprecationMessage"`
-	}
-
-	var err error
-
-	md := make(Inputs, len(n.Content)/2)
-	for i := 0; i < len(n.Content); i += 2 {
-		k, v := n.Content[i].Value, n.Content[i+1]
-		v = Node(v)
-		if name := Scalar(n.Content[i]); name != nil {
-			k = *name
-		}
-
-		var m actionInputMetadata
-		if err := Fields(v).Decode(&m); err != nil {
-			return err
-		}
-
-		id := strings.ToLower(k)
-		if _, ok := md[id]; ok {
-			return fmt.Errorf("input %q is duplicated", k)
-		}
-
-		// Value of `deprecationMessage: ` is `nil`. So we cannot determine the key exists or not by `v.Decode()` even
-		// if we change the type of `DeprecationMessage` to `*string`.
-		dep := false
-		for i := 0; i < len(v.Content); i += 2 {
-			switch strings.ToLower(Key(v.Content[i])) {
-			case "deprecationmessage":
-				dep = true
-			case "description", "required", "default":
-				// OK
-			default:
-				// Do not return this non-fatal error immediately so that this method still can return a parsed metadata
-				// even if the error occurs. This is useful for parsing somewhat broken metadata by generate-popular-actions
-				// script.
-				err = fmt.Errorf("unexpected key %q for definition of input %q", v.Content[i].Value, k)
-			}
-		}
-
-		md[id] = &Input{k, m.Required && m.Default == nil, dep, strings.TrimSpace(m.DeprecationMessage)}
-	}
-
-	*inputs = md
-	return err
-}
-
 // Output is output metadata in "outputs" section in action.yml metadata file.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-composite-actions
 type Output struct {
@@ -97,29 +43,6 @@ type Output struct {
 // names are case-insensitive.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-composite-actions
 type Outputs map[string]*Output
-
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (inputs *Outputs) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.MappingNode {
-		return expectedMapping("outputs", n)
-	}
-
-	md := make(Outputs, len(n.Content)/2)
-	for i := 0; i < len(n.Content); i += 2 {
-		k := n.Content[i].Value
-		if name := Scalar(n.Content[i]); name != nil {
-			k = *name
-		}
-		id := strings.ToLower(k)
-		if _, ok := md[id]; ok {
-			return fmt.Errorf("output %q is duplicated", k)
-		}
-		md[id] = &Output{k}
-	}
-
-	*inputs = md
-	return nil
-}
 
 // ExprString is a string value from action metadata that may contain
 // ${{ }} expressions, together with the position of the value node in the metadata file.
@@ -162,70 +85,19 @@ type Step struct {
 	// With holds each "with" input value that is a string.
 	With []*KeyValue `json:"with"`
 	// Env holds each "env" variable value that is a string.
-	Env             []*KeyValue `json:"env"`
-	Shell           *ExprString `yaml:"-" json:"-"`
-	ContinueOnError *ExprString `yaml:"-" json:"-"`
-	WithExpression  *ExprString `yaml:"-" json:"-"`
-	EnvExpression   *ExprString `yaml:"-" json:"-"`
-	ID              *ExprString `yaml:"-" json:"-"`
-	Node            *yaml.Node  `yaml:"-" json:"-"`
+	Env             []*KeyValue  `json:"env"`
+	Shell           *ExprString  `yaml:"-" json:"-"`
+	ContinueOnError *ExprString  `yaml:"-" json:"-"`
+	WithExpression  *ExprString  `yaml:"-" json:"-"`
+	EnvExpression   *ExprString  `yaml:"-" json:"-"`
+	ID              *ExprString  `yaml:"-" json:"-"`
+	Node            *syntax.Node `yaml:"-" json:"-"`
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (s *Step) UnmarshalYAML(n *yaml.Node) error {
-	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
-		n = n.Alias
-	}
-
-	s.Line, s.Column = n.Line, n.Column
-	s.Node = n
-	if n.Kind != yaml.MappingNode {
-		return nil
-	}
-
-	s.IsMapping = true
-	s.Keys = make([]string, 0, len(n.Content)/2)
-	for i := 0; i < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-		key := Key(k)
-		s.Keys = append(s.Keys, key)
-		switch strings.ToLower(key) {
-		case "id":
-			s.ID = yamlActionExprString(v)
-			if s.ID != nil {
-				if literal := exprlang.LiteralExpressionValue(s.ID.Value); literal != nil {
-					s.ID.Value = *literal
-				}
-			}
-		case "if":
-			s.If = yamlActionExprString(v)
-		case "run":
-			s.Run = yamlActionExprString(v)
-		case "working-directory":
-			s.WorkingDirectory = yamlActionExprString(v)
-		case "name":
-			s.StepName = yamlActionExprString(v)
-		case "with":
-			s.With = yamlKeyValues(v)
-			s.WithExpression = yamlExprString(v)
-		case "env":
-			s.Env = yamlKeyValues(v)
-			s.EnvExpression = yamlExprString(v)
-		case "shell":
-			s.Shell = yamlActionExprString(v)
-		case "continue-on-error":
-			s.ContinueOnError = yamlExprString(v)
-		case "uses":
-			s.Uses = Scalar(v)
-		}
-	}
-	return nil
-}
-
-func yamlActionExprString(n *yaml.Node) *ExprString {
+func yamlActionExprString(n *syntax.Node) *ExprString {
 	n = Node(n)
 	if value := yamlExprString(n); value != nil {
 		return value
@@ -236,63 +108,17 @@ func yamlActionExprString(n *yaml.Node) *ExprString {
 	return nil
 }
 
-func yamlExprString(n *yaml.Node) *ExprString {
-	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+func yamlExprString(n *syntax.Node) *ExprString {
+	for n.Kind == syntax.AliasNode && n.Alias != nil && n.Alias.Kind != syntax.AliasNode {
 		n = n.Alias
 	}
-	if n.Kind == yaml.ScalarNode && n.Tag == "!!str" {
+	if n.Kind == syntax.ScalarNode && n.Tag == "!!str" {
 		return &ExprString{Value: n.Value, Line: n.Line, Column: n.Column}
 	}
 	return nil
 }
 
-func yamlKeyValues(n *yaml.Node) []*KeyValue {
-	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
-		n = n.Alias
-	}
-	if n.Kind != yaml.MappingNode {
-		return nil
-	}
-	kvs := make([]*KeyValue, 0, len(n.Content)/2)
-	for i := 0; i+1 < len(n.Content); i += 2 {
-		v := yamlExprString(n.Content[i+1])
-		if v == nil {
-			continue // non-string values (bool/number) cannot hold ${{ }}
-		}
-		kvs = append(kvs, &KeyValue{Name: Key(n.Content[i]), Value: *v})
-	}
-	return kvs
-}
-
 type actionCompositeSteps []*Step
-
-func (ss *actionCompositeSteps) UnmarshalYAML(n *yaml.Node) error {
-	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
-		n = n.Alias
-	}
-	if n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
-		*ss = nil
-		return nil
-	}
-	if n.Kind != yaml.SequenceNode {
-		return fmt.Errorf(
-			"yaml: steps must be sequence node but %s node was found at line:%d, col:%d",
-			workflowlang.NodeKindName(n.Kind),
-			n.Line,
-			n.Column,
-		)
-	}
-	steps := make(actionCompositeSteps, 0, len(n.Content))
-	for _, c := range n.Content {
-		s := &Step{}
-		if err := s.UnmarshalYAML(c); err != nil {
-			return err
-		}
-		steps = append(steps, s)
-	}
-	*ss = steps
-	return nil
-}
 
 // Runs is "runs" section of action.yaml. It defines how the action is run.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
@@ -334,41 +160,28 @@ type Branding struct {
 	Color string `yaml:"color"`
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (r *Runs) UnmarshalYAML(n *yaml.Node) error {
-	type runs Runs
-	return Fields(n).Decode((*runs)(r))
-}
-
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (b *Branding) UnmarshalYAML(n *yaml.Node) error {
-	type branding Branding
-	return Fields(n).Decode((*branding)(b))
-}
-
 // Key resolves a metadata key using the runner's literal-expression rules.
-func Key(n *yaml.Node) string {
+func Key(n *syntax.Node) string {
 	if key := Scalar(n); key != nil {
 		return *key
 	}
 	return n.Value
 }
 
-// Fields normalizes schema field names in a shallow copy for
-// YAML struct decoding. User-defined mapping keys and source nodes retain
-// their spelling; the schema validator reads the original tree.
-// Fields normalizes literal keys without changing the original YAML source tree.
-func Fields(node *yaml.Node) *yaml.Node {
+// Fields copies a mapping's keys and normalizes their spelling for struct decoding.
+func Fields(node *syntax.Node) *syntax.Node {
 	n := Node(node)
-	if n.Kind != yaml.MappingNode {
+	if n.Kind != syntax.MappingNode {
 		return n
 	}
 	normalized := *n
-	normalized.Content = append([]*yaml.Node(nil), n.Content...)
+	normalized.Content = append([]*syntax.Node(nil), n.Content...)
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		key := *n.Content[i]
-		if value := Scalar(&key); value != nil {
-			key.Kind, key.Tag, key.Value = yaml.ScalarNode, "!!str", strings.ToLower(*value)
+		value := Scalar(&key)
+		key.Alias, key.Anchor = nil, ""
+		if value != nil {
+			key.Kind, key.Style, key.Tag, key.Value = syntax.ScalarNode, 0, "!!str", strings.ToLower(*value)
 			if key.Value == "deprecationmessage" {
 				key.Value = "deprecationMessage"
 			}
@@ -378,18 +191,21 @@ func Fields(node *yaml.Node) *yaml.Node {
 	return &normalized
 }
 
-// Metadata represents structure of action.yaml.
+// Metadata represents structure of action.yaml. It is a plain record: Parse
+// fills it, and catalogs and JSON build it directly. Source positions come from
+// its Provenance, which never reads the other fields.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 type Metadata struct {
+	// Provenance is set by Parse; it is zero for metadata without parsed source.
+	Provenance Provenance `yaml:"-" json:"-"`
 	// SourceMapped records that repository composition supplied a source override.
 	SourceMapped bool `yaml:"-" json:"-"`
 	// Directory, Filename and Source identify the decoded manifest independently of its caller.
 	Directory string `yaml:"-" json:"-"`
 	Filename  string `yaml:"-" json:"-"`
 	Source    []byte `yaml:"-" json:"-"`
-	// Root retains physical declarations for schema checks and source mapping.
-	Root      *yaml.Node `yaml:"-" json:"-"`
-	positions *metadataPositionCache
+	// Root is the original YAML tree used for schema checks and source mapping.
+	Root *syntax.Node `yaml:"-" json:"-"`
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -413,81 +229,6 @@ type Metadata struct {
 	InputDefaults []*KeyValue `yaml:"-" json:"-"`
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler. In addition to the struct tags, it captures the
-// value and position of each input's "default" so that ${{ }} expressions used there can be
-// checked against the runner's input-default context.
-func (md *Metadata) UnmarshalYAML(n *yaml.Node) error {
-	type metadata Metadata // Alias type to avoid infinite recursion into this method
-	var m metadata
-	err := Fields(n).Decode(&m)
-	// The popular-actions generator uses partial metadata after tolerated input errors.
-	*md = Metadata(m)
-	// The runner turns a single string-literal expression into a literal before
-	// dispatching the runtime or resolving entrypoint files.
-	for _, value := range []*string{
-		&md.Name, &md.Description, &md.Runs.Using, &md.Runs.Plugin,
-		&md.Runs.Main, &md.Runs.Pre, &md.Runs.Post,
-		&md.Runs.PreIf, &md.Runs.PostIf, &md.Runs.Image,
-		&md.Runs.Entrypoint, &md.Runs.PreEntrypoint, &md.Runs.PostEntrypoint,
-	} {
-		if literal := exprlang.LiteralExpressionValue(*value); literal != nil {
-			*value = *literal
-		}
-	}
-	md.Root = n
-	md.positions = &metadataPositionCache{}
-	md.InputDefaults = collectInputDefaults(n)
-	return err
-}
-
-// collectInputDefaults walks the raw metadata mapping node and returns the "default" value of
-// every input that is a string, together with its position.
-func collectInputDefaults(n *yaml.Node) []*KeyValue {
-	for n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
-		n = n.Alias
-	}
-	if n.Kind != yaml.MappingNode {
-		return nil
-	}
-
-	var inputs *yaml.Node
-	for i := 0; i+1 < len(n.Content); i += 2 {
-		if strings.EqualFold(Key(n.Content[i]), "inputs") {
-			inputs = n.Content[i+1]
-			break
-		}
-	}
-	if inputs == nil {
-		return nil
-	}
-	for inputs.Kind == yaml.AliasNode && inputs.Alias != nil && inputs.Alias.Kind != yaml.AliasNode {
-		inputs = inputs.Alias
-	}
-	if inputs.Kind != yaml.MappingNode {
-		return nil
-	}
-
-	var out []*KeyValue
-	for i := 0; i+1 < len(inputs.Content); i += 2 {
-		name, def := Key(inputs.Content[i]), inputs.Content[i+1]
-		for def.Kind == yaml.AliasNode && def.Alias != nil && def.Alias.Kind != yaml.AliasNode {
-			def = def.Alias
-		}
-		if def.Kind != yaml.MappingNode {
-			continue
-		}
-		for j := 0; j+1 < len(def.Content); j += 2 {
-			if !strings.EqualFold(Key(def.Content[j]), "default") {
-				continue
-			}
-			if v := yamlExprString(def.Content[j+1]); v != nil {
-				out = append(out, &KeyValue{Name: name, Value: *v})
-			}
-		}
-	}
-	return out
-}
-
 // Dir returns a directory path of the action.
 func (md *Metadata) Dir() string {
 	return md.Directory
@@ -498,24 +239,39 @@ func (md *Metadata) Path() string {
 	return filepath.Join(md.Directory, md.Filename)
 }
 
-func expectedMapping(where string, n *yaml.Node) error {
-	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowlang.NodeKindName(n.Kind), n.Line, n.Column)
+func expectedMapping(where string, n *syntax.Node) error {
+	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowparser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
-// Parse decodes one manifest and retains its source and lazy scalar mappings.
+// Parse decodes an action manifest.
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
+// A fatal decode takes diagnostic precedence when expansion admission also fails.
 func Parse(path string, content []byte) (*Metadata, error) {
-	metadata := &Metadata{positions: &metadataPositionCache{}}
-	err := yaml.Unmarshal(content, metadata)
-	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), content
+	metadata := &Metadata{}
+	owned := bytes.Clone(content)
+	root, err := codec.Parse(owned)
+	if err == nil && root.Kind != 0 {
+		err = Decode(root, metadata)
+		// Schema errors can leave useful declarations and unvisited step fields.
+		// Admission must still gate semantic recovery of those fields.
+		if admissionErr := workflowparser.AdmitYAMLAliases(root); admissionErr != nil {
+			if _, fatal := codec.FatalLoadError(err); fatal {
+				err = codec.NewAdmissionError(err)
+			} else {
+				err = errors.Join(err, admissionErr)
+			}
+		}
+	}
+	metadata.Provenance = newProvenance(string(owned))
+	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), owned
 	return metadata, err
 }
 
-// ScalarSource resolves a decoded value back to its original YAML scalar.
-// Source-less metadata and values without a verified mapping return nil.
-func (md *Metadata) ScalarSource(value *ExprString) *workflowlang.ScriptSource {
-	if md.positions == nil {
-		return nil
+// OriginalSource returns the exact text decoded by Parse. Hand-built metadata
+// has no source provenance, even when its exported Source field is populated.
+func (md *Metadata) OriginalSource() (string, bool) {
+	if md == nil {
+		return "", false
 	}
-	return md.positions.source(md, value)
+	return md.Provenance.Text()
 }

@@ -546,7 +546,7 @@ func (u *UntrustedInputChecker) OnVisitEnd() {
 // Errs returns errors detected by this checker. This method should be called after visiting all
 // nodes in a syntax tree.
 func (u *UntrustedInputChecker) Errs() []*Error {
-	return u.errs
+	return detachErrors(u.errs)
 }
 
 // Init initializes a state of checker.

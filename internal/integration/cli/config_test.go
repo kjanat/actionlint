@@ -64,7 +64,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testutil.NewDefaultPluginRegistryWithArtifact(t, wasm)
+	testutil.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
@@ -142,7 +142,7 @@ lint:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.ConfigVariables == nil || resolved.ConfigSecrets != nil {
+	if repoconfig.VariableNames(resolved.Facts()) == nil || repoconfig.SecretNames(resolved.Facts()) != nil {
 		t.Fatal("[] and null lost their distinction")
 	}
 	if repoconfig.DiagnosticLevel(resolved, "require-commit-hash") != "off" || resolved.Policy.RequiredActions == nil {
@@ -181,7 +181,7 @@ lint:
 }
 
 func TestCommandConfigAndEmptyArgs(t *testing.T) {
-	testutil.NewDefaultPluginRegistry(t)
+	testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
 	gitRepository(t, ".")
@@ -191,10 +191,12 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// A bare invocation shows help. Importing the test binary's own flags
+	// instead would end in a usage error.
 	for _, args := range [][]string{nil, {"actionlint"}} {
 		var out, errout bytes.Buffer
 		cmd := cli.Command{Stdout: &out, Stderr: &errout}
-		if code := cmd.Main(args); code != 0 || out.Len() != 0 || errout.String() != "✓ Checked 1 workflow. All clear!\n" {
+		if code := cmd.Main(args); code != 0 || !strings.Contains(out.String(), "Usage:") || errout.Len() != 0 {
 			t.Fatalf("empty args imported process args: %d %s %s", code, &out, &errout)
 		}
 	}

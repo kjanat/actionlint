@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestFileOverrideExplicitToolResets(t *testing.T) {
@@ -22,13 +22,13 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 			}
 			for range 2 {
 				got, err := repoconfig.ForFile(config, "ci.yml", "")
-				if err != nil || got.Tools.Shellcheck.Config != nil {
+				if err != nil || got.Tools["shellcheck"].Config != nil {
 					t.Fatalf("explicit tool reset lost: %+v, %v", got, err)
 				}
-				if overlay == "{shellcheck: {config: null}}" && (got.Tools.Shellcheck.Enabled == nil || *got.Tools.Shellcheck.Enabled) {
+				if overlay == "{shellcheck: {config: null}}" && (got.Tools["shellcheck"].Enabled == nil || *got.Tools["shellcheck"].Enabled) {
 					t.Fatal("config reset changed inherited tool enablement")
 				}
-				encoded, err := yaml.Marshal(config)
+				encoded, err := codec.Marshal(config)
 				if err != nil {
 					t.Fatal(err)
 				}

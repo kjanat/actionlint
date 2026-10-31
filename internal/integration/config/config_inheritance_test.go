@@ -10,7 +10,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestConfigExtends(t *testing.T) {
@@ -33,7 +33,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	resolved := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
-	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(cfg.ConfigVariables, []string{"second"}) {
+	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(repoconfig.VariableNames(cfg.Facts()), []string{"second"}) {
 		t.Fatalf("%+v", resolved)
 	}
 	if len(cfg.Sources()) != 3 {
@@ -52,7 +52,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if cfg.IncludesFile(".github/workflows/skip.yml", root) || !cfg.IncludesFile(".github/workflows/ci.yml", root) {
 		t.Fatal(cfg.Files)
 	}
-	encoded, err := yaml.Marshal(cfg.Tools.Shellcheck.Config)
+	encoded, err := codec.Marshal(cfg.Tools["shellcheck"].Config)
 	if err != nil {
 		t.Fatal(err)
 	}

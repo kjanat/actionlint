@@ -10,7 +10,7 @@ import (
 )
 
 func TestCompositeStatusConditionCheckout(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:

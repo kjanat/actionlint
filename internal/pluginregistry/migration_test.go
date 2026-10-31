@@ -39,15 +39,15 @@ func TestRegistryTransportMigration(t *testing.T) {
 	if err := file.Lock.Sync(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
-	requests := len(registry.Requests)
+	registry.SetOffline(true)
+	requests := len(registry.Requests())
 	if err := file.Lock.Sync(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	if file.Lock.Plugins[0] != old || len(registry.Requests) != requests {
+	if file.Lock.Plugins[0] != old || len(registry.Requests()) != requests {
 		t.Fatal("sync upgraded or resolved the pinned core release")
 	}
-	registry.Offline = false
+	registry.SetOffline(false)
 	if err := file.Set(next); err != nil {
 		t.Fatalf("new version transport migration rejected: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 			registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
 			registry.Publish(t, "v2.0.0")
 			url := registry.RecordURL("v2.0.0")
-			registry.Files[url] = bytes.Replace(registry.Files[url], []byte(test.before), []byte(test.after), 1)
+			registry.SetFile(url, bytes.Replace(registry.File(url), []byte(test.before), []byte(test.after), 1))
 			if _, err := registryClient(t).Resolve(t.Context(), testutil.FixturePluginName, "latest"); err == nil {
 				t.Fatal("accepted inconsistent migration evidence")
 			}

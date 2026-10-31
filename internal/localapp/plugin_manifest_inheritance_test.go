@@ -27,8 +27,8 @@ func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(resolved.Config.ConfigVariables, []string{"LEAF"}) {
-		t.Fatalf("inherited legacy input overrode leaf: %#v", resolved.Config.ConfigVariables)
+	if !slices.Equal(config.VariableNames(resolved.Config.Facts()), []string{"LEAF"}) {
+		t.Fatalf("inherited legacy input overrode leaf: %#v", config.VariableNames(resolved.Config.Facts()))
 	}
 	if !manifest.Declared || len(manifest.References) != 0 {
 		t.Fatalf("empty plugin opt-out lost: %+v", manifest)

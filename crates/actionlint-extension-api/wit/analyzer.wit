@@ -1,20 +1,16 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
-/// A plugin analyzes one document at a time.
-///
-/// The host hands over the document and the facts the plugin declared in its
-/// descriptor, and takes back diagnostics.
-interface analyzer {
+/// Invocation facts for the current analyze call. IDs are opaque host identities.
+/// No graph is available during describe or configuration negotiation.
+interface invocation-context {
+    /// IDs are unique across entry, calls and scripts within a graph. Guests
+    /// compare them verbatim; the host currently supplies 64 lowercase hex digits.
+    type occurrence-id = string;
     record source-reference {
         document: string,
         revision: string,
         node: string,
         address: string,
-    }
-
-    record revision {
-        path: string,
-        digest: string,
     }
 
     /// One-based Unicode character position in a document.
@@ -23,6 +19,111 @@ interface analyzer {
     record position {
         line: u32,
         column: u32,
+    }
+
+
+    enum entry-kind { workflow, action }
+    /// The entry identifies the analyzed source snapshot and has depth zero.
+    record entry {
+        id: occurrence-id,
+        kind: entry-kind,
+        reference: source-reference,
+    }
+    record budget { max-depth: u32, max-calls: u32, max-scripts: u32 }
+    enum condition { enabled, skipped, runtime-dependent }
+    enum script-kind { run, action-input }
+    record script-occurrence {
+        id: occurrence-id,
+        owner: occurrence-id,
+        /// Entry through owner, in traversal order; length equals depth + 1.
+        /// Owner is the containing document invocation for both run scripts and
+        /// action-input text. Action inputs do not execute the referenced action.
+        ancestry: list<occurrence-id>,
+        depth: u32,
+        declaration: source-reference,
+        kind: script-kind,
+        input: string,
+    }
+    enum opaque-reason { dockerfile-only, non-composite }
+    record opaque { reason: opaque-reason, detail: string }
+    enum unavailable-reason { non-local, not-fetched, lookup-disabled, placement-uncertain }
+    record unavailable { reason: unavailable-reason, detail: string }
+    enum unresolved-reason { invalid-call, missing-manifest, read-failed, parse-failed, mapping-failed }
+    record unresolved { reason: unresolved-reason, detail: string }
+    enum interruption-reason { canceled, operational-failure }
+    record interruption { reason: interruption-reason, detail: string }
+    record interrupted { interruption: interruption, target: option<source-reference> }
+    record cycle {
+        target: source-reference,
+        active: source-reference,
+        owner: occurrence-id,
+        closing: occurrence-id,
+    }
+    variant outcome {
+        expanded(source-reference),
+        opaque(opaque),
+        unavailable(unavailable),
+        unresolved(unresolved),
+        dynamic(string),
+        cycle(cycle),
+        depth-limited(u32),
+        interrupted(interrupted),
+    }
+    record call {
+        id: occurrence-id,
+        parent: occurrence-id,
+        /// Entry through parent, excluding this call; length equals depth.
+        ancestry: list<occurrence-id>,
+        depth: u32,
+        site: source-reference,
+        /// None means no source coordinate is available.
+        step: option<position>,
+        uses: option<string>,
+        condition: condition,
+        outcome: outcome,
+    }
+    enum stop-limit { total, scripts }
+    /// First rejected declaration: a call site for total, script source for
+    /// scripts. It has no record or ID. Max equals the corresponding budget.
+    /// Script limits include the entry document; consumers must report partial
+    /// analysis when expansion or script collection stopped.
+    record stop { parent: occurrence-id, site: source-reference, limit: stop-limit, max: u32 }
+    record summary {
+        entry: entry,
+        budget: budget,
+        calls: u32,
+        scripts: u32,
+        stop: option<stop>,
+        entry-interruption: option<interruption>,
+        /// True only when every call is expanded or opaque, without a stop or
+        /// entry interruption. Other outcomes describe incomplete work.
+        /// Conditions describe each call's expression; skipped/runtime-dependent
+        /// ancestors remain visible and do not prune descendants from this graph.
+        complete: bool,
+    }
+    /// All queries return an error when invocation facts are unavailable.
+    /// Counts cover stored records only, including incomplete call outcomes.
+    describe: func() -> result<summary, string>;
+    /// Records remain stable in registration order; parents precede children.
+    /// Offset may equal the count, returning an empty page.
+    /// Limit must be 1..256; invalid bounds return an error, never partial success.
+    calls: func(offset: u32, limit: u32) -> result<list<call>, string>;
+    scripts: func(offset: u32, limit: u32) -> result<list<script-occurrence>, string>;
+    /// Unknown IDs, including malformed strings or IDs of another record kind, return none.
+    call-by-id: func(id: occurrence-id) -> result<option<call>, string>;
+    script-by-id: func(id: occurrence-id) -> result<option<script-occurrence>, string>;
+}
+
+/// A plugin analyzes one document at a time.
+///
+/// The host hands over the document and the facts the plugin declared in its
+/// descriptor, and takes back diagnostics.
+interface analyzer {
+    use invocation-context.{source-reference, position, occurrence-id};
+
+    record revision {
+        path: string,
+        digest: string,
     }
 
     /// Maps the text columns [start, end) of one line of script text to the declaring document.
@@ -39,18 +140,6 @@ interface analyzer {
         end: u32,
         document: position,
         document-end: option<position>,
-    }
-
-    /// The step whose `uses:` reference reached a composite action's script.
-    ///
-    /// An empty `caller` means the analyzed document.
-    /// `depth` counts composite calls from the analyzed document.
-    record invocation {
-        reference: source-reference,
-        caller: string,
-        step: position,
-        uses: string,
-        depth: u32,
     }
 
     /// Shell and working directory the runner would use.
@@ -70,7 +159,7 @@ interface analyzer {
     /// `shell` is the declared shell without runner defaults.
     /// `start` points to the run value in the document at `path`;
     /// an empty `path` means the analyzed document.
-    /// `invocation` is set for scripts reached through a composite action call.
+    /// `occurrence` identifies this execution when invocation facts are available.
     /// `runtime` is set when the `execution` fact was requested.
     record script {
         reference: source-reference,
@@ -81,8 +170,15 @@ interface analyzer {
         start: position,
         path: string,
         spans: list<span>,
-        invocation: option<invocation>,
+        occurrence: option<occurrence-id>,
         runtime: option<runtime>,
+    }
+
+    record action-input {
+        script: script,
+        language: string,
+        action: string,
+        input: string,
     }
 
     /// Distinguishes a runtime name from a statically invalid declaration.
@@ -123,11 +219,6 @@ interface analyzer {
         dependencies,
     }
 
-    /// One document and its facts. `options` holds the JSON the host registered for this plugin,
-    /// or an empty string.
-    ///
-    /// `scripts` are declared by the document itself.
-    /// `invoked` scripts belong to composite actions the document calls and name their own `path`.
     record dependency {
         reference: source-reference,
         uses: string,
@@ -136,6 +227,11 @@ interface analyzer {
         end: position,
     }
 
+    /// One document and its facts. `options` holds the JSON the host registered for this plugin,
+    /// or an empty string.
+    ///
+    /// `scripts` are declared by the document itself.
+    /// `invoked` scripts belong to composite actions the document calls and name their own `path`.
     record input {
         reference: source-reference,
         path: string,
@@ -148,6 +244,9 @@ interface analyzer {
         invoked: list<script>,
         mappings: list<mapping>,
         dependencies: list<dependency>,
+        /// None selects all graph scripts; some(empty) selects no script text.
+        selected-scripts: option<list<occurrence-id>>,
+        action-inputs: list<action-input>,
     }
 
     /// Replaces a half-open Unicode range in the original source file.
@@ -218,7 +317,6 @@ interface analyzer {
 
     describe: func() -> descriptor;
 
-    /// Findings remain valid even when analysis could not complete.
     record outcome {
         diagnostics: list<diagnostic>,
         error: option<string>,
@@ -238,5 +336,6 @@ interface host {
 
 world plugin {
     import host;
+    import invocation-context;
     export analyzer;
 }

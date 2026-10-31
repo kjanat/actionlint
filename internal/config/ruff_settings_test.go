@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestRuffConfiguration(t *testing.T) {
@@ -19,7 +19,7 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		data, err := yaml.Marshal(cfg)
+		data, err := codec.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -27,13 +27,19 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Tools.Ruff.Select != nil && again.Tools.Ruff.Select == nil {
+		// Flat select and ignore fold into lint.select and lint.ignore.
+		before, _ := cfg.Tools["ruff"].Config.Inline()["lint"].(map[string]any)
+		after, _ := again.Tools["ruff"].Config.Inline()["lint"].(map[string]any)
+		if (before == nil) != (after == nil) {
+			t.Fatal("lint settings changed in a round trip")
+		}
+		if before["select"] != nil && after["select"] == nil {
 			t.Fatal("empty selection was lost")
 		}
-		if cfg.Tools.Ruff.Select == nil && again.Tools.Ruff.Select != nil {
+		if before["select"] == nil && after["select"] != nil {
 			t.Fatal("default selection became empty selection")
 		}
-		if (cfg.Tools.Ruff.Ignore == nil) != (again.Tools.Ruff.Ignore == nil) {
+		if (before["ignore"] == nil) != (after["ignore"] == nil) {
 			t.Fatal("ignore selection changed between omitted and explicit empty")
 		}
 	}
@@ -107,7 +113,7 @@ func TestRuffSelectorConfiguration(t *testing.T) {
 				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
 				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
 					_, err := repoconfig.Parse([]byte(text))
-					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "rule selector must not be empty")) {
+					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /lint/"+key+"/0: minLength")) {
 						t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 					}
 				}

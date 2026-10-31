@@ -349,8 +349,8 @@ func TestCompletionProtocol(t *testing.T) {
 		{"legacy values after files", []string{"workflow.yml", "-completion", ""}, []string{"bash", "powershell", ":4"}, nil},
 		{"subcommand legacy values", []string{"check", "-output-format", "j"}, []string{"json", "jsonl", ":4"}, nil},
 		{"subcommand shorthand group", []string{"check", "-qv", "--output-format", "j"}, []string{"json", "jsonl", ":4"}, nil},
-		{"bare linter before command", []string{"-shellcheck", "check", "--output-format", "j"}, []string{"json", "jsonl", ":4"}, nil},
-		{"bare linter after command", []string{"check", "-shellcheck", "--output-format", "j"}, []string{"json", "jsonl", ":4"}, nil},
+		{"bare linter before command", []string{"-tool=shellcheck", "check", "--output-format", "j"}, []string{"json", "jsonl", ":4"}, nil},
+		{"bare linter after command", []string{"check", "-tool=shellcheck", "--output-format", "j"}, []string{"json", "jsonl", ":4"}, nil},
 		{"nested legacy flags", []string{"config", "show", "-origin", "--j"}, []string{"--json", ":4"}, nil},
 		{"flags after delimiter", []string{"workflow.yml", "--", "--j"}, []string{":8"}, []string{"--json"}},
 	}

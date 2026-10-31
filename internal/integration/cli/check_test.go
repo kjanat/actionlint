@@ -70,7 +70,7 @@ func TestLegacyCLITextWriteErrors(t *testing.T) {
 		text := format == render.FormatText || format == render.FormatOneline
 		var stderr strings.Builder
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &stderr}
-		status := cmd.Main([]string{"actionlint", "--summary=false", "--shellcheck=", "--pyflakes=", "--output-format=" + string(format), "-"})
+		status := cmd.Main([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff", "--output-format=" + string(format), "-"})
 		if text && (status != 1 || stderr.Len() != 0) || !text && (status != 3 || !strings.Contains(stderr.String(), "write failed")) {
 			t.Fatalf("%s changed CLI streams or status: %d, %s", format, status, &stderr)
 		}
@@ -136,7 +136,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	for _, format := range []string{"text", "oneline", "json", "jsonl", "github", "sarif"} {
 		var errout bytes.Buffer
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &errout}
-		if code := cmd.Main([]string{"actionlint", "--summary=false", "check", "-", "--output-format=" + format, "--shellcheck=", "--pyflakes="}); code != 3 || !strings.Contains(errout.String(), "write failed") {
+		if code := cmd.Main([]string{"actionlint", "--summary=false", "check", "-", "--output-format=" + format, "--no-tool=shellcheck", "--no-tool=ruff"}); code != 3 || !strings.Contains(errout.String(), "write failed") {
 			t.Fatalf("%s: %d %s", format, code, &errout)
 		}
 	}
@@ -154,7 +154,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	for _, mode := range []string{"auto", "always", "never"} {
 		var out, errout bytes.Buffer
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: &out, Stderr: &errout}
-		status := cmd.Main([]string{"actionlint", "--summary=false", "check", "-", "--json", "--color=" + mode, "--shellcheck=", "--pyflakes="})
+		status := cmd.Main([]string{"actionlint", "--summary=false", "check", "-", "--json", "--color=" + mode, "--no-tool=shellcheck", "--no-tool=ruff"})
 		got := commandTranscript{status, out.String(), errout.String()}
 		if got.Status != 1 || !json.Valid([]byte(got.Stdout)) || strings.ContainsRune(got.Stdout, '\x1b') {
 			t.Fatal(got)

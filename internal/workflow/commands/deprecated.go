@@ -11,7 +11,7 @@ type Finding struct {
 	Command, Replacement string
 }
 
-// Deprecated returns findings without retaining state or requiring a syntax tree.
+// Deprecated finds deprecated workflow commands in script text.
 func Deprecated(script string) []Finding {
 	matches := deprecated.FindAllStringSubmatchIndex(script, -1)
 	findings := make([]Finding, 0, len(matches))

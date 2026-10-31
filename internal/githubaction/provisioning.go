@@ -29,7 +29,7 @@ func provisioningRequest(env func(string) string) (*lintRequest, error) {
 }
 
 func (req *lintRequest) pluginSelection() localapp.PluginSelection {
-	return localapp.PluginSelection{ConfigFile: req.configFile, Overlays: req.overlays}
+	return localapp.SelectionWithTools(localapp.PluginSelection{ConfigFile: req.configFile, Overlays: req.overlays}, req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() application.Input {
@@ -41,6 +41,7 @@ func (req *lintRequest) pluginInput() application.Input {
 
 // PluginPlan lets the launcher restore portable bytes before any plugin download.
 func PluginPlan(env func(string) string, stdout, stderr io.Writer) int {
+	ctx := context.Background()
 	req, err := provisioningRequest(env)
 	if err == nil && req.configFile != "" {
 		if _, readErr := os.Stat(req.configFile); readErr != nil {
@@ -49,10 +50,10 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer) int {
 	}
 	if err == nil {
 		var selected localapp.PluginSources
-		selected, err = req.pluginSelection().SelectForCache(context.Background(), req.workingDir, req.pluginInput())
+		selected, err = req.pluginSelection().SelectForCache(ctx, req.workingDir, req.pluginInput())
 		if err == nil {
 			var plan localapp.PluginCachePlan
-			plan, err = selected.CachePlan()
+			plan, err = selected.CachePlan(ctx)
 			if err == nil {
 				err = json.NewEncoder(stdout).Encode(plan)
 			}

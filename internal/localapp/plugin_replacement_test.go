@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -52,7 +52,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := application.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: adapters.Options{ShellCheck: tc.command}.Registrations()}
+			options := application.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tc.command}})}
 			result, err := CheckSources(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
 			if err != nil {
 				t.Fatal(err)
@@ -74,7 +74,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 				}
 			}()
 			if tc.managed && len(session.options.Analyzers) != 0 {
-				t.Fatal("editor retained standalone managed analyzer")
+				t.Fatal("editor kept standalone managed analyzer")
 			}
 			rules, err := RulesSources(t.Context(), selected)
 			if err != nil {
@@ -105,15 +105,11 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 					Shells:       []string{shell},
 					ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 				}}}}
-				var adaptersOptions adapters.Options
-				if engine == "ruff" {
-					if enabled {
-						adaptersOptions.Ruff = "ruff"
-					}
-				} else if enabled {
-					adaptersOptions.ShellCheck = "shellcheck"
+				selections := registry.Selections{}
+				if enabled {
+					selections = registry.Selections{engine: {Command: engine}}
 				}
-				options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: adaptersOptions.Registrations()})
+				options, err := plugins.configure(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(selections)})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -171,7 +167,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				if runs {
 					engine.descriptor.Shells = []string{"bash"}
 				}
-				options := application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations(), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
+				options := application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
 					return engine, nil
 				}}
 				sources := PluginSources{Paths: []string{plugin}}

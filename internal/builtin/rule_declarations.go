@@ -5,18 +5,17 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/checks"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // declarationRule is the traversal adapter for stateless declaration checks.
-// Check implementations own their inputs and results; only this adapter collects
-// findings for the remaining visitor pipeline.
 type declarationRule struct {
 	workflowvisit.Base
 	check         checks.Declaration
-	workflowCheck func(*workflow.Workflow) []checks.Finding
-	jobCheck      func(*workflow.Job) []checks.Finding
-	stepCheck     func(*workflow.Step) []checks.Finding
+	workflowCheck func(workflowdecl.WorkflowView) []checks.Finding
+	jobCheck      func(workflowdecl.JobView) []checks.Finding
+	stepCheck     func(workflowdecl.StepView) []checks.Finding
 }
 
 func newDeclarationRule(name string) *declarationRule {
@@ -26,15 +25,19 @@ func newDeclarationRule(name string) *declarationRule {
 func (r *declarationRule) collect(input []checks.Finding, job string) {
 	for _, d := range input {
 		finding := findingmodel.FromDiagnostic(d.Diagnostic)
-		if d.Step != nil {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: d.Step.Pos}
-			finding.IgnoreOrigin = findingmodel.StepOrigin(job, d.Step)
+		if d.Step.Present() {
+			finding.Owner = &findingmodel.Owner{Job: job, Step: declarationPosition(d.Step)}
+			origin := d.Step.Origin(job)
+			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
+			if origin.HasPosition {
+				finding.IgnoreOrigin.StepPosition = &origin.Position
+			}
 		}
-		r.Findings = append(r.Findings, finding)
+		r.Report(finding)
 	}
 }
 
-func (r *declarationRule) VisitWorkflowPre(w *workflow.Workflow) error {
+func (r *declarationRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 	if r.workflowCheck != nil {
 		r.collect(r.workflowCheck(w), "")
 	} else {
@@ -43,16 +46,16 @@ func (r *declarationRule) VisitWorkflowPre(w *workflow.Workflow) error {
 	return nil
 }
 
-func (r *declarationRule) VisitJobPre(j *workflow.Job) error {
+func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
 	if r.jobCheck != nil {
-		r.collect(r.jobCheck(j), declarationID(j.ID))
+		r.collect(r.jobCheck(j), declarationID(j.ID()))
 	} else {
-		r.collect(r.check.Job(j), declarationID(j.ID))
+		r.collect(r.check.Job(j), declarationID(j.ID()))
 	}
 	return nil
 }
 
-func (r *declarationRule) VisitStep(s *workflow.Step) error {
+func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 	if r.stepCheck != nil {
 		r.collect(r.stepCheck(s), "")
 	} else {
@@ -61,18 +64,26 @@ func (r *declarationRule) VisitStep(s *workflow.Step) error {
 	return nil
 }
 
-func NewRuleEnvVar() *declarationRule      { return newDeclarationRule("env-var") }
-func NewRuleID() *declarationRule          { return newDeclarationRule("id") }
-func NewRuleJobNeeds() *declarationRule    { return newDeclarationRule("job-needs") }
-func NewRulePermissions() *declarationRule { return newDeclarationRule("permissions") }
-func NewRuleIfCond() *declarationRule      { return newDeclarationRule("if-cond") }
+// The NewRule functions below build the declaration checks that need no host
+// lookups. Each returns the catalogue rule of the same name.
 
-func NewRuleCredentials() *declarationRule   { return newDeclarationRule("credentials") }
-func NewRuleEvents() *declarationRule        { return newDeclarationRule("events") }
-func NewRuleGlob() *declarationRule          { return newDeclarationRule("glob") }
-func NewRuleParallelSteps() *declarationRule { return newDeclarationRule("parallel-steps") }
+func NewRuleEnvVar() workflowvisit.Rule      { return newDeclarationRule("env-var") }
+func NewRuleID() workflowvisit.Rule          { return newDeclarationRule("id") }
+func NewRuleJobNeeds() workflowvisit.Rule    { return newDeclarationRule("job-needs") }
+func NewRulePermissions() workflowvisit.Rule { return newDeclarationRule("permissions") }
+func NewRuleIfCond() workflowvisit.Rule      { return newDeclarationRule("if-cond") }
 
-func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) *declarationRule {
+func NewRuleEmptyTriggers() workflowvisit.Rule { return newDeclarationRule("empty-triggers") }
+func NewRuleEmptyJob() workflowvisit.Rule      { return newDeclarationRule("empty-job") }
+func NewRuleEmptyRun() workflowvisit.Rule      { return newDeclarationRule("empty-run") }
+func NewRuleNumericValues() workflowvisit.Rule { return newDeclarationRule("numeric-values") }
+
+func NewRuleCredentials() workflowvisit.Rule   { return newDeclarationRule("credentials") }
+func NewRuleEvents() workflowvisit.Rule        { return newDeclarationRule("events") }
+func NewRuleGlob() workflowvisit.Rule          { return newDeclarationRule("glob") }
+func NewRuleParallelSteps() workflowvisit.Rule { return newDeclarationRule("parallel-steps") }
+
+func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) workflowvisit.Rule {
 	options := checks.TimeoutPolicy{Enabled: policy.Enabled()}
 	if lower, ok := policy.MinMinutes(); ok {
 		options.Min = new(lower)
@@ -81,34 +92,41 @@ func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) *declarationR
 		options.Max = new(upper)
 	}
 	r := newDeclarationRule("require-job-timeout")
-	r.jobCheck = func(j *workflow.Job) []checks.Finding { return checks.JobTimeout(j, options) }
+	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.JobTimeout(j, options) }
 	return r
 }
 
-func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) *declarationRule {
+func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) workflowvisit.Rule {
 	scope := policy.Scope()
 	r := newDeclarationRule("require-permissions")
-	r.workflowCheck = func(w *workflow.Workflow) []checks.Finding { return checks.RequiredWorkflowPermissions(w, scope) }
-	r.jobCheck = func(j *workflow.Job) []checks.Finding { return checks.RequiredJobPermissions(j, scope) }
-	return r
-}
-
-func NewRuleRequiredActions(required []string) *declarationRule {
-	r := newDeclarationRule("required-actions")
-	r.workflowCheck = func(w *workflow.Workflow) []checks.Finding { return checks.RequiredActions(w, required) }
-	return r
-}
-
-func NewRuleRequireCommitHash(excluded func(string) bool) *declarationRule {
-	r := newDeclarationRule("require-commit-hash")
-	r.jobCheck = func(j *workflow.Job) []checks.Finding { return checks.CommitHashJob(j, excluded) }
-	r.stepCheck = func(s *workflow.Step) []checks.Finding { return checks.CommitHashStep(s, excluded) }
-	return r
-}
-
-func declarationID(value *workflow.String) string {
-	if value == nil {
-		return ""
+	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding {
+		return checks.RequiredWorkflowPermissions(w, scope)
 	}
-	return value.Value
+	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.RequiredJobPermissions(j, scope) }
+	return r
+}
+
+func NewRuleRequiredActions(required []string) workflowvisit.Rule {
+	r := newDeclarationRule("required-actions")
+	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding { return checks.RequiredActions(w, required) }
+	return r
+}
+
+func NewRuleRequireCommitHash(excluded func(string) bool) workflowvisit.Rule {
+	r := newDeclarationRule("require-commit-hash")
+	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.CommitHashJob(j, excluded) }
+	r.stepCheck = func(s workflowdecl.StepView) []checks.Finding { return checks.CommitHashStep(s, excluded) }
+	return r
+}
+
+func declarationID(value workflowdecl.StringView) string {
+	return value.Value()
+}
+
+func declarationPosition(view interface{ Pos() (workflow.Pos, bool) }) *workflow.Pos {
+	position, present := view.Pos()
+	if !present {
+		return nil
+	}
+	return &position
 }

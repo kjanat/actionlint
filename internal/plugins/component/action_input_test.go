@@ -28,7 +28,7 @@ func TestInputOnlyScriptMetadata(t *testing.T) {
 	if p.ScriptDescriptor().ScriptInputs[0].Input != "script" {
 		t.Fatal("descriptor input selectors alias caller memory")
 	}
-	if err := verifyScriptMetadata(nil, p.scriptDescriptor); err == nil {
+	if err := verifyScriptMetadata(nil, ScriptEngineInterface, p.scriptDescriptor); err == nil {
 		t.Fatal("input-only component accepted without static selectors")
 	}
 	data, err := os.ReadFile("testdata/plugins/action-input.wasm")
@@ -63,7 +63,7 @@ func TestInputOnlyScriptMetadata(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := verifyScriptMetadata(changed, p.scriptDescriptor); err == nil {
+		if err := verifyScriptMetadata(changed, ScriptEngineInterface, p.scriptDescriptor); err == nil {
 			t.Fatalf("invalid input selectors accepted: %+v", inputs)
 		}
 	}

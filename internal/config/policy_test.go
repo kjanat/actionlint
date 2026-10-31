@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestConfigTimeoutBounds(t *testing.T) {
@@ -87,7 +87,7 @@ func TestJobTimeoutRangeAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	if lower, ok := p.MinMinutes(); lower != 0 || ok {
-		t.Fatal("decoding a new value retained an old minimum")
+		t.Fatal("decoding a new value reused an old minimum")
 	}
 }
 

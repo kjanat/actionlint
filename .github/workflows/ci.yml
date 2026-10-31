@@ -45,7 +45,7 @@ jobs:
             "javascript": [
               "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/*.mts", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**", "tools/**/mise.toml", "distribution/**/mise.toml"
+              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", "tools/**/mise.toml", "distribution/**/mise.toml"
             ],
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
@@ -105,7 +105,7 @@ jobs:
       - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         if: env.CI_UNIT == 'true'
         with: &GoMod { go-version-file: go.mod }
-      - uses: &SetupUv astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: &SetupUv astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         if: env.CI_UNIT == 'true'
         with: &NoCache { enable-cache: false }
       - &PrepareMiseCache
@@ -117,7 +117,7 @@ jobs:
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Install the project Node.js and npm versions
         if: env.CI_UNIT == 'true'
-        uses: &SetupMise jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: &SetupMise jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with: &NodeTools
           cache: true
           auto_update: true
@@ -287,10 +287,12 @@ jobs:
       - *ActCheckNocred
       - *Go
       - parallel: [*Uv, *InstallShellCheck, *Runner]
-      # Sibling actions can rewrite the event payload this action reads at startup.
+      # golangci-lint-action builds .custom-gcl.yml itself and leaves the base
+      # binary off PATH; make lint rebuilds custom-gcl through it.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with: { version-file: .tool-versions, install-only: true, problem-matchers: true }
+        run: |
+          version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)"
+          go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
       - run: go mod tidy -diff
       - name: Build through Makefile
         run: run make:build
@@ -353,7 +355,7 @@ jobs:
           git diff --exit-code -- ':(glob)internal/plugins/component/*.gen.go'
       - name: Load the Rust, C and TinyGo examples
         run: >-
-          go run ./cmd/actionlint --no-config --shellcheck= --ruff=
+          go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
           --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
           --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
           --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm

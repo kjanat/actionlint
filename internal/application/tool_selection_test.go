@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestRequiredToolsFileSelection(t *testing.T) {
@@ -15,7 +15,7 @@ overrides:
   - includes: [disabled.yml]
     lint: {rules: {external: {shellcheck: off}}}
 `)
-	options := application.Options{WorkingDir: root, ConfigFile: config, Tools: (adapters.Options{ShellCheck: "shellcheck"}).Registrations()}
+	options := application.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	for _, tc := range []struct {
 		path string
 		want bool

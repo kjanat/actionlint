@@ -1,41 +1,48 @@
 package composition
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/builtin"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // A standalone manifest has no workflow caller or supplied inputs. Validate its
 // declarations directly, then use the same composite script lifecycle as uses:.
-func visitStandaloneAction(meta *actionmeta.Metadata, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
-	workflow := &workflowlang.Workflow{}
-	analysis.beginWorkflow(workflow)
-	var scripts []workflowvisit.Rule
+func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
+	snapshot := analysis.sourceSnapshot
+	if snapshot.Kind() != documentparse.KindAction {
+		return errors.New("action source snapshot is unavailable")
+	}
+	view, available := snapshot.ActionView()
+	if !available {
+		return errors.New("action declaration is unavailable")
+	}
+	original, hasOriginal := meta.OriginalSource()
+	if !hasOriginal || original != string(snapshot.Content()) || meta.Path() != deployment.SourcePath() || meta.SourceMapped != (deployment.ActionPath() == "") {
+		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
+	}
+	if err := analysis.beginAction(deployment); err != nil {
+		return err
+	}
+	var scripts []builtin.InvocationParticipant
 	for _, rule := range rules {
-		if err := rule.VisitWorkflowPre(workflow); err != nil {
-			return err
-		}
 		if participant, ok := rule.(builtin.MetadataParticipant); ok {
-			participant.CheckStandaloneMetadata(meta)
+			if err := participant.CheckStandaloneMetadata(meta, snapshot); err != nil {
+				return err
+			}
 		}
-		if participant, ok := rule.(builtin.CompositeParticipant); ok {
+		if participant, ok := rule.(builtin.InvocationParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}
-	if strings.EqualFold(meta.Runs.Using, "composite") {
-		// The manifest is provided explicitly; do not load it again or infer a
-		// caller's checkout from its location on the analysis machine.
-		call := &workflowlang.Step{Pos: &workflowlang.Pos{Line: 1, Col: 1}, Exec: &workflowlang.ExecAction{}}
-		if err := analysis.visitMetadataScripts(meta, call, scripts, make(map[string]bool)); err != nil {
-			return err
-		}
-	}
-	for _, rule := range rules {
-		if err := rule.VisitWorkflowPost(workflow); err != nil {
+	if strings.EqualFold(view.Using(), "composite") {
+		if err := analysis.visitMetadataScripts(meta, snapshot, deployment.Address(), analysis.invocations.RootContext(), scripts); err != nil {
 			return err
 		}
 	}

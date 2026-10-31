@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/pluginref"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // PluginDeclarations lists the plugin dependencies requested by the project.
@@ -28,12 +28,12 @@ func (p *PluginDeclarations) UnmarshalYAML(node *yaml.Node) error {
 		if err != nil {
 			return fmt.Errorf("plugins entry at line:%d,col:%d: %w", entry.Line, entry.Column, err)
 		}
-		key := ref.Name
+		key := ref.Name()
 		if ref.IsAlias() {
-			key = ref.Registry + "\n" + ref.Name
+			key = ref.Registry() + "\n" + ref.Name()
 		}
 		if seen[key] {
-			return fmt.Errorf("duplicate plugin declaration %q at line:%d,col:%d", ref.Name, entry.Line, entry.Column)
+			return fmt.Errorf("duplicate plugin declaration %q at line:%d,col:%d", ref.Name(), entry.Line, entry.Column)
 		}
 		seen[key] = true
 		next = append(next, ref)
@@ -52,7 +52,7 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 	values := map[string]string{}
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key, value := node.Content[i], node.Content[i+1]
-		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry") {
+		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry" && key.Value != "source") {
 			return pluginref.Reference{}, fmt.Errorf("unknown plugin field %q", key.Value)
 		}
 		if _, exists := values[key.Value]; exists {
@@ -63,6 +63,19 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 		}
 		values[key.Value] = value.Value
 	}
+	if source, exists := values["source"]; exists {
+		if len(values) != 1 {
+			return pluginref.Reference{}, errors.New("a direct plugin source cannot also declare name, version, or registry")
+		}
+		ref, err := pluginref.Parse(source)
+		if err != nil {
+			return pluginref.Reference{}, err
+		}
+		if ref.DirectSource() == "" {
+			return pluginref.Reference{}, errors.New("plugin source requires a digest-pinned HTTPS or OCI artifact")
+		}
+		return ref, nil
+	}
 	return pluginref.New(values["name"], values["version"], values["registry"])
 }
 
@@ -70,7 +83,7 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 func (p PluginDeclarations) MarshalYAML() (any, error) {
 	entries := make([]any, 0, len(p))
 	for _, ref := range p {
-		if ref.DirectSource() != "" || ref.Registry == pluginref.DefaultRegistry {
+		if ref.DirectSource() != "" || ref.Registry() == pluginref.DefaultRegistry {
 			entries = append(entries, ref.String())
 			continue
 		}
@@ -78,7 +91,7 @@ func (p PluginDeclarations) MarshalYAML() (any, error) {
 			Name     string `yaml:"name"`
 			Version  string `yaml:"version,omitempty"`
 			Registry string `yaml:"registry"`
-		}{ref.Name, ref.Version, ref.Registry})
+		}{ref.Name(), ref.Version(), ref.Registry()})
 	}
 	return entries, nil
 }

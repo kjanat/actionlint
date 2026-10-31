@@ -9,12 +9,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestRuffCompositeAliasConfiguration(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	testutil.WriteFixture(t, root, "python-action/action.yml", `name: Python
 description: test
@@ -40,32 +40,33 @@ runs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: $/python-action
-      - uses: $/python-alias
-`
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]string{"F401": "warning", "F821": "info"}
-	if len(result.Diagnostics) != len(want) {
-		t.Fatalf("findings=%+v", result.Diagnostics)
-	}
-	for _, diagnostic := range result.Diagnostics {
-		if severity, ok := want[diagnostic.Code]; !ok || diagnostic.Severity != severity {
-			t.Errorf("alias lost its configuration: %+v", diagnostic)
-		}
-		delete(want, diagnostic.Code)
+	for _, paths := range []struct{ first, second string }{
+		{"python-action", "python-alias"},
+		{"python-alias", "python-action"},
+	} {
+		t.Run(paths.first, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" +
+				"      - uses: $/" + paths.first + "\n      - uses: $/" + paths.second + "\n"
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]string{"F401": "warning", "F821": "info"}
+			if len(result.Diagnostics) != len(want) {
+				t.Fatalf("findings=%+v", result.Diagnostics)
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if severity, ok := want[diagnostic.Code]; !ok || diagnostic.Severity != severity {
+					t.Errorf("alias lost its configuration: %+v", diagnostic)
+				}
+				delete(want, diagnostic.Code)
+			}
+		})
 	}
 }
 
 func TestRuffCompositeFileConfiguration(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		name, base, override, script, code string
 	}{
@@ -117,7 +118,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}

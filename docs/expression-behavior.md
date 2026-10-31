@@ -26,12 +26,12 @@ This is a narrow syntax check, not proof of runtime command identity or behavior
 aliases, functions and application-specific argument semantics are not modeled.
 Use environment variables and the interpreter's data-access mechanism elsewhere.
 Unknown string values still warn inside quotes. Separately, constrained strings
-such as `github.repository` retain their character-based proof.
+such as `github.repository` are checked against their permitted characters.
 
 Bash/POSIX reserved words such as `fi` also require a proved data argument.
 This applies to constants and known environment or matrix values. A repository
 owner login can be a reserved word, so `github.repository_owner` needs the same
-position check. Matrix alternatives retain their weakest applicable proof.
+position check. A matrix expression is safe only if every alternative satisfies the applicable check.
 
 Misspelled contexts and functions receive a correction only when one close name
 is available at that workflow location. Ambiguous names receive no guess. Dynamic
@@ -62,8 +62,7 @@ The [template reader][condition-reader] and [condition converter][condition-conv
 at runner revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd` define these stages.
 Local step-schema evaluation covers both expression engines with loose JSON and
 anchors rejected. The Go regression tests cover step, job, and snapshot parsing.
-This evidence comes from source inspection and local SDK checks. Hosted behavior
-for these cases remains unmeasured.
+This evidence comes from source inspection and local SDK checks; it does not establish hosted behavior.
 
 ### String flags can disagree with boolean comparisons
 
@@ -82,9 +81,9 @@ flag bare string gates and comparisons with numeric or boolean literals.
 Object lookup ignores case. Literal `fromJSON('{"approved":false,"APPROVED":true}')`
 has two spellings of the same member. In local SDK comparisons, loose parsing keeps
 the last member and strict parsing keeps the first. Actionlint reports such
-collisions recursively, retaining repeated occurrences and JSON offsets, and avoids
+collisions recursively with the spelling and JSON offset of each repeated key, and avoids
 inferring a selected value. Composite action output declarations already reject
-case-colliding names. Outputs created by scripts remain outside that static check.
+case-colliding names. The check covers declarations, not outputs created by scripts.
 
 The comparison uses revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd`, the next
 engine's `FromJson` entrypoint, and changes only `StrictJsonParsing`. Anchors do not
@@ -95,7 +94,7 @@ within that engine. The comparison leaves github.com's parsing mode unverified.
 
 In local strategy evaluation, an expression returning an array inside a sequence
 inserts its elements into that sequence. `[before, ${{ fromJSON('["one","two"]') }}, after]`
-produces four axis values. A literal nested `[one, two]` remains one value, producing
+produces four axis values. A literal nested `[one, two]` counts as one value, producing
 three. An expression returning `[]` inserts nothing; one returning `[[1,2],[3,4]]`
 inserts two arrays. Array-producing entries in `include` and `exclude` follow the
 same sequence rule.
@@ -115,9 +114,8 @@ an identity. The local expression comparisons use runner revision
 `80bb1fb827fa44d489263061e71ef4adba7ad8cd`: engine comparisons keep JSON loose;
 JSON-mode comparisons keep the next engine fixed. Anchors do not apply.
 
-Actionlint's condition evaluator leaves serialization and ambiguous JSON values
-unknown. Regression tests require these values to remain unknown because the
-result depends on the runtime mode. The existing hosted negative-zero result
+Actionlint's condition evaluator treats serialization and ambiguous JSON values
+as unknown because the result depends on runtime mode. The existing hosted negative-zero result
 is linked in [Read the evidence](#read-the-evidence).
 
 [condition-reader]: https://github.com/actions/runner/blob/80bb1fb827fa44d489263061e71ef4adba7ad8cd/src/Sdk/DTObjectTemplating/ObjectTemplating/TemplateReader.cs

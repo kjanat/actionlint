@@ -21,7 +21,7 @@ func TestCommandActionInputs(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		for _, stdin := range []bool{false, true} {
-			args := []string{"--json", "--shellcheck=", "--ruff=", "--no-config"}
+			args := []string{"--json", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config"}
 			if stdin {
 				args = append(args, "--stdin-filename=action.yml", "-")
 			} else {
@@ -62,7 +62,7 @@ func TestCommandDefaultActionDiscovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, modern := range []bool{false, true} {
-		args := []string{"--json", "--shellcheck=", "--ruff=", "--no-config"}
+		args := []string{"--json", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config"}
 		if modern {
 			args = append([]string{"check"}, args...)
 		}

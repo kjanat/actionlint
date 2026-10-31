@@ -3,38 +3,42 @@ package builtin
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // Invocation supplies the already-resolved caller and action scope.
 // Participants own analyzer-specific configuration and state adaptation.
 type Invocation struct {
-	Call       *workflowlang.Step
+	Context    invocation.Context
 	ActionPath string
-	Actions    *actionlocal.Resolver
+	Config     *repoconfig.Config
+	Path       string
+	Source     documentparse.SourceSnapshot
 }
 
-type CompositeParticipant interface {
+// InvocationParticipant observes resolved action execution without producing child rules.
+type InvocationParticipant interface {
 	workflowvisit.Rule
-	ForComposite(Invocation) (workflowvisit.Rule, error)
+	EnterInvocation(Invocation) error
+	VisitInvocationStep(workflowdecl.StepView) error
+	VisitOpaqueAction(workflowdecl.StepView) error
+	LeaveInvocation(invocation.Context) error
 }
 
-type (
-	CheckoutParticipant interface{ CheckoutPaths() *execution.Paths }
-	CompositeJoiner     interface {
-		JoinCompositeResult(*workflowlang.Step, workflowvisit.Rule)
-	}
-)
+// CheckoutParticipant adapts its own script paths to the checkout placement
+// that actions resolved for the current invocation.
+type CheckoutParticipant interface{ ApplyCheckout(*actionlocal.Resolver) }
 
 type (
-	InvocationParticipant interface{ DeferActionInvocation() bool }
-	MetadataParticipant   interface {
+	MetadataParticipant interface {
 		workflowvisit.Rule
-		CheckStandaloneMetadata(*actionmeta.Metadata)
+		CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error
 		ForMetadata(*actionlocal.Resolver) workflowvisit.Rule
 	}
 )
 
-var _ CompositeParticipant = (*RuleExecutableBit)(nil)
+var _ InvocationParticipant = (*ruleExecutableBit)(nil)

@@ -16,7 +16,7 @@ func TestNativeRuffConfigRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Tools.Ruff.Native["target-version"] != "py312" {
-		t.Fatal(cfg.Tools.Ruff.Native)
+	if settings := cfg.Tools["ruff"].Config.Inline(); settings["target-version"] != "py312" {
+		t.Fatal(settings)
 	}
 }

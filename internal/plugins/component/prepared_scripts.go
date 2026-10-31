@@ -7,25 +7,29 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
-	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 const PreparedScriptsInterface = preparedbind.InterfaceName
 
-type preparedScriptsKey struct{}
-type preparationScope struct {
-	prepare    analyzer.ScriptPreparer
-	references map[source.Reference][]analyzer.SourceComment
-}
+type (
+	preparedScriptsKey struct{}
+	preparationScope   struct {
+		prepare     analyzer.ScriptPreparer
+		occurrences map[analyzer.OccurrenceID]struct{}
+	}
+)
 type preparedScripts struct{}
 
-func (preparedScripts) Prepare(ctx context.Context, ref annotationsbind.SourceReference, dialect preparedbind.OptionString) (preparedbind.ResultOptionPreparedString, error) {
+func (preparedScripts) Prepare(ctx context.Context, id string, dialect preparedbind.OptionString) (preparedbind.ResultOptionPreparedString, error) {
 	scope, _ := ctx.Value(preparedScriptsKey{}).(preparationScope)
-	reference := source.Reference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address}
-	if _, ok := scope.references[reference]; !ok {
-		return preparedbind.ResultOptionPreparedStringErr{Value: "script reference is outside this analysis call"}, nil
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	occurrence := analyzer.OccurrenceID(id)
+	if _, ok := scope.occurrences[occurrence]; !ok {
+		return preparedbind.ResultOptionPreparedStringErr{Value: "script occurrence is outside this analysis call"}, nil
 	}
 	if scope.prepare == nil {
 		return preparedbind.ResultOptionPreparedStringErr{Value: "shell preparation is unavailable"}, nil
@@ -34,7 +38,7 @@ func (preparedScripts) Prepare(ctx context.Context, ref annotationsbind.SourceRe
 	if dialect.IsSome {
 		requested = &dialect.Value
 	}
-	value, err := scope.prepare(ctx, reference, requested)
+	value, err := scope.prepare(ctx, occurrence, requested)
 	if err != nil {
 		return preparationFailure(err)
 	}
@@ -56,7 +60,7 @@ func (preparedScripts) Prepare(ctx context.Context, ref annotationsbind.SourceRe
 			if line.Position.Line < 1 || line.Position.Column < 1 || uint64(line.Position.Line) > math.MaxUint32 || uint64(line.Position.Column) > math.MaxUint32 {
 				return nil, fmt.Errorf("invalid prepared comment position %v", line.Position)
 			}
-			prepared.Lines = append(prepared.Lines, preparedbind.LineComment{Value: annotationsbind.Position{Line: uint32(line.Position.Line), Column: uint32(line.Position.Column)}})
+			prepared.Lines = append(prepared.Lines, preparedbind.LineComment{Value: invocationbind.Position{Line: uint32(line.Position.Line), Column: uint32(line.Position.Column)}})
 		case analyzer.PreparedStartupLine:
 			prepared.Lines = append(prepared.Lines, preparedbind.LineStartup{})
 		default:
@@ -68,4 +72,18 @@ func (preparedScripts) Prepare(ctx context.Context, ref annotationsbind.SourceRe
 
 func preparationFailure(err error) (preparedbind.ResultOptionPreparedString, error) {
 	return preparedbind.ResultOptionPreparedStringErr{Value: err.Error()}, nil
+}
+
+// Only run scripts with supplied text can request preparation, even when the
+// graph describes additional occurrences.
+func suppliedOccurrences(input analyzer.Input) map[analyzer.OccurrenceID]struct{} {
+	occurrences := make(map[analyzer.OccurrenceID]struct{}, len(input.Scripts)+len(input.Invoked))
+	for _, scripts := range [][]analyzer.Script{input.Scripts, input.Invoked} {
+		for _, script := range scripts {
+			if script.Occurrence.ID != "" && script.Occurrence.Kind == analyzer.RunScript {
+				occurrences[script.Occurrence.ID] = struct{}{}
+			}
+		}
+	}
+	return occurrences
 }

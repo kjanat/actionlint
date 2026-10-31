@@ -18,8 +18,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
+	"github.com/kjanat/go-yaml/v4"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
-	"go.yaml.in/yaml/v4"
 )
 
 func generatedSchema(t *testing.T) []byte {
@@ -48,6 +48,24 @@ func TestRuleLevelSuggestions(t *testing.T) {
 	}
 }
 
+func TestSchemaReferenceNotSuggested(t *testing.T) {
+	var schema struct {
+		Properties        map[string]json.RawMessage `json:"properties"`
+		PatternProperties map[string]struct {
+			Type string `json:"type"`
+		} `json:"patternProperties"`
+	}
+	if err := json.Unmarshal(generatedSchema(t), &schema); err != nil {
+		t.Fatal(err)
+	}
+	if _, suggested := schema.Properties["$schema"]; suggested {
+		t.Fatal("editor metadata must not be offered as a configuration setting")
+	}
+	if schema.PatternProperties[`^\$schema$`].Type != "string" {
+		t.Fatal("an existing $schema string must remain accepted")
+	}
+}
+
 func TestPluginRuleSelectors(t *testing.T) {
 	ignore := mapYAMLType(reflect.TypeFor[actionlint.IgnoreConfig](), nil)
 	rule, _ := ignore.Properties.Get("rule")
@@ -62,13 +80,47 @@ func TestPluginRuleSelectors(t *testing.T) {
 	}
 }
 
-func TestRuffTargetVersionSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
-	target, ok := schema.Properties.Get("target-version")
+// ruffShorthand returns the generated schema of a key written directly under
+// tools.ruff, as a JSON value.
+func ruffShorthand(t *testing.T, key string) map[string]any {
+	t.Helper()
+	tools := mapYAMLType(reflect.TypeFor[actionlint.ToolsConfig](), nil)
+	ruff, ok := tools.Properties.Get("ruff")
 	if !ok {
-		t.Fatal("missing Ruff target-version schema")
+		t.Fatal("missing Ruff tool schema")
 	}
-	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
+	property, ok := ruff.Properties.Get(key)
+	if !ok {
+		t.Fatalf("missing Ruff %s schema", key)
+	}
+	data, err := json.Marshal(property)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(data, &schema); err != nil {
+		t.Fatal(err)
+	}
+	return schema
+}
+
+func TestRuffTargetVersionSuggestions(t *testing.T) {
+	var target struct {
+		OneOf []struct {
+			Type         string `json:"type"`
+			Enum         []any  `json:"enum"`
+			Ref          string `json:"$ref"`
+			DoNotSuggest bool   `json:"doNotSuggest"`
+		} `json:"oneOf"`
+	}
+	data, err := json.Marshal(ruffShorthand(t, "target-version"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &target); err != nil {
+		t.Fatal(err)
+	}
+	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || !target.OneOf[1].DoNotSuggest {
 		t.Fatal("expected version choices and a hidden reset branch")
 	}
 	if target.OneOf[0].Type != "string" || len(target.OneOf[0].Enum) != 0 || target.OneOf[0].Ref != "" {
@@ -77,10 +129,24 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 }
 
 func TestRuffSelectorSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
 	for _, key := range []string{"select", "ignore"} {
-		property, ok := schema.Properties.Get(key)
-		if !ok || property.Items == nil {
+		var property struct {
+			Not   any `json:"not"`
+			Items *struct {
+				Ref       string `json:"$ref"`
+				Enum      []any  `json:"enum"`
+				Examples  []any  `json:"examples"`
+				MinLength *int   `json:"minLength"`
+			} `json:"items"`
+		}
+		data, err := json.Marshal(ruffShorthand(t, key))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &property); err != nil {
+			t.Fatal(err)
+		}
+		if property.Items == nil {
 			t.Fatalf("missing Ruff %s schema", key)
 		}
 		if property.Items.Ref != "" || len(property.Items.Enum) != 0 || !reflect.DeepEqual(property.Items.Examples, []any{"F", "F821"}) {
@@ -314,19 +380,22 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"schema reference", `{"$schema": "https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json"}`, true, true},
+		{"invalid schema reference type", `{"$schema": 42}`, false, true},
+		{"schema reference lookalike", `{"$schema-extra": "unexpected"}`, false, true},
 		{"ruff wasm path", `tools: {ruff: {backend: {wasm: {path: ruff.wasm}}}}`, true, true},
 		{"ruff empty wasm path", `tools: {ruff: {backend: {wasm: {path: ""}}}}`, false, false},
 		{"shellcheck wasm path", `tools: {shellcheck: {backend: {wasm: {path: shellcheck.wasm}}}}`, true, true},
 		{"shellcheck empty wasm path", `tools: {shellcheck: {backend: {wasm: {path: ""}}}}`, false, false},
 		{"override empty wasm path", `overrides: [{includes: ['**'], tools: {ruff: {backend: {wasm: {path: ""}}}}}]`, false, false},
-		{"runner knowledge", `lint: {rules: {correctness: {runner-label: {level: default, options: {labels: [gpu]}}}}}`, true, true},
-		{"expression knowledge", `lint: {rules: {correctness: {expression-reference: {level: default, options: {variables: [], secrets: null}}}}}`, true, true},
-		{"workflow knowledge", `lint: {rules: {correctness: {workflow-call: {level: default, options: {default-permissions: permissive}}}}}`, true, true},
+		{"runner knowledge", `repository: {runners: [gpu]}`, true, true},
+		{"expression knowledge", `repository: {variables: {}, secrets: null}`, true, true},
+		{"workflow knowledge", `repository: {default-workflow-permissions: write}`, true, true},
 		{"unknown runner option", `lint: {rules: {correctness: {runner-label: {level: default, options: {label: [gpu]}}}}}`, false, false},
 		{"message filters", `lint: {message-ignores: {'**': ['legacy.*']}}`, true, true},
 		{"invalid message regex", `lint: {message-ignores: {'**': ['[']}}`, true, false},
 		{"invalid message path", `lint: {message-ignores: {'[': []}}`, true, false},
-		{"plugin shorthand", `plugins: [kjanat/actionlint-plugin-shellcheck@v0.1.1]`, true, true},
+		{"plugin shorthand", `plugins: [kjanat/actionlint-plugin-shellcheck@v0.2.0]`, true, true},
 		{"plugin custom catalogue", `plugins: [{name: gitlab.com/group/plugin, version: v1, registry: 'https://example.com/catalog/'}]`, true, true},
 		{"plugin empty list", `plugins: []`, true, true},
 		{"plugin null", `plugins: null`, true, true},
@@ -335,6 +404,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"plugin empty entry", `plugins: ['']`, false, false},
 		{"plugin missing name", `plugins: [{version: v1}]`, false, false},
 		{"plugin unknown field", `plugins: [{name: owner/repo, extra: true}]`, false, false},
+		{"plugin direct source table", `plugins: [{source: 'https://example.org/plugin.wasm#sha256=` + strings.Repeat("a", 64) + `'}]`, true, true},
+		{"plugin source without digest", `plugins: [{source: 'https://example.org/plugin.wasm'}]`, false, false},
+		{"plugin source mixed with registry identity", `plugins: [{name: owner/repo, source: 'https://example.org/plugin.wasm#sha256=` + strings.Repeat("a", 64) + `'}]`, false, false},
 		{"plugin null version", `plugins: [{name: owner/repo, version: null}]`, false, false},
 		{"plugin ignore requires registration", `ignores: [{rule: no-sudo, file: '**'}]`, true, false},
 		{"ignore policy itself", `ignores: [{rule: disallow-suppressions, file: '**'}]`, false, false},
@@ -441,7 +513,15 @@ func TestSchemaValidation(t *testing.T) {
 		{"file override tools", `overrides: [{includes: ['**'], tools: {shellcheck: {config: {disable: [SC2086]}}}}]`, true, true},
 		{"file override tool shorthand", `overrides: [{includes: ['**'], tools: {shellcheck: false}}]`, true, true},
 		{"file override null tools", `overrides: [{includes: ['**'], tools: null}]`, true, true},
-		{"file override unknown tool", `overrides: [{includes: ['**'], tools: {typo: true}}]`, false, false},
+		{"file override unknown tool requires registration", `overrides: [{includes: ['**'], tools: {typo: true}}]`, true, false},
+		{"plugin tool requires registration", `tools: {my-tool: {enabled: true, config: {level: 2}}}`, true, false},
+		{"plugin tool config path requires registration", `tools: {my-tool: {config: my-tool.toml}}`, true, false},
+		{"plugin tool unknown key", `tools: {my-tool: {level: 2}}`, false, false},
+		{"plugin tool invalid shorthand", `tools: {my-tool: 2}`, false, false},
+		{"ruff flat and native target", `tools: {ruff: {target-version: py311, config: {target-version: py312}}}`, true, true},
+		{"ruff flat and native selection", `tools: {ruff: {select: [E], config: {lint: {select: [F]}}}}`, true, true},
+		{"ruff native top-level selection", `tools: {ruff: {config: {select: [E], lint: {select: [F]}}}}`, true, true},
+		{"ruff flat selection with path config", `tools: {ruff: {select: [E], config: ruff.toml}}`, false, false},
 		{"file override missing includes", `overrides: [{lint: {rules: {suspicious: on}}}]`, false, false},
 		{"file override empty includes", `overrides: [{includes: []}]`, false, false},
 		{"file override numeric include", `overrides: [{includes: [1]}]`, false, false},
@@ -600,8 +680,7 @@ policy: {required-actions: []}
 			if err := yaml.Unmarshal([]byte(tt.input), &value); err != nil {
 				t.Fatal(err)
 			}
-			// The current editor schema describes one syntax. Old documents
-			// remain parser inputs only through the migration boundary.
+			// Legacy syntax must be migrated before schema validation.
 			legacy := false
 			if root, ok := value.(map[string]any); ok {
 				for _, key := range []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"} {

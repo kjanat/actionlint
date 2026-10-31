@@ -25,8 +25,8 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", executable)
-	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", executable)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
 	for name, content := range map[string]string{
 		"config.yml":     "{}\n",
 		"successful.yml": commandBadWorkflow + "        shell: pwsh\n",
@@ -44,7 +44,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		for _, failingFirst := range []bool{false, true} {
 			for _, outputFile := range []bool{false, true} {
 				t.Run(fmt.Sprintf("modern=%t/failing-first=%t/file=%t", modern, failingFirst, outputFile), func(t *testing.T) {
-					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--pyflakes=", "--json"}
+					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--no-tool=ruff", "--json"}
 					if modern {
 						args = append(args, "check")
 					}
@@ -107,15 +107,15 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", executable)
-	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", executable)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
 	workflow := strings.ReplaceAll(commandGoodWorkflow, "echo ok", "FAIL_ANALYZER")
 	if err := os.WriteFile("failing.yml", []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--pyflakes=", "--json"}
+			args := []string{"actionlint", "--no-config", "--no-tool=ruff", "--json"}
 			if modern {
 				args = append(args, "check")
 			}
@@ -136,7 +136,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Documents)
 			}
 			workflow, ok := result.Documents[0].(documentmodel.Workflow)
-			if !ok || workflow.Path != "failing.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
+			if !ok || workflow.DocumentPath() != "failing.yml" || workflow.ParseStatus() != "complete" || len(workflow.Jobs()) != 1 {
 				t.Fatalf("analysis failure corrupted workflow document: %+v", result.Documents)
 			}
 			if result.FileCount == nil || *result.FileCount != 1 {
@@ -154,7 +154,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--shellcheck=", "--ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
+			args := []string{"actionlint", "--no-config", "--no-tool=shellcheck", "--tool=ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
 			if modern {
 				args = append(args, "check")
 			}
@@ -165,14 +165,14 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 			}
-			if status != 3 || result.Completed || !strings.Contains(result.Error, "could not initialize Ruff") || stdout.Len() != 0 {
+			if status != 3 || result.Completed || !strings.Contains(result.Error, "could not initialize ruff") || stdout.Len() != 0 {
 				t.Fatalf("changed failure contract: status=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
 			}
 			if len(result.Documents) != 1 {
 				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
 			}
 			workflow, ok := result.Documents[0].(documentmodel.Workflow)
-			if !ok || workflow.Path != "ci.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
+			if !ok || workflow.DocumentPath() != "ci.yml" || workflow.ParseStatus() != "complete" || len(workflow.Jobs()) != 1 {
 				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}
 		})
@@ -190,6 +190,6 @@ func TestCheckPartialAnalyzerHelper(t *testing.T) {
 	if strings.Contains(string(script), "FAIL_ANALYZER") {
 		os.Exit(2)
 	}
-	fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`)
+	fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`)
 	os.Exit(0)
 }

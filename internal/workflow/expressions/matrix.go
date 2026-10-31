@@ -1,196 +1,261 @@
 package expressions
 
 import (
-	"strings"
-
+	"actionlint.kjanat.dev/v2/diagnostic"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/mapping"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-func (rule *Checker) checkMatrixExpression(expr *workflowlang.String) *exprlang.ObjectType {
-	ty := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
+func (rule *Checker) checkMatrixSourceKey(source workflowdecl.StringView, evaluated bool) {
+	if source.Present() && !evaluated {
+		rule.checkString(source, "jobs.<job_id>.strategy")
+	}
+}
+
+// elementTypes merges the types of array elements in the order they are
+// added.
+type elementTypes struct {
+	ty   exprlang.Type
+	seen bool
+}
+
+func (e *elementTypes) add(t exprlang.Type) {
+	if !e.seen {
+		e.ty, e.seen = t, true
+		return
+	}
+	e.ty = e.ty.Merge(t)
+}
+
+// merged returns the merged element type, or any when no element was added.
+func (e *elementTypes) merged() exprlang.Type {
+	if !e.seen {
+		return exprlang.AnyType()
+	}
+	return e.ty
+}
+
+func (rule *Checker) checkMatrixExpression(expr workflowdecl.StringView) exprlang.ObjectType {
+	ty, ok := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
+	if !ok {
+		return exprlang.NewEmptyObjectType()
+	}
 	return schema.MatrixType(ty)
 }
 
-func (rule *Checker) checkMatrix(m *workflowlang.Matrix) *exprlang.ObjectType {
-	if m.Expression != nil {
-		return rule.checkMatrixExpression(m.Expression)
+func (rule *Checker) checkMatrix(m workflowdecl.MatrixView, resolution matrixcheck.Resolution) exprlang.ObjectType {
+	if !m.Present() {
+		return exprlang.NewEmptyStrictObjectType()
 	}
-
-	for _, filters := range []*workflowlang.MatrixCombinations{m.Include, m.Exclude} {
-		if filters != nil {
-			mapping.CheckSourceKey(filters.Name, filters.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-		}
-	}
-
-	// Check types of "exclude" but they are not used to guess type of matrix
-	if m.Exclude != nil {
-		if m.Exclude.Expression != nil {
-			if ty, ok := rule.checkArrayExpression(m.Exclude.Expression, "exclude", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
-				rule.checkObjectTy(ty.Elem, m.Exclude.Expression.Pos, "exclude")
-			}
-		} else {
-			for _, combi := range m.Exclude.Combinations {
-				if combi.Expression != nil {
-					rule.checkMatrixCombinationExpression(combi.Expression, "exclude")
-					continue
+	// inferred holds the element type of each row declaration. A missing
+	// position reads as any, which means nothing was inferred.
+	inferred := map[diagnostic.Position]exprlang.Type{}
+	if m.Expression().Present() {
+		rule.checkMatrixExpression(m.Expression())
+	} else {
+		if m.Exclude().Present() {
+			rule.checkMatrixSourceKey(m.Exclude().Name(), m.Exclude().Evaluated())
+			if m.Exclude().Expression().Present() {
+				if ty, ok := rule.checkArrayExpression(m.Exclude().Expression(), "exclude", "jobs.<job_id>.strategy"); ok {
+					if array, ok := ty.Array(); ok {
+						rule.checkObjectTy(array.Elem(), viewPosition(m.Exclude().Expression()), "exclude")
+					}
 				}
-				for _, a := range combi.Assigns {
-					mapping.CheckSourceKey(a.Key, combi.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-					rule.checkRawYAMLValue(a.Value)
+			} else {
+				for combination := range m.Exclude().Combinations() {
+					rule.checkMatrixCombination(combination, "exclude")
 				}
 			}
 		}
-	}
-
-	o := exprlang.NewEmptyStrictObjectType()
-	for _, insertion := range m.Insertions {
-		var inserted *exprlang.ObjectType
-		if insertion.Expression != nil {
-			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", schema.Matrix)
-			inserted = schema.MatrixType(ty)
-		} else {
-			inserted = rule.checkMatrix(insertion)
-		}
-		if merged, ok := o.Merge(inserted).(*exprlang.ObjectType); ok {
-			o = merged
-		} else {
-			o.Loose()
-		}
-	}
-	for n, r := range m.Rows {
-		ty := rule.checkMatrixRow(r)
-		if name, known := matrixcheck.RowName(n, r); known {
-			o.Props[name] = ty
-		} else {
-			o.Loose()
-		}
-	}
-
-	if m.Include == nil {
-		return o
-	}
-
-	if m.Include.Expression != nil {
-		if a, ok := rule.checkOneExpression(m.Include.Expression, "include", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
-			if ret, ok := o.Merge(a.Elem).(*exprlang.ObjectType); ok {
-				return ret
-			}
-		}
-		return exprlang.NewEmptyObjectType()
-	}
-
-	for _, combi := range m.Include.Combinations {
-		if combi.Expression != nil {
-			ty := rule.checkMatrixCombinationExpression(combi.Expression, "include")
-			if ty == nil {
-				continue
-			}
-			if merged, ok := o.Merge(ty).(*exprlang.ObjectType); ok {
-				o = merged
+		for _, row := range m.Rows() {
+			rule.checkMatrixSourceKey(row.Name(), row.Evaluated())
+			ty := rule.checkMatrixRow(row)
+			if row.Expression().Present() {
+				if pos := viewPosition(row.Expression()); pos != nil {
+					inferred[diagnostic.Position{Line: pos.Line, Column: pos.Col}] = ty
+				}
 			} else {
-				o.Loose()
+				for item := range row.Values() {
+					if pos := rawValuePosition(item); pos != nil {
+						inferred[diagnostic.Position{Line: pos.Line, Column: pos.Col}] = ty
+					}
+				}
 			}
-			continue
 		}
-
-		for n, assign := range combi.Assigns {
-			mapping.CheckSourceKey(assign.Key, combi.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-			key := workflowlang.InputResolver.ResolveKey(assign.Key, combi.Evaluated)
-			if key.State == mapping.KnownKey {
-				n = strings.ToLower(key.Name.Value)
+		for insertion := range m.Insertions() {
+			if insertion.Expression().Present() {
+				rule.checkWorkflowExpression(insertion.Expression(), "matrix insertion", "jobs.<job_id>.strategy", schema.Matrix)
 			} else {
-				o.Loose()
+				rule.checkMatrix(insertion, resolution)
 			}
-			ty := rule.checkRawYAMLValue(assign.Value)
-			if t, ok := o.Props[n]; ok {
-				// When the combination exists in 'matrix' section, merge type with existing one
-				ty = t.Merge(ty)
-			}
-			if key.State == mapping.KnownKey {
-				o.Props[n] = ty
+		}
+		if m.Include().Present() {
+			rule.checkMatrixSourceKey(m.Include().Name(), m.Include().Evaluated())
+			if m.Include().Expression().Present() {
+				rule.checkMatrixCombinationExpression(m.Include().Expression(), "include")
+			} else {
+				for combination := range m.Include().Combinations() {
+					rule.checkMatrixCombination(combination, "include")
+				}
 			}
 		}
 	}
 
-	return o
+	return matrixTypeFromResolutionWithInferredRows(resolution, inferred)
 }
 
-func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) exprlang.Type {
-	mapping.CheckSourceKey(r.Name, r.Evaluated, func(source *workflowlang.String) {
-		rule.checkString(source, "jobs.<job_id>.strategy")
-	})
-	if r.Expression != nil {
-		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
-			return a.Elem
-		}
-		return exprlang.AnyType{}
-	}
-
-	var ty exprlang.Type
-	for _, v := range r.Values {
-		t := rule.checkMatrixSequenceItem(v)
-		if t == nil {
-			continue
-		}
-		if ty == nil {
-			ty = t
-		} else {
-			ty = ty.Merge(t)
-		}
-	}
-
-	if ty == nil {
-		return exprlang.AnyType{} // No element
-	}
-
-	return ty
+func matrixTypeFromResolution(resolution matrixcheck.Resolution) exprlang.ObjectType {
+	return matrixTypeFromResolutionWithInferredRows(resolution, nil)
 }
 
-func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, section string) exprlang.Type {
-	ty := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
-	if array, ok := ty.(*exprlang.ArrayType); ok {
-		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
+func matrixTypeFromResolutionWithInferredRows(resolution matrixcheck.Resolution, inferred map[diagnostic.Position]exprlang.Type) exprlang.ObjectType {
+	if !resolution.IncludesComplete() || resolution.Open() {
+		inferred = nil
+	}
+	var object exprlang.ObjectBuilder
+	for name := range resolution.ReachableNames() {
+		reach := resolution.Reachable(name)
+		var values elementTypes
+		for _, candidate := range reach.Values {
+			// Only row declarations supply this inference. An unknown include
+			// assignment must not inherit an axis's more specific element type.
+			values.add(matrixValueType(candidate, inferred[candidate.Origin().Span.Start]))
+		}
+		ty := values.merged()
+		if !resolution.IncludesComplete() {
+			ty = exprlang.AnyType()
+		}
+		object.Set(name, ty)
+	}
+	// Rows from an include expression are only known at runtime and may add
+	// any property, as with include: ${{ fromJSON(inputs.targets) }}.
+	if resolution.Open() || !resolution.IncludesComplete() {
+		object.SetMapped(exprlang.AnyType())
+	}
+	return object.Build()
+}
+
+func (rule *Checker) checkMatrixCombination(combination workflowdecl.MatrixCombinationView, section string) {
+	if !combination.Present() {
+		return
+	}
+	if combination.Expression().Present() {
+		rule.checkMatrixCombinationExpression(combination.Expression(), section)
+		return
+	}
+	for _, assignment := range combination.Assigns() {
+		if !assignment.Present() {
+			continue
+		}
+		rule.checkMatrixSourceKey(assignment.Key(), combination.Evaluated())
+		rule.checkRawYAMLValue(assignment.Value())
+	}
+}
+
+// matrixValueType types a matrix value. inferred is the type a row expression
+// gave the value; any means nothing was inferred.
+func matrixValueType(item value.Value, inferred exprlang.Type) exprlang.Type {
+	if !item.Known() {
+		return inferred
+	}
+	switch item.Kind() {
+	case value.Null:
+		return exprlang.NullType()
+	case value.Bool:
+		return exprlang.BoolType()
+	case value.Number:
+		return exprlang.NumberType()
+	case value.String:
+		return exprlang.StringType()
+	case value.Object:
+		object, _ := inferred.Object()
+		properties := map[string]exprlang.Type{}
+		for name, property := range item.Props() {
+			// An undeclared property reads as any: nothing was inferred.
+			propertyType, _ := object.Property(name)
+			properties[name] = matrixValueType(property, propertyType)
+		}
+		return exprlang.NewStrictObjectType(properties).Type()
+	case value.Array:
+		array, _ := inferred.Array()
+		var elements elementTypes
+		for child := range item.Items() {
+			elements.add(matrixValueType(child, array.Elem()))
+		}
+		return exprlang.NewArrayType(elements.merged()).Type()
+	case value.KindUnknown:
+	}
+	return exprlang.AnyType()
+}
+
+// checkMatrixRow returns the element type of a matrix row, or any when no
+// element has a known type.
+func (rule *Checker) checkMatrixRow(r workflowdecl.MatrixRowView) exprlang.Type {
+	rule.checkMatrixSourceKey(r.Name(), r.Evaluated())
+	if r.Expression().Present() {
+		if ty, ok := rule.checkArrayExpression(r.Expression(), "matrix row", "jobs.<job_id>.strategy"); ok {
+			if array, ok := ty.Array(); ok {
+				return array.Elem()
+			}
+		}
+		return exprlang.AnyType()
+	}
+
+	var elements elementTypes
+	for v := range r.Values() {
+		if ty, ok := rule.checkMatrixSequenceItem(v); ok {
+			elements.add(ty)
+		}
+	}
+	return elements.merged()
+}
+
+func (rule *Checker) checkMatrixCombinationExpression(s workflowdecl.StringView, section string) {
+	ty, ok := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
+	if !ok {
+		return
+	}
+	if array, ok := ty.Array(); ok {
+		if value, known := expressionLiteral(s.Value()); known {
 			if values, ok := value.([]any); ok {
 				// Merging object and scalar element types produces AnyType, so
 				// validate each known value before using the inferred element type.
 				invalid := false
 				for i, value := range values {
 					if _, ok := value.(map[string]any); !ok {
-						rule.Errorf(s.Pos, "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, exprlang.TypeOfJSONValue(value))
+						rule.Errorf(viewPosition(s), "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, exprlang.TypeOfJSONValue(value))
 						invalid = true
 					}
 				}
 				if invalid || len(values) == 0 {
-					return nil
+					return
 				}
 			}
 		}
-		ty = array.Elem
+		ty = array.Elem()
 	}
-	switch ty.(type) {
-	case nil, exprlang.AnyType, *exprlang.ObjectType:
-		return ty
-	default:
-		rule.Errorf(s.Pos, "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
-		return nil
+	if k := ty.Kind(); k != exprlang.KindAny && k != exprlang.KindObject {
+		rule.Errorf(viewPosition(s), "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
 	}
 }
 
-func (rule *Checker) checkMatrixSequenceItem(value workflowlang.RawYAMLValue) exprlang.Type {
-	ty := rule.checkRawYAMLValue(value)
-	if scalar, ok := value.(*workflowlang.RawYAMLString); ok && exprlang.ParseAssignedExpression(scalar.Value) != nil {
-		if array, ok := ty.(*exprlang.ArrayType); ok {
-			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: scalar.Value}); known {
+// checkMatrixSequenceItem returns the type of the values a sequence item adds.
+// ok is false when the item is an expression that inserts no values, such as
+// an empty array literal.
+func (rule *Checker) checkMatrixSequenceItem(value workflowdecl.RawYAMLValueView) (ty exprlang.Type, ok bool) {
+	ty = rule.checkRawYAMLValue(value)
+	if scalar, ok := value.RawYAMLString(); ok && exprlang.ParseAssignedExpression(scalar.Value()) != nil {
+		if array, ok := ty.Array(); ok {
+			if literal, known := expressionLiteral(scalar.Value()); known {
 				if values, ok := literal.([]any); ok && len(values) == 0 {
-					return nil
+					return exprlang.AnyType(), false
 				}
 			}
-			return array.Elem // Template expansion inserts one level only.
+			return array.Elem(), true // Template expansion inserts one level only.
 		}
 	}
-	return ty
+	return ty, true
 }

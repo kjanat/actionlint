@@ -12,7 +12,7 @@ import (
 )
 
 func TestCompositeExecutableUnixPaths(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
 	git("add", "local/bad.sh")
 	git("update-index", "--chmod=-x", "local/bad.sh")

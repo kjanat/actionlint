@@ -13,7 +13,6 @@ type MetadataIdentity struct {
 
 // FirstVisibleMetadata preserves the first visible metadata invocation when filtering
 // reorders findings by source file, independently of map iteration order.
-// Policy diagnostics copied from a finding remain distinct from that finding.
 func FirstVisibleMetadata(findings []*Finding) []*Finding {
 	type key struct {
 		finding        MetadataKey

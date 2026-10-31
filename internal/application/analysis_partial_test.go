@@ -14,7 +14,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -23,10 +23,10 @@ import (
 func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	result, err := application.Analyze(ctx, application.Options{Tools: (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
+	result, err := application.Analyze(ctx, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		cancel()
-		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`), nil
-	}}).Registrations()}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(badWorkflow + `        shell: bash
+		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`), nil
+	}}})}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(badWorkflow + `        shell: bash
       - run: print(1)
         shell: python
 `)}})
@@ -82,9 +82,9 @@ jobs:
 				var result *application.Result
 				var analysisErr error
 				if adapter == "sources" {
-					result, analysisErr = application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{ShellcheckOptions: options("shellcheck")}).Registrations()}, sources)
+					result, analysisErr = application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}, sources)
 				} else {
-					session := application.Options{WorkingDir: root, ConfigFile: configPath, Tools: (adapters.Options{ShellcheckOptions: options("shellcheck")}).Registrations()}
+					session := application.Options{WorkingDir: root, ConfigFile: configPath, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}
 
 					paths := []string{filepath.Join(root, sources[0].Path), filepath.Join(root, sources[1].Path)}
 					result, analysisErr = application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: paths})
@@ -131,7 +131,7 @@ func TestAnalysisPartialAnalyzerHelper(t *testing.T) {
 	}
 	switch os.Args[separator+1] {
 	case "shellcheck":
-		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`)
+		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`)
 	default:
 		t.Fatalf("unexpected analyzer %q", os.Args[separator+1])
 	}

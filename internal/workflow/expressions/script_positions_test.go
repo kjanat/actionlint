@@ -99,13 +99,9 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 				if tc.shell != "" {
 					source += "        shell: " + tc.shell + "\n"
 				}
-				workflow, errors := workflowlang.Parse([]byte(source))
-				if len(errors) != 0 {
-					t.Fatal(errors)
-				}
-				rule := newTestChecker()
-				job := workflow.Jobs["test"]
-				for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0])} {
+				rule, workflow := newTestCheckerForSource(t, source)
+				job := testJob(t, workflow, "test")
+				for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0))} {
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -125,7 +121,7 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 func TestNullInterpolationRetainsTemplateTypeError(t *testing.T) {
 	for _, script := range []string{"${{ null }}", "echo '${{ null }}'"} {
 		rule := newTestChecker()
-		rule.checkScriptString(&workflowlang.String{Value: script, Pos: &workflowlang.Pos{Line: 1, Col: 1}}, "jobs.<job_id>.steps.run", "bash")
+		rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: script, Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.run", "bash")
 		if findings := rule.Findings(); len(findings) != 1 || findings[0].Rule != "expression" || !strings.Contains(findings[0].Message, "type null") {
 			t.Fatalf("null must remain rejected by template validation without duplicate interpolation findings: %+v", findings)
 		}

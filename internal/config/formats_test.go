@@ -33,10 +33,10 @@ func TestReadConfigFormats(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff([]string{"gpu"}, loaded.Config.SelfHostedRunner.Labels); diff != "" {
+			if diff := cmp.Diff([]string{"gpu"}, RunnerLabels(loaded.Config.Facts())); diff != "" {
 				t.Fatal(diff)
 			}
-			if diff := cmp.Diff([]string{"STAGE"}, loaded.Config.ConfigVariables); diff != "" {
+			if diff := cmp.Diff([]string{"STAGE"}, VariableNames(loaded.Config.Facts())); diff != "" {
 				t.Fatal(diff)
 			}
 			if len(loaded.Warnings) != 0 {
@@ -62,7 +62,7 @@ func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
 			if path != want {
 				t.Fatalf("path=%q want %q", path, want)
 			}
-			if diff := cmp.Diff([]string{"gpu"}, loaded.Config.SelfHostedRunner.Labels); diff != "" {
+			if diff := cmp.Diff([]string{"gpu"}, RunnerLabels(loaded.Config.Facts())); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -78,8 +78,8 @@ func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filepath.Base(path) != "actionlint.yml" || loaded.Config.ConfigVariables[0] != "YAML" {
-		t.Fatalf("path=%q variables=%v", path, loaded.Config.ConfigVariables)
+	if filepath.Base(path) != "actionlint.yml" || VariableNames(loaded.Config.Facts())[0] != "YAML" {
+		t.Fatalf("path=%q variables=%v", path, VariableNames(loaded.Config.Facts()))
 	}
 }
 
@@ -104,7 +104,7 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 				t.Fatalf("selected path=%q, want %q", got.Path, want)
 			}
 			settings := got.Config
-			for _, key := range []string{"lint", "rules", "correctness", "expression-reference", "options"} {
+			for _, key := range []string{"repository"} {
 				var ok bool
 				settings, ok = settings[key].(map[string]any)
 				if !ok {
@@ -112,7 +112,7 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 				}
 			}
 			variables, err := jsonv2.Marshal(settings["variables"])
-			if err != nil || string(variables) != `["STAGE"]` {
+			if err != nil || string(variables) != `{"STAGE":null}` {
 				t.Fatalf("configuration variables=%s, error=%v", variables, err)
 			}
 		})
@@ -148,13 +148,13 @@ func TestExtendsAcrossFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := loaded.Config
-	if diff := cmp.Diff([]string{"gpu"}, cfg.SelfHostedRunner.Labels); diff != "" {
+	if diff := cmp.Diff([]string{"gpu"}, RunnerLabels(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
-	if diff := cmp.Diff([]string{"TOKEN"}, cfg.ConfigSecrets); diff != "" {
+	if diff := cmp.Diff([]string{"TOKEN"}, SecretNames(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
-	if diff := cmp.Diff([]string{"STAGE"}, cfg.ConfigVariables); diff != "" {
+	if diff := cmp.Diff([]string{"STAGE"}, VariableNames(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
 	if len(cfg.Sources()) != 3 {

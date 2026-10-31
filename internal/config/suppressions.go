@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 type SuppressionReport uint8
@@ -80,6 +80,9 @@ func (p *SuppressionsPolicy) Report() string {
 		return "violation"
 	case ReportAll:
 		return "all"
+	case SuppressionsAllowed:
+		// Allowed suppressions report nothing.
+		fallthrough
 	default:
 		return ""
 	}

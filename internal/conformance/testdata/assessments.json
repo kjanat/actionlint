@@ -930,7 +930,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, deprecated-commands, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, deprecated-commands, runner-label). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml"
         ]
@@ -988,7 +988,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, events). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, events). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/918.yaml",
           "fixture:schemastore/src/test/github-workflow/event-trigger.yaml"
@@ -1007,7 +1007,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, expression). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/matrix_from_json.yaml",
           "fixture:schemastore/src/test/github-workflow/matrix_include.yaml",
@@ -1025,7 +1025,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, if-cond). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, if-cond). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/conditions.yaml"
         ]
@@ -1040,7 +1040,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, runner-label). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/2579-1.yaml"
         ]
@@ -1070,7 +1070,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, runner-label). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/runs-on.yaml"
         ]
@@ -1112,7 +1112,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, syntax-check). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/on-event_name-null.yaml"
         ]
@@ -1127,7 +1127,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/env-with-simple-expression.yaml"
         ]
@@ -1142,7 +1142,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/defaults.yaml"
         ]
@@ -1171,7 +1171,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (runner-label, syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (runner-label, syntax-check). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/2579-2.yaml",
           "fixture:schemastore/src/test/github-workflow/issue-3208.yaml"
@@ -1191,7 +1191,7 @@
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (syntax-check). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (syntax-check). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/1162.yaml",
           "fixture:schemastore/src/test/github-workflow/concurrency.yaml",

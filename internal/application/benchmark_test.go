@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"golang.org/x/sys/execabs"
@@ -140,7 +140,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 	for _, bm := range bms {
 		sc := ""
 		if bm.shellcheck != "" {
-			sc = "-shellcheck"
+			sc = "-tool=shellcheck"
 		}
 		fm := ""
 		if bm.format != "" {
@@ -148,7 +148,11 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 		}
 		b.Run(fmt.Sprintf("%s%s%s-%d", bm.what, sc, fm, len(bm.files)), func(b *testing.B) {
 			for range b.N {
-				session, err := workspace.New(workspace.Options{WorkingDir: root})
+				opts := workspace.Options{WorkingDir: root}
+				if bm.what != "our workflows" {
+					opts.Config = &repoconfig.Config{}
+				}
+				session, err := workspace.New(b.Context(), opts)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -158,14 +162,12 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 					if err != nil {
 						b.Fatal(err)
 					}
-				} else {
-					session.DefaultConfig = &repoconfig.Config{}
 				}
 				selected, err := session.Files(bm.files, project)
 				if err != nil {
 					b.Fatal(err)
 				}
-				result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: bm.shellcheck}.Registrations()}, selected.Sources)
+				result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: bm.shellcheck}})}, selected.Sources)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -210,16 +212,15 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 	}
 
 	for b.Loop() {
-		session, err := workspace.New(workspace.Options{WorkingDir: root})
+		session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root, Config: &repoconfig.Config{}})
 		if err != nil {
 			b.Fatal(err)
 		}
-		session.DefaultConfig = &repoconfig.Config{}
 		selected, err := session.Files(files, proj)
 		if err != nil {
 			b.Fatal(err)
 		}
-		result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: shellcheck}.Registrations()}, selected.Sources)
+		result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}, selected.Sources)
 		if err != nil {
 			b.Fatal(err)
 		}

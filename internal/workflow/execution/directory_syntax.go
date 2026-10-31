@@ -28,13 +28,12 @@ func RunnerDirectoryPath(path string, platform runnerlang.Platform) (string, boo
 		return strings.ReplaceAll(path, `\`, "/"), true
 	case runnerlang.MacOrLinux:
 		return path, runtime.GOOS != "windows"
-	default:
-		return "", false
+	case runnerlang.Any:
 	}
+	return "", false
 }
 
-// LocalDirectoryPath accepts available local directories when the path syntax
-// agrees with the analysis host. Cross-platform runner paths remain unknown.
+// LocalDirectoryPath resolves runner paths whose syntax matches the analysis host.
 func LocalDirectoryPath(path string, platform runnerlang.Platform) (string, bool) {
 	if filepath.IsAbs(path) {
 		compatible := platform == runnerlang.Any ||

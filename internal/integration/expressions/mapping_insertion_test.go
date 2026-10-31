@@ -5,9 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
-	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 func TestActionInputMappingInsertions(t *testing.T) {
@@ -93,11 +94,11 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow, errs := workflowlang.ParseDocument([]byte(source))
+			workflow, errs := workflowparser.ParseDocument([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			combinations, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy)
+			combinations, known := matrix.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
 			if tc.count < 0 {
 				if known {
 					t.Fatal("unknown insertion became a closed matrix")
@@ -220,7 +221,7 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 					contents = "{'${{ insert }}': " + contents + "}"
 				}
 				source := insertionSectionWorkflow(tc.section, contents)
-				workflow, errs := workflowlang.ParseDocument([]byte(source))
+				workflow, errs := workflowparser.ParseDocument([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -235,14 +236,21 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 					}
 				case "with":
 					action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-					inputs, known := workflowlang.ActionInputNames(action)
-					if !known || len(inputs) != 2 || inputs["second"] == nil {
+					inputs := workflowlang.ResolvedActionInputs(action)
+					second := false
+					for name := range inputs.KeyedEntries() {
+						text, ok := name.ScalarString()
+						second = second || ok && strings.EqualFold(text, "second")
+					}
+					if !inputs.Complete() || !second {
 						t.Fatalf("insertion lost: %+v", inputs)
 					}
 				case "matrix":
-					matrix, known := matrixcheck.Expand(workflow.Jobs["test"].Strategy.Matrix)
-					if !known || len(matrix.Rows) != 2 || matrix.Rows["second"] == nil {
-						t.Fatalf("insertion lost: %+v", matrix)
+					resolved := matrix.Resolve(workflow.Jobs["test"].Strategy)
+					combinations, known := resolved.Combinations(16)
+					second := resolved.Reachable("second")
+					if !known || len(combinations) != 1 || !second.Complete || len(second.Values) != 1 {
+						t.Fatalf("insertion lost: combinations=%v second=%+v", combinations, second)
 					}
 				}
 			})
@@ -274,7 +282,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 			`{key: [one], '${{ insert }}': "${{ fromJSON('{\"KEY\":[\"two\"]}') }}"}`,
 		} {
 			t.Run(section+mapping, func(t *testing.T) {
-				_, errs := workflowlang.ParseDocument([]byte(insertionSectionWorkflow(section, mapping)))
+				_, errs := workflowparser.ParseDocument([]byte(insertionSectionWorkflow(section, mapping)))
 				found := false
 				for _, err := range errs {
 					found = found || strings.Contains(err.Message, "is duplicated")
@@ -285,8 +293,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 			})
 		}
 	}
-	// Ordinary section keys retain their duplicate-key checks.
-	_, errs := workflowlang.ParseDocument([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
+	_, errs := workflowparser.ParseDocument([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
 	found := false
 	for _, err := range errs {
 		found = found || strings.Contains(err.Message, "is duplicated")
@@ -305,7 +312,7 @@ func TestDockerInsertedReservedInputs(t *testing.T) {
 					mapping = "{'${{ insert }}': " + mapping + "}"
 				}
 				source := strings.Replace(insertionSectionWorkflow("with", "{'${{ insert }}': "+mapping+"}"), "example/action@v1", "docker://alpine:3", 1)
-				workflow, errs := workflowlang.ParseDocument([]byte(source))
+				workflow, errs := workflowparser.ParseDocument([]byte(source))
 				if entrypoint == "" {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "empty") {
 						t.Fatalf("empty entrypoint accepted: %v", errs)

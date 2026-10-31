@@ -14,24 +14,24 @@ import (
 )
 
 func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := pluginRepository(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		t.Fatal(err)
 	}
-	original := []byte("# retained comment\nconfig-variables: []\n")
+	original := []byte("# source comment\nconfig-variables: []\n")
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !plan.Changed || !bytes.Contains(plan.Content, []byte("shellcheck")) || !bytes.Contains(plan.Content, []byte("ruff")) {
 		t.Fatalf("missing defaults: %s", plan.Content)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 	if err := plan.Apply(t.Context()); err == nil {
 		t.Fatal("offline default resolution succeeded")
 	}
@@ -42,24 +42,28 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
 		t.Fatalf("failed migration wrote lock: %v", err)
 	}
-	registry.Offline = false
+	registry.SetOffline(false)
 	if err := plan.Apply(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := config.Load(path)
-	if err != nil || len(cfg.Plugins) != 2 || cfg.ConfigVariables == nil {
+	if err != nil || len(cfg.Plugins) != 2 || config.VariableNames(cfg.Facts()) == nil {
 		t.Fatalf("migrated config: %+v %v", cfg, err)
 	}
-	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil || len(lock.Lock.Plugins) != 2 {
-		t.Fatalf("default pins: %+v %v", lock, err)
+	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+		t.Fatalf("default installation created a lock: %v", err)
 	}
-	registry.Offline = true
-	before := len(registry.Requests)
-	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	for _, ref := range cfg.Plugins {
+		if ref.Version() != "v1.0.0" || ref.IsAlias() {
+			t.Fatalf("unresolved default declaration: %v", ref)
+		}
+	}
+	registry.SetOffline(true)
+	before := len(registry.Requests())
+	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
-	if len(registry.Requests) != before {
+	if len(registry.Requests()) != before {
 		t.Fatal("already migrated config contacted registry")
 	}
 }
@@ -96,21 +100,20 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 
-	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	migrated, err := config.Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name != pin.Name || migrated.Plugins[0].Version != pin.Selector || migrated.Plugins[0].Registry != pin.Registry {
+	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name() != pin.Name || migrated.Plugins[0].Version() != pin.Selector || migrated.Plugins[0].Registry() != pin.Registry {
 		t.Fatalf("lock-only plugin selection changed: %+v, %v", migrated.Plugins, err)
 	}
-	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), pluginregistry.LockName))
-	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0] != pin {
-		t.Fatalf("lock-only pin changed: %+v, %v", lock, err)
+	if _, err := os.Stat(filepath.Join(filepath.Dir(path), pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("migrated legacy lock retained: %v", err)
 	}
 }
 
@@ -124,7 +127,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nconfig-variables: []\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +147,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name != "github.com/publisher/base" || manifest.References[1].Name != "github.com/publisher/next" {
+	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name() != "github.com/publisher/base" || manifest.References[1].Name() != "github.com/publisher/next" {
 		t.Fatalf("leaf stopped inheriting plugins: %+v", manifest.References)
 	}
 }
@@ -256,23 +259,23 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 
 func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 	for _, tc := range []struct{ config, want string }{
-		{"{}", "shellcheck,ruff"},
+		{"{}", "ruff,shellcheck"},
 		{"plugins: []", ""},
 		{"plugins: null", ""},
 		{"plugins: [owner/custom]", "github.com/owner/custom"},
 		{"tools: {ruff: false}", "shellcheck"},
 		{"lint: {rules: {external: {shellcheck: off}}}", "ruff"},
 		{"tools: {ruff: {backend: {process: {executable: custom-ruff}}}}", "shellcheck"},
-		{"tools: {shellcheck: {config: .shellcheckrc}}", "shellcheck,ruff"},
-		{"tools: {shellcheck: {config: {external-sources: true}}}", "shellcheck,ruff"},
-		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "shellcheck,ruff"},
+		{"tools: {shellcheck: {config: .shellcheckrc}}", "ruff,shellcheck"},
+		{"tools: {shellcheck: {config: {external-sources: true}}}", "ruff,shellcheck"},
+		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "ruff,shellcheck"},
 	} {
 		t.Run(tc.config, func(t *testing.T) {
 			cfg, err := config.Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
-			refs, err := DefaultPluginReferences(cfg, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+			refs, err := DefaultPluginReferences(cfg, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -365,7 +368,7 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 }
 
 func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := pluginRepository(t)
 	path, err := InitializeConfig(t.Context(), root, "2.0.0")
 	if err != nil {
@@ -375,7 +378,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	if err != nil || len(cfg.Plugins) != 2 {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 	if _, err := InitializeConfig(t.Context(), root, "2.0.0"); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
 	}
@@ -384,7 +387,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 	for _, name := range []string{testutil.FixturePluginName, "ruff"} {
 		t.Run(name, func(t *testing.T) {
-			registry := testutil.NewDefaultPluginRegistry(t)
+			registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			url := testutil.FixtureRegistryURL
 			if name == "ruff" {
@@ -414,12 +417,15 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg, err := config.Load(path)
-			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != name || cfg.Plugins[0].Version != pin.Selector || cfg.Plugins[0].Registry != pin.Registry {
+			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != pin.Name || cfg.Plugins[0].Version() != pin.Version || cfg.Plugins[0].Registry() != pin.Registry {
 				t.Fatalf("locked selection changed: %+v, %v", cfg, err)
 			}
-			lock, err := pluginregistry.OpenLock(t.Context(), project.Lock.Path)
-			if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0] != pin {
-				t.Fatalf("locked bytes changed: %+v, %v", lock, err)
+			if _, err := os.Stat(project.Lock.Path); !os.IsNotExist(err) {
+				t.Fatalf("legacy lock was not retired: %v", err)
+			}
+			resolved, err := client.Lookup(t.Context(), pin.Name, pin.Version)
+			if err != nil || !resolved.SameRelease(pin) {
+				t.Fatalf("recorded release changed: %+v, %v", resolved, err)
 			}
 		})
 	}

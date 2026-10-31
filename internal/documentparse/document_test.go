@@ -13,13 +13,13 @@ func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {
 	if !document.CanAnalyze() || document.Metadata == nil || document.Workflow != nil {
 		t.Fatalf("action entered workflow representation: %+v", document)
 	}
-	facts := document.Facts()
-	if facts == nil || len(facts.Jobs[""].Steps) != 1 || document.Facts() != facts {
-		t.Fatal("action facts are missing or unstable across consumers")
+	facts := document.Facts
+	if facts == nil || len(facts.Jobs[""].Steps) != 1 {
+		t.Fatal("action facts are missing")
 	}
 	refs := References("/project/action.yml", source, document, nil, filepath.Clean)
-	step := facts.Jobs[""].Steps[0]
-	if refs["/project/action.yml"].Steps[step].Address != "runs.steps[0]" {
+	steps := refs["/project/action.yml"].Steps
+	if len(steps) != 1 || steps[0].Address != "runs.steps[0]" {
 		t.Fatal("fact projections lost their action source identity")
 	}
 }

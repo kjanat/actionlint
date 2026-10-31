@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Finding carries a canonical diagnostic and analysis-only provenance. All rule
@@ -22,8 +23,9 @@ type Finding struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	Source []byte
-	// rawScriptSource retains the external checker's LF-based source coordinates.
-	RawScriptSource bool
+	// RawScriptSource selects LF-only line splitting for external checker positions.
+	RawScriptSource   bool
+	UnavailableSource UnavailableSource
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
 	SuppressionOrigin *SuppressionOrigin
@@ -33,8 +35,9 @@ type Finding struct {
 	Owner *Owner
 	// metadataFinding identifies a reusable validation finding independently of its caller.
 	MetadataIdentity *MetadataIdentity
-	// metadataParsePath links caller parse failures to a selected manifest.
-	MetadataParsePath string
+	// MetadataParseSource is the captured revision whose parse failure was
+	// observed, bound by the producer before the finding is published.
+	MetadataParseSource source.Revision
 }
 
 // String returns a diagnostic with its source location and rule name.
@@ -58,9 +61,19 @@ func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Fin
 	}
 }
 
-// SourceFor selects the finding's foreign source when a source snapshot is available.
-func (e *Finding) SourceFor(source []byte) []byte {
-	if source != nil && e.Source != nil {
+// Foreign reports whether the finding's positions refer to its own Source
+// instead of source, the snapshot of the document it was reported for. That
+// is the case when a snapshot is available and the finding points at another
+// file.
+func (e *Finding) Foreign(source []byte) bool {
+	return source != nil && e.Source != nil
+}
+
+// sourceFor returns the text the finding's positions refer to: Source when
+// the finding is Foreign, otherwise source. Canonical only reads the snippet
+// line from it.
+func (e *Finding) sourceFor(source []byte) []byte {
+	if e.Foreign(source) {
 		return e.Source
 	}
 	return source
@@ -90,7 +103,6 @@ func Compare(lhs, rhs *Finding) int {
 func Equal(lhs, rhs *Finding) bool {
 	left, right := lhs.Diagnostic, rhs.Diagnostic
 	// Aliases can reach one declaration through different invocation owners.
-	// Explicit analyzer references remain part of diagnostic identity.
 	if lhs.InferredReference && rhs.InferredReference {
 		left.Reference, right.Reference = nil, nil
 	}

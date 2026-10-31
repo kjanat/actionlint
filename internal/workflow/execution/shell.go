@@ -3,8 +3,7 @@ package execution
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 // Shell distinguishes the runner's bash -e fallback from explicit bash,
@@ -15,76 +14,91 @@ type Shell struct {
 }
 
 // ResolveShell applies step, job, workflow and runner shell precedence.
-func ResolveShell(exec *workflowlang.ExecRun, jobShell, workflowShell, runnerShell ShellValue) Shell {
-	for _, candidate := range []ShellValue{ShellValueOf(exec.Shell), jobShell, workflowShell} {
-		candidate = executionShellLiteral(candidate)
-		switch candidate.Kind {
-		case ShellSource, ShellEvaluated:
-			if candidate.Value.Value != "" {
-				return Shell{Name: candidate.Value.Value}
-			}
-		case ShellUnknown:
-			return Shell{}
-		case ShellUnspecified:
+func ResolveShell(step, job, workflow, runner value.Value) Shell {
+	for _, candidate := range []value.Value{step, job, workflow} {
+		if candidate.State() == value.Missing {
 			continue
 		}
+		text, ok := executableShellText(candidate)
+		if !ok {
+			return Shell{}
+		}
+		if text != "" {
+			return Shell{Name: text}
+		}
 	}
-	if runnerShell.Kind == ShellUnknown {
+	if runner.State() == value.Dynamic || runner.State() == value.Invalid {
 		return Shell{}
 	}
-	if runnerShell.Value != nil {
-		return Shell{Name: runnerShell.Value.Value, Implicit: true}
+	if runner.State() != value.Missing {
+		name, ok := runner.ScalarString()
+		if !ok {
+			return Shell{}
+		}
+		return Shell{Name: name, Implicit: true}
 	}
 	// Static analysis cannot discover whether a remote runner lacks Bash.
 	return Shell{Name: "bash", Implicit: true}
 }
 
-func executionShellLiteral(value ShellValue) ShellValue {
-	if value.Kind != ShellSource || !value.Value.ContainsExpression() {
-		return value
+func executableShellText(candidate value.Value) (string, bool) {
+	if text, known := candidate.ScalarString(); known {
+		return text, true
 	}
-	if literal, known := workflowlang.WorkflowExpressionLiteral(value.Value); known {
-		if text, ok := workflowlang.WorkflowScalarString(literal); ok {
-			return ShellValue{Kind: ShellEvaluated, Value: &workflowlang.String{Value: text}}
-		}
+	if candidate.State() != value.Dynamic || candidate.Kind() != value.String {
+		return "", false
 	}
-	// A custom template can have a known executable and dynamic arguments.
-	command, _, _ := strings.Cut(value.Value.Value, " ")
-	if !strings.Contains(command, "${{") {
-		return value
+	text := candidate.Source()
+	command, _, _ := strings.Cut(text, " ")
+	if strings.Contains(command, "${{") {
+		return "", false
 	}
-	return ShellValue{Kind: ShellUnknown}
+	return text, true
 }
 
-// ContainerShell resolves a known job container's default shell.
-func ContainerShell(container *workflowlang.Container) ShellValue {
-	if container == nil {
-		return ShellValue{}
+// DefaultShell projects the shell property from a canonical defaults.run value.
+func DefaultShell(semantic value.Value) value.Value {
+	if semantic.State() == value.Missing {
+		return value.Value{}
 	}
-	image := ShellValueOf(container.Image)
-	if container.Expression != nil {
-		value, known := workflowlang.WorkflowExpressionLiteral(container.Expression)
-		if !known {
-			return ShellValue{Kind: ShellUnknown}
-		}
-		if object, ok := value.(map[string]any); ok {
-			value = schema.Property(object, "image")
-		}
-		text, ok := workflowlang.WorkflowScalarString(value)
+	if !semantic.Known() {
+		return value.DynamicValue(semantic.Source(), value.KindUnknown, semantic.Origin())
+	}
+	if semantic.Kind() != value.Object {
+		return value.DynamicValue(semantic.Source(), value.KindUnknown, semantic.Origin())
+	}
+	shell, present := semantic.Prop("shell")
+	if !present {
+		return value.Value{}
+	}
+	if _, scalar := shell.ScalarString(); !scalar {
+		return value.DynamicValue(shell.Source(), value.KindUnknown, shell.Origin())
+	}
+	return shell
+}
+
+// ContainerShell resolves the known job container's default shell.
+func ContainerShell(container value.Value) value.Value {
+	if container.State() == value.Missing {
+		return value.Value{}
+	}
+	if !container.Known() {
+		return value.DynamicValue(container.Source(), value.KindUnknown, container.Origin())
+	}
+	image := container
+	if container.Kind() == value.Object {
+		var ok bool
+		image, ok = container.Prop("image")
 		if !ok {
-			return ShellValue{Kind: ShellUnknown}
+			return value.DynamicValue("", value.KindUnknown, container.Origin())
 		}
-		image = ShellValue{Kind: ShellEvaluated, Value: &workflowlang.String{Value: text}}
-	} else if image.Kind == ShellSource && image.Value.ContainsExpression() {
-		value, known := workflowlang.WorkflowExpressionLiteral(image.Value)
-		text, scalar := workflowlang.WorkflowScalarString(value)
-		if !known || !scalar {
-			return ShellValue{Kind: ShellUnknown}
-		}
-		image = ShellValue{Kind: ShellEvaluated, Value: &workflowlang.String{Value: text}}
 	}
-	if image.Value == nil || image.Value.Value == "" {
-		return ShellValue{}
+	text, known := image.ScalarString()
+	if !known {
+		return value.DynamicValue(image.Source(), value.KindUnknown, image.Origin())
 	}
-	return ShellValueOf(&workflowlang.String{Value: "sh"})
+	if strings.TrimSpace(text) == "" {
+		return value.Value{}
+	}
+	return value.YAMLScalar("sh", "!!str", image.Origin())
 }

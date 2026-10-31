@@ -144,7 +144,7 @@ func readRevocation(ctx context.Context, directory, digest string) (*ReleaseStat
 	return &status, nil
 }
 
-func writeStatusFile(path string, value any, immutable bool) (err error) {
+func writeCacheFile(path string, value any, immutable bool) (err error) {
 	if err := safePath(path); err != nil {
 		return err
 	}
@@ -201,14 +201,14 @@ func (c *Client) RefreshStatuses(ctx context.Context) (StatusSnapshot, error) {
 			continue
 		}
 		path := filepath.Join(directory, "revoked", status.SHA256+".json")
-		if err := writeStatusFile(path, status, true); err != nil && !errors.Is(err, os.ErrExist) {
+		if err := writeCacheFile(path, status, true); err != nil && !errors.Is(err, os.ErrExist) {
 			return snapshot, err
 		}
 		if _, err := readRevocation(ctx, directory, status.SHA256); err != nil {
 			return snapshot, err
 		}
 	}
-	return snapshot, writeStatusFile(filepath.Join(directory, "statuses.json"), snapshot, false)
+	return snapshot, writeCacheFile(filepath.Join(directory, "statuses.json"), snapshot, false)
 }
 
 func statusMessage(pin Pin, status ReleaseStatus) string {
@@ -249,6 +249,8 @@ func checkStatus(ctx context.Context, pin Pin, snapshot StatusSnapshot, options 
 			options.warn(statusMessage(pin, status))
 		case ReleaseDeprecated:
 			options.warn(statusMessage(pin, status))
+		case ReleaseActive:
+			// Active releases need no warning.
 		}
 	}
 	return nil
@@ -282,8 +284,8 @@ func (l Lock) CheckStatuses(ctx context.Context, options StatusOptions) error {
 	return nil
 }
 
-// RefreshStatuses is for explicit install/update/sync operations. Unavailable
-// registries produce warnings and retain cached policy, including revocations.
+// RefreshStatuses updates cached policy during explicit install/update/sync
+// operations. An unavailable registry produces a warning and uses cached policy.
 func (l Lock) RefreshStatuses(ctx context.Context, options StatusOptions) error {
 	if err := l.Validate(); err != nil {
 		return err

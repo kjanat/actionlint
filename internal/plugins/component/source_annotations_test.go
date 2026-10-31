@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -24,7 +25,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	}
 	query := func(ctx context.Context, ref source.Reference) []annotationsbind.Comment {
 		t.Helper()
-		comments, err := (sourceAnnotations{}).Comments(ctx, annotationsbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
+		comments, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +78,7 @@ func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
 		ActionInputs: []analyzer.ActionInput{{Script: unidentified}},
 	}
 	ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
-	got, err := (sourceAnnotations{}).Comments(ctx, annotationsbind.SourceReference{})
+	got, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{})
 	if err != nil || len(got) != 0 {
 		t.Fatalf("unidentified scripts granted comments=%+v, err=%v", got, err)
 	}
@@ -108,7 +109,7 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 				Comments:  []analyzer.SourceComment{valid, {Text: test.text, Start: test.start, Placement: test.placement}},
 			}}}
 			ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
-			got, err := (sourceAnnotations{}).Comments(ctx, annotationsbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
+			got, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 			if got != nil || err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("invalid comment leaked a partial result: comments=%+v, err=%v", got, err)
 			}
@@ -116,10 +117,10 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 	}
 	input := analyzer.Input{Scripts: []analyzer.Script{{Reference: ref, Comments: []analyzer.SourceComment{valid, {Text: "#", Start: diagnostic.Position{Line: 4, Column: 1}, Placement: analyzer.TrailingComment}}}}}
 	ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
-	got, err := (sourceAnnotations{}).Comments(ctx, annotationsbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
+	got, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 	want := []annotationsbind.Comment{
-		{Text: valid.Text, Start: annotationsbind.Position{Line: 3, Column: 7}, Placement: annotationsbind.PlacementLeading},
-		{Text: "#", Start: annotationsbind.Position{Line: 4, Column: 1}, Placement: annotationsbind.PlacementTrailing},
+		{Text: valid.Text, Start: invocationbind.Position{Line: 3, Column: 7}, Placement: annotationsbind.PlacementLeading},
+		{Text: "#", Start: invocationbind.Position{Line: 4, Column: 1}, Placement: annotationsbind.PlacementTrailing},
 	}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("valid physical comments=%+v, err=%v, want=%+v", got, err, want)

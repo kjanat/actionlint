@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 
 	"golang.org/x/sys/execabs"
 )
@@ -41,7 +41,7 @@ jobs:
 			done := make(chan error, 1)
 			go func() {
 				var err error
-				result, err = application.Check(ctx, application.Options{WorkingDir: dir, Tools: adapters.Options{ShellCheck: shellcheck}.Registrations()}, application.Input{Kind: application.Stdin, Name: filepath.Join(dir, "workflow.yml"), Reader: strings.NewReader(workflow)})
+				result, err = application.Check(ctx, application.Options{WorkingDir: dir, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}, application.Input{Kind: application.Stdin, Name: filepath.Join(dir, "workflow.yml"), Reader: strings.NewReader(workflow)})
 				done <- err
 			}()
 			select {

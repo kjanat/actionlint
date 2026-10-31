@@ -3,6 +3,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -12,13 +13,12 @@ import (
 	"strconv"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	ruffconfig "actionlint.kjanat.dev/v2/internal/config/tools/ruff"
+	configaddress "actionlint.kjanat.dev/v2/internal/config/address"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by
@@ -64,8 +64,8 @@ type PathConfig struct {
 }
 
 // Policy configures checks for cache safety and repository conventions.
-// Cache policies are enabled by default; the remaining checks are opt-in.
-// An omitted or null setting retains the check's default.
+// Cache checks default to enabled; repository conventions are opt-in.
+// Omission and null select the default.
 type Policy struct {
 	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
@@ -78,7 +78,7 @@ type Policy struct {
 	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
 	// DisallowSuppressions restricts inline and configured diagnostic exceptions.
 	// `true` or `{}` reports each prohibited directive or matching config exception
-	// and retains its original violations. Omission, null, or false permits exceptions.
+	// as well as the violations it would suppress. Omission, null, or false permits exceptions.
 	// Both ignore and ignore-next-line are covered equally.
 	//
 	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.
@@ -269,6 +269,9 @@ func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
 		if p.maxMinutes > 0 && p.minMinutes > p.maxMinutes {
 			return fmt.Errorf("yaml: \"min-minutes\" must not exceed \"max-minutes\" in \"require-job-timeout\" at line:%d,col:%d", n.Line, n.Column)
 		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only booleans and mappings configure this policy.
+		fallthrough
 	default:
 		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
 	}
@@ -322,19 +325,13 @@ func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 			}
 			p.scope = v.Value
 		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only booleans and mappings configure this policy.
+		fallthrough
 	default:
 		return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
 	}
 	return nil
-}
-
-// SelfHostedRunnerConfig is configuration for self-hosted runners.
-type SelfHostedRunnerConfig struct {
-	// Labels lists additional self-hosted runner labels accepted in `runs-on`.
-	//
-	// For example, `[linux.2xlarge, custom-*]` accepts that label and matching custom labels.
-	// Patterns use Go `path.Match` syntax. Omit this key, use `null`, or use `[]` to add no labels.
-	Labels []string `yaml:"labels" jsonschema:"nullable"`
 }
 
 // Config configures validation of GitHub Actions workflows for this repository.
@@ -347,165 +344,45 @@ type SelfHostedRunnerConfig struct {
 type Config struct {
 	filename    string
 	configFiles []string
-	// Extends loads local YAML/JSON files, relative to this config, in order.
-	// Later bases override earlier bases; this file wins over all bases. No URLs.
+	// Extends loads local or HTTPS YAML, JSON and TOML configurations in order.
+	// Relative references resolve against their declaring file or URL. Later
+	// bases override earlier bases; this file wins over all bases.
 	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
-	// Plugins declares plugin repositories and requested versions. Entries are
-	// owner/repo or forge-qualified names, optionally followed by @release-tag.
-	// Omitted versions select latest stable. Use a mapping with name, version,
-	// and registry for a custom catalogue. Empty or null disables plugins.
+	// Plugins declares canonical plugin packages with exact registry versions,
+	// or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and
+	// latest before saving. Use name, version and registry for a custom catalogue,
+	// or source for a direct artifact. Empty or null disables plugins.
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
 	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Lint configures rule selection separately from repository policy.
 	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
+	// Repository supplies overrides for repository knowledge obtained by the host.
+	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
 	// Overrides applies per-file lint settings in declaration order. Later matching
 	// settings win; mappings merge and arrays replace. Paths are repository-relative.
 	Overrides []Override `yaml:"overrides" jsonschema:"nullable"`
 	// Ignores suppresses a rule for matching files, actions, jobs, or steps.
 	// Every specified selector must match. Later config files replace the list.
 	Ignores IgnoreConfigs `yaml:"ignores" jsonschema:"nullable"`
-	// Tools configures external linters for both the CLI and GitHub Action.
+	// Tools configures external linters for both the CLI and GitHub Action, keyed
+	// by the rule name of each tool provider, such as ruff or shellcheck.
 	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	// LocalActions maps generated action directories to checked-in source directories.
 	// Both paths are relative to the repository root, using ./ or $/ prefixes.
 	// Known checkout placements are removed before matching. Sources resolve once
 	// to actual directories; mappings do not chain.
 	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
-	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
-	//
-	// Add your labels under `labels`, for example `{labels: [linux.2xlarge]}`.
-	SelfHostedRunner SelfHostedRunnerConfig `yaml:"-"`
-	// ConfigVariables lists configuration variable names available to the checked workflows through `vars`.
-	//
-	// Omit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables.
-	// A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.
-	ConfigVariables []string `yaml:"-"`
-	// ConfigSecrets lists secret names available to the checked workflows through `secrets`.
-	//
-	// Omit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in
-	// secrets and secrets declared in `on.workflow_call.secrets`. A list such as `[DEPLOY_TOKEN, API_KEY]`
-	// also allows those names; other names are reported as undefined. Matching is case-insensitive.
-	//
-	// `GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed.
-	// List names only, never secret values.
-	ConfigSecrets []string `yaml:"-"`
 	// Paths applies configuration to workflow files matching a glob pattern.
 	//
 	// Keys are paths relative to the repository root, using `/` separators and doublestar glob syntax,
 	// for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.
 	Paths map[string]PathConfig `yaml:"-"`
-	// AssumeDefaultPermissions selects the repository's assumed default token permissions when checking
-	// reusable workflow calls whose calling job and workflow both omit `permissions:`.
-	//
-	// `restricted` (the default) grants read access to `contents` and `packages` only.
-	// `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant.
-	// Omit this key or use `null` to assume `restricted`.
-	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"-"`
 	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
 	//
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"-"`
-}
-
-// ToolsConfig contains configuration for external analysis tools.
-type ToolsConfig struct {
-	// Ruff configures checking of embedded Python scripts.
-	Ruff RuffToolConfig `yaml:"ruff"`
-	// Shellcheck configures checking of embedded shell scripts.
-	Shellcheck ShellcheckToolConfig `yaml:"shellcheck"`
-}
-
-// RuffToolConfig selects isolated, read-only Ruff checks for Python run steps.
-// Repository Ruff configuration and noqa comments are not loaded; use actionlint
-// rule settings and inline suppressions for workflow exceptions.
-type RuffToolConfig = ruffconfig.Config
-
-// ShellcheckToolConfig contains ShellCheck's native configuration directives.
-type ShellcheckToolConfig struct {
-	// Backend selects the execution transport and its settings.
-	// Explicit CLI or application invocation settings take precedence.
-	Backend *toolconfig.Backend `yaml:"backend,omitempty"`
-	// Enabled turns ShellCheck analysis on or off. Omission or null keeps it enabled.
-	// An empty CLI command or shellcheck: false Action input still disables the tool.
-	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
-	// Config selects inline ShellCheck settings or an rc file/directory for each checked script.
-	// File-relative paths use the directory containing actionlint.yaml; paths supplied by an overlay use the analysis working directory.
-	// ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} uses the repository root.
-	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
-	// Lists replace during actionlint config overlays.
-	// Omission or null adds no directives. This does not enable rc-file discovery.
-	Config *ShellcheckConfigSource `yaml:"config"`
-}
-
-// ShellcheckConfigSource selects inline directives or a configuration file/directory.
-// Relative paths use their config file or overlay working directory. ${{ configdir }} and
-// ${{ gitdir }} explicitly select that directory or the checked repository root.
-type ShellcheckConfigSource struct {
-	value     shellcheckConfigValue
-	fromInput bool
-}
-
-type (
-	shellcheckConfigValue interface{ shellcheckConfigValue() }
-	shellcheckConfigPath  string
-)
-
-func (shellcheckConfigPath) shellcheckConfigValue() {}
-
-type shellcheckInlineConfig struct{ ShellcheckConfig }
-
-func (shellcheckInlineConfig) shellcheckConfigValue() {}
-
-// ShellcheckConfig is a typed representation of project-wide ShellCheck directives.
-type ShellcheckConfig struct {
-	// Disable lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].
-	Disable []string `yaml:"disable" jsonschema:"nullable,pattern=^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"`
-	// Enable selects optional check names. Scalar all or true expands to [all].
-	// This selection does not change the tool enabled setting.
-	Enable []string `yaml:"enable" jsonschema:"nullable,pattern=^[a-zA-Z-]+$"`
-	// Shell overrides the inferred dialect of scripts selected for ShellCheck.
-	Shell *string `yaml:"shell" jsonschema:"nullable,enum=sh,enum=bash,enum=dash,enum=ksh,enum=busybox"`
-	// ExtendedAnalysis enables or disables ShellCheck dataflow analysis. Omission keeps its default.
-	ExtendedAnalysis *bool `yaml:"extended-analysis" jsonschema:"nullable"`
-	// ExternalSources controls following sourced files. Omission preserves actionlint's enabled default.
-	ExternalSources *bool `yaml:"external-sources" jsonschema:"nullable"`
-	// SourcePath lists directories searched for sourced files, relative to the run step's effective working directory.
-	// Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.
-	SourcePath []string `yaml:"source-path" jsonschema:"nullable,minLength=1"`
-}
-
-// DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
-// which actionlint cannot read from a workflow file.
-type DefaultPermissionsAssumption uint8
-
-const (
-	// DefaultPermissionsAssumptionUnset means the "assume-default-permissions" key was not set.
-	DefaultPermissionsAssumptionUnset DefaultPermissionsAssumption = iota
-	// DefaultPermissionsAssumptionRestricted assumes GitHub's restricted default token, which grants read
-	// access to "contents" and "packages" and nothing else.
-	DefaultPermissionsAssumptionRestricted
-	// DefaultPermissionsAssumptionPermissive assumes GitHub's permissive default token.
-	DefaultPermissionsAssumptionPermissive
-)
-
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (a *DefaultPermissionsAssumption) UnmarshalYAML(n *yaml.Node) error {
-	switch n.Value {
-	case "restricted":
-		*a = DefaultPermissionsAssumptionRestricted
-	case "permissive":
-		*a = DefaultPermissionsAssumptionPermissive
-	default:
-		return fmt.Errorf(
-			"yaml: \"assume-default-permissions\" must be \"restricted\" or \"permissive\" but got %q at line:%d,col:%d",
-			n.Value,
-			n.Line,
-			n.Column,
-		)
-	}
-	return nil
 }
 
 // PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
@@ -644,13 +521,18 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return Resolved{}, err
 	}
-	if c.Tools.Shellcheck.Config != nil {
-		c.Tools.Shellcheck.Config.fromInput = origins["/tools/shellcheck/config"].Source == "input"
+	for name, tool := range c.Tools {
+		if tool.Config != nil {
+			tool.Config.fromInput = origins["/tools/"+configPointerPart(name)+"/config"].Source == "input"
+		}
 	}
 	for i := range c.Overrides {
-		tools := c.Overrides[i].Tools
-		if tools != nil && tools.Shellcheck.Config != nil {
-			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
+		if tools := c.Overrides[i].Tools; tools != nil {
+			for _, tool := range *tools {
+				if tool.Config != nil {
+					tool.Config.fromInput = origins["/overrides"].Source == "input"
+				}
+			}
 		}
 	}
 	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
@@ -658,7 +540,12 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 
 // Load reads the actionlint config file (actionlint.yaml) from the given file path.
 func Load(path string, additional ...string) (*Config, error) {
-	source, err := Read(path, fsread.Disk, additional...)
+	return LoadContext(context.Background(), path, additional...)
+}
+
+// LoadContext reads local or HTTPS inheritance with cancellable acquisition.
+func LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
+	source, err := ReadContext(ctx, path, nil, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -666,8 +553,15 @@ func Load(path string, additional ...string) (*Config, error) {
 }
 
 func Read(path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	return ReadContext(context.Background(), path, readFile, additional...)
+}
+
+// ReadContext preserves a supplied source reader for local and HTTPS inputs.
+// Without one, the host reader acquires local files and explicit HTTPS sources.
+func ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	reader := configsource.New(ctx, readFile)
 	warningsByFile := map[string][]Warning{}
-	loaded, err := configtree.Load(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
 		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin, additional...)
 		warningsByFile[origin] = warnings
 		return normalized, err
@@ -735,6 +629,9 @@ func (cfg *Config) Sources() []string {
 }
 
 func absPath(path string) string {
+	if configaddress.Remote(path) {
+		return path
+	}
 	if p, err := filepath.Abs(path); err == nil {
 		path = p
 	}

@@ -4,7 +4,7 @@ MAKEFLAGS += --no-builtin-rules
 
 GO_DIRS := $(shell go list -f '{{.Dir}}' ./...)
 GO_FILES := $(patsubst $(CURDIR)/%,%,$(wildcard $(addsuffix /*.go,$(GO_DIRS))))
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json internal/webhook/payload/catalogue.json go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/webhook/payload/catalogue.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard tools/config/*.go internal/*/generate/*.go internal/*/metadata/*.go tools/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
@@ -16,8 +16,7 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := generate.go $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
-				internal/actioncatalog/generate/popular_actions.json \
+GO_GEN_SRCS := generate.go $(filter-out %_test.go,$(wildcard internal/action/generate/*.go)) \
 				$(filter-out %_test.go,$(wildcard internal/webhook/generate/*.go)) \
 				$(wildcard internal/webhook/generate/sources/*) \
 				$(filter-out %_test.go,$(wildcard internal/webhook/payload/*.go)) \
@@ -30,6 +29,7 @@ ifeq ($(OS),Windows_NT)
 	SHELL := powershell.exe
 	.SHELLFLAGS := -NoProfile -ExecutionPolicy Bypass -Command
 	TARGET = actionlint.exe
+	EXE = .exe
 	TOUCH = powershell -NoProfile -ExecutionPolicy Bypass tools/ci/touch.ps1
 	# It's hard to prepare C toolchain for CGO on Windows
 	RACE =
@@ -94,22 +94,38 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-# Rebuild on every run: analyzer changes must not leave a stale binary active.
 .PHONY: lint-build lint-architecture test-analyzers
 lint-build:
 	golangci-lint custom
-	./custom-gcl cache clean
-	go build -C analyzers -o ../.bin/actionlintarch ./cmd/actionlintarch
+	go build -C analyzers -o ../.bin/actionlintarch$(EXE) ./cmd/actionlintarch
 
 test-analyzers:
 	go test -C analyzers -count=1 ./...
 
-lint-architecture: lint-build
-	./.bin/actionlintarch ./...
+lint-architecture: lint-build layers-check
+	./.bin/actionlintarch$(EXE) ./...
 
+# The layer table in tools/layers/layers.toml generates the depguard rules in .golangci.toml.
+.PHONY: layers layers-check
+layers:
+	go run ./tools/layers
+
+layers-check:
+	go run ./tools/layers -check
+
+# The layer check and both runners execute before the target fails. The layer
+# check catches unplaced packages that depguard's path globs cannot tell apart
+# from placed ones.
 lint: lint-build
-	./custom-gcl run
-	./.bin/actionlintarch ./...
+ifeq ($(OS),Windows_NT)
+	go run ./tools/layers -check; $$status = $$LASTEXITCODE; ./custom-gcl run; if ($$LASTEXITCODE -ne 0) { $$status = $$LASTEXITCODE }; ./.bin/actionlintarch$(EXE) ./...; if ($$LASTEXITCODE -ne 0) { $$status = $$LASTEXITCODE }; if ($$status -ne 0) { exit $$status }
+else
+	@status=0; \
+	go run ./tools/layers -check || status=$$?; \
+	./custom-gcl run || status=$$?; \
+	./.bin/actionlintarch ./... || status=$$?; \
+	exit $$status
+endif
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm ./custom-gcl run ./playground
@@ -127,9 +143,9 @@ else
 	go generate -run 'payload/generate'
 endif
 
-internal/actioncatalog/popular_actions.json internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
+internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go
+	$(TOUCH) internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go
 else
 	go generate -skip 'payload/generate'
 endif
@@ -197,7 +213,7 @@ plugins-check-native:
 .PHONY: plugin-examples plugins
 plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/source-annotations.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm $(PLUGIN_FIXTURES)/action-input.wasm $(PLUGIN_FIXTURES)/ruff-script-engine.wasm $(PLUGIN_FIXTURES)/ruff-action-input.wasm
 
-plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
+plugins: plugin-examples $(PLUGIN_FIXTURES)/script-engine-0.3.0.wasm $(PLUGIN_FIXTURES)/template-script-engine-0.3.0.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
 $(PLUGIN_FIXTURES)/pipe-to-shell.wasm: crates/actionlint-extension-api/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
@@ -228,7 +244,15 @@ $(PLUGIN_FIXTURES)/script-engine.wasm: crates/actionlint-extension-api/wit/scrip
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine
 	install -m 644 target/wasm32-wasip2/wasm/examples/script_engine.wasm $@
 
-$(PLUGIN_FIXTURES)/ruff-script-engine.wasm: crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
+$(PLUGIN_FIXTURES)/script-engine-0.3.0.wasm: $(wildcard crates/actionlint-extension-api/wit/0.3.0/*.wit) $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/script-engine-0.3.0/src/*.rs)
+	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-script-engine-0-3-0
+	install -m 644 target/wasm32-wasip2/wasm/actionlint_plugin_script_engine_0_3_0.wasm $@
+
+$(PLUGIN_FIXTURES)/template-script-engine-0.3.0.wasm: $(wildcard crates/actionlint-extension-api/wit/0.3.0/*.wit) $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/template-script-engine-0.3.0/src/*.rs)
+	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-template-script-engine-0-3-0
+	install -m 644 target/wasm32-wasip2/wasm/actionlint_plugin_template_script_engine_0_3_0.wasm $@
+
+$(PLUGIN_FIXTURES)/ruff-script-engine.wasm:crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features ruff-fixture --target-dir target/plugin-fixtures/ruff-script-engine
 	install -m 644 target/plugin-fixtures/ruff-script-engine/wasm32-wasip2/wasm/examples/script_engine.wasm $@
 
@@ -256,10 +280,10 @@ $(ENGINE_FIXTURES)/echo.wasm: $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/e
 	cargo build --locked --profile wasm --target wasm32-unknown-unknown -p actionlint-engine-echo
 	install -m 644 target/wasm32-unknown-unknown/wasm/actionlint_engine_echo.wasm $@
 
-internal/plugins/component/bindings/kjanat/actionlint/host/host.gen.go: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/source-annotations.wit internal/plugins/component/generate.go $(wildcard tools/plugin-contract/*.go)
+internal/plugins/component/bindings/kjanat/actionlint/host/host.gen.go: $(wildcard crates/actionlint-extension-api/wit/*.wit) internal/plugins/component/generate.go $(wildcard tools/plugin-contract/*.go)
 	go generate ./internal/plugins/component
 
-internal/plugins/component/contract.gen.go internal/plugins/component/runner.gen.go internal/plugins/component/script_engine.gen.go &: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/runner.wit crates/actionlint-extension-api/wit/script-engine.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
+internal/plugins/component/contract.gen.go internal/plugins/component/runner.gen.go internal/plugins/component/script_engine.gen.go internal/plugins/component/script_engine_03.gen.go &: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/runner.wit crates/actionlint-extension-api/wit/script-engine.wit crates/actionlint-extension-api/wit/0.3.0/script-engine.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
 	go run -C tools/plugin-contract .
 
 CHANGELOG.md:

@@ -5,14 +5,14 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 )
 
 // recoverInlineSuppressionComments reads lexical comments when malformed YAML
-// prevents node construction. Quoted scalars and block bodies remain opaque.
+// prevents node construction.
 func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment {
-	document := yamlsource.NewDocument(string(source))
-	lines := document.Lines
+	document := sourcemap.NewDocument(string(source))
+	lines := document.Lines()
 	var comments []inlineSuppressionComment
 	var quote byte
 	var flow []int
@@ -100,8 +100,8 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			case len(flow) > 0 && c == ',':
 				plain = false
 			case !plain && len(flow) == 0 && (c == '|' || c == '>'):
-				position := yamlsource.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
-				if scalar, err := document.Decode(position, yamlsource.Context{Indent: parentIndent}); err == nil {
+				position := sourcemap.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
+				if scalar, err := document.Decode(position, sourcemap.Context{Indent: parentIndent}); err == nil {
 					blockEnds[lineNumber] = scalar.End.Line
 				}
 				blockEnd = blockEnds[lineNumber]

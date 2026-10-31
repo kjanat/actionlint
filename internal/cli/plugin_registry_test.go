@@ -65,54 +65,61 @@ func TestRegistryCLI(t *testing.T) {
 		}
 		return cfg.Plugins
 	}
-	if refs := readDeclarations(); len(refs) != 1 || refs[0] != (pluginref.Reference{Name: testutil.FixturePluginName, Version: "v1.9.0", Registry: testutil.FixtureRegistryURL}) {
+	if refs := readDeclarations(); len(refs) != 1 || refs[0] != testReference(t, testutil.FixturePluginName, "v1.9.0", testutil.FixtureRegistryURL) {
 		t.Fatalf("install did not declare exact dependency: %#v", refs)
 	}
 	readPin := func() pluginregistry.Pin {
 		t.Helper()
-		f, err := pluginregistry.OpenLock(t.Context(), lockPath)
+		refs := readDeclarations()
+		if len(refs) != 1 {
+			t.Fatalf("declarations: %+v", refs)
+		}
+		client, err := pluginregistry.New(refs[0].Registry())
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(f.Lock.Plugins) != 1 {
-			t.Fatalf("pins: %+v", f.Lock)
+		pin, err := client.Lookup(t.Context(), refs[0].Name(), refs[0].Version())
+		if err != nil {
+			t.Fatal(err)
 		}
-		return f.Lock.Plugins[0]
+		return pin
+	}
+	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+		t.Fatalf("installation created a lockfile: %v", err)
 	}
 	if readPin().Version != "v1.9.0" {
 		t.Fatal("exact version ignored")
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "install")
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("matching installation contacted registry")
 	}
 	syncOutput := pluginCommandTest(t, 0, "plugin", "sync")
-	if len(r.Requests) != requests+1 || r.Requests[requests] != testutil.FixtureRegistryURL+"statuses.json" || !strings.Contains(syncOutput, "using cached status") {
-		t.Fatalf("offline sync should attempt status refresh only: %v %s", r.Requests[requests:], syncOutput)
+	if len(r.Requests()) != requests+1 || r.Requests()[requests] != testutil.FixtureRegistryURL+"statuses.json" || !strings.Contains(syncOutput, "using cached status") {
+		t.Fatalf("offline sync should attempt status refresh only: %v %s", r.Requests()[requests:], syncOutput)
 	}
-	requests = len(r.Requests)
+	requests = len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "list", "--json")
-	if output := pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
+	if output := pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
 		t.Fatal(output)
 	}
 	if output := pluginCommandTest(t, 0, "rules", "no-sudo"); !strings.Contains(output, "no-sudo") {
 		t.Fatal(output)
 	}
-	pluginCommandTest(t, 0, "check", "--no-config", "--no-ruff", "--no-shellcheck", "workflow.yml")
-	pluginCommandTest(t, 1, "check", "--no-config", "--plugin-lock", lockPath, "--no-ruff", "--no-shellcheck", "workflow.yml")
-	if len(r.Requests) != requests {
+	pluginCommandTest(t, 0, "check", "--no-config", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
+	if len(r.Requests()) != requests {
 		t.Fatal("pinned offline commands contacted network")
 	}
-	before, err := os.ReadFile(lockPath)
+	before, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 3, "check", "--no-ruff", "--no-shellcheck", "--yes", "--output-file", lockPath, "workflow.yml")
-	after, err := os.ReadFile(lockPath)
+	pluginCommandTest(t, 3, "check", "--no-tool=ruff", "--no-tool=shellcheck", "--yes", "--output-file", configPath, "workflow.yml")
+	after, err := os.ReadFile(configPath)
 	if err != nil || !bytes.Equal(before, after) {
-		t.Fatal("output overwrote lock")
+		t.Fatal("output overwrote plugin configuration")
 	}
 	t.Setenv("ACTIONLINT_NO_CONFIG", "true")
 	output := pluginCommandTest(t, 0, "rules", "--json")
@@ -120,7 +127,7 @@ func TestRegistryCLI(t *testing.T) {
 		t.Fatal("rules ignored no-config environment")
 	}
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
-	r.Offline = false
+	r.SetOffline(false)
 	pluginCommandTest(t, 0, "plugin", "update")
 	if readPin().Version != "v1.9.0" {
 		t.Fatal("update changed exact selector")
@@ -129,49 +136,43 @@ func TestRegistryCLI(t *testing.T) {
 	if readPin().Version != "v1.10.0" {
 		t.Fatal("latest sorted lexically")
 	}
-	if refs := readDeclarations(); len(refs) != 1 || refs[0].Version != "latest" {
-		t.Fatalf("update did not persist requested selector: %#v", refs)
+	if refs := readDeclarations(); len(refs) != 1 || refs[0].Version() != "v1.10.0" {
+		t.Fatalf("update did not persist exact release: %#v", refs)
 	}
 	configBefore, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err = os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	r.Add(t, "v1.11.0", wasm)
-	delete(r.Files, "https://"+testutil.FixturePluginName+"/releases/download/v1.11.0/plugin.wasm")
-	pluginCommandTest(t, 3, "plugin", "update")
-	after, err = os.ReadFile(lockPath)
-	if err != nil || !bytes.Equal(before, after) {
-		t.Fatal("failed download changed lock")
-	}
+	r.DeleteFile("https://" + testutil.FixturePluginName + "/releases/download/v1.11.0/plugin.wasm")
+	pluginCommandTest(t, 3, "plugin", "update", testutil.FixturePluginName, "--version", "latest")
 	configAfter, err := os.ReadFile(configPath)
 	if err != nil || !bytes.Equal(configBefore, configAfter) {
 		t.Fatal("failed download changed configuration")
 	}
 	r.Publish(t, "v1.9.0")
-	pluginCommandTest(t, 3, "plugin", "update")
+	pluginCommandTest(t, 3, "plugin", "update", testutil.FixturePluginName, "--version", "latest")
 	if readPin().Version != "v1.10.0" {
 		t.Fatal("stale catalogue downgraded pin")
 	}
 	pluginCommandTest(t, 0, "plugin", "update", testutil.FixturePluginName, "--version", "v1.9.0")
-	// A fresh checkout/cache restores declared pins without registry metadata, even when the
-	// catalogue itself is missing. It never reselects latest during sync.
+	// A cold host needs the trusted registry record; a warm host then runs offline.
+	catalogue := r.File(testutil.FixtureRegistryURL + "index.json")
 	testutil.IsolateUserCache(t)
-	delete(r.Files, testutil.FixtureRegistryURL+"index.json")
+	r.DeleteFile(testutil.FixtureRegistryURL + "index.json")
+	pluginCommandTest(t, 3, "plugin", "sync")
+	r.SetFile(testutil.FixtureRegistryURL+"index.json", catalogue)
 	pluginCommandTest(t, 0, "plugin", "sync")
-	r.Offline = true
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	r.SetOffline(true)
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	pluginCommandTest(t, 0, "plugin", "remove", "publisher/plugin")
 	if refs := readDeclarations(); refs == nil || len(refs) != 0 {
 		t.Fatalf("removal must persist explicit empty plugins: %#v", refs)
 	}
-	pluginCommandTest(t, 0, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 0, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 }
 
-func TestRegistryManifestInstallAndMigration(t *testing.T) {
+func TestRegistryManifestInstallAndMissingConfiguration(t *testing.T) {
 	r := testutil.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -185,27 +186,23 @@ func TestRegistryManifestInstallAndMigration(t *testing.T) {
 	if err != nil || !strings.Contains(string(content), "# keep this comment") || !strings.Contains(string(content), "no-sudo: warn") {
 		t.Fatalf("install changed unrelated configuration: %s, %v", content, err)
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "install", "--config", "custom.yaml")
-	// The lock remains usable for explicit low-level loading; normal management
-	// requires a declaration and provides one explicit migration operation.
 	if err := os.Remove("custom.yaml"); err != nil {
 		t.Fatal(err)
 	}
-	for _, operation := range []string{"list", "sync", "update"} {
-		output := pluginCommandTest(t, 3, "plugin", operation, "--config", "custom.yaml")
-		if !strings.Contains(output, "actionlint plugin install") {
-			t.Fatalf("missing migration guidance: %s", output)
+	for _, operation := range []string{"list", "sync", "update", "install"} {
+		output := pluginCommandTest(t, 0, "plugin", operation, "--config", "custom.yaml")
+		if !strings.Contains(output, "No plugins installed.") {
+			t.Fatalf("cached undeclared plugin activated: %s", output)
 		}
 	}
-	pluginCommandTest(t, 0, "plugin", "install", "--config", "custom.yaml")
-	cfg, err := repoconfig.Load("custom.yaml")
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != testutil.FixturePluginName {
-		t.Fatalf("lock migration did not declare plugin: %#v, %v", cfg, err)
+	if _, err := os.Stat("custom.yaml"); !os.IsNotExist(err) {
+		t.Fatalf("missing config was recreated from the host cache: %v", err)
 	}
-	if len(r.Requests) != requests {
-		t.Fatal("migration/repeated installation contacted registry despite exact cached lock")
+	if len(r.Requests()) != requests {
+		t.Fatal("undeclared cache entries triggered registry requests")
 	}
 	// Environment selection must target the same project for management as checking.
 	t.Setenv("ACTIONLINT_CONFIG", "custom.yaml")
@@ -236,7 +233,7 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 }
 
 func TestRequestedPlugin(t *testing.T) {
-	existing := []pluginref.Reference{{Name: testutil.FixturePluginName, Version: "v1", Registry: testutil.FixtureRegistryURL}}
+	existing := []pluginref.Reference{testReference(t, testutil.FixturePluginName, "v1", testutil.FixtureRegistryURL)}
 	for _, tc := range []struct {
 		name    string
 		options pluginInvocation
@@ -247,7 +244,7 @@ func TestRequestedPlugin(t *testing.T) {
 		{"publisher/plugin", pluginInvocation{Version: "latest"}, "latest"},
 	} {
 		ref, err := requestedPlugin(tc.name, tc.options, existing)
-		if err != nil || ref.Name != testutil.FixturePluginName || ref.Registry != testutil.FixtureRegistryURL || ref.Version != tc.version {
+		if err != nil || ref.Name() != testutil.FixturePluginName || ref.Registry() != testutil.FixtureRegistryURL || ref.Version() != tc.version {
 			t.Fatalf("request %q: %#v, %v", tc.name, ref, err)
 		}
 	}

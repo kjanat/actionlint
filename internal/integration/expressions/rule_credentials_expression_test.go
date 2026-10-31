@@ -8,7 +8,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -41,7 +41,6 @@ func TestCredentialsKnownMappingExpressions(t *testing.T) {
 			{"password without username", `{"password":"plain"}`, "credentials"},
 			{"literal secret expression", `{"username":"user","password":"${{ secrets.PASSWORD }}"}`, "credentials"},
 			{"literal computed expression", `{"username":"user","password":"${{ fromJSON('{}') }}"}`, "credentials"},
-			// The evaluated schema permits omitted credential fields; present values remain nonempty.
 			// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/workflow-v1.0.json#L2686-L2702
 			{"empty credentials", `{}`, ""},
 			{"username only", `{"username":"user"}`, ""},
@@ -172,7 +171,7 @@ jobs:
 
 func lintCredentialsExpressionTest(t *testing.T, source string) []diagmodel.Diagnostic {
 	t.Helper()
-	request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 	var requestSources []workspace.Source
 	var err error
 	requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}

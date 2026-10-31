@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/filefilter"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // IgnoreConfig suppresses one rule where all supplied selectors match.

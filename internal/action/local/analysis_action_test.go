@@ -4,7 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestActionSnapshotManifestPrecedence(t *testing.T) {
@@ -20,8 +21,7 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			cache := NewCache(root, nil)
-			cache.explicitSources = make(map[string][]byte)
+			var overlays []capture.Overlay
 			for name, content := range map[string]string{"action.yaml": tc.diskYAML, "action.yml": tc.diskYML} {
 				if content != "" {
 					writeFixture(t, root, name, content)
@@ -29,12 +29,13 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 			}
 			for name, content := range map[string]string{"action.yaml": tc.explicitYAML, "action.yml": tc.explicitYML} {
 				if content != "" {
-					cache.explicitSources[fsread.PhysicalPath(filepath.Join(root, name))] = []byte(content)
+					overlays = append(overlays, capture.Overlay{Path: filepath.Join(root, name), Content: []byte(content), Coordinates: source.YAML})
 				}
 			}
-			content, name, err := cache.readLocalActionMetadataFile(root)
-			if err != nil || name != tc.wantName || string(content) != tc.wantContent {
-				t.Fatalf("want %s containing %q; got %s containing %q, error: %v", tc.wantName, tc.wantContent, name, content, err)
+			cache := newCapturedActionCache(t, root, nil, overlays...)
+			captured, name, err := cache.readLocalActionMetadataFile(root)
+			if err != nil || name != tc.wantName || string(captured.Bytes()) != tc.wantContent {
+				t.Fatalf("want %s containing %q; got %s containing %q, error: %v", tc.wantName, tc.wantContent, name, captured.Bytes(), err)
 			}
 		})
 	}

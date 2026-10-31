@@ -8,10 +8,16 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/render"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"github.com/google/go-cmp/cmp"
+)
+
+// documentValues compares opaque document outlines by their recorded declarations.
+var documentValues = cmp.AllowUnexported(
+	document.Workflow{}, document.Job{}, document.Step{}, document.Action{}, document.CompositeRuns{}, document.DockerRuns{},
 )
 
 func TestActionMultiProjectResultParity(t *testing.T) {
@@ -30,7 +36,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 		"ACTIONLINT_ACTION_RESULT": resultPath,
 		"INPUT_FILES":              "z/.github/workflows/test.yml\na/.github/workflows/test.yml",
 		"INPUT_FORMAT":             "json", "INPUT_OUTPUT-FILE": "report.json",
-		"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var stdout bytes.Buffer
 	if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
@@ -104,7 +110,7 @@ jobs:
 			}
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdout: &stdout, Stderr: &stderr}
-			if code := command.Main([]string{"actionlint", "check", "--json", "--shellcheck=", "--pyflakes=", "ci.yml"}); code != tc.code {
+			if code := command.Main([]string{"actionlint", "check", "--json", "--no-tool=shellcheck", "--no-tool=ruff", "ci.yml"}); code != tc.code {
 				t.Fatalf("CLI status %d: %s", code, &stderr)
 			}
 			var cliResult render.CheckResult
@@ -115,7 +121,7 @@ jobs:
 			outputPath := filepath.Join(workspace, "outputs")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			stdout.Reset()
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
@@ -128,10 +134,10 @@ jobs:
 			if err := json.Unmarshal([]byte(parseOutputs(read(t, outputPath))["output"]), &rendered); err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(persisted, rendered); diff != "" {
+			if diff := cmp.Diff(persisted, rendered, documentValues); diff != "" {
 				t.Fatalf("public and persisted JSON differ: %s", diff)
 			}
-			if diff := cmp.Diff(cliResult, persisted); diff != "" {
+			if diff := cmp.Diff(cliResult, persisted, documentValues); diff != "" {
 				t.Fatalf("CLI and Action differ: %s", diff)
 			}
 			if persisted.ExitCode != tc.code {

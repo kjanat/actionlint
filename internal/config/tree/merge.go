@@ -4,7 +4,7 @@ package tree
 import (
 	"fmt"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Input tracks explicit overlays and null resets during merging.
@@ -85,7 +85,7 @@ func Merge(base, overlay *yaml.Node, inputs map[*yaml.Node]Input) *yaml.Node {
 	}
 	if base == nil || base.Kind != yaml.MappingNode || overlay.Kind != yaml.MappingNode {
 		if base != nil && base.Tag == "!!null" && inputs[base].Name != "" && overlay.Kind == yaml.MappingNode {
-			// A later partial mapping must retain the reset of its omitted fields.
+			// Omitted fields inherit the prior null reset.
 			replacement := *overlay
 			inputs[&replacement] = Input{Name: inputs[overlay].Name, Reset: base}
 			return &replacement

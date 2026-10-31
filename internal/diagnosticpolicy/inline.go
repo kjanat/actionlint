@@ -26,7 +26,7 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 	if len(directives) == 0 && len(invalid) == 0 {
 		return findings
 	}
-	evaluation := suppression.Evaluate(directives, func(name string) suppression.Decision {
+	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
 		mode := policy.ReportFor(name)
 		return suppression.Decision{
 			Suppress: mode == repoconfig.SuppressionsAllowed || mode == repoconfig.ReportSuppression,
@@ -36,7 +36,7 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 	for _, d := range invalid {
 		findings = append(findings, findingmodel.FromDiagnostic(d))
 	}
-	filtered := make([]*findingmodel.Finding, 0, len(findings)+len(evaluation.Diagnostics))
+	filtered := make([]*findingmodel.Finding, 0, len(findings)+len(reports))
 	for _, finding := range findings {
 		first, last, applies := finding.Start.Line, finding.Start.Line, finding.Source == nil
 		if origin := finding.SuppressionOrigin; origin != nil {
@@ -47,14 +47,13 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 		}
 		filtered = append(filtered, finding)
 	}
-	for _, d := range evaluation.Diagnostics {
+	for _, d := range reports {
 		filtered = append(filtered, findingmodel.FromDiagnostic(d))
 	}
 	return filtered
 }
 
-// FilterForeignInline scopes directives to their owning YAML while retaining diagnostic sources.
-// FilterForeignInline evaluates declarations in their own YAML while retaining displayed script locations.
+// FilterForeignInline applies suppression directives from the declaring YAML.
 func FilterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, additional ...string) []*findingmodel.Finding {
 	local := make([]*findingmodel.Finding, len(findings))
 	for i, finding := range findings {

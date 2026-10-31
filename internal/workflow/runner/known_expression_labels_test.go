@@ -6,7 +6,7 @@ import (
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 func TestKnownExpressionRunnerLabels(t *testing.T) {
@@ -31,17 +31,12 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 		{"labels expression", `{labels: "${{ fromJSON('[\"ubuntu-lates\"]') }}"}`, `label "ubuntu-lates" is unknown`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, parseErrors := workflowlang.Parse([]byte(`on: push
-jobs:
-  test:
-    runs-on: ` + tc.runsOn + `
-    steps:
-      - run: echo ok
-`))
+			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runsOn + "\n    steps:\n      - run: echo ok\n"
+			_, parseErrors := workflowparser.Parse([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			errs := runnerlang.Check(workflow.Jobs["test"], nil)
+			errs := runnerlang.Check(runnerJobView(t, source), nil)
 			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}

@@ -1,7 +1,7 @@
 # Migrating to v2
 
 The v2 release and its first pre-commit hook tag are pending. These instructions
-describe the upcoming cutover; existing immutable v1 releases remain available.
+describe the upcoming cutover.
 
 ## pre-commit repository
 
@@ -31,21 +31,51 @@ cannot perform the URL change.
 
 Remove Go `additional_dependencies` entries used to install native ShellCheck.
 The new default hook does not build Go source or provision native script linters.
-Its pinned wheel supplies the host; the project's [plugin configuration and
-lockfile](plugins.md) supply analyzer versions and artifact digests. Keep the
-lockfile in version control.
+Its pinned wheel supplies the host; the project's [plugin configuration](plugins.md)
+selects exact analyzer versions. The registry supplies immutable artifact records and
+checksums; direct artifact declarations carry their own digests. Commit the configuration.
 
 Use `actionlint config init` for a new configuration, or `actionlint config migrate`
 to inspect an existing configuration and `actionlint config migrate --write` to
 apply it. Both default plugins must have published registry versions before
-initialization or migration can install them. Explicit plugin declarations and
-an empty `plugins: []` selection remain under project control.
+initialization or migration can install them. Default declarations are inserted
+only when the project omits `plugins`.
 
 Then run `pre-commit install` and `pre-commit run actionlint --all-files`.
 Hooks still check every repository workflow, including commits that only delete
-an action, reusable workflow, or configuration. The native `actionlint pre-commit`
-command remains available.
+an action, reusable workflow, or configuration.
 
-Users remaining on v1 should keep their existing exact revision at the old URL.
+For v1, use an exact revision at the old URL.
 The host repository's v2 source no longer contains the hook manifest; updating
 that old URL to a v2 source revision will not install a hook.
+
+## External tool selection
+
+Tools are selected by id: `--tool ID[=COMMAND]`, `--no-tool ID`,
+`ACTIONLINT_TOOL_<ID>_BIN`, `_FLAGS` and `_ENV`, the Action input `disable-tools`
+and `analysis.Options.Tools`. The two v1.17.0 options still work for one release
+as hidden, deprecated aliases and print a warning. The v1.17.0 Action inputs are
+accepted and ignored.
+
+| v1.17.0 surface           | v2 replacement                                                         |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `-shellcheck COMMAND`     | `--tool shellcheck=COMMAND`; the old option is a deprecated alias      |
+| `-shellcheck=`            | `--no-tool shellcheck`; the old option is a deprecated alias           |
+| `-pyflakes COMMAND`       | Deprecated: runs Ruff with `--select F`; the command is never executed |
+| `-pyflakes=`              | `--no-tool ruff`; the old option is a deprecated alias                 |
+| Action input `shellcheck` | `disable-tools: shellcheck`; the input is ignored                      |
+| Action input `pyflakes`   | `disable-tools: ruff`; the input is ignored                            |
+
+Unreleased v2 builds also had `--ruff`, `--no-ruff`, `--no-shellcheck`,
+`ACTIONLINT_SHELLCHECK_*`, `ACTIONLINT_RUFF_*`, the Action input `ruff` and the
+library fields `analysis.Options.ShellCheck` and `analysis.Options.Ruff`. They are
+removed without aliases; the `ruff` input is ignored like the v1.17.0 inputs. Use
+`analysis.Options{Tools: map[string]analysis.Tool{"shellcheck": tool, "ruff": tool}}`
+in the library; `analysis.Tools()` lists the valid map keys.
+
+The last `--tool`, `--no-tool` or `-shellcheck` for an id wins, so
+`--no-tool shellcheck -shellcheck=COMMAND` runs `COMMAND`. A disabled tool also
+turns off plugins that provide it: a locked plugin whose name or alias is the id is
+not downloaded, and any other plugin whose metadata names the id as its engine or a
+rule is not loaded. Unreleased v2 builds skipped plugins by a `languages` metadata
+key instead.

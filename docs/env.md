@@ -36,9 +36,8 @@ Any explicit config-selection flag overrides both `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG=true` is an error. Relative paths use the current directory.
 Environment selection works for checks, `doctor`, and config inspection commands.
 
-There is still one configuration file, without a global search or merging between
-files. Policy settings, runner labels, allowed secrets and variables remain in
-that file; see [Configuration](config.md). `config show --origin` reports the
+Configure policy settings, runner labels, allowed secrets and variables in the
+selected file; see [Configuration](config.md). `config show --origin` reports the
 origins of values inside the selected file.
 
 Explicit `--ignore` or `--ignore-regex` options replace the environment's entire
@@ -63,7 +62,7 @@ actionlint config show --origin
 | `ACTIONLINT_TEMPLATE_FILE` | `--template-file`                | A file containing a Go template. Checks only.                                         |
 | `ACTIONLINT_OUTPUT_FILE`   | `--output-file`                  | Report destination. Empty or `-` writes to stdout. Checks only.                       |
 | `ACTIONLINT_LOG_LEVEL`     | `--log-level`                    | `none`, `info`, or `debug`. Checks only; default: none.                               |
-| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries, retaining findings and errors. Default: false.       |
+| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries. Default: false.                                      |
 | `ACTIONLINT_SUMMARY`       | `--summary`                      | Show analysis summary. Default: true.                                                 |
 | `ACTIONLINT_COLOR`         | Color controls                   | `auto`, `always`, or `never`. Default: auto.                                          |
 | `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`                   | `auto`, `always`, or `never`. Default: auto.                                          |
@@ -92,9 +91,8 @@ overrides environment format defaults. Setting `ACTIONLINT_JSON_PRETTY=true`
 only controls formatting and does not select JSON output.
 
 Explicit `--json-pretty` also indents JSON written to pipes and regular files,
-using built-in formatting without color codes or a jq dependency. Otherwise,
-pipes and files retain their existing bytes. JSONL, legacy templates and stderr
-log/error records keep their existing format. If `jq` is absent, fails, or takes
+using built-in formatting without color codes or a jq dependency.
+If `jq` is absent, fails, or takes
 more than two seconds, actionlint uses its built-in output. Nothing is installed
 automatically. Cancellation still cancels the command.
 
@@ -128,14 +126,16 @@ the same color selection. `JQ_COLORS` is interpreted by `jq` itself.
 
 ## External linters
 
-| Variable                      | Meaning                                                                               |
-| ----------------------------- | ------------------------------------------------------------------------------------- |
-| `ACTIONLINT_SHELLCHECK_BIN`   | Literal ShellCheck executable name or path. Default: `shellcheck`. Empty disables it. |
-| `ACTIONLINT_SHELLCHECK_FLAGS` | Additional ShellCheck arguments.                                                      |
-| `ACTIONLINT_SHELLCHECK_ENV`   | Child environment overrides or forwarded variable names for ShellCheck.               |
-| `ACTIONLINT_RUFF_BIN`         | Literal Ruff executable name or path. Default: `ruff`. Empty disables it.             |
-| `ACTIONLINT_RUFF_FLAGS`       | Additional Ruff command arguments.                                                    |
-| `ACTIONLINT_RUFF_ENV`         | Child environment overrides or forwarded variable names for Ruff.                     |
+Each bundled tool reads three variables named after its id, upper-cased with dashes
+replaced by underscores:
+
+| Variable                     | Meaning                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `ACTIONLINT_TOOL_<ID>_BIN`   | Literal executable name or path. Default: the tool id, such as `shellcheck`. Empty disables it. |
+| `ACTIONLINT_TOOL_<ID>_FLAGS` | Additional command arguments.                                                                   |
+| `ACTIONLINT_TOOL_<ID>_ENV`   | Child environment overrides or forwarded variable names.                                        |
+
+For example, `ACTIONLINT_TOOL_SHELLCHECK_BIN` and `ACTIONLINT_TOOL_RUFF_FLAGS`.
 
 `_BIN` is a literal executable, so Windows paths containing spaces need no embedded
 quotes. `_FLAGS` accepts a JSON string array or a shell-style quoted argument list.
@@ -143,19 +143,19 @@ JSON is useful for empty arguments and paths containing backslashes. There is no
 shell execution, environment expansion, command substitution, piping or redirection.
 
 ```powershell
-$env:ACTIONLINT_SHELLCHECK_BIN = 'C:\Program Files\ShellCheck\shellcheck.exe'
-$env:ACTIONLINT_SHELLCHECK_FLAGS = '["-e", "SC2086"]'
+$env:ACTIONLINT_TOOL_SHELLCHECK_BIN = 'C:\Program Files\ShellCheck\shellcheck.exe'
+$env:ACTIONLINT_TOOL_SHELLCHECK_FLAGS = '["-e", "SC2086"]'
 actionlint check workflow.yml
 ```
 
-An explicit `--shellcheck` or `--ruff` replaces **all three** environment
-settings for that tool. The flags retain their existing command-line syntax;
-`--shellcheck=` disables ShellCheck even when its environment settings are present.
-An empty `_BIN` also disables its tool without parsing its `_FLAGS` or `_ENV`.
+`--tool ID` and `--no-tool ID` replace **all three** environment settings for that
+tool; `--no-tool shellcheck` disables ShellCheck even when its environment settings
+are present. An empty `_BIN` also disables its tool without parsing its `_FLAGS` or
+`_ENV`.
 
 Extra arguments precede actionlint's required arguments. Do not supply input files
-or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON. Existing
-`SHELLCHECK_OPTS` behavior remains available; ShellCheck interprets that variable.
+or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON.
+ShellCheck also reads `SHELLCHECK_OPTS`.
 
 `_ENV` accepts a JSON object with string values, or a quoted list of `NAME=value`
 entries and variable names. JSON `null` means forward the current value. A bare
@@ -163,9 +163,9 @@ name also forwards its current value; absent names stay absent. Empty strings se
 empty values. Names use `[A-Za-z_][A-Za-z0-9_]*`.
 
 ```powershell
-$env:ACTIONLINT_SHELLCHECK_ENV = '{"LANG":"C.UTF-8","SHELLCHECK_OPTS":null}'
+$env:ACTIONLINT_TOOL_SHELLCHECK_ENV = '{"LANG":"C.UTF-8","SHELLCHECK_OPTS":null}'
 # Equivalent argument-list form:
-$env:ACTIONLINT_SHELLCHECK_ENV = 'LANG=C.UTF-8 SHELLCHECK_OPTS'
+$env:ACTIONLINT_TOOL_SHELLCHECK_ENV = 'LANG=C.UTF-8 SHELLCHECK_OPTS'
 ```
 
 Child processes inherit the full parent environment, with these entries overriding it.

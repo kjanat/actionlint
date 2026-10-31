@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/source/text"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
@@ -22,37 +23,40 @@ var (
 // Finding is one diagnostic together with the source its snippet is rendered from.
 // EndColumn is the inclusive column where the indicator ends; zero infers the
 // token end. RawScript selects LF line splitting for external checker sources.
+// Unavailable retains only a reported range or a single caret.
 type Finding struct {
-	Diagnostic diagnostic.Diagnostic
-	Source     []byte
-	EndColumn  int
-	RawScript  bool
+	Diagnostic       diagnostic.Diagnostic
+	Source           []byte
+	EndColumn        int
+	RawScript        bool
+	Unavailable      bool
+	canonicalSnippet string
 }
 
 // FindingOf adapts a canonical half-open span to the inclusive legacy columns.
 func FindingOf(d diagnostic.Diagnostic, source []byte) Finding {
-	f := Finding{Diagnostic: d, Source: source}
+	f := Finding{Diagnostic: d, Source: source, canonicalSnippet: d.Snippet}
 	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
 		f.EndColumn = d.End.Column - 1
 	}
 	return f
 }
 
-// SourceLine returns the physical line at the one-based position.
-func SourceLine(source []byte, line int, rawScript bool) (string, bool) {
-	return yamlsource.DiagnosticLine(source, line, rawScript)
-}
-
-func InclusiveEnd(line string, column, explicit int) int {
-	return yamlsource.InclusiveEnd(line, column, explicit)
-}
-
 func (f Finding) line() (string, bool) {
-	return SourceLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
+	if f.Source != nil {
+		return sourcemap.DiagnosticLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
+	}
+	if f.canonicalSnippet != "" {
+		return f.canonicalSnippet, true
+	}
+	return sourcemap.DiagnosticLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
 }
 
 func (f Finding) end(line string) int {
-	return InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
+	if f.Unavailable {
+		return max(f.Diagnostic.Start.Column, f.EndColumn)
+	}
+	return text.InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
 }
 
 func (f Finding) indicator(line string) string {
@@ -60,13 +64,13 @@ func (f Finding) indicator(line string) string {
 	if column <= 0 {
 		return ""
 	}
-	start, ok := yamlsource.ByteOffsetAtColumn(line, column)
+	start, ok := text.ByteOffsetAtColumn(line, column)
 	if !ok {
 		return ""
 	}
 	width := 0
 	if end := f.end(line); end >= column {
-		offset, ok := yamlsource.ByteOffsetAtColumn(line, end+1)
+		offset, ok := text.ByteOffsetAtColumn(line, end+1)
 		if !ok {
 			offset = len(line)
 		}
@@ -83,7 +87,7 @@ func (f Finding) TemplateFields() *TemplateFields {
 	d := f.Diagnostic
 	snippet := ""
 	end := d.Start.Column
-	if len(f.Source) > 0 && d.Start.Line > 0 {
+	if (len(f.Source) > 0 || f.canonicalSnippet != "") && d.Start.Line > 0 {
 		if line, ok := f.line(); ok {
 			snippet = line
 			if indicator := f.indicator(line); indicator != "" {
@@ -99,7 +103,7 @@ func (f Finding) TemplateFields() *TemplateFields {
 }
 
 // PrettyPrint writes the location, message, rule and an indicated source line.
-// A nil Source omits the snippet. Set fatih/color.NoColor to disable colors.
+// Without source bytes, the diagnostic's captured snippet is used when available.
 func (f Finding) PrettyPrint(w io.Writer) {
 	d := f.Diagnostic
 	_, _ = yellow.Fprint(w, d.Path)
@@ -111,7 +115,7 @@ func (f Finding) PrettyPrint(w io.Writer) {
 	_, _ = bold.Fprint(w, d.Message)
 	_, _ = gray.Fprintf(w, " [%s]\n", d.Rule)
 
-	if len(f.Source) == 0 || d.Start.Line <= 0 {
+	if (len(f.Source) == 0 && f.canonicalSnippet == "") || d.Start.Line <= 0 {
 		return
 	}
 	line, ok := f.line()

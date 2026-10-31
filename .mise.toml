@@ -9,19 +9,20 @@ args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
 [tools]
-npm                                      = "12.2.0"
-go                                       = { prefix = "1.27" }
-node                                     = { prefix = "26" }
-shellcheck                               = { prefix = "0.11" }
-rshellcheck                              = { version = "latest" }
-ruff                                     = "0.17.0"
-tinygo                                   = { prefix = "0.43" }
-"github:charmbracelet/markscribe".prefix = "0.8"
-"github:jgm/pandoc".prefix               = "3"
-"github:kjanat/runner".prefix            = "0.28"
-"github:microsoft/TypeScript".prefix     = "7"
-"github:tombi-toml/tombi".prefix         = "1.8"
-"github:biomejs/biome"                   = { prefix = "2", version_prefix = "@biomejs/biome@" }
+npm                               = "12.2.0"
+go                                = { prefix = "1.27" }
+node                              = { prefix = "26" }
+shellcheck                        = { prefix = "0.11" }
+rshellcheck                       = { version = "latest" }
+ruff                              = "0.17.0"
+tinygo                            = { prefix = "0.43" }
+wasm-tools                        = "latest"
+"github:charmbracelet/markscribe" = { prefix = "0.8" }
+"github:jgm/pandoc"               = { prefix = "3" }
+"github:kjanat/runner"            = { prefix = "0.28" }
+"github:microsoft/TypeScript"     = { prefix = "7" }
+"github:tombi-toml/tombi"         = { prefix = "1.9" }
+"github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
 
 [tools."golangci-lint"]
 prefix  = "2"
@@ -36,7 +37,7 @@ version = "latest"
 depends = ["rshellcheck"]
 
 [tools."github:kjanat/dprint"]
-version = "0.59.0-kjanat"
+version = "0.60.5-kjanat"
 depends = ["tombi", "go"]
 
 [tool_alias]
@@ -68,12 +69,11 @@ run  = "go mod tidy -diff"
 alias       = ["f", "fmt"]
 description = "Format code"
 run         = "dprint fmt"
-tools       = { tombi = { prefix = "1.8" } }
+tools       = { tombi = { prefix = "1.9" } }
 
 [monorepo]
 config_roots = [
   ".github/actions/comment-cop",
-  ".github/actions/setup-formatters",
   ".github/actions/setup-pandoc",
   ".github/actions/setup-runner",
   ".github/actions/setup-shellcheck",

@@ -36,7 +36,7 @@ func TestExecutableBitCaseFoldedPaths(t *testing.T) {
 		{"new output", "SCRIPTS/OUTPUT", "", "scripts/OUTPUT", map[string]string{"scripts/file": "100644"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			snapshot := &execution.IndexSnapshot{Modes: tc.modes}
+			snapshot := execution.NewIndexSnapshot("", tc.modes, nil)
 			got, known := snapshot.CaseFoldedPath(tc.runnerPath, tc.checkout)
 			if known != (tc.want != "") || got != tc.want {
 				t.Fatalf("caseFoldedPath(%q) = %q, %v; want %q", tc.runnerPath, got, known, tc.want)
@@ -46,7 +46,7 @@ func TestExecutableBitCaseFoldedPaths(t *testing.T) {
 }
 
 func TestExecutableBitCaseFoldedCheckoutReuse(t *testing.T) {
-	snapshot := &execution.IndexSnapshot{Modes: map[string]string{"scripts/bad.sh": "100644"}}
+	snapshot := execution.NewIndexSnapshot("", map[string]string{"scripts/bad.sh": "100644"}, nil)
 	for _, tc := range []struct{ runnerPath, checkout, want string }{
 		{"SCRIPTS/BAD.SH", "", "scripts/bad.sh"},
 		{"SOURCE/SCRIPTS/BAD.SH", "source", "source/scripts/bad.sh"},
@@ -65,7 +65,7 @@ func BenchmarkExecutableBitCaseFoldedPath(b *testing.B) {
 			for i := range size {
 				modes[fmt.Sprintf("packages/package%d/scripts/file.sh", i)] = "100644"
 			}
-			snapshot := &execution.IndexSnapshot{Modes: modes}
+			snapshot := execution.NewIndexSnapshot("", modes, nil)
 			const input = "SOURCE/PACKAGES/PACKAGE0/SCRIPTS/FILE.SH"
 			if _, known := snapshot.CaseFoldedPath(input, "source"); !known {
 				b.Fatal("benchmark path must resolve")
@@ -87,7 +87,7 @@ func BenchmarkExecutableBitPathIndexConstruction(b *testing.B) {
 	}
 	b.ReportAllocs()
 	for b.Loop() {
-		snapshot := &execution.IndexSnapshot{Modes: modes}
+		snapshot := execution.NewIndexSnapshot("", modes, nil)
 		if !snapshot.DirectoryExists("packages/package0/scripts") {
 			b.Fatal("benchmark directory must exist")
 		}
@@ -95,7 +95,7 @@ func BenchmarkExecutableBitPathIndexConstruction(b *testing.B) {
 }
 
 func TestExecutableBitIndexTraversal(t *testing.T) {
-	snapshot := &execution.IndexSnapshot{Modes: map[string]string{"link": "120000", "submodule": "160000", "bad.sh": "100644", "scripts/bad.sh": "100644"}}
+	snapshot := execution.NewIndexSnapshot("", map[string]string{"link": "120000", "submodule": "160000", "bad.sh": "100644", "scripts/bad.sh": "100644"}, nil)
 	for _, tc := range []struct {
 		path, checkout string
 		want           bool

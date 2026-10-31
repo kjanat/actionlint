@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"github.com/fatih/color"
 )
 
@@ -52,13 +53,40 @@ func TestRootHelpOverview(t *testing.T) {
 	if check.Status != 0 || metadata.Status != 0 || json.Unmarshal([]byte(metadata.Stdout), &description) != nil {
 		t.Fatalf("full help unavailable: %+v / %+v", check, metadata)
 	}
-	for _, name := range []string{"no-config", "stdin-filename", "template", "hyperlinks", "ruff", "shellcheck", "json-pretty", "help-legacy"} {
+	for _, name := range []string{"no-config", "stdin-filename", "template", "hyperlinks", "tool", "no-tool", "json-pretty", "help-legacy"} {
 		if !strings.Contains(check.Stderr, name) || !slices.ContainsFunc(description.Flags, func(f commandFlagDescription) bool { return f.Name == name }) {
 			t.Errorf("%s missing from full check help or root JSON metadata", name)
 		}
 	}
 	if strings.Contains(check.Stderr, "--json[-pretty]") || strings.Contains(check.Stderr, "--help[-legacy]") {
 		t.Fatal("distinct help or JSON options were compressed together")
+	}
+}
+
+// TestLegacyHelpListsDeprecatedFlags checks that --help-legacy lists every
+// retired flag a bundled manifest declares, since the command line still
+// accepts each one.
+func TestLegacyHelpListsDeprecatedFlags(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	manifests, err := provider.Bundled()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := testRunCommand("", "--help-legacy")
+	if got.Status != 0 {
+		t.Fatalf("%+v", got)
+	}
+	declared := 0
+	for _, manifest := range manifests {
+		for _, retired := range manifest.DeprecatedFlags {
+			declared++
+			if !strings.Contains(got.Stderr, "-"+retired.Name+" COMMAND") && !strings.Contains(got.Stderr, "-"+retired.Name+" VALUE") {
+				t.Errorf("legacy help omits -%s:\n%s", retired.Name, got.Stderr)
+			}
+		}
+	}
+	if declared == 0 {
+		t.Fatal("no bundled manifest declares a retired flag")
 	}
 }
 

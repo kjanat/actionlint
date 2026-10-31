@@ -48,8 +48,6 @@ type inputs struct {
 	format           outputFormat
 	ignore           []string
 	configFile       string
-	shellcheck       bool
-	pyflakes         bool
 	workingDirectory string
 	outputFile       string
 	failOnError      bool
@@ -86,7 +84,7 @@ func parseFormat(value string) (outputFormat, error) {
 }
 
 func parseInputs(args []string) (*inputs, error) {
-	if len(args) != 10 {
+	if len(args) != 8 {
 		return nil, inputErrorf("The action received an unexpected number of inputs")
 	}
 
@@ -100,15 +98,7 @@ func parseInputs(args []string) (*inputs, error) {
 			return nil, inputErrorf("Input 'files' entries must not start with '-'; provide workflow file paths")
 		}
 	}
-	shellcheck, err := parseBool("shellcheck", args[5])
-	if err != nil {
-		return nil, err
-	}
-	pyflakes, err := parseBool("pyflakes", args[6])
-	if err != nil {
-		return nil, err
-	}
-	failOnError, err := parseBool("fail-on-error", args[9])
+	failOnError, err := parseBool("fail-on-error", args[7])
 	if err != nil {
 		return nil, err
 	}
@@ -118,10 +108,8 @@ func parseInputs(args []string) (*inputs, error) {
 		format:           format,
 		ignore:           splitLines(args[3]),
 		configFile:       args[4],
-		shellcheck:       shellcheck,
-		pyflakes:         pyflakes,
-		workingDirectory: args[7],
-		outputFile:       args[8],
+		workingDirectory: args[5],
+		outputFile:       args[6],
 		failOnError:      failOnError,
 	}, nil
 }

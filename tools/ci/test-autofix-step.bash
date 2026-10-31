@@ -89,8 +89,8 @@ check_input() {
 }
 
 check_input docs/unrelated.md false false
-check_input internal/actioncatalog/generate/popular_actions.json true false
-check_input internal/actioncatalog/metadata/main.go true false
+check_input internal/action/remote/remote.go true false
+check_input internal/action/generate/main.go true false
 check_input internal/webhook/generate/main.go true false
 check_input internal/webhook/payload/generate/main.mts true false
 check_input internal/webhook/payload/catalogue.json true false
@@ -106,8 +106,8 @@ check_input popular_actions.go false false
 check_input internal/rulecatalog/catalog.go true false
 check_input docs/rules.md true false
 check_input generate.go true false
-check_input internal/actioncatalog/popular_actions.json true false
-check_input internal/actioncatalog/catalog.go true false
+check_input internal/action/generate/runtimes.go true false
+check_input internal/action/metadata.go true false
 check_input docs/screenshots/demo-workflow.yaml false true
 check_input docs/screenshots/actionlint.yaml false true
 check_input internal/documentation/check-readme/main.go false true

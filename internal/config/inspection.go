@@ -5,32 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.
 type Selection struct {
 	Path     string
 	Disabled bool
-}
-
-// Origin identifies a default, configuration file value, or Action input.
-type Origin struct {
-	File   string `json:"file,omitempty" yaml:"file,omitempty"`
-	Source string `json:"source" yaml:"source"`
-	Input  string `json:"input,omitempty" yaml:"input,omitempty"`
-	State  string `json:"state" yaml:"state"`
-	Line   int    `json:"line,omitempty" yaml:"line,omitempty"`
-	Column int    `json:"column,omitempty" yaml:"column,omitempty"`
-}
-
-// Inspection contains effective settings and optional source locations.
-type Inspection struct {
-	Path     string            `json:"path" yaml:"path"`
-	Config   map[string]any    `json:"config" yaml:"config"`
-	Origins  map[string]Origin `json:"origins,omitempty" yaml:"origins,omitempty"`
-	Warnings []Warning         `json:"warnings,omitempty" yaml:"warnings,omitempty"`
 }
 
 // SelectedPath finds the selected config without parsing its contents.
@@ -69,7 +49,7 @@ func Inspect(selection Selection, withOrigin bool, registeredRules ...string) (I
 	var resolved Resolved
 	if path != "" {
 		var source *Loaded
-		source, err = Read(path, fsread.Disk, registeredRules...)
+		source, err = Read(path, nil, registeredRules...)
 		if err != nil {
 			return Inspection{Path: path}, err
 		}

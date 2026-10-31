@@ -53,49 +53,48 @@ man ./node_modules/@kjanat/actionlint/man/actionlint.1
 
 ### Configuration schema
 
-The package includes `actionlint.schema.json` for completion and validation in configuration editors. For a config at
-`.github/actionlint.yaml`, use the installed copy with:
+The package includes the configuration schema. For editor completion and validation, use the versioned GitHub CDN URL:
 
 ```yaml
-# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
 ```
 
 ShellCheck directives and Ruff options reference their versioned definitions in
 `schemas/shellcheck/` and `schemas/ruff/` relative to the main schema. The package
 includes these files, so local schema validation can run offline. A versioned CDN
-URL uses the schemas from the same npm release.
+URL uses the schemas from the same repository version.
 
 <details>
 <summary>CDN URLs for the JSON schema</summary>
 
-These URLs require an npm release containing the schema:
+Choose the major version to follow its releases, or pin an exact release:
 
 jsDelivr:
 
 ```text
-https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
 ```
 
-esm.sh:
+Exact release:
 
 ```text
-https://esm.sh/@kjanat/actionlint/actionlint.schema.json
+https://cdn.jsdelivr.net/gh/kjanat/actionlint@2.0.0/actionlint.schema.json
 ```
 
-UNPKG:
+For v1:
 
 ```text
-https://unpkg.com/@kjanat/actionlint/actionlint.schema.json
+https://cdn.jsdelivr.net/gh/kjanat/actionlint@1/actionlint.schema.json
+https://cdn.jsdelivr.net/gh/kjanat/actionlint@1.17.0/actionlint.schema.json
 ```
 
 For example, use jsDelivr in an editor's schema directive:
 
 ```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
 ```
 
-Unversioned URLs follow the latest npm release. Insert `@<version>` after `@kjanat/actionlint` to select the schema for
-a specific release that includes it.
+Match the schema's major version to the installed actionlint version.
 
 </details>
 

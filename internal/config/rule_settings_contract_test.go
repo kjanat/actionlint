@@ -2,10 +2,11 @@ package config_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
@@ -70,7 +71,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 				if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(repoconfig.Presets{}, cfg), tc.name); got != tc.want {
 					t.Fatalf("got %s, want %s", got, tc.want)
 				}
-				encoded, err := yaml.Marshal(cfg)
+				encoded, err := codec.Marshal(cfg)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -184,7 +185,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		if repoconfig.DiagnosticLevel(got, "expression") != "warn" {
 			t.Fatal(got.Lint)
 		}
-		encoded, err := yaml.Marshal(cfg)
+		encoded, err := codec.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -231,6 +232,38 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 		}
 		if got := repoconfig.ResolveRules(repoconfig.Presets{}, cfg).RequiredActions(); len(got) != 0 {
 			t.Fatalf("empty selection invented required actions: %v", got)
+		}
+	}
+}
+
+func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
+	for name, options := range map[string]any{
+		"required-actions":    &repoconfig.RequiredActionsOptions{Actions: []string{"["}},
+		"require-job-timeout": map[string]any{"max-minute": 5},
+	} {
+		t.Run(name, func(t *testing.T) {
+			setting, err := repoconfig.NewSetting("error", options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg := &repoconfig.Config{Lint: repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
+				Policy: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{name: setting}),
+			}}}
+			if err := repoconfig.ValidateRuleNames(cfg); err == nil || !strings.Contains(err.Error(), name) {
+				t.Fatalf("invalid options for %s accepted: %v", name, err)
+			}
+		})
+	}
+}
+
+func TestNewSettingRejectsDisabledPolicies(t *testing.T) {
+	for name, policy := range map[string]any{
+		"require-job-timeout":   &repoconfig.JobTimeoutPolicy{},
+		"require-permissions":   &repoconfig.PermissionsPolicy{},
+		"disallow-suppressions": &repoconfig.SuppressionsPolicy{},
+	} {
+		if _, err := repoconfig.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "!!bool") {
+			t.Fatalf("%s: disabled policy accepted as options: %v", name, err)
 		}
 	}
 }

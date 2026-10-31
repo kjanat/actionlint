@@ -7,7 +7,6 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
-	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -34,14 +33,13 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 		rule.expressionOffset = offset
 		col := col + offset
 
-		ty, offsetAfter, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
+		ty, offsetAfter, parsed, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
 		// Parsed expressions have a complete boundary even when semantic checks fail.
-		// Scan later interpolations for independent rules, but retain aggregate invalidity.
-		if !ok && ty == nil {
+		if !parsed {
 			return nil, false
 		}
 		valid = valid && ok
-		if ty == nil || offsetAfter == 0 {
+		if offsetAfter == 0 {
 			return nil, true
 		}
 		position := workflowlang.Pos{Line: line, Col: col - 3}
@@ -61,47 +59,59 @@ func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
 	if rule.compositeScript && err.Rule != "script-injection" && err.Rule != "script-interpolation" {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
-	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
-	var end *workflowlang.Pos
-	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
-		pos = mapped
-		end = rule.expressionPosition(rule.expressionOffset+err.EndOffset, true)
-	}
 	kind := err.Rule
 	if kind == "" {
 		kind = "expression"
 	}
-	diagnostic := findingmodel.At(pos, kind, err.Message)
-	diagnostic.Code = err.Code
-	diagnostic.EndPosition = end
-	rule.errs = append(rule.errs, diagnostic)
+	r := report{rule: kind, code: err.Code, message: err.Message, start: convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)}
+	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
+		r.start = *mapped
+		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
+			r.end, r.hasEnd = *end, true
+		}
+	}
+	rule.errs = append(rule.errs, r)
 }
 
 func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, bool) {
-	c := exprlang.NewChecker(checkUntrusted, &rule.options.Semantics)
+	options := rule.options.Semantics
+	if rule.jobReferences != nil {
+		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
+	}
+	c := exprlang.NewChecker(checkUntrusted, &options)
 	if rule.eventTy != nil {
-		c.UpdateEvent(rule.eventTy)
+		c.UpdateEvent(*rule.eventTy)
 	}
 	if rule.matrixTy != nil {
-		c.UpdateMatrix(rule.matrixTy)
+		c.UpdateMatrix(*rule.matrixTy)
 	}
 	if rule.stepsTy != nil {
-		c.UpdateSteps(rule.stepsTy)
+		c.UpdateSteps(*rule.stepsTy)
 	}
 	if rule.needsTy != nil {
-		c.UpdateNeeds(rule.needsTy)
+		c.UpdateNeeds(*rule.needsTy)
 	}
 	if rule.secretsTy != nil {
-		c.UpdateSecrets(rule.secretsTy)
+		secrets := *rule.secretsTy
+		if rule.jobReferences != nil && rule.jobReferences.EnvironmentSecrets != nil {
+			environment := *rule.jobReferences.EnvironmentSecrets
+			for name, property := range environment.Properties() {
+				secrets = secrets.WithProperty(environment.PropertyName(name), property)
+			}
+			if mapped, known := environment.Mapped(); known {
+				secrets = secrets.WithMapped(mapped)
+			}
+		}
+		c.UpdateSecrets(secrets)
 	}
 	if rule.inputsTy != nil {
-		c.UpdateInputs(rule.inputsTy)
+		c.UpdateInputs(*rule.inputsTy)
 	}
 	if rule.dispatchInputsTy != nil {
-		c.UpdateDispatchInputs(rule.dispatchInputsTy)
+		c.UpdateDispatchInputs(*rule.dispatchInputsTy)
 	}
 	if rule.jobsTy != nil {
-		c.UpdateJobs(rule.jobsTy)
+		c.UpdateJobs(*rule.jobsTy)
 	}
 	if workflowKey != "" {
 		ctx, _ := contextspec.WorkflowKeyAvailability(workflowKey)
@@ -195,25 +205,28 @@ func (rule *Checker) safeScriptStatusSelector(node exprlang.Node) bool {
 	if properties == nil {
 		return false
 	}
-	_, exists := properties.Props[strings.ToLower(name)]
+	_, exists := properties.Property(strings.ToLower(name))
 	return exists
 }
 
-func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, int, bool) {
+// checkSemantics parses and checks the expression at the start of src. offset
+// is where the expression ends in src. parsed is false after a syntax error,
+// and ok is false when any error was reported.
+func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (ty exprlang.Type, offset int, parsed, ok bool) {
 	l := exprlang.NewLexer(src)
 	p := exprlang.NewParser()
 	expr, err := p.Parse(l)
 	if err != nil {
 		rule.exprError(err, line, col)
-		return nil, l.Offset(), false
+		return exprlang.AnyType(), l.Offset(), false, false
 	}
 	t, ok := rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey)
-	return t, l.Offset(), ok
+	return t, l.Offset(), true, ok
 }
 
-func convertExprLineColToPos(line, col, lineBase, colBase int) *workflowlang.Pos {
+func convertExprLineColToPos(line, col, lineBase, colBase int) workflowlang.Pos {
 	// Line and column in ExprError are 1-based
-	return &workflowlang.Pos{
+	return workflowlang.Pos{
 		Line: line - 1 + lineBase,
 		Col:  col - 1 + colBase,
 	}

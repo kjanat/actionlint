@@ -18,7 +18,8 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/fix"
+	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type position struct {
@@ -128,11 +129,15 @@ func FileURI(path string) string {
 	return (&url.URL{Scheme: "file", Path: path}).String()
 }
 
-func editorPosition(content []byte, p diagnostic.Position) position {
-	offset, err := fix.Offset(content, p)
+func editorPosition(content []byte, p diagnostic.Position) (position, error) {
+	offset, err := sourceposition.Offset(content, source.YAML, p)
 	if err != nil {
-		return position{max(0, p.Line-1), max(0, p.Column-1)}
+		return position{}, err
 	}
+	return positionAtByteOffset(content, offset), nil
+}
+
+func positionAtByteOffset(content []byte, offset int) position {
 	line, units := 0, 0
 	start := 0
 	if bytes.HasPrefix(content, []byte("\ufeff")) {
@@ -195,10 +200,20 @@ func comparePosition(a, b position) int {
 	return a.Character - b.Character
 }
 
-func diagnosticRange(content []byte, start, end diagnostic.Position) sourceRange {
-	first, last := editorPosition(content, start), editorPosition(content, end)
+func diagnosticRange(content []byte, start, end diagnostic.Position) (sourceRange, error) {
+	first, err := editorPosition(content, start)
+	if err != nil {
+		return sourceRange{}, err
+	}
+	if end == (diagnostic.Position{}) {
+		return sourceRange{first, first}, nil
+	}
+	last, err := editorPosition(content, end)
+	if err != nil {
+		return sourceRange{}, err
+	}
 	if comparePosition(last, first) < 0 {
 		last = first
 	}
-	return sourceRange{first, last}
+	return sourceRange{first, last}, nil
 }

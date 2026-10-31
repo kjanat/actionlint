@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 type recordingEngine struct {
@@ -78,7 +78,7 @@ func TestConfiguredScriptEngineLoadsOncePerInvocation(t *testing.T) {
 	session := application.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
 		paths = append(paths, path)
 		return engine, nil
-	}, Tools: (adapters.Options{Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}}).Registrations()}
+	}, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
 
 	result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: workflows})
 	if err != nil {
@@ -110,7 +110,7 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 		var loadedMu sync.Mutex
 		options := application.Options{
 			WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
-			Tools: (adapters.Options{Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}}).Registrations(),
+			Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}}),
 			LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
 				loadedMu.Lock()
 				loaded[path] = true
@@ -130,26 +130,27 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 
 func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
-	session := application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}}).Registrations()}
+	session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
 
 	if _, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "tools.ruff.backend.wasm selects "+filepath.Join(root, ".github", "engines", "ruff.wasm")+", and this host has no WebAssembly engine loader") {
 		t.Fatalf("err=%v", err)
 	}
 	failing := errors.New("module is broken")
-	session = application.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return nil, failing }, Tools: (adapters.Options{Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}}).Registrations()}
+	session = application.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
 
-	if _, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: workflows[:1]}); !errors.Is(err, failing) || !strings.Contains(err.Error(), "could not initialize Ruff: module is broken") {
+	if _, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: workflows[:1]}); !errors.Is(err, failing) || !strings.Contains(err.Error(), "could not initialize ruff: module is broken") {
 		t.Fatalf("err=%v", err)
 	}
 }
 
 func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
-	options := application.Options{WorkingDir: root,
-		Tools:            (adapters.Options{Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}}).Registrations(),
+	options := application.Options{
+		WorkingDir:       root,
+		Tools:            registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}}),
 		LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return nil, nil },
 	}
-	if _, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "could not initialize Ruff") || !strings.Contains(err.Error(), "nil backend") {
+	if _, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "could not initialize ruff") || !strings.Contains(err.Error(), "nil backend") {
 		t.Fatalf("configured Wasm analysis silently fell back: %v", err)
 	}
 }
@@ -161,13 +162,13 @@ func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 		loads++
 		return &recordingEngine{}, nil
 	}
-	disabled := application.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: (adapters.Options{Ruff: ""}).Registrations()}
+	disabled := application.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: registry.Registrations(registry.Selections{"ruff": {Command: ""}})}
 
 	if result, err := application.Check(t.Context(), disabled, application.Input{Kind: application.Files, Paths: workflows[:1]}); err != nil || len(result.Diagnostics) != 0 || loads != 0 {
 		t.Fatalf("disabled: result=%+v err=%v loads=%d", result, err, loads)
 	}
 	injected := &recordingEngine{}
-	explicit := application.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: (adapters.Options{RuffBackend: injected}).Registrations()}
+	explicit := application.Options{WorkingDir: root, LoadScriptEngine: loader, Tools: registry.Registrations(registry.Selections{"ruff": {Backend: injected}})}
 
 	if result, err := application.Check(t.Context(), explicit, application.Input{Kind: application.Files, Paths: workflows[:1]}); err != nil || len(result.Diagnostics) != 1 || loads != 0 || len(injected.requests) != 1 {
 		t.Fatalf("explicit: result=%+v err=%v loads=%d", result, err, loads)
@@ -201,7 +202,7 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 	for _, input := range []string{".github/workflows/ci.yml", ".github/actions/setup/action.yml"} {
 		session := application.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
 			return namedShellEngine(filepath.Base(path)), nil
-		}, Tools: (adapters.Options{ShellCheck: "shellcheck", ShellcheckOptions: &processconfig.Options{Optional: true}}).Registrations()}
+		}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}})}
 		var err error
 
 		result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, filepath.FromSlash(input))}})
@@ -239,7 +240,7 @@ func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
 	var mu sync.Mutex
 	loaded := map[string]*recordingEngine{}
 	options := application.Options{
-		WorkingDir: root, Tools: (adapters.Options{ShellCheck: "shellcheck", ShellcheckOptions: &processconfig.Options{Optional: true}}).Registrations(),
+		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}}),
 		LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
 			mu.Lock()
 			defer mu.Unlock()

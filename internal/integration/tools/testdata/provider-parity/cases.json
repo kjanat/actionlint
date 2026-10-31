@@ -1,0 +1,2058 @@
+{
+  "ruff composite action": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
+          "node": "",
+          "address": "runs.steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/unused-import",
+        "rule": "ruff",
+        "code": "F401",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F401: `os` imported but unused",
+        "path": "python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 16
+        },
+        "end": {
+          "line": 8,
+          "column": 18
+        },
+        "snippet": "        import os"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
+          "node": "",
+          "address": "runs.steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `missing`",
+        "path": "python-action/action.yml",
+        "start": {
+          "line": 9,
+          "column": 15
+        },
+        "end": {
+          "line": 9,
+          "column": 22
+        },
+        "snippet": "        print(missing)"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
+          "node": "",
+          "address": "runs.steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/unsorted-imports",
+        "rule": "ruff",
+        "code": "I001",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: I001: Import block is un-sorted or un-formatted",
+        "path": "python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 9
+        },
+        "end": {
+          "line": 8,
+          "column": 18
+        },
+        "snippet": "        import os"
+      }
+    ],
+    "sources": [
+      {
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "F401",
+        "path": "\u003croot\u003e/python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 16
+        },
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "\u003croot\u003e/python-action/action.yml",
+        "start": {
+          "line": 9,
+          "column": 15
+        },
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "rule": "ruff",
+        "code": "I001",
+        "path": "\u003croot\u003e/python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 9
+        },
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "dfea1d48faab348e0c53ab5ae84bca138c99eaf59e93afa3a2c43cb9449693e9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/python-action/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "digest": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff composite action (ruff alone)": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
+          "node": "",
+          "address": "runs.steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/unused-import",
+        "rule": "ruff",
+        "code": "F401",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F401: `os` imported but unused",
+        "path": "python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 16
+        },
+        "end": {
+          "line": 8,
+          "column": 18
+        },
+        "snippet": "        import os"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
+          "node": "",
+          "address": "runs.steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `missing`",
+        "path": "python-action/action.yml",
+        "start": {
+          "line": 9,
+          "column": 15
+        },
+        "end": {
+          "line": 9,
+          "column": 22
+        },
+        "snippet": "        print(missing)"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "revision": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4",
+          "node": "",
+          "address": "runs.steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/unsorted-imports",
+        "rule": "ruff",
+        "code": "I001",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: I001: Import block is un-sorted or un-formatted",
+        "path": "python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 9
+        },
+        "end": {
+          "line": 8,
+          "column": 18
+        },
+        "snippet": "        import os"
+      }
+    ],
+    "sources": [
+      {
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "F401",
+        "path": "\u003croot\u003e/python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 16
+        },
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "\u003croot\u003e/python-action/action.yml",
+        "start": {
+          "line": 9,
+          "column": 15
+        },
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      },
+      {
+        "rule": "ruff",
+        "code": "I001",
+        "path": "\u003croot\u003e/python-action/action.yml",
+        "start": {
+          "line": 8,
+          "column": 9
+        },
+        "content": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "dfea1d48faab348e0c53ab5ae84bca138c99eaf59e93afa3a2c43cb9449693e9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/python-action/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/python-action/action.yml",
+          "digest": "738d0e93336e8f12826830f0d63ae331e764fb5cc0c165272f11fefb7be952a4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff findings and templates": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `missing`",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 11,
+          "column": 45
+        },
+        "end": {
+          "line": 11,
+          "column": 52
+        },
+        "snippet": "          print(${{ github.event.number }}, missing)"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/unsorted-imports",
+        "rule": "ruff",
+        "code": "I001",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: I001: Import block is un-sorted or un-formatted",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 10,
+          "column": 11
+        },
+        "end": {
+          "line": 10,
+          "column": 25
+        },
+        "snippet": "          import os, sys"
+      }
+    ],
+    "sources": [
+      {
+        "content": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b"
+      },
+      {
+        "content": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "",
+        "start": {
+          "line": 11,
+          "column": 45
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "I001",
+        "path": "",
+        "start": {
+          "line": 10,
+          "column": 11
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff findings and templates (ruff alone)": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `missing`",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 11,
+          "column": 45
+        },
+        "end": {
+          "line": 11,
+          "column": 52
+        },
+        "snippet": "          print(${{ github.event.number }}, missing)"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/unsorted-imports",
+        "rule": "ruff",
+        "code": "I001",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: I001: Import block is un-sorted or un-formatted",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 10,
+          "column": 11
+        },
+        "end": {
+          "line": 10,
+          "column": 25
+        },
+        "snippet": "          import os, sys"
+      }
+    ],
+    "sources": [
+      {
+        "content": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b"
+      },
+      {
+        "content": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "",
+        "start": {
+          "line": 11,
+          "column": 45
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "I001",
+        "path": "",
+        "start": {
+          "line": 10,
+          "column": 11
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "42da01596459e18df92947fd45e8409065f19c29ae1f8bdacae80adcfbbac25b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff selection and target version": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `missing`",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 17
+        },
+        "end": {
+          "line": 12,
+          "column": 24
+        },
+        "snippet": "          print(missing)"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `x`",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 17
+        },
+        "end": {
+          "line": 13,
+          "column": 18
+        },
+        "snippet": "          match x:"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Cannot use `match` statement on Python 3.8 (syntax was added in Python 3.10)",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 11
+        },
+        "end": {
+          "line": 13,
+          "column": 16
+        },
+        "snippet": "          match x:"
+      }
+    ],
+    "sources": [
+      {
+        "content": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+      },
+      {
+        "content": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+      },
+      {
+        "content": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 17
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 17
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 11
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff selection and target version (ruff alone)": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `missing`",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 17
+        },
+        "end": {
+          "line": 12,
+          "column": 24
+        },
+        "snippet": "          print(missing)"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://docs.astral.sh/ruff/rules/undefined-name",
+        "rule": "ruff",
+        "code": "F821",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: F821: Undefined name `x`",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 17
+        },
+        "end": {
+          "line": 13,
+          "column": 18
+        },
+        "snippet": "          match x:"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Cannot use `match` statement on Python 3.8 (syntax was added in Python 3.10)",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 11
+        },
+        "end": {
+          "line": 13,
+          "column": 16
+        },
+        "snippet": "          match x:"
+      }
+    ],
+    "sources": [
+      {
+        "content": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+      },
+      {
+        "content": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+      },
+      {
+        "content": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 17
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "F821",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 17
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 11
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "8f17237a45e2061b7d14d897e151e4706365a2f3e8af87a2d1e1af4a28cacd96"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff syntax error": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Expected `)`, found newline",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 9,
+          "column": 9
+        },
+        "end": {
+          "line": 9,
+          "column": 13
+        },
+        "snippet": "      - run: |"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Expected a parameter or the end of the parameter list",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 10,
+          "column": 22
+        },
+        "end": {
+          "line": 10,
+          "column": 23
+        },
+        "snippet": "          def broken(:"
+      }
+    ],
+    "sources": [
+      {
+        "content": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b"
+      },
+      {
+        "content": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 10,
+          "column": 22
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 9,
+          "column": 9
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "ruff syntax error (ruff alone)": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Expected `)`, found newline",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 9,
+          "column": 9
+        },
+        "end": {
+          "line": 9,
+          "column": 13
+        },
+        "snippet": "      - run: |"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Expected a parameter or the end of the parameter list",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 10,
+          "column": 22
+        },
+        "end": {
+          "line": 10,
+          "column": 23
+        },
+        "snippet": "          def broken(:"
+      }
+    ],
+    "sources": [
+      {
+        "content": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b"
+      },
+      {
+        "content": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 10,
+          "column": 22
+        }
+      },
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 9,
+          "column": 9
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "9f3def9f86eb10f0a97260d2430076fcede5c1b4212ba3d3d0b8878b0dd2c46b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck configuration file": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2005",
+        "severity": "style",
+        "message": "shellcheck reported issue in this script: SC2005:style:2:6: Useless echo? Instead of 'echo $(cmd)', just use 'cmd'",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 16
+        },
+        "end": {
+          "line": 12,
+          "column": 22
+        },
+        "snippet": "          echo `date`"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2046",
+        "severity": "warning",
+        "message": "shellcheck reported issue in this script: SC2046:warning:2:6: Quote this to prevent word splitting",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 16
+        },
+        "end": {
+          "line": 12,
+          "column": 22
+        },
+        "snippet": "          echo `date`"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 11,
+          "column": 16
+        },
+        "end": {
+          "line": 11,
+          "column": 18
+        },
+        "snippet": "          echo $1",
+        "fixes": [
+          {
+            "applicability": "suggested",
+            "revisions": {
+              ".github\\workflows\\ci.yml": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351"
+            },
+            "description": "Double quote to prevent globbing and word splitting.",
+            "edits": [
+              {
+                "path": ".github/workflows/ci.yml",
+                "start": {
+                  "line": 11,
+                  "column": 16
+                },
+                "end": {
+                  "line": 11,
+                  "column": 16
+                },
+                "replacement": "\""
+              },
+              {
+                "path": ".github/workflows/ci.yml",
+                "start": {
+                  "line": 11,
+                  "column": 18
+                },
+                "end": {
+                  "line": 11,
+                  "column": 18
+                },
+                "replacement": "\""
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "content": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351"
+      },
+      {
+        "content": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351"
+      },
+      {
+        "content": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2005",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 16
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2046",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 16
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 11,
+          "column": 16
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck configuration file (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "fc8360a3c77dfa05998e751160c3cfe8980be10374921687035d65c77069b351"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck dialect directive and implicit shell": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4",
+          "node": "",
+          "address": "jobs[\"test\"].steps[1]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Got unexpected token $",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 14,
+          "column": 19
+        },
+        "end": {
+          "line": 14,
+          "column": 20
+        },
+        "snippet": "      - run: echo $Z"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2068",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2068:error:2:6: Double quote array expansions to avoid re-splitting elements",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 16
+        },
+        "end": {
+          "line": 12,
+          "column": 25
+        },
+        "snippet": "          echo ${ARR[@]}"
+      }
+    ],
+    "sources": [
+      {
+        "content": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4"
+      },
+      {
+        "content": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 14,
+          "column": 19
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2068",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 16
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck dialect directive and implicit shell (ruff alone)": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4",
+          "node": "",
+          "address": "jobs[\"test\"].steps[1]"
+        },
+        "explanation": "Analyze embedded Python scripts with Ruff.",
+        "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "severity": "error",
+        "message": "Ruff reported issue in this script: invalid-syntax: Got unexpected token $",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 14,
+          "column": 19
+        },
+        "end": {
+          "line": 14,
+          "column": 20
+        },
+        "snippet": "      - run: echo $Z"
+      }
+    ],
+    "sources": [
+      {
+        "content": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "ruff",
+        "code": "invalid-syntax",
+        "path": "",
+        "start": {
+          "line": 14,
+          "column": 19
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "29f71fcb17ed0eb42f224362331cee385f6954694aca1c973720ae155913e5d4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck findings, fixes and startup": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2010",
+        "severity": "warning",
+        "message": "shellcheck reported issue in this script: SC2010:warning:3:1: Don't use ls | grep. Use a glob or a for loop with a condition to allow non-alphanumeric filenames",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 11
+        },
+        "end": {
+          "line": 13,
+          "column": 13
+        },
+        "snippet": "          ls *.txt | grep x"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2035",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2035:info:3:4: Use ./*glob* or -- *glob* so names with dashes won't become options",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 14
+        },
+        "end": {
+          "line": 13,
+          "column": 15
+        },
+        "snippet": "          ls *.txt | grep x"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 11,
+          "column": 16
+        },
+        "end": {
+          "line": 11,
+          "column": 18
+        },
+        "snippet": "          echo $1",
+        "fixes": [
+          {
+            "applicability": "suggested",
+            "revisions": {
+              ".github\\workflows\\ci.yml": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+            },
+            "description": "Double quote to prevent globbing and word splitting.",
+            "edits": [
+              {
+                "path": ".github/workflows/ci.yml",
+                "start": {
+                  "line": 11,
+                  "column": 16
+                },
+                "end": {
+                  "line": 11,
+                  "column": 16
+                },
+                "replacement": "\""
+              },
+              {
+                "path": ".github/workflows/ci.yml",
+                "start": {
+                  "line": 11,
+                  "column": 18
+                },
+                "end": {
+                  "line": 11,
+                  "column": 18
+                },
+                "replacement": "\""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:4:3: Double quote to prevent globbing and word splitting",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 14,
+          "column": 13
+        },
+        "end": {
+          "line": 14,
+          "column": 15
+        },
+        "snippet": "          [ $X == 1 ] \u0026\u0026 echo ${{ github.sha }}"
+      }
+    ],
+    "sources": [
+      {
+        "content": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+      },
+      {
+        "content": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+      },
+      {
+        "content": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+      },
+      {
+        "content": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2010",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 11
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2035",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 11,
+          "column": 16
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 14,
+          "column": 13
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck findings, fixes and startup (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "59d7ab7b4d8f9c97731023d13e15022a90d98025a05cfa8650e45dc9d014a5f0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck inline directives": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2034",
+        "severity": "warning",
+        "message": "shellcheck reported issue in this script: SC2034:warning:2:7: x appears unused. Verify use (or export if used externally)",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 17
+        },
+        "end": {
+          "line": 12,
+          "column": 18
+        },
+        "snippet": "          local x=1"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2116",
+        "severity": "style",
+        "message": "shellcheck reported issue in this script: SC2116:style:3:10: Useless echo? Instead of 'cmd $(echo foo)', just use 'cmd foo'",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 20
+        },
+        "end": {
+          "line": 13,
+          "column": 30
+        },
+        "snippet": "          test -n \"$(echo $Y)\""
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2168",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2168:error:2:1: 'local' is only valid in functions",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 12,
+          "column": 11
+        },
+        "end": {
+          "line": 12,
+          "column": 16
+        },
+        "snippet": "          local x=1"
+      },
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2250",
+        "severity": "style",
+        "message": "shellcheck reported issue in this script: SC2250:style:3:17: Prefer putting braces around variable references even when not strictly required",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 13,
+          "column": 27
+        },
+        "end": {
+          "line": 13,
+          "column": 29
+        },
+        "snippet": "          test -n \"$(echo $Y)\"",
+        "fixes": [
+          {
+            "applicability": "suggested",
+            "revisions": {
+              ".github\\workflows\\ci.yml": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+            },
+            "description": "Prefer putting braces around variable references even when not strictly required.",
+            "edits": [
+              {
+                "path": ".github/workflows/ci.yml",
+                "start": {
+                  "line": 13,
+                  "column": 27
+                },
+                "end": {
+                  "line": 13,
+                  "column": 28
+                },
+                "replacement": "${"
+              },
+              {
+                "path": ".github/workflows/ci.yml",
+                "start": {
+                  "line": 13,
+                  "column": 29
+                },
+                "end": {
+                  "line": 13,
+                  "column": 29
+                },
+                "replacement": "}"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "content": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+      },
+      {
+        "content": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+      },
+      {
+        "content": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+      },
+      {
+        "content": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2034",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 17
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2116",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 20
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2168",
+        "path": "",
+        "start": {
+          "line": 12,
+          "column": 11
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2250",
+        "path": "",
+        "start": {
+          "line": 13,
+          "column": 27
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck inline directives (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "90ec94a7623acc18e2d115ca77f54f6042f0bea1250c400a6dcdba2fbc96d589"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck invalid directive": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "5409f5d7f369fed4341d6f51b1eb94bcccab70ba0cff687f1eb8ff1e593d95fb",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 10,
+          "column": 19
+        },
+        "end": {
+          "line": 10,
+          "column": 21
+        },
+        "snippet": "        run: echo $1"
+      }
+    ],
+    "sources": [
+      {
+        "content": "5409f5d7f369fed4341d6f51b1eb94bcccab70ba0cff687f1eb8ff1e593d95fb"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 10,
+          "column": 19
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "5409f5d7f369fed4341d6f51b1eb94bcccab70ba0cff687f1eb8ff1e593d95fb"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck invalid directive (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "5409f5d7f369fed4341d6f51b1eb94bcccab70ba0cff687f1eb8ff1e593d95fb"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck sourced file": {
+    "findings": [
+      {
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": "app/lib/check.sh",
+        "start": {
+          "line": 1,
+          "column": 6
+        },
+        "end": {
+          "line": 1,
+          "column": 12
+        },
+        "snippet": "echo $VALUE"
+      }
+    ],
+    "sources": [
+      {
+        "content": "c1dbb364bbba578301743d6538a44df855e126b0a8429c2a7e4c092b1bb72bd0",
+        "raw_script": true,
+        "unavailable": true
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "\u003croot\u003e/app/lib/check.sh",
+        "start": {
+          "line": 1,
+          "column": 6
+        },
+        "content": "c1dbb364bbba578301743d6538a44df855e126b0a8429c2a7e4c092b1bb72bd0",
+        "raw_script": true,
+        "unavailable": {
+          "reason": "not-captured",
+          "address": "\u003croot\u003e/app/./lib/check.sh"
+        },
+        "suppression": {
+          "path": "\u003croot\u003e/local/action.yml",
+          "First": 8,
+          "Last": 8
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "82e86e7f14457f5ab382cbb1e3b863f30cdb427d2dbeaef83d0e05f1848ad37d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "f5e19c1a1a3c2a68e2012070c0bcfe0d8a15eb7e7f80f831962513decb629ae0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck sourced file (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "82e86e7f14457f5ab382cbb1e3b863f30cdb427d2dbeaef83d0e05f1848ad37d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "f5e19c1a1a3c2a68e2012070c0bcfe0d8a15eb7e7f80f831962513decb629ae0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck sourced file suppressed at another line": {
+    "findings": [
+      {
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": "app/lib/check.sh",
+        "start": {
+          "line": 1,
+          "column": 6
+        },
+        "end": {
+          "line": 1,
+          "column": 12
+        },
+        "snippet": "echo $VALUE"
+      }
+    ],
+    "sources": [
+      {
+        "content": "c1dbb364bbba578301743d6538a44df855e126b0a8429c2a7e4c092b1bb72bd0",
+        "raw_script": true,
+        "unavailable": true
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "\u003croot\u003e/app/lib/check.sh",
+        "start": {
+          "line": 1,
+          "column": 6
+        },
+        "content": "c1dbb364bbba578301743d6538a44df855e126b0a8429c2a7e4c092b1bb72bd0",
+        "raw_script": true,
+        "unavailable": {
+          "reason": "not-captured",
+          "address": "\u003croot\u003e/app/./lib/check.sh"
+        },
+        "suppression": {
+          "path": "\u003croot\u003e/local/action.yml",
+          "First": 8,
+          "Last": 10
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "82e86e7f14457f5ab382cbb1e3b863f30cdb427d2dbeaef83d0e05f1848ad37d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "a346a4814709efd338bd9e171a238904dd7f1cf5fb5271b0013b0188e53338ac"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck sourced file suppressed at another line (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "82e86e7f14457f5ab382cbb1e3b863f30cdb427d2dbeaef83d0e05f1848ad37d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "a346a4814709efd338bd9e171a238904dd7f1cf5fb5271b0013b0188e53338ac"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck sourced file suppressed at the script": {
+    "findings": null,
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "\u003croot\u003e/app/lib/check.sh",
+        "start": {
+          "line": 1,
+          "column": 6
+        },
+        "content": "c1dbb364bbba578301743d6538a44df855e126b0a8429c2a7e4c092b1bb72bd0",
+        "raw_script": true,
+        "unavailable": {
+          "reason": "not-captured",
+          "address": "\u003croot\u003e/app/./lib/check.sh"
+        },
+        "suppression": {
+          "path": "\u003croot\u003e/local/action.yml",
+          "First": 8,
+          "Last": 8
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "82e86e7f14457f5ab382cbb1e3b863f30cdb427d2dbeaef83d0e05f1848ad37d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "67dc8f444faf66cb994cf7131d3b449b63ec0a2c60b8adbfdfa6a161c958c40d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "shellcheck sourced file suppressed at the script (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "82e86e7f14457f5ab382cbb1e3b863f30cdb427d2dbeaef83d0e05f1848ad37d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "67dc8f444faf66cb994cf7131d3b449b63ec0a2c60b8adbfdfa6a161c958c40d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "tools disabled by override": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "revision": "a2940a2e7766285d315ee9e1fb51f590a161e24045873afcbea16cdd26baea10",
+          "node": "",
+          "address": "jobs[\"test\"].steps[1]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": ".github/workflows/ci.yml",
+        "start": {
+          "line": 11,
+          "column": 19
+        },
+        "end": {
+          "line": 11,
+          "column": 21
+        },
+        "snippet": "        run: echo $1"
+      }
+    ],
+    "sources": [
+      {
+        "content": "a2940a2e7766285d315ee9e1fb51f590a161e24045873afcbea16cdd26baea10"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 11,
+          "column": 19
+        }
+      }
+    ],
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "a2940a2e7766285d315ee9e1fb51f590a161e24045873afcbea16cdd26baea10"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "87f87440fa8f4930aea705dec440f2914d6c954cfc2dd0d927ff5fb174db74e3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  },
+  "tools disabled by override (ruff alone)": {
+    "findings": null,
+    "captured": {
+      "\u003croot\u003e/.github/workflows/ci.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/.github/workflows/ci.yml",
+          "digest": "a2940a2e7766285d315ee9e1fb51f590a161e24045873afcbea16cdd26baea10"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003croot\u003e/local/action.yml": {
+        "revision": {
+          "document": "\u003croot\u003e/local/action.yml",
+          "digest": "87f87440fa8f4930aea705dec440f2914d6c954cfc2dd0d927ff5fb174db74e3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
+  }
+}

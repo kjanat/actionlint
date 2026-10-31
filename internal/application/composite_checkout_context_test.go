@@ -8,7 +8,7 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
@@ -102,7 +102,7 @@ jobs:
       - uses: actions/checkout@v6
         with: {path: source}
       - uses: `+tc.spec+"\n")
-				session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+				session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 				var err error
 
 				result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})

@@ -173,6 +173,60 @@
               }
             },
             {
+              "id": "empty-job",
+              "name": "EmptyJob",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report jobs without steps",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-job"
+              },
+              "fullDescription": {
+                "text": "Report jobs that run no steps. GitHub accepts the job, but it does nothing."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-job",
+              "help": {
+                "text": "Add the steps the job should run, or remove the job."
+              }
+            },
+            {
+              "id": "empty-run",
+              "name": "EmptyRun",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report steps with an empty run script",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-run"
+              },
+              "fullDescription": {
+                "text": "Report run steps whose script is empty. GitHub accepts the step, but it runs nothing."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-run",
+              "help": {
+                "text": "Write the commands the step should run, or remove the step."
+              }
+            },
+            {
+              "id": "empty-triggers",
+              "name": "EmptyTriggers",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report workflows that declare no triggers",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-triggers"
+              },
+              "fullDescription": {
+                "text": "Report workflows whose on section is empty. GitHub accepts the workflow, but no event ever starts it."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-triggers",
+              "help": {
+                "text": "Add the events that should start the workflow, or delete the workflow."
+              }
+            },
+            {
               "id": "env-var",
               "name": "EnvVar",
               "defaultConfiguration": {
@@ -494,6 +548,24 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#mixed-type-matrix-filters",
               "help": {
                 "text": "Use the same value types in matrix axes and include/exclude filters."
+              }
+            },
+            {
+              "id": "numeric-values",
+              "name": "NumericValues",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report numeric values GitHub truncates or that cannot take effect",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#numeric-values"
+              },
+              "fullDescription": {
+                "text": "Report numeric values GitHub truncates toward zero or that cannot take effect, such as a fractional or non-positive max-parallel."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#numeric-values",
+              "help": {
+                "text": "Write the whole number GitHub will use, greater than zero."
               }
             },
             {

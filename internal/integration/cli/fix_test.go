@@ -27,7 +27,7 @@ func TestFixPreviewAndApplyRechecks(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"fix", "--no-config", "--no-ruff", "--shellcheck=" + shellcheck, "--include-suggested", path}
+	args := []string{"fix", "--no-config", "--no-tool=ruff", "--tool=shellcheck=" + shellcheck, "--include-suggested", path}
 	result := testRunCommand("", args...)
 	if result.Status != 0 {
 		t.Fatal(result)

@@ -54,11 +54,11 @@ func TestAmbiguousExpressionNames(t *testing.T) {
 		input := "githab.ref"
 		if function {
 			checker.funcs = maps.Clone(checker.funcs)
-			checker.funcs["startswhth"] = []*FuncSignature{{Name: "startsWhth", Ret: BoolType{}}}
+			checker.funcs["startswhth"] = []*FuncSignature{{Name: "startsWhth", Ret: BoolType()}}
 			input = "startsWath()"
 		} else {
 			checker.ensureVarsCopied()
-			checker.vars["githob"] = NewEmptyStrictObjectType()
+			checker.vars["githob"] = NewEmptyStrictObjectType().Type()
 			checker.SetContextAvailability([]string{"github", "githob"})
 		}
 		node, err := NewParser().Parse(NewLexer(input + "}}"))

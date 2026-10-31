@@ -133,7 +133,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			r := NewRuleRequireJobTimeout(tc.policy)
-			if err := r.VisitJobPre(tc.job); err != nil {
+			if err := r.VisitJobPre(ownedJobFixture(tc.job)); err != nil {
 				t.Fatal(err)
 			}
 			errs := r.Errs()
@@ -181,7 +181,7 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 				job.WorkflowCall = &workflowlang.WorkflowCall{}
 			}
 			rule := NewRuleRequireJobTimeout(policy)
-			if err := rule.VisitJobPre(job); err != nil {
+			if err := rule.VisitJobPre(ownedJobFixture(job)); err != nil {
 				t.Fatal(err)
 			}
 			errs := rule.Errs()

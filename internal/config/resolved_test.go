@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestResolvedConfigRoundTrip(t *testing.T) {
@@ -36,8 +36,8 @@ paths: {'**': {ignore: ['a.*b']}}
 			if !reflect.DeepEqual(resolved.Values, roundTrip.Values) {
 				t.Fatalf("effective configuration changed after roundtrip: %#v != %#v", resolved.Values, roundTrip.Values)
 			}
-			if (resolved.Config.ConfigVariables == nil) != (roundTrip.Config.ConfigVariables == nil) ||
-				(resolved.Config.ConfigSecrets == nil) != (roundTrip.Config.ConfigSecrets == nil) {
+			if (VariableNames(resolved.Config.Facts()) == nil) != (VariableNames(roundTrip.Config.Facts()) == nil) ||
+				(SecretNames(resolved.Config.Facts()) == nil) != (SecretNames(roundTrip.Config.Facts()) == nil) {
 				t.Fatal("serialization changed whether variable or secret checking is enabled")
 			}
 			if source == "" {

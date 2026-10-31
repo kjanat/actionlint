@@ -9,14 +9,14 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeShellcheck(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, filename := range []string{"action.yml", "action.yaml"} {
 		t.Run(filename, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 			metadata := testutil.WriteFixture(t, root, ".github/actions/lint/"+filename, `name: lint
 description: test
@@ -27,7 +27,7 @@ runs:
       run: |
         echo $VALUE
 `)
-			result := testutil.Composite(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -45,7 +45,7 @@ runs:
 }
 
 func TestCompositeShellcheckActionPaths(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	t.Setenv("GITHUB_WORKSPACE", "")
 	foreign := t.TempDir()
 	t.Setenv("GITHUB_ACTION_PATH", foreign)
@@ -56,7 +56,7 @@ func TestCompositeShellcheckActionPaths(t *testing.T) {
 		`{source-path: ["${{ github.action_path }}/lib"]}`,
 	} {
 		t.Run(selection, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: "+selection+"}}\n")
 			outerRC := testutil.WriteFixture(t, root, "outer/.shellcheckrc", "disable=SC2086\n")
 			innerRC := testutil.WriteFixture(t, root, "inner/.shellcheckrc", "# Inner action keeps SC2086 enabled.\n")
@@ -83,7 +83,7 @@ runs:
         . value.sh
         echo $VALUE
 `)
-			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -105,8 +105,8 @@ runs:
 }
 
 func TestCompositeSyntaxAndNestedActions(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "outer/action.yml", `name: outer
 description: test
@@ -128,7 +128,7 @@ runs:
         print(
     - uses: ./outer
 `)
-	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	for _, rule := range []string{"shellcheck"} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule && filepath.Join(root, d.Path) == metadata }) {
 			t.Errorf("missing %s syntax finding: %+v", rule, result.Diagnostics)
@@ -140,7 +140,7 @@ runs:
 }
 
 func TestCompositeExecutableBit(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -223,8 +223,8 @@ runs:
 }
 
 func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	inner := testutil.WriteFixture(t, root, "inner/action.yml", `name: inner
 description: test
@@ -257,7 +257,7 @@ runs:
       if: `+tc.inner+"\n")
 			result := testutil.Composite(t, root, `- uses: actions/checkout@v6
 - uses: ./local
-  if: `+tc.outer, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+  if: `+tc.outer, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			finding := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == inner
 			})
@@ -274,8 +274,8 @@ runs:
 }
 
 func TestCompositeScriptConfig(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -289,7 +289,7 @@ runs:
     ignore: ['SC2086']
 `} {
 		testutil.WriteFixture(t, root, ".github/actionlint.yaml", config)
-		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 		if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
 			t.Fatalf("config ignored: %+v", result.Diagnostics)
 		}
@@ -297,8 +297,8 @@ runs:
 }
 
 func TestCompositeShellcheckWorkingDirectory(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "scripts/lib.sh", "if then\n")
 	testutil.WriteFixture(t, root, "lib.sh", "echo ok\n")
@@ -310,7 +310,7 @@ runs:
   steps:
     - shell: bash
 `+directory+"      run: . ./lib.sh\n")
-		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 		found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 			return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == file
 		})
@@ -321,8 +321,8 @@ runs:
 }
 
 func TestCompositeActionPathWorkingDirectory(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "lib.sh", "echo ok\n")
 	testutil.WriteFixture(t, root, "outer/lib.sh", "echo ok\n")
@@ -346,7 +346,7 @@ runs:
       working-directory: ${{ github.action_path }}
       run: . ./lib.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner
 	}) {
@@ -360,7 +360,7 @@ runs:
 }
 
 func TestCompositeNestedMetadataErrors(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	outer := testutil.WriteFixture(t, root, "outer/action.yml", `name: outer
 description: test
 runs:
@@ -386,7 +386,7 @@ runs:
 }
 
 func TestCompositeExecutionState(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, tc := range []struct {
 		name, actionSteps, workflowSteps string
 		want                             bool
@@ -504,7 +504,7 @@ runs:
 }
 
 func TestCompositeToleratedFailureState(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, setting := range []string{"true", "${{ github.event_name == 'push' }}", "false", "${{ false }}"} {
 		t.Run(setting, func(t *testing.T) {
 			metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
@@ -560,7 +560,7 @@ runs:
 }
 
 func TestCompositeCheckoutEmptyExpressions(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -596,7 +596,7 @@ runs:
 }
 
 func TestCompositeCheckoutActionOutputs(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 outputs:
@@ -626,7 +626,7 @@ runs:
 }
 
 func TestCompositeParallelCheckoutPlacement(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -663,8 +663,8 @@ runs:
 }
 
 func TestCompositeShellcheckRelocatedCheckout(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -679,7 +679,7 @@ runs:
 `)
 	testutil.WriteFixture(t, root, "lib.sh", "if then\n")
 	testutil.WriteFixture(t, root, "relocated/lib.sh", "echo wrong file\n")
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -688,8 +688,8 @@ runs:
 }
 
 func TestCompositeShellcheckCallerCheckoutState(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -732,7 +732,7 @@ runs:
 - uses: ./local
   if: false
 ` + run, 0},
-		{"retained root", `- uses: actions/checkout@v6
+		{"original root", `- uses: actions/checkout@v6
 - uses: ./local
 ` + run, 0},
 		{"parallel children and following step", `- uses: actions/checkout@v6
@@ -746,7 +746,7 @@ runs:
 ` + run, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := testutil.Composite(t, root, tc.steps, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, tc.steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			warnings := 0
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" && strings.Contains(diagnostic.Message, "SC2086") {
@@ -761,7 +761,7 @@ runs:
 }
 
 func TestCompositeCheckoutEmptyPath(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -781,8 +781,8 @@ runs:
 }
 
 func TestCompositeShellcheckUnknownCheckout(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -795,7 +795,7 @@ runs:
       run: . ./lib.sh
 `)
 	testutil.WriteFixture(t, root, "lib.sh", "if then\n")
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("unknown checkout sourced local decoy: %+v", result.Diagnostics)
 	}

@@ -41,8 +41,10 @@ func (p *Plugin) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 	return p.scriptDescriptor.Clone()
 }
 
+// loadScriptEngine describes the engine through the script-engine version it
+// exports, which extensionRoles negotiated.
 func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, ScriptEngineInterface, "describe")
+	value, err := p.callInterface(ctx, p.scriptInterface, "describe")
 	if err != nil {
 		return err
 	}
@@ -50,7 +52,16 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 	if err != nil {
 		return err
 	}
-	if err := verifyScriptMetadata(staticMetadata, &descriptor); err != nil {
+	if p.scriptInterface == ScriptEngine03Interface {
+		r, err := liftRecord(value, "script descriptor")
+		if err != nil {
+			return err
+		}
+		if err := liftScriptCapabilities(r.Field("capabilities"), &descriptor); err != nil {
+			return err
+		}
+	}
+	if err := verifyScriptMetadata(staticMetadata, p.scriptInterface, &descriptor); err != nil {
 		return err
 	}
 	p.scriptDescriptor = &descriptor
@@ -58,7 +69,7 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 }
 
 func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, analyzer.TemplateEffectsContract, "contract")
+	value, err := p.callInterface(ctx, p.templateInterface, "contract")
 	if err != nil {
 		return err
 	}
@@ -98,7 +109,7 @@ func (p *Plugin) ValidateConfig(ctx context.Context, config json.RawMessage) err
 	if err != nil {
 		return err
 	}
-	value, err := p.callInterface(ctx, ScriptEngineInterface, "validate-config", wacogo.ValString(options))
+	value, err := p.callInterface(ctx, p.scriptInterface, "validate-config", wacogo.ValString(options))
 	if err != nil {
 		return err
 	}
@@ -130,30 +141,48 @@ func scriptOptions(config json.RawMessage) (string, error) {
 	return string(config), nil
 }
 
-// Check analyzes a sanitized snippet. Findings and an incomplete-analysis error
-// remain independent; malformed findings are rejected before any are published.
-func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+// Check analyzes a sanitized snippet and validates the returned findings.
+// A script-engine 0.3.0 engine also receives the excluded codes and, when it
+// requested the directory resource and the request carries a directory
+// grant, that grant mounted read-only for this call.
+func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) (diagnostics []analyzer.ScriptDiagnostic, err error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
 	}
 	if request.Filename == "" || strings.ContainsRune(request.Filename, 0) ||
-		!utf8.ValidString(request.Source) || !utf8.ValidString(request.Filename) {
-		return nil, errors.New("script engine needs UTF-8 source and a nonempty virtual filename without NUL")
+		!utf8.ValidString(request.Source) || !utf8.ValidString(request.Filename) || !validExcluded(request.Excluded) {
+		return nil, errors.New("script engine needs UTF-8 source, a nonempty virtual filename and excluded codes without NUL")
 	}
-	if uint64(len(request.Source))+uint64(len(request.Filename))+uint64(len(request.Config)) > maxScriptInputBytes {
+	size := uint64(len(request.Source)) + uint64(len(request.Filename)) + uint64(len(request.Config))
+	for _, code := range request.Excluded {
+		size += uint64(len(code))
+	}
+	if size > maxScriptInputBytes {
 		return nil, errors.New("script engine request exceeds 8 MiB")
 	}
 	options, err := scriptOptions(request.Config)
 	if err != nil {
 		return nil, err
 	}
-	input := wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
-		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
-	contract := ScriptEngineInterface
-	if p.scriptDescriptor.TemplateContract != "" {
-		contract = analyzer.TemplateEffectsContract
+	current := p.scriptInterface == ScriptEngine03Interface
+	var grant scriptGrant
+	var input wacogo.Val
+	if current {
+		grant = p.grantScriptResources(request)
+		input = lowerScriptRequest03(request, options, grant)
+	} else {
+		input = wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
+			field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
 	}
-	value, err := p.callInterface(ctx, contract, "check", input)
+	contract := p.scriptInterface
+	effects := template_effects_effect
+	if p.scriptDescriptor.TemplateContract != "" {
+		contract = p.templateInterface
+		if current {
+			effects = template_effects_03_effect
+		}
+	}
+	value, err := p.callInterface(context.WithValue(ctx, fileSystemsKey{}, grant.files), contract, "check", input)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +210,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 	}
 	lines := scriptLineWidths(request.Source)
 	starts := scriptLineStarts(request.Source)
-	diagnostics := make([]analyzer.ScriptDiagnostic, 0, list.Len())
+	diagnostics = make([]analyzer.ScriptDiagnostic, 0, list.Len())
 	for i := range list.Len() {
 		value := list.Get(i)
 		var effect analyzer.ScriptTemplateEffect
@@ -191,7 +220,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 				return nil, err
 			}
 			value = wrapped.Field("diagnostic")
-			tag, err := liftRunnerEnum(wrapped.Field("effect"), template_effects_effect)
+			tag, err := liftRunnerEnum(wrapped.Field("effect"), effects)
 			if err != nil {
 				return nil, err
 			}
@@ -200,16 +229,28 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 				return nil, errors.New("unknown template effect")
 			}
 		}
-		finding, err := liftScriptDiagnostic(value)
+		lift := liftScriptDiagnostic
+		if current {
+			lift = liftScriptDiagnostic03
+		}
+		finding, err := lift(value)
 		if err != nil {
 			return nil, err
 		}
 		finding.TemplateEffect = effect
-		for _, text := range []string{finding.Filename, finding.Code, finding.Name, finding.Message, finding.URL} {
-			resultBytes += uint64(len(text))
-		}
+		resultBytes += scriptDiagnosticBytes(finding)
 		if resultBytes > maxScriptResultBytes {
 			return nil, errors.New("script engine result exceeds 8 MiB")
+		}
+		if current {
+			if err := p.checkScriptDiagnostic03(&finding, grant, lines, starts); err != nil {
+				return nil, err
+			}
+			if finding.Source != "" {
+				// Positions are the reported file's own, not the snippet's.
+				diagnostics = append(diagnostics, finding)
+				continue
+			}
 		}
 		if finding.Filename != request.Filename || finding.Code == "" || finding.Message == "" ||
 			!validScriptPosition(lines, finding.Location) || !validScriptPosition(lines, finding.EndLocation) ||
@@ -287,19 +328,30 @@ func liftScriptOptionalString(value wacogo.Val, name string) (*string, error) {
 	return &result, nil
 }
 
+// liftScriptDiagnostic lifts a script-engine 0.2.0 diagnostic, whose
+// severity is an enum.
 func liftScriptDiagnostic(value wacogo.Val) (analyzer.ScriptDiagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
 		return analyzer.ScriptDiagnostic{}, err
 	}
+	d, err := liftScriptDiagnosticFields(r)
+	if err != nil {
+		return d, err
+	}
+	d.Severity, err = liftRunnerEnum(r.Field("severity"), script_engine_severity)
+	return d, err
+}
+
+// liftScriptDiagnosticFields lifts the diagnostic fields every
+// script-engine version shares.
+func liftScriptDiagnosticFields(r *wacogo.ValRecord) (analyzer.ScriptDiagnostic, error) {
 	var d analyzer.ScriptDiagnostic
+	var err error
 	for name, dest := range map[string]*string{"filename": &d.Filename, "code": &d.Code, "name": &d.Name, "message": &d.Message} {
 		if *dest, err = liftString(r, name); err != nil {
 			return d, err
 		}
-	}
-	if d.Severity, err = liftRunnerEnum(r.Field("severity"), script_engine_severity); err != nil {
-		return d, err
 	}
 	if d.Location, err = liftScriptPosition(r.Field("location")); err != nil {
 		return d, err
@@ -402,7 +454,10 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 	return d, nil
 }
 
-func verifyScriptMetadata(data []byte, d *analyzer.ScriptEngineDescriptor) error {
+// verifyScriptMetadata checks the artifact's static metadata against the
+// descriptor the engine exported through iface, and takes the action-input
+// selectors only the static metadata declares.
+func verifyScriptMetadata(data []byte, iface string, d *analyzer.ScriptEngineDescriptor) error {
 	if data == nil {
 		if len(d.Shells) == 0 {
 			return errors.New("script descriptor needs shell or static action-input selectors")
@@ -423,21 +478,25 @@ func verifyScriptMetadata(data []byte, d *analyzer.ScriptEngineDescriptor) error
 			Version string `json:"version"`
 		} `json:"engine"`
 		Capabilities struct {
-			ScriptShells []string               `json:"script_shells"`
-			ScriptInputs []analyzer.ScriptInput `json:"script_inputs"`
-			Fixes        bool                   `json:"fixes"`
-			Format       bool                   `json:"format"`
+			ScriptShells    []string                    `json:"script_shells"`
+			ScriptInputs    []analyzer.ScriptInput      `json:"script_inputs"`
+			Fixes           bool                        `json:"fixes"`
+			ReportedSources bool                        `json:"reported_sources"`
+			Resources       []analyzer.ToolResourceKind `json:"resources"`
+			Format          bool                        `json:"format"`
 		} `json:"capabilities"`
 	}
 	if err := jsonv2.Unmarshal(data, &declared); err != nil {
 		return fmt.Errorf("script engine metadata: %w", err)
 	}
+	capabilities := declared.Capabilities
 	if declared.MetadataVersion != 1 || declared.Transport != "wasm-component" ||
-		declared.Interface != ScriptEngineInterface ||
+		declared.Interface != iface ||
 		declared.ID != d.ID || declared.PluginVersion != d.Version || declared.Name != d.Name ||
 		declared.Engine.Name != d.Engine || declared.Engine.Version != d.EngineVersion ||
-		!slices.Equal(declared.Capabilities.ScriptShells, d.Shells) ||
-		declared.Capabilities.Fixes || declared.Capabilities.Format ||
+		!slices.Equal(capabilities.ScriptShells, d.Shells) ||
+		capabilities.Fixes != d.Fixes || capabilities.ReportedSources != d.ReportedSources ||
+		!slices.Equal(capabilities.Resources, d.Resources) || capabilities.Format ||
 		len(declared.Rules) != 1 {
 		return errors.New("script engine static metadata disagrees with its typed descriptor")
 	}

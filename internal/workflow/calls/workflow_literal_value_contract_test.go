@@ -5,6 +5,7 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -15,13 +16,13 @@ jobs:
   call:
     uses: ${{ '$/leaf.yaml' }}
 `)
-	w, errs := workflowlang.ParseDocument(source)
+	w, errs := workflowparser.ParseDocument(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
-	event, _ := w.FindWorkflowCallEvent()
+	cache := newCapturedWorkflowCache(t, root, root, nil)
+	event, _ := workflowlang.FindWorkflowCallEvent(w)
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, _ := cache.Lookup("./callee.yaml")
 	fromFile, err := calls.ParseMetadata(source)

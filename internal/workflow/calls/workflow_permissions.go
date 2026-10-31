@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // PermissionLevel is an access level of a single permission scope of the GITHUB_TOKEN.
@@ -27,9 +28,9 @@ func (l PermissionLevel) String() string {
 		return "read"
 	case PermissionLevelWrite:
 		return "write"
-	default:
-		return "none"
+	case PermissionLevelNone:
 	}
+	return "none"
 }
 
 // PermissionScopeLevels maps a permission scope name to its access level. A scope absent from the
@@ -116,9 +117,27 @@ func resolvePermissions(src permissionsSource) ResolvedPermissions {
 	return ResolvedPermissions{PermissionsDeclared, ls}
 }
 
-// ResolvePermissionsAST resolves a parsed "permissions:" section. A nil node means the section is
+// ResolvePermissions resolves an immutable parsed permissions declaration.
+func ResolvePermissions(p declaration.PermissionsView) ResolvedPermissions {
+	if !p.Present() {
+		return ResolvedPermissions{Kind: PermissionsAbsent}
+	}
+	if p.ScopesPresent() {
+		scopes := map[string]string{}
+		for _, scope := range p.Scopes() {
+			scopes[scope.Name().Value()] = strings.ToLower(scope.Value().Value())
+		}
+		return resolvePermissions(permissionsSource{scopes: scopes})
+	}
+	if p.All().Present() {
+		return resolvePermissions(permissionsSource{all: strings.ToLower(p.All().Value())})
+	}
+	return ResolvedPermissions{Kind: PermissionsInvalid}
+}
+
+// resolvePermissionsModel resolves a parsed "permissions:" section. A nil node means the section is
 // absent.
-func ResolvePermissionsAST(p *workflowlang.Permissions) ResolvedPermissions {
+func resolvePermissionsModel(p *workflowlang.Permissions) ResolvedPermissions {
 	if p == nil {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}
@@ -137,22 +156,22 @@ func ResolvePermissionsAST(p *workflowlang.Permissions) ResolvedPermissions {
 
 // ResolvePermissionsYAML resolves a raw "permissions:" YAML node. A nil node or a node with a zero
 // Kind means the section is absent.
-func ResolvePermissionsYAML(n *yaml.Node) ResolvedPermissions {
+func ResolvePermissionsYAML(n *syntax.Node) ResolvedPermissions {
 	if n == nil || n.Kind == 0 {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}
 	switch n.Kind {
-	case yaml.MappingNode:
+	case syntax.MappingNode:
 		ss := make(map[string]string, len(n.Content)/2)
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			ss[n.Content[i].Value] = strings.ToLower(n.Content[i+1].Value)
 		}
 		return resolvePermissions(permissionsSource{scopes: ss})
-	case yaml.ScalarNode:
+	case syntax.ScalarNode:
 		return resolvePermissions(permissionsSource{all: strings.ToLower(n.Value)})
-	default:
-		return ResolvedPermissions{Kind: PermissionsInvalid}
+	case syntax.DocumentNode, syntax.SequenceNode, syntax.AliasNode:
 	}
+	return ResolvedPermissions{Kind: PermissionsInvalid}
 }
 
 // DefaultPermissionLevels returns the levels GitHub grants when neither the calling job nor the

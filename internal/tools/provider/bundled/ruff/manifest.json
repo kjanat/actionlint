@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "id": "actionlint.kjanat.dev/providers/ruff",
+  "version": "bundled",
+  "role": "script",
+  "scope": "composite",
+  "transport": "process",
+  "rule": {
+    "name": "ruff",
+    "description": "Analyze embedded Python scripts with Ruff",
+    "category": "correctness",
+    "subcategory": "python",
+    "maturity": "stable",
+    "provider": "ruff",
+    "recommended": true,
+    "explanation": "Analyze embedded Python scripts with Ruff.",
+    "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
+    "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
+    "fix_availability": "none"
+  },
+  "preparation": "kjanat:actionlint/python-preparation@0.1.0",
+  "deprecated_flags": [{ "name": "pyflakes", "value": "ignored", "arguments": ["--select", "F"] }],
+  "selectors": { "filename": "actionlint.py" },
+  "capabilities": {
+    "template_contract": "kjanat:actionlint/template-effects@0.1.0",
+    "fixes": false,
+    "reported_sources": false,
+    "message_template": "Ruff reported issue in this script: {code}: {message}"
+  },
+  "config_schema": {
+    "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
+    "type": "object",
+    "properties": {
+      "target-version": {
+        "title": "target-version",
+        "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+        "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+        "oneOf": [
+          { "type": "string", "minLength": 1, "examples": ["py314"] },
+          { "type": "null", "doNotSuggest": true }
+        ]
+      },
+      "lint": {
+        "title": "lint",
+        "description": "Ruff's lint options, such as select, ignore and extend-select.",
+        "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
+        "oneOf": [
+          { "type": "object" },
+          { "type": "null" }
+        ],
+        "properties": {
+          "select": {
+            "title": "select",
+            "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+            "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+            "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+            "oneOf": [
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "null" }
+            ]
+          },
+          "ignore": {
+            "title": "ignore",
+            "description": "Rule codes or prefixes to skip, such as F401.",
+            "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+            "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+            "oneOf": [
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "null" }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "config_shorthands": {
+    "target-version": { "path": ["target-version"], "precedence": "config" },
+    "select": { "path": ["lint", "select"], "precedence": "shorthand" },
+    "ignore": { "path": ["lint", "ignore"], "precedence": "shorthand" }
+  },
+  "process": {
+    "entry": "ruff",
+    "stdin": "source",
+    "exit_codes": [0, 1],
+    "env_passthrough": [
+      "PATH",
+      "PATHEXT",
+      "HOME",
+      "USERPROFILE",
+      "APPDATA",
+      "LOCALAPPDATA",
+      "XDG_CACHE_HOME",
+      "TMPDIR",
+      "TEMP",
+      "TMP"
+    ],
+    "env_unset": ["RUFF_OUTPUT_FILE"],
+    "args": [
+      "check",
+      "{config:toml-pairs:--config}",
+      "{user-args}",
+      "--isolated",
+      "--ignore-noqa",
+      "--no-fix",
+      "--no-cache",
+      "--output-format",
+      "json",
+      "--stdin-filename",
+      "{var:filename}",
+      "--extension",
+      "py:python",
+      "{option:target_version:--target-version}",
+      "{option:select:--select}",
+      "{option:ignore:--ignore}",
+      "-"
+    ],
+    "config": {
+      "render": "toml-pairs",
+      "transform": {
+        "language": "jq",
+        "digest": "sha256:2f5a6a1279ca714ddd800a324868509d2a0e47947ec45fa6b17dd02cde892bf9"
+      },
+      "forbidden": [
+        "extend",
+        "cache-dir",
+        "src",
+        "namespace-packages",
+        "fix",
+        "fix-only",
+        "unsafe-fixes",
+        "show-fixes",
+        "output-file"
+      ]
+    },
+    "version": {
+      "args": ["--version"],
+      "pattern": "^ruff ((?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?)(?:\\s|$)",
+      "minimum": "0.17.0",
+      "template_effects": "0.17.0"
+    },
+    "output": {
+      "format": "json",
+      "transform": {
+        "language": "jq",
+        "digest": "sha256:74532ef7b1f36997c9915c6428c169c360b4989ed2c1b86961002e4518f7fa2e"
+      },
+      "coordinates": { "rows": "source", "columns": "chars", "end": "exclusive" }
+    },
+    "template_effects": {
+      "E501": "line-length",
+      "F401": "complete-references",
+      "F811": "complete-references",
+      "F841": "complete-references",
+      "F842": "complete-references",
+      "ARG001": "complete-references",
+      "ARG002": "complete-references",
+      "ARG003": "complete-references",
+      "ARG004": "complete-references",
+      "ARG005": "complete-references",
+      "B007": "complete-references",
+      "F821": "opaque-name",
+      "B018": "opaque-name",
+      "UP034": "opaque-parentheses",
+      "F501": "percent-conversion",
+      "F502": "string-contents",
+      "F503": "string-contents",
+      "F504": "string-contents",
+      "F505": "string-contents",
+      "F506": "string-contents",
+      "F507": "string-contents",
+      "F508": "string-contents",
+      "F521": "string-contents",
+      "F522": "string-contents",
+      "F523": "string-contents",
+      "F524": "string-contents",
+      "F525": "string-contents",
+      "F541": "string-contents",
+      "D400": "docstring-summary",
+      "D415": "docstring-summary",
+      "F822": "exported-name"
+    },
+    "user_args": {
+      "operands": false,
+      "value_options": [
+        "--select",
+        "--ignore",
+        "--extend-select",
+        "--extend-ignore",
+        "--per-file-ignores",
+        "--extend-per-file-ignores",
+        "--fixable",
+        "--unfixable",
+        "--extend-fixable",
+        "--extend-unfixable",
+        "--exclude",
+        "--extend-exclude",
+        "--cache-dir",
+        "--config",
+        "--color",
+        "--line-length"
+      ],
+      "inline_options": ["--config"],
+      "launchers": [
+        {
+          "command": "python(?:3(?:\\.[0-9]+)?)?",
+          "value_options": ["--check-hash-based-pycs"],
+          "choices": { "--check-hash-based-pycs": ["default", "always", "never"] },
+          "short_flags": "bBdEIOPqRsSuvx",
+          "short_values": "WX",
+          "module": { "short": "m", "name": "ruff" },
+          "hint": "use supported interpreter options followed by -m ruff, not a script, another module, or -c"
+        },
+        {
+          "command": "py",
+          "value_options": ["--check-hash-based-pycs"],
+          "choices": { "--check-hash-based-pycs": ["default", "always", "never"] },
+          "short_flags": "bBdEIOPqRsSuvx",
+          "short_values": "WX",
+          "selector": "-(?:V:(?:(?i:PythonCore)/)?)?3(?:\\.[0-9]+)?(?:-(?:32|64|arm64))?",
+          "module": { "short": "m", "name": "ruff" },
+          "hint": "use supported interpreter options followed by -m ruff, not a script, another module, or -c"
+        },
+        {
+          "command": "env",
+          "flags": ["-i", "--ignore-environment"],
+          "value_options": ["-u", "--unset"],
+          "assignments": true,
+          "protected": ["RUFF_OUTPUT_FILE"],
+          "separator": true,
+          "tool": "(?:.*[/\\\\])?(?i:ruff(?:\\.exe)?)",
+          "hint": "specify a Ruff command after supported launcher options"
+        },
+        {
+          "command": "uvx",
+          "flags": ["--offline", "--no-cache"],
+          "value_options": ["--from"],
+          "separator": true,
+          "tool": "(?:.*[/\\\\])?(?i:ruff(?:\\.exe)?)|ruff@[^ /\\\\\\t\\r\\n<>=,]+",
+          "hint": "specify a Ruff command after supported launcher options"
+        }
+      ],
+      "forbidden": [
+        { "prefix": "@", "reason": "ruff argument files are not supported" },
+        { "flag": "--show-files", "reason": "ruff inspection output is not supported" },
+        { "flag": "--show-settings", "reason": "ruff inspection output is not supported" },
+        { "flag": "--diff", "reason": "ruff editing output is not supported" },
+        { "flag": "--fix-only", "reason": "ruff editing output is not supported" },
+        { "flag": "--statistics", "reason": "ruff statistics output is not supported" },
+        { "flag": "--output-file", "reason": "ruff output redirection is not supported" },
+        { "short_letter": "o", "reason": "ruff output redirection is not supported" },
+        { "flag": "--silent", "reason": "ruff silent output is not supported" },
+        { "short_letter": "s", "reason": "ruff silent output is not supported" },
+        { "flag": "--extension", "reason": "ruff source-type overrides are not supported" },
+        { "flag": "--help", "reason": "ruff non-diagnostic modes are not supported" },
+        { "flag": "--watch", "reason": "ruff non-diagnostic modes are not supported" },
+        { "flag": "--add-noqa", "reason": "ruff non-diagnostic modes are not supported" },
+        { "flag": "--add-ignore", "reason": "ruff non-diagnostic modes are not supported" },
+        { "short_letter": "h", "reason": "ruff non-diagnostic modes are not supported" },
+        { "short_letter": "w", "reason": "ruff non-diagnostic modes are not supported" },
+        { "flag": "--isolated", "reason": "integration-owned option; remove it from extra arguments" },
+        { "flag": "--ignore-noqa", "reason": "integration-owned option; remove it from extra arguments" },
+        { "flag": "--no-fix", "reason": "integration-owned option; remove it from extra arguments" },
+        { "flag": "--no-cache", "reason": "integration-owned option; remove it from extra arguments" },
+        { "short_letter": "n", "reason": "integration-owned option --no-cache; remove it from extra arguments" },
+        { "flag": "--target-version", "reason": "integration-owned option; remove it from extra arguments" },
+        { "flag": "--stdin-filename", "reason": "integration-owned option; remove it from extra arguments" },
+        { "flag": "--output-format", "reason": "integration-owned option; remove it from extra arguments" }
+      ]
+    },
+    "concurrency": "pool"
+  }
+}

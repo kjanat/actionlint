@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
@@ -20,7 +20,7 @@ func TestCompositeAnalysisCancellation(t *testing.T) {
 			name = "invocation after action validation"
 		}
 		t.Run(name, func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			outer := writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
 description: test
 runs:
@@ -54,7 +54,7 @@ jobs:
 				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 					if actionRule {
 						for _, rule := range rules {
-							if _, ok := rule.(*builtin.RuleAction); ok {
+							if rule.Name() == "action" {
 								return []workflowvisit.Rule{rule}
 							}
 						}
@@ -80,6 +80,9 @@ jobs:
 			}
 			if outerReads != 1 || innerReads != 0 {
 				t.Fatalf("analysis continued after cancellation: outer reads=%d, inner reads=%d", outerReads, innerReads)
+			}
+			if len(result.Documents) != 2 || result.Documents[1].DocumentPath() != filepath.Join("outer", "action.yml") {
+				t.Fatalf("cancelled batch lost its published action outline: %+v", result.Documents)
 			}
 		})
 	}

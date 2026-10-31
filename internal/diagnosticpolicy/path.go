@@ -9,8 +9,7 @@ func RelativePath(directory, source string) string {
 	if !filepath.IsAbs(source) {
 		return source
 	}
-	// In-memory sources need not exist on disk. Use physical paths only when
-	// both resolve; otherwise retain both original spellings.
+	// In-memory sources need not exist on disk.
 	if resolvedDirectory, err := filepath.EvalSymlinks(directory); err == nil {
 		if resolvedSource, err := filepath.EvalSymlinks(source); err == nil {
 			directory, source = resolvedDirectory, resolvedSource

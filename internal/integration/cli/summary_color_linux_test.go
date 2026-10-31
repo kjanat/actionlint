@@ -30,7 +30,7 @@ func TestSummaryTerminalColor(t *testing.T) {
 			terminal, finish := commandTestTerminal(t)
 			var stdout bytes.Buffer
 			cmd := cli.Command{Stdin: strings.NewReader(commandGoodWorkflow), Stdout: &stdout, Stderr: terminal}
-			args := append([]string{"actionlint", "--no-config", "--shellcheck=", "--ruff="}, tc.flags...)
+			args := append([]string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff"}, tc.flags...)
 			status := cmd.Main(append(args, "-"))
 			output := strings.ReplaceAll(finish(), "\r", "")
 			if status != 0 || ansi.MatchString(output) != tc.colored || ansi.ReplaceAllString(output, "") != "✓ Checked 1 workflow. All clear!\n" {

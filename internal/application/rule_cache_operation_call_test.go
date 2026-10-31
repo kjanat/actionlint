@@ -11,7 +11,8 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -174,13 +175,13 @@ jobs:
 		}
 	}
 	project := workspace.Identity(root)
-	request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 	for _, order := range [][]string{{"read.yaml", "write.yaml", "callee.yaml"}, {"callee.yaml", "write.yaml", "read.yaml"}} {
-		cache := calls.NewCache(project.RootDir(), root, nil)
+		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 		for range 2 {
 			for _, name := range order {
-				diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
+				diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -262,7 +263,7 @@ jobs:
 					}
 				}
 				project := workspace.Identity(root)
-				request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 				check := func(diagnostics []*findingmodel.Finding, want bool) {
 					t.Helper()
@@ -282,10 +283,10 @@ jobs:
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml", "leaf.yaml"}, {"leaf.yaml", "callee.yaml", "caller.yaml"}} {
-					cache := calls.NewCache(project.RootDir(), root, nil)
+					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
-							diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
+							diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -359,7 +360,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	project := workspace.Identity(root)
-	request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 	var lConfig *repoconfig.Config
 	var err error
 
@@ -370,18 +371,18 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	for _, astFirst := range []bool{false, true} {
-		cache := calls.NewCache(project.RootDir(), root, nil)
+		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 		if astFirst {
 			for name, source := range sources {
 				w, errs := documentparse.Parse([]byte(source))
 				if w == nil || len(errs) != 0 {
 					continue
 				}
-				event, found := w.FindWorkflowCallEvent()
+				_, found := workflowlang.FindWorkflowCallEvent(w)
 				if !found {
 					continue
 				}
-				cache.WriteWorkflowCallEventFromWorkflow(name, event, w)
+				seedCapturedWorkflow(t, cache, name, []byte(source))
 				fromAST, _, _ := cache.Lookup("./" + name)
 				fromFile, err := calls.ParseMetadata([]byte(source))
 				if err != nil {
@@ -393,7 +394,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 			}
 		}
 		for range 2 {
-			diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: []byte(sources["caller.yaml"]), Project: project, Config: lConfig}, nil, nil, cache)
+			diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: []byte(sources["caller.yaml"]), Project: project, Config: lConfig}, nil, nil, cache)
 			if err != nil {
 				t.Fatal(err)
 			}

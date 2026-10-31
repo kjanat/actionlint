@@ -8,8 +8,7 @@ import (
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -24,7 +23,7 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 					}
 				}
 				proj := workspace.Identity(root)
-				cache := calls.NewCache(proj.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, proj.RootDir(), root, nil)
 				request := analysisRequest{WorkingDir: root}
 				var err error
 
@@ -42,7 +41,7 @@ jobs:
         env: {RESULT: '${{ needs.call.outputs.result }}'}
 `)
 				for _, pass := range []string{"cold cache", "warm cache"} {
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -108,7 +107,7 @@ jobs:
 				}
 			}
 			project := workspace.Identity(root)
-			request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 			checkDiagnostics := func(diagnostics []*findingmodel.Finding, includeCallee bool) {
 				t.Helper()
@@ -123,14 +122,14 @@ jobs:
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				for range 2 {
 					for _, name := range order {
 						source := caller
 						if name == "callee.yaml" {
 							source = callee
 						}
-						diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
+						diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
 						if err != nil {
 							t.Fatal(err)
 						}

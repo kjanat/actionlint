@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -40,22 +41,24 @@ func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {
 		ruff, shell bool
 	}{
 		{name: "ordinary check", ruff: true, shell: true},
-		{name: "explicit ruff", args: []string{"--ruff"}, shell: true},
-		{name: "disable ruff", args: []string{"--no-ruff"}, shell: true},
-		{name: "empty ruff", args: []string{"--ruff="}, shell: true},
-		{name: "false ruff", args: []string{"--ruff=false"}, shell: true},
+		{name: "explicit ruff", args: []string{"--tool", "ruff"}, shell: true},
+		{name: "disable ruff", args: []string{"--no-tool", "ruff"}, shell: true},
+		{name: "empty ruff", args: []string{"--tool", "ruff="}, shell: true},
+		{name: "false ruff", args: []string{"--tool", "ruff=false"}, shell: true},
 		{name: "legacy pyflakes", args: []string{"--pyflakes=pyflakes"}, shell: true},
 		{name: "disabled pyflakes", args: []string{"--pyflakes="}, shell: true},
-		{name: "ruff executable env", env: map[string]string{"ACTIONLINT_RUFF_BIN": "ruff"}, shell: true},
-		{name: "ruff disabled env", env: map[string]string{"ACTIONLINT_RUFF_BIN": ""}, shell: true},
-		{name: "ruff arguments env", env: map[string]string{"ACTIONLINT_RUFF_FLAGS": "--select F"}, shell: true},
-		{name: "ruff child env", env: map[string]string{"ACTIONLINT_RUFF_ENV": "NAME=value"}, shell: true},
-		{name: "explicit shellcheck", args: []string{"--shellcheck"}, ruff: true},
-		{name: "disabled shellcheck", args: []string{"--no-shellcheck"}, ruff: true},
-		{name: "shellcheck executable env", env: map[string]string{"ACTIONLINT_SHELLCHECK_BIN": "shellcheck"}, ruff: true},
+		{name: "ruff executable env", env: map[string]string{"ACTIONLINT_TOOL_RUFF_BIN": "ruff"}, shell: true},
+		{name: "ruff disabled env", env: map[string]string{"ACTIONLINT_TOOL_RUFF_BIN": ""}, shell: true},
+		{name: "ruff arguments env", env: map[string]string{"ACTIONLINT_TOOL_RUFF_FLAGS": "--select F"}, shell: true},
+		{name: "ruff child env", env: map[string]string{"ACTIONLINT_TOOL_RUFF_ENV": "NAME=value"}, shell: true},
+		{name: "explicit shellcheck", args: []string{"--tool", "shellcheck"}, ruff: true},
+		{name: "legacy shellcheck command", args: []string{"--shellcheck=shellcheck"}, ruff: true},
+		{name: "disabled shellcheck", args: []string{"--no-tool", "shellcheck"}, ruff: true},
+		{name: "legacy empty shellcheck", args: []string{"--shellcheck="}, ruff: true},
+		{name: "shellcheck executable env", env: map[string]string{"ACTIONLINT_TOOL_SHELLCHECK_BIN": "shellcheck"}, ruff: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, tool := range []string{"RUFF", "SHELLCHECK"} {
+			for _, tool := range []string{"TOOL_RUFF", "TOOL_SHELLCHECK"} {
 				for _, suffix := range []string{"BIN", "FLAGS", "ENV"} {
 					name := "ACTIONLINT_" + tool + "_" + suffix
 					t.Setenv(name, "")
@@ -67,7 +70,7 @@ func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {
 			for name, value := range tc.env {
 				t.Setenv(name, value)
 			}
-			app := newCommandApp(&Command{})
+			app := newCommandApp(t.Context(), &Command{})
 			if _, _, _, err := app.parseRoot(append(tc.args, "input.yml")); err != nil {
 				t.Fatal(err)
 			}
@@ -75,8 +78,9 @@ func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {
 				t.Fatal(err)
 			}
 			defaults := app.inv.Check.defaultPlugins(nil)
-			if defaults.Ruff != tc.ruff || defaults.Shellcheck != tc.shell {
-				t.Fatalf("migration defaults: Ruff=%t Shellcheck=%t; want %t %t", defaults.Ruff, defaults.Shellcheck, tc.ruff, tc.shell)
+			ruff, shell := slices.Contains(defaults.Tools, "ruff"), slices.Contains(defaults.Tools, "shellcheck")
+			if ruff != tc.ruff || shell != tc.shell {
+				t.Fatalf("migration defaults: %v; want ruff=%t shellcheck=%t", defaults.Tools, tc.ruff, tc.shell)
 			}
 		})
 	}

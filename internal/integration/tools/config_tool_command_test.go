@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -26,6 +26,11 @@ func TestConfiguredBackendProcessHelper(t *testing.T) {
 		os.Exit(2)
 	}
 	args := os.Args[index+2:]
+	if args[0] == "--version" {
+		// The bundled Ruff provider checks the minimum version first.
+		fmt.Print("ruff 0.17.0\n")
+		os.Exit(0)
+	}
 	source, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		os.Exit(2)
@@ -55,11 +60,13 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := &toolconfig.Backend{Process: &toolconfig.Command{
-		Executable: executable,
-		Args:       []string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
-		Env:        map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"},
-	}}
+	command, err := toolconfig.NewCommand(executable,
+		[]string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
+		map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	process := toolconfig.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			cfg := &repoconfig.Config{}
@@ -67,11 +74,11 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			var requestSources []workspace.Source
 			shell := "python"
 			if name == "ruff" {
-				cfg.Tools.Ruff.Backend = process
-				request.Tools = (adapters.Options{Ruff: "ruff"}).Registrations()
+				cfg.Tools = repoconfig.ToolsConfig{"ruff": {Backend: process}}
+				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})
 			} else {
-				cfg.Tools.Shellcheck.Backend = process
-				request.Tools = (adapters.Options{ShellCheck: "shellcheck"}).Registrations()
+				cfg.Tools = repoconfig.ToolsConfig{"shellcheck": {Backend: process}}
+				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})
 				shell = "bash"
 			}
 			requestSources = []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}

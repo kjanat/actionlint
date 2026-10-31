@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/rule"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // RequiredActionsOptions configures exact actions or action/ref glob patterns.
@@ -55,12 +55,12 @@ type Rule struct {
 // Nursery reports whether the rule is excluded from stable presets.
 func (r Rule) Nursery() bool { return r.Maturity == "nursery" }
 
-// Rules lists the built-in checks in registration order.
+// Rules lists the built-in checks in registration order, then the bundled
+// tool providers' rules.
 func Rules() []Rule {
-	rules := []Rule{
+	rules := slices.Concat([]Rule{
 		{Name: "workflow-run-names"},
 		{Name: "unsound-ternary"},
-		{Name: "ruff", SupportsActions: true, Scope: CompositeScope},
 		{Name: "syntax-check", SupportsActions: true},
 		{Name: "inline-suppression", Scope: SourceScope},
 		{Name: "missing-local-action"},
@@ -72,7 +72,7 @@ func Rules() []Rule {
 		{Name: "matrix"},
 		{Name: "credentials"},
 		{Name: "shell-name"},
-		{Name: "runner-label", Options: func() any { return &RunnerLabelOptions{} }, Configure: configureRunnerLabels},
+		{Name: "runner-label"},
 		{Name: "events"},
 		{Name: "job-needs"},
 		{Name: "parallel-steps"},
@@ -82,10 +82,10 @@ func Rules() []Rule {
 		{Name: "id"},
 		{Name: "glob"},
 		{Name: "permissions"},
-		{Name: "workflow-call", Options: func() any { return &WorkflowCallOptions{} }, Configure: configureWorkflowCall},
+		{Name: "workflow-call"},
 		{Name: "expression", SupportsActions: true},
 		{Name: "expression-syntax", SupportsActions: true},
-		{Name: "expression-reference", SupportsActions: true, Options: func() any { return &ExpressionReferenceOptions{} }, Configure: configureExpressionReferences},
+		{Name: "expression-reference", SupportsActions: true},
 		{Name: "context-availability", SupportsActions: true},
 		{Name: "expression-type", SupportsActions: true},
 		{Name: "expression-call", SupportsActions: true},
@@ -95,6 +95,10 @@ func Rules() []Rule {
 
 		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
 		{Name: "if-cond"},
+		{Name: "numeric-values"},
+		{Name: "empty-triggers"},
+		{Name: "empty-job"},
+		{Name: "empty-run"},
 		{Name: "require-commit-hash", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
 		{Name: "require-job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
 		{Name: "require-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
@@ -102,8 +106,7 @@ func Rules() []Rule {
 		{Name: "cache-write-untrusted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
 		{Name: "cache-call-unrestricted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
 		{Name: "cache-operation", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
-		{Name: "shellcheck", SupportsActions: true, Scope: SourceScope},
-	}
+	}, providerRules())
 	for i := range rules {
 		metadata, ok := rulecatalog.Find(rules[i].Name)
 		if !ok {
@@ -111,6 +114,18 @@ func Rules() []Rule {
 		}
 		rules[i].Descriptor = metadata
 		rules[i].Group = rulecatalog.ConfigGroup(metadata.Name)
+	}
+	return rules
+}
+
+// providerRules lists the bundled tool providers' rules. Providers check
+// scripts in workflows and actions alike; their manifests choose which
+// document's configuration applies.
+func providerRules() []Rule {
+	names := toolProviderNames()
+	rules := make([]Rule, 0, len(names))
+	for _, name := range names {
+		rules = append(rules, Rule{Name: name, SupportsActions: true, Scope: toolProviders()[name].scope})
 	}
 	return rules
 }
@@ -132,15 +147,15 @@ func Suppressible(name string, additional ...string) bool {
 }
 
 func boolRuleOption(field func(*Policy) **bool) func(*Config, Setting) {
-	return func(c *Config, s Setting) { *field(&c.Policy) = new(s.Level != "off") }
+	return func(c *Config, s Setting) { *field(&c.Policy) = new(s.Level() != "off") }
 }
 
 func configureJobTimeout(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.RequireJobTimeout = nil
 		return
 	}
-	if options, ok := s.Options.(*JobTimeoutPolicy); ok {
+	if options := new(JobTimeoutPolicy); loadOptions(s, options) {
 		c.Policy.RequireJobTimeout = options
 	} else if !c.Policy.RequireJobTimeout.Enabled() {
 		c.Policy.RequireJobTimeout = RequireJobTimeout(0)
@@ -148,11 +163,11 @@ func configureJobTimeout(c *Config, s Setting) {
 }
 
 func configurePermissions(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.RequirePermissions = nil
 		return
 	}
-	if options, ok := s.Options.(*PermissionsPolicy); ok {
+	if options := new(PermissionsPolicy); loadOptions(s, options) {
 		c.Policy.RequirePermissions = options
 	} else if !c.Policy.RequirePermissions.Enabled() {
 		c.Policy.RequirePermissions, _ = RequirePermissions("workflow")
@@ -160,11 +175,11 @@ func configurePermissions(c *Config, s Setting) {
 }
 
 func configureSuppressionsPolicy(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.DisallowSuppressions = nil
 		return
 	}
-	if options, ok := s.Options.(*SuppressionsPolicy); ok {
+	if options := new(SuppressionsPolicy); loadOptions(s, options) {
 		c.Policy.DisallowSuppressions = options
 	} else if !c.Policy.DisallowSuppressions.Enabled() {
 		c.Policy.DisallowSuppressions, _ = DisallowSuppressions("all")
@@ -172,11 +187,11 @@ func configureSuppressionsPolicy(c *Config, s Setting) {
 }
 
 func configureRequiredActions(c *Config, s Setting) {
-	if s.Level == "off" {
+	if s.Level() == "off" {
 		c.Policy.RequiredActions = nil
 		return
 	}
-	if options, ok := s.Options.(*RequiredActionsOptions); ok {
+	if options := new(RequiredActionsOptions); loadOptions(s, options) {
 		c.Policy.RequiredActions = options.Actions
 	}
 }

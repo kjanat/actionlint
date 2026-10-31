@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 )
@@ -20,12 +21,15 @@ type Factory struct {
 }
 
 type instanceState struct {
-	impl SourceAnnotations
+	impl              SourceAnnotations
+	invocationContext *wacogo.ComponentInstance
 }
 
 // Deps groups the cross-component dependencies required to instantiate
 // SourceAnnotations. Pass a populated value via NewInstance.
-type Deps struct{}
+type Deps struct {
+	InvocationContext *wacogo.ComponentInstance
+}
 
 // NewFactory creates a Factory bound to e. A single Factory may be
 // reused to build multiple instances backed by different implementations.
@@ -33,13 +37,14 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	f_ := &Factory{engine: e}
 	b_ := e.NewHostBuilder("kjanat_actionlint_source-annotations")
 
-	typPlacement_ := b_.AddType("placement", host.Enum{Cases: []string{"leading", "trailing"}})
-	_ = typPlacement_
-
 	typSourceReference_ := b_.AddType("source-reference", host.Record{Fields: []host.Field{{Name: "document", Type: host.String}, {Name: "revision", Type: host.String}, {Name: "node", Type: host.String}, {Name: "address", Type: host.String}}})
 	_ = typSourceReference_
 	typPosition_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
 	_ = typPosition_
+
+	typPlacement_ := b_.AddType("placement", host.Enum{Cases: []string{"leading", "trailing"}})
+	_ = typPlacement_
+
 	typComment_ := b_.AddType("comment", host.Record{Fields: []host.Field{{Name: "text", Type: host.String}, {Name: "start", Type: typPosition_}, {Name: "placement", Type: typPlacement_}}})
 	_ = typComment_
 
@@ -61,8 +66,18 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 // composite world. deps may be nil only when SourceAnnotations has no
 // imports.
 func (f *Factory) NewInstance(ctx context.Context, impl SourceAnnotations, deps *Deps, opts ...host.InstantiateOption) (*host.ComponentInstance, error) {
-	_ = deps
-	state_ := &instanceState{impl: impl}
+	if deps == nil {
+		panic("sourceannotations.NewInstance: deps is nil")
+	}
+	var missing_ []string
+	if deps.InvocationContext == nil {
+		missing_ = append(missing_, "InvocationContext")
+	}
+	if len(missing_) > 0 {
+		panic(fmt.Sprintf("sourceannotations.NewInstance: deps missing fields: %v", missing_))
+	}
+	state_ := &instanceState{impl: impl, invocationContext: deps.InvocationContext}
+
 	opts = append(opts, host.WithUserState(state_))
 	inst_, err_ := f.comp.Instantiate(ctx, opts...)
 	if err_ != nil {
@@ -84,7 +99,7 @@ func toGoFlatComment(ctx context.Context, cc *host.CallContext, h *host.Componen
 	} else {
 		v_.Text = tmp_
 	}
-	if tmp_, err_ := toGoFlatPosition(ctx, cc, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
+	if tmp_, err_ := toGoFlatInvocationcontextPosition(ctx, cc, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
 		return Comment{}, err_
 	} else {
 		v_.Start = tmp_
@@ -102,7 +117,7 @@ func toGoMemComment(ctx context.Context, cc *host.CallContext, h *host.Component
 	} else {
 		v_.Text = tmp_
 	}
-	if tmp_, err_ := toGoMemPosition(ctx, cc, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
+	if tmp_, err_ := toGoMemInvocationcontextPosition(ctx, cc, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
 		return Comment{}, err_
 	} else {
 		v_.Start = tmp_
@@ -119,7 +134,7 @@ func fromGoFlatComment(ctx context.Context, cc *host.CallContext, h *host.Compon
 	if err_ := fromGoFlatString(ctx, cc, h, stack[0:2], v.Text); err_ != nil {
 		return err_
 	}
-	if err_ := fromGoFlatPosition(ctx, cc, h, stack[2:4], v.Start); err_ != nil {
+	if err_ := fromGoFlatInvocationcontextPosition(ctx, cc, h, stack[2:4], v.Start); err_ != nil {
 		return err_
 	}
 	stack[4] = uint64(v.Placement)
@@ -130,7 +145,7 @@ func fromGoMemComment(ctx context.Context, cc *host.CallContext, h *host.Compone
 	if err_ := fromGoMemString(ctx, cc, h, ptr, v.Text); err_ != nil {
 		return err_
 	}
-	if err_ := fromGoMemPosition(ctx, cc, h, ptr+8, v.Start); err_ != nil {
+	if err_ := fromGoMemInvocationcontextPosition(ctx, cc, h, ptr+8, v.Start); err_ != nil {
 		return err_
 	}
 	if ok_ := cc.Memory().WriteByte(ptr+16, uint8(v.Placement)); !ok_ {
@@ -148,7 +163,7 @@ func liftFlatComment(ctx context.Context, caller, callee *host.CallContext, h *h
 	} else {
 		v_.Text = tmp_
 	}
-	if tmp_, err_ := liftFlatPosition(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
+	if tmp_, err_ := liftFlatInvocationcontextPosition(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
 		return Comment{}, err_
 	} else {
 		v_.Start = tmp_
@@ -166,7 +181,7 @@ func liftMemComment(ctx context.Context, caller, callee *host.CallContext, h *ho
 	} else {
 		v_.Text = tmp_
 	}
-	if tmp_, err_ := liftMemPosition(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
+	if tmp_, err_ := liftMemInvocationcontextPosition(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
 		return Comment{}, err_
 	} else {
 		v_.Start = tmp_
@@ -185,7 +200,7 @@ func lowerFlatComment(ctx context.Context, caller, callee *host.CallContext, h *
 	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[0].Type, stack[0:2], v.Text); err_ != nil {
 		return err_
 	}
-	if err_ := lowerFlatPosition(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4], v.Start); err_ != nil {
+	if err_ := lowerFlatInvocationcontextPosition(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4], v.Start); err_ != nil {
 		return err_
 	}
 	stack[4] = uint64(v.Placement)
@@ -198,11 +213,275 @@ func lowerMemComment(ctx context.Context, caller, callee *host.CallContext, h *h
 	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[0].Type, ptr, v.Text); err_ != nil {
 		return err_
 	}
-	if err_ := lowerMemPosition(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8, v.Start); err_ != nil {
+	if err_ := lowerMemInvocationcontextPosition(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8, v.Start); err_ != nil {
 		return err_
 	}
 	if ok_ := callee.Memory().WriteByte(ptr+16, uint8(v.Placement)); !ok_ {
 		return fmt.Errorf("wacogo/witgen: lowerMemComment: field Placement: bad memory write")
+	}
+	return nil
+}
+
+func toGoFlatInvocationcontextPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (invocationcontext.Position, error) {
+	var v_ invocationcontext.Position
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	v_.Line = uint32(stack[0])
+	v_.Column = uint32(stack[1])
+	return v_, nil
+}
+
+func toGoMemInvocationcontextPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (invocationcontext.Position, error) {
+	var v_ invocationcontext.Position
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr); !ok_ {
+		return invocationcontext.Position{}, fmt.Errorf("wacogo/witgen: toGoMemInvocationcontextPosition: field Line: bad memory read")
+	} else {
+		v_.Line = tmp_
+	}
+	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr + 4); !ok_ {
+		return invocationcontext.Position{}, fmt.Errorf("wacogo/witgen: toGoMemInvocationcontextPosition: field Column: bad memory read")
+	} else {
+		v_.Column = tmp_
+	}
+	return v_, nil
+}
+
+func fromGoFlatInvocationcontextPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v invocationcontext.Position) error {
+	stack[0] = uint64(v.Line)
+	stack[1] = uint64(v.Column)
+	return nil
+}
+
+func fromGoMemInvocationcontextPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v invocationcontext.Position) error {
+	if ok_ := cc.Memory().WriteUint32Le(ptr, v.Line); !ok_ {
+		return fmt.Errorf("wacogo/witgen: fromGoMemInvocationcontextPosition: field Line: bad memory write")
+	}
+	if ok_ := cc.Memory().WriteUint32Le(ptr+4, v.Column); !ok_ {
+		return fmt.Errorf("wacogo/witgen: fromGoMemInvocationcontextPosition: field Column: bad memory write")
+	}
+	return nil
+}
+
+func liftFlatInvocationcontextPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (invocationcontext.Position, error) {
+	var v_ invocationcontext.Position
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	v_.Line = uint32(stack[0])
+	v_.Column = uint32(stack[1])
+	return v_, nil
+}
+
+func liftMemInvocationcontextPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (invocationcontext.Position, error) {
+	var v_ invocationcontext.Position
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr); !ok_ {
+		return invocationcontext.Position{}, fmt.Errorf("wacogo/witgen: liftMemInvocationcontextPosition: field Line: bad memory read")
+	} else {
+		v_.Line = tmp_
+	}
+	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr + 4); !ok_ {
+		return invocationcontext.Position{}, fmt.Errorf("wacogo/witgen: liftMemInvocationcontextPosition: field Column: bad memory read")
+	} else {
+		v_.Column = tmp_
+	}
+	return v_, nil
+}
+
+func lowerFlatInvocationcontextPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v invocationcontext.Position) error {
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	stack[0] = uint64(v.Line)
+	stack[1] = uint64(v.Column)
+	return nil
+}
+
+func lowerMemInvocationcontextPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v invocationcontext.Position) error {
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if ok_ := callee.Memory().WriteUint32Le(ptr, v.Line); !ok_ {
+		return fmt.Errorf("wacogo/witgen: lowerMemInvocationcontextPosition: field Line: bad memory write")
+	}
+	if ok_ := callee.Memory().WriteUint32Le(ptr+4, v.Column); !ok_ {
+		return fmt.Errorf("wacogo/witgen: lowerMemInvocationcontextPosition: field Column: bad memory write")
+	}
+	return nil
+}
+
+func toGoFlatInvocationcontextSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (invocationcontext.SourceReference, error) {
+	var v_ invocationcontext.SourceReference
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[0].Type, stack[0:2]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Document = tmp_
+	}
+	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Revision = tmp_
+	}
+	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[2].Type, stack[4:6]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Node = tmp_
+	}
+	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[3].Type, stack[6:8]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Address = tmp_
+	}
+	return v_, nil
+}
+
+func toGoMemInvocationcontextSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (invocationcontext.SourceReference, error) {
+	var v_ invocationcontext.SourceReference
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[0].Type, ptr); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Document = tmp_
+	}
+	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Revision = tmp_
+	}
+	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[2].Type, ptr+16); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Node = tmp_
+	}
+	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[3].Type, ptr+24); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Address = tmp_
+	}
+	return v_, nil
+}
+
+func fromGoFlatInvocationcontextSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v invocationcontext.SourceReference) error {
+	if err_ := fromGoFlatString(ctx, cc, h, stack[0:2], v.Document); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoFlatString(ctx, cc, h, stack[2:4], v.Revision); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoFlatString(ctx, cc, h, stack[4:6], v.Node); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoFlatString(ctx, cc, h, stack[6:8], v.Address); err_ != nil {
+		return err_
+	}
+	return nil
+}
+
+func fromGoMemInvocationcontextSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v invocationcontext.SourceReference) error {
+	if err_ := fromGoMemString(ctx, cc, h, ptr, v.Document); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoMemString(ctx, cc, h, ptr+8, v.Revision); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoMemString(ctx, cc, h, ptr+16, v.Node); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoMemString(ctx, cc, h, ptr+24, v.Address); err_ != nil {
+		return err_
+	}
+	return nil
+}
+
+func liftFlatInvocationcontextSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (invocationcontext.SourceReference, error) {
+	var v_ invocationcontext.SourceReference
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[0].Type, stack[0:2]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Document = tmp_
+	}
+	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Revision = tmp_
+	}
+	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[4:6]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Node = tmp_
+	}
+	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[6:8]); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Address = tmp_
+	}
+	return v_, nil
+}
+
+func liftMemInvocationcontextSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (invocationcontext.SourceReference, error) {
+	var v_ invocationcontext.SourceReference
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[0].Type, ptr); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Document = tmp_
+	}
+	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Revision = tmp_
+	}
+	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+16); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Node = tmp_
+	}
+	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+24); err_ != nil {
+		return invocationcontext.SourceReference{}, err_
+	} else {
+		v_.Address = tmp_
+	}
+	return v_, nil
+}
+
+func lowerFlatInvocationcontextSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v invocationcontext.SourceReference) error {
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[0].Type, stack[0:2], v.Document); err_ != nil {
+		return err_
+	}
+	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4], v.Revision); err_ != nil {
+		return err_
+	}
+	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[4:6], v.Node); err_ != nil {
+		return err_
+	}
+	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[6:8], v.Address); err_ != nil {
+		return err_
+	}
+	return nil
+}
+
+func lowerMemInvocationcontextSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v invocationcontext.SourceReference) error {
+	recT_ := ty.(wacogo.TypeRecord)
+	_ = recT_
+	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[0].Type, ptr, v.Document); err_ != nil {
+		return err_
+	}
+	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8, v.Revision); err_ != nil {
+		return err_
+	}
+	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+16, v.Node); err_ != nil {
+		return err_
+	}
+	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+24, v.Address); err_ != nil {
+		return err_
 	}
 	return nil
 }
@@ -367,270 +646,6 @@ func lowerMemListComment(ctx context.Context, caller, callee *host.CallContext, 
 	return nil
 }
 
-func toGoFlatPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (Position, error) {
-	var v_ Position
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	v_.Line = uint32(stack[0])
-	v_.Column = uint32(stack[1])
-	return v_, nil
-}
-
-func toGoMemPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (Position, error) {
-	var v_ Position
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr); !ok_ {
-		return Position{}, fmt.Errorf("wacogo/witgen: toGoMemPosition: field Line: bad memory read")
-	} else {
-		v_.Line = tmp_
-	}
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return Position{}, fmt.Errorf("wacogo/witgen: toGoMemPosition: field Column: bad memory read")
-	} else {
-		v_.Column = tmp_
-	}
-	return v_, nil
-}
-
-func fromGoFlatPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v Position) error {
-	stack[0] = uint64(v.Line)
-	stack[1] = uint64(v.Column)
-	return nil
-}
-
-func fromGoMemPosition(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v Position) error {
-	if ok_ := cc.Memory().WriteUint32Le(ptr, v.Line); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemPosition: field Line: bad memory write")
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr+4, v.Column); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemPosition: field Column: bad memory write")
-	}
-	return nil
-}
-
-func liftFlatPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (Position, error) {
-	var v_ Position
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	v_.Line = uint32(stack[0])
-	v_.Column = uint32(stack[1])
-	return v_, nil
-}
-
-func liftMemPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (Position, error) {
-	var v_ Position
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr); !ok_ {
-		return Position{}, fmt.Errorf("wacogo/witgen: liftMemPosition: field Line: bad memory read")
-	} else {
-		v_.Line = tmp_
-	}
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return Position{}, fmt.Errorf("wacogo/witgen: liftMemPosition: field Column: bad memory read")
-	} else {
-		v_.Column = tmp_
-	}
-	return v_, nil
-}
-
-func lowerFlatPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v Position) error {
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	stack[0] = uint64(v.Line)
-	stack[1] = uint64(v.Column)
-	return nil
-}
-
-func lowerMemPosition(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v Position) error {
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if ok_ := callee.Memory().WriteUint32Le(ptr, v.Line); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemPosition: field Line: bad memory write")
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr+4, v.Column); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemPosition: field Column: bad memory write")
-	}
-	return nil
-}
-
-func toGoFlatSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (SourceReference, error) {
-	var v_ SourceReference
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[0].Type, stack[0:2]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Document = tmp_
-	}
-	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Revision = tmp_
-	}
-	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[2].Type, stack[4:6]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Node = tmp_
-	}
-	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[3].Type, stack[6:8]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Address = tmp_
-	}
-	return v_, nil
-}
-
-func toGoMemSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (SourceReference, error) {
-	var v_ SourceReference
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[0].Type, ptr); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Document = tmp_
-	}
-	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Revision = tmp_
-	}
-	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[2].Type, ptr+16); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Node = tmp_
-	}
-	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[3].Type, ptr+24); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Address = tmp_
-	}
-	return v_, nil
-}
-
-func fromGoFlatSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v SourceReference) error {
-	if err_ := fromGoFlatString(ctx, cc, h, stack[0:2], v.Document); err_ != nil {
-		return err_
-	}
-	if err_ := fromGoFlatString(ctx, cc, h, stack[2:4], v.Revision); err_ != nil {
-		return err_
-	}
-	if err_ := fromGoFlatString(ctx, cc, h, stack[4:6], v.Node); err_ != nil {
-		return err_
-	}
-	if err_ := fromGoFlatString(ctx, cc, h, stack[6:8], v.Address); err_ != nil {
-		return err_
-	}
-	return nil
-}
-
-func fromGoMemSourceReference(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v SourceReference) error {
-	if err_ := fromGoMemString(ctx, cc, h, ptr, v.Document); err_ != nil {
-		return err_
-	}
-	if err_ := fromGoMemString(ctx, cc, h, ptr+8, v.Revision); err_ != nil {
-		return err_
-	}
-	if err_ := fromGoMemString(ctx, cc, h, ptr+16, v.Node); err_ != nil {
-		return err_
-	}
-	if err_ := fromGoMemString(ctx, cc, h, ptr+24, v.Address); err_ != nil {
-		return err_
-	}
-	return nil
-}
-
-func liftFlatSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (SourceReference, error) {
-	var v_ SourceReference
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[0].Type, stack[0:2]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Document = tmp_
-	}
-	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Revision = tmp_
-	}
-	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[4:6]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Node = tmp_
-	}
-	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[6:8]); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Address = tmp_
-	}
-	return v_, nil
-}
-
-func liftMemSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) (SourceReference, error) {
-	var v_ SourceReference
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[0].Type, ptr); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Document = tmp_
-	}
-	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Revision = tmp_
-	}
-	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+16); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Node = tmp_
-	}
-	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+24); err_ != nil {
-		return SourceReference{}, err_
-	} else {
-		v_.Address = tmp_
-	}
-	return v_, nil
-}
-
-func lowerFlatSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v SourceReference) error {
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[0].Type, stack[0:2], v.Document); err_ != nil {
-		return err_
-	}
-	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4], v.Revision); err_ != nil {
-		return err_
-	}
-	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[4:6], v.Node); err_ != nil {
-		return err_
-	}
-	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[6:8], v.Address); err_ != nil {
-		return err_
-	}
-	return nil
-}
-
-func lowerMemSourceReference(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v SourceReference) error {
-	recT_ := ty.(wacogo.TypeRecord)
-	_ = recT_
-	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[0].Type, ptr, v.Document); err_ != nil {
-		return err_
-	}
-	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8, v.Revision); err_ != nil {
-		return err_
-	}
-	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+16, v.Node); err_ != nil {
-		return err_
-	}
-	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+24, v.Address); err_ != nil {
-		return err_
-	}
-	return nil
-}
-
 func toGoFlatString(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (string, error) {
 	_ = ty
 	ptr_ := uint32(stack[0])
@@ -762,9 +777,9 @@ func wrapComments(f *Factory) host.Func {
 		state_ := h.UserState().(*instanceState)
 		fnType_ := cc.Instance().ExportedFunc("comments").Type()
 		_ = fnType_
-		var reference SourceReference
+		var reference invocationcontext.SourceReference
 		{
-			v_, err_ := toGoFlatSourceReference(ctx, cc, h, fnType_.Params[0].Type, stack[0:8])
+			v_, err_ := toGoFlatInvocationcontextSourceReference(ctx, cc, h, fnType_.Params[0].Type, stack[0:8])
 			if err_ != nil {
 				return err_
 			}

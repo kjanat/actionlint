@@ -10,15 +10,14 @@ import (
 
 // Options supplies literal arguments and child environment overrides.
 // A non-nil Executable replaces the command line with a literal executable path;
-// an empty executable disables the tool. Nil retains the existing command parser.
+// an empty executable disables the tool. Nil parses the configured command line.
 type Options struct {
 	// IgnoreConfig marks an explicit application invocation that overrides the
 	// repository's command settings, even when it names the default executable.
 	IgnoreConfig bool
-	// AllowWasm retains configured Wasm selection when this invocation supplies
-	// the executable for native process backends.
+	// AllowWasm permits a configured Wasm backend despite a native executable override.
 	AllowWasm bool
-	// Optional permits automatic Ruff discovery to skip an unavailable executable.
+	// Optional lets a default command that cannot run be skipped with a warning.
 	// Explicitly configured checkers should leave this false.
 	Optional   bool
 	Executable *string
@@ -27,7 +26,7 @@ type Options struct {
 	LauncherArguments []string
 	Environment       []string
 	// WorkingDir sets the default child directory and resolves explicit relative
-	// executable paths. Bare command names retain PATH lookup.
+	// executable paths. Bare command names are resolved through PATH.
 	WorkingDir string
 }
 

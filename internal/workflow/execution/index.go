@@ -7,24 +7,39 @@ import (
 	"unicode"
 )
 
-// IndexSnapshot retains immutable Git modes and cached path indexes for one repository.
-// Callers supply the modes and index path; this package never runs Git.
+// IndexSnapshot indexes paths and executable modes supplied by the caller.
 type IndexSnapshot struct {
 	dirsOnce sync.Once
 	foldOnce sync.Once
-	Modes    map[string]string
+	modes    map[string]string
 	dirs     map[string]struct{}
 	folded   map[string]string
-	Path     string
-	Err      error
+	path     string
+	err      error
 }
+
+// NewIndexSnapshot indexes the Git modes read from the index file at path, or
+// records why they are unavailable. It takes ownership of modes, which must not
+// change afterwards.
+func NewIndexSnapshot(path string, modes map[string]string, err error) *IndexSnapshot {
+	return &IndexSnapshot{modes: modes, path: path, err: err}
+}
+
+// Mode returns the Git mode of a repository path, or "" when it is not tracked.
+func (snapshot *IndexSnapshot) Mode(name string) string { return snapshot.modes[name] }
+
+// Path returns the index file consulted for the snapshot.
+func (snapshot *IndexSnapshot) Path() string { return snapshot.path }
+
+// Err reports why the index is unavailable.
+func (snapshot *IndexSnapshot) Err() error { return snapshot.err }
 
 // Modes are immutable after loading. Share the derived directory and folding
 // indexes across all invocations, including those using different checkout paths.
 func (snapshot *IndexSnapshot) prepareDirectories() {
 	snapshot.dirsOnce.Do(func() {
 		snapshot.dirs = make(map[string]struct{})
-		for name := range snapshot.Modes {
+		for name := range snapshot.modes {
 			for directory := path.Dir(name); directory != "."; directory = path.Dir(directory) {
 				if _, exists := snapshot.dirs[directory]; exists {
 					break // Its ancestors were added with the first descendant.
@@ -48,7 +63,7 @@ func (snapshot *IndexSnapshot) prepareFoldedPaths() {
 				snapshot.folded[key] = prefix
 			}
 		}
-		for name := range snapshot.Modes {
+		for name := range snapshot.modes {
 			add(name)
 		}
 		for directory := range snapshot.dirs {
@@ -57,8 +72,8 @@ func (snapshot *IndexSnapshot) prepareFoldedPaths() {
 	})
 }
 
-// CaseFoldedPath resolves components before collapsing '..', retaining ambiguous index names as
-// unknown. Only ASCII paths are resolved; APFS Unicode normalization stays unknown.
+// CaseFoldedPath resolves ASCII path components against the index before
+// collapsing '..'. Ambiguous case matches return false.
 func (snapshot *IndexSnapshot) CaseFoldedPath(runnerPath, checkout string) (string, bool) {
 	snapshot.prepareFoldedPaths()
 	parts := strings.Split(runnerPath, "/")
@@ -95,7 +110,7 @@ func (snapshot *IndexSnapshot) foldedPrefix(candidate, checkout string) (string,
 			return candidate, true
 		}
 		if len(parts) <= len(root) {
-			if len(snapshot.Modes) == 0 {
+			if len(snapshot.modes) == 0 {
 				return candidate, true
 			}
 			return prefix, ASCIIPath(prefix) && ASCIIPath(candidate)
@@ -167,7 +182,7 @@ func (snapshot *IndexSnapshot) DirectoryExists(name string) bool {
 	if name == "" || name == "." {
 		return true
 	}
-	if snapshot.Modes[name] != "" {
+	if snapshot.modes[name] != "" {
 		return false
 	}
 	snapshot.prepareDirectories()

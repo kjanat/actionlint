@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"golang.org/x/sys/execabs"
@@ -74,7 +74,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 				t.Fatal(err)
 			}
 			outline, ok := result.Documents[0].(documentmodel.Action)
-			if !ok || outline.ParseStatus == "failed" {
+			if !ok || outline.ParseStatus() == "failed" {
 				t.Fatalf("expected decoded action outline, got %#v", result.Documents)
 			}
 			if tc.message == "" {
@@ -106,7 +106,7 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 	if _, ok := result.Documents[0].(documentmodel.Workflow); !ok {
 		t.Fatalf("workflow routed as %T", result.Documents[0])
 	}
-	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus != "failed" {
+	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus() != "failed" {
 		t.Fatalf("broken action outline: %#v", result.Documents[2])
 	}
 }
@@ -132,7 +132,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 }
 
 func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	manifest := strings.Replace(testutil.CompositeAction, "echo ok", "./bad.sh", 1)
 	testutil.WriteFixture(t, root, "action.yml", manifest)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\n"
@@ -207,9 +207,9 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			var requestSources []workspace.Source
 			source := strings.Replace(testutil.CompositeAction, "echo ok", "echo $UNQUOTED", 1)
 			if tool == "shellcheck" {
-				request.Tools = (adapters.Options{ShellCheck: executable}).Registrations()
+				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: executable}})
 			} else {
-				request.Tools = (adapters.Options{Ruff: executable}).Registrations()
+				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: executable}})
 				source = strings.Replace(testutil.CompositeAction, "echo ok", "print(UNDEFINED)", 1)
 				source = strings.Replace(source, "shell: bash", "shell: python", 1)
 			}
@@ -245,7 +245,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			result, err := application.Analyze(t.Context(), application.Options{
 				WorkingDir: root,
 
-				Tools: (adapters.Options{ShellCheck: executable}).Registrations(),
+				Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: executable}}),
 			}, []workspace.Source{
 				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},

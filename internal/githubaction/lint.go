@@ -11,10 +11,12 @@ import (
 	"strings"
 	"time"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
@@ -31,19 +33,21 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
-	ruff              string
-	ctx               context.Context
-	shellcheckOptions *processconfig.Options
-	workingDir        string
-	workspaceDir      string
-	configFile        string
-	overlays          []repoconfig.Overlay
-	ignore            []string
-	shellcheck        string
-	format            outputFormat
-	sarif             bool
-	files             []string
-	hints             []string
+	ctx context.Context
+	// disabledTools lists the tool ids the disable-tools input turned off.
+	disabledTools []string
+	// processes replaces the default command of the bundled tools it names.
+	// Tests use it to select executables.
+	processes    map[string]*processconfig.Options
+	workingDir   string
+	workspaceDir string
+	configFile   string
+	overlays     []repoconfig.Overlay
+	ignore       []string
+	format       outputFormat
+	sarif        bool
+	files        []string
+	hints        []string
 }
 
 type lintOutcome struct {
@@ -59,23 +63,12 @@ type lintResult struct {
 	sarif          string
 	fileCount      int
 	fileCountKnown bool
-	configs        []repoconfig.Report
+	configs        []configreport.Report
 	hints          []string
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	// The booleans control managed plugins; explicit native transports belong
-	// in the ordinary actionlint configuration.
-	ruff := env("INPUT_RUFF")
-	if ruff != "" {
-		enabled, err := parseBool("ruff", ruff)
-		if err != nil {
-			return err
-		}
-		if enabled {
-			req.ruff = "ruff"
-		}
-	}
+	req.configureTools(env)
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
 		overlay, err := repoconfig.ParseOverlayBeforePlugins("config", []byte(value))
@@ -97,9 +90,6 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 	if in.configFile != "" {
 		req.configFile = inputPath(req.workingDir, in.configFile)
 	}
-	if in.shellcheck {
-		req.shellcheck = "shellcheck"
-	}
 	req.files = in.files
 	return req
 }
@@ -117,18 +107,13 @@ func runLinter(req *lintRequest) *lintResult {
 		ConfigOverlays: req.overlays,
 		WorkingDir:     req.workingDir,
 		LogWriter:      &logs,
-		OnConfigLoaded: func(report repoconfig.Report) {
+		OnConfigLoaded: func(report configreport.Report) {
 			result.configs = append(result.configs, report)
 		},
 		OnFilesSelected: func(files []string) {
 			result.fileCount = len(files)
 			result.fileCountKnown = true
-		}, Tools: adapters.Options{
-			Ruff:              req.ruff,
-			RuffOptions:       &processconfig.Options{Optional: true},
-			ShellcheckOptions: toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
-			ShellCheck:        req.shellcheck,
-		}.Registrations(),
+		}, Tools: registry.Registrations(req.toolSelections()),
 	}
 
 	ctx := req.ctx
@@ -151,21 +136,12 @@ func runLinter(req *lintRequest) *lintResult {
 		input = application.Input{Kind: application.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
-	selectionErr := selection.Migrate(ctx, req.workingDir, input, localapp.DefaultPluginOptions{
-		Shellcheck: req.shellcheck == "shellcheck" && req.shellcheckOptions == nil,
-		Ruff:       req.ruff == "ruff",
-		Warning:    func(message string) { _, _ = fmt.Fprintln(&logs, "warning: "+message) },
-	})
-	var selected localapp.PluginSources
-	if selectionErr == nil {
-		selected, selectionErr = selection.Resolve(ctx, req.workingDir, input)
-	}
+	selected, selectionErr := selection.Resolve(ctx, req.workingDir, input)
 	if selectionErr != nil {
 		err = selectionErr
 	} else {
 		analysis, err = localapp.CheckSources(ctx, opts, input, selected)
 	}
-	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
 		restorePath := func(path string) string {
 			if original, ok := inputNames[filepath.Clean(path)]; ok {
@@ -189,6 +165,9 @@ func runLinter(req *lintRequest) *lintResult {
 	if err != nil {
 		code := render.ExitFailure
 		if _, ok := errors.AsType[*repoconfig.OverlayError](err); ok {
+			code = render.ExitInvalidCommandOption
+		}
+		if _, ok := errors.AsType[*localapp.UnknownToolError](err); ok {
 			code = render.ExitInvalidCommandOption
 		}
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
@@ -239,7 +218,6 @@ func workspaceReportAnalysis(analysis *application.Result, workingDir, workspace
 }
 
 // Rewrite every diagnostic path together, preserving revision-to-edit bindings.
-// References retain their original source identities.
 func diagnosticPaths(finding diagnostic.Diagnostic, rewrite func(string) string) diagnostic.Diagnostic {
 	finding.Path = rewrite(finding.Path)
 	finding.Related = slices.Clone(finding.Related)
@@ -264,8 +242,8 @@ func diagnosticPaths(finding diagnostic.Diagnostic, rewrite func(string) string)
 	return finding
 }
 
-// Reports use workspace-relative paths where possible. Files on another Windows
-// volume retain their absolute path, which SARIF renders as a file URI.
+// Reports use workspace-relative paths where possible and absolute paths for
+// files on another Windows volume.
 func reportPath(workingDir, workspace, path string) string {
 	absolute := inputPath(workingDir, path)
 	if relative, err := filepath.Rel(workspace, absolute); err == nil {
@@ -274,13 +252,48 @@ func reportPath(workingDir, workspace, path string) string {
 	return filepath.ToSlash(absolute)
 }
 
-func toolOptionsInDirectory(options *processconfig.Options, directory string) *processconfig.Options {
-	configured := processconfig.Options{Optional: true}
-	if options != nil {
-		configured = *options
+// configureTools reads the disable-tools input, a list of tool ids separated
+// by newlines or commas.
+func (req *lintRequest) configureTools(env func(string) string) {
+	req.disabledTools = nil
+	for line := range strings.SplitSeq(env("INPUT_DISABLE-TOOLS"), "\n") {
+		for id := range strings.SplitSeq(line, ",") {
+			if id = strings.TrimSpace(id); id != "" && !slices.Contains(req.disabledTools, id) {
+				req.disabledTools = append(req.disabledTools, id)
+			}
+		}
 	}
-	configured.WorkingDir = directory
-	return &configured
+}
+
+// toolSelections selects every bundled tool: disabled when the inputs
+// disabled it, otherwise its default command in the working directory,
+// which is skipped with a warning when it cannot run.
+func (req *lintRequest) toolSelections() registry.Selections {
+	selections := registry.Selections{}
+	for _, id := range registry.IDs() {
+		if slices.Contains(req.disabledTools, id) {
+			selections[id] = backend.Selection{}
+			continue
+		}
+		options := processconfig.Options{Optional: true}
+		if replaced := req.processes[id]; replaced != nil {
+			options = *replaced
+		}
+		options.WorkingDir = req.workingDir
+		selections[id] = backend.Selection{Command: id, Process: &options}
+	}
+	return selections
+}
+
+// requestedTools lists the bundled tools the inputs leave enabled.
+func (req *lintRequest) requestedTools() []string {
+	var ids []string
+	for _, id := range registry.IDs() {
+		if !slices.Contains(req.disabledTools, id) {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func (a *action) runLint(req *lintRequest) *lintResult {

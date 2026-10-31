@@ -7,13 +7,12 @@ import (
 
 func (rule *ExecutableChecker) checkedRunnerPathFor(runnerPath string, paths Paths) (string, bool) {
 	snapshot := rule.index()
-	if snapshot.Err != nil {
+	if snapshot.Err() != nil {
 		return "", false
 	}
 	checkout, known := paths.CheckoutFor(runnerPath)
-	if paths.Placements != nil {
-		// Select before collapsing '..': traversal through a replaced copy must
-		// remain unknown even if the final path leaves that copy again.
+	if paths.Placements.Present() {
+		// Select before collapsing '..' to detect traversal through replaced copies.
 		checkout, known = rule.traversalCheckout(paths.Placements, runnerPath)
 	}
 	if !known {
@@ -29,18 +28,18 @@ func (rule *ExecutableChecker) checkedRunnerPathFor(runnerPath string, paths Pat
 	return runnerPath, snapshot.OrdinaryTraversal(runnerPath, checkout)
 }
 
-func (rule *ExecutableChecker) traversalCheckout(placement *CheckoutPlacement, runnerPath string) (string, bool) {
+func (rule *ExecutableChecker) traversalCheckout(placement CheckoutPlacement, runnerPath string) (string, bool) {
 	for strings.HasPrefix(runnerPath, "./") {
 		runnerPath = strings.TrimPrefix(runnerPath, "./")
 	}
-	for current := placement; current != nil; current = current.Previous {
-		prefix := path.Clean(current.Directory.Path)
+	for current := placement; current.Present(); current = current.Previous() {
+		prefix := path.Clean(current.Details().Directory.Path)
 		candidate := runnerPath
 		if rule.caseInsensitive {
 			prefix, candidate = strings.ToLower(prefix), strings.ToLower(candidate)
 		}
 		if prefix == "." || candidate == prefix || strings.HasPrefix(candidate, prefix+"/") {
-			return current.Directory.Path, current.Directory.Kind == DirectoryKnown
+			return current.Details().Directory.Path, current.Details().Directory.Kind == DirectoryKnown
 		}
 	}
 	return "", false

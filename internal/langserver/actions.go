@@ -12,11 +12,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
-func codeActions(ctx context.Context, path string, selection sourceRange, findings []diagnostic.Diagnostic, documents map[string]Document) []any {
+func codeActions(ctx context.Context, path string, selection sourceRange, findings []diagnostic.Diagnostic, sources, documents map[string]Document) []any {
 	actions := []any{}
 	for _, d := range findings {
-		doc := documents[path]
-		location := diagnosticRange([]byte(doc.Text), d.Start, d.End)
+		doc, captured := sources[path]
+		if !captured {
+			continue
+		}
+		location, err := diagnosticRange([]byte(doc.Text), d.Start, d.End)
+		if err != nil {
+			continue
+		}
 		if comparePosition(location.End, selection.Start) < 0 || comparePosition(location.Start, selection.End) > 0 {
 			continue
 		}
@@ -39,7 +45,12 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 					valid = false
 					break
 				}
-				changes[e.Path] = append(changes[e.Path], map[string]any{"range": sourceRange{editorPosition([]byte(target.Text), e.Start), editorPosition([]byte(target.Text), e.End)}, "newText": e.Replacement})
+				rangeValue, err := diagnosticRange([]byte(target.Text), e.Start, e.End)
+				if err != nil {
+					valid = false
+					break
+				}
+				changes[e.Path] = append(changes[e.Path], map[string]any{"range": rangeValue, "newText": e.Replacement})
 			}
 			if !valid {
 				continue

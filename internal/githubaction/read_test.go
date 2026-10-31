@@ -33,8 +33,7 @@ tools: {shellcheck: false}
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_WORKING-DIRECTORY": tc.directory,
 				"INPUT_FILES": tc.file, "INPUT_CONFIG-FILE": tc.config,
-				"INPUT_PYFLAKES": "false",
-				"INPUT_FORMAT":   "json", "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
+				"INPUT_FORMAT": "json", "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
 				"ACTIONLINT_ACTION_RESULT": filepath.Join(t.TempDir(), "result.json"),
 			}
 			getenv := func(name string) string { return env[name] }
@@ -82,8 +81,8 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 		t.Run(format, func(t *testing.T) {
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": file, "INPUT_FORMAT": format,
-				"INPUT_SARIF":      "true",
-				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+				"INPUT_SARIF":              "true",
+				"INPUT_DISABLE-TOOLS":      "ruff,shellcheck",
 				"ACTIONLINT_ACTION_RESULT": filepath.Join(t.TempDir(), "result.json"),
 				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),
 			}
@@ -179,7 +178,7 @@ tools: {shellcheck: false}
 				}
 				linkWorkspaceFile(t, target, filepath.Join(workspace, filepath.FromSlash(name)))
 				req := &lintRequest{workingDir: workspace, format: formatJSON}
-				env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_PYFLAKES": "false"}
+				env := map[string]string{"GITHUB_WORKSPACE": workspace}
 				if name == "custom.yml" {
 					req.configFile = filepath.Join(workspace, name)
 					env["INPUT_CONFIG-FILE"] = name

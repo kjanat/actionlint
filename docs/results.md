@@ -27,7 +27,7 @@ and keep their own formats. Explicit custom templates still control their output
 | `failure`         | `false`   | 3         | Could not complete the check |
 
 `file_count` is the selected workflow count; `null` means unknown, and `0` means
-none selected. Failed results can retain known findings, but an empty list on a
+none selected. A failed result can include findings collected before the error; an empty list on a
 failed run does **not** mean the inputs are clean. `error` explains failure.
 `configurations` records selected files, overrides, and available origins and
 warnings. `hints` contains advice. Producers may attach a `sarif` report.
@@ -40,13 +40,23 @@ Positions are one-based Unicode code points, with exclusive ends. Paths are
 relative to the analysis working directory where possible. Do not use array
 indexes as stable identities.
 
+Related locations optionally carry a paired `revision: {document, digest}` and
+`coordinates` (`yaml` or `raw-lf`). Both fields must be present or both absent.
+The document identity is absolute (except the reserved `<stdin>` identity),
+independent of the display path. A binding is a producer claim: publication
+checks the exact captured revision, coordinate model, admitted path alias and
+strict half-open range. Failed, conflicted, unavailable or invalid-UTF-8 sources
+cannot authorize a location. Invalid related locations are omitted individually;
+the primary remains and an `admission-rejected` error counts the withheld
+locations exactly, making the result incomplete.
+
 Successful CLI results go to stdout or `--output-file`. Failed CLI checks emit
 the result on stderr and preserve an existing output file. Logs and opt-in
-summaries on stderr remain separate records. Argument errors before an operation
+summaries on stderr use separate records. Argument errors before an operation
 is selected use the CLI error record (`error` and `exit_code`). JSONL contains findings only: use
 the process exit code or the Action `result-file` to distinguish completion from
 failure. Action `fail-on-error: false` lets a step with findings pass. The result
-retains the analysis exit code.
+records the analysis exit code regardless of that setting.
 
 ## Document outlines
 
@@ -119,30 +129,30 @@ Action documents include their description, declared inputs and outputs, and
 `runs` declarations. Runtime labels group observed composite steps, JavaScript
 entrypoints and conditions, Docker images/entrypoints/arguments, plugins, and
 unknown declarations. They carry no guarantee of runner support or executability.
-Inputs and outputs retain available descriptions and source positions; inputs
+Inputs and outputs include descriptions and source positions when available; inputs
 also expose `required` and `default`, and outputs expose declared `value`.
 
 Actions appear when analysis reads their metadata. The CLI still selects
 workflows; it does not scan every `action.yml` in a repository. Go callers can use
 `ParseActionOutline` to parse an action manifest directly.
 
-Jobs and steps retain the parsed `uses` string and may include a structured
+Jobs and steps include the parsed `uses` string and may include a structured
 `reference`: repository, workspace, self-repository, container, builtin, or
 unknown. A step's `./` action is a workspace reference. A job's `./` workflow
 call is a self-repository reference, like `$/`, because GitHub resolves it from
 the caller's commit. Repository references separate owner, repository, subpath, and ref.
 `host_source` records default, explicit, or self context; a bare `owner/repo@ref`
-does not imply a provider or invent a host. Explicit URLs retain their host and
-scheme when available. Dependency resolution is outside this model.
+does not imply a provider or invent a host. For explicit URLs, the reference
+contains the declared host and scheme. Dependency resolution is outside this model.
 Reference classification establishes neither dialect support nor an authoritative
 runtime or provider identity.
 
 `parse_status` records the existing parser or decoder's outcome: `complete` means
 it returned a document tree without errors, `partial` means a document tree
-survived errors, and `failed` means no tree was retained. Workflow and action parsers perform
+was recovered despite errors, and `failed` means parsing produced no tree. Workflow and action parsers perform
 different grammar checks. A `complete` outline can omit declarations, describe
-invalid input, or reference files that cannot execute. Validity findings remain
-in `diagnostics`; the report's `completed` tracks analysis completion separately.
+invalid input, or reference files that cannot execute. `diagnostics` reports validity
+findings; the report's `completed` tracks analysis completion separately.
 Lists are always arrays, including when empty. Older producers may omit
 `documents` entirely.
 
@@ -192,7 +202,6 @@ from `kind` to `rule`, `filepath` to `path`, and `line`/`column` to `start`.
 `end_column` becomes `end.column`. Ends are now **exclusive**: add one when converting
 an old inclusive end column. Ranges can span multiple lines. `snippet` contains source text.
 
-CLI JSON retains `schema_version` and `diagnostics`, adding status and context.
-The Action `result-file` retains its version 1 contract. User-selected Go
-templates, including `-format '{{json .}}'`, remain explicit custom output;
-they are not the public analysis-result API.
+CLI JSON and the Action `result-file` use the version 1 result contract.
+User-selected Go templates, including `-format '{{json .}}'`, define custom output
+outside the public analysis-result API.

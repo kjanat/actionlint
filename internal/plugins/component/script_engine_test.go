@@ -82,9 +82,15 @@ func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 		name  string
 		valid bool
 	}{
-		{"no,sudo", false}, {"no -- x", false}, {"name --", false},
-		{" no-sudo", false}, {"no-sudo ", false}, {"no\nsudo", false},
-		{"no-sudo", true}, {"NO.SUDO", true}, {"org/foo", true},
+		{"no,sudo", false},
+		{"no -- x", false},
+		{"name --", false},
+		{" no-sudo", false},
+		{"no-sudo ", false},
+		{"no\nsudo", false},
+		{"no-sudo", true},
+		{"NO.SUDO", true},
+		{"org/foo", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			descriptor, err := scriptDescriptorWithRuleName(original, test.name)
@@ -329,7 +335,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = verifyScriptMetadata(data, p.scriptDescriptor)
+			err = verifyScriptMetadata(data, ScriptEngineInterface, p.scriptDescriptor)
 			if (err == nil) != (key == "") {
 				t.Fatalf("metadata %q: %v", key, err)
 			}
@@ -342,7 +348,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := verifyScriptMetadata(data, p.scriptDescriptor); err != nil {
+	if err := verifyScriptMetadata(data, ScriptEngineInterface, p.scriptDescriptor); err != nil {
 		t.Fatal(err)
 	}
 	for _, shells := range [][]string{{"python"}, {"Python"}, {"python.exe"}, {"python", "Python"}} {
@@ -352,7 +358,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := verifyScriptMetadata(data, p.scriptDescriptor); (err == nil) != slices.Equal(shells, d.Shells) {
+			if err := verifyScriptMetadata(data, ScriptEngineInterface, p.scriptDescriptor); (err == nil) != slices.Equal(shells, d.Shells) {
 				t.Fatalf("metadata shells=%v: %v", shells, err)
 			}
 		})
@@ -365,7 +371,7 @@ func TestScriptEngineRejectsChangedInterface(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, change := range []struct{ old, replacement string }{
-		{ScriptEngineInterface, "kjanat:actionlint/script-engine@0.2.0"},
+		{ScriptEngineInterface, "kjanat:actionlint/script-engine@0.3.0"},
 		{"end-location", "bad-location"},
 	} {
 		t.Run(change.old, func(t *testing.T) {

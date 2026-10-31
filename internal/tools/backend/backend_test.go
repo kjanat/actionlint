@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"sync/atomic"
 	"testing"
-	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -58,10 +57,16 @@ func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
 		t.Fatal(err)
 	}
 	shells := []string{"python"}
-	registration := Process(rule.Descriptor{Name: "catalogue"}, shells, executable, &processconfig.Options{
-		Executable: &executable, LauncherArguments: []string{"-test.run=^TestShellSelectorProcessHelper$"},
-		Environment: []string{"ACTIONLINT_SELECTOR_HELPER=1"},
+	registration, err := RegisterProvider(Provider{
+		Manifest: envelopeManifest("catalogue", shells),
+		Selection: Selection{Process: &processconfig.Options{
+			Executable: &executable, LauncherArguments: []string{"-test.run=^TestShellSelectorProcessHelper$"},
+			Environment: []string{"ACTIONLINT_SELECTOR_HELPER=1"},
+		}},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	shells[0] = "bash"
 	processes := analyzerhost.NewProcessPool(t.Context(), 1)
 	defer processes.Wait()
@@ -73,6 +78,50 @@ func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
 		if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Execution: tools.Execution{Shell: "bash"}}}}); err != nil {
 			t.Fatalf("caller changed registered catalogue: %v", err)
 		}
+	}
+}
+
+// TestRequiresExecutionFollowsShellsAndResources checks decision b4 as
+// amended: a provider resolves each run step's shell and directory when its
+// manifest declares selectors.shells or capabilities.resources, and not when
+// it selects action inputs only.
+func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
+	inputs := []analyzer.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
+	for _, tc := range []struct {
+		name      string
+		shells    []string
+		resources []provider.Resource
+		want      bool
+	}{
+		{"inputs only", nil, nil, false},
+		{"shells", []string{"python"}, nil, true},
+		{"resources", nil, []provider.Resource{provider.ResourceWorkspace, provider.ResourceDirectory}, true},
+	} {
+		manifest := envelopeManifest("execution", tc.shells)
+		manifest.Selectors.Inputs = inputs
+		manifest.Capabilities.Resources = tc.resources
+		registration, err := RegisterProvider(Provider{Manifest: manifest, Selection: Selection{Command: "execution"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if registration.RequiresExecution != tc.want {
+			t.Fatalf("%s: RequiresExecution = %t, want %t", tc.name, registration.RequiresExecution, tc.want)
+		}
+	}
+}
+
+// envelopeManifest describes a process provider exchanging the JSON check
+// request and result envelope with its engine.
+func envelopeManifest(name string, shells []string) provider.Manifest {
+	return provider.Manifest{
+		SchemaVersion: provider.SchemaVersion, ID: "example.com/" + name, Version: "1", Role: provider.RoleScript,
+		Rule: rule.Descriptor{Name: name}, Scope: provider.ScopeSource, Transport: provider.TransportProcess,
+		Selectors: provider.Selectors{Shells: shells},
+		Process: &provider.ProcessSpec{
+			Entry: name, Stdin: provider.StdinRequest,
+			Config: provider.ConfigRendering{Render: provider.RenderJSONStdin},
+			Output: provider.Output{Format: provider.FormatEnvelope},
+		},
 	}
 }
 
@@ -113,22 +162,5 @@ func BenchmarkShellCatalogueSelection(b *testing.B) {
 				}
 			}
 		})
-	}
-}
-
-func TestMaskExpressionsUsesExpressionBoundaries(t *testing.T) {
-	for _, expression := range []string{"${{ '}}' }}", "${{ 'é' }}", "${{\n github.ref\n}}", "${{ 'it''s }}' }}"} {
-		source := "prefix " + expression + " suffix"
-		got := maskExpressions(source)
-		if !strings.HasPrefix(got, "prefix ") || !strings.HasSuffix(got, " suffix") || utf8.RuneCountInString(got) != utf8.RuneCountInString(source) || strings.Count(got, "\n") != strings.Count(source, "\n") {
-			t.Fatalf("mask %q: %q", source, got)
-		}
-		middle := strings.TrimSuffix(strings.TrimPrefix(got, "prefix "), " suffix")
-		if strings.Trim(middle, "_\n\r") != "" {
-			t.Fatalf("expression partially exposed: %q", got)
-		}
-	}
-	if got := maskExpressions("${{ unfinished"); got != "${{ unfinished" {
-		t.Fatalf("invalid expression: %q", got)
 	}
 }

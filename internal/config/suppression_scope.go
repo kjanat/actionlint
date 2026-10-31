@@ -3,7 +3,7 @@ package config
 import (
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // ForSuppressions resolves metadata diagnostic settings independently of workflow-only rule options.
@@ -60,10 +60,17 @@ func scopedConfigForFile(config *Config, path, root string, selectLint func(*yam
 	return ForFile(&next, path, root)
 }
 
+// suppressionLintNode keeps the rules whose findings belong to the checked
+// source itself, including tool providers scoped to the source.
 func suppressionLintNode(node *yaml.Node) *yaml.Node {
-	return configtree.SelectLintRules(node, map[string][]string{
+	selected := map[string][]string{
 		"correctness": {"inline-suppression", "deprecated-commands"},
 		"policy":      {"disallow-suppressions"},
-		"external":    {"shellcheck"},
-	})
+	}
+	for _, name := range toolProviderNames() {
+		if toolProviders()[name].scope == SourceScope {
+			selected["external"] = append(selected["external"], name)
+		}
+	}
+	return configtree.SelectLintRules(node, selected)
 }

@@ -1,18 +1,56 @@
 package application_test
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
+	"syscall"
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
+
+func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	physical := writeFixture(t, root, "physical/lib.sh", "echo $VALUE\n")
+	alias := filepath.Join(root, "reported.sh")
+	if err := os.Symlink(physical, alias); err != nil {
+		if errors.Is(err, os.ErrPermission) || errors.Is(err, errors.ErrUnsupported) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {
+			t.Skipf("symlink privilege unavailable: %v", err)
+		}
+		t.Fatal(err)
+	}
+	encodedPath, err := json.Marshal(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: '. ./reported.sh'}]}}\n")
+	options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
+		return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":1,"column":6,"level":"info","code":2086,"message":"reported source"}]}`, encodedPath), nil
+	}}})}
+	result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(result.Inputs, alias) || slices.Contains(result.Inputs, physical) {
+		t.Fatalf("native display reread replaced reported alias with physical path: %v", result.Inputs)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || !render.Prepare(*result).Findings[0].Unavailable {
+		t.Fatalf("native unavailable report did not reach rendering: %+v", result)
+	}
+}
 
 func TestShellcheckSourcedDiagnostics(t *testing.T) {
 	command := shellcheckForTest(t)
@@ -52,13 +90,13 @@ jobs:
       - run: . ./lib/check.sh
 `)
 			options := application.Options{WorkingDir: root}
-			optionsTools := adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}
+			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}}
 			if tc.rc {
 				rc := writeFixture(t, root, ".shellcheckrc", "shell=bash\n")
-				optionsTools.ShellcheckSettings = &toolconfig.ShellcheckSettings{Config: toolconfig.ShellcheckRCFile(rc)}
+				options.ConfigFile = writeFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: '"+filepath.ToSlash(rc)+"'}}\n")
 			}
 			session := options
-			session.Tools = optionsTools.Registrations()
+			session.Tools = registry.Registrations(optionsTools)
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -78,6 +116,13 @@ jobs:
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
 				t.Fatalf("wrong sourced metadata: %+v", finding)
+			}
+			encoded, err := json.Marshal(finding)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if finding.Reference != nil || strings.Contains(string(encoded), `"reference"`) || strings.Contains(string(encoded), `"revision"`) || strings.Contains(string(encoded), `"fixes"`) {
+				t.Fatalf("native sourced diagnostic fabricated known evidence: %s", encoded)
 			}
 			want, err := os.Stat(path)
 			if err != nil {
@@ -141,7 +186,7 @@ jobs:
           echo $INLINE
           . ./scripts/lib.sh
 `)
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -156,6 +201,41 @@ jobs:
 			}
 			if len(result.Diagnostics) != 1 || filepath.ToSlash(result.Diagnostics[0].Path) != tc.wantPath {
 				t.Fatalf("want finding in %s, got %+v", tc.wantPath, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestUnavailableSourcedDiagnosticKeepsYAMLSuppressionAnchor(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, suppressed := range []bool{false, true} {
+		t.Run(map[bool]string{false: "reported", true: "suppressed"}[suppressed], func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, root, "scripts/lib.sh", "echo $VALUE\n")
+			comment := ""
+			if suppressed {
+				comment = " # actionlint:ignore shellcheck -- reviewed source"
+			}
+			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: . ./scripts/lib.sh"+comment+"\n")
+			options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})}
+			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 1
+			if suppressed {
+				want = 0
+			}
+			if len(result.Diagnostics) != want {
+				t.Fatalf("YAML anchor suppression changed: %+v", result.Diagnostics)
+			}
+			for _, finding := range result.Diagnostics {
+				if finding.Reference != nil || len(finding.Fixes) != 0 || filepath.ToSlash(finding.Path) != "scripts/lib.sh" {
+					t.Fatalf("unavailable source gained known evidence: %+v", finding)
+				}
 			}
 		})
 	}

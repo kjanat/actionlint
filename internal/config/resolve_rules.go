@@ -27,49 +27,49 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 }
 
 func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
-	setting := Setting{Level: "on"}
+	level := Level("on")
 	if !d.Recommended && !selected {
-		setting.Level = "off"
+		level = "off"
 	}
 	if enabled, known := policyEnabled(cfg, d.Name); known {
-		setting.Level = "off"
+		level = "off"
 		if enabled {
-			setting.Level = "on"
+			level = "on"
 		}
 	}
 	var rules LintRulesConfig
 	if cfg != nil {
 		rules = cfg.Lint.Rules
 	}
-	setting.Level = presetLevel(rules.Preset, d, setting.Level)
+	level = presetLevel(rules.Preset, d, level)
 	if p.Strict && !d.Nursery() {
-		setting.Level = "on"
+		level = "on"
 	}
 	if p.Experimental != nil && *p.Experimental && d.Nursery() {
-		setting.Level = "on"
+		level = "on"
 	}
 	group := rules.Groups()[d.Group]
-	if d.Nursery() && d.Group == "nursery" && group.Preset == "all" {
-		setting.Level = "on"
+	if d.Nursery() && d.Group == "nursery" && group.Preset() == "all" {
+		level = "on"
 	} else {
-		setting.Level = presetLevel(group.Preset, d, setting.Level)
+		level = presetLevel(group.Preset(), d, level)
 	}
-	if group.Level != "" && group.Level != "default" {
-		setting.Level = group.Level
+	if group.Level() != "" && group.Level() != "default" {
+		level = group.Level()
 	}
-	if explicit, ok := group.Rules[d.Name]; ok {
-		if explicit.Level == "" || explicit.Level == "default" {
-			explicit.Level = setting.Level
-		}
-		setting = explicit
+	// An explicit setting supplies the options and, unless it defers to the
+	// default, the level.
+	explicit, _ := group.Rule(d.Name)
+	if explicit.Level() != "" && explicit.Level() != "default" {
+		level = explicit.Level()
 	}
 	if d.Nursery() && p.Experimental != nil && !*p.Experimental {
-		setting.Level = "off"
+		level = "off"
 	}
 	if slices.Contains(rules.Disable, d.Name) || cfg != nil && cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
-		setting.Level = "off"
+		level = "off"
 	}
-	return setting
+	return explicit.WithLevel(level)
 }
 
 func DiagnosticLevel(cfg *Config, name string) Level {
@@ -82,7 +82,7 @@ func DiagnosticLevel(cfg *Config, name string) Level {
 		}
 	}
 	if d, ok := FindRule(name); ok {
-		return SettingFor(cfg, d, Presets{}, false).Level
+		return SettingFor(cfg, d, Presets{}, false).Level()
 	}
 	return "on"
 }
@@ -119,15 +119,14 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) *
 	for _, d := range descriptors {
 		setting := SettingFor(config, d, p, d.Group == "plugins" || replacements[d.Name])
 		if replacements[d.Name] && config != nil {
-			if explicit, ok := config.Lint.Rules.Plugins.Rules[d.Name]; ok && explicit.Level != "" && explicit.Level != "default" {
-				setting.Level = explicit.Level
+			if explicit, ok := config.Lint.Rules.Plugins.Rule(d.Name); ok && explicit.Level() != "" && explicit.Level() != "default" {
+				setting = setting.WithLevel(explicit.Level())
 			}
-			// Global disabling remains authoritative over either configuration group.
 			if slices.Contains(config.Lint.Rules.Disable, d.Name) || config.Lint.Enabled != nil && !*config.Lint.Enabled {
-				setting.Level = "off"
+				setting = setting.WithLevel("off")
 			}
 		}
-		resolved[d.Name] = setting.Level
+		resolved[d.Name] = setting.Level()
 		if d.Configure != nil {
 			d.Configure(&next, setting)
 		}

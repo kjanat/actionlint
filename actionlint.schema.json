@@ -1,21 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Generated from internal/config/config.go by go generate -run generate-config-schema. DO NOT EDIT.",
+  "$defs": {
+    "non-blank-string": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "[^\t\n\u000b\f\r    -     　]"
+    }
+  },
   "title": "actionlint configuration",
   "description": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "type": "object",
   "properties": {
-    "$schema": {
-      "title": "$schema",
-      "description": "Schema reference for editors. actionlint ignores it.",
-      "markdownDescription": "Schema reference for editors. actionlint ignores it.",
-      "type": "string"
-    },
     "extends": {
       "title": "extends",
-      "description": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
-      "markdownDescription": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
+      "description": "Loads local or HTTPS YAML, JSON and TOML configurations in order. Relative references resolve against their declaring file or URL. Later bases override earlier bases; this file wins over all bases.",
+      "markdownDescription": "Loads local or HTTPS YAML, JSON and TOML configurations in order. Relative references resolve against their declaring file or URL. Later bases override earlier bases; this file wins over all bases.",
       "oneOf": [
         {
           "type": "array",
@@ -90,28 +91,22 @@
             ],
             "properties": {
               "file": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "file",
                 "description": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
-                "markdownDescription": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them."
               },
               "job": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "job",
                 "description": "Exact workflow job ID.",
-                "markdownDescription": "Exact workflow job ID.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Exact workflow job ID."
               },
               "reason": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "reason",
                 "description": "Optional explanation for this exception.",
-                "markdownDescription": "Optional explanation for this exception.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Optional explanation for this exception."
               },
               "rule": {
                 "title": "rule",
@@ -120,7 +115,6 @@
                 "examples": [
                   "workflow-run-names",
                   "unsound-ternary",
-                  "ruff",
                   "syntax-check",
                   "inline-suppression",
                   "missing-local-action",
@@ -153,6 +147,10 @@
                   "script-interpolation",
                   "deprecated-commands",
                   "if-cond",
+                  "numeric-values",
+                  "empty-triggers",
+                  "empty-job",
+                  "empty-run",
                   "require-commit-hash",
                   "require-job-timeout",
                   "require-permissions",
@@ -160,6 +158,7 @@
                   "cache-write-untrusted",
                   "cache-call-unrestricted",
                   "cache-operation",
+                  "ruff",
                   "shellcheck"
                 ],
                 "type": "string",
@@ -171,20 +170,16 @@
                 }
               },
               "step": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "step",
                 "description": "Exact step ID or name.",
-                "markdownDescription": "Exact step ID or name.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Exact step ID or name."
               },
               "uses": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "uses",
                 "description": "Exact action or reusable workflow reference including its version.",
-                "markdownDescription": "Exact action or reusable workflow reference including its version.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Exact action or reusable workflow reference including its version."
               }
             },
             "additionalProperties": false,
@@ -1054,60 +1049,9 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                              "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                              "type": "object",
-                                              "properties": {
-                                                "secrets": {
-                                                  "title": "secrets",
-                                                  "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
-                                                  "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      }
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                },
-                                                "variables": {
-                                                  "title": "variables",
-                                                  "description": "Lists configured variable names; null disables checking and [] allows none.",
-                                                  "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      }
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
-                                        }
-                                      ]
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
                                     }
                                   },
                                   "additionalProperties": false
@@ -1760,6 +1704,75 @@
                                 }
                               ]
                             },
+                            "numeric-values": {
+                              "title": "numeric-values",
+                              "description": "Report numeric values GitHub truncates or that cannot take effect",
+                              "markdownDescription": "Report numeric values GitHub truncates or that cannot take effect",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "parallel-steps": {
                               "title": "parallel-steps",
                               "description": "Validate background-step references and restrictions within parallel groups",
@@ -1969,44 +1982,9 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                              "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                              "type": "object",
-                                              "properties": {
-                                                "labels": {
-                                                  "title": "labels",
-                                                  "description": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                  "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      }
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
-                                        }
-                                      ]
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
                                     }
                                   },
                                   "additionalProperties": false
@@ -2349,46 +2327,9 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Sets repository assumptions for reusable workflow checks.",
-                                              "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
-                                              "type": "object",
-                                              "properties": {
-                                                "default-permissions": {
-                                                  "title": "default-permissions",
-                                                  "description": "Assumes restricted (default) or permissive repository token permissions.",
-                                                  "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
-                                                  "oneOf": [
-                                                    {
-                                                      "default": "restricted",
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "restricted",
-                                                        "permissive"
-                                                      ]
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
-                                        }
-                                      ]
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
                                     }
                                   },
                                   "additionalProperties": false
@@ -2477,7 +2418,6 @@
                         "examples": [
                           "workflow-run-names",
                           "unsound-ternary",
-                          "ruff",
                           "syntax-check",
                           "inline-suppression",
                           "missing-local-action",
@@ -2511,6 +2451,10 @@
                           "script-interpolation",
                           "deprecated-commands",
                           "if-cond",
+                          "numeric-values",
+                          "empty-triggers",
+                          "empty-job",
+                          "empty-run",
                           "require-commit-hash",
                           "require-job-timeout",
                           "require-permissions",
@@ -2518,6 +2462,7 @@
                           "cache-write-untrusted",
                           "cache-call-unrestricted",
                           "cache-operation",
+                          "ruff",
                           "shellcheck"
                         ],
                         "type": "string",
@@ -3072,8 +3017,8 @@
                                                   "properties": {
                                                     "report": {
                                                       "title": "report",
-                                                      "description": "Report the prohibited directive or retain original violations or both.",
-                                                      "markdownDescription": "Report the prohibited directive or retain original violations or both.",
+                                                      "description": "Select suppression comments",
+                                                      "markdownDescription": "Select suppression comments",
                                                       "default": "all",
                                                       "type": "string",
                                                       "enum": [
@@ -3101,6 +3046,9 @@
                                                           "credentials",
                                                           "deprecated-commands",
                                                           "disallow-suppressions",
+                                                          "empty-job",
+                                                          "empty-run",
+                                                          "empty-triggers",
                                                           "env-var",
                                                           "event-payload",
                                                           "events",
@@ -3119,6 +3067,7 @@
                                                           "missing-local-action",
                                                           "mixed-type-comparisons",
                                                           "mixed-type-matrix-filters",
+                                                          "numeric-values",
                                                           "parallel-steps",
                                                           "permissions",
                                                           "require-commit-hash",
@@ -3963,6 +3912,285 @@
                                   },
                                   "additionalProperties": false
                                 }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "style": {
+                      "title": "style",
+                      "description": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                      "markdownDescription": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                      "oneOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error",
+                                "all"
+                              ]
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "empty-job": {
+                              "title": "empty-job",
+                              "description": "Report jobs without steps",
+                              "markdownDescription": "Report jobs without steps",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "empty-run": {
+                              "title": "empty-run",
+                              "description": "Report steps with an empty run script",
+                              "markdownDescription": "Report steps with an empty run script",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "empty-triggers": {
+                              "title": "empty-triggers",
+                              "description": "Report workflows that declare no triggers",
+                              "markdownDescription": "Report workflows that declare no triggers",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
                               ]
                             }
                           },
@@ -5228,60 +5456,9 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                                        "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "secrets": {
-                                                            "title": "secrets",
-                                                            "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
-                                                            "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
-                                                            "oneOf": [
-                                                              {
-                                                                "type": "array",
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          },
-                                                          "variables": {
-                                                            "title": "variables",
-                                                            "description": "Lists configured variable names; null disables checking and [] allows none.",
-                                                            "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
-                                                            "oneOf": [
-                                                              {
-                                                                "type": "array",
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
                                               }
                                             },
                                             "additionalProperties": false
@@ -5934,6 +6111,75 @@
                                           }
                                         ]
                                       },
+                                      "numeric-values": {
+                                        "title": "numeric-values",
+                                        "description": "Report numeric values GitHub truncates or that cannot take effect",
+                                        "markdownDescription": "Report numeric values GitHub truncates or that cannot take effect",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "parallel-steps": {
                                         "title": "parallel-steps",
                                         "description": "Validate background-step references and restrictions within parallel groups",
@@ -6143,44 +6389,9 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                                        "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "labels": {
-                                                            "title": "labels",
-                                                            "description": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                            "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                            "oneOf": [
-                                                              {
-                                                                "type": "array",
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
                                               }
                                             },
                                             "additionalProperties": false
@@ -6523,46 +6734,9 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Sets repository assumptions for reusable workflow checks.",
-                                                        "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "default-permissions": {
-                                                            "title": "default-permissions",
-                                                            "description": "Assumes restricted (default) or permissive repository token permissions.",
-                                                            "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
-                                                            "oneOf": [
-                                                              {
-                                                                "default": "restricted",
-                                                                "type": "string",
-                                                                "enum": [
-                                                                  "restricted",
-                                                                  "permissive"
-                                                                ]
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
                                               }
                                             },
                                             "additionalProperties": false
@@ -6651,7 +6825,6 @@
                                   "examples": [
                                     "workflow-run-names",
                                     "unsound-ternary",
-                                    "ruff",
                                     "syntax-check",
                                     "inline-suppression",
                                     "missing-local-action",
@@ -6685,6 +6858,10 @@
                                     "script-interpolation",
                                     "deprecated-commands",
                                     "if-cond",
+                                    "numeric-values",
+                                    "empty-triggers",
+                                    "empty-job",
+                                    "empty-run",
                                     "require-commit-hash",
                                     "require-job-timeout",
                                     "require-permissions",
@@ -6692,6 +6869,7 @@
                                     "cache-write-untrusted",
                                     "cache-call-unrestricted",
                                     "cache-operation",
+                                    "ruff",
                                     "shellcheck"
                                   ],
                                   "type": "string",
@@ -7246,8 +7424,8 @@
                                                             "properties": {
                                                               "report": {
                                                                 "title": "report",
-                                                                "description": "Report the prohibited directive or retain original violations or both.",
-                                                                "markdownDescription": "Report the prohibited directive or retain original violations or both.",
+                                                                "description": "Select suppression comments",
+                                                                "markdownDescription": "Select suppression comments",
                                                                 "default": "all",
                                                                 "type": "string",
                                                                 "enum": [
@@ -7275,6 +7453,9 @@
                                                                     "credentials",
                                                                     "deprecated-commands",
                                                                     "disallow-suppressions",
+                                                                    "empty-job",
+                                                                    "empty-run",
+                                                                    "empty-triggers",
                                                                     "env-var",
                                                                     "event-payload",
                                                                     "events",
@@ -7293,6 +7474,7 @@
                                                                     "missing-local-action",
                                                                     "mixed-type-comparisons",
                                                                     "mixed-type-matrix-filters",
+                                                                    "numeric-values",
                                                                     "parallel-steps",
                                                                     "permissions",
                                                                     "require-commit-hash",
@@ -8144,6 +8326,285 @@
                                   }
                                 ]
                               },
+                              "style": {
+                                "title": "style",
+                                "description": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                                "markdownDescription": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                                "oneOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "default",
+                                          "off",
+                                          "on",
+                                          "info",
+                                          "warn",
+                                          "error",
+                                          "all"
+                                        ]
+                                      },
+                                      {
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "type": "null",
+                                        "doNotSuggest": true
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "empty-job": {
+                                        "title": "empty-job",
+                                        "description": "Report jobs without steps",
+                                        "markdownDescription": "Report jobs without steps",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "empty-run": {
+                                        "title": "empty-run",
+                                        "description": "Report steps with an empty run script",
+                                        "markdownDescription": "Report steps with an empty run script",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "empty-triggers": {
+                                        "title": "empty-triggers",
+                                        "description": "Report workflows that declare no triggers",
+                                        "markdownDescription": "Report workflows that declare no triggers",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "level": {
+                                        "title": "level",
+                                        "description": "Default diagnostic level for rules in this group.",
+                                        "markdownDescription": "Default diagnostic level for rules in this group.",
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "default",
+                                              "off",
+                                              "on",
+                                              "info",
+                                              "warn",
+                                              "error"
+                                            ]
+                                          },
+                                          {
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "type": "null",
+                                            "doNotSuggest": true
+                                          }
+                                        ]
+                                      },
+                                      "preset": {
+                                        "title": "preset",
+                                        "description": "Baseline selection within this group: recommended",
+                                        "markdownDescription": "Baseline selection within this group: recommended",
+                                        "type": "string",
+                                        "enum": [
+                                          "recommended",
+                                          "all",
+                                          "none"
+                                        ]
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
                               "suspicious": {
                                 "title": "suspicious",
                                 "description": "Rules concerning suspicious. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
@@ -8524,6 +8985,148 @@
                   }
                 ]
               },
+              "repository": {
+                "title": "repository",
+                "description": "Overlays facts for matching files without changing rule selection.",
+                "markdownDescription": "Overlays facts for matching files without changing rule selection.",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "default-workflow-permissions": {
+                        "title": "default-workflow-permissions",
+                        "description": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+                        "markdownDescription": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "read",
+                              "write"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "environments": {
+                        "title": "environments",
+                        "description": "Known deployment environments and their variable and secret names.",
+                        "markdownDescription": "Known deployment environments and their variable and secret names.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "secrets": {
+                                  "title": "secrets",
+                                  "oneOf": [
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "variables": {
+                                  "title": "variables",
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "runners": {
+                        "title": "runners",
+                        "description": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+                        "markdownDescription": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+                        "oneOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "secrets": {
+                        "title": "secrets",
+                        "description": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+                        "markdownDescription": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+                        "oneOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "variables": {
+                        "title": "variables",
+                        "description": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+                        "markdownDescription": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "tools": {
                 "title": "tools",
                 "description": "Overlays external checker settings for the selected files.",
@@ -8534,13 +9137,13 @@
                     "properties": {
                       "ruff": {
                         "title": "ruff",
-                        "description": "Configures checking of embedded Python scripts.",
-                        "markdownDescription": "Configures checking of embedded Python scripts.",
+                        "description": "Analyze embedded Python scripts with Ruff.",
+                        "markdownDescription": "Analyze embedded Python scripts with Ruff.",
                         "properties": {
                           "backend": {
                             "title": "backend",
-                            "description": "Choose how Ruff runs. Process settings only apply to the native adapter.",
-                            "markdownDescription": "Choose how Ruff runs. Process settings only apply to the native adapter.",
+                            "description": "Select the execution backend. Process settings apply only to the native adapter.",
+                            "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                             "type": "object",
                             "properties": {
                               "process": {
@@ -8551,8 +9154,8 @@
                                 "properties": {
                                   "args": {
                                     "title": "args",
-                                    "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                                    "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                                    "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                                    "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                                     "oneOf": [
                                       {
                                         "type": "array",
@@ -8583,8 +9186,8 @@
                                   },
                                   "executable": {
                                     "title": "executable",
-                                    "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string"
                                   }
                                 },
@@ -8601,8 +9204,8 @@
                                 "properties": {
                                   "path": {
                                     "title": "path",
-                                    "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string",
                                     "minLength": 1
                                   }
@@ -8626,11 +9229,116 @@
                           },
                           "config": {
                             "title": "config",
-                            "description": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
-                            "markdownDescription": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+                            "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                            "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                            "if": {
+                              "type": "object"
+                            },
+                            "then": {
+                              "allOf": [
+                                {
+                                  "title": "config",
+                                  "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                                  "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
+                                },
+                                {
+                                  "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
+                                  "type": "object",
+                                  "properties": {
+                                    "lint": {
+                                      "title": "lint",
+                                      "description": "Ruff's lint options, such as select, ignore and extend-select.",
+                                      "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
+                                      "properties": {
+                                        "ignore": {
+                                          "title": "ignore",
+                                          "description": "Rule codes or prefixes to skip, such as F401.",
+                                          "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+                                          "items": {
+                                            "examples": [
+                                              "F",
+                                              "F821"
+                                            ],
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "oneOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "select": {
+                                          "title": "select",
+                                          "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                                          "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+                                          "items": {
+                                            "examples": [
+                                              "F",
+                                              "F821"
+                                            ],
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "oneOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "oneOf": [
+                                        {
+                                          "type": "object"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "target-version": {
+                                      "title": "target-version",
+                                      "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                                      "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                                      "oneOf": [
+                                        {
+                                          "examples": [
+                                            "py314"
+                                          ],
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            },
                             "anyOf": [
                               {
-                                "type": "object"
+                                "type": "object",
+                                "defaultSnippets": [
+                                  {
+                                    "bodyText": "{}",
+                                    "label": "Inline settings"
+                                  }
+                                ]
                               },
                               {
                                 "type": "null"
@@ -8639,8 +9347,8 @@
                           },
                           "enabled": {
                             "title": "enabled",
-                            "description": "Enable Ruff analysis.",
-                            "markdownDescription": "Enable Ruff analysis.",
+                            "description": "Enable this tool. Omission or null keeps it enabled.",
+                            "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                             "oneOf": [
                               {
                                 "default": true,
@@ -8733,8 +9441,8 @@
                       },
                       "shellcheck": {
                         "title": "shellcheck",
-                        "description": "Configures checking of embedded shell scripts.",
-                        "markdownDescription": "Configures checking of embedded shell scripts.",
+                        "description": "Analyze embedded shell scripts with ShellCheck.",
+                        "markdownDescription": "Analyze embedded shell scripts with ShellCheck.",
                         "properties": {
                           "backend": {
                             "title": "backend",
@@ -8750,8 +9458,8 @@
                                 "properties": {
                                   "args": {
                                     "title": "args",
-                                    "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                                    "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                                    "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                                    "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                                     "oneOf": [
                                       {
                                         "type": "array",
@@ -8782,8 +9490,8 @@
                                   },
                                   "executable": {
                                     "title": "executable",
-                                    "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string"
                                   }
                                 },
@@ -8800,8 +9508,8 @@
                                 "properties": {
                                   "path": {
                                     "title": "path",
-                                    "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string",
                                     "minLength": 1
                                   }
@@ -8825,8 +9533,8 @@
                           },
                           "config": {
                             "title": "config",
-                            "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                            "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                            "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                            "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
                             "minLength": 1,
                             "if": {
                               "type": "object"
@@ -8835,8 +9543,8 @@
                               "allOf": [
                                 {
                                   "title": "config",
-                                  "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                                  "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                                  "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                                  "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
                                 },
                                 {
                                   "$ref": "schemas/shellcheck/0.11.0.schema.json"
@@ -8849,7 +9557,7 @@
                                 "defaultSnippets": [
                                   {
                                     "body": "${1:.shellcheckrc}",
-                                    "label": "ShellCheck rc file or directory"
+                                    "label": "Configuration file or directory"
                                   }
                                 ]
                               },
@@ -8858,7 +9566,7 @@
                                 "defaultSnippets": [
                                   {
                                     "bodyText": "{}",
-                                    "label": "Inline ShellCheck directives"
+                                    "label": "Inline settings"
                                   }
                                 ]
                               },
@@ -8873,8 +9581,8 @@
                           },
                           "enabled": {
                             "title": "enabled",
-                            "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
-                            "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                            "description": "Enable this tool. Omission or null keeps it enabled.",
+                            "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                             "oneOf": [
                               {
                                 "default": true,
@@ -8900,7 +9608,67 @@
                         ]
                       }
                     },
-                    "additionalProperties": false
+                    "additionalProperties": {
+                      "description": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+                      "markdownDescription": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+                      "oneOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "backend": {
+                              "title": "backend",
+                              "description": "Select the execution backend.",
+                              "markdownDescription": "Select the execution backend.",
+                              "oneOf": [
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "config": {
+                              "title": "config",
+                              "description": "The tool's own settings, or a configuration file path for tools that read one.",
+                              "markdownDescription": "The tool's own settings, or a configuration file path for tools that read one.",
+                              "oneOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "enabled": {
+                              "title": "enabled",
+                              "description": "Enable this tool. Omission or null keeps it enabled.",
+                              "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
+                              "oneOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
                   },
                   {
                     "type": "null"
@@ -8918,21 +9686,22 @@
     },
     "plugins": {
       "title": "plugins",
-      "description": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
-      "markdownDescription": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
+      "description": "Declares canonical plugin packages with exact registry versions, or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and latest before saving. Use name, version and registry for a custom catalogue, or source for a direct artifact. Empty or null disables plugins.",
+      "markdownDescription": "Declares canonical plugin packages with exact registry versions, or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and latest before saving. Use name, version and registry for a custom catalogue, or source for a direct artifact. Empty or null disables plugins.",
       "oneOf": [
         {
           "type": "array",
           "items": {
             "oneOf": [
               {
-                "description": "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.",
-                "markdownDescription": "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.",
+                "description": "Plugin alias, repository with optional release tag, HTTPS artifact URL pinned with #sha256=<64 hex digits>, or OCI reference pinned with @sha256:<64 hex digits>.",
+                "markdownDescription": "Plugin alias, repository with optional release tag, HTTPS artifact URL pinned with #sha256=<64 hex digits>, or OCI reference pinned with @sha256:<64 hex digits>.",
                 "examples": [
                   "shellcheck",
-                  "kjanat/actionlint-plugin-shellcheck@v0.1.1",
+                  "kjanat/actionlint-plugin-shellcheck@v0.2.0",
                   "gitlab.com/group/plugin",
-                  "https://example.com/plugin.wasm#sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                  "https://example.com/plugin.wasm#sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "oci://ghcr.io/owner/provider@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 ],
                 "type": "string",
                 "minLength": 1
@@ -8966,6 +9735,23 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "title": "source",
+                    "description": "Independent artifact URL with a mandatory SHA256 pin",
+                    "markdownDescription": "Independent artifact URL with a mandatory SHA256 pin",
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$"
+                  }
+                },
+                "additionalProperties": false
               }
             ]
           }
@@ -8975,23 +9761,165 @@
         }
       ]
     },
+    "repository": {
+      "title": "repository",
+      "description": "Supplies overrides for repository knowledge obtained by the host.",
+      "markdownDescription": "Supplies overrides for repository knowledge obtained by the host.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "default-workflow-permissions": {
+              "title": "default-workflow-permissions",
+              "description": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+              "markdownDescription": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "environments": {
+              "title": "environments",
+              "description": "Known deployment environments and their variable and secret names.",
+              "markdownDescription": "Known deployment environments and their variable and secret names.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "secrets": {
+                        "title": "secrets",
+                        "oneOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "variables": {
+                        "title": "variables",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "runners": {
+              "title": "runners",
+              "description": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+              "markdownDescription": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "secrets": {
+              "title": "secrets",
+              "description": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+              "markdownDescription": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "variables": {
+              "title": "variables",
+              "description": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+              "markdownDescription": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "tools": {
       "title": "tools",
-      "description": "Configures external linters for both the CLI and GitHub Action.",
-      "markdownDescription": "Configures external linters for both the CLI and GitHub Action.",
+      "description": "Configures external linters for both the CLI and GitHub Action, keyed by the rule name of each tool provider, such as ruff or shellcheck.",
+      "markdownDescription": "Configures external linters for both the CLI and GitHub Action, keyed by the rule name of each tool provider, such as ruff or shellcheck.",
       "oneOf": [
         {
           "type": "object",
           "properties": {
             "ruff": {
               "title": "ruff",
-              "description": "Configures checking of embedded Python scripts.",
-              "markdownDescription": "Configures checking of embedded Python scripts.",
+              "description": "Analyze embedded Python scripts with Ruff.",
+              "markdownDescription": "Analyze embedded Python scripts with Ruff.",
               "properties": {
                 "backend": {
                   "title": "backend",
-                  "description": "Choose how Ruff runs. Process settings only apply to the native adapter.",
-                  "markdownDescription": "Choose how Ruff runs. Process settings only apply to the native adapter.",
+                  "description": "Select the execution backend. Process settings apply only to the native adapter.",
+                  "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                   "type": "object",
                   "properties": {
                     "process": {
@@ -9002,8 +9930,8 @@
                       "properties": {
                         "args": {
                           "title": "args",
-                          "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                          "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                          "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                          "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                           "oneOf": [
                             {
                               "type": "array",
@@ -9034,8 +9962,8 @@
                         },
                         "executable": {
                           "title": "executable",
-                          "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string"
                         }
                       },
@@ -9052,8 +9980,8 @@
                       "properties": {
                         "path": {
                           "title": "path",
-                          "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string",
                           "minLength": 1
                         }
@@ -9077,11 +10005,116 @@
                 },
                 "config": {
                   "title": "config",
-                  "description": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
-                  "markdownDescription": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+                  "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                  "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                  "if": {
+                    "type": "object"
+                  },
+                  "then": {
+                    "allOf": [
+                      {
+                        "title": "config",
+                        "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                        "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
+                      },
+                      {
+                        "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
+                        "type": "object",
+                        "properties": {
+                          "lint": {
+                            "title": "lint",
+                            "description": "Ruff's lint options, such as select, ignore and extend-select.",
+                            "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
+                            "properties": {
+                              "ignore": {
+                                "title": "ignore",
+                                "description": "Rule codes or prefixes to skip, such as F401.",
+                                "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+                                "items": {
+                                  "examples": [
+                                    "F",
+                                    "F821"
+                                  ],
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "oneOf": [
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "select": {
+                                "title": "select",
+                                "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                                "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+                                "items": {
+                                  "examples": [
+                                    "F",
+                                    "F821"
+                                  ],
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "oneOf": [
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "oneOf": [
+                              {
+                                "type": "object"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "target-version": {
+                            "title": "target-version",
+                            "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                            "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                            "oneOf": [
+                              {
+                                "examples": [
+                                  "py314"
+                                ],
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "null",
+                                "doNotSuggest": true
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
                   "anyOf": [
                     {
-                      "type": "object"
+                      "type": "object",
+                      "defaultSnippets": [
+                        {
+                          "bodyText": "{}",
+                          "label": "Inline settings"
+                        }
+                      ]
                     },
                     {
                       "type": "null"
@@ -9090,8 +10123,8 @@
                 },
                 "enabled": {
                   "title": "enabled",
-                  "description": "Enable Ruff analysis.",
-                  "markdownDescription": "Enable Ruff analysis.",
+                  "description": "Enable this tool. Omission or null keeps it enabled.",
+                  "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                   "oneOf": [
                     {
                       "default": true,
@@ -9184,8 +10217,8 @@
             },
             "shellcheck": {
               "title": "shellcheck",
-              "description": "Configures checking of embedded shell scripts.",
-              "markdownDescription": "Configures checking of embedded shell scripts.",
+              "description": "Analyze embedded shell scripts with ShellCheck.",
+              "markdownDescription": "Analyze embedded shell scripts with ShellCheck.",
               "properties": {
                 "backend": {
                   "title": "backend",
@@ -9201,8 +10234,8 @@
                       "properties": {
                         "args": {
                           "title": "args",
-                          "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                          "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                          "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                          "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                           "oneOf": [
                             {
                               "type": "array",
@@ -9233,8 +10266,8 @@
                         },
                         "executable": {
                           "title": "executable",
-                          "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string"
                         }
                       },
@@ -9251,8 +10284,8 @@
                       "properties": {
                         "path": {
                           "title": "path",
-                          "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string",
                           "minLength": 1
                         }
@@ -9276,8 +10309,8 @@
                 },
                 "config": {
                   "title": "config",
-                  "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                  "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                  "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                  "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
                   "minLength": 1,
                   "if": {
                     "type": "object"
@@ -9286,8 +10319,8 @@
                     "allOf": [
                       {
                         "title": "config",
-                        "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                        "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                        "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                        "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
                       },
                       {
                         "$ref": "schemas/shellcheck/0.11.0.schema.json"
@@ -9300,7 +10333,7 @@
                       "defaultSnippets": [
                         {
                           "body": "${1:.shellcheckrc}",
-                          "label": "ShellCheck rc file or directory"
+                          "label": "Configuration file or directory"
                         }
                       ]
                     },
@@ -9309,7 +10342,7 @@
                       "defaultSnippets": [
                         {
                           "bodyText": "{}",
-                          "label": "Inline ShellCheck directives"
+                          "label": "Inline settings"
                         }
                       ]
                     },
@@ -9324,8 +10357,8 @@
                 },
                 "enabled": {
                   "title": "enabled",
-                  "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
-                  "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                  "description": "Enable this tool. Omission or null keeps it enabled.",
+                  "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                   "oneOf": [
                     {
                       "default": true,
@@ -9351,12 +10384,78 @@
               ]
             }
           },
-          "additionalProperties": false
+          "additionalProperties": {
+            "description": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+            "markdownDescription": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "backend": {
+                    "title": "backend",
+                    "description": "Select the execution backend.",
+                    "markdownDescription": "Select the execution backend.",
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "config": {
+                    "title": "config",
+                    "description": "The tool's own settings, or a configuration file path for tools that read one.",
+                    "markdownDescription": "The tool's own settings, or a configuration file path for tools that read one.",
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "enabled": {
+                    "title": "enabled",
+                    "description": "Enable this tool. Omission or null keeps it enabled.",
+                    "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
+                    "oneOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
         },
         {
           "type": "null"
         }
       ]
+    }
+  },
+  "patternProperties": {
+    "^\\$schema$": {
+      "description": "Schema reference for editors. actionlint ignores it.",
+      "type": "string"
     }
   },
   "additionalProperties": false

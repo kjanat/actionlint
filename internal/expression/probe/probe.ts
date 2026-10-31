@@ -334,7 +334,7 @@ function digest(value: unknown, length: number): string {
 	return text;
 }
 
-/** Rebuild outcomes from retained dispatches, never from untrusted saved verdicts. */
+/** Derive outcomes from captured dispatch evidence. */
 export function sessionForCollection(value: unknown, currentCorpusSha256: string): Session {
 	const saved = object(value);
 	const source = object(saved.source);
@@ -686,7 +686,7 @@ async function collectSaved(output: string): Promise<void> {
 	const complete = session.results.length === session.requestedCases && session.results.every(measured)
 		&& session.errors.length === oldErrors;
 	console.log(
-		`${complete ? 'Complete' : 'Incomplete'} collected evidence: ${output}. Original capture retained in ${archive}`,
+		`${complete ? 'Complete' : 'Incomplete'} collected evidence: ${output}. Original capture saved in ${archive}`,
 	);
 	if (!complete) throw new Error('Collection remains incomplete; inspect summary.md. No cases were dispatched.');
 }

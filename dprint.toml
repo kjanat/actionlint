@@ -1,23 +1,22 @@
-#:schema https://dprint.kjanat.dev/schemas/v0.json
+#:schema dprint.schema.json
 
 incremental = true
 plugins     = [
   "https://plugins.dprint.dev/kjanat/json-schema-sort-0.1.2.wasm",
   "npm:@dprint/exec@0.7.3/plugin.json@704701df449dd7e942a71144773778ac529d68c2e4657bfc236d393b898b9a67",
   "npm:@dprint/dockerfile@0.7.0",
-  "npm:@dprint/dockerfile@0.7.0",
   "npm:@dprint/typescript@0.96.1",
   "npm:@dprint/markdown@0.26.0",
   "npm:@dprint/json@0.25.2",
-  "npm:@jakebailey/dprint-plugin-gofumpt@0.0.19",
   "https://plugins.dprint.dev/sargunv/dprint-cmakefmt-0.1.0.wasm",
   "npm:dprint-plugin-yaml@0.6.0",
   "npm:dprint-plugin-malva@0.16.0",
   "npm:dprint-plugin-markup@0.27.5",
   "https://plugins.dprint.dev/kjanat/pwsh-0.2.0.wasm",
   "https://plugins.dprint.dev/kjanat/shfmt-1.1.1.wasm",
-  "https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
-  "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm"
+  "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
+  "https://plugins.dprint.dev/kjanat/tombi-0.1.1.wasm",
+  "npm:@jakebailey/dprint-plugin-gofumpt@0.0.20",
 ]
 excludes    = [
   "**/testdata/**",
@@ -34,20 +33,11 @@ excludes    = [
 cwd = "${configDir}"
 
 [[exec.commands]]
-command       = "tombi format - --stdin-filename {{file_path}}"
-exts          = ["toml"]
-cacheKeyFiles = ["tombi.toml"]
-
-[[exec.commands]]
 command = "rustfmt --edition 2024"
 exts    = ["rs"]
 
-[[exec.commands]]
-command = "gofmt -s"
-exts    = ["go"]
-
 [jsonSchemaSort]
-associations = ["**/schema.json", "**/*.schema.json"]
+associations = ["**/*schema.json", "**/*.schema.json"]
 
 [shfmt]
 useTabs          = true
@@ -79,12 +69,9 @@ textWrap = "never"
 [yaml]
 printWidth = 160
 
-[sortPackageJson]
-associations = ["package.json"]
-
 [json]
-jsonTrailingCommaFiles = ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"]
-associations           = ["package.json"]
+jsonTrailingCommaFiles         = ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"]
+"packageJson.applyConventions" = true
 
 [typescript]
 quoteStyle                              = "preferSingle"

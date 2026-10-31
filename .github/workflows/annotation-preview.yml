@@ -36,8 +36,7 @@ jobs:
       INPUT_FILES: testdata/err/one_error.yaml
       INPUT_ANNOTATIONS: "true"
       INPUT_FAIL-ON-ERROR: "false"
-      INPUT_SHELLCHECK: "false"
-      INPUT_RUFF: "false"
+      INPUT_DISABLE-TOOLS: shellcheck,ruff
       INPUT_SUMMARY: "true"
       INPUT_CONFIG: "lint: {rules: {correctness: {expression: '${{ matrix.severity }}'}}}"
     steps:

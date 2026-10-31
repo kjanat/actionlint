@@ -11,9 +11,9 @@ import (
 )
 
 func WorkflowOutline(path string, workflow *workflowlang.Workflow, parseErrors bool) documentmodel.Workflow {
-	outline := documentmodel.Workflow{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []documentmodel.Job{}}
+	outline := documentmodel.WorkflowFields{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []documentmodel.Job{}}
 	if workflow == nil {
-		return outline
+		return documentmodel.NewWorkflow(outline)
 	}
 	outline.ParseStatus = "complete"
 	if parseErrors {
@@ -23,8 +23,9 @@ func WorkflowOutline(path string, workflow *workflowlang.Workflow, parseErrors b
 	for _, event := range workflow.On {
 		outline.Triggers = append(outline.Triggers, event.EventName())
 	}
+	jobs := make([]documentmodel.JobFields, 0, len(workflow.Jobs))
 	for _, job := range workflow.Jobs {
-		record := documentmodel.Job{
+		record := documentmodel.JobFields{
 			ID: outlineString(job.ID), Name: outlineString(job.Name), Start: outlinePosition(job.Pos),
 			Needs: []string{}, Steps: stepOutlines(job.Steps),
 		}
@@ -36,10 +37,9 @@ func WorkflowOutline(path string, workflow *workflowlang.Workflow, parseErrors b
 		} else {
 			record.Uses = outlineString(job.DeclaredUses)
 		}
-		record.Reference = documentmodel.ParseWorkflowReference(record.Uses)
-		outline.Jobs = append(outline.Jobs, record)
+		jobs = append(jobs, record)
 	}
-	slices.SortFunc(outline.Jobs, func(a, b documentmodel.Job) int {
+	slices.SortFunc(jobs, func(a, b documentmodel.JobFields) int {
 		switch {
 		case a.Start != nil && b.Start != nil:
 			if order := cmp.Compare(a.Start.Line, b.Start.Line); order != 0 {
@@ -55,13 +55,16 @@ func WorkflowOutline(path string, workflow *workflowlang.Workflow, parseErrors b
 		}
 		return cmp.Compare(a.ID, b.ID)
 	})
-	return outline
+	for _, job := range jobs {
+		outline.Jobs = append(outline.Jobs, documentmodel.NewJob(job))
+	}
+	return documentmodel.NewWorkflow(outline)
 }
 
 func stepOutlines(steps []*workflowlang.Step) []documentmodel.Step {
 	records := make([]documentmodel.Step, 0, len(steps))
 	for _, step := range steps {
-		record := documentmodel.Step{
+		record := documentmodel.StepFields{
 			ID: outlineString(step.ID), Name: outlineString(step.Name),
 			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.DeclaredUses),
 		}
@@ -77,8 +80,7 @@ func stepOutlines(steps []*workflowlang.Step) []documentmodel.Step {
 		case *workflowlang.ExecParallel:
 			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
 		}
-		record.Reference = documentmodel.ParseReference(record.Uses)
-		records = append(records, record)
+		records = append(records, documentmodel.NewStep(record))
 	}
 	return records
 }

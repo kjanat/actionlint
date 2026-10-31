@@ -1,308 +1,339 @@
 package expressions
 
 import (
+	"iter"
+	"slices"
 	"strconv"
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
-	"actionlint.kjanat.dev/v2/internal/yamlscalar"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+	yamlSchema "actionlint.kjanat.dev/v2/internal/yaml/schema"
 )
 
-func (rule *Checker) checkOneExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
+// checkOneExpression checks a value that must be exactly one ${{ }}
+// expression. ok is false when s is absent or the expression has errors.
+func (rule *Checker) checkOneExpression(s workflowdecl.StringView, what, workflowKey string) (ty exprlang.Type, ok bool) {
 	// checkString is not available since it checks types for embedding values into a string
-	if s == nil {
-		return nil
+	if !s.Present() {
+		return exprlang.AnyType(), false
 	}
 
-	ts, ok := rule.checkExprsIn(s.Value, s.Pos, s.Quoted, false, workflowKey)
+	ts, ok := rule.checkExprsIn(s.Value(), viewPosition(s), s.Quoted(), false, workflowKey)
 	if !ok {
-		return nil
+		return exprlang.AnyType(), false
 	}
 
 	if len(ts) != 1 {
 		// This case should be unreachable since only one ${{ }} is included is checked by parser
-		rule.Errorf(s.Pos, "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
-		return nil
+		rule.Errorf(viewPosition(s), "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
+		return exprlang.AnyType(), false
 	}
 
-	if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
-		return exprlang.TypeOfJSONValue(value)
+	if value, known := expressionLiteral(s.Value()); known {
+		return exprlang.TypeOfJSONValue(value), true
 	}
-	return ts[0].ty
+	return ts[0].ty, true
 }
 
-func (rule *Checker) checkObjectTy(ty exprlang.Type, pos *workflowlang.Pos, what string) exprlang.Type {
-	if ty == nil {
-		return nil
+// checkObjectTy reports ty unless it is an object or any, and returns whether
+// it is one of those.
+func (rule *Checker) checkObjectTy(ty exprlang.Type, pos *workflowlang.Pos, what string) bool {
+	if k := ty.Kind(); k == exprlang.KindObject || k == exprlang.KindAny {
+		return true
 	}
-	switch ty.(type) {
-	case *exprlang.ObjectType, exprlang.AnyType:
-		return ty
-	default:
-		rule.Errorf(pos, "type of expression at %q must be object but found type %s", what, ty.String())
-		return nil
+	rule.Errorf(pos, "type of expression at %q must be object but found type %s", what, ty.String())
+	return false
+}
+
+// checkArrayTy reports ty unless it is an array or any, and returns whether
+// it is one of those.
+func (rule *Checker) checkArrayTy(ty exprlang.Type, pos *workflowlang.Pos, what string) bool {
+	if k := ty.Kind(); k == exprlang.KindArray || k == exprlang.KindAny {
+		return true
+	}
+	rule.Errorf(pos, "type of expression at %q must be array but found type %s", what, ty.String())
+	return false
+}
+
+// checkNumberTy reports ty unless it is a number or any, and returns whether
+// it is one of those.
+func (rule *Checker) checkNumberTy(ty exprlang.Type, pos *workflowlang.Pos, what string) bool {
+	if k := ty.Kind(); k == exprlang.KindNumber || k == exprlang.KindAny {
+		return true
+	}
+	rule.Errorf(pos, "type of expression at %q must be number but found type %s", what, ty.String())
+	return false
+}
+
+// checkObjectExpression checks a single expression that must be an object.
+// ok is false when the expression has errors or another type.
+func (rule *Checker) checkObjectExpression(s workflowdecl.StringView, what, workflowKey string) (ty exprlang.Type, ok bool) {
+	ty, ok = rule.checkOneExpression(s, what, workflowKey)
+	return ty, ok && rule.checkObjectTy(ty, viewPosition(s), what)
+}
+
+// checkArrayExpression checks a single expression that must be an array.
+// ok is false when the expression has errors or another type.
+func (rule *Checker) checkArrayExpression(s workflowdecl.StringView, what, workflowKey string) (ty exprlang.Type, ok bool) {
+	ty, ok = rule.checkOneExpression(s, what, workflowKey)
+	return ty, ok && rule.checkArrayTy(ty, viewPosition(s), what)
+}
+
+func (rule *Checker) checkNumberExpression(s workflowdecl.StringView, what, workflowKey string) {
+	if ty, ok := rule.checkOneExpression(s, what, workflowKey); ok {
+		rule.checkNumberTy(ty, viewPosition(s), what)
 	}
 }
 
-func (rule *Checker) checkArrayTy(ty exprlang.Type, pos *workflowlang.Pos, what string) exprlang.Type {
-	if ty == nil {
-		return nil
-	}
-	switch ty.(type) {
-	case *exprlang.ArrayType, exprlang.AnyType:
-		return ty
-	default:
-		rule.Errorf(pos, "type of expression at %q must be array but found type %s", what, ty.String())
-		return nil
-	}
-}
-
-func (rule *Checker) checkNumberTy(ty exprlang.Type, pos *workflowlang.Pos, what string) exprlang.Type {
-	if ty == nil {
-		return nil
-	}
-	switch ty.(type) {
-	case exprlang.NumberType, exprlang.AnyType:
-		return ty
-	default:
-		rule.Errorf(pos, "type of expression at %q must be number but found type %s", what, ty.String())
-		return nil
-	}
-}
-
-func (rule *Checker) checkObjectExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
-	ty := rule.checkOneExpression(s, what, workflowKey)
-	if ty == nil {
-		return nil
-	}
-	return rule.checkObjectTy(ty, s.Pos, what)
-}
-
-func (rule *Checker) checkArrayExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
-	ty := rule.checkOneExpression(s, what, workflowKey)
-	if ty == nil {
-		return nil
-	}
-	return rule.checkArrayTy(ty, s.Pos, what)
-}
-
-func (rule *Checker) checkNumberExpression(s *workflowlang.String, what, workflowKey string) {
-	ty := rule.checkOneExpression(s, what, workflowKey)
-	if ty == nil {
-		return
-	}
-	rule.checkNumberTy(ty, s.Pos, what)
-}
-
-func (rule *Checker) checkActionInputs(inputs *mapping.Inputs[*workflowlang.String], uses *workflowlang.String) {
+func (rule *Checker) checkActionInputs(action workflowdecl.ExecActionView, uses workflowdecl.StringView) {
 	const key = "jobs.<job_id>.steps.with"
-	var action string
-	if uses != nil {
-		action = uses.Value
+	if !action.Present() {
+		return
 	}
-	workflowlang.InputResolver.Check(inputs, action, mapping.Checks[*workflowlang.String]{
-		Mapping: func(source *workflowlang.String) {
-			rule.checkWorkflowExpression(source, "with", key, schema.StringMap)
-		},
-		String: func(source *workflowlang.String) { rule.checkString(source, key) },
-		Script: func(source *workflowlang.String) { rule.checkScriptString(source, key) },
-	})
+	actionSpec := uses.Value()
+	type entry struct {
+		name  string
+		input workflowdecl.InputView
+	}
+	var checkMapping func(iter.Seq2[string, workflowdecl.InputView], workflowdecl.StringView, iter.Seq[workflowdecl.ActionInputMappingView])
+	checkMapping = func(inputs iter.Seq2[string, workflowdecl.InputView], expression workflowdecl.StringView, insertions iter.Seq[workflowdecl.ActionInputMappingView]) {
+		rule.checkWorkflowExpression(expression, "with", key, schema.StringMap)
+		var entries []entry
+		for name, input := range inputs {
+			entries = append(entries, entry{name, input})
+		}
+		slices.SortFunc(entries, func(a, b entry) int { return strings.Compare(a.name, b.name) })
+		for _, current := range entries {
+			input := current.input
+			if !input.Present() {
+				continue
+			}
+			rule.checkString(input.Name(), key)
+			name := input.Name().Semantic()
+			if !input.Name().Present() {
+				name = value.YAMLScalar(current.name, workflowlang.YamlTagStr, value.Origin{})
+			}
+			canonical, state := mapping.ResolveKey(name)
+			isScriptAction := strings.HasPrefix(actionSpec, "actions/github-script@")
+			if isScriptAction && (state == mapping.UnknownKey || state == mapping.KnownKey && strings.EqualFold(canonical, "script")) {
+				rule.checkScriptString(input.Value(), key)
+			} else {
+				rule.checkString(input.Value(), key)
+			}
+		}
+		for insertion := range insertions {
+			checkMapping(insertion.Inputs(), insertion.Expression(), insertion.Insertions())
+		}
+	}
+	checkMapping(action.Inputs(), action.InputsExpression(), action.InputInsertions())
 }
 
-func (rule *Checker) checkEnv(env *workflowlang.Env, workflowKey string) {
-	if env == nil {
+func (rule *Checker) checkEnv(env workflowdecl.EnvView, workflowKey string) {
+	if !env.Present() {
 		return
 	}
 
-	workflowlang.InputResolver.Check(workflowlang.EnvMappingView(env), "", mapping.Checks[*workflowlang.String]{
-		Mapping: func(source *workflowlang.String) {
-			rule.checkWorkflowExpression(source, "env", workflowKey, schema.StringMap)
-		},
-		String: func(source *workflowlang.String) { rule.checkString(source, workflowKey) },
-	})
+	var checkValues func(workflowdecl.EnvView)
+	checkValues = func(current workflowdecl.EnvView) {
+		if !current.Present() {
+			return
+		}
+		if current.Expression().Present() {
+			rule.checkWorkflowExpression(current.Expression(), "env", workflowKey, schema.StringMap)
+		}
+		for _, variable := range current.Vars() {
+			if variable.Present() {
+				rule.checkString(variable.Name(), workflowKey)
+				rule.checkString(variable.Value(), workflowKey)
+			}
+		}
+		for insertion := range current.Insertions() {
+			checkValues(insertion)
+		}
+	}
+	checkValues(env)
 }
 
-func (rule *Checker) checkContainer(c *workflowlang.Container, workflowKey, childWorkflowKeyPrefix string) {
-	if c == nil {
+func (rule *Checker) checkContainer(c workflowdecl.ContainerView, workflowKey, childWorkflowKeyPrefix string) {
+	if !c.Present() {
 		return
 	}
-	rule.checkWorkflowExpression(c.Expression, "container", workflowKey, schema.Container(childWorkflowKeyPrefix != ""))
+	rule.checkWorkflowExpression(c.Expression(), "container", workflowKey, schema.Container(childWorkflowKeyPrefix != ""))
 	childWorkflowKey := workflowKey
 	if childWorkflowKeyPrefix != "" {
 		childWorkflowKey += "." + childWorkflowKeyPrefix
 	}
-	rule.checkString(c.Image, workflowKey)
-	if c.Credentials != nil {
+	rule.checkString(c.Image(), workflowKey)
+	if c.Credentials().Present() {
 		k := childWorkflowKey + ".credentials" // e.g. jobs.<job_id>.container.credentials
-		if c.Credentials.Expression != nil {
-			rule.checkWorkflowExpression(c.Credentials.Expression, "credentials", k, schema.Credentials)
+		if c.Credentials().Expression().Present() {
+			rule.checkWorkflowExpression(c.Credentials().Expression(), "credentials", k, schema.Credentials)
 		} else {
-			rule.checkString(c.Credentials.Username, k)
-			rule.checkString(c.Credentials.Password, k)
+			rule.checkString(c.Credentials().Username(), k)
+			rule.checkString(c.Credentials().Password(), k)
 		}
 	}
-	rule.checkEnv(c.Env, childWorkflowKey+".env.<env_id>") // e.g. jobs.<job_id>.container.env.<env_id>
-	rule.checkStrings(c.Ports, workflowKey)
-	rule.checkStrings(c.Volumes, workflowKey)
-	rule.checkWorkflowExpression(c.PortsExpression, "ports", workflowKey, schema.StringList)
-	rule.checkWorkflowExpression(c.VolumesExpression, "volumes", workflowKey, schema.StringList)
-	rule.checkString(c.Options, workflowKey)
-	rule.checkString(c.Command, workflowKey)
-	rule.checkString(c.Entrypoint, workflowKey)
+	rule.checkEnv(c.Env(), childWorkflowKey+".env.<env_id>") // e.g. jobs.<job_id>.container.env.<env_id>
+	rule.checkStrings(c.Ports(), workflowKey)
+	rule.checkStrings(c.Volumes(), workflowKey)
+	rule.checkWorkflowExpression(c.PortsExpression(), "ports", workflowKey, schema.StringList)
+	rule.checkWorkflowExpression(c.VolumesExpression(), "volumes", workflowKey, schema.StringList)
+	rule.checkString(c.Options(), workflowKey)
+	rule.checkString(c.Command(), workflowKey)
+	rule.checkString(c.Entrypoint(), workflowKey)
 }
 
-func (rule *Checker) checkConcurrency(c *workflowlang.Concurrency, workflowKey string) {
-	if c == nil {
+func (rule *Checker) checkConcurrency(c workflowdecl.ConcurrencyView, workflowKey string) {
+	if !c.Present() {
 		return
 	}
 	shape := schema.Concurrency
 	if workflowKey == "jobs.<job_id>.concurrency" {
 		shape = schema.JobConcurrency
 	}
-	rule.checkWorkflowExpression(c.Expression, "concurrency", workflowKey, shape)
-	if c.Group != nil && c.Group.IsExpressionAssigned() {
-		rule.checkWorkflowExpression(c.Group, "concurrency.group", workflowKey, schema.NonEmpty)
+	rule.checkWorkflowExpression(c.Expression(), "concurrency", workflowKey, shape)
+	if c.Group().Present() && c.Group().IsExpressionAssigned() {
+		rule.checkWorkflowExpression(c.Group(), "concurrency.group", workflowKey, schema.NonEmpty)
 	} else {
-		rule.checkString(c.Group, workflowKey)
+		rule.checkString(c.Group(), workflowKey)
 	}
-	if c.Queue != nil && c.Queue.IsExpressionAssigned() {
-		rule.checkWorkflowExpression(c.Queue, "concurrency.queue", workflowKey, schema.Queue)
+	if c.Queue().Present() && c.Queue().IsExpressionAssigned() {
+		rule.checkWorkflowExpression(c.Queue(), "concurrency.queue", workflowKey, schema.Queue)
 	} else {
-		rule.checkString(c.Queue, workflowKey)
+		rule.checkString(c.Queue(), workflowKey)
 	}
-	rule.checkBool(c.CancelInProgress, workflowKey)
-	if c.Queue == nil || c.CancelInProgress == nil {
+	rule.checkBool(c.CancelInProgress(), workflowKey)
+	if !c.Queue().Present() || !c.CancelInProgress().Present() {
 		return
 	}
-	// Literal YAML conflicts are diagnosed by the parser. Resolve known
-	// expression values here, retaining unknown values for runtime validation.
-	if !c.Queue.ContainsExpression() && c.CancelInProgress.Expression == nil {
+	// The parser diagnoses literal YAML conflicts; check evaluated expressions here.
+	if !c.Queue().ContainsExpression() && !c.CancelInProgress().Expression().Present() {
 		return
 	}
-	var queue any = c.Queue.Value
-	if c.Queue.ContainsExpression() {
-		queue, _ = workflowlang.WorkflowExpressionLiteral(c.Queue)
+	var queue any = c.Queue().Value()
+	if c.Queue().ContainsExpression() {
+		queue, _ = expressionLiteral(c.Queue().Value())
 	}
-	var cancel any = c.CancelInProgress.Value
-	if c.CancelInProgress.Expression != nil {
-		cancel, _ = workflowlang.WorkflowExpressionLiteral(c.CancelInProgress.Expression)
+	var cancel any = c.CancelInProgress().Value()
+	if c.CancelInProgress().Expression().Present() {
+		cancel, _ = expressionLiteral(c.CancelInProgress().Expression().Value())
 	}
 	if queue == "max" && cancel == true {
-		rule.Error(c.Queue.Pos, `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
+		rule.Error(viewPosition(c.Queue()), `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
 	}
 }
 
-func (rule *Checker) checkDefaults(d *workflowlang.Defaults, workflowKey string) {
-	if d == nil || d.Run == nil {
+func (rule *Checker) checkDefaults(d workflowdecl.DefaultsView, workflowKey string) {
+	if !d.Present() || !d.Run().Present() {
 		return
 	}
-	rule.checkWorkflowExpression(d.Run.Expression, "defaults.run", workflowKey, schema.DefaultsRun)
-	rule.checkString(d.Run.Shell, workflowKey)
-	rule.checkString(d.Run.WorkingDirectory, workflowKey)
+	rule.checkWorkflowExpression(d.Run().Expression(), "defaults.run", workflowKey, schema.DefaultsRun)
+	rule.checkString(d.Run().Shell(), workflowKey)
+	rule.checkString(d.Run().WorkingDirectory(), workflowKey)
 }
 
-func (rule *Checker) checkWorkflowCall(c *workflowlang.WorkflowCall) {
-	if c == nil || c.Uses == nil {
+func (rule *Checker) checkWorkflowCall(c workflowdecl.WorkflowCallView) {
+	if !c.Present() || !c.Uses().Present() {
 		return
 	}
 
-	rule.checkString(c.Uses, "")
+	rule.checkString(c.Uses(), "")
 
-	m, err := rule.workflowMetadata(c.Uses.Value)
+	m, err := rule.workflowMetadata(c.Uses().Value())
 	if err != nil {
 		// The workflow-call rule reports metadata failures at the uses value.
 		rule.debug("Could not infer workflow input types: %v", err)
 	}
 
-	for n, i := range c.Inputs {
-		ts := rule.checkString(i.Value, "jobs.<job_id>.with.<with_id>")
+	for n, i := range c.Inputs() {
+		ts := rule.checkString(i.Value(), "jobs.<job_id>.with.<with_id>")
 
 		if m == nil {
 			continue
 		}
 
 		mi, ok := m.Inputs[n]
-		if !ok || mi == nil {
-			continue
-		}
-		if _, ok := mi.Type.(exprlang.AnyType); ok {
+		if !ok || mi.Type == calls.InputTypeAny {
 			continue
 		}
 
-		v := strings.TrimSpace(i.Value.Value)
+		v := strings.TrimSpace(i.Value().Value())
 
-		var ty exprlang.Type = exprlang.StringType{}
+		ty := exprlang.StringType()
 		switch len(ts) {
 		case 0:
 			switch v {
 			case "null":
-				ty = exprlang.NullType{}
+				ty = exprlang.NullType()
 			case "true", "false":
-				ty = exprlang.BoolType{}
+				ty = exprlang.BoolType()
 			default:
 				if _, err := strconv.ParseFloat(v, 64); err == nil {
-					ty = exprlang.NumberType{}
+					ty = exprlang.NumberType()
 				}
 			}
 		case 1:
-			if i.Value.IsExpressionAssigned() {
+			if i.Value().IsExpressionAssigned() {
 				ty = ts[0].ty
 			}
 		}
 
-		if !mi.Type.Assignable(ty) {
+		if !mi.Type.ExprType().Assignable(ty) {
 			rule.Errorf(
-				i.Value.Pos,
+				viewPosition(i.Value()),
 				"input %q is typed as %s by reusable workflow %q. %s value cannot be assigned",
 				mi.Name,
 				mi.Type.String(),
-				c.Uses.Value,
+				c.Uses().Value(),
 				ty.String(),
 			)
 		}
 	}
 
-	for _, s := range c.Secrets {
-		rule.checkString(s.Value, "jobs.<job_id>.secrets.<secrets_id>")
+	for _, s := range c.Secrets() {
+		rule.checkString(s.Value(), "jobs.<job_id>.secrets.<secrets_id>")
 	}
 }
 
-func (rule *Checker) checkSnapshot(s *workflowlang.Snapshot) {
-	if s == nil {
+func (rule *Checker) checkSnapshot(s workflowdecl.SnapshotView) {
+	if !s.Present() {
 		return
 	}
-	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", schema.Snapshot)
+	rule.checkWorkflowExpression(s.Expression(), "snapshot", "jobs.<job_id>.snapshot", schema.Snapshot)
 	for _, field := range []struct {
-		value *workflowlang.String
+		value workflowdecl.StringView
 		name  string
-	}{{s.ImageName, "image-name"}, {s.Version, "version"}} {
-		if field.value != nil && field.value.IsExpressionAssigned() {
+	}{{s.ImageName(), "image-name"}, {s.Version(), "version"}} {
+		if field.value.Present() && field.value.IsExpressionAssigned() {
 			rule.checkWorkflowExpression(field.value, "snapshot."+field.name, "jobs.<job_id>.snapshot", schema.NonEmpty)
 		} else {
 			rule.checkString(field.value, "jobs.<job_id>.snapshot")
 		}
 	}
-	rule.checkIfCondition(s.If, "jobs.<job_id>.snapshot.if")
+	rule.checkIfCondition(s.If(), "jobs.<job_id>.snapshot.if")
 }
 
-func (rule *Checker) checkWebhookEventFilter(f *workflowlang.WebhookEventFilter) {
-	if f == nil {
+func (rule *Checker) checkWebhookEventFilter(f workflowdecl.WebhookEventFilterView) {
+	if !f.Present() {
 		return
 	}
-	rule.checkStrings(f.Values, "")
+	rule.checkStrings(f.Values(), "")
 }
 
-func (rule *Checker) checkStrings(ss []*workflowlang.String, workflowKey string) {
-	for _, s := range ss {
+func (rule *Checker) checkStrings(ss iter.Seq[workflowdecl.StringView], workflowKey string) {
+	for s := range ss {
 		rule.checkString(s, workflowKey)
 	}
 }
 
-func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey string) {
-	if str == nil {
+func (rule *Checker) checkIfCondition(str workflowdecl.StringView, workflowKey string) {
+	if !str.Present() {
 		return
 	}
 
@@ -328,16 +359,15 @@ func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey stri
 	// - run: echo 'not run'
 	//   if: true && false
 
-	var condTy exprlang.Type
-	restore := rule.scopeExpressionSource(str.Value, str.Pos)
+	restore := rule.scopeExpressionSource(str.Value(), viewPosition(str))
 	defer restore()
-	expr, err, offset := exprlang.ParseConditionExpression(str.Value)
-	if exprlang.ConditionSource(str.Value) != str.Value && offset == 0 {
-		rule.expressionSource = nil
+	expr, err, offset := exprlang.ParseConditionExpression(str.Value())
+	if exprlang.ConditionSource(str.Value()) != str.Value() && offset == 0 {
+		rule.expressionSource = workflowdecl.ScriptSourceView{}
 	}
 	rule.expressionOffset = offset
-	line, col := str.Pos.Line, str.Pos.Col+offset
-	if offset != 0 && str.Quoted {
+	line, col := viewPosition(str).Line, viewPosition(str).Col+offset
+	if offset != 0 && str.Quoted() {
 		col++
 	}
 	if err != nil {
@@ -348,37 +378,33 @@ func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey stri
 		rule.checkString(str, workflowKey)
 		return
 	}
-	if ty, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok {
-		condTy = ty
-	}
-
-	if condTy != nil && !(exprlang.BoolType{}).Assignable(condTy) {
-		rule.Errorf(str.Pos, "\"if\" condition should be type \"bool\" but got type %q", condTy.String())
+	if condTy, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok && !exprlang.BoolType().Assignable(condTy) {
+		rule.Errorf(viewPosition(str), "\"if\" condition should be type \"bool\" but got type %q", condTy.String())
 	}
 }
 
 func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
 	for _, t := range ts {
-		switch t.ty.(type) {
-		case *exprlang.ObjectType, *exprlang.ArrayType, exprlang.NullType:
+		switch t.ty.Kind() {
+		case exprlang.KindObject, exprlang.KindArray, exprlang.KindNull:
 			rule.Errorf(&t.pos, "object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type %s", t.ty)
+		case exprlang.KindAny, exprlang.KindNumber, exprlang.KindBool, exprlang.KindString:
 		}
 	}
 }
 
-func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) []typedExpr {
-	if str == nil {
+func (rule *Checker) checkString(str workflowdecl.StringView, workflowKey string) []typedExpr {
+	if !str.Present() {
 		return nil
 	}
 
-	ts, ok := rule.checkExprsIn(str.Value, str.Pos, str.Quoted, false, workflowKey)
+	ts, ok := rule.checkExprsIn(str.Value(), viewPosition(str), str.Quoted(), false, workflowKey)
 	if !ok {
 		return nil
 	}
-	// Contextless schema definitions reject expressions. The runner folds a sole
-	// string literal expression into a string, but interpolation remains an expression.
+	// Static fields accept a single string literal expression after template folding.
 	if workflowKey == "" && len(ts) > 0 && (len(ts) != 1 || !str.IsExpressionAssigned()) {
-		rule.Error(str.Pos, "expressions are not allowed in this static workflow field")
+		rule.Error(viewPosition(str), "expressions are not allowed in this static workflow field")
 		return nil
 	}
 
@@ -386,8 +412,8 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 	return ts
 }
 
-func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey string, shell ...string) {
-	if str == nil {
+func (rule *Checker) checkScriptString(str workflowdecl.StringView, workflowKey string, shell ...string) {
+	if !str.Present() {
 		return
 	}
 
@@ -395,13 +421,13 @@ func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey str
 	rule.scriptScalarArgs = nil
 	rule.scriptPosition = exprlang.ScriptUnknownPosition
 	if len(shell) > 0 {
-		rule.scriptScalarArgs = scalarScriptArguments(str.Value, shell[0])
+		rule.scriptScalarArgs = scalarScriptArguments(str.Value(), shell[0])
 		if _, ok := scriptShellVariant(shell[0]); ok {
 			rule.scriptPosition = exprlang.ScriptShellWord
 		}
 	}
 	defer func() { rule.scriptScalarArgs, rule.scriptPosition = previous, previousPosition }()
-	ts, ok := rule.checkExprsIn(str.Value, str.Pos, str.Quoted, true, workflowKey)
+	ts, ok := rule.checkExprsIn(str.Value(), viewPosition(str), str.Quoted(), true, workflowKey)
 	if !ok {
 		return
 	}
@@ -409,127 +435,113 @@ func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey str
 	rule.checkTemplateEvaluatedType(ts)
 }
 
-func (rule *Checker) checkBool(b *workflowlang.Bool, workflowKey string) {
-	if b == nil || b.Expression == nil {
+func (rule *Checker) checkBool(b workflowdecl.BoolView, workflowKey string) {
+	if !b.Present() || !b.Expression().Present() {
 		return
 	}
 
-	ty := rule.checkOneExpression(b.Expression, "bool value", workflowKey)
-	if ty == nil {
+	ty, ok := rule.checkOneExpression(b.Expression(), "bool value", workflowKey)
+	if !ok {
 		return
 	}
 
-	switch ty.(type) {
-	case exprlang.BoolType, exprlang.AnyType:
-		// ok
-	default:
-		rule.Errorf(b.Expression.Pos, "type of expression must be bool but found type %s", ty.String())
+	if k := ty.Kind(); k != exprlang.KindBool && k != exprlang.KindAny {
+		rule.Errorf(viewPosition(b.Expression()), "type of expression must be bool but found type %s", ty.String())
 	}
 }
 
-func (rule *Checker) checkMaxParallel(i *workflowlang.Int, workflowKey string) {
-	if i == nil || i.Expression == nil {
+func (rule *Checker) checkMaxParallel(i workflowdecl.IntView, workflowKey string) {
+	if !i.Present() || !i.Expression().Present() {
 		return
 	}
-	ty := rule.checkOneExpression(i.Expression, "integer value", workflowKey)
-	if rule.checkNumberTy(ty, i.Expression.Pos, "integer value") == nil {
+	ty, ok := rule.checkOneExpression(i.Expression(), "integer value", workflowKey)
+	if !ok || !rule.checkNumberTy(ty, viewPosition(i.Expression()), "integer value") {
 		return
 	}
-	if value, known := workflowlang.WorkflowExpressionLiteral(i.Expression); known {
+	if value, known := expressionLiteral(i.Expression().Value()); known {
 		for _, message := range schema.LiteralErrors(schema.Positive, value, "max-parallel") {
-			rule.Error(i.Expression.Pos, message)
+			rule.Error(viewPosition(i.Expression()), message)
 		}
 	}
 }
 
-func (rule *Checker) checkFloat(f *workflowlang.Float, workflowKey string) {
-	if f == nil {
+func (rule *Checker) checkFloat(f workflowdecl.FloatView, workflowKey string) {
+	if !f.Present() {
 		return
 	}
-	rule.checkNumberExpression(f.Expression, "float number value", workflowKey)
+	rule.checkNumberExpression(f.Expression(), "float number value", workflowKey)
 }
 
-func (rule *Checker) checkRawYAMLValue(v workflowlang.RawYAMLValue) exprlang.Type {
-	switch v := v.(type) {
-	case *workflowlang.RawYAMLObject:
-		m := make(map[string]exprlang.Type, len(v.Props))
-		for k, p := range v.Props {
-			m[k] = rule.checkRawYAMLValue(p)
+func (rule *Checker) checkRawYAMLValue(v workflowdecl.RawYAMLValueView) exprlang.Type {
+	if object, ok := v.RawYAMLObject(); ok {
+		properties := map[string]exprlang.Type{}
+		for key, property := range object.Props() {
+			properties[key] = rule.checkRawYAMLValue(property)
 		}
-		return exprlang.NewStrictObjectType(m)
-	case *workflowlang.RawYAMLArray:
-		var elem exprlang.Type
-		for _, value := range v.Elems {
-			if ty := rule.checkMatrixSequenceItem(value); ty != nil {
-				if elem == nil {
-					elem = ty
-				} else {
-					elem = elem.Merge(ty)
-				}
+		return exprlang.NewStrictObjectType(properties).Type()
+	}
+	if array, ok := v.RawYAMLArray(); ok {
+		var elements elementTypes
+		for item := range array.Elems() {
+			if ty, ok := rule.checkMatrixSequenceItem(item); ok {
+				elements.add(ty)
 			}
 		}
-		if elem == nil {
-			elem = exprlang.AnyType{}
-		}
-		return &exprlang.ArrayType{Elem: elem, Deref: false}
-	case *workflowlang.RawYAMLString:
-		return rule.checkRawYAMLString(v)
-	default:
-		panic("unreachable")
+		return exprlang.NewArrayType(elements.merged()).Type()
 	}
+	if scalar, ok := v.RawYAMLString(); ok {
+		return rule.checkRawYAMLString(scalar)
+	}
+	panic("unreachable")
 }
 
-func (rule *Checker) checkRawYAMLString(y *workflowlang.RawYAMLString) exprlang.Type {
-	ts, ok := rule.checkExprsIn(y.Value, y.Pos(), false, false, "jobs.<job_id>.strategy")
+func (rule *Checker) checkRawYAMLString(y workflowdecl.RawYAMLStringView) exprlang.Type {
+	ts, ok := rule.checkExprsIn(y.Value(), rawPosition(y), false, false, "jobs.<job_id>.strategy")
 
-	if workflowlang.IsExprAssigned(y.Value) {
+	if workflowlang.IsExprAssigned(y.Value()) {
 		if !ok || len(ts) != 1 {
-			return exprlang.AnyType{}
+			return exprlang.AnyType()
 		}
-		if value, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: y.Value}); known {
+		if value, known := expressionLiteral(y.Value()); known {
 			return exprlang.TypeOfJSONValue(value)
 		}
 		return ts[0].ty
 	}
 
-	switch y.Tag {
+	switch y.Tag() {
 	case workflowlang.YamlTagBool:
-		if yamlscalar.IsCoreSchemaBool(y.Value) {
-			return exprlang.BoolType{}
+		if yamlSchema.IsCoreSchemaBool(y.Value()) {
+			return exprlang.BoolType()
 		}
 	case workflowlang.YamlTagNull:
-		if yamlscalar.IsCoreSchemaNull(y.Value) {
-			return exprlang.NullType{}
+		if yamlSchema.IsCoreSchemaNull(y.Value()) {
+			return exprlang.NullType()
 		}
 	case workflowlang.YamlTagInt, workflowlang.YamlTagFloat:
-		if yamlscalar.IsCoreSchemaNumber(y.Value) {
-			return exprlang.NumberType{}
+		if yamlSchema.IsCoreSchemaNumber(y.Value()) {
+			return exprlang.NumberType()
 		}
 	}
-	return exprlang.StringType{}
+	return exprlang.StringType()
 }
 
-func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) exprlang.Type {
-	if s == nil {
-		return nil
+func (rule *Checker) checkWorkflowExpression(s workflowdecl.StringView, what, key string, shape schema.Shape) {
+	if !s.Present() {
+		return
 	}
-	ty := rule.checkOneExpression(s, what, key)
-	if ty == nil {
-		return nil
+	ty, ok := rule.checkOneExpression(s, what, key)
+	if !ok {
+		return
 	}
 	errors := shape.ValidateType(ty, what)
-	// Inferred array elements can merge to AnyType. Retain known JSON values for
+	// Inferred arrays can lose element types to AnyType; known JSON values allow
 	// per-element and literal constraint checks.
 	if len(errors) == 0 {
-		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
+		if value, known := expressionLiteral(s.Value()); known {
 			errors = schema.LiteralErrors(shape, value, what)
-			if len(errors) == 0 {
-				ty = exprlang.TypeOfJSONValue(value)
-			}
 		}
 	}
 	for _, message := range errors {
-		rule.Error(s.Pos, message)
+		rule.Error(viewPosition(s), message)
 	}
-	return ty
 }

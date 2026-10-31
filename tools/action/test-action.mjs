@@ -261,7 +261,7 @@ try {
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
-	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.1.1'], {
+	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...shellEnvironment },
 		encoding: 'utf8',
@@ -433,8 +433,8 @@ try {
 	}
 	// Exercise released component bytes through the actual bundled launcher.
 	// The second URL cannot download: success proves reuse of the digest cache.
-	const pluginDigest = 'c33638bb1fac6167e4dcd3a5fb7f59fcaa639c93d2287c4dda07f2beea3522b4';
-	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.1.1/plugin.wasm';
+	const pluginDigest = '4fd3d4a82a5e7808b96b2c303a9ca753219c657a8fe08ec3a07b84c0b453c5d5';
+	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.2.0/plugin.wasm';
 	const pluginCache = join(workspace, 'plugin-cache');
 	const pluginEnvironment = { HOME: pluginCache, XDG_CACHE_HOME: pluginCache, LOCALAPPDATA: pluginCache };
 	await mkdir(pluginCache, { recursive: true });
@@ -474,7 +474,7 @@ try {
 		pluginEnvironment,
 	);
 	assert.deepEqual(warm.analysis.diagnostics, cold.analysis.diagnostics);
-	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.1.1'], {
+	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
@@ -495,7 +495,7 @@ try {
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const disabledDiagnostics = disabled.analysis.diagnostics;
 	assert.deepEqual(disabledDiagnostics, installedDiagnostics.filter(diagnostic => diagnostic.rule === 'shellcheck-rs'));
-	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.1.0'], {
+	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.2.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',

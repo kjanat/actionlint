@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,6 +19,12 @@ func TestRepositoryRuffCommandHelper(t *testing.T) {
 	if err := os.WriteFile(os.Getenv("ACTIONLINT_REPO_RUFF_MARKER"), []byte("executed"), 0o600); err != nil {
 		os.Exit(2)
 	}
+	// The bundled Ruff provider checks the minimum version before it checks
+	// scripts.
+	if slices.Contains(os.Args, "--version") {
+		fmt.Print("ruff 0.17.0\n")
+		os.Exit(0)
+	}
 	fmt.Print("[]")
 	os.Exit(0)
 }
@@ -25,7 +32,7 @@ func TestRepositoryRuffCommandHelper(t *testing.T) {
 func TestCLIRepositoryProcessOptIn(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	for _, name := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, name := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(name, "")
 		if err := os.Unsetenv(name); err != nil {
 			t.Fatal(err)
@@ -46,7 +53,7 @@ func TestCLIRepositoryProcessOptIn(t *testing.T) {
 	for _, allow := range []bool{false, true} {
 		var stdout, stderr bytes.Buffer
 		command := Command{Stdout: &stdout, Stderr: &stderr}
-		args := []string{"actionlint", "check", "--config=actionlint.yaml", "--no-shellcheck", "--summary=false", "--no-color", "ci.yml"}
+		args := []string{"actionlint", "check", "--config=actionlint.yaml", "--no-tool=shellcheck", "--summary=false", "--no-color", "ci.yml"}
 		if allow {
 			args = append(args, "--allow-config-processes")
 		}

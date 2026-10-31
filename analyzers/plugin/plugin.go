@@ -1,10 +1,9 @@
-// Package plugin registers the architecture analyzer with golangci-lint.
+// Package plugin registers the structural architecture checks with golangci-lint.
 package plugin
 
 import (
-	"fmt"
+	"errors"
 
-	"actionlint.kjanat.dev/v2/analyzers/actionlintarch"
 	"actionlint.kjanat.dev/v2/analyzers/architecture"
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
@@ -12,28 +11,16 @@ import (
 
 func init() { register.Plugin("actionlintarch", newPlugin) }
 
-type plugin struct{ analyzer *analysis.Analyzer }
+type plugin struct{}
 
 func newPlugin(settings any) (register.LinterPlugin, error) {
-	config, err := register.DecodeSettings[struct {
-		Contract string `json:"contract"`
-	}](settings)
-	if err != nil {
-		return nil, err
+	if settings != nil {
+		return nil, errors.New("actionlintarch takes no settings or repository policy file")
 	}
-	if config.Contract == "" {
-		return nil, fmt.Errorf("actionlintarch requires a contract path")
-	}
-	contract, err := architecture.Load(config.Contract)
-	if err != nil {
-		return nil, err
-	}
-	if contract.Module() != "actionlint.kjanat.dev/v2" {
-		return nil, fmt.Errorf("actionlintarch contract has wrong module %q", contract.Module())
-	}
-	return plugin{analyzer: actionlintarch.New(contract)}, nil
+	return plugin{}, nil
 }
-func (p plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
-	return []*analysis.Analyzer{p.analyzer}, nil
+
+func (plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
+	return []*analysis.Analyzer{architecture.Analyzer}, nil
 }
 func (plugin) GetLoadMode() string { return register.LoadModeTypesInfo }

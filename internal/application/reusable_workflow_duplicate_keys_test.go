@@ -9,7 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -72,12 +73,12 @@ jobs:
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "is duplicated") {
 				t.Fatalf("expected one duplicate key diagnostic, got %v", errs)
 			}
-			event, ok := workflow.FindWorkflowCallEvent()
+			_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
-			astCache := calls.NewCache(project.RootDir(), root, nil)
-			astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+			astCache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
+			seedCapturedWorkflow(t, astCache, "callee.yaml", callee)
 			fromAST, _, _ := astCache.Lookup("./callee.yaml")
 			fromFile, err := calls.ParseMetadata(callee)
 			if err != nil {
@@ -89,7 +90,7 @@ jobs:
 			if diff := cmp.Diff(fromAST.JobPermissions, fromFile.JobPermissions); diff != "" {
 				t.Fatal(diff)
 			}
-			request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 			check := func(errs []*findingmodel.Finding, want int) {
 				t.Helper()
@@ -103,13 +104,13 @@ jobs:
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				for _, name := range order {
 					source, want := caller, 0
 					if name == "callee.yaml" {
 						source, want = callee, 1
 					}
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/langserver"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -62,7 +62,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 	backend := &editorTestBackend{}
 	var loads atomic.Int32
 	options := application.Options{
-		WorkingDir: root, Tools: adapters.Options{Ruff: "ruff"}.Registrations(),
+		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}),
 		LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
 			loads.Add(1)
 			return backend, nil
@@ -336,9 +336,11 @@ type describedValidatingEditorBackend struct{ editorTestBackend }
 func (*describedValidatingEditorBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 	return editorInputDescriptor()
 }
+
 func editorInputDescriptor() analyzer.ScriptEngineDescriptor {
 	return analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}
 }
+
 func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
@@ -361,6 +363,7 @@ func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 		})
 	}
 }
+
 func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{".git/HEAD": "ref: refs/heads/master\n", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n"} {
@@ -374,7 +377,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorSession(t.Context(), application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: adapters.Options{Ruff: "ruff"}.Registrations(), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil)
+	session, err := newEditorSession(t.Context(), application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

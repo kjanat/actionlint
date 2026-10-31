@@ -11,7 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
-// WithScriptInputs retains native run preparation and adds the engine's input-only route.
+// WithScriptInputs routes run steps through the registration and action inputs
+// through the supplied engine.
 func WithScriptInputs(registration tools.Registration, descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
 	// This registration already binds the selected backend and its complete catalogue.
 	registration.ConfiguredBackend = nil
@@ -24,7 +25,7 @@ func WithScriptInputs(registration tools.Registration, descriptor analyzer.Scrip
 	descriptor.Shells = nil
 	inputs := tools.Registration{Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 	if len(descriptor.ScriptInputs) != 0 {
-		inputs, err = registerEngine(descriptor, backend, registration.Enabled, registration.PrepareInput)
+		inputs, err = registerEngine(descriptor, backend, engineOptions{enabled: registration.Enabled, prepare: registration.PrepareInput})
 	}
 	if err != nil {
 		return tools.Registration{}, err
@@ -75,7 +76,7 @@ func (r selectedRuns) Analyze(ctx context.Context, batch tools.Batch) ([]tools.F
 }
 
 func selectScripts(batch tools.Batch, accept func(tools.Script) bool) (tools.Batch, []int) {
-	selected := tools.Batch{Scopes: batch.Scopes}
+	selected := tools.Batch{Scopes: batch.Scopes, CallGraph: batch.CallGraph}
 	var indices []int
 	for i, script := range batch.Scripts {
 		if accept(script) {
@@ -85,6 +86,7 @@ func selectScripts(batch tools.Batch, accept func(tools.Script) bool) (tools.Bat
 	}
 	return selected, indices
 }
+
 func restoreIndices(findings []tools.Finding, indices []int) []tools.Finding {
 	for i := range findings {
 		if findings[i].Script >= 0 && findings[i].Script < len(indices) {
@@ -202,7 +204,7 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 		}
 		descriptor.Rule = r.registration.Descriptor
 		descriptor.Shells = nil
-		registration, err := registerEngine(descriptor, engine, r.registration.Enabled, r.registration.PrepareInput)
+		registration, err := registerEngine(descriptor, engine, engineOptions{enabled: r.registration.Enabled, prepare: r.registration.PrepareInput})
 		if err != nil {
 			failures = errors.Join(failures, err)
 			continue

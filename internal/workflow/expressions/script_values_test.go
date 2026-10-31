@@ -5,8 +5,12 @@ import (
 	"maps"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestInheritedScriptEnvironment(t *testing.T) {
@@ -29,13 +33,9 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := fmt.Sprintf("on: push\nenv: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: %s\n    steps:\n      - env: %s\n        run: echo '${{ env.VALUE }}'\n", tc.workflowEnv, tc.jobEnv, tc.stepEnv)
-			workflow, errors := workflowlang.Parse([]byte(source))
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			rule := newTestChecker()
-			job := workflow.Jobs["test"]
-			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+			rule, workflow := newTestCheckerForSource(t, source)
+			job := testJob(t, workflow, "test")
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0)), rule.VisitJobPost(job)} {
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -47,7 +47,7 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 			if unsafe != tc.unsafe {
 				t.Fatalf("unsafe=%t, want %t: %+v", unsafe, tc.unsafe, rule.Findings())
 			}
-			if rule.jobEnv != nil || rule.scriptEnv != nil {
+			if rule.jobEnv.Present() || rule.scriptEnv.Present() {
 				t.Fatal("environment scope leaked after visiting job")
 			}
 		})
@@ -97,7 +97,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowlang.Parse([]byte(source))
+			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -106,13 +106,57 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 				want[path] = true
 			}
 			got := map[string]bool{}
-			for path, proof := range safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix) {
+			for path, proof := range safeMatrixScriptReferences(matrixcheck.Resolve(workflow.Jobs["test"].Strategy)) {
 				got[path] = proof != scriptUnsafe
 			}
 			if !maps.Equal(got, want) {
 				t.Fatalf("safe references = %v, want %v", got, want)
 			}
 		})
+	}
+}
+
+func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
+	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy: ${{ fromJSON('{\"matrix\":{\"os\":[\"ubuntu-latest\"]}}') }}\n    steps:\n      - run: echo ${{ matrix.os }}\n"
+	content := []byte(source)
+	document := documentparse.Workflow("matrix-proof.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
+	}
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document("matrix-proof.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, ok := snapshot.WorkflowView()
+	if !ok {
+		t.Fatal("source snapshot has no workflow")
+	}
+	rule := New(Dependencies{Runners: runners}, Options{})
+	if err := rule.VisitWorkflowPre(workflow); err != nil {
+		t.Fatal(err)
+	}
+	job := testJob(t, workflow, "test")
+	if err := rule.VisitJobPre(job); err != nil {
+		t.Fatal(err)
+	}
+	if os, _ := rule.matrixTy.Property("os"); os.String() != "string" {
+		t.Fatalf("matrix.os type = %s, want string", os)
+	}
+	if got := rule.matrixScriptSafe["matrix.os"]; got != scriptLiteralWord {
+		t.Fatalf("matrix.os script proof = %v, want literal word", got)
+	}
+	if err := rule.VisitStep(testStep(t, job, 0)); err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range rule.Findings() {
+		if finding.Rule == "script-interpolation" {
+			t.Fatalf("known matrix word reported unsafe: %v", finding)
+		}
 	}
 }
 
@@ -174,11 +218,11 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowlang.Parse([]byte(source))
+			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			proofs := safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix)
+			proofs := safeMatrixScriptReferences(matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
 			if got := proofs[tc.path]; got != tc.want {
 				t.Fatalf("proof for %s = %v, want %v (all proofs: %v)", tc.path, got, tc.want, proofs)
 			}
@@ -188,8 +232,8 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 
 func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 	checker := &Checker{
-		stepsTy: exprlang.NewObjectType(map[string]exprlang.Type{"producer": exprlang.StringType{}}),
-		needsTy: exprlang.NewObjectType(map[string]exprlang.Type{"build": exprlang.StringType{}}),
+		stepsTy: new(exprlang.NewObjectType(map[string]exprlang.Type{"producer": exprlang.StringType()})),
+		needsTy: new(exprlang.NewObjectType(map[string]exprlang.Type{"build": exprlang.StringType()})),
 	}
 	for _, tc := range []struct {
 		expression string
@@ -220,14 +264,14 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 	steps := exprlang.NewObjectType(map[string]exprlang.Type{
 		"producer": exprlang.NewObjectType(map[string]exprlang.Type{
-			"outcome": exprlang.StringType{},
-			"outputs": exprlang.NewObjectType(map[string]exprlang.Type{"value": exprlang.StringType{}}),
-		}),
+			"outcome": exprlang.StringType(),
+			"outputs": exprlang.NewObjectType(map[string]exprlang.Type{"value": exprlang.StringType()}).Type(),
+		}).Type(),
 	})
 	needs := exprlang.NewObjectType(map[string]exprlang.Type{
-		"build": exprlang.NewObjectType(map[string]exprlang.Type{"result": exprlang.StringType{}}),
+		"build": exprlang.NewObjectType(map[string]exprlang.Type{"result": exprlang.StringType()}).Type(),
 	})
-	rule := &Checker{stepsTy: steps, needsTy: needs}
+	rule := &Checker{stepsTy: &steps, needsTy: &needs}
 	for _, tc := range []struct {
 		expression string
 		wordSafe   bool
@@ -252,7 +296,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			semantic.UpdateSteps(steps)
 			semantic.UpdateNeeds(needs)
 			semantic.UpdateInputs(exprlang.NewStrictObjectType(map[string]exprlang.Type{
-				"step": exprlang.StringType{}, "job": exprlang.StringType{},
+				"step": exprlang.StringType(), "job": exprlang.StringType(),
 			}))
 			typeOf, errs := semantic.Check(node)
 			if len(errs) != 0 {
@@ -292,13 +336,9 @@ func TestNestedMatrixScriptInterpolation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo '${{ matrix.target.name }}'\n"
-			workflow, errors := workflowlang.Parse([]byte(source))
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			rule := newTestChecker()
-			job := workflow.Jobs["test"]
-			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+			rule, workflow := newTestCheckerForSource(t, source)
+			job := testJob(t, workflow, "test")
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0)), rule.VisitJobPost(job)} {
 				if err != nil {
 					t.Fatal(err)
 				}

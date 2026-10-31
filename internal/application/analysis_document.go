@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 	"time"
@@ -11,8 +12,8 @@ import (
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/diagnostic"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/checks"
@@ -21,7 +22,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
@@ -30,9 +33,9 @@ import (
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 // analysisSession holds invocation resources assembled by the application.
@@ -47,10 +50,14 @@ type analysisSession struct {
 	loadScriptEngine     func(context.Context, string) (analyzer.ScriptBackend, error)
 	allowConfigProcesses bool
 	workflowNames        *workflownames.Index
+	remoteActions        *actionremote.Service
+	repositories         map[string]repository.Snapshot
 	analysisLogger
 	ctx            context.Context
 	workingDir     string
 	reader         *fsread.Reader
+	captures       *capture.Store
+	snapshots      *documentparse.SourceSnapshots
 	gitModes       *gitModes
 	ignorePats     repoconfig.IgnorePatterns
 	onRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
@@ -58,22 +65,25 @@ type analysisSession struct {
 }
 
 // check dispatches the two document languages at the application input boundary.
-func (s *analysisSession) check(path string, content []byte, project *workspace.Project, config *repoconfig.Config,
+func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config,
 	processes *analyzerhost.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, error) {
-	sourcePath := path
-	if !filepath.IsAbs(sourcePath) {
-		sourcePath = filepath.Join(s.workingDir, sourcePath)
+	if s.captures == nil || s.snapshots == nil {
+		return nil, nil, errors.New("analysis requires result-owned source captures")
+	}
+	content := captured.Bytes()
+	if err := s.captures.Verify(captured, content); err != nil {
+		return nil, nil, err
 	}
 	if isActionInput(sourcePath) {
 		document := documentparse.Action(path, sourcePath, content)
-		return s.analyzeDocument(path, sourcePath, content, document, true, project, config, processes, actions, workflows, usedRules)
+		return s.analyzeDocument(path, sourcePath, captured, content, document, true, project, config, processes, actions, workflows, usedRules)
 	}
 	document := documentparse.Workflow(path, content)
-	return s.analyzeDocument(path, sourcePath, content, document, false, project, config, processes, actions, workflows, usedRules)
+	return s.analyzeDocument(path, sourcePath, captured, content, document, false, project, config, processes, actions, workflows, usedRules)
 }
 
-func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byte, document documentparse.Document, action bool,
+func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document documentparse.Document, action bool,
 	project *workspace.Project, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, resultErr error) {
@@ -91,6 +101,9 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 		names = append(names, d.Name)
 	}
 	if err := repoconfig.ValidateRuleNames(cfg, names...); err != nil {
+		return nil, nil, err
+	}
+	if err := repoconfig.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
 		return nil, nil, err
 	}
 	cfg = repoconfig.ResolveRules(s.rulePresets, cfg, s.toolDescriptors...)
@@ -112,32 +125,72 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 
 	all := document.Findings
 	var analysisErr error
-	composed := composition.Result{Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
+	snapshot, err := s.snapshots.Document(captured, document)
+	if err != nil {
+		return all, outline, err
+	}
+	// The request's display spelling is an authorized entry address. Resolve it
+	// through this capture owner before sealing, so metadata aliases (including
+	// Windows drive spelling) need no post-publication filesystem fallback.
+	if path != "" {
+		displayAddress := path
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			displayAddress = filepath.Join(s.workingDir, path)
+		}
+		if _, err := s.captures.Canonical(s.ctx, displayAddress); err != nil {
+			return all, outline, err
+		}
+	}
+	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
-		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
+		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
 			return nil, outline, analysisErr
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := documentparse.References(sourcePath, content, document, composed.Sources, fsread.PhysicalPath)
+	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
+	rejected, sourceErr := s.admitSourceDocuments(composed, references)
+	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
-		input := composed.AnalyzerInput(path, sourcePath, content, document, references)
+		input, inputErr := composition.AnalyzerInput(composed, path, sourcePath, content, document, references)
+		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()
+		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)
 		all = append(all, external...)
 		analysisErr = errors.Join(analysisErr, err)
 	}
-	diagnosticpolicy.InferReferences(all, sourcePath, references)
+	entryAliases := append(snapshot.Capture().Aliases(), path, snapshot.Reference().Document)
+	for _, alias := range entryAliases {
+		if relative, err := filepath.Rel(s.workingDir, alias); err == nil {
+			entryAliases = append(entryAliases, relative)
+		}
+	}
+	diagnosticpolicy.InferReferences(all, sourcePath, references, entryAliases...)
+	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
+	analysisErr = errors.Join(analysisErr, err)
 	policy := diagnosticpolicy.Policy{RuleDescriptors: s.toolDescriptors, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	all, err = policy.Apply(all, composed.Sources, composed.Configs)
+	all, err = diagnosticpolicy.Apply(policy, all, composed.Sources, composed.Configs)
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
 	}
+	// Policy reports suppression findings in the declaring document, such as a
+	// local action's metadata, under its working-directory-relative path. They
+	// need that document's reference to pass report admission.
+	reported := maps.Clone(references)
+	for document, index := range references {
+		if relative, err := filepath.Rel(s.workingDir, document); err == nil {
+			if _, exists := reported[relative]; !exists {
+				reported[relative] = index
+			}
+		}
+	}
+	diagnosticpolicy.InferReferences(all, sourcePath, reported, entryAliases...)
 	s.log("Found total", len(all), "errors in", time.Since(start).Milliseconds(), "ms for", path)
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, action bool,
+func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot documentparse.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
@@ -155,22 +208,25 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		mappings = cfg.LocalActions
 	}
 	resolvedActions := actionlocal.NewResolver(actions, mappings)
-	var customLabels []string
-	if cfg != nil {
-		customLabels = cfg.SelfHostedRunner.Labels
+	host := s.repositories[projectRoot(project)]
+	facts := repoconfig.RepositoryFacts(cfg, host)
+	customLabels := runnerlang.LabelSet{}
+	if known, available := facts.RunnerLabels.Value(); available {
+		customLabels = runnerlang.KnownLabels(known.Values())
 	}
-	runners, runnerErr := runnerlang.Prepare(s.ctx, document.Workflow, customLabels, s.runners, root)
-	if runners.Report.Identity != "" {
-		report := runners.Report
+	runners, runnerErr := runnerlang.PrepareWithLabels(s.ctx, snapshot, customLabels, s.runners, root)
+	if report := runners.Report(); report.Identity != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
 		s.runnerReports = append(s.runnerReports, report)
 		s.runnerReportsMu.Unlock()
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
-	resolvedActions.Runners = runners
-	context := builtin.Context{Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	resolvedActions.SetRunners(runners)
+	context := builtin.Context{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
+	context.Repository = host
+	context.RemoteActions = s.remoteActions
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
@@ -179,25 +235,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
 		}
 	}}
-	toolContext.DocumentPath, toolContext.DocumentContent = path, content
-	var mainReferences workflowfacts.References
-	var indexMain sync.Once
-	toolContext.Reference = func(filename string, snapshot []byte, position diagnostic.Position) source.Reference {
-		var refs workflowfacts.References
-		if filename != "" && filename != path && filename != sourcePath {
-			parsed := documentparse.Action(filename, filename, snapshot)
-			refs = documentparse.References(filename, snapshot, parsed, nil, fsread.PhysicalPath)[filename]
-		} else {
-			indexMain.Do(func() {
-				mainReferences = documentparse.References(sourcePath, content, document, nil, fsread.PhysicalPath)[sourcePath]
-			})
-			refs = mainReferences
-		}
-		if ref, ok := refs.Positions[[2]int{position.Line, position.Column}]; ok {
-			return ref
-		}
-		return refs.Document
-	}
+	toolContext.Document = document.AnalyzerSource(path, content, snapshot.Reference())
+	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
 	if err != nil {
 		return result, err
@@ -208,13 +247,14 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		}
 	}
 	requires := checks.RequiredFacts(registrations)
-	service := composition.New(composition.Options{
-		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
+	options := composition.Options{
+		SourceSnapshots: s.snapshots,
+		Context:         s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
 		ScriptInputsForConfig: func(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, cfg)
 		},
-		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
+		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader, Config: cfg,
 		ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {
@@ -224,16 +264,20 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),
-	})
+	}
 	if action {
-		result, err = service.Action(document.Metadata)
+		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
+		if deploymentErr != nil {
+			return result, deploymentErr
+		}
+		result, err = composition.Action(options, snapshot, deployment, document.Metadata)
 	} else {
-		result, err = service.Workflow(document.Workflow)
+		result, err = composition.Workflow(options, snapshot)
 	}
 	*usedRules = append(*usedRules, selected.ScriptInfo...)
 	*usedRules = append(*usedRules, checks.Describe(selected.Rules)...)
 	for _, r := range selected.Rules {
-		s.debug("%s found %d errors", r.Name(), len(r.Errs()))
+		s.debug("%s found %d errors", r.Name(), r.FindingCount())
 	}
 	return result, err
 }

@@ -24,8 +24,8 @@ func TestBOMEditorCoordinatesRoundTrip(t *testing.T) {
 		if offset, err := byteOffset(text, point.editor); err != nil || offset != point.offset {
 			t.Errorf("editor %v: offset=%d err=%v, want %d", point.editor, offset, err, point.offset)
 		}
-		if got := editorPosition([]byte(text), point.source); got != point.editor {
-			t.Errorf("source %v: editor=%v, want %v", point.source, got, point.editor)
+		if got, err := editorPosition([]byte(text), point.source); err != nil || got != point.editor {
+			t.Errorf("source %v: editor=%v error=%v, want %v", point.source, got, err, point.editor)
 		}
 		if got := positionAtOffset(text, point.offset); got != point.editor {
 			t.Errorf("completion byte %d: editor=%v, want %v", point.offset, got, point.editor)

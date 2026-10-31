@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -27,7 +28,11 @@ func Build(context builtin.Context, action bool) Selection {
 			continue
 		}
 		if descriptor.Build != nil {
-			selected.Rules = append(selected.Rules, descriptor.Build(context))
+			r := descriptor.Build(context)
+			if consumer, ok := r.(interface{ SetRepository(repository.Snapshot) }); ok {
+				consumer.SetRepository(context.Repository)
+			}
+			selected.Rules = append(selected.Rules, r)
 		}
 		if descriptor.Script != nil {
 			selected.Scripts = append(selected.Scripts, descriptor.Script)

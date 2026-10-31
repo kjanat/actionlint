@@ -34,7 +34,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				metadata := "name: inner\ndescription: test\ninputs:\n  custom_name:\n    description: custom\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      " + tc.declaration + "\n"
 				testutil.WriteFixture(t, root, "inner/action.yml", strings.ReplaceAll(metadata, "\n", ending))
@@ -43,6 +43,12 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				if tc.name == "later-expression" {
 					if len(result.Diagnostics) != 2 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Code != "unknown-script-value" || result.Diagnostics[0].Start != (diagmodel.Position{Line: 10, Column: 21}) {
 						t.Fatalf("first expression must retain its independent script finding: %+v", result.Diagnostics)
+					}
+					suggestion = 1
+				}
+				if strings.Contains(tc.declaration, "&script") {
+					if len(result.Diagnostics) != 2 || result.Diagnostics[0].Rule != "action" || result.Diagnostics[0].Start.Line != 10 || result.Diagnostics[0].Message != `YAML anchors are not supported in action metadata; remove anchor "script"` {
+						t.Fatalf("anchored source must report its unsupported syntax alongside the expression suggestion: %+v", result.Diagnostics)
 					}
 					suggestion = 1
 				}

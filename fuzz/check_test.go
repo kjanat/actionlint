@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analysis"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/syntax"
 )
 
-func parseWorkflowPanicFree(data []byte) *workflowlang.Workflow {
+func parseWorkflowPanicFree(data []byte) *syntax.Workflow {
 	// Avoid Parse() panicking. It panics when go-yaml panics
 	defer func() { _ = recover() }()
 	w, _ := syntax.Parse(data)

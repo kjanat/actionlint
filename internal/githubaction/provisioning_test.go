@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestActionNativeBackendRequirements(t *testing.T) {
@@ -26,7 +26,10 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 		}, inputs: map[string]string{"INPUT_FILES": ".github/workflows/clean.yml"}, shellcheck: true},
 		{name: "discovered includes", files: map[string]string{".github/actionlint.yaml": "files: {includes: ['.github/workflows/*.yml']}"}, shellcheck: true},
 		{name: "discovered excludes", files: map[string]string{".github/actionlint.yaml": "files: {excludes: ['.github/workflows/*.yml']}"}},
-		{name: "discovered override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**/*.yml'], lint: {rules: {external: {shellcheck: off}}}}]"}},
+		{name: "discovered override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**'], lint: {rules: {external: {shellcheck: off}}}}]"}},
+		// A composite action the workflow calls may not match the override,
+		// so the tool may still run there.
+		{name: "discovered partial override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**/*.yml'], lint: {rules: {external: {shellcheck: off}}}}]"}, shellcheck: true},
 		{name: "yaml", files: map[string]string{".github/actionlint.yaml": `tools:
   shellcheck: false
 `}},
@@ -59,7 +62,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			"child/.github/workflows/clean.yml": cleanWorkflow,
 		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml\n.github/workflows/clean.yml"}, shellcheck: true},
 		{name: "action input disables tools", inputs: map[string]string{
-			"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": "tools: {shellcheck: true}",
+			"INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": "tools: {shellcheck: true}",
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -78,7 +81,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			}
 			needed, err := localapp.RequiredToolsSources(ctx, application.Options{
 				WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
-				IgnorePatterns: req.ignore, Tools: adapters.Options{ShellCheck: req.shellcheck, Ruff: req.ruff}.Registrations(),
+				IgnorePatterns: req.ignore, Tools: registry.Registrations(req.toolSelections()),
 			}, req.files, selected)
 			if err != nil || needed["shellcheck"] != tc.shellcheck {
 				t.Fatalf("requirements=%v error=%v; want shellcheck=%v", needed, err, tc.shellcheck)
@@ -94,7 +97,6 @@ func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
 		inputs map[string]string
 		code   int
 	}{
-		{name: "input", inputs: map[string]string{"INPUT_SHELLCHECK": "yes"}, code: 2},
 		{name: "overlay", inputs: map[string]string{"INPUT_CONFIG": "tools: {shellcheck: {enabled: wrong}}"}, code: 2},
 		{name: "file", config: "tools: {shellcheck: {enabled: wrong}}", code: 3},
 	} {

@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
@@ -13,7 +15,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['excluded.yml']}\n")
 	var reads []string
-	session, err := New(Options{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
+	session, err := New(t.Context(), Options{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 		reads = append(reads, path)
 		if filepath.Base(path) == "broken.yml" {
 			return []byte("[invalid yaml"), nil
@@ -38,7 +40,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 	}
 	for _, path := range []string{filepath.Join(root, "broken.yml"), filepath.Join(root, ".github/actionlint.yaml")} {
 		if !slices.Contains(selected.Inputs, path) {
-			t.Errorf("input %q not retained: %v", path, selected.Inputs)
+			t.Errorf("input %q missing from selected config: %v", path, selected.Inputs)
 		}
 	}
 	if !slices.Contains(reads, filepath.Join(root, "broken.yml")) {
@@ -47,7 +49,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 }
 
 func TestSelectionProvenanceDoesNotLeakAcrossBatches(t *testing.T) {
-	session, err := New(Options{})
+	session, err := New(t.Context(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +75,7 @@ func TestSelectionProvenanceDoesNotLeakAcrossBatches(t *testing.T) {
 
 func TestNamedContentTracksPathRelativeToWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
-	session, err := New(Options{WorkingDir: root, SkipProjectConfig: true})
+	session, err := New(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,5 +88,26 @@ func TestNamedContentTracksPathRelativeToWorkingDirectory(t *testing.T) {
 	}
 	if !slices.Equal(selected.Inputs, []string{filepath.Join(root, "named-input.yml")}) {
 		t.Fatalf("inputs=%v", selected.Inputs)
+	}
+}
+
+func TestOptionsConfigReplacesRepositoryConfiguration(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['workflow.yml']}\n")
+	config := &repoconfig.Config{}
+	session, err := New(t.Context(), Options{WorkingDir: root, Config: config})
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := session.Content(filepath.Join(root, "workflow.yml"), []byte("on: push"), nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selected.Sources[0].Config; got != config {
+		t.Fatalf("source config=%p, want the Options.Config %p", got, config)
+	}
+	if _, err := New(t.Context(), Options{WorkingDir: root, Config: config, ConfigFile: "actionlint.yaml"}); err == nil {
+		t.Fatal("Config together with ConfigFile was accepted")
 	}
 }

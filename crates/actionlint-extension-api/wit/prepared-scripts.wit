@@ -1,11 +1,11 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
-/// Shared preparation for shell analysis, scoped to supplied script references.
-/// Normative profile: ../schemas/shell-preparation-0.1.0.md.
+/// Shared preparation for shell analysis, scoped to supplied script occurrences.
+/// Normative profile: ../schemas/shell-preparation-0.2.0.md.
 /// The host owns this transformation; guests must not repeat it or infer its
 /// results from the host version, package name, or diagnostic messages.
 interface prepared-scripts {
-    use source-annotations.{source-reference, position};
+    use invocation-context.{occurrence-id, position};
     variant line {
         script(u32),
         comment(position),
@@ -26,8 +26,9 @@ interface prepared-scripts {
         /// ShellCheck diagnostic numbers excluded by the preparation profile.
         excluded: list<u32>,
     }
-    /// None denotes a script unsupported by this preparation profile. References
-    /// must belong to this analyze call; unknown references return an error.
+    /// Only run occurrences with supplied text in this analyze call are accepted.
+    /// Every other ID returns an error, including known unselected occurrences,
+    /// action inputs, calls and the entry. None means an unsupported profile.
     /// Line numbers and positions are one-based Unicode character coordinates.
-    prepare: func(reference: source-reference, dialect: option<string>) -> result<option<prepared>, string>;
+    prepare: func(occurrence: occurrence-id, dialect: option<string>) -> result<option<prepared>, string>;
 }

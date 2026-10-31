@@ -10,12 +10,14 @@ import (
 	"path/filepath"
 	"slices"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
-// Source retains both diagnostic spelling and the actual input path.
+// Source associates the displayed path with the file read for analysis.
 type Source struct {
 	Path      string
 	Content   []byte
@@ -28,28 +30,31 @@ type Source struct {
 type Selection struct {
 	Sources        []Source
 	Inputs         []string
-	Configurations []repoconfig.Report
+	Configurations []configreport.Report
 }
 
 // Options controls only input preparation, not analysis or rendering.
 type Options struct {
-	Context                               context.Context
 	WorkingDir, StdinFileName, ConfigFile string
-	ConfigOverlays                        []repoconfig.Overlay
-	OnConfigLoaded                        func(repoconfig.Report)
-	SkipProjectConfig                     bool
-	OnFilesSelected                       func([]string)
-	ReadFile                              func(string) ([]byte, error)
-	RuleNames                             []string
-	Log                                   func(...any)
-	LogWriter                             io.Writer
+	// Config, when set, is used for every input instead of the repository's
+	// configuration file. It cannot be combined with ConfigFile.
+	Config            *repoconfig.Config
+	ConfigOverlays    []repoconfig.Overlay
+	OnConfigLoaded    func(configreport.Report)
+	SkipProjectConfig bool
+	OnFilesSelected   func([]string)
+	ReadFile          func(string) ([]byte, error)
+	RuleNames         []string
+	Log               func(...any)
+	LogWriter         io.Writer
 }
 
-// Session retains repository/configuration caches across input selections.
+// Session shares repository and configuration lookups across input selections.
 type Session struct {
 	projects *Projects
-	// DefaultConfig is an explicit in-memory configuration override for legacy callers.
-	DefaultConfig     *repoconfig.Config
+	// defaultConfig comes from Options.Config or Options.ConfigFile and
+	// replaces every project's configuration.
+	defaultConfig     *repoconfig.Config
 	defaultConfigPath string
 	configState       *configState
 	ctx               context.Context
@@ -61,14 +66,12 @@ type Session struct {
 	ruleNames         []string
 }
 
-func New(opts Options) (*Session, error) {
-	a := &Session{projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: opts.ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
-	if a.ctx == nil {
-		a.ctx = context.Background()
+// New prepares a session whose file reads and config loads stop when ctx is canceled.
+func New(ctx context.Context, opts Options) (*Session, error) {
+	if opts.Config != nil && opts.ConfigFile != "" {
+		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
-	if a.readFile == nil {
-		a.readFile = fsread.Disk
-	}
+	a := &Session{projects: NewProjects(), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	if a.log == nil {
 		a.log = func(...any) {}
 	}
@@ -78,13 +81,13 @@ func New(opts Options) (*Session, error) {
 	a.projects.readFile = a.readFile
 	a.projects.ruleNames = a.ruleNames
 	a.projects.skipConfig = opts.SkipProjectConfig
-	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*repoconfig.Config), reports: make(map[*Project]repoconfig.Report)}
+	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*repoconfig.Config), reports: make(map[*Project]configreport.Report)}
 	if opts.ConfigFile != "" {
 		source, err := repoconfig.Read(opts.ConfigFile, a.readFile, a.ruleNames...)
 		if err != nil {
 			return nil, err
 		}
-		a.DefaultConfig = source.Config
+		a.defaultConfig = source.Config
 		a.defaultConfigPath = opts.ConfigFile
 		a.configState.source = source
 	}
@@ -171,8 +174,7 @@ func (a *Session) discoveredFiles(paths, metadata []string, project *Project) (*
 	a.selectionLog("Collected", len(paths), "YAML files")
 	result, err := a.Files(paths, project)
 	if result != nil {
-		// Discovery candidates remain protected from report replacement even
-		// when configuration excludes them from reading and analysis.
+		// Protect excluded discovery candidates from report replacement too.
 		inputs := &Inputs{}
 		for _, path := range result.Inputs {
 			inputs.Add(path)
@@ -216,13 +218,13 @@ func (a *Session) Empty() (*Selection, error) {
 	result := &Selection{Sources: []Source{}}
 	inputs := &Inputs{}
 	inputs.Add(a.defaultConfigPath)
-	if project != nil || a.DefaultConfig != nil {
+	if project != nil || a.defaultConfig != nil {
 		if _, err := a.ConfigForProject(project); err != nil {
 			return nil, err
 		}
 		a.configState.Lock()
 		inputs.AddConfig(a.configState.loaded[project], project, a.cwd)
-		result.Configurations = append(result.Configurations, a.configState.reports[project])
+		result.Configurations = append(result.Configurations, configurationSnapshot(a.configState.reports[project]))
 		a.configState.Unlock()
 	}
 	result.Inputs = inputs.List()
@@ -289,9 +291,13 @@ func (a *Session) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, er
 
 func (a *Session) Content(path string, content []byte, project *Project, normalizePath bool) (*Selection, error) {
 	if project == nil && path != "<stdin>" {
-		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		discoveryPath := path
+		if !filepath.IsAbs(discoveryPath) {
+			discoveryPath = filepath.Join(a.cwd, discoveryPath)
+		}
+		if _, err := os.Stat(discoveryPath); !errors.Is(err, os.ErrNotExist) {
 			var err error
-			project, err = a.projects.At(path)
+			project, err = a.projects.At(discoveryPath)
 			if err != nil {
 				return nil, err
 			}
@@ -306,7 +312,7 @@ func (a *Session) Content(path string, content []byte, project *Project, normali
 }
 
 func (a *Session) source(path string, content []byte, project *Project) Source {
-	cfg := a.DefaultConfig
+	cfg := a.defaultConfig
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
@@ -321,8 +327,7 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 		}
 		sources[i].Config = cfg
 	}
-	// Include the projects used during selection, without retaining unrelated
-	// configurations cached by an earlier invocation of this session.
+	// Report only projects used by this input selection.
 	projects := make([]*Project, 0, len(sources)+len(configProjects))
 	projects = append(projects, configProjects...)
 	for _, source := range sources {
@@ -346,7 +351,7 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 		if !seen[project] {
 			seen[project] = true
 			inputs.AddConfig(a.configState.loaded[project], project, a.cwd)
-			result.Configurations = append(result.Configurations, a.configState.reports[project])
+			result.Configurations = append(result.Configurations, configurationSnapshot(a.configState.reports[project]))
 		}
 	}
 	a.configState.Unlock()

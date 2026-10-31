@@ -41,6 +41,31 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	}
 }
 
+func TestRuleBaseErrsAreDetached(t *testing.T) {
+	r := NewBase("rule", "description")
+	r.Error(&workflowlang.Pos{Line: 1, Col: 1}, "message")
+	r.Errs()[0].Path = "changed"
+	if path := r.Errs()[0].Path; path != "" {
+		t.Fatalf("reader changed a recorded finding: path %q", path)
+	}
+}
+
+func TestRuleBaseAnnotateSince(t *testing.T) {
+	r := NewBase("rule", "description")
+	r.Error(&workflowlang.Pos{Line: 1, Col: 1}, "before")
+	mark := r.FindingCount()
+	r.Error(&workflowlang.Pos{Line: 2, Col: 1}, "after")
+	r.AnnotateSince(mark, func(finding *findingmodel.Finding) { finding.Path = "annotated" })
+	if count := r.FindingCount(); count != 2 {
+		t.Fatalf("wanted 2 findings, have %d", count)
+	}
+	errs := r.Errs()
+	if errs[0].Path != "" || errs[1].Path != "annotated" {
+		t.Fatalf("annotation must cover only findings after the mark: %q, %q", errs[0].Path, errs[1].Path)
+	}
+	r.AnnotateSince(r.FindingCount()+1, func(*findingmodel.Finding) { t.Fatal("mark past the end annotates nothing") })
+}
+
 func TestRuleBaseNameAndDescription(t *testing.T) {
 	r := NewBase("dummy name", "dummy description")
 	if r.Name() != "dummy name" {

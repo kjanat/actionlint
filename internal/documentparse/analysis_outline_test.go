@@ -26,10 +26,10 @@ jobs:
 	}
 	outline := WorkflowOutline("ci.yml", workflow, false)
 	got := map[string]documentmodel.UsesReference{}
-	for _, job := range outline.Jobs {
-		got[job.ID] = job.Reference
-		for _, step := range job.Steps {
-			got[step.Uses] = step.Reference
+	for _, job := range outline.Jobs() {
+		got[job.ID()] = job.Reference()
+		for _, step := range job.Steps() {
+			got[step.Uses()] = step.Reference()
 		}
 	}
 	want := map[string]documentmodel.UsesReference{
@@ -58,8 +58,8 @@ jobs:
 		t.Fatal("fixture must contain rejected workflow call")
 	}
 	outline := WorkflowOutline("ci.yml", workflow, true)
-	job := outline.Jobs[0]
-	if outline.ParseStatus != "partial" || job.Uses != "owner/repo/.github/workflows/build.yml@main" || job.Reference == nil || len(job.Steps) != 1 {
+	job := outline.Jobs()[0]
+	if outline.ParseStatus() != "partial" || job.Uses() != "owner/repo/.github/workflows/build.yml@main" || job.Reference() == nil || len(job.Steps()) != 1 {
 		t.Fatalf("partial call declaration lost: %+v", outline)
 	}
 }
@@ -89,8 +89,8 @@ jobs:
 				t.Fatal("fixture must contain conflicting execution keys")
 			}
 			outline := WorkflowOutline("ci.yml", workflow, true)
-			step := outline.Jobs[0].Steps[0]
-			if outline.ParseStatus != "partial" || step.Kind != tc.kind || step.Uses != "actions/checkout@v7" || step.Reference == nil {
+			step := outline.Jobs()[0].Steps()[0]
+			if outline.ParseStatus() != "partial" || step.Kind() != tc.kind || step.Uses() != "actions/checkout@v7" || step.Reference() == nil {
 				t.Fatalf("partial uses declaration lost: %+v", step)
 			}
 		})
@@ -115,12 +115,12 @@ jobs:
 		t.Fatalf("unexpected parse errors: %v", errors)
 	}
 	outline := WorkflowOutline("ci.yml", workflow, false)
-	steps := outline.Jobs[0].Steps
-	if len(steps) != 3 || steps[0].Kind != "parallel" || steps[1].Kind != "wait" || steps[2].Kind != "cancel" {
+	steps := outline.Jobs()[0].Steps()
+	if len(steps) != 3 || steps[0].Kind() != "parallel" || steps[1].Kind() != "wait" || steps[2].Kind() != "cancel" {
 		t.Fatalf("wrong control step kinds: %+v", steps)
 	}
-	children := steps[0].Steps
-	if len(children) != 2 || children[0].ID != "child" || children[0].Kind != "run" || children[1].Uses != "actions/checkout@v7" {
+	children := steps[0].Steps()
+	if len(children) != 2 || children[0].ID() != "child" || children[0].Kind() != "run" || children[1].Uses() != "actions/checkout@v7" {
 		t.Fatalf("parallel children lost: %+v", children)
 	}
 }

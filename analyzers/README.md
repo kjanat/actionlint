@@ -1,92 +1,129 @@
-# Architecture enforcement
+# Structural architecture checks
 
-`actionlintarch` is enabled in the default golangci-lint configuration. Both
-`.tool-versions` and `.custom-gcl.yml` pin golangci-lint 2.15.0. `make lint-build`
-rebuilds the module plugin and the standalone analyzer, and clears golangci-lint's result cache so local plugin edits cannot reuse stale diagnostics. `make lint` runs the
-custom binary and the standalone checker; Zed uses the custom binary after that
-build. The analyzer is a separate Go module, so it does not add lint dependencies
-to the distributed application.
+The analyzer consumes Go type information and SSA. There is no architecture
+manifest, package-layer assignment, protected-type registry or retired-field
+list. It also works in modules unrelated to Actionlint.
 
-## Checks
+| Code   | Rule                                                                                                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ARC001 | Public API signatures, aliases, fields and constraints cannot expose types from an `internal` package. Implementation imports and private representation fields are allowed. |
+| ARC002 | An exported struct with private representation or receiver-mutating methods cannot expose writable fields. Plain value records without either property are allowed.          |
+| ARC003 | Exported methods cannot return mutable storage reachable from their receiver. Return detached storage or an opaque value handle.                                             |
+| ARC004 | Calls without source summaries may mutate receiver storage or return aliases. Unresolved ownership and detachment fail explicitly.                                           |
 
-| Code   | Rule                                                                                 |
-| ------ | ------------------------------------------------------------------------------------ |
-| ALA100 | Reject packages without an architecture layer.                                       |
-| ALA101 | Reject dependencies outside the layer's permitted graph.                             |
-| ALA102 | Reject host and parser dependencies in portable layers.                              |
-| ALA103 | Restrict construction and field mutation to each type's declared owners.             |
-| ALA104 | Reject the old engine facades and duplicated invocation fields in `execution.Scope`. |
-| ALA105 | Restrict `context.Background` and `context.TODO` to entrypoint layers.               |
+ARC003 follows assignments, branches, field/index access, pointer loads,
+interfaces, closures, containers and function results. Parameter/result and
+mutation summaries propagate through local recursion and imported source helpers.
+Returning an alias through another package does not establish ownership.
 
-`contextcheck` checks context propagation. `exhaustive` requires explicit enum
-cases, including switches with a default branch.
+`bytes.Clone` and flat `slices.Clone`/`maps.Clone` results allocate detached
+storage. Shallow clones containing exposed references still share storage.
+Fresh byte copies using `make`/`copy` or `append` are also allowed. Value handles
+with only private representation can share their internal storage; their public
+methods are checked separately. A returned struct copy may keep such a handle
+in one field after cloning the slice in another. A constructor returning fresh
+storage is allowed.
+`context.Context.Err` only reads its context and returns nil,
+`context.Canceled` or `context.DeadlineExceeded`, as the Context contract
+documents, so a stored context's error aliases nothing. Its other methods have
+no model. Locking or unlocking a `sync.Mutex` or `sync.RWMutex` changes only
+the lock, so a method that locks only to read its storage stays read-only.
+Whether locks are balanced is not checked.
+The `bytes` searches and comparisons returning an int or bool, such as
+`bytes.IndexByte`, `bytes.Equal` and `bytes.HasPrefix`, only read their byte
+slices. The variants taking a function, such as `bytes.IndexFunc`, have no
+model. Likewise `slices.Contains`, `slices.Index`, `slices.Equal`,
+`slices.Compare`, `slices.IsSorted` and `slices.BinarySearch` only read their
+slices: their comparable or ordered elements compare without running code.
+`slices.ContainsFunc` and the other variants taking a function have no model.
 
-## Dependency contract
+`maps.Keys`, `maps.Values`, `maps.All`, `slices.All` and `slices.Values` write
+nothing and return an iterator that only reads its argument. The iterator
+carries the argument's storage only when it yields storage, such as pointer
+values; one yielding string keys exposes none. `slices.Sorted` and
+`slices.Collect` applied directly to such an iterator write nothing and return
+a new slice holding what it yields.
 
-[`architecture.json`](../architecture.json) declares the repository's layers,
-package roots and allowed dependency directions. The contract follows the
-[analysis ownership](../docs/design/analysis-ownership.md) and
-[application boundary](../docs/design/application-boundary.md) decisions. Its
-assignments describe the target responsibilities. Existing violations require
-changes to the product code.
+Summaries record what a function passes to its function-typed parameters, such
+as an iterator's `yield`, as long as it only calls them. For a returned
+function value, such as an `iter.Seq`, they record what that function will
+pass when called. A range loop over an iterator from a closure literal, a
+source function, a summarized call or one of the iterators above hands the
+loop body only what the iterator yields. An iterator that writes its receiver
+to report diagnostics but yields fresh values therefore does not make the loop
+body alias the receiver; `slices.Collect` and `slices.Sorted` over it return a
+new slice of those values. When a `yield` parameter is stored or passed on,
+what it receives is unknown and the loop falls back to the rule below.
 
-Each layer has `roots` and `uses`. A root covers its entire package subtree;
-the longest matching root wins. `.` matches only the module package. `uses`
-names the layers it depends on. Packages may use their own layer and every
-layer reachable through `uses`. All other project dependencies fail.
+A returned closure, such as an `iter.Seq` iterator, carries a captured variable
+only when its body can expose it: by returning it with a mutable type, by
+writing it, by storing it into a parameter, or by passing it with a mutable type
+to code without a summary, such as the iterator's `yield` function. An iterator
+that only reads its receiver and yields pointer-free values or read-only value
+handles is not reported. An iterator that yields receiver slices, maps or
+pointers to receiver fields is, as is a closure that writes receiver state.
+A method value, such as `w.store.Row`, carries its bound receiver as a capture,
+checked against the method's summary like any other closure.
 
-For example, traversal uses syntax, syntax uses semantics, and semantics uses
-values. A new package under `internal/engine` automatically inherits traversal's
-permissions. It cannot import application code. A new unrelated root has no
-layer and fails even when it imports nothing. There is no package inventory,
-catch-all layer or list of forbidden package pairs.
+A closure passed to a call may be invoked by the callee, as a range-over-func
+iterator invokes its loop body. Except for the range loops and collections
+above, the analyzer does not use what a callee passes to such a closure. It
+assumes the callee may pass storage reachable from the call's other arguments,
+or from the values they were built from. This holds for unknown iterators,
+iterators that pass their `yield` on, a closure literal called directly,
+functions in this package called with a closure argument and imported method
+values alike. A body that stores what it receives into a
+captured variable makes that variable alias that storage, with an uncertain
+origin; storing another captured variable carries that variable's origins. A
+body that writes the values it receives counts as a possible write to that
+storage. The same applies to a closure literal called through a variable that
+may hold one of several literals.
 
-The checker follows source imports through project helpers. Moving a prohibited
-import into a helper does not hide it. Diagnostics include both layer names and
-the dependency path. Standard-library internals are outside that traversal.
-`portable` rejects the host/parser imports checked by ALA102; `entrypoint`
-permits detached root contexts. Nested roots give generators separate
-permissions without allowing the surrounding domain to import them back.
+A value receiver whose type holds no storage, such as `struct{}`, is a private
+copy and has no receiver origin. A variable joining fresh allocations, such as
+`maps.Clone` on one branch and a map literal on the other, is fresh storage:
+writing it changes no parameter.
 
-The contract reader and graph checks live in `analyzers/architecture` and contain
-no actionlint package names. Both runners load the same contract. Missing files,
-unknown fields/layers, duplicate roots and graph cycles stop lint startup.
-Contract changes also change the analyzer's cache identity, so they take effect
-without rebuilding the binary or manually clearing golangci-lint's cache.
-The plugin setting `contract` is a path relative to the invocation directory;
-the standalone command reads `architecture.json` there. Run both from the
-repository root.
+These checks enforce structural properties.
+Alias findings are conservative: complex deep copies through loops can need
+review even when the resulting value is detached. ARC003 identifies a possible
+receiver-to-result storage path; it is not a runtime proof of mutation.
+They cannot establish whether two differently represented algorithms implement
+the same responsibility. They do not infer which packages should perform I/O,
+prove concurrency safety or verify Go/WIT equivalence. Unknown/interface calls
+produce ARC004 for unresolved alias and mutation effects. This includes standard-library
+calls whose bodies are unavailable, even when they only read their arguments.
+Calls through a function value are unknown calls too, including a closure
+returned by a summarized function: its writes and results are not summarized,
+only what it hands its loop body. Passing a read-only value handle to an unknown call is not a
+possible write. The analyzer assumes that code changes a handle only through its
+exported methods, so an interface implementation in the same package that
+writes a handle's private fields is missed. So is code in the same package that
+writes the private fields of handles collected by `append`, a clone, an
+assignment to a slice element, a field of a returned struct copy or an unknown call, or of handles a helper function receives through an iterator
+parameter. A write into a container whose freshness cannot be proven, such as a
+slice element, also counts the values stored into that container as written.
+Aggregate value copies use
+dominating field stores to recognize detachment before publication. A local
+struct copied from another local, such as `w := T{m: map[K]V{}}`, keeps the
+fields stored into that local, so writing `w.m` writes no parameter. Other flows
+are flow-insensitive. The analyzer does not implement a whole-program heap
+analysis; reflection and arbitrary unsafe
+memory operations need separate review. Standard-library bodies are not analyzed;
+the clone, iterator, `bytes` and `slices` search, `context.Context.Err` and
+mutex lock calls above have explicit models. Diagnostics concern production declarations; test code still
+participates in helper summaries.
 
-This contract controls dependencies between layers. It does not establish that
-code inside an allowed package implements the right responsibility. The
-remaining type ownership and retired-API checks are actionlint-specific.
-ALA103 uses resolved Go types, including aliases and inferred literal types.
-It checks field assignments, range assignments, increments and decrements,
-including promoted fields and nested value fields such as `inv.Step.Line`.
-Conversions from other types into a protected type
-also require ownership. Same-type copies, nil pointers and empty literals are
-allowed.
-Pointer alias analysis and synchronization require separate verification.
-Tests may read fixtures and import packages in a `testonly` layer, such as
-`internal/testutil`. Those helpers can exercise the application. Other test
-imports still obey the dependency contract; production packages cannot import
-test support.
+The default golangci-lint configuration additionally enables `dupl` for structural
+code duplication, `contextcheck` for propagation and `exhaustive` for enum switches.
+No diagnostics baseline or project-specific suppression is installed.
 
-## Run
+`make lint-build` builds both runners using golangci-lint 2.15.0 and clears its
+result cache after the plugin build. `make test-analyzers` tests the analyzer.
+`make lint-architecture` runs the standalone checker without golangci exclusions;
+`make lint` runs both checks. The Architecture workflow tests the custom binary in
+an unrelated module, including a source-only fix under a warm cache, then runs
+product enforcement. Zed uses the built `custom-gcl` executable.
 
-- `make test-analyzers`: run contract checks and valid/invalid fixtures under `testdata`.
-- `make lint`: build and run the default lint configuration.
-- `make lint-architecture`: run the analyzer directly, with suppression comments ignored.
-
-The Architecture workflow runs on every PR. Analyzer tests and product enforcement
-have separate jobs. After building the custom runner, CI also tests a contract-only
-change against a warm cache and verifies that a missing contract fails startup.
-To repeat that integration test locally, run
-`ACTIONLINT_CUSTOM_GCL="$PWD/custom-gcl" go test -C analyzers ./plugin -run TestContractReload -count=1`
-after `make lint-build`.
-
-Current product violations fail enforcement. Generated Go is included in the
-direct run. Build tags and platform selection follow Go's package loading rules.
-
-Require **Architecture analyzer tests** and **Architecture enforcement** in the
-repository ruleset. Policy, analyzer and workflow changes need independent review.
+Product enforcement is expected to fail until the reported ownership and API
+violations are fixed. Analyzer test success does not certify the whole core.

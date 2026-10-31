@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
 	"github.com/kjanat/wacogo"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/experimental"
 )
 
 var errMemoryBudget = errors.New("aggregate plugin memory limit exceeded")

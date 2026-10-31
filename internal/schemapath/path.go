@@ -24,7 +24,7 @@ func (p Path) append(s segment) Path {
 	return Path{segments}
 }
 
-// Key adds a declared schema property, retaining its original spelling for display.
+// Key appends a declared schema property.
 func (p Path) Key(key string) Path { return p.append(segment{key: key}) }
 
 // LooseKey adds a user-defined mapping key, represented by a schema wildcard.

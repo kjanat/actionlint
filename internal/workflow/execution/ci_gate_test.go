@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestCIActionResultGate(t *testing.T) {

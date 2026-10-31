@@ -2,13 +2,13 @@ package execution
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
-	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 type DirectoryKind uint8
@@ -25,6 +25,9 @@ type Directory struct {
 	Path string
 }
 
+// Paths is the checkout geometry of one execution scope: a plain value record
+// relating runner paths to local analysis paths. Filesystem lookups take the
+// recording reader as an argument, so copies of Paths never share I/O state.
 type Paths struct {
 	Platform          runnerlang.Platform
 	Workspace         string
@@ -34,53 +37,43 @@ type Paths struct {
 	ActionPath        string
 	ActionRunnerPath  string
 	ActionIndependent bool
-	Placements        *CheckoutPlacement
+	Placements        CheckoutPlacement
 	CaseInsensitive   bool
-	Reader            *fsread.Reader
 }
 
-func DirectoryValue(value *workflowlang.String) Directory {
-	if value == nil {
+func DirectoryValue(semantic value.Value) Directory {
+	if semantic.State() == value.Missing {
 		return Directory{}
 	}
-	if !value.ContainsExpression() {
-		return Directory{DirectoryKnown, value.Value}
+	if text, known := semantic.ScalarString(); known {
+		return Directory{DirectoryKnown, text}
 	}
-	if literal, known := workflowlang.WorkflowExpressionLiteral(value); known {
-		if text, ok := workflowlang.WorkflowScalarString(literal); ok {
-			return Directory{DirectoryKnown, text}
-		}
+	if semantic.State() != value.Dynamic {
+		return Directory{Kind: DirectoryUnknown}
 	}
 	return Directory{Kind: DirectoryUnknown}
 }
 
-func DefaultDirectory(defaults *workflowlang.Defaults) Directory {
-	if defaults == nil || defaults.Run == nil {
+func DefaultDirectory(defaults value.Value) Directory {
+	if defaults.State() == value.Missing {
 		return Directory{}
 	}
-	if defaults.Run.Expression == nil {
-		return DirectoryValue(defaults.Run.WorkingDirectory)
-	}
-	value, known := workflowlang.WorkflowExpressionLiteral(defaults.Run.Expression)
-	if !known || len(schema.LiteralErrors(schema.DefaultsRun, value, "defaults.run")) != 0 {
+	if !defaults.Known() {
 		return Directory{Kind: DirectoryUnknown}
 	}
-	if object, ok := value.(map[string]any); ok {
-		for key, field := range object {
-			if strings.EqualFold(key, "working-directory") {
-				if text, ok := workflowlang.WorkflowScalarString(field); ok {
-					return Directory{DirectoryKnown, text}
-				}
-				return Directory{Kind: DirectoryUnknown}
-			}
-		}
+	if defaults.Kind() != value.Object {
+		return Directory{Kind: DirectoryUnknown}
 	}
-	return Directory{}
+	field, present := defaults.Prop("working-directory")
+	if !present {
+		return Directory{}
+	}
+	return DirectoryValue(field)
 }
 
-func (paths Paths) EffectiveDirectory(run *workflowlang.ExecRun, jobDir, workflowDir Directory) Directory {
+func (paths Paths) EffectiveDirectory(runDirectory value.Value, jobDir, workflowDir Directory) Directory {
 	directory := Directory{DirectoryKnown, ""}
-	for _, candidate := range []Directory{paths.WorkingDirectory(run.WorkingDirectory), jobDir, workflowDir} {
+	for _, candidate := range []Directory{paths.WorkingDirectory(runDirectory), jobDir, workflowDir} {
 		if candidate.Kind != DirectoryUnspecified {
 			directory = candidate
 			break
@@ -94,12 +87,15 @@ func (paths Paths) EffectiveDirectory(run *workflowlang.ExecRun, jobDir, workflo
 	return directory
 }
 
-func (paths Paths) WorkingDirectory(value *workflowlang.String) Directory {
-	directory := DirectoryValue(value)
+func (paths Paths) WorkingDirectory(semantic value.Value) Directory {
+	directory := DirectoryValue(semantic)
 	if directory.Kind != DirectoryUnknown {
 		return directory
 	}
-	expression, ok := strings.CutPrefix(value.Value, "${{")
+	if semantic.State() != value.Dynamic {
+		return directory
+	}
+	expression, ok := strings.CutPrefix(semantic.Source(), "${{")
 	if !ok {
 		return directory
 	}
@@ -133,13 +129,15 @@ func (paths Paths) WorkingDirectory(value *workflowlang.String) Directory {
 	return Directory{DirectoryKnown, base + suffix}
 }
 
-func (paths Paths) Resolve(directory Directory) Directory {
+// Resolve maps directory to an existing local directory, reading case-insensitive
+// checkouts through reader.
+func (paths Paths) Resolve(directory Directory, reader *fsread.Reader) Directory {
 	unknown := Directory{DirectoryUnknown, paths.Analysis}
 	if directory.Kind == DirectoryUnknown {
 		return unknown
 	}
 	paths = paths.DirectoryOrigin(directory)
-	local, ok := paths.AnalysisPath(directory.Path)
+	local, ok := paths.AnalysisPath(directory.Path, reader)
 	if !ok {
 		return unknown
 	}
@@ -156,33 +154,37 @@ func (paths Paths) Resolve(directory Directory) Directory {
 
 func (paths Paths) DirectoryOrigin(directory Directory) Paths {
 	if directory.Kind == DirectoryActionKnown {
-		paths.Checkout, paths.CheckoutUnknown, paths.Placements = "", false, nil
+		paths.Checkout, paths.CheckoutUnknown, paths.Placements = "", false, CheckoutPlacement{}
 	}
 	return paths
 }
 
 func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
-	if paths.Placements != nil {
+	if paths.Placements.Present() {
 		placement := paths.Placements.Matching(relativePath)
-		if placement == nil || placement.Directory.Kind != DirectoryKnown {
+		if !placement.Present() || placement.Details().Directory.Kind != DirectoryKnown {
 			return "", false
 		}
-		if placement.CaseInsensitive && placement.Directory.Path != "" && placement.Directory.Path != "." {
+		if placement.Details().CaseInsensitive && placement.Details().Directory.Path != "" && placement.Details().Directory.Path != "." {
+			prefix := path.Clean(placement.Details().Directory.Path)
+			if prefix == "." {
+				return prefix, true
+			}
 			// Keep the caller's prefix spelling for host-side relative-path mapping.
-			return filepath.ToSlash(filepath.Clean(relativePath))[:len(placement.Directory.Path)], true
+			return path.Clean(relativePath)[:len(prefix)], true
 		}
-		return placement.Directory.Path, true
+		return placement.Details().Directory.Path, true
 	}
 	return paths.Checkout, !paths.CheckoutUnknown
 }
 
 // Local translates a workspace-relative runner path to the local self checkout.
-func (paths Paths) Local(relativePath string) (string, bool) {
+func (paths Paths) Local(relativePath string, reader *fsread.Reader) (string, bool) {
 	relativePath, representable := RunnerRelativePath(relativePath, paths.Platform)
 	if !representable {
 		return "", false
 	}
-	path, known := paths.AnalysisPath(relativePath)
+	path, known := paths.AnalysisPath(relativePath, reader)
 	if !known {
 		return "", false
 	}
@@ -190,8 +192,9 @@ func (paths Paths) Local(relativePath string) (string, bool) {
 	return path, err == nil && filepath.IsLocal(relative)
 }
 
-// AnalysisPath resolves available files, including those outside the indexed repository.
-func (paths Paths) AnalysisPath(value string) (string, bool) {
+// AnalysisPath resolves available files, including those outside the indexed
+// repository. Case-insensitive checkouts are canonicalized through reader.
+func (paths Paths) AnalysisPath(value string, reader *fsread.Reader) (string, bool) {
 	relativePath, known := LocalDirectoryPath(value, paths.Platform)
 	if !known {
 		return "", false
@@ -207,8 +210,8 @@ func (paths Paths) AnalysisPath(value string) (string, bool) {
 		return "", false
 	}
 	caseInsensitive := paths.CaseInsensitive
-	if placement := paths.Placements.Matching(relativePath); placement != nil {
-		caseInsensitive = placement.CaseInsensitive
+	if placement := paths.Placements.Matching(relativePath); placement.Present() {
+		caseInsensitive = placement.Details().CaseInsensitive
 	}
 	relativePath = filepath.FromSlash(relativePath)
 	if checkout != "" {
@@ -219,7 +222,7 @@ func (paths Paths) AnalysisPath(value string) (string, bool) {
 		}
 	}
 	if caseInsensitive && filepath.IsLocal(relativePath) {
-		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), paths.Reader)
+		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), reader)
 		if !known {
 			return "", false
 		}

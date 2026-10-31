@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -78,7 +78,7 @@ overrides:
       rules:
         external: {shellcheck: on, ruff: on}
 `)
-	options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: "shellcheck", Ruff: "ruff"}).Registrations()}
+	options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}, "ruff": {Command: "ruff"}})}
 	got, err := application.RequiredTools(t.Context(), options, nil)
 	if err != nil || !got["shellcheck"] || !got["ruff"] {
 		t.Fatalf("action override must enable both tools; got %+v, error %v", got, err)

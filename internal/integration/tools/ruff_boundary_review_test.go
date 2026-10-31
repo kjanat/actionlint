@@ -11,12 +11,12 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestRuffTemplateParenthesisFindings(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, UP034]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ jobs:
       - shell: python
         run: |
           ` + strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", "\n          ") + "\n"
-				result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
+				result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -67,7 +67,7 @@ jobs:
 }
 
 func TestRuffStdinUsesCommandDirectory(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, INP001]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -112,7 +112,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, WorkingDir: working}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, WorkingDir: working}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -124,7 +124,7 @@ jobs:
 }
 
 func TestRuffAPIIntegrationFlags(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -135,7 +135,7 @@ jobs:
 `
 	for _, flags := range [][]string{{"--no-cache"}, {"--isolated"}, {"--ignore-noqa"}, {"--no-fix"}, {"--target-version", "py314"}, {"--target-version=py314"}, {"--stdin-filename", "actionlint.py"}, {"--stdin-filename=actionlint.py"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err == nil || !strings.Contains(err.Error(), "integration-owned option") {
 				t.Fatalf("integration flag not rejected: %v", err)
 			}
@@ -144,7 +144,7 @@ jobs:
 }
 
 func TestRuffRepeatableSelectionFlags(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +159,7 @@ jobs:
 `
 	for _, flags := range [][]string{{"--select", "F"}, {"--ignore", "F401"}, {"--select=F", "--ignore=F401"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 			if err != nil {
 				t.Fatal(err)
 			}

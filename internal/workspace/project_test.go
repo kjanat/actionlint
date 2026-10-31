@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 // Project discovery needs a .git marker. Keep it in a temporary fixture copy so
@@ -104,7 +106,7 @@ func TestProjectsLookupCacheRetriesFailures(t *testing.T) {
 	if err != nil || project == nil {
 		t.Fatalf("repaired config: project=%v, error=%v", project, err)
 	}
-	if got := project.Config().ConfigVariables; len(got) != 1 || got[0] != "repaired" {
+	if got := repoconfig.VariableNames(project.Config().Facts()); len(got) != 1 || got[0] != "repaired" {
 		t.Fatalf("repaired configuration not loaded: %v", got)
 	}
 }
@@ -147,7 +149,7 @@ func TestProjectsNestedRepositoryConfigIsolation(t *testing.T) {
 					if project == nil || project.RootDir() != root {
 						t.Fatalf("root %q resolved to %+v", root, project)
 					}
-					if got := project.Config().ConfigVariables; len(got) != 1 || got[0] != fmt.Sprintf("project%d", index) {
+					if got := repoconfig.VariableNames(project.Config().Facts()); len(got) != 1 || got[0] != fmt.Sprintf("project%d", index) {
 						t.Fatalf("root %q inherited configuration %v", root, got)
 					}
 					if previous := cached[index]; previous != nil && previous != project {

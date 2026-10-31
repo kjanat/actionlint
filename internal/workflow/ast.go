@@ -9,9 +9,8 @@ import (
 	"unicode/utf8"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml"
-	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/source/text"
+	"actionlint.kjanat.dev/v2/internal/yaml/schema"
 )
 
 // Pos represents a position in the file.
@@ -58,7 +57,8 @@ type ScalarComment struct {
 	Trailing bool
 }
 
-func newScriptSource(value string) *ScriptSource {
+// NewScriptSource creates source metadata for an already decoded scalar.
+func NewScriptSource(value string) *ScriptSource {
 	s := &ScriptSource{Value: value}
 	start := 0
 	for {
@@ -86,7 +86,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	l := s.Lines[line-1]
-	rel, ok := yamlsource.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
+	rel, ok := text.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
 	if !ok {
 		return nil, false
 	}
@@ -111,12 +111,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 			return &Pos{Line: line, Col: column}, true
 		}
 	}
-	i := sort.Search(len(s.Spans), func(i int) bool {
-		if endPosition {
-			return s.Spans[i].End >= offset
-		}
-		return s.Spans[i].End > offset
-	})
+	i := s.spanIndex(offset, endPosition)
 	if i == len(s.Spans) {
 		return nil, false
 	}
@@ -138,6 +133,22 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 	return &Pos{Line: line, Col: column}, true
 }
 
+// spanIndex returns the first span ending after offset, or at offset for an end
+// position. Spans are sorted by End; len(s.Spans) means no span qualifies.
+func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
+	low, high := 0, len(s.Spans)
+	for low < high {
+		mid := int(uint(low+high) >> 1)
+		end := s.Spans[mid].End
+		if end > offset || (endPosition && end == offset) {
+			high = mid
+		} else {
+			low = mid + 1
+		}
+	}
+	return low
+}
+
 func (p *Pos) String() string {
 	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Col)
 }
@@ -153,7 +164,31 @@ func (p *Pos) IsBefore(other *Pos) bool {
 	return p.Col < other.Col
 }
 
-// String represents generic String value in YAML file with Position.
+// SourceScalarKind identifies the YAML node kind captured from source.
+type SourceScalarKind uint8
+
+const (
+	SourceScalarUnknown SourceScalarKind = iota
+	SourceScalarDocument
+	SourceScalarSequence
+	SourceScalarMapping
+	SourceScalarScalar
+	SourceScalarAlias
+)
+
+// SourceScalar is an immutable, pointer-free snapshot of a YAML node at parse time.
+type SourceScalar struct {
+	HasSource bool
+	Evaluated bool
+	Kind      SourceScalarKind
+	Tag       string
+	Value     string
+	Pos       Pos
+	// End is the exclusive physical end of a dependency scalar, when available.
+	End Pos
+}
+
+// String represents a YAML string value and its source position.
 type String struct {
 	// Value is a raw value of the String.
 	Value string
@@ -161,6 +196,8 @@ type String struct {
 	Quoted bool
 	// Pos is a Position of the String in source.
 	Pos *Pos
+	// SourceScalar records the original YAML node before normalization or folding.
+	SourceScalar SourceScalar
 }
 
 // ContainsExpression returns whether the String contains at least one ${{ }} expression.
@@ -222,6 +259,9 @@ type Int struct {
 	Value int
 	// Expression is a String when expression syntax ${{ }} is used for this section.
 	Expression *String
+	// TruncatedFrom is the source spelling of a fractional literal GitHub
+	// truncates toward zero to produce Value. It is empty for whole numbers.
+	TruncatedFrom string
 	// Pos is a Position in source.
 	Pos *Pos
 }
@@ -448,8 +488,8 @@ type WorkflowCallEvent struct {
 	// struct since its order is important when checking the default values of inputs.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs
 	Inputs []*WorkflowCallEventInput
-	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this
-	// field. Keys are in lower case since they are case-insensitive.
+	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this field.
+	// Keys are in lower case since they are case-insensitive.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callsecrets
 	Secrets map[string]*WorkflowCallEventSecret
 	// Outputs is a map from name of Output to Output configuration. Keys are in lower case since they are case-insensitive.
@@ -680,8 +720,8 @@ func (e *ExecCancel) Kind() ExecKind {
 	return ExecKindCancel
 }
 
-// ExecParallel is configuration of a Step that runs a group of steps in parallel. It corresponds to
-// the 'parallel' Step.
+// ExecParallel is configuration of a Step that runs a group of steps in parallel.
+// It corresponds to the 'parallel' Step.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type ExecParallel struct {
 	// Steps is the group of steps to run in parallel, given by the 'parallel' field.
@@ -698,11 +738,11 @@ type RawYAMLValueKind int
 
 const (
 	// RawYAMLValueKindObject is Kind for an object value of raw YAML value.
-	RawYAMLValueKindObject = RawYAMLValueKind(yaml.MappingNode)
+	RawYAMLValueKindObject = RawYAMLValueKind(4)
 	// RawYAMLValueKindArray is Kind for an array value of raw YAML value.
-	RawYAMLValueKindArray = RawYAMLValueKind(yaml.SequenceNode)
+	RawYAMLValueKindArray = RawYAMLValueKind(2)
 	// RawYAMLValueKindString is Kind for a String value of raw YAML value.
-	RawYAMLValueKindString = RawYAMLValueKind(yaml.ScalarNode)
+	RawYAMLValueKindString = RawYAMLValueKind(8)
 )
 
 // RawYAMLValue is a value at Matrix variation. Any value can be put at Matrix variations
@@ -738,7 +778,7 @@ func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 			return false
 		}
 		for n, p1 := range o.Props {
-			if p2, ok := other.Props[n]; !ok || !p1.Equals(p2) {
+			if p2, ok := other.Props[n]; !ok || !rawEquals(p1, p2) {
 				return false
 			}
 		}
@@ -748,15 +788,15 @@ func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 	}
 }
 
-// Pos returns the start Position of the value in the source file
+// Pos returns a copy of the start Position of the value in the source file
 func (o *RawYAMLObject) Pos() *Pos {
-	return o.Position
+	return copyPos(o.Position)
 }
 
 func (o *RawYAMLObject) String() string {
 	qs := make([]string, 0, len(o.Props))
 	for n, p := range o.Props {
-		qs = append(qs, fmt.Sprintf("%q: %s", n, p.String()))
+		qs = append(qs, fmt.Sprintf("%q: %s", n, rawString(p)))
 	}
 	sort.Strings(qs)
 	return "{" + strings.Join(qs, ", ") + "}"
@@ -782,7 +822,7 @@ func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 			return false
 		}
 		for i, e1 := range a.Elems {
-			if !e1.Equals(other.Elems[i]) {
+			if !rawEquals(e1, other.Elems[i]) {
 				return false
 			}
 		}
@@ -792,9 +832,9 @@ func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 	}
 }
 
-// Pos returns the start Position of the value in the source file
+// Pos returns a copy of the start Position of the value in the source file
 func (a *RawYAMLArray) Pos() *Pos {
-	return a.Position
+	return copyPos(a.Position)
 }
 
 func (a *RawYAMLArray) String() string {
@@ -808,7 +848,7 @@ func (a *RawYAMLArray) String() string {
 		} else {
 			comma = true
 		}
-		b.WriteString(e.String())
+		b.WriteString(rawString(e))
 	}
 
 	b.WriteRune(']')
@@ -819,8 +859,8 @@ func (a *RawYAMLArray) String() string {
 type RawYAMLString struct {
 	// Value is String representation of the scalar node.
 	Value string
-	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int". A tag the parser rejects
-	// is recorded as "!!str".
+	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int".
+	// A tag rejected by the parser is recorded as "!!str".
 	Tag      string
 	Position *Pos
 }
@@ -849,15 +889,15 @@ func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 func (s *RawYAMLString) ScalarValue() any {
 	switch s.Tag {
 	case YamlTagBool:
-		if yamlscalar.IsCoreSchemaBool(s.Value) {
+		if schema.IsCoreSchemaBool(s.Value) {
 			return strings.EqualFold(s.Value, "true")
 		}
 	case YamlTagNull:
-		if yamlscalar.IsCoreSchemaNull(s.Value) {
+		if schema.IsCoreSchemaNull(s.Value) {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !yamlscalar.IsCoreSchemaNumber(s.Value) {
+		if !schema.IsCoreSchemaNumber(s.Value) {
 			break
 		}
 		switch strings.ToLower(s.Value) {
@@ -883,9 +923,47 @@ func (s *RawYAMLString) ScalarValue() any {
 	return s.Value
 }
 
-// Pos returns the start Position of the value in the source file
+// Pos returns a copy of the start Position of the value in the source file
 func (s *RawYAMLString) Pos() *Pos {
-	return s.Position
+	return copyPos(s.Position)
+}
+
+// copyPos detaches a node position so callers cannot move the node through it.
+func copyPos(p *Pos) *Pos {
+	if p == nil {
+		return nil
+	}
+	c := *p
+	return &c
+}
+
+// rawEquals dispatches over the closed set of raw YAML node types so nested
+// comparisons stay within statically known methods.
+func rawEquals(a, b RawYAMLValue) bool {
+	switch a := a.(type) {
+	case *RawYAMLObject:
+		return a.Equals(b)
+	case *RawYAMLArray:
+		return a.Equals(b)
+	case *RawYAMLString:
+		return a.Equals(b)
+	default:
+		return false
+	}
+}
+
+// rawString renders a nested raw YAML node through its concrete method.
+func rawString(v RawYAMLValue) string {
+	switch v := v.(type) {
+	case *RawYAMLObject:
+		return v.String()
+	case *RawYAMLArray:
+		return v.String()
+	case *RawYAMLString:
+		return v.String()
+	default:
+		return ""
+	}
 }
 
 func (s *RawYAMLString) String() string {
@@ -933,7 +1011,7 @@ type MatrixCombination struct {
 // sections.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixCombinations struct {
-	// Name retains the original include/exclude key for expression validation.
+	// Name is the include/exclude key as written in source.
 	Name         *String
 	Evaluated    bool
 	Combinations []*MatrixCombination
@@ -1020,7 +1098,7 @@ type Step struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsname
 	Name *String
 	Exec Exec
-	// declaredUses retains a reference rejected by a conflicting execution key.
+	// DeclaredUses records uses even when a conflicting execution key invalidates it.
 	DeclaredUses *String
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsenv
 	Env *Env
@@ -1234,7 +1312,7 @@ type Job struct {
 	// WorkflowCall is a Workflow call by 'uses:'.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_iduses
 	WorkflowCall *WorkflowCall
-	// declaredUses retains a call rejected because it also declares Step-only keys.
+	// DeclaredUses records uses even when step-only keys invalidate the call.
 	DeclaredUses *String
 	// Snapshot is a custom image Snapshot.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#jobsjob_idsnapshot
@@ -1258,6 +1336,8 @@ type Workflow struct {
 	// On is list of events which can trigger this Workflow.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onpushpull_requestbranchestags
 	On []Event
+	// OnPos is the position of the "on" key. It is nil when the key is absent.
+	OnPos *Pos
 	// Permissions is configuration of Permissions of this Workflow.
 	Permissions *Permissions
 	// CacheMode sets default cache access. Nil leaves the trigger-dependent default in effect.
@@ -1277,8 +1357,8 @@ type Workflow struct {
 	Pos *Pos
 }
 
-// FindWorkflowCallEvent returns workflow_call Event node if exists
-func (w *Workflow) FindWorkflowCallEvent() (*WorkflowCallEvent, bool) {
+// FindWorkflowCallEvent returns the workflow's workflow_call Event node if it exists.
+func FindWorkflowCallEvent(w *Workflow) (*WorkflowCallEvent, bool) {
 	for _, e := range w.On {
 		if e, ok := e.(*WorkflowCallEvent); ok {
 			return e, true

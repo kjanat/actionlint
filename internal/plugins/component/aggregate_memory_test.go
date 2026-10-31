@@ -29,9 +29,11 @@ func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin := &Plugin{path: path, engine: engine, hostFactory: factory, component: fixture,
+	plugin := &Plugin{
+		path: path, engine: engine, hostFactory: factory, component: fixture,
 		limits: Limits{Timeout: time.Second, MemoryPages: 1}, gate: semaphore.NewWeighted(1),
-		memory: &memoryBudget{limit: 1 << 16}, log: func(string) {}}
+		memory: &memoryBudget{limit: 1 << 16}, log: func(string) {},
+	}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })
 	if _, err = plugin.callAnalyzer(t.Context(), "describe"); err == nil {
 		t.Fatal("instantiated two one-page memories under a one-page plugin limit")
@@ -40,6 +42,6 @@ func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
 		t.Fatalf("want aggregate memory failure, got %v", err)
 	}
 	if plugin.engine != nil || plugin.memory.used != 0 {
-		t.Fatal("failed initial allocation retained a live runtime or accounted memory")
+		t.Fatal("failed initial allocation left a live runtime or accounted memory")
 	}
 }

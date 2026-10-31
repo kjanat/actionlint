@@ -48,7 +48,7 @@ func TestLocalActionSourceConfig(t *testing.T) {
 }
 
 func TestLocalActionSourceValidation(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './source'}\n")
 	testutil.WriteFixture(t, root, "source/action.yml", `name: source
 description: source
@@ -82,7 +82,7 @@ runs:
 func TestLocalActionSourceFailureReportedOncePerReference(t *testing.T) {
 	for _, failure := range []string{"missing", "directory-symlink", "manifest-symlink"} {
 		t.Run(failure, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './source'}\n")
 			if failure != "missing" {
 				outside := t.TempDir()
@@ -126,7 +126,7 @@ func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
 		{"known", "- uses: actions/checkout@v6", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			result := testutil.Composite(t, root, tc.checkout+"\n- uses: ./private-action", application.Options{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "missing-local-action" })
 			if found != tc.missing {
@@ -139,7 +139,7 @@ func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
 func TestMissingLocalActionSourceSuppression(t *testing.T) {
 	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
 		for _, ignored := range []bool{false, true} {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			config, err := repoconfig.Parse([]byte("local-actions: {'./generated': './absent-source'}\n"))
 			if err != nil {
 				t.Fatal(err)
@@ -168,7 +168,7 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 }
 
 func TestInsertedCheckoutLocation(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, tc := range []struct {
 		name, with string
 		known      bool
@@ -204,7 +204,7 @@ func TestInsertedCheckoutLocation(t *testing.T) {
 }
 
 func TestConstantEnvironmentInsertionCheckout(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, tc := range []struct {
 		name, env string
 		known     bool

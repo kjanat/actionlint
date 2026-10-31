@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -16,10 +16,7 @@ func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
 	result, err := application.Analyze(t.Context(), application.Options{
 		WorkingDir: root,
 
-		Tools: (adapters.Options{
-			ShellCheck:        testutil.RequireShellcheck(t),
-			ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}},
-		}).Registrations(),
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: testutil.RequireTool(t, "shellcheck"), Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}}),
 	}, []workspace.Source{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:

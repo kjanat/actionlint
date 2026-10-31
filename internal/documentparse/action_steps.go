@@ -3,13 +3,14 @@ package documentparse
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
-// ActionStep decodes a composite step with its own declared shell.
+// actionStep decodes an admitted composite step with its own declared shell.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
-func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflowlang.Step {
+func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workflowlang.Step {
 	pos := &workflowlang.Pos{Line: metadata.Line, Col: metadata.Column}
 	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {
@@ -18,15 +19,13 @@ func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflo
 	if metadata.Run != nil && (metadata.Shell == nil || metadata.Uses != nil) {
 		return opaque
 	}
-	// Reuse the step decoder for scalar coercion and source mapping. Metadata
-	// validation remains responsible for the composite-specific key grammar.
-	node, ok := cloneActionNode(metadata.Node, make(map[*yaml.Node]bool), make(map[*yaml.Node]*yaml.Node))
+	// Reuse the step decoder for scalar coercion and source mapping.
+	node, ok := cloneActionNode(metadata.Node, make(map[*syntax.Node]bool), make(map[*syntax.Node]*syntax.Node))
 	if !ok {
 		return opaque
 	}
-	parser.Errors = nil
-	step := parser.ParseStep(actionmeta.Fields(node))
-	if len(parser.Errors) != 0 {
+	step, clean := parser.ParseStepIsolated(actionmeta.Fields(node))
+	if !clean {
 		return opaque
 	}
 	switch step.Exec.(type) {
@@ -39,9 +38,9 @@ func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflo
 
 // Alias expansion must not mutate the shared metadata cache. Keep original
 // scalar positions so script findings still point into the metadata source.
-func cloneActionNode(node *yaml.Node, active map[*yaml.Node]bool, done map[*yaml.Node]*yaml.Node) (*yaml.Node, bool) {
+func cloneActionNode(node *syntax.Node, active map[*syntax.Node]bool, done map[*syntax.Node]*syntax.Node) (*syntax.Node, bool) {
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind == yaml.AliasNode || active[node] {
+	if node == nil || node.Kind == syntax.AliasNode || active[node] {
 		return nil, false
 	}
 	if cloned, ok := done[node]; ok {
@@ -50,7 +49,7 @@ func cloneActionNode(node *yaml.Node, active map[*yaml.Node]bool, done map[*yaml
 	active[node] = true
 	defer delete(active, node)
 	cloned := *node
-	cloned.Content = make([]*yaml.Node, len(node.Content))
+	cloned.Content = make([]*syntax.Node, len(node.Content))
 	for i, child := range node.Content {
 		resolved, ok := cloneActionNode(child, active, done)
 		if !ok {

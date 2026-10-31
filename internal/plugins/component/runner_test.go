@@ -146,10 +146,14 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	observer := &runtimeObserver{}
 	label := "self-32vcpu-windows-2022"
+	cfg, err := config.Parse([]byte("repository: {runners: [" + label + "]}"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{
 		Path:    "workflow.yml",
 		Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
-		Config:  &config.Config{SelfHostedRunner: config.SelfHostedRunnerConfig{Labels: []string{label}}},
+		Config:  cfg,
 	}}, Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: observer}}}})
 	if err != nil {
 		t.Fatal(err)

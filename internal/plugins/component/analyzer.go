@@ -43,13 +43,17 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 	}
 	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
 	ctx = context.WithValue(ctx, sourceRootsKey{}, input.SourceRoots)
-	ctx = context.WithValue(ctx, preparedScriptsKey{}, preparationScope{prepare: input.PrepareScript, references: suppliedComments(input)})
+	if err := input.ValidateInvocations(); err != nil {
+		return nil, err
+	}
+	ctx = context.WithValue(ctx, invocationGraphKey{}, input.CallGraph)
+	ctx = context.WithValue(ctx, preparedScriptsKey{}, preparationScope{prepare: input.PrepareScript, occurrences: suppliedOccurrences(input)})
 	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
 	value, err := p.callAnalyzer(ctx, "analyze", lowerInput(input))
 	if err != nil {
 		return nil, err
 	}
-	diagnostics, err := liftAnalysis(value)
+	diagnostics, err := liftAnalysisForInput(value, &input)
 	valid := diagnostics[:0]
 	for _, finding := range diagnostics {
 		if finding.Rule != "" && finding.Rule != p.analyzerDescriptor.Name {

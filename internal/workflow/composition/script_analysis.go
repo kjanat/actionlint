@@ -1,96 +1,98 @@
 package composition
 
 import (
+	"errors"
 	"maps"
 	"slices"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
-	if defaults == nil || defaults.Run == nil || defaults.Run.Shell == nil {
+func scriptDefaultShell(defaults workflowdecl.DefaultsView) *string {
+	shell, known := execution.DefaultShell(defaults.Run().Semantic()).ScalarString()
+	if !known {
 		return nil
 	}
-	return &defaults.Run.Shell.Value
+	return new(shell)
 }
 
-func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) error {
-	if !analysis.collectScripts {
+func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepView, cfg *repoconfig.Config, jobShell, workflowShell *string) error {
+	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
+		return err
+	}
+	if !analysis.sourceSnapshot.Present() {
+		return errors.New("script source snapshot is unavailable")
+	}
+	if action, ok := declaration.Action(); ok {
+		return analysis.collectActionInputs(declaration, action, cfg)
+	}
+	run, ok := declaration.Run()
+	if !ok || !run.Run().Present() {
 		return nil
 	}
-	if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
-		return analysis.collectActionInputs(step, action, cfg, path, content)
+	// Rejected run values have recovery strings without a source scalar.
+	if !run.Run().SourceScalar().HasSource {
+		return nil
 	}
-	run, ok := step.Exec.(*workflowlang.ExecRun)
-	if !ok || run.Run == nil {
+	occurrence, err := analysis.invocations.AddScript(analysis.context, declaration.Reference(), invocation.ScriptRun, "")
+	if err != nil {
+		return err
+	}
+	if !analysis.collectScripts {
 		return nil
 	}
 	shell := jobShell
 	if shell == nil {
 		shell = workflowShell
 	}
-	if run.Shell != nil {
-		shell = &run.Shell.Value
-	}
-	unit := scriptexecution.Unit{Run: run, Shell: shell, Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step), Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope}
-	if unit.Scope != nil && analysis.resolveScriptExecution {
-		paths := unit.Scope.Paths
+	request := scriptexecution.ScriptRequest{Occurrence: occurrence, DefaultShell: shell}
+	if analysis.scriptScope != nil && analysis.resolveScriptExecution {
+		paths := analysis.scriptScope.Paths
 		if analysis.actions != nil {
 			paths = analysis.actions.ApplyCheckout(paths)
 			paths.Platform = analysis.actions.Platform()
 		}
 		jobShell, workflowShell, runnerShell := analysis.scriptJobShell, analysis.workflowShell, analysis.scriptRunnerShell
 		jobDir, workflowDir := analysis.scriptJobDir, analysis.scriptWorkflowDir
-		if unit.Scope.Composite {
-			jobShell, workflowShell, runnerShell = execution.ShellValue{}, execution.ShellValue{}, execution.ShellValue{}
+		if analysis.scriptScope.Composite {
+			jobShell, workflowShell, runnerShell = value.Value{}, value.Value{}, value.Value{}
 			jobDir, workflowDir = execution.Directory{}, execution.Directory{}
 		}
-		unit.Execution = scriptexecution.Execution{
-			Shell:     execution.ResolveShell(run, jobShell, workflowShell, runnerShell),
-			Directory: paths.Resolve(paths.EffectiveDirectory(run, jobDir, workflowDir)),
+		request.Execution = scriptexecution.Execution{
+			Shell:     execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell),
+			Directory: paths.Resolve(paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir), analysis.reader),
 		}
 	}
-	analysis.scripts = append(analysis.scripts, unit)
+	analysis.scripts = append(analysis.scripts, request)
 	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, action *workflowlang.ExecAction, cfg *repoconfig.Config, path string, content []byte) error {
-	if action.Uses == nil || action.Uses.ContainsExpression() {
+func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepView, action workflowdecl.ExecActionView, cfg *repoconfig.Config) error {
+	name, valid := scriptexecution.ScriptInputAction(action)
+	if !valid {
 		return nil
 	}
-	name, _, pinned := strings.Cut(action.Uses.Value, "@")
-	if !pinned {
-		return nil
-	}
-	parts := strings.SplitN(name, "/", 3)
-	if len(parts) < 2 {
-		return nil
-	}
-	parts[0], parts[1] = strings.ToLower(parts[0]), strings.ToLower(parts[1])
-	name = strings.Join(parts, "/")
-	catalogue := analysis.scriptInputs
-	if analysis.scriptInputsForConfig != nil {
-		additional, err := analysis.scriptInputsForConfig(cfg)
-		if err != nil {
-			return err
-		}
-		catalogue, err = scriptInputCatalogue(additional)
-		if err != nil {
-			return err
-		}
-	}
-	inputs, _ := workflowlang.ActionInputNames(action)
+	inputValues, _ := action.InputNames()
+	inputs := maps.Collect(inputValues)
+	var catalogue []analyzer.ScriptInput
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
 		input := inputs[inputName]
-		if input.Value == nil || input.Source == nil {
+		if !input.Value().Present() || !input.Value().SourceScalar().HasSource || !input.Source().Present() {
 			continue // Expression-created values have no physical script scalar.
+		}
+		if catalogue == nil {
+			var err error
+			catalogue, err = analysis.actionInputCatalogue(cfg)
+			if err != nil {
+				return err
+			}
 		}
 		var site analyzer.ScriptInput
 		for _, candidate := range catalogue {
@@ -102,11 +104,36 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 		if site.Language == "" {
 			continue
 		}
-		analysis.scripts = append(analysis.scripts, scriptexecution.Unit{
-			Input:  &scriptexecution.ActionInput{Site: site, Value: input},
-			Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step),
-			Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope,
-		})
+		if !analysis.sourceSnapshot.Present() {
+			return errors.New("action-input source snapshot is unavailable")
+		}
+		occurrence, err := analysis.invocations.AddScript(analysis.context, step.Reference(), invocation.ScriptActionInput, site.Input)
+		if err != nil {
+			return err
+		}
+		if !analysis.collectScripts {
+			continue
+		}
+		analysis.scripts = append(analysis.scripts, scriptexecution.ScriptRequest{Occurrence: occurrence, Input: &site})
 	}
 	return nil
+}
+
+func (analysis *compositeAnalyzer) actionInputCatalogue(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
+	if analysis.scriptInputsForConfig == nil {
+		return analysis.scriptInputs, nil
+	}
+	if catalogue, exists := analysis.scriptCatalogues[cfg]; exists {
+		return catalogue, nil
+	}
+	additional, err := analysis.scriptInputsForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	catalogue, err := scriptInputCatalogue(append(slices.Clone(analysis.scriptInputs), additional...))
+	if err != nil {
+		return nil, err
+	}
+	analysis.scriptCatalogues[cfg] = catalogue
+	return catalogue, nil
 }

@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/config"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 type integratedAnalyzer struct {
@@ -39,7 +39,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 				t.Fatal(err)
 			}
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: true}
-			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 			needed, err := application.RequiredTools(t.Context(), options, []string{"workflow.yml"})
 			if err != nil || needed["shellcheck"] != tc.want {
 				t.Fatalf("native fallback required=%v, want %t; error=%v", needed, tc.want, err)
@@ -51,9 +51,11 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 func (a *integratedAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: a.tool, Provider: "arbitrary-fork", OptionsSchema: a.schema, Requires: []analyzer.Fact{analyzer.Scripts}}
 }
+
 func (a *integratedAnalyzer) ToolIntegration() *analyzer.ToolIntegration {
 	return &analyzer.ToolIntegration{Tool: a.tool, Contract: a.contract, ConfigurationSchema: `{}`}
 }
+
 func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage, explicit json.RawMessage) (*analyzer.ToolNegotiation, error) {
 	a.explicit = explicit
 	if a.unsupported {
@@ -90,9 +92,11 @@ func TestPublicManagedOptionsValidateBeforeNegotiation(t *testing.T) {
 func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 	for _, explicit := range []json.RawMessage{nil, json.RawMessage(`{"private-option":"caller"}`)} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-		cfg := &config.Config{}
-		cfg.Lint.Rules.Plugins.Rules = map[string]config.RuleSetting{"shellcheck": {Options: map[string]string{"private-option": "repository"}}}
-		_, err := analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
+		cfg, err := config.Parse([]byte(`lint: {rules: {plugins: {shellcheck: {level: default, options: {private-option: repository}}}}}`), "shellcheck")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,6 +109,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 		}
 	}
 }
+
 func (a *integratedAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.calls++
 	return []diagnostic.Diagnostic{{Message: "managed finding", Path: input.Path, Start: input.Scripts[0].Start}}, nil
@@ -115,7 +120,7 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}
 		if disabled {
-			options.ShellCheck.Process = &analysis.Process{}
+			options.Tools = map[string]analysis.Tool{"shellcheck": {Process: &analysis.Process{}}}
 		}
 		result, err := analysis.Analyze(t.Context(), analysis.Request{Options: options, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
 		if err != nil {
@@ -157,7 +162,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 
 func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	if _, err := application.ConfigureToolIntegrations(options, "shellcheck"); err == nil {
 		t.Fatal("document analyzer replaced an already selected engine")
 	}
@@ -168,7 +173,7 @@ func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 
 func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	configured, err := application.ConfigureToolIntegrations(options)
 	if err != nil {
 		t.Fatal(err)
@@ -190,7 +195,7 @@ func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T)
 func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		external, plugin config.RuleLevel
+		external, plugin string
 		want             int
 	}{
 		{"default", "", "", 1},
@@ -200,10 +205,18 @@ func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-			cfg := &config.Config{}
-			cfg.Lint.Rules.External.Rules = map[string]config.RuleSetting{"shellcheck": {Level: tc.external}}
-			cfg.Lint.Rules.Plugins.Rules = map[string]config.RuleSetting{"shellcheck": {Level: tc.plugin, Options: map[string]string{"private-option": "repository"}}}
-			_, err := analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
+			external, plugin := tc.external, tc.plugin
+			if external == "" {
+				external = "default"
+			}
+			if plugin == "" {
+				plugin = "default"
+			}
+			cfg, err := config.Parse([]byte("lint: {rules: {external: {shellcheck: "+external+"}, plugins: {shellcheck: {level: "+plugin+", options: {private-option: repository}}}}}"), "shellcheck")
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
 			if err != nil {
 				t.Fatal(err)
 			}

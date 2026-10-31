@@ -1,6 +1,6 @@
 package main
 
-import "actionlint.kjanat.dev/v2/internal/tools/adapters"
+import "actionlint.kjanat.dev/v2/internal/tools/registry"
 
 import (
 	"bufio"
@@ -20,6 +20,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"github.com/fatih/color"
@@ -44,7 +46,7 @@ func Actionlint(src []byte) ([]byte, error) {
 		}
 	}
 	root = project.RootDir()
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}})}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +72,10 @@ func Actionlint(src []byte) ([]byte, error) {
 	}
 
 	// Replace checkout-specific paths in diagnostics with a stable example path.
-	return bytes.ReplaceAll(out.Bytes(), []byte(root), []byte("/path/to/repo")), nil
+	// Read errors name the physical file, which differs from root when the
+	// checkout is reached through a symlink or a Windows short name.
+	rendered := bytes.ReplaceAll(out.Bytes(), []byte(fsread.PhysicalPath(root)), []byte("/path/to/repo"))
+	return bytes.ReplaceAll(rendered, []byte(root), []byte("/path/to/repo")), nil
 }
 
 type state int
@@ -108,6 +113,9 @@ func (s state) String() string {
 		return "output block"
 	case stateEnd:
 		return "end"
+	case stateInit:
+		// The initial state reads as "init".
+		fallthrough
 	default:
 		return "init"
 	}

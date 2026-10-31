@@ -41,9 +41,13 @@ func checkRoleContracts(data []byte, roles extensionRoleSet) error {
 			return fmt.Errorf("incompatible tool integration contract: %w", err)
 		}
 	}
-	if roles.templateEffects {
-		if err := expectedTemplateEffectsContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
-			return fmt.Errorf("incompatible template effects contract: %w", err)
+	if roles.templateEffects != "" {
+		expected := expectedTemplateEffectsContract
+		if roles.templateEffects == TemplateEffects03Interface {
+			expected = expectedTemplateEffects03Contract
+		}
+		if err := expected().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+			return fmt.Errorf("incompatible %s contract: %w", roles.templateEffects, err)
 		}
 	}
 	if roles.runner {
@@ -51,9 +55,13 @@ func checkRoleContracts(data []byte, roles extensionRoleSet) error {
 			return fmt.Errorf("incompatible runner contract: %w", err)
 		}
 	}
-	if roles.script {
-		if err := expectedScriptEngineContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
-			return fmt.Errorf("incompatible script-engine contract: %w", err)
+	if roles.script != "" {
+		expected := expectedScriptEngineContract
+		if roles.script == ScriptEngine03Interface {
+			expected = expectedScriptEngine03Contract
+		}
+		if err := expected().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+			return fmt.Errorf("incompatible %s contract: %w", roles.script, err)
 		}
 	}
 	return nil

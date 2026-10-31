@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 type scriptValueProof uint8
@@ -32,264 +33,87 @@ func scriptLiteralProof(value string) scriptValueProof {
 }
 
 func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
-	if rule.scriptEnv == nil {
+	if !rule.scriptEnv.Present() {
 		return false
 	}
-	mapping := workflowlang.EnvMappingView(rule.scriptEnv)
-	names, complete := workflowlang.InputResolver.Names(mapping)
-	if !complete {
-		return false
+	semantic := rule.scriptEnv.Mapping().Lookup(name)
+	text, known := semantic.ScalarString()
+	return known && scriptLiteralProof(text).safe(argument)
+}
+
+func (rule *Checker) matrixResolution(strategy workflowdecl.StrategyView) matrixcheck.Resolution {
+	if !strategy.Present() {
+		return matrixcheck.Resolution{}
 	}
-	if _, present := names[strings.ToLower(name)]; !present {
-		return false
-	}
-	value, known := workflowlang.InputResolver.Value(mapping, name)
-	return known && scriptLiteralProof(value).safe(argument)
+	return strategy.MatrixResolution()
 }
 
 // safeMatrixScriptReferences proves individual paths across all declared axis
 // values and include assignments, without expanding the Cartesian product.
 // Includes apply after exclusions, so an excluded match may become a sparse job.
-func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptValueProof {
-	if matrix == nil {
-		return nil
-	}
-	resolved, complete := matrixcheck.Expand(matrix)
-	if !complete {
-		return nil
-	}
-	includes, complete := matrixcheck.ExpandCombinations(resolved.Include)
-	if !complete {
-		return nil
-	}
-	excludes, exclusionsKnown := matrixcheck.ExpandCombinations(resolved.Exclude)
-	type pathProof struct {
-		proof scriptValueProof
-		count int
-	}
-	type axisProofs struct {
-		baseAlternatives    int
-		includeAlternatives int
-		paths               map[string]pathProof
-	}
-	axes := map[string]*axisProofs{}
-	add := func(name string, value workflowlang.RawYAMLValue, expressions, include bool) bool {
+func safeMatrixScriptReferences(resolution matrixcheck.Resolution) map[string]scriptValueProof {
+	result := map[string]scriptValueProof{}
+	for name := range resolution.ReachableNames() {
 		if !scriptPathName(name) {
-			return true
+			continue
 		}
-		paths := map[string]scriptValueProof{}
-		if !matrixScriptValuePaths("matrix."+name, value, expressions, paths) {
-			return false
-		}
-		axis := axes[name]
-		if axis == nil {
-			axis = &axisProofs{paths: map[string]pathProof{}}
-			axes[name] = axis
-		}
-		if include {
-			axis.includeAlternatives++
-		} else {
-			axis.baseAlternatives++
-		}
-		for path, proof := range paths {
-			previous, exists := axis.paths[path]
-			if exists {
-				proof = min(proof, previous.proof)
-				previous.count++
-			} else {
-				previous.count = 1
-			}
-			previous.proof = proof
-			axis.paths[path] = previous
-		}
-		return true
-	}
-	includeSelectsBase := false
-	baseValues := map[string][]matrixcheck.Element{}
-	missingBaseAxes := map[string]bool{}
-	for name, row := range resolved.Rows {
-		elements, complete := matrixcheck.RowElements(row, true)
-		if !complete {
+		reachable := resolution.Reachable(name)
+		if !reachable.Complete {
 			return nil
 		}
-		baseValues[name] = elements
-		for _, element := range elements {
-			if !add(name, element.Value, element.Expressions, false) {
+		paths := map[string]scriptValueProof{}
+		counts := map[string]int{}
+		for _, candidate := range reachable.Values {
+			current := map[string]scriptValueProof{}
+			if !matrixScriptValuePaths("matrix."+name, candidate, current) {
 				return nil
 			}
-		}
-	}
-	if includes != nil {
-		for _, combination := range includes.Combinations {
-			assignments := map[string]workflowlang.RawYAMLValue{}
-			for key, assignment := range combination.Assigns {
-				name, known := matrixcheck.RowName(key, &workflowlang.MatrixRow{Name: assignment.Key, Evaluated: combination.Evaluated})
-				if !known || !add(name, assignment.Value, !combination.Evaluated, true) {
-					return nil
-				}
-				assignments[name] = assignment.Value
-				if _, baseAxis := resolved.Rows[name]; baseAxis {
-					includeSelectsBase = true
-				}
-			}
-			// An include that cannot augment any original base combination
-			// creates its own job. Omitted base axes are empty in that job;
-			// earlier includes cannot supply them. Match each axis separately
-			// rather than expanding the Cartesian product.
-			standalone := len(baseValues) == 0 || !exclusionsKnown
-			witness := map[string]workflowlang.RawYAMLValue{}
-			for name, values := range baseValues {
-				if len(values) == 0 {
-					standalone = true
+			for path, proof := range current {
+				if previous, exists := paths[path]; exists {
+					paths[path] = min(previous, proof)
 				} else {
-					witness[name] = values[0].Value
+					paths[path] = proof
 				}
-				if assigned, exists := assignments[name]; exists {
-					matches := false
-					for _, value := range values {
-						if value.Value.Equals(assigned) {
-							witness[name] = value.Value
-							matches = true
-							break
-						}
-					}
-					standalone = standalone || !matches
-				}
-			}
-			// A surviving witness proves that this include augments an existing
-			// job. If this witness is excluded, conservatively allow a standalone
-			// job rather than searching the full product for another match.
-			standalone = standalone || !matrixScriptWitnessSurvives(witness, excludes)
-			if standalone {
-				for name := range baseValues {
-					if _, supplied := assignments[name]; !supplied {
-						missingBaseAxes[name] = true
-					}
-				}
+				counts[path]++
 			}
 		}
-	}
-	for name, axis := range axes {
-		alternatives := axis.baseAlternatives + axis.includeAlternatives
-		includeCoverage := true
-		if axis.baseAlternatives == 0 {
-			// Include-only fields are proved only when every include supplies them
-			// without selecting a subset of the declared base axes.
-			alternatives = len(includes.Combinations)
-			includeCoverage = alternatives > 0 && !includeSelectsBase && axis.includeAlternatives == alternatives
-		}
-		for path, proof := range axis.paths {
-			if proof.count < alternatives || !includeCoverage || missingBaseAxes[name] {
-				// A missing member, index, or include-only assignment can be empty.
-				proof.proof = min(proof.proof, scriptArgumentOnly)
+		for path, proof := range paths {
+			if counts[path] != len(reachable.Values) || reachable.MayBeMissing {
+				proof = min(proof, scriptArgumentOnly)
 			}
-			axis.paths[path] = proof
-		}
-	}
-	result := map[string]scriptValueProof{}
-	for _, axis := range axes {
-		for path, proof := range axis.paths {
-			if proof.proof != scriptUnsafe {
-				result[path] = proof.proof
+			if proof != scriptUnsafe {
+				result[path] = proof
 			}
 		}
 	}
 	return result
 }
 
-func matrixScriptWitnessSurvives(values map[string]workflowlang.RawYAMLValue, excludes *workflowlang.MatrixCombinations) bool {
-	if excludes == nil {
-		return true
+func matrixScriptValuePaths(path string, item value.Value, safe map[string]scriptValueProof) bool {
+	if item.State() == value.Dynamic || item.State() == value.Invalid || item.State() == value.Missing {
+		return false
 	}
-	for _, exclusion := range excludes.Combinations {
-		matches := true
-		for key, assignment := range exclusion.Assigns {
-			name, known := matrixcheck.RowName(key, &workflowlang.MatrixRow{Name: assignment.Key, Evaluated: exclusion.Evaluated})
-			if !known {
-				return false
-			}
-			if !matrixcheck.Subset(values[name], assignment.Value, true) {
-				matches = false
-				break
-			}
-		}
-		if matches {
+	switch item.Kind() {
+	case value.String:
+		text, ok := item.Text()
+		if !ok {
 			return false
 		}
-	}
-	return true
-}
-
-func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expressions bool, safe map[string]scriptValueProof) bool {
-	switch value := value.(type) {
-	case *workflowlang.RawYAMLString:
-		if expressions && exprlang.ContainsExpression(value.Value) {
-			literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value.Value, Pos: value.Pos()})
-			if !known {
-				return false
-			}
-			return matrixScriptLiteralPaths(path, literal, safe)
-		} else {
-			return matrixScriptLiteralPaths(path, value.ScalarValue(), safe)
-		}
-	case *workflowlang.RawYAMLObject:
-		safe[path] = scriptUnsafe
-		allSafe := scriptLiteralWord
-		for name, property := range value.Props {
-			if expressions && exprlang.ContainsExpression(name) {
-				return false
-			}
-			paths := map[string]scriptValueProof{}
-			if !matrixScriptValuePaths("", property, expressions, paths) {
-				return false
-			}
-			allSafe = min(allSafe, paths[""])
-			if scriptPathName(name) {
-				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
-			}
-		}
-		// A wildcard can select no value or a missing member, so it is only
-		// proved safe when the caller also proves shell argument position.
-		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
-	case *workflowlang.RawYAMLArray:
-		safe[path] = scriptUnsafe
-		allSafe := scriptLiteralWord
-		for index, element := range value.Elems {
-			child := path + "[" + strconv.Itoa(index) + "]"
-			if !matrixScriptValuePaths(child, element, expressions, safe) {
-				return false
-			}
-			allSafe = min(allSafe, safe[child])
-		}
-		// A wildcard can select no value or a missing member, so it is only
-		// proved safe when the caller also proves shell argument position.
-		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
-	}
-	return true
-}
-
-func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValueProof) bool {
-	switch value := value.(type) {
-	case string:
-		safe[path] = scriptLiteralProof(value)
-	case nil, bool, float64:
+		safe[path] = scriptLiteralProof(text)
+	case value.Number, value.Bool, value.Null:
 		safe[path] = scriptArgumentOnly
-	case map[string]any:
+	case value.Object:
 		safe[path] = scriptUnsafe
+		allSafe := scriptLiteralWord
 		names := map[string]bool{}
-		for name := range value {
+		for name, property := range item.Props() {
 			key := strings.ToLower(name)
 			if names[key] {
-				// Differently cased JSON keys must not create conflicting proofs
-				// for the same case-insensitive expression reference.
 				return false
 			}
 			names[key] = true
-		}
-		allSafe := scriptLiteralWord
-		for name, property := range value {
 			paths := map[string]scriptValueProof{}
-			if !matrixScriptLiteralPaths("", property, paths) {
+			if !matrixScriptValuePaths("", property, paths) {
 				return false
 			}
 			allSafe = min(allSafe, paths[""])
@@ -300,12 +124,13 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValu
 		// A wildcard can select no value or a missing member, so it is only
 		// proved safe when the caller also proves shell argument position.
 		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
-	case []any:
+	case value.Array:
 		safe[path] = scriptUnsafe
 		allSafe := scriptLiteralWord
-		for index, element := range value {
+		for index := range item.Len() {
 			child := path + "[" + strconv.Itoa(index) + "]"
-			if !matrixScriptLiteralPaths(child, element, safe) {
+			element, _ := item.Index(index)
+			if !matrixScriptValuePaths(child, element, safe) {
 				return false
 			}
 			allSafe = min(allSafe, safe[child])
@@ -313,6 +138,10 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValu
 		// A wildcard can select no value or a missing member, so it is only
 		// proved safe when the caller also proves shell argument position.
 		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
+	case value.KindUnknown:
+		return false
+	default:
+		return false
 	}
 	return true
 }

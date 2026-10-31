@@ -140,7 +140,7 @@ func TestRealRuffEngineConfiguration(t *testing.T) {
 					t.Fatal(err)
 				}
 				args := append([]string{"actionlint"}, command...)
-				args = append(args, "--config="+config, "--no-shellcheck", "--no-color", "--summary=false")
+				args = append(args, "--config="+config, "--no-tool=shellcheck", "--no-color", "--summary=false")
 				if !configured {
 					args = append(args, "--plugin="+module)
 				}

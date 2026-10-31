@@ -14,37 +14,37 @@ import (
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 // DefaultPluginOptions preserves invocation-level native selections during migration.
 // Configured backends and explicit configuration disables take precedence.
 type DefaultPluginOptions struct {
-	Shellcheck bool
-	Ruff       bool
-	Warning    func(string)
-	Overlays   []config.Overlay
+	// Tools lists the bundled tool ids that run their default command in
+	// this invocation. Each may receive a default plugin declaration; ids
+	// the invocation selected or disabled explicitly are left out.
+	Tools    []string
+	Warning  func(string)
+	Overlays []config.Overlay
 }
 
 // DefaultPluginReferences supplies the v2 defaults only when plugins was omitted.
 // An explicit empty list is a durable opt-out, including through inheritance.
+// It declares, in bundled directory order, the registry plugin named after
+// each bundled tool in options.Tools that configuration leaves enabled and
+// on its default backend.
 func DefaultPluginReferences(cfg *config.Config, options DefaultPluginOptions) ([]pluginref.Reference, error) {
 	if cfg.Plugins != nil {
 		return slices.Clone(cfg.Plugins), nil
 	}
 	refs := []pluginref.Reference{}
-	for _, selected := range []struct {
-		name    string
-		enabled bool
-	}{
-		{"shellcheck", options.Shellcheck && cfg.Tools.Shellcheck.Backend == nil &&
-			(cfg.Tools.Shellcheck.Enabled == nil || *cfg.Tools.Shellcheck.Enabled) && config.DiagnosticLevel(cfg, "shellcheck") != "off"},
-		{"ruff", options.Ruff && cfg.Tools.Ruff.Backend == nil &&
-			(cfg.Tools.Ruff.Enabled == nil || *cfg.Tools.Ruff.Enabled) && config.DiagnosticLevel(cfg, "ruff") != "off"},
-	} {
-		if !selected.enabled {
+	for _, id := range registry.IDs() {
+		tool := cfg.Tools[id]
+		if !slices.Contains(options.Tools, id) || tool.Backend != nil || tool.Enabled != nil && !*tool.Enabled || config.DiagnosticLevel(cfg, id) == "off" {
 			continue
 		}
-		ref, err := pluginref.Parse(selected.name)
+		ref, err := pluginref.Parse(id)
 		if err != nil {
 			return nil, err
 		}
@@ -53,8 +53,29 @@ func DefaultPluginReferences(cfg *config.Config, options DefaultPluginOptions) (
 	return refs, nil
 }
 
+// sourceFollowingNotes warns, for each default registry plugin in refs that
+// replaces a bundled tool reporting findings in files its scripts source,
+// that the isolated plugin stops following those files.
+func sourceFollowingNotes(refs []pluginref.Reference) ([]string, error) {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		return nil, err
+	}
+	var notes []string
+	for _, manifest := range manifests {
+		id := manifest.Rule.Name
+		if !manifest.Capabilities.ReportedSources || !slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
+			return ref.Name() == id && ref.Registry() == pluginref.DefaultRegistry
+		}) {
+			continue
+		}
+		notes = append(notes, fmt.Sprintf("%s now uses the isolated Wasm plugin, which does not follow files the script sources. Explicit native configuration in tools.%s keeps the native backend.", id, id))
+	}
+	return notes, nil
+}
+
 // ConfigMigration previews the syntax conversion and default plugin declarations.
-// Applying it downloads and verifies all dependencies before replacing either file.
+// Applying it verifies dependencies before writing exact config and retiring an old lock.
 type ConfigMigration struct {
 	*config.FileMigration
 	project       *PluginProject
@@ -63,7 +84,7 @@ type ConfigMigration struct {
 }
 
 func PrepareConfigMigration(ctx context.Context, path string, options DefaultPluginOptions) (*ConfigMigration, error) {
-	migration, err := config.PrepareMigration(path)
+	migration, err := config.PrepareMigration(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +92,10 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err != nil {
 		return nil, err
 	}
-	if err := migration.CheckUnchanged(); err != nil {
+	if err := migration.CheckSources(project.Manifest.snapshots); err != nil {
+		return nil, err
+	}
+	if err := migration.CheckUnchanged(ctx); err != nil {
 		return nil, err
 	}
 	resolved, err := config.ResolveBeforePlugins(project.Manifest.node, options.Overlays)
@@ -99,8 +123,7 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 			// An invocation overlay explicitly selected plugins for this migration.
 			refs = slices.Clone(resolved.Config.Plugins)
 		} else {
-			// A lock-only project predates manifest declarations. Migrate its pins
-			// into the manifest while plugins remain unspecified.
+			// Import lockfile pins for projects without a plugin manifest.
 			refs, err = project.Dependencies(true)
 		}
 	default:
@@ -109,6 +132,14 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err != nil {
 		return nil, err
 	}
+	canonical, err := project.migrationDeclarations(refs)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(refs, canonical) {
+		updatePlugins = true
+	}
+	refs = canonical
 	content := migration.Content
 	if updatePlugins {
 		content, err = editPluginManifest(migration.Path, migration.Content, refs)
@@ -119,40 +150,70 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err := migration.SetContent(content); err != nil {
 		return nil, err
 	}
-	if !project.Manifest.Declared && slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-		return ref.Name == "shellcheck" && ref.Registry == pluginref.DefaultRegistry
-	}) {
-		migration.Notes = append(migration.Notes, "ShellCheck now uses the isolated Wasm plugin; implicit source-file following stops. Explicit native source/rc configuration retains the native backend.")
+	if project.Lock.Exists() {
+		migration.Changed = true
+		migration.Notes = append(migration.Notes, "Migrate exact plugin versions into configuration and remove the legacy project lock after verification.")
+	}
+	if !project.Manifest.Declared {
+		notes, err := sourceFollowingNotes(refs)
+		if err != nil {
+			return nil, err
+		}
+		migration.Notes = append(migration.Notes, notes...)
 	}
 	project.StatusOptions.Warning = options.Warning
 	return &ConfigMigration{FileMigration: migration, project: project, refs: refs, updatePlugins: updatePlugins}, nil
 }
 
 func (m *ConfigMigration) Apply(ctx context.Context) error {
+	legacy := m.project.Lock.Exists()
 	if err := m.SetContent(m.Content); err != nil {
 		return err
 	}
-	if !m.Changed {
+	if !m.Changed && !legacy {
 		return nil
 	}
-	if err := m.CheckUnchanged(); err != nil {
+	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	if !m.updatePlugins {
-		return m.FileMigration.Apply()
+	if !m.updatePlugins && !legacy {
+		return m.FileMigration.Apply(ctx)
 	}
 	if err := m.project.Resolve(ctx, m.refs, nil); err != nil {
 		return fmt.Errorf("config migration left %s unchanged: %w", m.Path, err)
 	}
-	if err := m.CheckUnchanged(); err != nil {
+	if err := m.CheckUnchanged(ctx); err != nil {
+		return err
+	}
+	if !m.updatePlugins {
+		if err := m.FileMigration.Apply(ctx); err != nil {
+			return err
+		}
+		if err := m.project.removeLegacyLock(ctx); err != nil {
+			return err
+		}
+		m.Changed = m.Changed || legacy
+		return nil
+	}
+	resolved, err := m.project.resolvedDeclarations(ctx, m.refs)
+	if err != nil {
+		return err
+	}
+	content, err := editPluginManifest(m.Path, m.Content, resolved)
+	if err != nil {
+		return err
+	}
+	if err := m.SetContent(content); err != nil {
 		return err
 	}
 	original := m.project.Manifest.original
 	m.project.Manifest.original = bytes.Clone(m.Content)
-	if err := m.project.Save(ctx, m.refs); err != nil {
+	if err := m.project.Save(ctx, resolved); err != nil {
 		m.project.Manifest.original = original
 		return err
 	}
+	m.refs = resolved
+	m.Changed = m.Changed || legacy
 	return nil
 }
 
@@ -185,11 +246,10 @@ func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, op
 		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
-		// Reading a linked config remains supported; automatic writes never
-		// change its target outside the selected project.
+		// Skip symlinked configs to avoid writing outside the selected project.
 		return nil, nil
 	}
-	migration, err := config.PrepareMigration(path)
+	migration, err := config.PrepareMigration(ctx, path)
 	if err != nil || !migration.Changed {
 		return nil, err
 	}
@@ -240,7 +300,6 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 }
 
 // Migrate upgrades selected local configs before runtime plugin selection.
-// Cache planning calls SelectForCache and remains read-only.
 func (s PluginSelection) Migrate(ctx context.Context, directory string, input application.Input, options DefaultPluginOptions) error {
 	if s.Disabled || len(s.Paths) != 0 || s.LockFile != "" {
 		return nil

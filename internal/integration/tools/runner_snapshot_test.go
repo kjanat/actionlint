@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
@@ -48,10 +48,10 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 				t.Fatal(err)
 			}
 			var shellCalls int
-			registrations := (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
+			registrations := registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 				shellCalls++
 				return []byte(`{"comments":[]}`), nil
-			}}).Registrations()
+			}}})
 			registrations = append(registrations, registration)
 			freshness := tc.freshness
 			if freshness == "" {

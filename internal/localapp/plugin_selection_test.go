@@ -68,14 +68,14 @@ func TestPluginSelectionScopes(t *testing.T) {
 		t.Fatal(err)
 	}
 	foreign := filepath.Join(other, "workflow.yml")
-	if err := empty.ValidateScope([]string{foreign}); err != nil {
+	if err := empty.ValidateScope(t.Context(), []string{foreign}); err != nil {
 		t.Fatalf("empty foreign lock restricted scope: %v", err)
 	}
 	selected, err := (PluginSelection{}).Resolve(t.Context(), other, input)
 	if err != nil || selected.LockFile != "" {
 		t.Fatalf("selection: %+v %v", selected, err)
 	}
-	if err := selected.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err != nil {
+	if err := selected.ValidateScope(t.Context(), []string{filepath.Join(root, "workflow.yml")}); err != nil {
 		t.Fatalf("empty selection restricted scope: %v", err)
 	}
 	mixed := application.Input{Kind: application.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
@@ -164,14 +164,14 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	}
 	other := pluginRepository(t)
 	foreign := filepath.Join(other, "workflow.yml")
-	if err := selected.ValidateScope([]string{foreign}); err == nil {
+	if err := selected.ValidateScope(t.Context(), []string{foreign}); err == nil {
 		t.Fatal("active plugins escaped their repository")
 	}
 	empty, err := (PluginSelection{}).Resolve(t.Context(), other, application.Input{Kind: application.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := empty.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err == nil {
+	if err := empty.ValidateScope(t.Context(), []string{filepath.Join(root, "workflow.yml")}); err == nil {
 		t.Fatal("foreign active plugins were ignored")
 	}
 	mixed := application.Input{Kind: application.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
@@ -193,7 +193,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := f.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	r.Offline = true
+	r.SetOffline(true)
 	for range 2 {
 		result, err := analyzeDocuments(t.Context(), session.options, map[string]langserver.Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"}})
 		if err != nil {

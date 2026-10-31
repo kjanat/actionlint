@@ -1,10 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // LintConfig configures built-in and registered analysis rules.
@@ -26,9 +27,11 @@ type LintRulesConfig struct {
 	// Concern groups accept a level or a mapping of rule IDs to settings.
 	Correctness Group `yaml:"correctness,omitempty"`
 	Suspicious  Group `yaml:"suspicious,omitempty"`
-	Security    Group `yaml:"security,omitempty"`
-	Policy      Group `yaml:"policy,omitempty"`
-	External    Group `yaml:"external,omitempty"`
+	// Style reports workflows GitHub accepts that do nothing, such as jobs without steps.
+	Style    Group `yaml:"style,omitempty"`
+	Security Group `yaml:"security,omitempty"`
+	Policy   Group `yaml:"policy,omitempty"`
+	External Group `yaml:"external,omitempty"`
 	// Plugins selects registered document analyzers by their unique rule names.
 	Plugins Group `yaml:"plugins,omitempty"`
 	// Nursery contains rules under development, excluded from stable presets.
@@ -63,30 +66,52 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
 	}
-	for category, group := range (*LintRulesConfig)(&next).Groups() {
-		for name, setting := range group.Rules {
+	if err := (*LintRulesConfig)(&next).validateSettings(); err != nil {
+		return err
+	}
+	*c = LintRulesConfig(next)
+	return nil
+}
+
+// validateSettings checks every explicit rule setting: a built-in rule must
+// be in its own group, have a valid level and options of its options type;
+// plugin options must decode as a mapping. Parsing calls it, and so does
+// ValidateRuleNames, because settings built with NewSetting skip parsing.
+func (c *LintRulesConfig) validateSettings() error {
+	for category, group := range c.Groups() {
+		for name, setting := range group.Rules() {
 			if category == "plugins" {
-				if err := setting.DecodeOptions(func() any { return new(map[string]any) }); err != nil {
+				if _, err := setting.LoadOptions(new(map[string]any)); err != nil {
 					return fmt.Errorf("yaml: options for %q: %w", name, err)
 				}
-				group.Rules[name] = setting
 				continue
 			}
 			d, ok := FindRule(name)
 			if !ok || d.Group != category {
 				return fmt.Errorf("yaml: unknown rule %q in lint.rules.%s", name, category)
 			}
-			if setting.Level != "" && !setting.Level.Valid() {
+			if setting.Level() != "" && !setting.Level().Valid() {
 				return fmt.Errorf("yaml: rule %q requires a valid level", name)
 			}
-			if err := setting.DecodeOptions(d.Options); err != nil {
+			if err := validateOptions(d, setting); err != nil {
 				return fmt.Errorf("yaml: options for %q: %w", name, err)
 			}
-			group.Rules[name] = setting
 		}
 	}
-	*c = LintRulesConfig(next)
 	return nil
+}
+
+// validateOptions decodes the options of setting into the rule's options type
+// and discards the result. Rules without an options type accept none.
+func validateOptions(d Rule, setting Setting) error {
+	if !setting.HasOptions() {
+		return nil
+	}
+	if d.Options == nil {
+		return errors.New("rule does not accept options")
+	}
+	_, err := setting.LoadOptions(d.Options())
+	return err
 }
 
 // ResolvedLevel returns the level selected for a rule after presets were applied.

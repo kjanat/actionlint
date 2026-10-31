@@ -19,14 +19,14 @@ do not synthesize startup options. A dialect override differing from the runtime
 dialect removes startup options.
 
 Every character of a complete `${{ ... }}` substitution becomes `_`, except CR
-and LF. Unicode scalar width and line boundaries remain unchanged. An unmatched
-opening delimiter remains unchanged. A shebang stays first, followed by attached
+and LF. The replacement has the same Unicode scalar width and line boundaries.
+Unmatched opening delimiters are copied verbatim. A shebang stays first, followed by attached
 directives, the original leading comments, synthesized startup, and script body.
 
 Returned line entries distinguish original script lines, attached document
 comments, and synthesized startup. Guests use script spans from analyzer WIT to
-map original script lines into documents. Engine-specific tab-column conversion
-remains the guest's responsibility. Fixes touching substituted text cannot be
+map original script lines into documents. Guests convert engine-specific tab columns.
+Fixes touching substituted text cannot be
 applied to the original expression.
 
 Default exclusions are SC1091, SC2194, SC2050, SC2153, SC2154, SC2157 and SC2043.

@@ -10,26 +10,42 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/address"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
 // PluginSelection is CLI policy, separate from the analysis configuration.
-// Explicit sources replace automatic selection. Explicit locks/configs are
-// invocation-wide; automatic locks belong only to their nearest repository.
+// Explicit sources replace automatic selection. Explicit configs are
+// invocation-wide; automatic declarations belong to their nearest repository.
 type PluginSelection struct {
 	Paths      []string
 	LockFile   string
 	ConfigFile string
 	Disabled   bool
 	Overlays   []config.Overlay
+	// disabledTools and tools are set by SelectionWithTools.
+	disabledTools, tools []string
+}
+
+// SelectionWithTools returns a copy of selection that stores the tool ids
+// disabled by --no-tool or the GitHub Action's disable-tools input, and the
+// tool ids named by --tool, --no-tool or that input. A locked plugin whose
+// name or alias is a disabled id is never downloaded. Any other plugin is
+// skipped before it runs when its metadata names a disabled id as its engine
+// or one of its rules. After plugins load, each named id must name a bundled
+// tool, a loaded plugin or a skipped plugin.
+func SelectionWithTools(selection PluginSelection, disabled, named []string) PluginSelection {
+	selection.disabledTools, selection.tools = slices.Clone(disabled), slices.Clone(named)
+	return selection
 }
 
 type PluginSources struct {
 	Paths    []string
 	LockFile string
-	// Inputs retains observed locks independently of plugin activation.
+	// Inputs lists observed lockfiles, including those for inactive plugins.
 	Inputs    []string
 	root      string
 	automatic bool
@@ -37,6 +53,14 @@ type PluginSources struct {
 	configs   []*config.Config
 	artifacts map[string]*pluginartifact.Artifact
 	overlays  []config.Overlay
+	// disabledTools and tools carry the ids set by SelectionWithTools
+	// to loading.
+	disabledTools, tools []string
+	// skipped lists the disabled tool ids that matched a locked plugin.
+	skipped []string
+	// repository is set when repository configuration declared Paths, so a
+	// binary tool provider among them needs --allow-config-processes.
+	repository bool
 }
 
 type pluginSelectionMode uint8
@@ -44,7 +68,6 @@ type pluginSelectionMode uint8
 const (
 	pluginAnalysis pluginSelectionMode = iota
 	pluginRuleDiscovery
-	pluginCachePreview
 )
 
 func OpenPluginLock(ctx context.Context, directory, explicit, config string) (*pluginregistry.LockFile, error) {
@@ -73,7 +96,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 }
 
 // ResolveForRules selects declared plugins without validating unrelated lint
-// settings. Invalid declarations, inheritance and pins remain errors.
+// settings.
 func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) (PluginSources, error) {
 	selected, err := s.selectSources(ctx, directory, application.Input{Kind: application.Repository}, pluginRuleDiscovery)
 	if err != nil {
@@ -85,19 +108,29 @@ func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) 
 	return selected, nil
 }
 
-// Select reads declarations and pins without downloading artifacts or running
-// plugin code. Hosts can restore caches before Hydrate verifies their contents.
+// Select resolves exact registry metadata without downloading artifacts or
+// running plugin code. Hosts can restore artifacts before Hydrate verifies them.
 func (s PluginSelection) Select(ctx context.Context, directory string, input application.Input) (PluginSources, error) {
 	return s.selectSources(ctx, directory, input, pluginAnalysis)
 }
 
-// SelectForCache previews migratable lock-only legacy projects without changing
-// the selection rules used by analysis or editor commands.
+// SelectForCache selects the same declared releases as analysis without fetching
+// artifacts or implicitly migrating project files.
 func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input application.Input) (PluginSources, error) {
-	return s.selectSources(ctx, directory, input, pluginCachePreview)
+	return s.Select(ctx, directory, input)
 }
 
 func (s PluginSelection) selectSources(ctx context.Context, directory string, input application.Input, mode pluginSelectionMode) (PluginSources, error) {
+	selected, err := s.selectDeclared(ctx, directory, input, mode)
+	if err != nil {
+		return PluginSources{}, err
+	}
+	selected.disabledTools, selected.tools = slices.Clone(s.disabledTools), slices.Clone(s.tools)
+	selected.dropDisabledPins()
+	return selected, nil
+}
+
+func (s PluginSelection) selectDeclared(ctx context.Context, directory string, input application.Input, mode pluginSelectionMode) (PluginSources, error) {
 	if len(s.Paths) > 0 {
 		if s.LockFile != "" {
 			return PluginSources{}, errors.New("--plugin and --plugin-lock cannot be combined")
@@ -129,7 +162,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		if mode == pluginRuleDiscovery && !project.Manifest.Exists {
 			return PluginSources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
 		}
-		return s.sourcesFromProject(project, "", mode)
+		return s.sourcesFromProject(ctx, project, "")
 	}
 	starts := []string{directory}
 	if input.Kind == application.Files && len(input.Paths) > 0 {
@@ -177,7 +210,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 			return PluginSources{}, err
 		}
 		configs = append(configs, prepared)
-		pins, err := s.selectedLock(project, mode, root)
+		pins, err := project.SelectedPlugins(ctx)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -185,7 +218,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 			inputs = append(inputs, project.Lock.Path)
 		}
 		if len(pins.Plugins) != 0 || len(project.DirectSources()) != 0 {
-			selected = PluginSources{LockFile: project.Lock.Path, root: root, automatic: true}
+			selected = PluginSources{root: root, automatic: true}
 			selectedProject = project
 		}
 	}
@@ -197,20 +230,20 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		if err != nil {
 			return PluginSources{}, err
 		}
-		selected := PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: []*config.Config{resolved.Config}, overlays: slices.Clone(s.Overlays)}
+		selected := PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: []*config.Config{resolved.Config}, overlays: slices.Clone(s.Overlays), repository: true}
 		for _, ref := range resolved.Config.Plugins {
 			source := ref.DirectSource()
 			if source == "" {
-				return PluginSources{}, errors.New("registry plugin declarations require a repository or explicit config file with a lockfile")
+				return PluginSources{}, errors.New("registry plugin declarations require a repository or explicit config file")
 			}
 			selected.Paths = append(selected.Paths, source)
 		}
 		return selected, nil
 	}
 	if len(roots) != 1 {
-		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
+		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --config explicitly")
 	}
-	return s.sourcesFromProject(selectedProject, selected.root, mode)
+	return s.sourcesFromProject(ctx, selectedProject, selected.root)
 }
 
 func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config, error) {
@@ -224,6 +257,9 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.snapshots {
+			if address.Remote(path) {
+				continue
+			}
 			if err := safePluginManifestPath(path); err != nil {
 				return nil, err
 			}
@@ -232,20 +268,16 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 	return resolved.Config, nil
 }
 
-func (s PluginSelection) sourcesFromProject(project *PluginProject, root string, mode pluginSelectionMode) (PluginSources, error) {
+func (s PluginSelection) sourcesFromProject(ctx context.Context, project *PluginProject, root string) (PluginSources, error) {
 	prepared, err := s.prepareProject(project)
 	if err != nil {
 		return PluginSources{}, err
 	}
-	lock, err := s.selectedLock(project, mode, root)
+	lock, err := project.SelectedPlugins(ctx)
 	if err != nil {
 		return PluginSources{}, err
 	}
-	path := project.Lock.Path
-	if len(lock.Plugins) == 0 {
-		path = ""
-	}
-	selected, err := sourcesFromPins(path, lock, root)
+	selected, err := sourcesFromPins("", lock, root)
 	if err != nil {
 		return PluginSources{}, err
 	}
@@ -254,6 +286,7 @@ func (s PluginSelection) sourcesFromProject(project *PluginProject, root string,
 	}
 	selected.configs = []*config.Config{prepared}
 	selected.overlays = slices.Clone(s.Overlays)
+	selected.repository = true
 	for _, ref := range project.Manifest.References {
 		if source := ref.DirectSource(); source != "" {
 			selected.Paths = append(selected.Paths, source)
@@ -271,6 +304,37 @@ func sourcesFromPins(path string, lock pluginregistry.Lock, root string) (Plugin
 		selected.Paths = append(selected.Paths, p.Source())
 	}
 	return selected, nil
+}
+
+// dropDisabledPins removes locked plugins whose name or alias is a disabled
+// tool id, before Hydrate or loading could fetch them.
+func (s *PluginSources) dropDisabledPins() {
+	if s.lock == nil || len(s.disabledTools) == 0 {
+		return
+	}
+	lock := *s.lock
+	lock.Plugins = []pluginregistry.Pin{}
+	for _, pin := range s.lock.Plugins {
+		id := disabledPinTool(pin, s.disabledTools)
+		if id == "" {
+			lock.Plugins = append(lock.Plugins, pin)
+			continue
+		}
+		s.skipped = append(s.skipped, id)
+		s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })
+	}
+	s.lock = &lock
+}
+
+// disabledPinTool returns the disabled tool id a pin's name or alias
+// equals, or "".
+func disabledPinTool(pin pluginregistry.Pin, disabled []string) string {
+	for _, name := range []string{pin.Alias, pin.Name} {
+		if name != "" && slices.Contains(disabled, name) {
+			return name
+		}
+	}
+	return ""
 }
 
 // Hydrate verifies pinned cached artifacts and downloads missing bytes.
@@ -292,13 +356,26 @@ func (s *PluginSources) Hydrate(ctx context.Context) error {
 		}
 		artifacts[pin.Source()] = artifact
 	}
+	for _, pin := range s.lock.Sources {
+		if !slices.Contains(s.Paths, pin.Source()) {
+			continue
+		}
+		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), artifactOptions())
+		if err != nil {
+			return err
+		}
+		if err := pin.Verify(artifact.Info); err != nil {
+			return err
+		}
+		artifacts[pin.Source()] = artifact
+	}
 	s.artifacts = artifacts
 	return nil
 }
 
 // ValidateScope prevents a session's automatic project plugins from being
 // applied to documents opened from another (including nested) repository.
-func (s *PluginSources) ValidateScope(paths []string) error {
+func (s *PluginSources) ValidateScope(ctx context.Context, paths []string) error {
 	if !s.automatic {
 		return nil
 	}
@@ -311,14 +388,14 @@ func (s *PluginSources) ValidateScope(paths []string) error {
 			if root == "" {
 				continue
 			}
-			project, err := openPluginSelectionProject(context.Background(), root, "")
+			project, err := openPluginSelectionProject(ctx, root, "")
 			if err != nil {
 				return err
 			}
 			if _, err := (PluginSelection{Overlays: s.overlays}).prepareProject(project); err != nil {
 				return err
 			}
-			pins, err := project.SelectedLock()
+			pins, err := project.SelectedPlugins(ctx)
 			if err != nil {
 				return err
 			}
@@ -327,7 +404,7 @@ func (s *PluginSources) ValidateScope(paths []string) error {
 			}
 		}
 		if root != s.root {
-			return fmt.Errorf("document %s is outside the plugin lock's repository; use a separate language server or --plugin-lock", path)
+			return fmt.Errorf("document %s is outside the plugin configuration's repository; use a separate language server or --config", path)
 		}
 	}
 	return nil
@@ -344,6 +421,18 @@ func pluginProjectRoot(path string) string {
 	return root
 }
 
+// SyncPlugins downloads every locked plugin and, for each oci:// source the
+// lock lists, every layer this host reads, such as a provider's executable.
+// Afterwards the plugins run offline from the artifact store.
 func SyncPlugins(ctx context.Context, lock pluginregistry.Lock) error {
-	return lock.Sync(ctx, artifactOptions())
+	options := artifactOptions()
+	if err := lock.Sync(ctx, options); err != nil {
+		return err
+	}
+	for _, pin := range lock.Sources {
+		if err := oci.PullLayers(ctx, pin.Source(), options); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"path/filepath"
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/config/address"
+
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Decode parses one configuration document into a node tree. The file
 // extension selects the format: .toml is TOML, everything else is YAML, which
 // includes JSON. An empty document is an empty mapping.
 func Decode(path string, data []byte) (*yaml.Node, error) {
-	if strings.EqualFold(filepath.Ext(path), ".toml") {
+	if strings.EqualFold(address.Extension(path), ".toml") {
 		return decodeTOML(data)
 	}
 	return decodeYAML(data)

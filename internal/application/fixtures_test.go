@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -73,6 +75,11 @@ func TestRuffPlanningHelper(t *testing.T) {
 	if _, err := io.Copy(io.Discard, os.Stdin); err != nil {
 		t.Fatal(err)
 	}
+	// The bundled Ruff provider checks the minimum version first.
+	if slices.Contains(os.Args, "--version") {
+		fmt.Fprintln(os.Stdout, "ruff 0.17.0")
+		os.Exit(0)
+	}
 	fmt.Fprintln(os.Stdout, "[]")
 	os.Exit(0)
 }
@@ -85,7 +92,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	if err != nil {
 		t.Skip("Git required")
 	}
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	configRoot := t.TempDir()
 	t.Setenv("GIT_CONFIG_GLOBAL", writeFixture(t, configRoot, "gitconfig", ""))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")

@@ -6,18 +6,22 @@ package sourceannotations
 
 import (
 	"context"
+
+	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 )
 
 // InterfaceName is the canonical WIT id of the interface this binding
 // was generated from.
-const InterfaceName = "kjanat:actionlint/source-annotations@0.1.0"
+const InterfaceName = "kjanat:actionlint/source-annotations@0.2.0"
 
 // Optional source metadata. Queries are limited to scripts supplied in this call.
 // Script text and source spans describe the decoded scalar. YAML comments are separate.
 type SourceAnnotations interface {
 	// Attached YAML comments before declarations or on scalar headers/closing lines, in source order.
+	// Authorization is declaration-based: supplied occurrences of one declaration
+	// share its comments. Empty results deliberately include unknown references.
 	// Scalar content is excluded. Unknown references and calls outside analyze return no comments.
-	Comments(ctx context.Context, reference SourceReference) ([]Comment, error)
+	Comments(ctx context.Context, reference invocationcontext.SourceReference) ([]Comment, error)
 }
 
 // Placement corresponds to the WIT enum placement.
@@ -38,24 +42,10 @@ func (v Placement) String() string {
 	return "Placement(unknown)"
 }
 
-// SourceReference corresponds to the WIT record source-reference.
-type SourceReference struct {
-	Document string
-	Revision string
-	Node     string
-	Address  string
-}
-
-// One-based Unicode character position, pointing at the comment's '#'.
-type Position struct {
-	Line   uint32
-	Column uint32
-}
-
 // Comment corresponds to the WIT record comment.
 type Comment struct {
 	// One physical YAML comment, including '#', without its line ending.
 	Text      string
-	Start     Position
+	Start     invocationcontext.Position
 	Placement Placement
 }

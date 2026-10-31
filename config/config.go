@@ -1,111 +1,64 @@
-// Package config loads and describes actionlint configuration.
+// Package config loads validated configuration. Repository facts belong to
+// package repository; analysis backends belong to package analysis.
 package config
 
 import (
+	"context"
+
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	"actionlint.kjanat.dev/v2/internal/pluginref"
+	configvalue "actionlint.kjanat.dev/v2/internal/config/value"
 )
 
-type (
-	Config     = repoconfig.Config
-	Inspection = repoconfig.Inspection
-	Origin     = repoconfig.Origin
-	Overlay    = repoconfig.Overlay
-	// OverlayError identifies individually valid inputs whose merged configuration is invalid.
-	OverlayError                 = repoconfig.OverlayError
-	ConfigOverride               = repoconfig.Override
-	Report                       = repoconfig.Report
-	Selection                    = repoconfig.Selection
-	Warning                      = repoconfig.Warning
-	DefaultPermissionsAssumption = repoconfig.DefaultPermissionsAssumption
-	FilesConfig                  = repoconfig.FilesConfig
-	IgnoreConfig                 = repoconfig.IgnoreConfig
-	IgnoreConfigs                = repoconfig.IgnoreConfigs
-	JobTimeoutPolicy             = repoconfig.JobTimeoutPolicy
-	LintConfig                   = repoconfig.LintConfig
-	LintRulesConfig              = repoconfig.LintRulesConfig
-	LocalActionSources           = repoconfig.LocalActionSources
-	PathConfig                   = repoconfig.PathConfig
-	PluginDeclarations           = repoconfig.PluginDeclarations
-	PluginReference              = pluginref.Reference
-	PermissionsPolicy            = repoconfig.PermissionsPolicy
-	Policy                       = repoconfig.Policy
-	RuffToolConfig               = repoconfig.RuffToolConfig
-	RuleGroupConfig              = repoconfig.Group
-	RuleLevel                    = repoconfig.Level
-	RulePreset                   = repoconfig.Preset
-	Presets                      = repoconfig.Presets
-	RuleSetting                  = repoconfig.Setting
-	// RequiredActionsOptions selects action names or action/ref patterns required by a rule.
-	RequiredActionsOptions = repoconfig.RequiredActionsOptions
-	// CommitHashOptions selects exceptions to immutable action references.
-	CommitHashOptions      = lintconfig.CommitHashOptions
-	SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
-	ShellcheckConfig       = repoconfig.ShellcheckConfig
-	ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
-	ShellcheckToolConfig   = repoconfig.ShellcheckToolConfig
-	SuppressionsPolicy     = repoconfig.SuppressionsPolicy
-	ToolsConfig            = repoconfig.ToolsConfig
-	ToolModule             = toolconfig.Module
-	ToolBackend            = toolconfig.Backend
-	ToolCommand            = toolconfig.Command
-)
+// Config is an opaque validated document. Its zero value selects defaults.
+type Config = configvalue.Document
 
-const (
-	DefaultPermissionsAssumptionUnset      = repoconfig.DefaultPermissionsAssumptionUnset
-	DefaultPermissionsAssumptionRestricted = repoconfig.DefaultPermissionsAssumptionRestricted
-	DefaultPermissionsAssumptionPermissive = repoconfig.DefaultPermissionsAssumptionPermissive
-)
+// Overlay is an immutable partial configuration document.
+type Overlay = repoconfig.Overlay
 
-// Parse decodes a standalone configuration document. Use Load to resolve extends.
-// additionalRules lists registered analyzer names accepted in suppression settings.
+// OverlayError identifies valid inputs whose combined configuration is invalid.
+type OverlayError = repoconfig.OverlayError
+
+// Selection chooses a configuration file or disables discovery.
+type Selection = repoconfig.Selection
+
+// Presets selects analysis defaults without modifying configuration.
+type Presets = repoconfig.Presets
+
+// Parse validates YAML or JSON. Use Load for documents containing extends.
+// additionalRules supplies registered analyzer names for this document only.
 func Parse(source []byte, additionalRules ...string) (*Config, error) {
-	return repoconfig.Parse(source, additionalRules...)
+	value, err := repoconfig.Parse(source, additionalRules...)
+	if err != nil {
+		return nil, err
+	}
+	return configvalue.Wrap(value), nil
 }
 
-// ParseOverlay validates a complete config document or one named configuration input.
-// additionalRules lists registered analyzer names accepted in suppression settings.
+// Load resolves local and HTTPS inheritance and validates the configuration.
+func Load(path string, additionalRules ...string) (*Config, error) {
+	value, err := repoconfig.Load(path, additionalRules...)
+	if err != nil {
+		return nil, err
+	}
+	return configvalue.Wrap(value), nil
+}
+
+// LoadContext resolves inheritance with cancellable local and HTTPS acquisition.
+func LoadContext(ctx context.Context, path string, additionalRules ...string) (*Config, error) {
+	value, err := repoconfig.LoadContext(ctx, path, additionalRules...)
+	if err != nil {
+		return nil, err
+	}
+	return configvalue.Wrap(value), nil
+}
+
+// ParseOverlay validates a complete document or one named configuration section.
 func ParseOverlay(input string, source []byte, additionalRules ...string) (Overlay, error) {
 	return repoconfig.ParseOverlay(input, source, additionalRules...)
 }
 
-// Load reads a configuration file and resolves its inheritance.
-// additionalRules lists registered analyzer names accepted in suppression settings.
-func Load(path string, additionalRules ...string) (*Config, error) {
-	return repoconfig.Load(path, additionalRules...)
-}
-
-// Inspect reports effective configuration and optionally its origins.
-// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
-func Inspect(selection Selection, origins bool, registeredRules ...string) (Inspection, error) {
+// Inspect reports effective settings and optional source locations.
+func Inspect(selection Selection, origins bool, registeredRules ...string) (configreport.Inspection, error) {
 	return repoconfig.Inspect(selection, origins, registeredRules...)
-}
-
-func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
-	return repoconfig.RequireJobTimeout(maxMinutes)
-}
-
-func RequireJobTimeoutRange(minMinutes, maxMinutes float64) (*JobTimeoutPolicy, error) {
-	return repoconfig.RequireJobTimeoutRange(minMinutes, maxMinutes)
-}
-
-func RequirePermissions(scope string) (*PermissionsPolicy, error) {
-	return repoconfig.RequirePermissions(scope)
-}
-
-// DisallowSuppressions constructs an enabled suppression policy for the selected rules.
-func DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, error) {
-	return repoconfig.DisallowSuppressions(report, rules...)
-}
-
-// ShellcheckConfigPath selects a nonempty, single-line rc file or directory path.
-func ShellcheckConfigPath(path string) (*ShellcheckConfigSource, error) {
-	return repoconfig.ShellcheckConfigPath(path)
-}
-
-// ShellcheckConfigInline validates inline settings and owns a copy of their values.
-func ShellcheckConfigInline(settings ShellcheckConfig) (*ShellcheckConfigSource, error) {
-	return repoconfig.ShellcheckConfigInline(settings)
 }

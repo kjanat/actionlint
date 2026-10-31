@@ -1,5 +1,4 @@
-// Package pluginregistry consumes the registry's static catalogue. Admission
-// metadata identifies artifacts; runtime compatibility remains the loader's job.
+// Package pluginregistry resolves plugin declarations against registry catalogues.
 package pluginregistry
 
 import (
@@ -134,6 +133,10 @@ type Pin struct {
 	Contract     string        `json:"contract"`
 }
 
+// SameRelease compares immutable release evidence, ignoring alias spelling and
+// whether install originally requested latest or the exact release.
+func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
+
 func (p Pin) Source() string {
 	if p.Origin == "candidate" {
 		return "sha256://" + p.SHA256
@@ -144,17 +147,17 @@ func (p Pin) Source() string {
 // Matches binds declaration intent to the recorded registry and repository.
 // An alias is accepted only when the lock explicitly records that lookup.
 func (p Pin) Matches(ref pluginref.Reference) bool {
-	if !SameRegistry(p.Registry, ref.Registry) {
+	if !SameRegistry(p.Registry, ref.Registry()) {
 		return false
 	}
 	if ref.IsAlias() {
-		return p.Alias == ref.Name
+		return p.Alias == ref.Name()
 	}
-	return strings.EqualFold(p.Name, ref.Name)
+	return strings.EqualFold(p.Name, ref.Name())
 }
 
-// SameRegistry compares validated catalogue endpoints. Hosts are insensitive to
-// case, while paths retain their case-sensitive identity.
+// SameRegistry compares catalogue endpoints with case-insensitive hosts and
+// case-sensitive paths.
 func SameRegistry(left, right string) bool {
 	a, err := registryURL(left)
 	if err != nil {

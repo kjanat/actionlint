@@ -9,10 +9,10 @@ import (
 
 // ExpressionEndPosition returns a verified exclusive end, or nil without a mapping.
 func ExpressionEndPosition(meta *Metadata, value *ExprString, violation Violation) *workflowlang.Pos {
-	if meta.positions == nil || violation.Offset <= 0 || violation.EndOffset < violation.Offset || violation.EndOffset > len(value.Value)+1 {
+	if violation.Offset <= 0 || violation.EndOffset < violation.Offset || violation.EndOffset > len(value.Value)+1 {
 		return nil
 	}
-	source := meta.positions.source(meta, value)
+	source := meta.Provenance.source(value)
 	coordinates := func(offset int) (int, int) {
 		prefix := value.Value[:offset-1]
 		return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1

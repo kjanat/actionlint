@@ -7,11 +7,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestDoctorRuffProbeContext(t *testing.T) {
@@ -21,8 +23,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 	}
 	root := t.TempDir()
 	request := doctorRequest{
-		Config: repoconfig.Selection{Disabled: true}, Ruff: "ignored",
-		RuffOptions: &processconfig.Options{
+		Config: repoconfig.Selection{Disabled: true}, Tools: registry.Selections{"ruff": {Command: "ignored", Process: &processconfig.Options{
 			Executable: &executable, Optional: true, WorkingDir: root,
 			Arguments: []string{"--select", "F"},
 			Environment: []string{
@@ -30,7 +31,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 				"ACTIONLINT_TEST_RUFF_VERSION=ruff 0.17.0",
 				"ACTIONLINT_TEST_RUFF_CALLS=calls",
 			},
-		}, JSON: true,
+		}}}, JSON: true,
 	}
 	var out bytes.Buffer
 	if err := writeDoctor(t.Context(), &out, request); err != nil {
@@ -42,7 +43,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if tool := report.Tools[1]; tool.Status != "available" || strings.Join(tool.Arguments, " ") != "--select F" {
+	if tool := report.Tools[slices.IndexFunc(report.Tools, func(tool doctorTool) bool { return tool.Name == "ruff" })]; tool.Status != "available" || strings.Join(tool.Arguments, " ") != "--select F" {
 		t.Fatalf("configured tool changed: %+v", tool)
 	}
 	calls, err := os.ReadFile(filepath.Join(root, "calls"))

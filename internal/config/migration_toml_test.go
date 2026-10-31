@@ -14,7 +14,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 	original := []byte("#:schema https://actionlint.kjanat.dev/schema/config.json\r\n" +
 		"# settings for all workflows\r\n" +
 		"plugins = [] # unchanged root statement\r\n" +
-		"config-variables = [\r\n" +
+		"config-secrets = [\r\n" +
 		"  # variable comment\r\n" +
 		"  \"NAME#VALUE\", # array item comment\r\n" +
 		"] # legacy value comment\r\n" +
@@ -48,7 +48,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 			t.Errorf("migration dropped %q:\n%s", comment, migration.Content)
 		}
 		if count := bytes.Count(migration.Content, []byte(comment)); count != 1 {
-			t.Errorf("migration retained %q %d times, want once", comment, count)
+			t.Errorf("migration emitted %q %d times, want once", comment, count)
 		}
 	}
 	if !bytes.Contains(migration.Content, []byte("NAME#VALUE")) {
@@ -137,7 +137,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 				t.Fatalf("%v\n%s", err, migration.Content)
 			}
 			cfg := resolved.Config
-			if cfg.RequiresCommitHash() || DiagnosticLevel(cfg, "cache-operation") != "on" || !reflect.DeepEqual(cfg.ConfigSecrets, []string{"TOKEN#VALUE"}) {
+			if cfg.RequiresCommitHash() || DiagnosticLevel(cfg, "cache-operation") != "on" || !reflect.DeepEqual(SecretNames(cfg.Facts()), []string{"TOKEN#VALUE"}) {
 				t.Fatalf("migration semantics: %+v", cfg)
 			}
 		})
@@ -176,7 +176,6 @@ self-hosted-runner = { labels = [
   # runner label comment
   "self-hosted", # second runner comment
 ] }
-config-variables = ["OLD"]
 config-secrets = ["TOKEN"]
 assume-default-permissions = "permissive"
 paths = { "**/*.yml" = { ignore = [
@@ -185,7 +184,7 @@ paths = { "**/*.yml" = { ignore = [
 ] } }
 policy = { cache-operation = false, require-job-timeout = { min-minutes = 5, max-minutes = 30 }, required-actions = [] }
 [lint.rules.correctness]
-expression-reference = { level = "on", options = { variables = ["OLD"] } }
+expression-reference = { level = "on", options = { secrets = ["TOKEN"] } }
 # first tools comment
 # second tools comment
 [tool-settings]
@@ -204,7 +203,7 @@ value = "kept"
 		"# second tools comment",
 	} {
 		if count := bytes.Count(migration.Content, []byte(comment)); count != 1 {
-			t.Errorf("comment %q retained %d times, want once:\n%s", comment, count, migration.Content)
+			t.Errorf("comment %q appeared %d times, want once:\n%s", comment, count, migration.Content)
 		}
 	}
 	for _, preserved := range []string{
@@ -256,7 +255,20 @@ value = "kept"
 	timeout := resolved.Config.RequiresJobTimeout()
 	minimum, hasMinimum := timeout.MinMinutes()
 	maximum, hasMaximum := timeout.MaxMinutes()
-	if !reflect.DeepEqual(resolved.Config.SelfHostedRunner.Labels, []string{"self-hosted"}) || resolved.Config.AssumeDefaultPermissions != DefaultPermissionsAssumptionPermissive || !resolved.Config.Paths["**/*.yml"].Ignore.Match("legacy.*message") || !hasMinimum || minimum != 5 || !hasMaximum || maximum != 30 {
+	if !reflect.DeepEqual(RunnerLabels(resolved.Config.Facts()), []string{"self-hosted"}) || configuredWorkflowPermissions(resolved.Config) != "write" || !resolved.Config.Paths["**/*.yml"].Ignore.Match("legacy.*message") || !hasMinimum || minimum != 5 || !hasMaximum || maximum != 30 {
 		t.Fatalf("legacy settings lost: %+v", resolved.Config)
+	}
+}
+
+func TestTOMLMigrationRejectsUnrepresentableVariableValues(t *testing.T) {
+	for _, source := range []string{
+		`config-variables = ["NAME"]`,
+		`[lint.rules.correctness]
+expression-reference = { level = "on", options = { variables = ["NAME"] } }`,
+	} {
+		migration, err := MigrateDocument("actionlint.toml", []byte(source))
+		if err == nil || !strings.Contains(err.Error(), "TOML cannot preserve unknown values") || len(migration.Content) != 0 {
+			t.Fatalf("lossy migration admitted: %s, %v", migration.Content, err)
+		}
 	}
 }

@@ -1,12 +1,13 @@
 // Package render presents analysis results as text, Go templates, JSON, SARIF and GitHub annotations.
 package render
 
-// Format selects a built-in diagnostic representation. The empty value retains
-// the legacy text, oneline and custom-template behaviour.
+// Format selects a built-in diagnostic representation. An empty value selects
+// output from the template and oneline options.
 type Format string
 
 const (
 	FormatText    Format = "text"
+	FormatPretty  Format = "pretty"
 	FormatOneline Format = "oneline"
 	FormatJSON    Format = "json"
 	FormatJSONL   Format = "jsonl"

@@ -4,20 +4,20 @@ import (
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
-	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
-func TestDeprecatedPopularActionKeepsInputAndOutputMetadata(t *testing.T) {
-	const spec = "actions/github-script@v7"
-	meta := actioncatalog.PopularActions[spec]
-	if meta == nil || meta.Runs.Using != "node20" || meta.Outputs["result"] == nil {
-		t.Fatal("deprecated action lost its runtime or output metadata")
+func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
+	const spec = "example/script@v1"
+	meta, err := actionmeta.Parse("action.yml", []byte("name: script\ndescription: script\ninputs:\n  script: {required: true}\noutputs:\n  result: {description: result}\nruns: {using: node20, main: index.js}\n"))
+	if err != nil {
+		t.Fatal(err)
 	}
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: pos}}
-	findings := actioncheck.Repository(exec, actioncatalog.Lookup, nil)
+	findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta))
 	var deprecated, missingScript bool
 	for _, err := range findings {
 		deprecated = deprecated || strings.Contains(err.Message, "deprecated")

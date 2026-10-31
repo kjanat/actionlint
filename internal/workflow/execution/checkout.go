@@ -5,19 +5,48 @@ import (
 	"strings"
 )
 
-// CheckoutPlacement tracks overlapping checkouts; newer placements shadow older ones.
-// Unrelated copies survive.
-// Immutable links let conditional composite invocations restore the whole state.
-type CheckoutPlacement struct {
+// Checkout describes one runner placement without linking mutable state.
+type Checkout struct {
 	Directory       Directory
-	Previous        *CheckoutPlacement
 	CaseInsensitive bool
 	Foreign         bool
 	Redirected      bool
 }
 
-func (placement *CheckoutPlacement) Relative(local string) (string, bool) {
-	local, prefix := path.Clean(local), path.Clean(placement.Directory.Path)
+// CheckoutPlacement is an immutable chain handle. Its zero value has no placement.
+type CheckoutPlacement struct{ node *checkoutPlacement }
+
+type checkoutPlacement struct {
+	Checkout
+	previous CheckoutPlacement
+}
+
+func NewCheckoutPlacement(checkout Checkout, previous CheckoutPlacement) CheckoutPlacement {
+	return CheckoutPlacement{node: &checkoutPlacement{Checkout: checkout, previous: previous}}
+}
+
+func (placement CheckoutPlacement) Present() bool { return placement.node != nil }
+
+func (placement CheckoutPlacement) Details() Checkout {
+	if !placement.Present() {
+		return Checkout{}
+	}
+	return placement.node.Checkout
+}
+
+func (placement CheckoutPlacement) Previous() CheckoutPlacement {
+	if !placement.Present() {
+		return CheckoutPlacement{}
+	}
+	return placement.node.previous
+}
+
+func (placement CheckoutPlacement) Relative(local string) (string, bool) {
+	if !placement.Present() {
+		return "", false
+	}
+	details := placement.Details()
+	local, prefix := path.Clean(local), path.Clean(details.Directory.Path)
 	if prefix == "." {
 		return local, true
 	}
@@ -25,7 +54,7 @@ func (placement *CheckoutPlacement) Relative(local string) (string, bool) {
 		return "", false
 	}
 	match := local[:len(prefix)] == prefix
-	if !match && placement.CaseInsensitive && ASCIIPath(prefix) && ASCIIPath(local[:len(prefix)]) {
+	if !match && details.CaseInsensitive && ASCIIPath(prefix) && ASCIIPath(local[:len(prefix)]) {
 		match = strings.EqualFold(local[:len(prefix)], prefix)
 	}
 	if !match {
@@ -37,33 +66,33 @@ func (placement *CheckoutPlacement) Relative(local string) (string, bool) {
 	return strings.CutPrefix(local[len(prefix):], "/")
 }
 
-func (placement *CheckoutPlacement) Matching(local string) *CheckoutPlacement {
-	for current := placement; current != nil; current = current.Previous {
+func (placement CheckoutPlacement) Matching(local string) CheckoutPlacement {
+	for current := placement; current.Present(); current = current.Previous() {
 		if _, matches := current.Relative(local); matches {
 			return current
 		}
 	}
-	return nil
+	return CheckoutPlacement{}
 }
 
-// MergeCheckoutBranches keeps a conditional child's shadowing ranges,
-// retaining the caller's unaffected checkouts when joining branches.
-func MergeCheckoutBranches(before, after *CheckoutPlacement, mayFail bool) *CheckoutPlacement {
-	if after == before || after == nil {
+// MergeCheckoutBranches merges checkout placements from conditional execution.
+func MergeCheckoutBranches(before, after CheckoutPlacement, mayFail bool) CheckoutPlacement {
+	if after == before || !after.Present() {
 		return before
 	}
-	merged := *after
-	merged.Previous = MergeCheckoutBranches(before, after.Previous, mayFail)
-	if mayFail || merged.Directory.Kind != DirectoryKnown || merged.Foreign || !merged.Previous.SameSelfCheckout(merged.Directory.Path) {
+	merged := after.Details()
+	previous := MergeCheckoutBranches(before, after.Previous(), mayFail)
+	if mayFail || merged.Directory.Kind != DirectoryKnown || merged.Foreign || !previous.SameSelfCheckout(merged.Directory.Path) {
 		merged.Directory.Kind = DirectoryUnknown
 		merged.Foreign = false
 	}
-	return &merged
+	return NewCheckoutPlacement(merged, previous)
 }
 
-func (placement *CheckoutPlacement) SameSelfCheckout(destination string) bool {
+func (placement CheckoutPlacement) SameSelfCheckout(destination string) bool {
 	prior := placement.Matching(destination)
-	if prior == nil || prior.Directory.Kind != DirectoryKnown || prior.Foreign || prior.Redirected {
+	details := prior.Details()
+	if !prior.Present() || details.Directory.Kind != DirectoryKnown || details.Foreign || details.Redirected {
 		return false
 	}
 	relative, matches := prior.Relative(destination)

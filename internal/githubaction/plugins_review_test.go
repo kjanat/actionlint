@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
@@ -34,7 +34,7 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 		".git": "", ".github/actionlint.yaml": config,
 		".github/workflows/wasm.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing = 1\n        shell: python\n",
 	})
-	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_RUFF": "true", "ACTIONLINT_RUFF_COMMAND": "retired-command-must-not-run"}
+	env := map[string]string{"GITHUB_WORKSPACE": root, "ACTIONLINT_RUFF_COMMAND": "retired-command-must-not-run"}
 	lookup := func(key string) string { return env[key] }
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	if err := req.configureEnvironment(lookup); err != nil {
@@ -101,7 +101,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{
 				"GITHUB_WORKSPACE": root, "INPUT_FORMAT": "json",
-				"INPUT_FILES": ".github/workflows/ci.yml", "INPUT_RUFF": "true",
+				"INPUT_FILES": ".github/workflows/ci.yml",
 			}
 			lookup := func(key string) string { return env[key] }
 			plan, err := provisioningRequest(lookup)
@@ -114,7 +114,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			}
 			needed, err := localapp.RequiredToolsSources(t.Context(), application.Options{
 				WorkingDir: plan.workingDir, ConfigFile: plan.configFile, ConfigOverlays: plan.overlays,
-				IgnorePatterns: plan.ignore, Tools: adapters.Options{ShellCheck: plan.shellcheck, Ruff: plan.ruff}.Registrations(),
+				IgnorePatterns: plan.ignore, Tools: registry.Registrations(plan.toolSelections()),
 			}, plan.files, selected)
 			if err != nil || needed["ruff"] || needed["shellcheck"] {
 				t.Fatalf("needed=%+v err=%v", needed, err)
@@ -155,7 +155,11 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 			}
 			before := want
 			want.WorkingDir = "action-directory"
-			got := toolOptionsInDirectory(tc.options, want.WorkingDir)
+			req := &lintRequest{workingDir: want.WorkingDir}
+			if tc.options != nil {
+				req.processes = map[string]*processconfig.Options{"shellcheck": tc.options}
+			}
+			got := req.toolSelections()["shellcheck"].Process
 			if !reflect.DeepEqual(*got, want) {
 				t.Fatalf("options=%+v, want %+v", got, want)
 			}
@@ -180,7 +184,7 @@ func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 		".git": "", ".github/actionlint.yaml": config,
 		".github/workflows/ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
 	})
-	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON, ruff: "ruff"}
+	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	result := runLinter(req)
 	if result.code != render.ExitSuccessProblemFound || len(result.diagnostics) != 1 || result.diagnostics[0].Code != "ECHO001" {
 		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)

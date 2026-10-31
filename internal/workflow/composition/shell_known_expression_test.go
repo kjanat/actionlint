@@ -1,6 +1,7 @@
 package composition
 
 import (
+	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
@@ -9,7 +10,7 @@ import (
 )
 
 func TestKnownShellStateReset(t *testing.T) {
-	workflow, errors := documentparse.Parse([]byte(`on: push
+	content := []byte(`on: push
 jobs:
   python:
     runs-on: ${{ fromJSON('{"labels":"windows-latest"}') }}
@@ -21,24 +22,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
-`))
-	if len(errors) != 0 {
-		t.Fatal(errors)
+`)
+	document := documentparse.Workflow("fixture.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
 	}
-	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
-	collector.beginWorkflow(workflow)
+	registry, snapshot := registeredWorkflowSnapshot(t, content, document)
+	workflow := workflowView(t, snapshot)
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: actionlocal.NewResolver(nil, nil)}
+	startWorkflowEntry(t, collector, registry, snapshot)
+	if err := collector.beginWorkflow(workflow); err != nil {
+		t.Fatal(err)
+	}
 	for _, id := range []string{"python", "bash"} {
-		job := workflow.Jobs[id]
-		collector.beginJob(job)
-		if err := collector.collectScript(job.Steps[0], nil, "", nil, nil, nil); err != nil {
+		job := workflowJob(t, workflow, id)
+		if err := collector.beginJob(job); err != nil {
+			t.Fatal(err)
+		}
+		if err := collector.collectScript(slices.Collect(job.Steps())[0], nil, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := collector.scripts[len(collector.scripts)-1].Execution.Shell.Name; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
 		}
 	}
-	job := workflow.Jobs["python"]
-	if job.Defaults.Run.Shell != nil || len(job.RunsOn.Labels) != 0 {
-		t.Fatal("shell resolution mutated the source AST")
+	job := workflowJob(t, workflow, "python")
+	if job.Defaults().Run().Shell().Present() || len(slices.Collect(job.RunsOn().Labels())) != 0 {
+		t.Fatal("shell resolution mutated the published declarations")
+	}
+	original := document.Workflow.Jobs["python"]
+	if original.Defaults.Run.Shell != nil || len(original.RunsOn.Labels) != 0 {
+		t.Fatal("shell resolution mutated the decoder model")
 	}
 }

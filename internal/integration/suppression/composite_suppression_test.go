@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
@@ -35,7 +35,7 @@ runs: false
 				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
 			} {
 				t.Run(fmt.Sprintf("%s/nested=%t/%s", metadata.name, nested, tc.name), func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					testutil.WriteFixture(t, root, ".github/actionlint.yaml", tc.config)
 					testutil.WriteFixture(t, root, "inner/action.yml", fmt.Sprintf(metadata.source, tc.directive))
 					steps := "- uses: ./inner\n- uses: ./inner"
@@ -95,7 +95,7 @@ func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 			{"policy-severities", "disallow-suppressions", "policy", "# actionlint:ignore action -- reviewed", "info", "warn", "info", "warning"},
 		} {
 			t.Run(runtime.name+"/"+tc.name, func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := fmt.Sprintf(`lint: {rules: {%s: {%s: %s}}}
 overrides:
   - includes: ['inner/action.yml']
@@ -143,7 +143,7 @@ func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
 		} {
 			for _, enabled := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/enabled=%t", runtime.name, tc.name, enabled), func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					config := tc.config + fmt.Sprintf(`overrides:
   - includes: ['.github/workflows/**']
     lint: {enabled: %t}
@@ -182,7 +182,7 @@ overrides:
 `, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", tc.config)
 			testutil.WriteFixture(t, root, "outer/action.yml", `name: outer
 description: test
@@ -214,8 +214,8 @@ runs:
 }
 
 func TestCompositeBlockSuppression(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -225,7 +225,7 @@ runs:
       run: | # actionlint:ignore shellcheck -- reviewed expansion
         echo $VALUE
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatal(result.Diagnostics)
 	}
@@ -251,7 +251,7 @@ overrides:
 `, ""},
 			} {
 				t.Run(runtime.name+"/"+invocation.name+"/"+tc.name, func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					testutil.WriteFixture(t, root, ".github/actionlint.yaml", tc.config)
 					testutil.WriteFixture(t, root, "inner/index.js", "console.log('ok');\n")
 					metadata := testutil.WriteFixture(t, root, "inner/action.yml", "name: inner "+tc.directive+`

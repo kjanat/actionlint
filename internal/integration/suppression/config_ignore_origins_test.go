@@ -8,7 +8,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -27,8 +27,8 @@ jobs:
 }
 
 func TestReusableIgnoresAliasedSourcedShellcheck(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
 	const source = `on: push
 jobs:
@@ -57,10 +57,7 @@ jobs:
 		result, err := application.Analyze(t.Context(), application.Options{
 			WorkingDir: root,
 
-			Tools: (adapters.Options{
-				ShellCheck:        command,
-				ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}},
-			}).Registrations(),
+			Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}}),
 		}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
 		)
 		if err != nil {

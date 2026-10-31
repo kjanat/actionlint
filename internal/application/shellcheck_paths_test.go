@@ -12,9 +12,8 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
@@ -62,7 +61,7 @@ jobs:
 				workflow += "        working-directory: ${{ vars.DIRECTORY }}\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: tc.args}}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args}}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{path}})
@@ -119,7 +118,7 @@ jobs:
       - run: echo $VALUE
 `)
 			options := application.Options{WorkingDir: root}
-			optionsTools := adapters.Options{ShellCheck: command}
+			optionsTools := registry.Selections{"shellcheck": {Command: command}}
 			if tc.explicit {
 				options.ConfigFile = config
 			}
@@ -131,7 +130,7 @@ jobs:
 				options.ConfigOverlays = []repoconfig.Overlay{overlay}
 			}
 			session := options
-			session.Tools = optionsTools.Registrations()
+			session.Tools = registry.Registrations(optionsTools)
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -216,7 +215,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 				workflow += "        working-directory: " + tc.stepDir + "\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := application.Options{WorkingDir: analyzer, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{WorkingDir: analyzer, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{path}})
@@ -301,7 +300,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{path}})
@@ -354,7 +353,7 @@ jobs:
           . ./value.sh
           echo $VALUE
 `)
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -396,7 +395,7 @@ jobs:
           . ./value.sh
           echo $VALUE
 `)
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -414,11 +413,9 @@ func TestShellcheckSelectedConfigFailure(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, config, content string
-		disabled              bool
 	}{
-		{"missing file", "missing.rc", "", false},
-		{"invalid rc", "broken.rc", "disable=not-a-code\n", false},
-		{"explicit disabled overrides missing file", "missing.rc", "", true},
+		{"missing file", "missing.rc", ""},
+		{"invalid rc", "broken.rc", "disable=not-a-code\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -434,58 +431,11 @@ jobs:
       - run: echo $VALUE
 `)
 			options := application.Options{ConfigFile: config, WorkingDir: root}
-			optionsTools := adapters.Options{ShellCheck: command}
-			if tc.disabled {
-				optionsTools.ShellcheckSettings = &toolconfig.ShellcheckSettings{Config: toolconfig.ShellcheckRCDisabled}
-			}
 			session := options
-			session.Tools = optionsTools.Registrations()
-			var err error
-
+			session.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: command}})
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
-			if !tc.disabled {
-				if err == nil {
-					t.Fatalf("invalid selected config silently accepted: %+v", result.Diagnostics)
-				}
-			} else if err != nil || len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "SC2086") {
-				t.Fatalf("disabling rc loading must retain linting: %+v, %v", result, err)
-			}
-		})
-	}
-}
-
-func TestShellcheckApplicationSelectionPreservesInlineConfig(t *testing.T) {
-	command := shellcheckForTest(t)
-	for _, selection := range []string{"inherit", "file", "discover", "disabled"} {
-		t.Run(selection, func(t *testing.T) {
-			root := t.TempDir()
-			rc := writeFixture(t, root, ".shellcheckrc", "disable=SC2016\n")
-			config := writeFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: {disable: [SC2086]}}}\n")
-			workflow := writeFixture(t, root, "workflow.yml", `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo $VALUE
-`)
-			settings := &toolconfig.ShellcheckSettings{}
-			switch selection {
-			case "file":
-				settings.Config = toolconfig.ShellcheckRCFile(rc)
-			case "discover":
-				settings.Config = toolconfig.ShellcheckRCDiscover
-			case "disabled":
-				settings.Config = toolconfig.ShellcheckRCDisabled
-			}
-			session := application.Options{ConfigFile: config, WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckSettings: settings}).Registrations()}
-			var err error
-
-			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(result.Diagnostics) != 0 {
-				t.Fatalf("rc selection must retain inline directives: %+v", result.Diagnostics)
+			if err == nil {
+				t.Fatalf("invalid selected config silently accepted: %+v", result.Diagnostics)
 			}
 		})
 	}
@@ -516,7 +466,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			session := application.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []repoconfig.Overlay{overlay}, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []repoconfig.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
 			if err != nil {

@@ -1,21 +1,21 @@
 package runner
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 	testCases := []struct {
-		what         string
-		labels       []string
-		matrix       []string
-		known        []string
-		errs         []string
-		providerErrs []string
+		what   string
+		labels []string
+		matrix []string
+		known  []string
+		errs   []string
 	}{
 		// Normal cases
 		{
@@ -268,9 +268,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			what:   "GH-hosted labels conflict with matrix at first label",
 			labels: []string{"${{matrix.os}}", "ubuntu-latest"},
 			matrix: []string{"windows-latest", "macos-latest"},
-			errs:   []string{`label "ubuntu-latest" conflicts with label`},
-			// Complete selectors retain both incompatible alternatives.
-			providerErrs: []string{`label "ubuntu-latest" conflicts with label "windows-latest"`, `label "ubuntu-latest" conflicts with label "macos-latest"`},
+			errs:   []string{`label "ubuntu-latest" conflicts with label "windows-latest"`, `label "ubuntu-latest" conflicts with label "macos-latest"`},
 		},
 		{
 			what:   "Repeated matrix references select the same value",
@@ -362,47 +360,26 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
-			pos := &workflowlang.Pos{}
-			labels := make([]*workflowlang.String, 0, len(tc.labels))
-			for _, l := range tc.labels {
-				labels = append(labels, &workflowlang.String{Value: l, Quoted: false, Pos: pos})
+			quoted := func(values []string) string {
+				items := make([]string, len(values))
+				for i, item := range values {
+					items[i] = strconv.Quote(item)
+				}
+				return "[" + strings.Join(items, ", ") + "]"
 			}
-			node := &workflowlang.Job{
-				RunsOn: &workflowlang.Runner{
-					Labels: labels,
-				},
-			}
-
+			source := "on: push\njobs:\n  test:\n"
 			if tc.matrix != nil {
-				n := &workflowlang.String{Value: "os", Quoted: false, Pos: pos}
-				row := make([]workflowlang.RawYAMLValue, 0, len(tc.matrix))
-				for _, m := range tc.matrix {
-					row = append(row, &workflowlang.RawYAMLString{Value: m, Tag: workflowlang.YamlTagStr, Position: pos})
-				}
-				st := &workflowlang.Strategy{
-					Matrix: &workflowlang.Matrix{
-						Rows: map[string]*workflowlang.MatrixRow{
-							"os": {
-								Name:   n,
-								Values: row,
-							},
-						},
-					},
-					Pos: pos,
-				}
-				node.Strategy = st
+				source += "    strategy:\n      matrix:\n        os: " + quoted(tc.matrix) + "\n"
 			}
-
-			errs := Check(node, tc.known)
-			prepared, err := Prepare(t.Context(), &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": node}}, tc.known, runnerapi.Options{}, "scope")
+			source += "    runs-on: " + quoted(tc.labels) + "\n    steps:\n      - run: echo ok\n"
+			fixture := runnerSource(t, source)
+			errs := Check(fixture.Views["test"], tc.known)
+			prepared, err := Prepare(t.Context(), fixture.Snapshot, tc.known, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			provided := prepared.Job(node).Findings
-			wantProvided := tc.providerErrs
-			if wantProvided == nil {
-				wantProvided = tc.errs
-			}
+			provided := prepared.Job(fixture.Views["test"]).Findings
+			wantProvided := tc.errs
 			if len(provided) != len(wantProvided) {
 				t.Fatalf("provider: want %d findings, got %v", len(wantProvided), provided)
 			}
@@ -425,7 +402,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 }
 
 func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
-	if errs := Check(&workflowlang.Job{}, nil); len(errs) != 0 {
+	if errs := Check(workflowdecl.JobView{}, nil); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 }
@@ -435,18 +412,16 @@ func TestUbuntuRunnerArchitectures(t *testing.T) {
 		arm := "ubuntu-" + version + "-arm"
 		for _, x64 := range []string{"ubuntu-" + version, "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores"} {
 			t.Run(x64+"/"+arm, func(t *testing.T) {
-				pos := &workflowlang.Pos{Line: 1, Col: 1}
-				job := &workflowlang.Job{RunsOn: &workflowlang.Runner{Labels: []*workflowlang.String{{Value: x64, Pos: pos}, {Value: arm, Pos: pos}}}}
-				errs := Check(job, nil)
+				fixture := runnerWorkflow(t, "["+strconv.Quote(x64)+", "+strconv.Quote(arm)+"]")
+				errs := Check(fixture.Views["test"], nil)
 				if len(errs) != 1 || !strings.Contains(errs[0].Message, "conflicts with") {
 					t.Fatalf("incompatible architectures %s and %s: got %v", x64, arm, errs)
 				}
 			})
 		}
 		t.Run("linux/"+arm, func(t *testing.T) {
-			pos := &workflowlang.Pos{Line: 1, Col: 1}
-			job := &workflowlang.Job{RunsOn: &workflowlang.Runner{Labels: []*workflowlang.String{{Value: "linux", Pos: pos}, {Value: arm, Pos: pos}}}}
-			if errs := Check(job, nil); len(errs) != 0 {
+			fixture := runnerWorkflow(t, "[linux, "+strconv.Quote(arm)+"]")
+			if errs := Check(fixture.Views["test"], nil); len(errs) != 0 {
 				t.Fatalf("Linux must remain compatible with %s: %v", arm, errs)
 			}
 		})

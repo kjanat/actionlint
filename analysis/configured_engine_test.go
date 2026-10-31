@@ -140,11 +140,11 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); !errors.Is(err, failure) {
 				t.Fatalf("loader error lost: %v", err)
 			}
-			options.Ruff = analysis.Tool{Process: &analysis.Process{}}
+			options.Tools = map[string]analysis.Tool{"ruff": {Process: &analysis.Process{}}}
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); err != nil {
 				t.Fatalf("explicit disable ignored: %v", err)
 			}
-			options.Ruff = analysis.Tool{}
+			options.Tools = nil
 			options.LoadScriptEngine = func(context.Context, string) (analyzer.ScriptBackend, error) {
 				return &configuredBackend{closeError: failure}, nil
 			}
@@ -174,7 +174,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatalf("configured ShellCheck: result=%+v err=%v checks=%d closes=%d", result, err, backend.checks.Load(), backend.closes.Load())
 	}
 	explicit := &configuredBackend{}
-	options.ShellCheck = analysis.Tool{Backend: explicit}
+	options.Tools = map[string]analysis.Tool{"shellcheck": {Backend: explicit}}
 	options.LoadScriptEngine = func(context.Context, string) (analyzer.ScriptBackend, error) {
 		t.Fatal("explicit backend must override configured engine")
 		return nil, nil
@@ -236,11 +236,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 					t.Fatalf("unexpected diagnostic: %+v", result.Diagnostics[0])
 				}
 				disabled := analysis.Tool{Process: &analysis.Process{}}
-				if tool.name == "ruff" {
-					options.Ruff = disabled
-				} else {
-					options.ShellCheck = disabled
-				}
+				options.Tools = map[string]analysis.Tool{tool.name: disabled}
 				result, err = runConfiguredAnalysis(t, mode, root, paths[:1], cfg, options)
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || loads.Load() != 1 || backend.checks.Load() != wantChecks || backend.closes.Load() != 1 {
 					t.Fatalf("explicit disable: result=%+v err=%v checks=%d loads=%d closes=%d", result, err, backend.checks.Load(), loads.Load(), backend.closes.Load())
@@ -260,7 +256,14 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				t.Fatal(err)
 			}
 			if constructed {
-				cfg.Tools.Ruff.Backend.Wasm = &config.ToolModule{Path: "engines/../first.wasm"}
+				encoded, err := cfg.MarshalText()
+				if err != nil {
+					t.Fatal(err)
+				}
+				cfg, err = config.Parse(encoded)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			other, err := config.Parse([]byte("tools: {ruff: {backend: {wasm: {path: first.wasm}}}}"))
 			if err != nil {
@@ -299,7 +302,15 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 			if moduleInputs != 1 {
 				t.Errorf("module inputs=%d, want 1", moduleInputs)
 			}
-			if cfg.Tools.Ruff.Backend.Wasm.Path != "engines/../first.wasm" || other.Tools.Ruff.Backend.Wasm.Path != "first.wasm" {
+			original, err := cfg.MarshalText()
+			if err != nil {
+				t.Fatal(err)
+			}
+			otherOriginal, err := other.MarshalText()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(original), "engines/../first.wasm") || !strings.Contains(string(otherOriginal), "path: first.wasm") {
 				t.Fatal("analysis mutated caller configuration")
 			}
 		})

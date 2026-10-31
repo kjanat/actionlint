@@ -2,8 +2,12 @@
 package rulecatalog
 
 import (
+	"encoding/json"
+	"fmt"
 	"slices"
+	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -16,10 +20,8 @@ var builtins = []rule.Descriptor{
 	{Name: "event-payload", Description: "Validate properties against the configured event payloads", Category: "correctness", Subcategory: "events", Maturity: "stable", Provider: "actionlint", Explanation: "Validate properties against the configured event payloads.", Help: "Use a property supplied by the declared events and activity types. Unknown events and dynamic payload maps remain open.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#event-payload", FixAvailability: "none", Recommended: true},
 	{Name: "script-injection", Description: "Detect untrusted values and secrets interpolated into scripts", Category: "security", Subcategory: "scripts", Maturity: "stable", Provider: "actionlint", Explanation: "Detect untrusted values and secrets interpolated into scripts.", Help: "Pass untrusted values through environment variables or action inputs. For secrets, prefer the tool's native environment variable or stdin over command arguments. GitHub secrets are automatically masked; register generated or fetched secrets with add-mask before use. Masking protects logs, not process arguments.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection", FixAvailability: "none", Recommended: true},
 	{Name: "script-interpolation", Description: "Detect template values that may change script syntax", Category: "correctness", Subcategory: "scripts", Maturity: "stable", Provider: "actionlint", Explanation: "Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position.", Help: "Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation", FixAvailability: "none", Recommended: true},
-
 	{Name: "workflow-run-names", Description: "Report workflow_run references to unknown repository workflows", Category: "correctness", Subcategory: "workflows", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report workflow_run references to unknown repository workflows.", Help: "Use the exact name of an existing workflow in workflows; names are matched independently of filenames.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-run-names", FixAvailability: "none"},
 	{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report a && b || c expressions where b is always falsy.", Help: "The middle operand of a && b || c must be truthy to select b; use an explicit conditional or a truthy representation.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unsound-ternary", FixAvailability: "none"},
-	{Name: "ruff", Description: "Analyze embedded Python scripts with Ruff", Category: "correctness", Subcategory: "python", Maturity: "stable", Provider: "ruff", Recommended: true, Explanation: "Analyze embedded Python scripts with Ruff.", Help: "Correct the reported Python code; select Ruff rules through tools.ruff configuration.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff", FixAvailability: "none"},
 	{Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Subcategory: "syntax", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate GitHub Actions workflow syntax.", Help: "Check the indicated YAML field and its expected GitHub Actions value type.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#syntax-check", FixAvailability: "none"},
 	{Name: "inline-suppression", Description: "Validate inline suppression directives", Category: "correctness", Subcategory: "suppressions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate inline suppression directives.", Help: "Use a known rule name and place the directive on the declaration it is intended to suppress.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#inline-suppression", FixAvailability: "none"},
 	{Name: "missing-local-action", Description: "Report local action references whose manifests cannot be found", Category: "correctness", Subcategory: "actions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report local action references whose manifests cannot be found.", Help: "Check the uses path and ensure the local action metadata or Dockerfile exists in the repository.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-local-action", FixAvailability: "none"},
@@ -45,6 +47,10 @@ var builtins = []rule.Descriptor{
 	{Name: "expression", Description: "Validate expression values assigned to workflow fields", Category: "correctness", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate expression values assigned to workflow fields.", Help: "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression", FixAvailability: "none"},
 	{Name: "deprecated-commands", Description: "Report deprecated set-output, save-state, set-env, and add-path commands", Category: "correctness", Subcategory: "scripts", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report deprecated set-output, save-state, set-env, and add-path commands.", Help: "Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV or GITHUB_PATH file.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#deprecated-commands", FixAvailability: "none"},
 	{Name: "if-cond", Description: "Report conditions that always evaluate to true or false", Category: "correctness", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report conditions that always evaluate to true or false.", Help: "Remove the constant condition or correct the expression so it tests the intended runtime value.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#if-cond", FixAvailability: "none"},
+	{Name: "numeric-values", Description: "Report numeric values GitHub truncates or that cannot take effect", Category: "correctness", Subcategory: "values", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report numeric values GitHub truncates toward zero or that cannot take effect, such as a fractional or non-positive max-parallel.", Help: "Write the whole number GitHub will use, greater than zero.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#numeric-values", FixAvailability: "none"},
+	{Name: "empty-triggers", Description: "Report workflows that declare no triggers", Category: "style", Subcategory: "triggers", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report workflows whose on section is empty. GitHub accepts the workflow, but no event ever starts it.", Help: "Add the events that should start the workflow, or delete the workflow.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-triggers", FixAvailability: "none"},
+	{Name: "empty-job", Description: "Report jobs without steps", Category: "style", Subcategory: "jobs", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report jobs that run no steps. GitHub accepts the job, but it does nothing.", Help: "Add the steps the job should run, or remove the job.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-job", FixAvailability: "none"},
+	{Name: "empty-run", Description: "Report steps with an empty run script", Category: "style", Subcategory: "steps", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report run steps whose script is empty. GitHub accepts the step, but it runs nothing.", Help: "Write the commands the step should run, or remove the step.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-run", FixAvailability: "none"},
 	{Name: "require-commit-hash", Description: "Require full commit SHAs for actions and workflows, and digests for images", Category: "policy", Subcategory: "dependencies", Maturity: "stable", Provider: "actionlint", Recommended: false, Explanation: "Require full commit SHAs for actions and workflows, and digests for images.", Help: "Pin uses references to a full commit SHA and container images to a digest.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#require-commit-hash", FixAvailability: "none"},
 	{Name: "require-job-timeout", Description: "Require explicit job timeouts within configured bounds", Category: "policy", Subcategory: "jobs", Maturity: "stable", Provider: "actionlint", Recommended: false, Explanation: "Require explicit job timeouts within configured bounds.", Help: "Set timeout-minutes on the job within the configured bounds.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#require-job-timeout", FixAvailability: "none"},
 	{Name: "require-permissions", Description: "Require explicit token permissions at workflow or job scope", Category: "policy", Subcategory: "permissions", Maturity: "stable", Provider: "actionlint", Recommended: false, Explanation: "Require explicit token permissions at workflow or job scope.", Help: "Declare explicit permissions at the scope required by repository policy.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#require-permissions", FixAvailability: "none"},
@@ -52,19 +58,42 @@ var builtins = []rule.Descriptor{
 	{Name: "cache-write-untrusted", Description: "Report cache write access granted on low-trust triggers", Category: "security", Subcategory: "cache", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report cache write access granted on low-trust triggers.", Help: "Restrict cache writes for low-trust triggers using explicit cache permissions or an event guard.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-write-untrusted", FixAvailability: "none"},
 	{Name: "cache-call-unrestricted", Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers", Category: "security", Subcategory: "cache", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report reusable workflow calls without explicit cache limits on low-trust triggers.", Help: "Pass explicit cache limits to reusable workflows on low-trust triggers.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-call-unrestricted", FixAvailability: "none"},
 	{Name: "cache-operation", Description: "Report cache actions blocked by explicit cache access limits", Category: "correctness", Subcategory: "cache", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report cache actions blocked by explicit cache access limits.", Help: "Align cache actions with the effective cache access limits.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-operation", FixAvailability: "none"},
-	{Name: "shellcheck", Description: "Analyze embedded shell scripts with ShellCheck", Category: "correctness", Subcategory: "shell", Maturity: "stable", Provider: "shellcheck", Recommended: true, Explanation: "Analyze embedded shell scripts with ShellCheck.", Help: "Correct the reported shell construct; inspect suggested edits before applying them.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck", FixAvailability: "suggested"},
 }
 
+// providerRules holds the rules of the bundled tool providers. The manifests
+// are embedded build inputs, so a defect is a build defect and panics, as
+// missing built-in metadata does. The manifest model in package provider
+// imports the analyzer contract, which input preparation reaches the catalog
+// without, so only the rule is read here; TestProviderRulesComeFromManifests
+// keeps it equal to provider.Bundled.
+var providerRules = sync.OnceValue(func() []rule.Descriptor {
+	names := bundled.Names()
+	rules := make([]rule.Descriptor, 0, len(names))
+	for _, name := range names {
+		data, _ := bundled.Manifest(name)
+		var manifest struct {
+			Rule rule.Descriptor `json:"rule"`
+		}
+		if err := json.Unmarshal(data, &manifest); err != nil || manifest.Rule.Name != name {
+			panic(fmt.Sprintf("bundled tool provider %s: invalid rule: %v", name, err))
+		}
+		rules = append(rules, manifest.Rule)
+	}
+	return rules
+})
+
+// Rules lists the built-in checks followed by the bundled tool providers' rules.
 func Rules() []rule.Descriptor {
-	rules := slices.Clone(builtins)
+	rules := slices.Concat(builtins, providerRules())
 	for i := range rules {
 		rules[i] = builtinMetadata(rules[i])
 	}
 	return rules
 }
 
+// Find returns the built-in or bundled provider rule named name.
 func Find(name string) (rule.Descriptor, bool) {
-	for _, r := range builtins {
+	for _, r := range slices.Concat(builtins, providerRules()) {
 		if r.Name == name {
 			return builtinMetadata(r), true
 		}
@@ -72,10 +101,16 @@ func Find(name string) (rule.Descriptor, bool) {
 	return rule.Descriptor{}, false
 }
 
+// IsProvider reports whether name is the rule of a bundled tool provider.
+func IsProvider(name string) bool {
+	return slices.ContainsFunc(providerRules(), func(r rule.Descriptor) bool { return r.Name == name })
+}
+
 // ConfigGroup preserves the configuration vocabulary while semantic categories
-// describe the check itself. Backend selection is not a semantic category.
+// describe the check itself. Backend selection is not a semantic category, so
+// every tool provider's rule is configured in the external group.
 func ConfigGroup(name string) string {
-	if name == "ruff" || name == "shellcheck" {
+	if IsProvider(name) {
 		return "external"
 	}
 	descriptor, ok := Find(name)

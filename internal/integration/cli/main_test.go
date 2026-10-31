@@ -8,7 +8,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("ACTIONLINT_TEST_RUFF_DISCOVERY") == "1" {
+	if testutil.RuffDiscoveryRequested() {
 		os.Exit(testutil.RuffDiscoveryHelper())
 	}
 	if os.Getenv("ACTIONLINT_TEST_TOOL_PROCESS") == "1" {

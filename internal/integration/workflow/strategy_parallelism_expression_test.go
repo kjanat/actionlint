@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -30,7 +30,7 @@ func TestStrategyExpressionParallelism(t *testing.T) {
 				case "JSON field":
 					field = "strategy:\n      max-parallel: ${{ fromJSON('" + tc.value + "') }}"
 				}
-				request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.Source
 				var err error
 

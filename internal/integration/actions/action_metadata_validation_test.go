@@ -20,7 +20,7 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 		{"metadata", "name: inner\ndescription: test\ninputs:\n  token:\n    description: token\n    default: ${{ secrets.TOKEN }}\nruns: {using: node24, main: index.js}\n", true},
 	} {
 		t.Run(metadata.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, "inner/action.yml", metadata.source)
 			testutil.WriteFixture(t, root, "inner/index.js", "")
 			for _, tc := range []struct {

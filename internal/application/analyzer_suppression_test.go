@@ -97,6 +97,27 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 	}
 }
 
+// tools.<name> binds to tool providers only: a registered document analyzer
+// is a rule, not a tool, so configuring it as one is an error.
+func TestAnalyzerNameIsNotATool(t *testing.T) {
+	for _, config := range []string{
+		"tools: {shellcheck: false, ruff: false, no-sudo: false}\n",
+		"tools: {shellcheck: false, ruff: false}\noverrides: [{includes: ['**'], tools: {no-sudo: {config: {level: 2}}}}]\n",
+	} {
+		root := t.TempDir()
+		writeSuppressionFixture(t, root, ".git/HEAD", "ref: refs/heads/master\n")
+		writeSuppressionFixture(t, root, ".github/actionlint.yaml", config)
+		path := writeSuppressionFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
+		opts := Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: suppressionAnalyzer{"no-sudo"}}}}
+		if _, err := Check(t.Context(), opts, Input{Kind: Files, Paths: []string{path}}); err == nil || !strings.Contains(err.Error(), `unknown tool "no-sudo"`) {
+			t.Fatalf("%s: analyzer accepted as a tool: %v", config, err)
+		}
+		if _, err := RequiredTools(t.Context(), opts, []string{path}); err == nil || !strings.Contains(err.Error(), `unknown tool "no-sudo"`) {
+			t.Fatalf("%s: required tools accepted an analyzer as a tool: %v", config, err)
+		}
+	}
+}
+
 func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	const path = "actions/check/action.yml"
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")

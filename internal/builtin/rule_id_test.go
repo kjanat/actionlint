@@ -54,11 +54,11 @@ func TestCheckInvalidJobNames(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(input+"/"+tc.where, func(t *testing.T) {
 				r := NewRuleID()
-				if err := r.VisitJobPre(tc.job); err != nil {
+				if err := r.VisitJobPre(ownedJobFixture(tc.job)); err != nil {
 					t.Fatal(err)
 				}
 				for _, s := range tc.job.Steps {
-					if err := r.VisitStep(s); err != nil {
+					if err := r.VisitStep(ownedStepFixture(s)); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -103,11 +103,11 @@ func TestCheckValidJobNames(t *testing.T) {
 				},
 			}
 			r := NewRuleID()
-			if err := r.VisitJobPre(job); err != nil {
+			if err := r.VisitJobPre(ownedJobFixture(job)); err != nil {
 				t.Fatal(err)
 			}
 			for _, s := range job.Steps {
-				if err := r.VisitStep(s); err != nil {
+				if err := r.VisitStep(ownedStepFixture(s)); err != nil {
 					t.Fatal(err)
 				}
 			}

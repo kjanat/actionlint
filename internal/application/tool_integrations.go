@@ -9,12 +9,18 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
 // occupiedTools identifies already-selected script-engine providers. Integrated
 // analyzers are removed from standalone execution, making repeated calls safe.
 func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Options, error) {
+	for _, registration := range options.Analyzers {
+		if analyzerref.IsNil(registration.Analyzer) {
+			return options, errors.New("nil analyzer registration")
+		}
+	}
 	options.Tools = slices.Clone(options.Tools)
 	remaining := make([]analyzer.Registration, 0, len(options.Analyzers))
 	seen := make(map[string]bool, len(occupiedTools))
@@ -86,6 +92,7 @@ type boundToolAnalyzer struct {
 func (b boundToolAnalyzer) ToolIntegration() *analyzer.ToolIntegration {
 	return b.integrator.ToolIntegration()
 }
+
 func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*analyzer.ToolNegotiation, error) {
 	effective := configured
 	if len(b.options) != 0 {

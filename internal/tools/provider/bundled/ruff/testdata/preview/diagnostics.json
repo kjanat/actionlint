@@ -1,0 +1,19 @@
+{
+  "diagnostics": [
+    {
+      "filename": "actionlint.py",
+      "code": "invalid-syntax",
+      "name": "invalid-syntax",
+      "message": "Expected an expression",
+      "severity": "error",
+      "location": {
+        "row": 1,
+        "column": 3
+      },
+      "end_location": {
+        "row": 0,
+        "column": 0
+      }
+    }
+  ]
+}

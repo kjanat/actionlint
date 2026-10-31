@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
@@ -185,7 +187,7 @@ jobs: [`,
 }
 
 func parseSuppressionSource(source []byte) (*workflowlang.Workflow, []*findingmodel.Finding) {
-	workflow, diagnostics := workflowlang.ParseDocument(source)
+	workflow, diagnostics := workflowparser.ParseDocument(source)
 	findings := make([]*findingmodel.Finding, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
 		findings = append(findings, findingmodel.FromDiagnostic(diagnostic))

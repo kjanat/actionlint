@@ -9,12 +9,12 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
-	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type Change struct {
@@ -67,13 +67,9 @@ func Build(ctx context.Context, findings []diagnostic.Diagnostic, reader *fsread
 				if revision == "" || revision != sourceid.Digest(content) {
 					return Plan{}, fmt.Errorf("fix for %s has a missing or stale source revision", e.Path)
 				}
-				start, err := Offset(content, e.Start)
+				start, end, err := sourceposition.Range(content, source.YAML, e.Start, e.End)
 				if err != nil {
 					return Plan{}, fmt.Errorf("%s: %w", path, err)
-				}
-				end, err := Offset(content, e.End)
-				if err != nil || end < start {
-					return Plan{}, fmt.Errorf("invalid fix end in %s", path)
 				}
 				edits[path] = append(edits[path], edit{start, end, e.Replacement})
 			}
@@ -113,23 +109,5 @@ func Build(ctx context.Context, findings []diagnostic.Diagnostic, reader *fsread
 // Offset converts an exclusive Unicode-scalar position to a byte offset without
 // accepting a coordinate inside CRLF or outside the document.
 func Offset(content []byte, p diagnostic.Position) (int, error) {
-	if p.Line < 1 || p.Column < 1 || !utf8.Valid(content) {
-		return 0, fmt.Errorf("invalid source position %v", p)
-	}
-	document := yamlsource.NewDocument(string(content))
-	if p.Line > len(document.Lines) {
-		return 0, fmt.Errorf("source position %v is outside the document", p)
-	}
-	column, ok := document.ByteOffset(p.Line-1, p.Column)
-	if !ok {
-		return 0, fmt.Errorf("source position %v is outside the document", p)
-	}
-	offset := column
-	if bytes.HasPrefix(content, []byte{0xef, 0xbb, 0xbf}) {
-		offset += 3
-	}
-	for i := range p.Line - 1 {
-		offset += len(document.Lines[i]) + len(document.Breaks[i])
-	}
-	return offset, nil
+	return sourceposition.Offset(content, source.YAML, p)
 }

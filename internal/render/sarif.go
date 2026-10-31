@@ -132,7 +132,7 @@ func sarifSeverityLevel(severity string) string {
 	switch severity {
 	case "warning":
 		return "warning"
-	case "info", "style":
+	case "info":
 		return "note"
 	default:
 		return "error"

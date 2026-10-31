@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestMigrationCanonicalSettings(t *testing.T) {
@@ -41,10 +41,10 @@ policy:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ConfigVariables == nil || len(cfg.ConfigVariables) != 0 || cfg.ConfigSecrets != nil {
+	if VariableNames(cfg.Facts()) == nil || len(VariableNames(cfg.Facts())) != 0 || SecretNames(cfg.Facts()) != nil {
 		t.Fatal("unknown and empty name sets were conflated")
 	}
-	if !reflect.DeepEqual(cfg.SelfHostedRunner.Labels, []string{"gpu", "custom-*"}) || cfg.AssumeDefaultPermissions != DefaultPermissionsAssumptionPermissive {
+	if !reflect.DeepEqual(RunnerLabels(cfg.Facts()), []string{"gpu", "custom-*"}) || configuredWorkflowPermissions(cfg) != "write" {
 		t.Fatalf("knowledge lost: %+v", cfg)
 	}
 	if !cfg.Paths["**"].Ignore.Match("legacy some message") {
@@ -85,13 +85,13 @@ func TestMigrationPolicyNullRemainsReset(t *testing.T) {
 }
 
 func TestMigrationConflicts(t *testing.T) {
-	for _, source := range []string{
-		"policy: {cache-operation: false}\nlint: {rules: {correctness: {cache-operation: on}}}",
-		"config-variables: [OLD]\nlint: {rules: {correctness: {expression-reference: {level: on, options: {variables: [NEW]}}}}}",
-		"paths: {'**': {ignore: [old]}}\nlint: {message-ignores: {'**': [new]}}",
+	for _, test := range []struct{ source, target string }{
+		{"policy: {cache-operation: false}\nlint: {rules: {correctness: {cache-operation: on}}}", "lint.rules.correctness.cache-operation"},
+		{"config-variables: [OLD]\nlint: {rules: {correctness: {expression-reference: {level: on, options: {variables: [NEW]}}}}}", "repository.variables"},
+		{"paths: {'**': {ignore: [old]}}\nlint: {message-ignores: {'**': [new]}}", "lint.message-ignores"},
 	} {
-		_, err := MigrateDocument("config.yaml", []byte(source))
-		if err == nil || !strings.Contains(err.Error(), "conflicts with lint.") {
+		_, err := MigrateDocument("config.yaml", []byte(test.source))
+		if err == nil || !strings.Contains(err.Error(), "conflicts with "+test.target) {
 			t.Fatalf("missing actionable conflict: %v", err)
 		}
 	}
@@ -114,7 +114,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.source), 0600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := PrepareMigration(path)
+			plan, err := PrepareMigration(t.Context(), path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,11 +122,11 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			if string(before) != tc.source {
 				t.Fatal("preparing migration wrote file")
 			}
-			if err := plan.Apply(); err != nil {
+			if err := plan.Apply(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			cfg, err := Load(path)
-			if err != nil || cfg.ConfigVariables == nil || cfg.RequiresCommitHash() {
+			if err != nil || VariableNames(cfg.Facts()) == nil || cfg.RequiresCommitHash() {
 				t.Fatalf("migration semantics: %+v %v", cfg, err)
 			}
 			if tc.name == "actionlint.yaml" && !bytes.Contains(plan.Content, []byte("\r\n")) {
@@ -152,7 +152,7 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			if err := os.WriteFile(path, source, 0600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := PrepareMigration(path)
+			plan, err := PrepareMigration(t.Context(), path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,10 +163,10 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			if err := os.WriteFile(edited, []byte("config-variables: [USER_EDIT]\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			if err := plan.CheckUnchanged(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+			if err := plan.CheckUnchanged(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
 				t.Fatalf("changed preparation snapshot accepted: %v", err)
 			}
-			if err := plan.Apply(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+			if err := plan.Apply(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
 				t.Fatalf("changed snapshot accepted: %v", err)
 			}
 			data, _ := os.ReadFile(edited)
@@ -197,14 +197,14 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 	}
 
 	t.Run("unchanged target", func(t *testing.T) {
-		plan, err := PrepareMigration(selected)
+		plan, err := PrepareMigration(t.Context(), selected)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := plan.CheckUnchanged(); err != nil {
+		if err := plan.CheckUnchanged(t.Context()); err != nil {
 			t.Fatalf("unchanged symlinked inherited input rejected: %v", err)
 		}
-		if err := plan.Apply(); err != nil {
+		if err := plan.Apply(t.Context()); err != nil {
 			t.Fatalf("migration with unchanged symlinked inherited input failed: %v", err)
 		}
 	})
@@ -233,14 +233,14 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 			if err := os.Symlink(base, linkedBase); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			plan, err := PrepareMigration(selected)
+			plan, err := PrepareMigration(t.Context(), selected)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if err := tc.change(); err != nil {
 				t.Fatal(err)
 			}
-			if err := plan.CheckUnchanged(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+			if err := plan.CheckUnchanged(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
 				t.Fatalf("changed symlinked inherited input accepted: %v", err)
 			}
 		})
@@ -289,8 +289,8 @@ self-hosted-runner: *labels
 		t.Fatal(err)
 	}
 	for _, cfg := range []*Config{&direct, resolved} {
-		if !reflect.DeepEqual(cfg.SelfHostedRunner.Labels, []string{"gpu"}) {
-			t.Fatalf("aliased global runner knowledge dropped: %+v", cfg.SelfHostedRunner)
+		if !reflect.DeepEqual(RunnerLabels(cfg.Facts()), []string{"gpu"}) {
+			t.Fatalf("aliased global runner knowledge dropped: %+v", cfg.Facts())
 		}
 	}
 }
@@ -318,14 +318,14 @@ policy: {require-job-timeout: false}
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.ConfigVariables == nil || len(cfg.ConfigVariables) != 0 || cfg.ConfigSecrets != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
+		if VariableNames(cfg.Facts()) == nil || len(VariableNames(cfg.Facts())) != 0 || SecretNames(cfg.Facts()) != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
 			t.Fatalf("inheritance changed: %+v", cfg)
 		}
-		plan, err := PrepareMigration(path)
+		plan, err := PrepareMigration(t.Context(), path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := plan.Apply(); err != nil {
+		if err := plan.Apply(t.Context()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -342,7 +342,7 @@ func TestMigrationRejectsLostInheritedTOMLReset(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareMigration(path); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {
+	if _, err := PrepareMigration(t.Context(), path); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {
 		t.Fatalf("lost inherited reset accepted: %v", err)
 	}
 	content, err := os.ReadFile(path)
@@ -380,7 +380,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if effective.ConfigVariables == nil || !reflect.DeepEqual(effective.ConfigSecrets, []string{"RELEASE_TOKEN"}) || !reflect.DeepEqual(effective.SelfHostedRunner.Labels, []string{"gpu"}) {
+	if VariableNames(effective.Facts()) == nil || !reflect.DeepEqual(SecretNames(effective.Facts()), []string{"RELEASE_TOKEN"}) || !reflect.DeepEqual(RunnerLabels(effective.Facts()), []string{"gpu"}) {
 		t.Fatalf("override knowledge: %+v", effective)
 	}
 }

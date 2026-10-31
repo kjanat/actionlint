@@ -5,8 +5,7 @@ import (
 	"path/filepath"
 )
 
-// PhysicalPath also resolves aliases above an in-memory file which does
-// not exist yet. Failures other than missing paths retain the original spelling.
+// PhysicalPath resolves symlinks, including ancestors of files not yet on disk.
 func PhysicalPath(path string) string {
 	if absolute, err := filepath.Abs(path); err == nil {
 		path = absolute

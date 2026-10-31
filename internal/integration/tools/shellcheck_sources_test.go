@@ -8,12 +8,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	path := testutil.WriteFixture(t, root, "app/lib/check.sh", "echo $VALUE\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: test
@@ -25,7 +25,7 @@ runs:
       working-directory: app
       run: . ./lib/check.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"-a"}}}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"-a"}}}})})
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
@@ -40,8 +40,8 @@ runs:
 }
 
 func TestCompositeShellcheckSiblingWorkingDirectory(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, filepath.Dir(root), "shared/value.sh", "VALUE=42\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: test
@@ -55,7 +55,7 @@ runs:
         . ./value.sh
         echo $VALUE
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("composite did not analyze sibling source: %+v", result.Diagnostics)
 	}

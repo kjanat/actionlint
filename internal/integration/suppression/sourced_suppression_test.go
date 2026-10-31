@@ -12,11 +12,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, composite := range []bool{false, true} {
 		for _, tc := range []struct {
 			name, declaration, config, directive string
@@ -47,7 +47,7 @@ name: *script`, "", "", false},
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				t.Run(fmt.Sprintf("composite=%t/%s/%q", composite, tc.name, ending), func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n"+tc.config)
 					script := testutil.WriteFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
 					script, err := filepath.EvalSymlinks(script)
@@ -69,7 +69,13 @@ runs:
     `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 						steps = "- uses: ./local"
 					}
-					result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+					result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
+					manifest := map[string]diagmodel.Position{}
+					if composite && tc.name == "split-anchor" {
+						manifest[`YAML anchors are not supported in action metadata; remove anchor "script"`] = diagmodel.Position{Line: 9, Column: 9}
+						manifest[`YAML aliases are not supported in action metadata; replace alias "script"`] = diagmodel.Position{Line: 13, Column: 13}
+					}
+					manifestCount := len(manifest)
 					counts := map[string]int{}
 					for _, diagnostic := range result.Diagnostics {
 						counts[diagnostic.Rule]++
@@ -77,11 +83,19 @@ runs:
 							if filepath.ToSlash(diagnostic.Path) != "scripts/check.sh" || diagnostic.Code != "SC2086" || diagnostic.Severity != "info" || diagnostic.Start != (diagmodel.Position{Line: 1, Column: 6}) || diagnostic.End != (diagmodel.Position{Line: 1, Column: 12}) || diagnostic.Snippet != "echo $VALUE" {
 								t.Fatalf("source diagnostic was changed: %+v", diagnostic)
 							}
+						} else if expected, ok := manifest[diagnostic.Message]; ok {
+							if diagnostic.Rule != "action" || filepath.ToSlash(diagnostic.Path) != origin || diagnostic.Start != expected {
+								t.Fatal("manifest diagnostic lost origin", diagnostic)
+							}
+							delete(manifest, diagnostic.Message)
 						} else if diagnostic.Rule != tc.directive || filepath.ToSlash(diagnostic.Path) != origin {
 							t.Fatalf("directive diagnostic lost origin: %+v", diagnostic)
 						}
 					}
-					want := 0
+					want := manifestCount
+					if len(manifest) != 0 {
+						t.Fatal("manifest validation findings missing", manifest)
+					}
 					if tc.keep {
 						want++
 						if counts["shellcheck"] != 1 {
@@ -104,12 +118,12 @@ runs:
 }
 
 func TestSourcedShellcheckOriginIsolation(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	const directive = " # actionlint:ignore shellcheck -- reviewed"
 	for _, composite := range []bool{false, true} {
 		for _, both := range []bool{false, true} {
 			t.Run(fmt.Sprintf("composite=%t/both=%t", composite, both), func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 				testutil.WriteFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
 				step := `- shell: bash
@@ -135,7 +149,7 @@ runs:
 `)
 					steps = "- uses: ./outer"
 				}
-				result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+				result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 				want := 1
 				if both {
 					want = 0
@@ -149,8 +163,8 @@ runs:
 }
 
 func TestSourcedShellcheckAliasOrigin(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
 	steps := `- shell: bash
@@ -161,17 +175,17 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 - shell: bash
   working-directory: .
   run: *script`
-	result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+	result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
 	}
 }
 
 func TestSourcedShellcheckMetadataScope(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, ignoredPath := range []string{"", "scripts/**", "local/**"} {
 		t.Run(ignoredPath, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			config := `tools: {shellcheck: true}
 policy: {disallow-suppressions: true}
 lint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: 5}}}}}
@@ -200,7 +214,7 @@ runs:
 			if err := os.Symlink(filepath.Join(root, "local"), filepath.Join(root, "alias")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			result := testutil.Composite(t, root, "- uses: ./local\n- uses: ./alias", application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+			result := testutil.Composite(t, root, "- uses: ./local\n- uses: ./alias", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 			var sourced, policy int
 			for _, diagnostic := range result.Diagnostics {
 				switch diagnostic.Rule {
@@ -231,7 +245,7 @@ runs:
 }
 
 func TestSourcedScriptsAreNotSuppressionMetadata(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, suffix := range []string{".sh", ".yml", ".yaml"} {
 		for _, composite := range []bool{false, true} {
 			for _, tc := range []struct{ name, directive, policy string }{
@@ -240,7 +254,7 @@ func TestSourcedScriptsAreNotSuppressionMetadata(t *testing.T) {
 				{"prohibited", "# actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n"},
 			} {
 				t.Run(fmt.Sprintf("%s/composite=%t/%s", suffix, composite, tc.name), func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n"+tc.policy)
 					name := "scripts/check" + suffix
 					testutil.WriteFixture(t, root, name, "echo $VALUE "+tc.directive+"\n")
@@ -257,7 +271,7 @@ runs:
       run: . ./`+name+"\n")
 						steps = "- uses: ./local"
 					}
-					result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+					result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 					if len(result.Diagnostics) != 1 {
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}

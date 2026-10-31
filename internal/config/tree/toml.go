@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2/unstable"
-	"go.yaml.in/yaml/v4"
 )
 
 type tableOrigin uint8
@@ -43,6 +43,9 @@ func decodeTOML(data []byte) (*yaml.Node, error) {
 			current, err = d.table(root, expression)
 		case unstable.ArrayTable:
 			current, err = d.arrayTable(root, expression)
+		case unstable.Invalid, unstable.Comment, unstable.Key, unstable.Array, unstable.InlineTable, unstable.String, unstable.Bool, unstable.Float, unstable.Integer,
+			unstable.LocalDate, unstable.LocalTime, unstable.LocalDateTime, unstable.DateTime:
+			// Comments and value kinds are not top-level expressions to decode.
 		}
 		if err != nil {
 			return nil, err
@@ -127,6 +130,8 @@ func (d *tomlDecoder) child(table *yaml.Node, key *unstable.Node, origin tableOr
 			if origin == tableDotted {
 				return nil, d.keyError(key, "cannot extend table %q with dotted keys", name)
 			}
+		case tableImplicit, tableDotted, tableArray:
+			// Implicit, dotted and array-element tables accept further keys.
 		}
 		return existing, nil
 	case yaml.SequenceNode:
@@ -134,6 +139,9 @@ func (d *tomlDecoder) child(table *yaml.Node, key *unstable.Node, origin tableOr
 			return existing.Content[len(existing.Content)-1], nil
 		}
 		return nil, d.keyError(key, "cannot extend array %q", name)
+	case yaml.DocumentNode, yaml.ScalarNode, yaml.AliasNode, yaml.StreamNode:
+		// Scalars and other nodes cannot hold child keys.
+		fallthrough
 	default:
 		return nil, d.keyError(key, "key %q is not a table", name)
 	}
@@ -266,6 +274,9 @@ func (d *tomlDecoder) value(node *unstable.Node, line, column int) (*yaml.Node, 
 			}
 		}
 		return table, nil
+	case unstable.Invalid, unstable.Comment, unstable.Key, unstable.Table, unstable.ArrayTable, unstable.KeyValue:
+		// Meta and top-level expression nodes are not values.
+		fallthrough
 	default:
 		return nil, fmt.Errorf("line %d, column %d: unsupported value %s", line, column, node.Kind)
 	}

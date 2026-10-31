@@ -32,9 +32,6 @@ func (out *prettyJSONOutput) writeJSON(value any) error {
 }
 
 func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data []byte, explicit bool) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	if explicit {
 		var formatted bytes.Buffer
 		if err := json.Indent(&formatted, bytes.TrimSpace(data), "", "  "); err != nil {
@@ -70,9 +67,6 @@ func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data
 }
 
 func formatJSONWithJQ(ctx context.Context, jq string, data []byte, colored bool) ([]byte, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	color := "--monochrome-output"
 	if colored {
 		color = "--color-output"

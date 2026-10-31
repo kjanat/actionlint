@@ -49,7 +49,7 @@ them in the published package.
 The `source-annotations` feature opts into an additional host import without
 changing the original analyzer interface or its contract digest.
 
-The workspace retains one set of dependency pins for host fixtures and examples.
+Host fixtures and examples share the workspace's dependency pins.
 This avoids independent fixture lockfiles without coupling production providers to
 host test dependencies. The WASM profile optimizes guest artifacts without forcing
 those settings on native checks or external provider releases.

@@ -13,7 +13,7 @@ type UsesReference interface {
 	usesReference()
 }
 
-// RepositoryReference retains a repository, optional subpath and Git ref.
+// RepositoryReference identifies an action or workflow at a repository revision.
 // HostSource is default, explicit or self. Default and self require platform context.
 type RepositoryReference struct {
 	Owner      string `json:"owner"`
@@ -35,7 +35,7 @@ type SelfRepositoryReference struct {
 	Path string `json:"path"`
 }
 
-// ContainerReference retains the image reference, including any tag or digest.
+// ContainerReference identifies a container image by name, tag or digest.
 type ContainerReference struct {
 	Image string `json:"image"`
 }

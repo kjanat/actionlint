@@ -14,7 +14,7 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 		for _, newline := range []string{"\n", "\r\n"} {
 			for _, metadata := range []bool{false, true} {
 				t.Run(escape+newline+map[bool]string{true: "metadata", false: "workflow"}[metadata], func(t *testing.T) {
-					root, _ := testutil.ExecutableFixture(t)
+					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 					scalar := `"echo ${{ github.ref` + escape + `"`
 					src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + scalar + "\n"

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
@@ -66,11 +66,11 @@ jobs:
     steps:
       - run: echo ok
 `, tc.expression, runsOn)
-			workflow, errs := workflowlang.ParseDocument([]byte(source))
+			_, errs := workflowparser.ParseDocument([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			errs = runnerlang.Check(workflow.Jobs["test"], nil)
+			errs = runnerlang.Check(runnerJobView(t, source), nil)
 			if len(errs) != len(tc.want) {
 				t.Fatalf("wanted %v, got %v", tc.want, errs)
 			}

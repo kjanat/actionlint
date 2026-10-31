@@ -63,7 +63,7 @@ func testRunCommand(input string, args ...string) commandTranscript {
 func testRunCommandDefaults(input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
-	status := cmd.Main(append([]string{"actionlint", "--shellcheck=", "--ruff=", "--pyflakes=", "--no-color"}, args...))
+	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff", "--no-tool=ruff", "--no-color"}, args...))
 	return commandTranscript{status, out.String(), errout.String()}
 }
 

@@ -52,43 +52,32 @@ func (o *evidenceCompletionObserver) Analyze(_ context.Context, input analyzer.I
 	return nil, nil
 }
 
-func TestRunnerEvidenceOrdersDuplicatePathsByIdentity(t *testing.T) {
+// One path holds one source revision: differing content under one path is a
+// capture conflict, so reports order by path. The source that sorts first
+// finishes last, and completion order must not leak into the evidence.
+func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 	root := t.TempDir()
-	source := func(label string) analysis.Source {
-		return analysis.Source{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + label + "\n    steps: [{run: echo ok}]\n")}
+	const slow, fast = "alpha", "beta"
+	source := func(path, label string) analysis.Source {
+		return analysis.Source{Path: path, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + label + "\n    steps: [{run: echo ok}]\n")}
 	}
-	options := func(provider runner.Provider) analysis.Options {
-		return analysis.Options{WorkingDir: root, Runners: runner.Options{Target: "order", Providers: []runner.Registration{{Provider: provider, Identity: "same-provider"}}}}
-	}
-	identities := make(map[string]string)
-	for _, label := range []string{"alpha", "beta"} {
-		result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{source(label)}, Options: options(&orderedEvidenceProvider{})})
-		if err != nil || len(result.RunnerEvidence) != 1 {
-			t.Fatalf("seed evidence: result=%+v error=%v", result, err)
-		}
-		identities[label] = result.RunnerEvidence[0].Identity
-	}
-	slow, fast := "alpha", "beta"
-	if identities[slow] > identities[fast] {
-		slow, fast = fast, slow
-	}
-	want := []string{identities[slow], identities[fast]}
+	want := []string{"a.yml", "b.yml"}
 	for range 2 {
 		release := make(chan struct{})
 		observer := &evidenceCompletionObserver{label: fast, release: release}
-		settings := options(&orderedEvidenceProvider{waitFor: slow, release: release})
-		settings.Analyzers = []analyzer.Registration{{Analyzer: observer}}
-		// The smaller identity waits until the larger report has been recorded.
-		result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{source(fast), source(slow)}, Options: settings})
+		settings := analysis.Options{
+			WorkingDir: root,
+			Runners:    runner.Options{Target: "order", Providers: []runner.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, Identity: "same-provider"}}},
+			Analyzers:  []analyzer.Registration{{Analyzer: observer}},
+		}
+		// a.yml waits until b.yml has been analyzed.
+		result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{source("b.yml", fast), source("a.yml", slow)}, Options: settings})
 		if err != nil {
 			t.Fatal(err)
 		}
 		var got []string
 		for _, report := range result.RunnerEvidence {
-			if report.Path != "workflow.yml" {
-				t.Fatalf("unexpected source path: %s", report.Path)
-			}
-			got = append(got, report.Identity)
+			got = append(got, report.Path)
 		}
 		if !slices.Equal(got, want) {
 			t.Fatalf("completion order leaked into evidence: got=%v want=%v", got, want)

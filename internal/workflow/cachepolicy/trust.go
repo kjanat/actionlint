@@ -7,6 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
@@ -67,16 +68,16 @@ var cacheEventClasses = map[string]cacheEventClass{
 // cacheRestrictedEvents includes unclassified triggers conservatively.
 //
 // Inventory tests require an explicit decision before a new generated event can ship.
-func cacheRestrictedEvents(w *workflowlang.Workflow) []string {
+func cacheRestrictedEvents(w declaration.WorkflowView) []string {
 	var events []string
-	for _, event := range w.On {
+	for event := range w.On() {
 		name := event.EventName()
 		switch cacheEventClasses[name] {
 		case cacheEventTrusted, cacheEventRefScoped, cacheEventInherited:
 			continue
-		default:
-			events = append(events, name)
+		case cacheEventUnknown, cacheEventRestricted:
 		}
+		events = append(events, name)
 	}
 	slices.Sort(events)
 	return slices.Compact(events)
@@ -85,63 +86,81 @@ func cacheRestrictedEvents(w *workflowlang.Workflow) []string {
 // Trust evaluates cache grants against the workflow's triggering events.
 // Each shared declaration is reported at its first reachable job.
 type Trust struct {
-	workflow  *workflowlang.CacheMode
-	events    []string
-	reported  map[*workflowlang.CacheMode]bool
-	reachable map[*workflowlang.CacheMode][]string
+	workflow     declaration.CacheModeView
+	events       []string
+	declarations []cacheDeclaration
+}
+type cacheDeclaration struct {
+	mode      declaration.CacheModeView
+	reported  bool
+	reachable []string
+}
+
+func (r *Trust) declaration(mode declaration.CacheModeView) *cacheDeclaration {
+	for i := range r.declarations {
+		if r.declarations[i].mode.SameDeclaration(mode) {
+			return &r.declarations[i]
+		}
+	}
+	r.declarations = append(r.declarations, cacheDeclaration{mode: mode})
+	return &r.declarations[len(r.declarations)-1]
 }
 
 // NewTrust prepares event reachability and shared cache declarations for one workflow.
-func NewTrust(w *workflowlang.Workflow) *Trust {
-	r := &Trust{workflow: w.CacheMode, events: cacheRestrictedEvents(w), reported: map[*workflowlang.CacheMode]bool{}, reachable: map[*workflowlang.CacheMode][]string{}}
-	for _, job := range w.Jobs {
-		mode := workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode)
-		access, valid := mode.Capabilities()
+func NewTrust(w declaration.WorkflowView) *Trust {
+	r := &Trust{workflow: w.CacheMode(), events: cacheRestrictedEvents(w)}
+	for _, job := range w.Jobs() {
+		mode := EffectiveMode(r.workflow, job.CacheMode())
+		access, valid := grant(mode).capabilities()
 		if valid && access&2 != 0 {
-			r.reachable[mode] = append(r.reachable[mode], cacheReachableEvents(r.events, job)...)
+			declaration := r.declaration(mode)
+			declaration.reachable = append(declaration.reachable, cacheReachableEvents(r.events, job.If().Value())...)
 		}
 	}
 	return r
 }
 
 // CheckWrites reports effective write grants reachable from low-trust events.
-func (r *Trust) CheckWrites(job *workflowlang.Job) []diagnostic.Diagnostic {
-	mode := workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode)
-	access, valid := mode.Capabilities()
-	if len(r.events) == 0 || !valid || access&2 == 0 || r.reported[mode] {
+func (r *Trust) CheckWrites(job declaration.JobView) []diagnostic.Diagnostic {
+	mode := EffectiveMode(r.workflow, job.CacheMode())
+	access, valid := grant(mode).capabilities()
+	if len(r.events) == 0 || !valid || access&2 == 0 {
 		return nil
 	}
-	events := cacheReachableEvents(r.events, job)
+	declaration := r.declaration(mode)
+	if declaration.reported {
+		return nil
+	}
+	events := cacheReachableEvents(r.events, job.If().Value())
 	if len(events) == 0 {
 		return nil
 	}
-	// Include every reachable event sharing this declaration, even when another
-	// job is visited later. Emit at the first reachable job to retain its origin.
-	events = append(events, r.reachable[mode]...)
+	// Include every reachable event sharing this declaration, even when another job is visited later.
+	events = append(events, declaration.reachable...)
 	slices.Sort(events)
 	events = slices.Compact(events)
-	r.reported[mode] = true
-	return []diagnostic.Diagnostic{report(mode.Pos, "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), stringutil.SortedQuotes(events))}
+	declaration.reported = true
+	return []diagnostic.Diagnostic{report(position(mode), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind().String(), stringutil.SortedQuotes(events))}
 }
 
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
-func (r *Trust) CheckCall(job *workflowlang.Job) []diagnostic.Diagnostic {
-	call := job.WorkflowCall
-	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode) != nil {
+func (r *Trust) CheckCall(job declaration.JobView) []diagnostic.Diagnostic {
+	call := job.WorkflowCall()
+	if len(r.events) == 0 || !call.Present() || !call.Uses().Present() || call.Uses().ContainsExpression() || EffectiveMode(r.workflow, job.CacheMode()).Present() {
 		return nil
 	}
-	if _, local := references.LocalWorkflow(call.Uses.Value); !local {
-		if _, remote := references.WorkflowRef(call.Uses.Value); !remote {
+	if _, local := references.LocalWorkflow(call.Uses().Value()); !local {
+		if _, remote := references.WorkflowRef(call.Uses().Value()); !remote {
 			return nil
 		}
 	}
-	events := cacheReachableEvents(r.events, job)
+	events := cacheReachableEvents(r.events, job.If().Value())
 	if len(events) == 0 {
 		return nil
 	}
-	return []diagnostic.Diagnostic{report(call.Uses.Pos, "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, stringutil.SortedQuotes(events))}
+	return []diagnostic.Diagnostic{report(position(call.Uses()), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses().Value(), stringutil.SortedQuotes(events))}
 }
 
-func report(pos *workflowlang.Pos, kind, format string, args ...any) diagnostic.Diagnostic {
+func report(pos workflowlang.Pos, kind, format string, args ...any) diagnostic.Diagnostic {
 	return diagnostic.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}}
 }

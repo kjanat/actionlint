@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 type configurationEngine struct {
@@ -58,15 +58,14 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 						t.Fatal(err)
 					}
 					engine := &configurationEngine{}
-					options := adapters.Options{Ruff: "ruff"}
+					options := registry.Selections{"ruff": {Command: "ruff"}}
 					applicationOptions := application.Options{WorkingDir: root}
 					if injected {
-						options.Ruff = ""
-						options.RuffBackend = engine
+						options = registry.Selections{"ruff": {Backend: engine}}
 					} else {
 						applicationOptions.LoadScriptEngine = func(context.Context, string) (analyzer.ScriptBackend, error) { return engine, nil }
 					}
-					applicationOptions.Tools = options.Registrations()
+					applicationOptions.Tools = registry.Registrations(options)
 					result, err := application.Check(t.Context(), applicationOptions, application.Input{Kind: application.Files, Paths: workflows[:1]})
 					if err != nil {
 						t.Fatal(err)
@@ -84,7 +83,7 @@ func TestEngineConfigurationFailurePreventsCheck(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	failure := errors.New("engine rejected settings")
 	engine := &configurationEngine{failure: failure}
-	options := application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: "ruff"}).Registrations(), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return engine, nil }}
+	options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return engine, nil }}
 	_, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: workflows[:1]})
 	if !errors.Is(err, failure) || len(engine.validated) != 1 || engine.checked != 0 {
 		t.Fatalf("error=%v validations=%d checks=%d", err, len(engine.validated), engine.checked)

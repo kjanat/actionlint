@@ -13,6 +13,8 @@
 - [Configuration](config.md): Runner labels, variables, secrets, default permissions, error filters, and opt-in policy
   checks, with YAML Language Server schema support.
 - [Go API](api.md): How to use actionlint as Go library.
+- [Language server](lsp.md): Feature support, inference and editor integration.
+- [CI security sources](design/ci-security-sources.md): Source-backed rule research and coverage limits.
 - [Plugins](plugins.md): Write, build, test and load WebAssembly component plugins, and where built-in rules live.
 - [v2 migration](migration-v2.md): Move pre-commit configurations to the separate hook repository.
 - [References](reference.md): Links to resources.

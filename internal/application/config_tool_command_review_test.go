@@ -1,9 +1,6 @@
 package application
 
 import (
-	"actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +9,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
@@ -42,15 +44,15 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := cfg.Tools.Ruff.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "ruff") {
-		t.Fatal(got)
+	if command, _ := cfg.Tools["ruff"].Backend.Process(); command.Executable() != filepath.Join(parentDir, "bin", "ruff") {
+		t.Fatal(command.Executable())
 	}
 	effective, err := config.ForFile(cfg, filepath.Join(root, "ci.yml"), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := effective.Tools.Shellcheck.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "shellcheck") {
-		t.Fatal(got)
+	if command, _ := effective.Tools["shellcheck"].Backend.Process(); command.Executable() != filepath.Join(parentDir, "bin", "shellcheck") {
+		t.Fatal(command.Executable())
 	}
 }
 
@@ -76,6 +78,11 @@ func TestConfiguredBackendProcessHelper(t *testing.T) {
 		os.Exit(2)
 	}
 	args := os.Args[index+2:]
+	if args[0] == "--version" {
+		// The bundled Ruff provider checks the minimum version first.
+		fmt.Print("ruff 0.17.0\n")
+		os.Exit(0)
+	}
 	source, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		os.Exit(2)
@@ -105,27 +112,29 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := &toolconfig.Backend{Process: &toolconfig.Command{
-		Executable: executable,
-		Args:       []string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
-		Env:        map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"},
-	}}
+	command, err := toolconfig.NewCommand(executable,
+		[]string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
+		map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	process := toolconfig.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			cfg := &config.Config{}
 			request := analysisRequest{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
-			options := adapters.Options{}
+			options := registry.Selections{}
 			shell := "python"
 			if name == "ruff" {
-				cfg.Tools.Ruff.Backend = process
-				options.Ruff = "ruff"
+				cfg.Tools = config.ToolsConfig{"ruff": {Backend: process}}
+				options["ruff"] = backend.Selection{Command: "ruff"}
 			} else {
-				cfg.Tools.Shellcheck.Backend = process
-				options.ShellCheck = "shellcheck"
+				cfg.Tools = config.ToolsConfig{"shellcheck": {Backend: process}}
+				options["shellcheck"] = backend.Selection{Command: "shellcheck"}
 				shell = "bash"
 			}
 			request.Sources = []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}
-			request.Tools = options.Registrations()
+			request.Tools = registry.Registrations(options)
 			result, err := runTestAnalysis(t.Context(), request)
 			if err != nil {
 				t.Fatal(err)

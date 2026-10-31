@@ -11,7 +11,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -57,7 +57,7 @@ func templateDiagnosticLines(script string, firstLine int) []int {
 }
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, pattern := range []string{`{"x": x, **${{ 'rest' }}}`, `[*${{ 'rest' }}]`, `${{ 'Widget' }}()`, `Outer(${{ 'Widget' }}())`} {
 		source := `on: push
 jobs:
@@ -71,7 +71,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +83,7 @@ jobs:
 }
 
 func TestRuffStatisticsRejected(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -92,14 +92,14 @@ jobs:
       - shell: python
         run: print(missing)
 `
-	_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
 		t.Fatalf("statistics mode not rejected before invocation: %v", err)
 	}
 }
 
 func TestRuffFromTemplatePreservesFindings(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, script := range []string{
 		"def generate():\n    yield from ${{ '[]' }}",
 		"def generate():\n    raise (yield from ${{ '[]' }}) from ${{ 'None' }}",
@@ -119,7 +119,7 @@ jobs:
         run: |
           ` + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
 					source = strings.ReplaceAll(source, "\n", ending)
-					result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+					result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -139,7 +139,7 @@ jobs:
 }
 
 func TestRuffSilentRejected(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, flag := range []string{"--silent", "-s", "-qs"} {
 		source := `on: push
 jobs:
@@ -149,7 +149,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-		_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
 			t.Fatalf("silent mode not rejected before invocation: %v", err)
 		}
@@ -157,7 +157,7 @@ jobs:
 }
 
 func TestRuffOperatorTemplateSkipsOnlyItsScript(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -169,7 +169,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ jobs:
 }
 
 func TestRuffVersionedShellGrammar(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		config     string
 		wantSyntax bool
@@ -203,7 +203,7 @@ jobs:
           match 1:
             case 1: pass
 `
-		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
+		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -218,7 +218,7 @@ jobs:
 }
 
 func TestRuffOutputRedirectionDoesNotWrite(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, option := range []string{"--output-file", "--output-file=", "-o", "-o=", "-oattached", "-qoattached"} {
 		t.Run(option, func(t *testing.T) {
 			root := t.TempDir()
@@ -237,7 +237,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err == nil || !strings.Contains(err.Error(), "output redirection") {
 				t.Errorf("redirection not rejected: %v", err)
 			}

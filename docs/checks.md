@@ -30,7 +30,7 @@ List of checks:
 - [Action format in `uses:`](#check-action-format)
 - [Local action inputs validation at `with:`](#check-local-action-inputs)
 - [Popular action inputs validation at `with:`](#check-popular-action-inputs)
-- [Outdated popular actions detection at `uses:`](#detect-outdated-popular-actions)
+- [Action runtime lifecycle](#detect-outdated-popular-actions)
 - [Shell name validation at `shell:`](#check-shell-names)
 - [Job ID and step ID uniqueness](#check-job-step-ids)
 - [Hardcoded credentials](#check-hardcoded-credentials)
@@ -402,11 +402,11 @@ jobs:
 ```
 
 actionlint validates the inserted value in the surrounding `env:` context.
-Known arrays and scalars are rejected as insertion sources; literal mappings
-retain environment-name and expression checks. Unknown object expressions are
+Known arrays and scalars are rejected as insertion sources. Literal mappings
+undergo environment-name and expression checks. Unknown object expressions are
 accepted and keep checkout and executable-bit analysis conservative. The
 directive applies to workflow, job, step, container and service environment
-mappings. `${{ insert }}` in an ordinary value remains an undefined variable.
+mappings. `${{ insert }}` in an ordinary value is an undefined variable.
 
 Mapping insertion also works in action `with:` inputs and at the matrix mapping:
 
@@ -432,14 +432,24 @@ are deferred. Known inserted axes and filters participate in matrix and
 runner-label checks; unknown insertions keep the matrix open.
 
 An expression-produced array inside a matrix axis or `include`/`exclude` sequence
-splices one level into that sequence. Literal nested arrays remain individual
-values. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
+splices one level into that sequence. A literal nested array counts as one
+value. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
 values, while `[before, [1,2], after]` has three.
 
 `case(predicate, result, ..., default)` requires Boolean predicates, preserves
 falsy and structured results, and evaluates only the selected branch. Use it to
 select an object for insertion. `condition && value || fallback` also preserves
 short-circuit evaluation, but chooses the fallback when `value` is falsy.
+
+The result type of `case()` merges every reachable value branch and the final
+default, excluding predicates. `case(github.ref == 'refs/heads/main',
+'production', 'development')` has type `string`, so using it for
+`timeout-minutes` reports a type error. Objects and arrays merge by the
+existing property and element rules; string, number and boolean combinations
+follow the scalar merging rules; incompatible results fall back to `any`.
+Branches made unreachable by constant predicates do not contribute, so
+`case(true, 10, 'never')` has type `number`. No union of individual string
+literals is inferred.
 
 <a id="check-contexts-and-builtin-func"></a>
 
@@ -615,7 +625,7 @@ Outputs of step can be accessed via `steps.<step_id>` objects. The `steps` conte
 It is a common mistake to access the wrong step outputs since people often forget to fix placeholders on copying&pasting
 steps. actionlint can catch invalid accesses to step outputs and reports them as errors.
 
-When the outputs are set by popular actions, the outputs object is more strictly typed.
+When a metadata provider supplies the selected action's manifest, its declared outputs constrain the outputs object.
 
 Example input:
 
@@ -1165,15 +1175,15 @@ blocks. Other scalar forms, such as folded blocks, fall back to reporting the `r
 actionlint applies ShellCheck to recognized `bash`, `sh`, `dash`, and `ksh` interpreters, including executable paths and
 supported custom shell templates. A leading `# shellcheck shell=...` directive can select a supported dialect explicitly.
 
-By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `-shellcheck`
-option on running `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
-`-shellcheck 'shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so `-f`/`--format`
-and file arguments must not be passed. Setting empty string by `shellcheck=` disables shellcheck integration explicitly.
+By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `--tool`
+option takes a command line after the tool id: a command name, a file path, or a command with flags such as
+`--tool shellcheck='shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so
+`-f`/`--format` and file arguments must not be passed. `--no-tool shellcheck` disables shellcheck integration explicitly.
 
 By default, actionlint passes `--norc` to disable rc-file discovery. Set
 [`tools.shellcheck.config`](config.md#shellcheck) to inline settings, an rc-file path, or a directory containing
 `.shellcheckrc` or `shellcheckrc`. Selecting an rc file replaces `--norc` with `--rcfile`; relative config paths resolve from
-the selected actionlint configuration file's directory. Additional options can use `-shellcheck '<command line>'` or the
+the selected actionlint configuration file's directory. Additional options can use `--tool shellcheck='<command line>'` or the
 `SHELLCHECK_OPTS` environment variable described below.
 
 Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
@@ -1855,12 +1865,17 @@ actionlint also checks the `timezone` configuration [is a valid IANA timezone st
 
 ## Runner labels
 
+Unknown-label findings require a complete additional-label set from the host or
+`repository.runners`. With unavailable facts, custom labels remain unknown;
+known built-in compatibility checks still run. The unknown-label examples below
+assume `repository: {runners: []}`.
+
 `ubuntu-latest` accepts Ubuntu 24.04 and 26.04 compatibility during the
 [October 19 to November 19, 2026 migration](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
 `macos-latest-xlarge` maps to macOS 26.
 
 GitHub will [retire `macos-14`, `macos-14-large`, and `macos-14-xlarge` on November 2, 2026](https://github.blog/changelog/2026-10-01-github-actions-macos-14-runner-image-retirement/).
-These labels remain accepted before retirement. Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
+Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
 `-xlarge` label; check architecture requirements when replacing the Intel `macos-14-large` image.
 
 Example input:
@@ -2083,92 +2098,30 @@ validates inputs at `with:` in the workflow are correct. Missing required inputs
 
 <a id="check-popular-action-inputs"></a>
 
-## Popular action inputs validation at `with:`
+## Remote action inputs and outputs
 
-Example input:
+Remote reference syntax is checked without metadata. Input names, required inputs
+and declared outputs are checked when a host supplies the action manifest through
+`analysis.Options.RemoteActions`. Both checks use the same request-scoped metadata
+service and the same selected content.
 
-```yaml
-on: push
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/cache@v6
-        with:
-          keys: |
-            ${{ hashFiles('**/*.lock') }}
-            ${{ hashFiles('**/*.cache') }}
-          path: ./packages
-      - run: make
-```
-
-Output:
-
-```console
-test.yaml:7:15: missing input "key" which is required by action "actions/cache@v6". all required inputs are "key", "path" [action]
-  |
-7 |       - uses: actions/cache@v6
-  |               ^~~~~~~~~~~~~~~~
-test.yaml:9:11: input "keys" is not defined in action "actions/cache@v6". available inputs are "enableCrossOsArchive", "fail-on-cache-miss", "key", "lookup-only", "path", "restore-keys", "save-always", "upload-chunk-size" [action]
-  |
-9 |           keys: |
-  |           ^~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNqEjrHKwkAQhPs8xRQ/5DeQpLO4ysr32ByLFy/eHdlbRWLeXRIliI3VsvN9MBODQVJxRXGOnZgCyCx5ucCoQepF0E5D1nqgha1IMid5WUANFRYDsrmPQVpL1vHhun9j4NZnZ7YP8HwXg8dHAvxNExyJO/YDy39ZVW3VDNH6cod5/mmuld9qouwMmjaR9XRi2eaOGgwu5PkZAAD///yrRBc=)
-
-actionlint checks inputs of many popular actions such as `actions/checkout@v7`. It checks
-
-- some input is required by the action but it is not set at `with:`
-- input set at `with:` is not defined in the action (this commonly occurs by a typo)
-
-this is done by checking `with:` section items with a small database collected at building `actionlint` binary. actionlint
-can check popular actions without fetching any `action.yml` of the actions from the remote so that it can run efficiently.
-
-Note that it only supports the case of specifying major versions like `actions/checkout@v7`. Fixing version of action like
-`actions/checkout@v7.0.1` and using the HEAD of action like `actions/checkout@main` are not supported for now.
-
-Actionlint bundles metadata for popular actions in [`popular_actions.json`](../internal/actioncatalog/popular_actions.json)
-and were automatically collected by [a script][generate-popular-actions]. If you want more checks for other actions, please
-make a request [as an issue][issue-form].
+There is no bundled popular-action list. Without a provider, remote metadata is
+unavailable; metadata-dependent checks skip that action. Local action validation
+continues to use the actual local manifest. See [the library API](api.md#configuration-and-syntax).
 
 <a id="detect-outdated-popular-actions"></a>
 
-## Outdated popular actions detection at `uses:`
+## Action runtime lifecycle
 
-Example input:
+Available manifests are checked against runtime tables generated from GitHub's
+runner source. Deprecated runtimes do not disable input/output validation.
+The declared runtime determines the finding; an action's tag or release age does
+not. Unfetched metadata does not establish that a runtime or service is retired.
 
-```yaml
-on: push
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      # ERROR: actions/checkout@v3 is using the outdated runner 'node16'
-      - uses: actions/checkout@v3
-```
-
-Output:
-
-```console
-test.yaml:8:15: the runtime or service used by "actions/checkout@v3" action is retired on GitHub.com. update the action's version to fix this issue [action]
-  |
-8 |       - uses: actions/checkout@v3
-  |               ^~~~~~~~~~~~~~~~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNokyjEOxCAMRNGeU8wF0BbbUe1VAFlik8hGGTvnj0iqX/xnWjCDI6XNGksCXOirwBnKvEC0UI981PWeRZfJVwEZQWFB7f435acP6buF/67vHQAA//90iR3O)
-
-In addition to the checks for inputs of actions described in [the previous section](#check-popular-action-inputs), actionlint
-reports an error when a popular action declares a deprecated or removed runtime, or uses a known retired service.
-Node 20 deprecation is reported while its metadata remains available for input and output checks. Local JavaScript
-actions receive the same runtime lifecycle checks. Runtime metadata is generated from GitHub's runner source.
-
-This check does not require the newest release of an action. An older release remains accepted if it uses a current
-runtime and service. SHA references whose metadata is absent from the popular-action data set are not resolved online.
-If you want to keep actions used by your workflows up-to-date, consider to use [Dependabot][dependabot-doc].
+A provider selection preserves the requested ref, original selected object,
+terminal commit, repository identity and lookup route. A raw tag-object ID may
+peel to a different commit. Selection and fetched bytes are distinct from proof
+of what a runner actually executed.
 
 <a id="check-shell-names"></a>
 
@@ -2407,7 +2360,7 @@ or jobs that call reusable workflows. It checks that the value is one of these s
 | `write-only` | No             | Yes         |
 | `none`       | No             | No          |
 
-A job's declaration overrides its workflow's declaration. Omitted settings retain GitHub's trigger-dependent
+A job's declaration overrides its workflow's declaration. Omitted settings use GitHub's trigger-dependent
 defaults. Explicit `write` and `write-only` declarations are valid even on low-trust events; GitHub warns about
 their security implications. Cache operations skipped by the selected mode do not fail the workflow.
 
@@ -2466,8 +2419,8 @@ test.yaml:14:15: "actions/cache/restore" cannot restore caches with effective ca
 These three policies are enabled by default. `cache-write-untrusted` reports write grants on low-trust events that
 can use default-branch caches. `cache-call-unrestricted` requires an explicit cap on reusable calls from those events,
 because the callee can otherwise request write access. `cache-operation` reports official cache steps that an
-explicit mode makes ineffective. An ordinary job without `cache-mode` retains GitHub's trigger default and is not
-reported for omission. Ordinary pull request caching is not treated as the default-branch cache risk.
+explicit mode makes ineffective. Omitting `cache-mode` on an ordinary job uses GitHub's trigger default and
+produces no finding. Ordinary pull request caching is not treated as the default-branch cache risk.
 
 See [policy configuration and inline exceptions](config.md#policy-checks)
 for the event list, exact action/mode combinations, limitations, and ways to document reviewed exceptions.
@@ -3294,8 +3247,8 @@ actionlint reports conditions whose outcome is provably constant. Removing `if: 
 preserves the default success gate. An always-false condition skips the guarded work;
 removing it would enable that work. The diagnostic therefore does not suggest removal
 for false conditions. Blank and YAML-null conditions use `success()`. A sole string
-literal expression is folded and parsed as condition source; computed strings remain
-values. See [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string).
+literal expression is folded and parsed as condition source. See
+[expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string) for computed strings.
 
 In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
 and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is
@@ -3722,7 +3675,6 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
 [generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/webhook/generate
-[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/internal/actioncatalog/generate
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

@@ -8,8 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/semantics/permission"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -30,7 +33,7 @@ jobs:
     steps:
       - run: echo
 `)
-	w, errs := workflowlang.ParseDocument(b)
+	w, errs := workflowparser.ParseDocument(b)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -42,8 +45,8 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
-		r := builtin.NewRuleWorkflowCall("caller.yaml", cache)
-		if err := r.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
+		r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, cache)
+		if err := r.VisitWorkflowPre(ownedWorkflowFixture(&workflowlang.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
 		j := &workflowlang.Job{
@@ -55,7 +58,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 				Secrets: map[string]*workflowlang.WorkflowCallSecret{},
 			},
 		}
-		if err := r.VisitJobPre(j); err != nil {
+		if err := r.VisitJobPre(ownedJobFixture(j)); err != nil {
 			t.Fatal(err)
 		}
 		msgs := []string{}
@@ -65,13 +68,13 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		return msgs
 	}
 
-	fromFile := run(t, calls.NewCache(root, root, nil))
+	fromFile := run(t, newCapturedWorkflowCache(t, root, root, nil))
 
 	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowlang.ParseDocument(src)
+	w, errs := workflowparser.ParseDocument(src)
 	if w == nil {
 		t.Fatal("callee was not parsed:", errs)
 	}
@@ -84,8 +87,15 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if event == nil {
 		t.Fatal("callee has no workflow_call event")
 	}
-	astCache := calls.NewCache(root, root, nil)
-	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
+	astCache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
+	path := filepath.Join(root, "permissions.yaml")
+	snapshot, err := snapshots.Document(path, src, documentparse.Workflow(path, src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := astCache.Seed(snapshot); err != nil {
+		t.Fatal(err)
+	}
 	fromNode := run(t, astCache)
 
 	if len(fromFile) == 0 {
@@ -184,21 +194,18 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelRead}},
 		},
 		{
-			what:   "restricted default does not cover pull-requests",
+			what:   "unknown default does not invent a grant",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			errs: []string{
-				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
-			},
 		},
 		{
 			what:   "permissive default covers pull-requests",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionPermissive},
+			cfg:    permissionsConfig(t, "write"),
 		},
 		{
 			what:   "permissive default never covers id-token",
 			callee: map[string]calls.PermissionScopeLevels{"attest": {"id-token": calls.PermissionLevelWrite}},
-			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionPermissive},
+			cfg:    permissionsConfig(t, "write"),
 			errs: []string{
 				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
 			},
@@ -206,7 +213,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:   "restricted assumption set explicitly",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionRestricted},
+			cfg:    permissionsConfig(t, "read"),
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
 			},
@@ -273,6 +280,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		},
 		{
 			what:   "condition on the calling job does not suppress the check",
+			cfg:    permissionsConfig(t, "read"),
 			jobIf:  true,
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			errs: []string{
@@ -296,16 +304,14 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
-			cache := calls.NewCache(cwd, cwd, nil)
-			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee}, nil)
+			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
+			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
-			r := builtin.NewRuleWorkflowCall("caller.yaml", cache)
-			if tc.cfg != nil {
-				r.SetConfig(tc.cfg)
-			}
+			r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, cache)
+			configureRule(r, tc.cfg)
 
 			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			if err := r.VisitWorkflowPre(w); err != nil {
+			if err := r.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -321,7 +327,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			if tc.jobIf {
 				j.If = &workflowlang.String{Value: "${{ github.event_name == 'push' }}", Pos: &workflowlang.Pos{}}
 			}
-			if err := r.VisitJobPre(j); err != nil {
+			if err := r.VisitJobPre(ownedJobFixture(j)); err != nil {
 				t.Fatal(err)
 			}
 

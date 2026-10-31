@@ -58,8 +58,8 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []repoconfig.Rule
 		}
 		groups[category] = append(groups[category], rule)
 	}
-	order := make([]string, 0, 5+len(groups))
-	order = append(order, "correctness", "security", "suspicious", "policy", "external")
+	order := make([]string, 0, 6+len(groups))
+	order = append(order, "correctness", "security", "suspicious", "style", "policy", "external")
 	var other []string
 	for category := range groups {
 		if !slices.Contains(order, category) {

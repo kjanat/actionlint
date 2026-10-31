@@ -1,5 +1,5 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
-# Replace HEAD with either v1|vX.Y.X|etc. to get a tailored schema for your actionlint version.
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
+# Use an exact release such as @2.0.0 to pin the schema, or @2 to follow v2.
 # Lint rules: recommended checks are enabled without a configuration file.
 # Use all for all stable rules, or none to select rules individually.
 ---
@@ -13,15 +13,6 @@ lint:
     # List rules and their defaults with: actionlint rules
     # correctness:
     #   deprecated-commands: warn
-    #   runner-label:
-    #     level: default
-    #     options: {labels: [linux.2xlarge]}
-    #   expression-reference:
-    #     level: default
-    #     options: {variables: null, secrets: null}
-    #   workflow-call:
-    #     level: default
-    #     options: {default-permissions: restricted}
     # suspicious:
     #   case-insensitive-conditions: off
     # security:
@@ -54,7 +45,6 @@ lint:
 #   shellcheck:
 #     enabled: true
 #     # config also accepts an rc path, auto for discovery, or false to skip rc files.
-#     # Inline directives remain active with config: false.
 #     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
 #       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
 
@@ -91,7 +81,15 @@ lint:
 # local-actions:
 #   ./generated-action: ./src/action
 
-# Null variables/secrets disables name checking; [] permits no configured names.
-# Built-in secrets and workflow_call declarations remain available.
+# Repository facts are independent of rule selection. Omission inherits host
+# knowledge; null makes a fact unknown. Empty collections are known empty sets.
+# repository:
+#   runners: [linux.2xlarge]
+#   variables: {DEFAULT_RUNNER: null, PROVENANCE: "true"}
+#   secrets: [DEPLOY_TOKEN]
+#   default-workflow-permissions: read
+#   environments:
+#     production: {variables: {STAGE: "production"}, secrets: [DEPLOY_TOKEN]}
+# Built-in and workflow_call secrets are added separately.
 
 # Run `actionlint config migrate` to preview conversion of older configuration.

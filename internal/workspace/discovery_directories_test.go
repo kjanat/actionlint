@@ -14,7 +14,7 @@ func TestWorkflowDiscoveryRecordsListedDirectories(t *testing.T) {
 	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
 	writeToolFixture(t, root, ".github/workflows/nested/more.yml", toolWorkflow)
 	workflows := filepath.Join(root, ".github", "workflows")
-	session, err := workspace.New(workspace.Options{WorkingDir: root})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
 	}

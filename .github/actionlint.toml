@@ -1,0 +1,26 @@
+#:schema ../actionlint.schema.json
+
+[local-actions]
+"./.published-action-test" = "./tools/action/testdata/published-action"
+
+[[ignores]]
+rule   = "missing-local-action"
+file   = ".github/workflows/ci.yml"
+uses   = "./.actionlint-action-test"
+reason = "Release bundle built during CI."
+
+[[ignores]]
+rule   = "missing-local-action"
+file   = ".github/workflows/ci.yml"
+uses   = "./.actionlint-slim-test/actionlint-action/action"
+reason = "Release bundle downloaded during CI."
+
+[[ignores]]
+rule   = "missing-local-action"
+file   = ".github/workflows/release-prepare.yml"
+uses   = "./.actionlint-action-candidate"
+reason = "Release bundle extracted from the candidate tag."
+
+[[plugins]]
+name    = "github.com/kjanat/actionlint-plugin-shellcheck"
+version = "v0.2.0"

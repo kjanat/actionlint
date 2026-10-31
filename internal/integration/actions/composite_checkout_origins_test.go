@@ -9,12 +9,12 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
-func TestCompositeRetainedCheckoutLocations(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+func TestCompositeCheckoutLocations(t *testing.T) {
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -53,7 +53,7 @@ runs:
 - uses: ./source/local
   id: local
 - run: echo '${{ steps.local.outputs.missing }}'`
-			result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
@@ -72,8 +72,8 @@ runs:
 }
 
 func TestCompositeIndependentSelfRepositoryOrigin(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, git := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -114,7 +114,7 @@ runs:
 			result := testutil.Composite(t, root, tc.before+"\n- uses: $/local"+tc.call+`
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+  run: ./bad.sh`, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			var shell, executable []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
@@ -139,7 +139,7 @@ runs:
 }
 
 func TestCompositeSelfRepositoryKeepsWorkspaceUnknown(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -161,7 +161,7 @@ runs:
 }
 
 func TestCompositeNestedIndependentActionPath(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "outer/action.yml", `name: outer
 description: test
 runs:
@@ -199,8 +199,8 @@ runs:
 	}
 }
 
-func TestCompositeRetainedCheckoutChanges(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+func TestCompositeCheckoutChanges(t *testing.T) {
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -239,7 +239,7 @@ runs:
 }
 
 func TestCompositeIndependentActionChangesSurviveCheckout(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -263,7 +263,7 @@ runs:
 }
 
 func TestCompositeConditionalModeChanges(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
 	testutil.WriteFixture(t, root, "probe/action.yml", "name: probe\n")
 	git("add", "local/bad.sh", "probe/action.yml")
@@ -326,7 +326,7 @@ runs:
 }
 
 func TestCompositeForeignCheckoutMetadata(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -354,7 +354,7 @@ runs:
 }
 
 func TestCompositeIndependentModeChangesKeepWorkspaceFinding(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -384,7 +384,7 @@ runs:
 }
 
 func TestCompositeWorkspaceModeChangesKeepIndependentFinding(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t)
+	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:

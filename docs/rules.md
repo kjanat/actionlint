@@ -160,6 +160,109 @@ Remove the suppression and address its finding, or change the repository suppres
 
 Configure this rule with `lint.rules.policy.disallow-suppressions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## empty-job
+
+Report jobs that run no steps. GitHub accepts the job, but it does nothing.
+
+Add the steps the job should run, or remove the job.
+
+- Category: `style/jobs`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.style.empty-job`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Give the job steps to run.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: []
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+```
+
+## empty-run
+
+Report run steps whose script is empty. GitHub accepts the step, but it runs nothing.
+
+Write the commands the step should run, or remove the step.
+
+- Category: `style/steps`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.style.empty-run`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Write the commands the step runs.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run:
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+```
+
+## empty-triggers
+
+Report workflows whose on section is empty. GitHub accepts the workflow, but no event ever starts it.
+
+Add the events that should start the workflow, or delete the workflow.
+
+- Category: `style/triggers`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.style.empty-triggers`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Declare the events that start the workflow.
+
+```yaml
+on:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+```
+
 ## env-var
 
 Validate environment variable declarations.
@@ -499,6 +602,48 @@ Use the same value types in matrix axes and include/exclude filters.
 - Fixes: `none`
 
 Configure this rule with `lint.rules.suspicious.mixed-type-matrix-filters`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## numeric-values
+
+Report numeric values GitHub truncates toward zero or that cannot take effect, such as a fractional or non-positive max-parallel.
+
+Write the whole number GitHub will use, greater than zero.
+
+- Category: `correctness/values`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.numeric-values`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Write the whole number GitHub uses for max-parallel.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1.5
+      matrix:
+        n: [1, 2]
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        n: [1, 2]
+    steps:
+      - run: echo ok
+```
 
 ## parallel-steps
 

@@ -120,20 +120,15 @@ test('install-only never inspects plugin configuration and cache input is valida
 	assert.deepEqual(setup.calls, []);
 });
 
-test('deprecated Python input warns and cannot enable Pyflakes in a selected older binary', async (t) => {
+test('ignored tool inputs pass through without warnings', async (t) => {
 	const messages: string[] = [];
 	t.mock.method(console, 'log', (message: string) => messages.push(message));
 	const setup = fixture();
-	assert.equal(await runAction({ INPUT_PYFLAKES: 'true', INPUT_SHELLCHECK: 'false' }, setup.runtime), 0);
+	const environment = { INPUT_PYFLAKES: 'true', INPUT_SHELLCHECK: 'false', INPUT_RUFF: 'false' };
+	assert.equal(await runAction(environment, setup.runtime), 0);
 	assert.deepEqual(setup.calls, ['native']);
-	assert.equal(setup.executions[0]?.environment.INPUT_PYFLAKES, 'false');
-	assert.equal(setup.publications[0], join(tmpdir(), 'downloaded actionlint'));
-	assert.ok(
-		messages.some((message) =>
-			message.startsWith('::warning::') && message.includes('pyflakes input is ignored')
-			&& message.includes('Ruff Wasm plugin')
-		),
-	);
+	assert.deepEqual(setup.executions[0]?.environment, environment);
+	assert.deepEqual(messages.filter((message) => message.startsWith('::warning::')), []);
 });
 
 test('install-only publishes actionlint without plugin configuration or analysis', async () => {
@@ -162,8 +157,7 @@ test('launcher validates setup inputs before downloading', async () => {
 test('ordinary binary receives explicit action mode, untouched inputs, and its exit code is preserved', async () => {
 	const setup = fixture(1);
 	const environment = {
-		INPUT_SHELLCHECK: 'false',
-		INPUT_PYFLAKES: 'false',
+		'INPUT_DISABLE-TOOLS': 'shellcheck',
 		INPUT_FILES: 'workflow name.yml\n$(not-a-command).yml',
 		INPUT_CONFIG: '{"self-hosted-runner":{"labels":["ubuntu-24.04-custom"]}}',
 		'INPUT_FAIL-ON-ERROR': 'false',
@@ -175,7 +169,7 @@ test('ordinary binary receives explicit action mode, untouched inputs, and its e
 	assert.deepEqual(setup.executions, [{
 		executable: join(tmpdir(), 'downloaded actionlint'),
 		args: ['-github-action'],
-		environment: { ...environment, INPUT_RUFF: 'true' },
+		environment,
 	}]);
 });
 
@@ -201,16 +195,15 @@ test('actionlint PATH export can be disabled without disabling analysis', async 
 	assert.equal(setup.executions.length, 1);
 });
 
-test('Wasm check selection and invalid analysis booleans reach the native parser unchanged', async () => {
+test('invalid analysis booleans reach the native parser unchanged', async () => {
 	for (const value of ['true', 'false', 'yes']) {
 		const setup = fixture(value === 'yes' ? 2 : 0);
 		assert.equal(
-			await runAction({ INPUT_SHELLCHECK: value, INPUT_RUFF: value }, setup.runtime),
+			await runAction({ 'INPUT_FAIL-ON-ERROR': value }, setup.runtime),
 			value === 'yes' ? 2 : 0,
 		);
 		assert.deepEqual(setup.calls, ['native']);
-		assert.equal(setup.executions[0]?.environment.INPUT_SHELLCHECK, value);
-		assert.equal(setup.executions[0]?.environment.INPUT_RUFF, value);
+		assert.equal(setup.executions[0]?.environment['INPUT_FAIL-ON-ERROR'], value);
 	}
 	assert.equal(toolEnabled('TRUE'), undefined);
 	assert.equal(toolEnabled('false'), false);
@@ -228,10 +221,6 @@ test('explicit actionlint binary requires an absolute executable and bypasses do
 
 test('Windows input names are case-insensitive', { skip: process.platform !== 'win32' }, async () => {
 	const setup = fixture();
-	await runAction({ input_shellcheck: 'false', input_token: 'fixture-review-token' }, setup.runtime);
-	assert.deepEqual(setup.executions[0]?.environment, {
-		INPUT_SHELLCHECK: 'false',
-		INPUT_PYFLAKES: 'false',
-		INPUT_RUFF: 'true',
-	});
+	await runAction({ 'input_disable-tools': 'ruff', input_token: 'fixture-review-token' }, setup.runtime);
+	assert.deepEqual(setup.executions[0]?.environment, { 'INPUT_DISABLE-TOOLS': 'ruff' });
 });

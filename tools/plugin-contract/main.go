@@ -39,7 +39,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := generateRoleContract("template-effects", "template-effects", "TemplateEffectsInterface", "templateEffectsContractDigest", "expectedTemplateEffectsContract"); err != nil {
+	if err := generateTemplateEffects(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -179,6 +179,12 @@ func (g *generator) value(value wit.Type) (string, error) {
 
 func (g *generator) defined(kind wit.TypeDefKind) (string, error) {
 	switch kind := kind.(type) {
+	case wit.String:
+		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindPrimitive, Primitive:wp.PrimString}", nil
+	case wit.Bool:
+		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindPrimitive, Primitive:wp.PrimBool}", nil
+	case wit.U32:
+		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindPrimitive, Primitive:wp.PrimU32}", nil
 	case *wit.Record:
 		var fields []string
 		for _, field := range kind.Fields {

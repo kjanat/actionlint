@@ -9,7 +9,7 @@ import (
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/filefilter"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Override scopes settings to selected files. Other feature sections can
@@ -27,12 +27,15 @@ type Override struct {
 	// Tools overlays external checker settings for the selected files.
 	Tools     *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	toolsNode *yaml.Node
+	// Repository overlays facts for matching files without changing rule selection.
+	Repository     RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
+	repositoryNode *yaml.Node
 	// LocalActions overlays generated action source mappings for matching files.
 	LocalActions    LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
 	localActionsSet bool
 }
 
-// UnmarshalYAML validates paths and retains omitted/null fields for merging.
+// UnmarshalYAML validates paths and records which fields were omitted or reset.
 func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 	var err error
 	n, err = configtree.Expand(n, make(map[*yaml.Node]bool))
@@ -69,6 +72,9 @@ func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 		if n.Content[i].Value == "tools" {
 			next.toolsNode = n.Content[i+1]
 		}
+		if n.Content[i].Value == "repository" {
+			next.repositoryNode = n.Content[i+1]
+		}
 		if n.Content[i].Value == "includes" || n.Content[i].Value == "excludes" {
 			for _, pattern := range n.Content[i+1].Content {
 				if pattern.Kind != yaml.ScalarNode || pattern.ShortTag() != "!!str" {
@@ -84,6 +90,9 @@ func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 // MarshalYAML preserves omitted fields in partial overlays during round trips.
 func (o Override) MarshalYAML() (any, error) {
 	value := map[string]any{"includes": o.Includes}
+	if o.repositoryNode != nil {
+		value["repository"] = o.repositoryNode
+	}
 	if o.localActionsSet || o.LocalActions != nil {
 		value["local-actions"] = o.LocalActions
 	}
@@ -112,7 +121,7 @@ func (o Override) MarshalYAML() (any, error) {
 }
 
 func (o Override) matches(path string) bool {
-	return (filefilter.Selection{Includes: o.Includes, Excludes: o.Excludes}).Match(path)
+	return filefilter.MatchPatterns(o.Includes, o.Excludes, path)
 }
 
 func lintConfigNode(config LintConfig) (*yaml.Node, error) {
@@ -183,10 +192,17 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		}
 	}
 	tools := config.Tools
+	var repository yaml.Node
+	if err := repository.Encode(config.Repository); err != nil {
+		return nil, err
+	}
 	localActions := config.LocalActions
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
 			continue
+		}
+		if override.repositoryNode != nil {
+			repository = *mergeRepositoryNodes(&repository, override.repositoryNode, map[*yaml.Node]Input{})
 		}
 		if override.localActionsSet || override.LocalActions != nil {
 			if override.LocalActions == nil {
@@ -221,6 +237,9 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		node = configtree.Merge(expandLintShorthands(node), overlay, map[*yaml.Node]Input{})
 	}
 	next := *config
+	if err := next.Repository.UnmarshalYAML(&repository); err != nil {
+		return nil, err
+	}
 	next.Tools = tools
 	next.LocalActions = localActions
 	next.Lint = LintConfig{}
@@ -232,9 +251,6 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		return nil, err
 	}
 	next.Paths = nil
-	next.SelfHostedRunner = SelfHostedRunnerConfig{}
-	next.ConfigVariables, next.ConfigSecrets = nil, nil
-	next.AssumeDefaultPermissions = DefaultPermissionsAssumptionUnset
 	next.Policy = Policy{}
 	projectSettings(&next)
 	return &next, nil
@@ -243,7 +259,7 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error) {
 	var node, overlay yaml.Node
 	if err := node.Encode(map[string]any{"tools": base}); err != nil {
-		return ToolsConfig{}, err
+		return nil, err
 	}
 	var value any
 	if override.toolsNode != nil {
@@ -252,32 +268,39 @@ func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error
 		var err error
 		value, err = programmaticToolsNode(override.Tools)
 		if err != nil {
-			return ToolsConfig{}, err
+			return nil, err
 		}
 	}
 	if err := overlay.Encode(map[string]any{"tools": value}); err != nil {
-		return ToolsConfig{}, err
+		return nil, err
 	}
 	merged := configtree.Merge(normalizeToolSwitch(&node), normalizeToolSwitch(&overlay), map[*yaml.Node]Input{})
 	var decoded struct {
 		Tools ToolsConfig `yaml:"tools"`
 	}
 	if err := merged.Decode(&decoded); err != nil {
-		return ToolsConfig{}, err
+		return nil, err
 	}
-	if decoded.Tools.Shellcheck.Config != nil {
-		source := base.Shellcheck.Config
-		if override.Tools != nil && override.Tools.Shellcheck.Config != nil {
-			source = override.Tools.Shellcheck.Config
+	// Re-decoding loses the overlay origin of each config selection; restore it
+	// from the setting that supplied the merged value.
+	for name, tool := range decoded.Tools {
+		if tool.Config == nil {
+			continue
+		}
+		source := base[name].Config
+		if override.Tools != nil {
+			if selected := (*override.Tools)[name].Config; selected != nil {
+				source = selected
+			}
 		}
 		if source != nil {
-			decoded.Tools.Shellcheck.Config.fromInput = source.fromInput
+			tool.Config.fromInput = source.fromInput
 		}
 	}
 	return decoded.Tools, nil
 }
 
-// Programmatic nil fields omit settings; parsed nodes retain explicit resets.
+// Nil fields in Go values mean omission; explicit resets require parsed YAML nodes.
 func programmaticToolsNode(tools *ToolsConfig) (*yaml.Node, error) {
 	var node yaml.Node
 	if err := node.Encode(tools); err != nil {
@@ -305,8 +328,7 @@ func programmaticToolsNode(tools *ToolsConfig) (*yaml.Node, error) {
 	return &node, nil
 }
 
-// Expand shorthand before partial mappings overlay it, retaining inherited
-// group/rule levels and options. Scalar overlays still replace the whole value.
+// Expand scalar shorthands so a partial mapping can override individual options.
 func expandLintShorthands(node *yaml.Node) *yaml.Node {
 	for category := range (&LintRulesConfig{}).Groups() {
 		node = expandRuleLevel(node, "rules", category)

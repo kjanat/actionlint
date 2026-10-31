@@ -11,7 +11,7 @@ import (
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Keys returns the supported top-level configuration keys in declaration order.
@@ -49,8 +49,7 @@ func (e *OverlayError) Error() string {
 func (e *OverlayError) Unwrap() error { return e.cause }
 
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
-// the YAML/JSON value of one ConfigKeys entry. Unknown keys are rejected here;
-// existing config files retain their parsing behavior.
+// the YAML/JSON value of one ConfigKeys entry. It rejects unknown keys.
 func ParseOverlay(input string, content []byte, additional ...string) (Overlay, error) {
 	return parseOverlay(input, content, true, additional...)
 }
@@ -126,7 +125,7 @@ func ResolveBeforePlugins(node *yaml.Node, overlays []Overlay) (Resolved, error)
 	inputs := make(map[*yaml.Node]Input)
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
-		node = configtree.Merge(node, overlay.node, inputs)
+		node = MergeDocuments(node, overlay.node, inputs)
 		names = append(names, overlay.name)
 	}
 	resolved, err := resolveNode(node, nil, false)
@@ -139,15 +138,6 @@ func ResolveBeforePlugins(node *yaml.Node, overlays []Overlay) (Resolved, error)
 type Loaded struct {
 	Resolved
 	Filename string
-}
-
-// Report describes the configuration actually selected for one project.
-type Report struct {
-	Project    string
-	File       string
-	Explicit   bool
-	Overrides  []string
-	Inspection Inspection
 }
 
 type Input = configtree.Input
@@ -187,7 +177,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...str
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
 		MarkInput(overlay.node, overlay.name, inputs)
-		node = configtree.Merge(node, overlay.node, inputs)
+		node = MergeDocuments(node, overlay.node, inputs)
 		names = append(names, overlay.name)
 	}
 	if len(overlays) > 0 {

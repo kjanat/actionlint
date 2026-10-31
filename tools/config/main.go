@@ -13,8 +13,10 @@ import (
 	"unicode"
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/genfile"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 
 	"github.com/invopop/jsonschema"
 )
@@ -47,17 +49,25 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[map[string]*string]():
+		return &jsonschema.Schema{Type: "object", AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}}
 	case reflect.TypeFor[actionlint.PluginDeclarations]():
 		mapping := reflectMapping(struct {
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
 			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
 			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue or absolute file URI for an unpublished local candidate. Omission uses the public actionlint registry."`
 		}{})
+		direct := reflectMapping(struct {
+			Source string `yaml:"source" jsonschema:"required,minLength=1,description=Independent artifact URL with a mandatory SHA256 pin, or an OCI digest reference. Cannot be combined with registry declaration fields."`
+		}{})
+		source, _ := direct.Properties.Get("source")
+		source.Pattern = `^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$`
 		return &jsonschema.Schema{
 			Type: "array",
 			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.1.1", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64)}},
+				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, HTTPS artifact URL pinned with #sha256=<64 hex digits>, or OCI reference pinned with @sha256:<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.2.0", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64), "oci://ghcr.io/owner/provider@sha256:" + strings.Repeat("a", 64)}},
 				mapping,
+				direct,
 			}},
 		}
 	case reflect.TypeFor[actionlint.IgnoreConfig]():
@@ -80,8 +90,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		rule.Not = &jsonschema.Schema{Enum: []any{"disallow-suppressions"}}
 		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
 			property, _ := mapping.Properties.Get(name)
-			// Match strings containing a character outside Go's Unicode whitespace set.
-			property.Pattern = "[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]"
+			property.Ref = "#/$defs/non-blank-string"
+			property.Type, property.MinLength = "", nil
 		}
 		for _, selector := range []string{"file", "uses", "job", "step"} {
 			mapping.AnyOf = append(mapping.AnyOf, &jsonschema.Schema{Required: []string{selector}})
@@ -117,7 +127,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
-		for _, category := range []string{"correctness", "suspicious", "security", "policy", "external", "nursery", "plugins"} {
+		for _, category := range []string{"correctness", "suspicious", "style", "security", "policy", "external", "nursery", "plugins"} {
 			group := reflectMapping(struct {
 				Preset actionlint.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
 				Level  actionlint.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
@@ -172,77 +182,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		mapping.Version, mapping.ID = "", ""
 		return mapping
-	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
-		markdown := "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
-		description := strings.ReplaceAll(markdown, "`", "")
-		// Type-only alternatives keep unknown-key diagnostics attached to the mapping.
-		return &jsonschema.Schema{
-			Description: description,
-			Extras:      map[string]any{"markdownDescription": markdown},
-			AnyOf: []*jsonschema.Schema{
-				{Type: "string", Extras: map[string]any{"defaultSnippets": []any{map[string]string{
-					"label": "ShellCheck rc file or directory", "body": "${1:.shellcheckrc}",
-				}}}},
-				{Type: "object", Extras: map[string]any{"defaultSnippets": []any{map[string]string{
-					"label": "Inline ShellCheck directives", "bodyText": "{}",
-				}}}},
-				{Type: "null"},
-			},
-			MinLength: new(uint64(1)),
-			Not:       &jsonschema.Schema{Type: "string", Pattern: `[\x00\r\n]`},
-			If:        &jsonschema.Schema{Type: "object"},
-			Then: &jsonschema.Schema{AllOf: []*jsonschema.Schema{
-				// Keep the selecting property's hover ahead of the referenced title.
-				{Title: "config", Description: description, Extras: map[string]any{"markdownDescription": markdown}},
-				{Ref: shellcheckSchemaPath},
-			}},
-		}
-	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
-		mapping := reflectMapping(struct {
-			Backend *toolconfig.Backend                `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
-			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
-			Config  *actionlint.ShellcheckConfigSource `yaml:"config"`
-		}{})
-		mapping.Version, mapping.ID = "", ""
-		config, _ := mapping.Properties.Get("config")
-		config.Description = config.Then.AllOf[0].Description
-		mapping.Type = ""
-		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
-		requireOneBackend(mapping)
-		return mapping
-	case reflect.TypeFor[actionlint.RuffToolConfig]():
-		type plain actionlint.RuffToolConfig
-		mapping := reflectMapping(plain{})
-		mapping.Version, mapping.ID = "", ""
-		mapping.Type = ""
-		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
-		mapping.Properties.Set("config", &jsonschema.Schema{
-			Description: "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
-			AnyOf:       []*jsonschema.Schema{{Type: "object"}, {Type: "null"}},
-		})
-		target, _ := mapping.Properties.Get("target-version")
-		target.Type = ""
-		target.OneOf = []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1)), Examples: []any{"py314"}}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
-		for _, name := range []string{"select", "ignore"} {
-			property, _ := mapping.Properties.Get(name)
-			property.Items = &jsonschema.Schema{Type: "string", MinLength: new(uint64(1)), Examples: []any{"F", "F821"}}
-		}
-		requireOneBackend(mapping)
-		for name, description := range map[string]string{
-			"backend":        "Choose how Ruff runs. Process settings only apply to the native adapter.",
-			"enabled":        "Enable Ruff analysis.",
-			"target-version": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
-			"select":         "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
-			"ignore":         "Rule codes or prefixes to skip, such as `F401`.",
-		} {
-			property, _ := mapping.Properties.Get(name)
-			property.Description = strings.ReplaceAll(description, "`", "")
-			if property.Extras == nil {
-				property.Extras = map[string]any{}
-			}
-			property.Extras["markdownDescription"] = description
-		}
-		return mapping
+	case reflect.TypeFor[actionlint.ToolsConfig]():
+		return toolsSchema(reflectMapping)
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
@@ -254,12 +195,19 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				{Type: "null"},
 			}},
 		}
-	case reflect.TypeFor[actionlint.DefaultPermissionsAssumption]():
-		return &jsonschema.Schema{
-			Type:    "string",
-			Enum:    []any{"restricted", "permissive"},
-			Default: "restricted",
-		}
+	case reflect.TypeFor[actionlint.RepositoryConfig]():
+		mapping := reflectMapping(struct {
+			Permissions  *string            `yaml:"default-workflow-permissions" jsonschema:"nullable,enum=read,enum=write,description=Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown."`
+			Runners      []string           `yaml:"runners" jsonschema:"nullable,description=Additional runner labels or Go path.Match patterns. Empty permits no additional labels."`
+			Variables    map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics."`
+			Secrets      []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets."`
+			Environments map[string]struct {
+				Variables map[string]*string `yaml:"variables" jsonschema:"nullable"`
+				Secrets   []string           `yaml:"secrets" jsonschema:"nullable"`
+			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
+		}{})
+		mapping.Version, mapping.ID = "", ""
+		return mapping
 	case reflect.TypeFor[actionlint.JobTimeoutPolicy]():
 		// The runtime type stores private state and accepts either a boolean or
 		// this mapping. Keep this in sync with JobTimeoutPolicy.UnmarshalYAML.
@@ -270,6 +218,37 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
+	case reflect.TypeFor[lintconfig.CommitHashOptions]():
+		// The runtime type keeps validated patterns private. Keep this in sync
+		// with CommitHashOptions.UnmarshalYAML.
+		mapping := reflectMapping(struct {
+			Exclude []string `yaml:"exclude" jsonschema:"nullable"`
+		}{})
+		exclude, _ := mapping.Properties.Get("exclude")
+		exclude.Description = "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref."
+		mapping.Description = "Selects exceptions to immutable action references."
+		mapping.Version = ""
+		mapping.ID = ""
+		return mapping
+	case reflect.TypeFor[toolconfig.Backend]():
+		// The runtime type keeps its validated transport private. Keep this in
+		// sync with Backend.UnmarshalYAML.
+		mapping := reflectMapping(struct {
+			Process *struct {
+				Executable string            `yaml:"executable,omitempty" jsonschema:"description=A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory."`
+				Args       []string          `yaml:"args,omitempty" jsonschema:"nullable,description=Literal arguments prepended to actionlint's analysis arguments."`
+				Env        map[string]string `yaml:"env,omitempty" jsonschema:"nullable,description=Overrides named variables in the child process only."`
+			} `yaml:"process,omitempty" jsonschema:"description=Configures native executable invocation."`
+			Wasm *struct {
+				Path string `yaml:"path" jsonschema:"required,minLength=1"`
+			} `yaml:"wasm,omitempty" jsonschema:"description=Selects a core WebAssembly engine using the versioned core JSON ABI."`
+		}{})
+		wasm, _ := mapping.Properties.Get("wasm")
+		path, _ := wasm.Properties.Get("path")
+		path.Description = "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory."
+		mapping.Version = ""
+		mapping.ID = ""
+		return mapping
 	case reflect.TypeFor[actionlint.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
@@ -280,7 +259,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	case reflect.TypeFor[actionlint.SuppressionsPolicy]():
 		mapping := reflectMapping(struct {
 			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
-			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report the prohibited directive or retain original violations or both."`
+			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Select suppression comments, original violations, or both for reporting."`
 		}{})
 		rules, _ := mapping.Properties.Get("rules")
 		rules.Items.Description = "Built-in rule ID or registered analyzer name."
@@ -339,6 +318,9 @@ func documentFields(s *jsonschema.Schema) {
 	documentFields(s.Then)
 	documentFields(s.Items)
 	documentFields(s.AdditionalProperties)
+	for _, definition := range s.Definitions {
+		documentFields(definition)
+	}
 }
 
 func requireOneBackend(mapping *jsonschema.Schema) {
@@ -348,13 +330,10 @@ func requireOneBackend(mapping *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
+	if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "tools", "profile", "shell", "directives.go"), jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
-		return nil, err
-	}
-	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "knowledge_options.go"} {
+	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
@@ -398,7 +377,17 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
-	s.Properties.Set("$schema", &jsonschema.Schema{Type: "string", Description: "Schema reference for editors. actionlint ignores it."})
+	if s.Definitions == nil {
+		s.Definitions = jsonschema.Definitions{}
+	}
+	s.Definitions["non-blank-string"] = &jsonschema.Schema{
+		Type: "string", MinLength: new(uint64(1)),
+		Pattern: "[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]",
+	}
+	// Accept editor metadata without listing it among completion candidates.
+	s.PatternProperties = map[string]*jsonschema.Schema{
+		`^\$schema$`: {Type: "string", Description: "Schema reference for editors. actionlint ignores it."},
+	}
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"
@@ -411,7 +400,7 @@ func generateShellcheckSchema() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := r.Reflect(actionlint.ShellcheckConfig{})
+	s := r.Reflect(shellprofile.Directives{})
 	enable, _ := s.Properties.Get("enable")
 	enable.OneOf = append(enable.OneOf, &jsonschema.Schema{Type: "string", Enum: []any{"all"}}, &jsonschema.Schema{Type: "boolean", Enum: []any{true}})
 	enable.Description = enable.OneOf[0].Description
@@ -424,7 +413,7 @@ func generateShellcheckSchema() ([]byte, error) {
 		delete(enable.OneOf[0].Extras, "markdownDescription")
 	}
 	sourcePath, _ := s.Properties.Get("source-path")
-	// Match shellcheckDirectivePath: a directive cannot contain line breaks or
+	// Match the shell profile's directivePath: a directive cannot contain line breaks or
 	// NUL. Both quote types require an unquoted path with no space/tab or leading quote.
 	sourcePath.OneOf[0].Items.Not = &jsonschema.Schema{Pattern: `[\x00\r\n]`}
 	sourcePath.OneOf[0].Items.AnyOf = []*jsonschema.Schema{

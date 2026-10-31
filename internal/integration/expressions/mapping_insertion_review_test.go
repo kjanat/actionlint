@@ -6,8 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	matrixlang "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
@@ -26,11 +28,11 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 			if len(errs) != 3 || counts["matrix"] != 1 || counts["runner-label"] != 2 {
 				t.Fatalf("known row diagnostics lost: %v", errs)
 			}
-			workflow, parseErrors := workflowlang.ParseDocument([]byte(source))
+			workflow, parseErrors := workflowparser.ParseDocument([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			if _, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy); known {
+			if _, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256); known {
 				t.Fatal("opaque insertion produced complete combinations")
 			}
 		})
@@ -65,7 +67,7 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				workflow, _ := workflowlang.ParseDocument([]byte(source))
+				workflow, _ := workflowparser.ParseDocument([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != tc.entrypoint || action.Args == nil || action.Args.Value != tc.args {
 					t.Fatalf("reserved fields lost: %+v", action)
@@ -94,7 +96,7 @@ func TestConstantInsertedKeyCollisions(t *testing.T) {
 			{"unknown key", `{FOO: %s, '${{ insert }}': {'${{ vars.KEY }}': %s}}`, false},
 		} {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
-				_, errs := workflowlang.ParseDocument([]byte(insertionSectionWorkflow(section, fmt.Sprintf(tc.mapping, value, value))))
+				_, errs := workflowparser.ParseDocument([]byte(insertionSectionWorkflow(section, fmt.Sprintf(tc.mapping, value, value))))
 				duplicates := 0
 				for _, err := range errs {
 					if strings.Contains(err.Message, "is duplicated") {
@@ -135,7 +137,7 @@ func TestDockerConstantInputKeys(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				workflow, _ := workflowlang.ParseDocument([]byte(source))
+				workflow, _ := workflowparser.ParseDocument([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if tc.entrypoint == "" {
 					if action.Entrypoint != nil || action.Args != nil {
@@ -163,11 +165,17 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 				if len(errs) != 1 || !strings.Contains(errs[0].Message, "potentially untrusted") {
 					t.Fatalf("script injection check missing: %v", errs)
 				}
-				workflow, _ := workflowlang.ParseDocument([]byte(source))
+				workflow, _ := workflowparser.ParseDocument([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-				names, complete := workflowlang.ActionInputNames(action)
-				if !complete || names["script"] == nil || len(names) != 1 {
-					t.Fatalf("metadata resolved different names: %v, %v", names, complete)
+				names := workflowlang.ResolvedActionInputs(action)
+				found, count := false, 0
+				for name := range names.KeyedEntries() {
+					text, ok := name.ScalarString()
+					found = found || ok && strings.EqualFold(text, "script")
+					count++
+				}
+				if !names.Complete() || !found || count != 1 {
+					t.Fatalf("metadata resolved different names: %v, complete=%v", count, names.Complete())
 				}
 				if _, known := workflowlang.ActionInputValue(action, "script"); known {
 					t.Fatal("untrusted script value was treated as a constant")
@@ -186,7 +194,7 @@ func TestActionInputObjectResultsStayData(t *testing.T) {
 		if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
 			t.Fatalf("evaluated script string interpreted as source: %v", errs)
 		}
-		workflow, _ := workflowlang.ParseDocument([]byte(source))
+		workflow, _ := workflowparser.ParseDocument([]byte(source))
 		action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 		if value, known := workflowlang.ActionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
 			t.Fatalf("resolved value=%q, known=%v", value, known)
@@ -206,7 +214,7 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 				if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
 					t.Fatalf("resolved axis rejected: %v", errs)
 				}
-				workflow, errs := workflowlang.ParseDocument([]byte(source))
+				workflow, errs := workflowparser.ParseDocument([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -300,7 +308,7 @@ func TestResolvedEmptyMappingKeys(t *testing.T) {
 					for range depth {
 						mapping = "{'${{ insert }}': " + mapping + "}"
 					}
-					_, errs := workflowlang.ParseDocument([]byte(insertionSectionWorkflow(section, mapping)))
+					_, errs := workflowparser.ParseDocument([]byte(insertionSectionWorkflow(section, mapping)))
 					if key == "${{ vars.KEY }}" || key == "${{ 'valid' }}" {
 						if len(errs) != 0 {
 							t.Fatal(errs)

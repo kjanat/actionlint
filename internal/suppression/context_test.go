@@ -85,3 +85,41 @@ func TestSourcedMultilineFlowBoundary(t *testing.T) {
 		}
 	}
 }
+
+func TestContextsUseYAMLSourceLines(t *testing.T) {
+	source := "\uFEFFjobs:\r\n  test:\r\n    steps:\r\n      - uses: ./a\r\n"
+	index := Contexts([]byte(source), nil)
+	if !index.Match(4, 9, "test", "", "./a") {
+		t.Fatalf("BOM or CRLF shifted the step's source position: %#v", index)
+	}
+}
+
+func TestSuppressionYAMLLineEndings(t *testing.T) {
+	for _, ending := range []struct {
+		name string
+		text string
+	}{
+		{name: "CR", text: "\r"},
+		{name: "CRLF", text: "\r\n"},
+		{name: "NEL", text: "\u0085"},
+		{name: "LS", text: "\u2028"},
+		{name: "PS", text: "\u2029"},
+	} {
+		t.Run(ending.name, func(t *testing.T) {
+			source := []byte("\ufeffjobs:" + ending.text +
+				"  test:" + ending.text +
+				"    steps:" + ending.text +
+				"      - run: echo hi # actionlint:ignore rule -- reason" + ending.text)
+			if index := Contexts(source, nil); !index.Match(4, 9, "test", "", "") {
+				t.Fatalf("step context lost source line for separator %q: %#v", ending.text, index)
+			}
+			directives, findings := Parse(source, []string{"rule"})
+			if len(findings) != 0 || len(directives) != 1 {
+				t.Fatalf("directives=%#v findings=%#v", directives, findings)
+			}
+			if directives[0].Position.Line != 4 || directives[0].First != 4 {
+				t.Errorf("directive source position = line %d, target %d; want 4", directives[0].Position.Line, directives[0].First)
+			}
+		})
+	}
+}

@@ -13,11 +13,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestWorkflowRunNames(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	producer := testutil.WriteFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+testutil.GoodWorkflow)
 	testutil.WriteFixture(t, root, ".github/workflows/unnamed.yaml", testutil.GoodWorkflow)
 	testutil.WriteFixture(t, root, ".github/workflows/nested/ignored.yml", "name: Nested\n"+testutil.GoodWorkflow)
@@ -81,7 +82,7 @@ func TestWorkflowRunNamesLiteralNames(t *testing.T) {
 	} {
 		for _, inMemory := range []bool{false, true} {
 			t.Run(tc.name+tc.reference+strconv.FormatBool(inMemory), func(t *testing.T) {
-				root := t.TempDir()
+				root := tempdir.Physical(t)
 				project := workspace.Identity(root)
 				producer := "name: " + tc.name + "\n" + testutil.GoodWorkflow
 				consumer := "on: {workflow_run: {workflows: ['" + tc.reference + `'], types: [completed]}}
@@ -117,7 +118,7 @@ func TestWorkflowRunNamesFilesystemPathCasing(t *testing.T) {
 	for _, disk := range []string{"name: Old\n" + testutil.GoodWorkflow, "name: [\n"} {
 		for _, reference := range []string{"New", "Old", "Typo"} {
 			t.Run(disk+reference, func(t *testing.T) {
-				root := t.TempDir()
+				root := tempdir.Physical(t)
 				producer := testutil.WriteFixture(t, root, ".github/workflows/build.yml", disk)
 				if _, err := os.Stat(strings.ToUpper(root)); err != nil {
 					t.Skip("requires a case-insensitive filesystem")
@@ -156,7 +157,7 @@ jobs:
 }
 
 func TestWorkflowRunNamesRelativeProject(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	t.Chdir(root)
 	testutil.WriteFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+testutil.GoodWorkflow)
 	project, err := workspace.NewProject(".")
@@ -205,7 +206,7 @@ func TestWorkflowRunNamesPatterns(t *testing.T) {
 		{"Build/CI", "'Build**'", 0},
 	} {
 		t.Run(tc.name+tc.filters, func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			project := workspace.Identity(root)
 			consumer := "on: {workflow_run: {workflows: [" + tc.filters + `], types: [completed]}}
 jobs:
@@ -235,7 +236,7 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 			name = "newer than disk"
 		}
 		t.Run(name, func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			t.Chdir(root)
 			producer := filepath.Join(root, ".github/workflows/build.yml")
 			if onDisk {
@@ -246,7 +247,6 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 				t.Fatal(err)
 			}
 			project := workspace.Identity(root)
-			// The excluded source also contains a lint finding that must remain excluded.
 			producerContent := `name: New
 env: {VALUE: '${{ nonexistent }}'}
 ` + testutil.GoodWorkflow
@@ -274,7 +274,7 @@ jobs:
 func TestWorkflowRunNamesUnreadableSibling(t *testing.T) {
 	for _, readErr := range []error{os.ErrPermission, os.ErrNotExist, context.Canceled, context.DeadlineExceeded} {
 		t.Run(readErr.Error(), func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			producer := testutil.WriteFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+testutil.GoodWorkflow)
 			consumer := `on: {workflow_run: {workflows: [Missing], types: [completed]}}
 jobs:
@@ -306,7 +306,7 @@ jobs:
 }
 
 func TestWorkflowRunNamesInMemoryAndIncomplete(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	producer := testutil.WriteFixture(t, root, ".github/workflows/build.yml", "name: Old\n"+testutil.GoodWorkflow)
 	consumer := `on: {workflow_run: {workflows: [New], types: [completed]}}
 jobs:

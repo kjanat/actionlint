@@ -1,8 +1,12 @@
 package execution_test
 
 import (
+	"fmt"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
+	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
@@ -33,7 +37,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 		{"loader", "{LD_PRELOAD: custom.so}", true, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := workflowlang.ParseDocument([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
+			workflow, errs := workflowparser.ParseDocument([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -41,15 +45,25 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 			if len(env.Vars) != 0 || len(env.Insertions) != 1 {
 				t.Fatalf("directive parsed as an environment variable: %+v", env)
 			}
-			if got := execution.CheckoutEnvironmentUnknown(env, runnerlang.MacOrLinux); got != tc.checkout {
-				t.Errorf("checkout environment unknown: %v, want %v", got, tc.checkout)
+			semantic := mapping.Resolve(workflowlang.EnvMappingView(env))
+			if got := execution.CheckoutEnvironmentUnknown(semantic, runnerlang.MacOrLinux); got != tc.checkout {
+				t.Errorf("checkout environment unknown: %v, want %v (complete=%v entries=%v)", got, tc.checkout, semantic.Complete(), mappingSummary(semantic))
 			}
-			if got := execution.ShellEnvironmentUnknown(env); got != tc.shell {
-				t.Errorf("shell environment unknown: %v, want %v", got, tc.shell)
+			if got := execution.ShellEnvironmentUnknown(semantic); got != tc.shell {
+				t.Errorf("shell environment unknown: %v, want %v (complete=%v entries=%v)", got, tc.shell, semantic.Complete(), mappingSummary(semantic))
 			}
-			if got := execution.ShellPathUnknown(env); got != tc.path {
-				t.Errorf("shell path unknown: %v, want %v", got, tc.path)
+			if got := execution.ShellPathUnknown(semantic); got != tc.path {
+				t.Errorf("shell path unknown: %v, want %v (complete=%v entries=%v)", got, tc.path, semantic.Complete(), mappingSummary(semantic))
 			}
 		})
 	}
+}
+
+func mappingSummary(resolved mapping.Mapping) []string {
+	var summary []string
+	for name, item := range resolved.Entries() {
+		text, known := item.ScalarString()
+		summary = append(summary, fmt.Sprintf("%s=%q (known=%v state=%d kind=%d)", name, text, known, item.State(), item.Kind()))
+	}
+	return summary
 }

@@ -30,17 +30,21 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: go.mod
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version-file: .tool-versions
-          install-only: true
+      # golangci-lint-action builds .custom-gcl.yml itself and leaves the base
+      # binary off PATH; make lint-build needs it to rebuild custom-gcl.
+      - name: Install golangci-lint
+        run: |
+          version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)"
+          go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
+      - name: Check the import graph against the layer table
+        run: go run ./tools/layers -check
       - name: Build both architecture runners
         id: build
         run: make lint-build
-      - name: Verify contract reload and fail-closed startup
+      - name: Verify source-derived checks in an unrelated module
         env:
           ACTIONLINT_CUSTOM_GCL: ${{ github.workspace }}/custom-gcl
-        run: go test -C analyzers ./plugin -run TestContractReload -count=1
+        run: go test -C analyzers ./plugin -run TestUnrelatedModule -count=1
       - name: Enforce architecture without suppression filters
         run: ./.bin/actionlintarch ./...
       - name: Run default linters including the architecture plugin

@@ -85,8 +85,27 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 			content := []byte(prefix + indent + strings.ReplaceAll(strings.TrimSuffix(steps, "\n"), "\n", "\n"+indent) + "\n")
 			capture := &identityCapture{}
 			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Analyzers: []analyzer.Registration{{Analyzer: capture}}}, []workspace.Source{{Path: path, Content: content}})
-			if err != nil || len(result.Diagnostics) != 0 {
+			if err != nil {
 				t.Fatalf("analyze: %v, %+v", err, result)
+			}
+			type manifestFinding struct {
+				message string
+				start   diagmodel.Position
+			}
+			var expected []manifestFinding
+			if kind == "action" {
+				expected = []manifestFinding{
+					{`YAML anchors are not supported in action metadata; remove anchor "command"`, diagmodel.Position{Line: 9, Column: 12}},
+					{`YAML aliases are not supported in action metadata; replace alias "command"`, diagmodel.Position{Line: 13, Column: 12}},
+				}
+			}
+			if len(result.Diagnostics) != len(expected) {
+				t.Fatal("unexpected manifest diagnostics", result.Diagnostics)
+			}
+			for i, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule != "action" || diagnostic.Path != path || diagnostic.Message != expected[i].message || diagnostic.Start != expected[i].start {
+					t.Fatal("manifest diagnostic lost source identity", diagnostic)
+				}
 			}
 			input := capture.input
 			if len(input.Scripts) != 2 || len(input.Mappings) != 2 {

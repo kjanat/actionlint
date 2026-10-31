@@ -18,7 +18,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	session, err := workspace.New(workspace.Options{
+	session, err := workspace.New(t.Context(), workspace.Options{
 		ConfigOverlays: []repoconfig.Overlay{overlay},
 		OnConfigLoaded: func(repoconfig.Report) { calls.Add(1) },
 	})
@@ -48,7 +48,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	close(results)
 	configs := make(map[int]*repoconfig.Config)
 	for result := range results {
-		if result.err != nil || result.config == nil || !reflect.DeepEqual(result.config.ConfigVariables, []string{"ALLOWED"}) {
+		if result.err != nil || result.config == nil || !reflect.DeepEqual(repoconfig.VariableNames(result.config.Facts()), []string{"ALLOWED"}) {
 			t.Fatalf("concurrent configuration: %+v", result)
 		}
 		if previous, ok := configs[result.project]; ok && previous != result.config {
@@ -79,7 +79,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 				t.Fatal(err)
 			}
 			var report repoconfig.Report
-			session, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -90,7 +90,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 			pointer := "/lint/rules/policy/require-commit-hash/level"
 			if tc.input == "config" {
 				if _, exists := report.Inspection.Origins[pointer]; exists {
-					t.Fatal("whole-config reset retained a removed rule origin")
+					t.Fatal("whole-config reset left a removed rule origin")
 				}
 				pointer = "/lint"
 			}
@@ -121,7 +121,7 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 				overlays = append(overlays, overlay)
 			}
 			var report repoconfig.Report
-			session, err := workspace.New(workspace.Options{ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -10,12 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -69,14 +69,15 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, checkout := range []string{"", "source"} {
-		paths := execution.Paths{Workspace: root, Analysis: root, Reader: fsread.New(t.Context(), nil, nil), Placements: &execution.CheckoutPlacement{
+		reader := fsread.New(t.Context(), nil, nil)
+		paths := execution.Paths{Workspace: root, Analysis: root, Placements: execution.NewCheckoutPlacement(execution.Checkout{
 			Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: checkout}, CaseInsensitive: true,
-		}}
-		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"))
+		}, execution.CheckoutPlacement{})}
+		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"), reader)
 		if !known || mapped != filepath.Join(root, "scripts", "Nested") {
 			t.Fatalf("checkout %q: mapped=%q, known=%v", checkout, mapped, known)
 		}
-		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")})
+		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")}, reader)
 		if got.Kind != execution.DirectoryKnown || got.Path != want {
 			t.Fatalf("checkout %q: directory=%+v, want %q", checkout, got, want)
 		}
@@ -84,8 +85,8 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 }
 
 func TestCompositeCheckoutAlternateRefMetadata(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -121,14 +122,13 @@ runs:
 					inputs += ", ref: \"" + tc.ref + "\""
 				}
 				steps := "- uses: actions/checkout@v6\n  with: {" + inputs + "}\n- uses: ./" + filepath.ToSlash(filepath.Join(destination, "local"))
-				result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+				result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 				read := slices.Contains(result.Inputs, metadata) || slices.Contains(result.Inputs, decoy)
 				if read != tc.read {
 					t.Fatalf("metadata read=%v, want %v: %v", read, tc.read, result.Inputs)
 				}
 				wantMetadata := metadata
 				if destination == "source" && tc.name == "dynamic ref" {
-					// Unknown refs intentionally retain literal, untranslated fallback.
 					wantMetadata = decoy
 				}
 				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
@@ -142,7 +142,7 @@ runs:
 	}
 	result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {ref: v1}
-- uses: $/local`, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+- uses: $/local`, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.Contains(result.Inputs, metadata) {
 		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
 	}

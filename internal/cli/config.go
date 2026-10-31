@@ -8,13 +8,17 @@ import (
 	"os"
 	"path/filepath"
 
+	actionlint "actionlint.kjanat.dev/v2"
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/editorschema"
 	"actionlint.kjanat.dev/v2/internal/localapp"
 
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func writeConfigPath(out io.Writer, req configPathRequest) error {
@@ -38,9 +42,9 @@ func writeConfigValidation(ctx context.Context, out io.Writer, req configValidat
 	}
 	if req.JSON {
 		return writeCommandJSON(out, struct {
-			Path     string               `json:"path"`
-			Valid    bool                 `json:"valid"`
-			Warnings []repoconfig.Warning `json:"warnings,omitempty"`
+			Path     string                 `json:"path"`
+			Valid    bool                   `json:"valid"`
+			Warnings []configreport.Warning `json:"warnings,omitempty"`
 		}{inspection.Path, true, inspection.Warnings})
 	}
 	for _, warning := range inspection.Warnings {
@@ -57,6 +61,22 @@ func writeConfigValidation(ctx context.Context, out io.Writer, req configValidat
 	} else {
 		_, err = fmt.Fprintf(out, "Configuration is valid: %s\n", inspection.Path)
 	}
+	return err
+}
+
+// writeConfigSchema writes the configuration JSON schema to out. Beyond the
+// published actionlint.schema.json, it describes tools.<name> for every tool
+// provider that the --plugin flags or the selected configuration install.
+func writeConfigSchema(ctx context.Context, out io.Writer, req configSchemaRequest) error {
+	manifests, err := localapp.InstalledProviders(ctx, req.Config, req.Plugins)
+	if err != nil {
+		return err
+	}
+	document, err := editorschema.Document(actionlint.Schema, manifests)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(document)
 	return err
 }
 
@@ -87,7 +107,7 @@ func migrateCommandConfig(ctx context.Context, streams Command, req configMigrat
 		return 0, errors.New("config migrate requires a selected config file; use --config PATH")
 	}
 	migration, err := localapp.PrepareConfigMigration(ctx, path, localapp.DefaultPluginOptions{
-		Shellcheck: true, Ruff: true,
+		Tools:   registry.IDs(),
 		Warning: func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },
 	})
 	if err != nil {
@@ -170,8 +190,7 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 	if asJSON {
 		return writeCommandJSON(out, map[string]string{"path": path})
 	}
-	// Plugin storage resolves checkout aliases; compare both paths in the same
-	// namespace, retaining the caller's relative spelling for display and links.
+	// Resolve checkout aliases before comparing with plugin storage paths.
 	physicalCwd, err := filepath.EvalSymlinks(cwd)
 	if err != nil {
 		return err

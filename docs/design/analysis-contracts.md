@@ -15,19 +15,20 @@ inputs and returned results, while the host must own completion even when traver
 ## Decision
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
-generation directives. `internal/engine` traverses workflow syntax with supplied passes. `internal/checks`
+generation directives. `internal/engine` traverses immutable workflow declarations with supplied passes. `internal/checks`
 selects concrete adapters from `internal/builtin`; `internal/workflow/composition`
 owns nested invocation analysis and its complete script lifecycle.
 `internal/application` owns an invocation; `internal/workspace` prepares its inputs;
 `internal/analyzerhost` schedules its execution and drains outstanding callbacks.
-`internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
+`internal/workflow` owns decoded workflow values. `internal/workflow/parser` owns YAML decoding and scalar source maps;
+`internal/workflow/declaration` publishes immutable views of those values. `internal/expression` owns expression
 parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
 `internal/config` owns the configuration document, its validation and the built-in rule catalog;
 `internal/builtin` attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
 JSON, SARIF and GitHub annotations from diagnostics, source text and rule metadata.
 `internal/analyzerhost` owns generic execution and resource scopes. The public `document`
-package owns document models and their codecs; `internal/report` aggregates completed analysis values. Existing focused internal packages retain ownership
-of mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions.
+package owns document models and their codecs; `internal/report` aggregates completed analysis values.
+Mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions have dedicated packages.
 
 ```mermaid
 flowchart TD
@@ -47,7 +48,10 @@ flowchart TD
     Composition --> Scripts[internal/tools/execution]
     Scripts --> Host
     Workspace --> Config[internal/config]
-    Engine --> Workflow[internal/workflow]
+    Engine --> Declaration[internal/workflow/declaration]
+    Declaration --> Workflow[internal/workflow]
+    Decode --> Parser[internal/workflow/parser]
+    Parser --> Workflow
     Composition --> Facts[internal/workflow/facts]
     Registry --> Builtin[internal/builtin]
     Builtin --> Checks[internal/workflow/checks]
@@ -60,7 +64,7 @@ flowchart TD
     Action --> Render
     Render --> Models
     Models --> Diagnostic[diagnostic]
-    Syntax[syntax] --> Workflow
+    Syntax[syntax] --> Parser
 ```
 
 New analyzers declare required facts and return diagnostics and errors. They have no AST-visit, configuration mutation
@@ -82,10 +86,10 @@ or working-directory defaults.
 
 Built-in script analyzers and public analyzers use the same bounded task executor. It preserves registration order and
 partial results and waits for every started task. Each external checker owns and joins its callbacks before returning,
-including on cancellation or an error. Callbacks write to separate per-script result slots. Rendering retains rule
-metadata. The Playground supplies an embedded ShellCheck runner directly.
+including on cancellation or an error. Callbacks write to separate per-script result slots.
+The Playground supplies an embedded ShellCheck runner directly.
 
-Composite analysis still requests capabilities for the remaining visitor adapters: checkout state, metadata validation,
+Composite analysis supplies visitor adapters with checkout state, metadata validation,
 child construction and result joining. Configuration for action inputs is projected to applicable rules before overrides
 are merged. Workflow-only option constraints cannot invalidate an action's script or suppression settings. Tool planning
 and analysis use the same selected-input scope.
@@ -114,36 +118,33 @@ stay separate from `tools/backend`, which adapts the script-engine protocol.
 - One module makes these packages share a release and permits internal implementation imports. Separate modules would
   require independent compatibility and release contracts that this change does not establish.
 - Configuration and syntax alias independent implementations. Importing either public package no longer imports
-  discovery, rule execution or native tools. The parser retains
-  decoded source maps alongside syntax because accurate diagnostics require both.
+  discovery, rule execution or native tools. Parser results include syntax and decoded source maps.
 - Composite expansion and script completion belong to `internal/workflow/composition`;
   workflow traversal belongs to `internal/engine`. `internal/action/local` owns local action resolution.
   [Analysis ownership](analysis-ownership.md) records the execution and policy boundaries.
-- Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
-  extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
-  rule has been rewritten as a fact consumer.
+- Built-in checks receive immutable declaration views through synchronous traversal callbacks. Invocation participants
+  enter and leave explicit scopes; composition closes every successfully entered scope after errors and cancellation.
+  Built-ins still own checker-specific state and are not all standalone fact consumers.
 - Script facts describe declarations. They do not promise complete effective runtime environments or resolved default
   shells. Mapping completeness describes static knowledge.
-- Existing CLI behavior remains covered by its own tests. Removed library symbols have explicit migration guidance;
+- Removed library symbols have explicit migration guidance;
   there is no root compatibility layer re-exporting the old implementation.
 
 ## Verification
 
 External-package tests exercise the public root entry point, config and syntax packages, file analysis, custom analyzer
 partial results and composite-action scripts. Host tests cover input isolation, unavailable facts, cancellation and
-joining all resources once. Application and composition regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
+joining all resources once. Application and composition regressions cover traversal failure, partial findings on cancellation, independent script scopes and fallback
 when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that the public analyzer, diagnostic,
 document, syntax and config contracts, together with the standalone language, configuration and rendering implementations,
 have no transitive dependency on the engine, CLI or process execution. A separate guard prevents expression semantics from importing
-workflow ASTs, analyzer execution or repository configuration trees. Existing semantic, CLI,
-generator and conformance suites remain applicable.
+workflow ASTs, analyzer execution or repository configuration trees.
 
 ## Decision: separate engines from execution transports
 
 Script engines now have a synchronous request/result contract in `analyzer`: sanitized source, virtual
 filename and engine-owned configuration in; diagnostics and an optional error out. `analysis.Tool`
 selects a backend implementation or the native process adapter, with ambiguous selections rejected.
-Command lines, environment variables, executable discovery and stdout decoding remain transport details.
 The native Ruff adapter and injected backends use the same host scheduling and source-mapping path.
 
 ```mermaid
@@ -162,12 +163,17 @@ flowchart LR
 The existing actionlint-plugin-ruff `check` operation is the reference for Ruff's payload and coordinates.
 The host does not duplicate Ruff's full options catalogue. The native adapter converts native options into
 isolated, read-only invocation settings. Integration-controlled file access and output options are rejected.
-Existing CLI Pyflakes compatibility remains an adapter concern; it does not define the backend interface.
 
 ShellCheck can use the same backend contract for hermetic snippets. Its native path still has additional
 source-file and fix capabilities. Those are not silently promised to injected engines: external-source
 and rc-file requests fail until an explicit resource capability exists. Extending that contract needs source
 identity, content, dependencies and edit provenance.
+
+`script-engine@0.3.0` and core check 3 add those capabilities on the wire: declared `fixes` and
+`reported-sources`, per-diagnostic fixes and sources, excluded codes, and a `directory` resource that mounts the
+working directory read-only for one check. The shell preparation profile still prepares engine snippets without
+source following; enabling it for engines that hold the directory grant comes with the ShellCheck component
+rebuilt against 0.3.0.
 
 Backend completion is synchronous and diagnostics can accompany failure. The host bounds concurrent work,
 waits for every started operation, and rejects diagnostics that refer to a different virtual input. Caller-owned
@@ -258,7 +264,7 @@ to interpret statically known expressions. The reverse dependency is forbidden. 
 shared by the parser and expression numeric conversion.
 Generated workflow context availability has its own package and generation target.
 
-The existing language tests move with their implementations. Workflow/rule integration tests remain with the host.
+Language tests live beside their implementations; workflow/rule integration tests exercise the host.
 This allows direct parser and semantic validation without constructing a linter or loading configuration. Import guards
 enforce the dependency direction transitively, including public type aliases.
 
@@ -279,7 +285,7 @@ kept beside that value rather than translating diagnostics through a second fiel
 model. Codes, explicit ranges, explanations, related locations and fixes participate
 in duplicate identity. Traversal-inferred references can differ when aliases reach
 one declaration; those references alone do not create a second finding. Explicit
-analyzer references remain significant. Reusable-workflow lookup errors belong to
+analyzer references participate in diagnostic identity. Reusable-workflow lookup errors belong to
 `workflow-call` even when expression inference requested the metadata.
 
 The application owns the process pool and closes loaded backends after its callbacks
@@ -311,8 +317,7 @@ options. WASM implementations are beneath `internal/plugins`: `artifact` resolve
 and inspects bytes, `core` implements the script-engine ABI, and `component` implements
 the WIT analyzer ABI. Workflow commands and name indexing live beneath
 `internal/workflow`. Expression context availability and its generator live under
-`internal/expression/context`; workflow adapters and the editor consume that metadata. These child packages retain directional import boundaries;
-the parent does not become a facade that re-exports every implementation.
+`internal/expression/context`; workflow adapters and the editor consume that metadata.
 
 The migration facades and their test-only implementations are gone. Configuration
 and selection tests call `workspace`; invocation-lifetime and native-tool integration
@@ -337,9 +342,8 @@ expression availability, decoded-scalar source mappings and runtime lifecycle
 metadata. `internal/action/validation` checks runtime declarations, required fields,
 branding, composite-step contracts and supplied inputs. It returns findings with
 source provenance. Local-action caches,
-caller-specific validation replay and suppression provenance remain host concerns.
+caller-specific validation replay and suppression provenance are managed by the host.
 Consumers import the action model directly; engine does not re-export its types.
-The action-catalogue generators also consume this model without loading engine.
 
 `internal/workflow/matrix` owns matrix expansion, sequence/mapping insertions,
 filter comparisons and mixed-type checks. Its check function accepts a job and an
@@ -376,18 +380,17 @@ engine, workspace session, analyzer host or tool implementation.
 `internal/workflow/cachepolicy` owns event trust, condition reachability, cache grants,
 disabled cache operations and ceilings propagated through reusable workflows. It
 consumes workflow declarations and an explicit metadata lookup. Its diagnostics
-are evaluated at each caller; dependency caches never retain caller-specific
-policy results. The host retains the workflow/job context needed to invoke checks
-and attach invocation origins. Configured and inline exceptions remain in
+are evaluated at each caller. The host invokes checks with workflow/job context
+and attaches invocation origins. Configured and inline exceptions are handled by
 `diagnosticpolicy` and `suppression`.
 
 `internal/workflow/expressions` owns workflow context construction, dependency
 output types, matrix type inference, field-shape checks and expression source
 ranges. It receives semantic options and action/workflow metadata lookup functions.
-The host projects configuration into those options and retains ownership of lookup
-error classification. The package cannot import engine, configuration or tool
+The host projects configuration into those options and classifies lookup errors.
+The package cannot import engine, configuration or tool
 execution. Direct expression adapter tests live beside this implementation;
-selection, suppression and full traversal tests remain integration tests.
+selection, suppression and full traversal require integration tests.
 
 `internal/workflow/execution` also owns runner-to-analysis path translation,
 checkout placement, indexed path traversal and executable-bit state, including
@@ -408,25 +411,32 @@ templates and invocation identities outside the cache. Composite scopes share
 metadata while their conditional checkout/environment state is joined explicitly.
 Physical source identity belongs to `fsread`, shared by snapshots and analysis.
 
-The action catalogue materializes runtime metadata and resolves exact references
-inside `internal/actioncatalog`. Loading a browser catalogue and regenerating its
-bundled data no longer loads the engine, including in catalogue round-trip tests.
+`internal/action/remote` shares host-supplied action manifests within an analysis
+request. Selections retain the original request, selected object, terminal commit
+and route. Content caches use host, repository ID, terminal commit and action path;
+ref lookups are scoped to the request. There is no bundled popular-action catalogue.
+
+Plugin declarations use a different trust boundary: a selected registry owns the
+immutable package/version record and checksum, while unregistered artifacts need
+a caller-provided digest. Exact registry resolutions are cached under that registry's
+authority in the host cache. Ordinary checking never writes project configuration
+or creates a plugin lockfile. Legacy locks remain readable; explicit migration verifies
+their selected releases, writes exact canonical declarations and retires the old lock.
 
 Workflow name inventories own producer-name filter checking as well as pattern
 matching. Action validation owns remote reference syntax, Docker URI checks and
-runtime/input checks against caller-supplied catalogue lookup. Builtin adapters
+runtime/input checks against caller-supplied manifests. Builtin adapters
 use application-supplied dependencies and attach results to the active invocation.
 
 `internal/workflow/visit` defines the synchronous pass/rule contract and finding
 accumulator independently of orchestration. Engine and rule adapters import this
 contract directly. It has no configuration, registration, process or lifecycle
-capabilities; those remain explicit capabilities at the host boundary.
+capabilities.
 
 `internal/builtin` owns built-in adapters and their registration. Constructors take
 resolved configuration, dependency lookup objects and an index-snapshot callback;
 they cannot import engine, workspace sessions, process execution or presentation.
-Configuration metadata remains owned by `config`, independently of executable
-registrations. `workflow/visit` supplies the common visitor/result contract.
+`config` owns configuration metadata; `workflow/visit` supplies the visitor/result contract.
 
 `checks` selects visitor rules and script fact analyzers from these registrations.
 Application composes them with registered tools. `workflow/composition` owns traversal,
@@ -444,8 +454,11 @@ Ruff consumes it directly; ShellCheck additionally prepares per-scope source acc
 `internal/tools/adapters` only projects the bundled options into the two registrations.
 `internal/tools/selection` owns the shared precedence between an explicit command and repository-selected
 process or WebAssembly settings. It loads modules through a callback and launches no processes.
+Language preparation (template masking, dialect and Python target inference, directive and startup lines and
+their line origins) lives in the preparation profiles `internal/tools/profile/{mask,shell,python}`. Profiles
+receive settings as typed values and never import configuration.
 
-Configuration shape remains under `internal/config/tools`. Ruff's native command encoding and process
+`internal/config/tools` defines configuration types. Ruff's native command encoding and process
 restrictions belong to `internal/tools/ruff`. The selected engine validates its own options, including rule selectors,
 Python targets and preview settings. It also supplies the defaults. Configuration decoding and editor schemas do not gate engine
 options through a bundled Ruff catalog. Core WebAssembly engines receive JSON directly, without native

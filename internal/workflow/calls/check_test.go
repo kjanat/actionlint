@@ -7,21 +7,21 @@ import (
 	"strings"
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	cwd := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
-	cache := calls.NewCache(cwd, cwd, nil)
+	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{
 		// workflow0.yaml
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "optional_input", Required: false, Type: exprlang.StringType{}},
-				"required_input": {Name: "required_input", Required: true, Type: exprlang.StringType{}},
+				"optional_input": {Name: "optional_input", Required: false, Type: calls.InputTypeString},
+				"required_input": {Name: "required_input", Required: true, Type: calls.InputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "output"},
@@ -34,8 +34,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: exprlang.StringType{}},
-				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: exprlang.StringType{}},
+				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: calls.InputTypeString},
+				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: calls.InputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "OUTPUT"},
@@ -52,7 +52,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 			Secrets: calls.Secrets{},
 		},
 	} {
-		cache.Store(fmt.Sprintf("./workflow%d.yaml", i), md, nil)
+		cache.Store(fmt.Sprintf("./workflow%d.yaml", i), md)
 	}
 
 	tests := []struct {
@@ -202,7 +202,9 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				}
 				return
 			}
-			findings := calls.CheckArguments(c, metadata)
+			view := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {WorkflowCall: c}}}, false, "").Bind("call-fixture").Workflow()
+			job, _ := view.JobsAt("test")
+			findings := calls.CheckArguments(job.WorkflowCall(), metadata)
 
 			errs := []string{}
 			for _, err := range findings {

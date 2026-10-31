@@ -2,91 +2,93 @@ package builtin
 
 import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/cachepolicy"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleCacheWriteUntrusted adapts cache trust checks to the workflow traversal.
-type RuleCacheWriteUntrusted struct {
+// ruleCacheWriteUntrusted adapts cache trust checks to the workflow traversal.
+type ruleCacheWriteUntrusted struct {
 	workflowvisit.Base
 	trust *cachepolicy.Trust
 }
 
-func NewRuleCacheWriteUntrusted() *RuleCacheWriteUntrusted {
-	return &RuleCacheWriteUntrusted{Base: builtinRuleBase("cache-write-untrusted")}
+// NewRuleCacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
+func NewRuleCacheWriteUntrusted() workflowvisit.Rule {
+	return &ruleCacheWriteUntrusted{Base: builtinRuleBase("cache-write-untrusted")}
 }
 
-func (r *RuleCacheWriteUntrusted) VisitWorkflowPre(w *workflowlang.Workflow) error {
+func (r *ruleCacheWriteUntrusted) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 	r.trust = cachepolicy.NewTrust(w)
 	return nil
 }
 
-func (r *RuleCacheWriteUntrusted) VisitJobPre(job *workflowlang.Job) error {
+func (r *ruleCacheWriteUntrusted) VisitJobPre(job workflowdecl.JobView) error {
 	for _, d := range r.trust.CheckWrites(job) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }
 
-// RuleCacheCallUnrestricted adapts reusable-call cache limits to the workflow traversal.
-type RuleCacheCallUnrestricted struct {
+// ruleCacheCallUnrestricted adapts reusable-call cache limits to the workflow traversal.
+type ruleCacheCallUnrestricted struct {
 	workflowvisit.Base
 	trust *cachepolicy.Trust
 }
 
-func NewRuleCacheCallUnrestricted() *RuleCacheCallUnrestricted {
-	return &RuleCacheCallUnrestricted{Base: builtinRuleBase("cache-call-unrestricted")}
+// NewRuleCacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
+func NewRuleCacheCallUnrestricted() workflowvisit.Rule {
+	return &ruleCacheCallUnrestricted{Base: builtinRuleBase("cache-call-unrestricted")}
 }
 
-func (r *RuleCacheCallUnrestricted) VisitWorkflowPre(w *workflowlang.Workflow) error {
+func (r *ruleCacheCallUnrestricted) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 	r.trust = cachepolicy.NewTrust(w)
 	return nil
 }
 
-func (r *RuleCacheCallUnrestricted) VisitJobPre(job *workflowlang.Job) error {
+func (r *ruleCacheCallUnrestricted) VisitJobPre(job workflowdecl.JobView) error {
 	for _, d := range r.trust.CheckCall(job) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }
 
-// RuleCacheOperation adapts effective cache access to job and step checks.
-type RuleCacheOperation struct {
+// ruleCacheOperation adapts effective cache access to job and step checks.
+type ruleCacheOperation struct {
 	workflowvisit.Base
-	workflow, job *workflowlang.CacheMode
+	workflow, job workflowdecl.CacheModeView
 	cache         *calls.Cache
 }
 
-func NewRuleCacheOperation() *RuleCacheOperation {
-	return &RuleCacheOperation{Base: builtinRuleBase("cache-operation")}
+// NewRuleCacheOperation reports official cache action steps disabled by an
+// explicit cache mode. Without a workflow cache it does not check
+// reusable-workflow calls.
+func NewRuleCacheOperation() workflowvisit.Rule { return newRuleCacheOperation(nil) }
+
+// newRuleCacheOperation also checks reusable-workflow calls when cache is not nil.
+func newRuleCacheOperation(cache *calls.Cache) *ruleCacheOperation {
+	return &ruleCacheOperation{Base: builtinRuleBase("cache-operation"), cache: cache}
 }
 
-func newRuleCacheOperation(cache *calls.Cache) *RuleCacheOperation {
-	r := NewRuleCacheOperation()
-	r.cache = cache
-	return r
-}
-
-func (r *RuleCacheOperation) VisitWorkflowPre(w *workflowlang.Workflow) error {
-	r.workflow = w.CacheMode
+func (r *ruleCacheOperation) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
+	r.workflow = w.CacheMode()
 	return nil
 }
 
-func (r *RuleCacheOperation) VisitJobPre(job *workflowlang.Job) error {
-	r.job = workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode)
+func (r *ruleCacheOperation) VisitJobPre(job workflowdecl.JobView) error {
+	r.job = cachepolicy.EffectiveMode(r.workflow, job.CacheMode())
 	if r.cache != nil {
-		for _, d := range cachepolicy.CheckCallOperations(job.WorkflowCall, r.job, r.cache) {
-			r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		for _, d := range cachepolicy.CheckCallOperations(job.WorkflowCall(), r.job, r.cache) {
+			r.Report(findingmodel.FromDiagnostic(d))
 		}
 	}
 	return nil
 }
 
-func (r *RuleCacheOperation) VisitStep(step *workflowlang.Step) error {
+func (r *ruleCacheOperation) VisitStep(step workflowdecl.StepView) error {
 	for _, d := range cachepolicy.CheckStep(step, r.job) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }

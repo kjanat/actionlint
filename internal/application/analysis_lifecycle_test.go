@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -17,7 +17,7 @@ type failAfterScheduling struct {
 	failure error
 }
 
-func (r *failAfterScheduling) VisitStep(*workflowlang.Step) error { return r.failure }
+func (r *failAfterScheduling) VisitStep(workflowdecl.StepView) error { return r.failure }
 
 func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	failure := errors.New("stop traversal")
@@ -47,7 +47,7 @@ func (rule *scheduledResourceRule) attachScope(scope *analyzerhost.Scope) {
 	scope.Register(func() error { rule.workers.Wait(); return nil })
 }
 
-func (rule *scheduledResourceRule) VisitStep(*workflowlang.Step) error {
+func (rule *scheduledResourceRule) VisitStep(workflowdecl.StepView) error {
 	rule.workers.Go(func() { rule.completed.Store(true) })
 	return nil
 }

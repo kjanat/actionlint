@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
 
 	"actionlint.kjanat.dev/v2/internal/application"
@@ -45,7 +48,7 @@ func CheckSources(ctx context.Context, options application.Options, input applic
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
-	options, err = plugins.configure(options)
+	options, err = plugins.configure(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -65,15 +68,15 @@ func RequiredTools(ctx context.Context, options application.Options, paths, plug
 	return RequiredToolsSources(ctx, options, paths, PluginSources{Paths: plugins})
 }
 
-// RequiredToolsSources retains declared replacement roles during native-tool
-// discovery, using the same configuration policy as CheckSources.
+// RequiredToolsSources applies the selected plugins before checking which
+// native tools are needed.
 func RequiredToolsSources(ctx context.Context, options application.Options, paths []string, sources PluginSources) (needed application.ToolRequirements, err error) {
 	loaded, err := loadPlugins(ctx, sources, io.Discard, false)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, loaded.close(context.WithoutCancel(ctx))) }()
-	options, err = loaded.configure(options)
+	options, err = loaded.configure(ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +99,7 @@ func (l *loadedPlugins) configureManaged(options application.Options) (applicati
 	return configured, nil
 }
 
-func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {
+func (l *loadedPlugins) configure(ctx context.Context, options application.Options) (application.Options, error) {
 	seen := map[string]bool{}
 	for _, engine := range l.engines {
 		metadata := engine.descriptor
@@ -134,11 +137,83 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 		}
 	}
 
+	for _, local := range l.providers {
+		name := local.manifest.Rule.Name
+		if seen[name] {
+			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", name)}
+		}
+		seen[name] = true
+		if local.repository && !options.AllowConfigProcesses {
+			return options, &PluginLoadError{fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.source)}
+		}
+		if local.source != "" {
+			// Only now, after the check above, download the executable.
+			fetched, err := local.fetch(ctx)
+			if err != nil {
+				return options, &PluginLoadError{fmt.Errorf("plugin %s: %w", local.source, err)}
+			}
+			local = fetched
+		}
+		selection := backend.Selection{Command: name}
+		if local.executable != "" {
+			selection.Process = &processconfig.Options{Executable: &local.executable}
+		}
+		// An explicitly selected manifest replaces the tool's default route.
+		registration, err := backend.RegisterProvider(backend.Provider{Manifest: local.manifest, Programs: local.programs, Selection: selection})
+		if err != nil {
+			return options, &PluginLoadError{err}
+		}
+		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Descriptor.Name == name })
+		options.Tools = append(options.Tools, registration)
+	}
+
 	options.Tools = slices.Clone(options.Tools)
 	for i, registration := range options.Tools {
 		options.Tools[i] = backend.Configure(registration)
 	}
 	options.Analyzers = slices.Concat(options.Analyzers, l.registrations())
 	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.runnerProviders())
-	return options, nil
+	return options, l.checkTools(options.Tools)
+}
+
+// checkTools reports the tool ids named by --tool or --no-tool that match no
+// tool registration, no loaded plugin and no skipped plugin.
+func (l *loadedPlugins) checkTools(registrations []tools.Registration) error {
+	known := slices.Concat(l.skipped, l.ids)
+	for _, registration := range registrations {
+		known = append(known, registration.Descriptor.Name)
+	}
+	var unknown []string
+	for _, id := range l.tools {
+		if !slices.Contains(known, id) && !slices.Contains(unknown, id) {
+			unknown = append(unknown, id)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	return NewUnknownToolError(unknown, known)
+}
+
+// UnknownToolError reports tool ids that name no tool provider.
+type UnknownToolError struct {
+	// ids are the unknown ids in the order they were named.
+	ids []string
+	// known lists every id that names a provider, sorted and unique.
+	known []string
+}
+
+// NewUnknownToolError reports the unknown tool ids ids, listing the ids in
+// known as the valid choices.
+func NewUnknownToolError(ids, known []string) *UnknownToolError {
+	known = slices.Clone(known)
+	slices.Sort(known)
+	return &UnknownToolError{ids: slices.Clone(ids), known: slices.Compact(known)}
+}
+
+// IDs returns the unknown ids in the order they were named.
+func (e *UnknownToolError) IDs() []string { return slices.Clone(e.ids) }
+
+func (e *UnknownToolError) Error() string {
+	return fmt.Sprintf("unknown tool %s; valid tools: %s", strings.Join(e.ids, ", "), strings.Join(e.known, ", "))
 }

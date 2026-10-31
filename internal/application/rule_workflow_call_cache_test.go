@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -42,8 +41,8 @@ jobs:
 			request := analysisRequest{WorkingDir: root}
 			var err error
 
-			cache := calls.NewCache(proj.RootDir(), root, nil)
-			errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: proj, Config: proj.Config()}, nil, nil, cache)
+			cache := newCapturedWorkflowCache(t, proj.RootDir(), root, nil)
+			errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: proj, Config: proj.Config()}, nil, nil, cache)
 			if err != nil || len(errs) != 1 || !strings.Contains(errs[0].Message, "could not validate cache access through job") {
 				t.Fatalf("nested validation did not report the callee failure: errors=%v, err=%v", errs, err)
 			}
@@ -53,7 +52,7 @@ jobs:
 			var wg sync.WaitGroup
 			for range 8 {
 				wg.Go(func() {
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "middle.yaml", Content: middle, Project: proj, Config: proj.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "middle.yaml", Content: middle, Project: proj, Config: proj.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Error(err)
 						return

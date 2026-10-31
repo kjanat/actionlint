@@ -642,20 +642,10 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 		},
 	}
 
+	// Source positions are covered by the token and span tests.
 	opts := []cmp.Option{
-		cmpopts.IgnoreUnexported(VariableNode{}),
-		cmpopts.IgnoreUnexported(NullNode{}),
-		cmpopts.IgnoreUnexported(BoolNode{}),
-		cmpopts.IgnoreUnexported(IntNode{}),
-		cmpopts.IgnoreUnexported(FloatNode{}),
-		cmpopts.IgnoreUnexported(StringNode{}),
-		cmpopts.IgnoreUnexported(ObjectDerefNode{}),
-		cmpopts.IgnoreUnexported(ArrayDerefNode{}),
-		cmpopts.IgnoreUnexported(IndexAccessNode{}),
-		cmpopts.IgnoreUnexported(NotOpNode{}),
-		cmpopts.IgnoreUnexported(CompareOpNode{}),
-		cmpopts.IgnoreUnexported(LogicalOpNode{}),
-		cmpopts.IgnoreUnexported(FuncCallNode{}),
+		cmpopts.IgnoreTypes(Location{}),
+		cmpopts.IgnoreFields(ObjectDerefNode{}, "PropertyToken"),
 	}
 
 	for _, tc := range testCases {
@@ -995,7 +985,7 @@ func TestParseReturnFirstErrorOnMultipleErrors(t *testing.T) {
 	}
 	p.unexpected("foo", nil)
 	have := p.Err()
-	if want != have {
+	if *want != *have {
 		t.Fatalf("first error %q was expected but got %q", want, have)
 	}
 }

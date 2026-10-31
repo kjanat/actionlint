@@ -47,12 +47,12 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	requests := len(registry.Requests)
+	requests := len(registry.Requests())
 	overlay, err := config.ParseOverlay("config", []byte("plugins: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (PluginSelection{Overlays: []config.Overlay{overlay}}).Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := (PluginSelection{Overlays: []config.Overlay{overlay}}).Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	migrated, err := config.Load(path)
@@ -62,8 +62,8 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if migrated.Plugins == nil || len(migrated.Plugins) != 0 {
 		t.Fatalf("overlay opt-out lost to lock-only pins: %+v", migrated.Plugins)
 	}
-	if len(registry.Requests) != requests {
-		t.Fatalf("overlay opt-out contacted registry: %v", registry.Requests[requests:])
+	if len(registry.Requests()) != requests {
+		t.Fatalf("overlay opt-out contacted registry: %v", registry.Requests()[requests:])
 	}
 	if bytes.Equal(original, mustReadFile(t, path)) {
 		t.Fatal("legacy config was not migrated")
@@ -71,8 +71,8 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 }
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
-	registry.Offline = true
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	registry.SetOffline(true)
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	firstConfig := filepath.Join(first, ".github", "actionlint.yaml")
@@ -81,12 +81,12 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
-	err := (PluginSelection{}).Migrate(t.Context(), first, input, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	err := (PluginSelection{}).Migrate(t.Context(), first, input, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
-	if len(registry.Requests) != 0 {
-		t.Fatalf("migration resolved plugins before rejecting repository selection: %v", registry.Requests)
+	if len(registry.Requests()) != 0 {
+		t.Fatalf("migration resolved plugins before rejecting repository selection: %v", registry.Requests())
 	}
 	for _, path := range []string{firstConfig, secondConfig} {
 		if got := mustReadFile(t, path); !bytes.Equal(got, []byte("config-variables: []\n")) {
@@ -99,7 +99,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 }
 
 func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-secrets: []\n")
 	input := application.Input{Kind: application.Files, Paths: []string{
@@ -113,8 +113,8 @@ func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T
 	if err != nil {
 		t.Fatalf("selecting multiple plugin-free repositories: %v", err)
 	}
-	if len(selected.Paths) != 0 || selected.LockFile != "" || len(registry.Requests) != 0 {
-		t.Fatalf("plugin-free selection unexpectedly activated plugins: %+v, requests %v", selected, registry.Requests)
+	if len(selected.Paths) != 0 || selected.LockFile != "" || len(registry.Requests()) != 0 {
+		t.Fatalf("plugin-free selection unexpectedly activated plugins: %+v, requests %v", selected, registry.Requests())
 	}
 	for _, path := range []string{
 		filepath.Join(first, ".github", "actionlint.yaml"),
@@ -174,8 +174,8 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 }
 
 func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
-	registry.Offline = true
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	registry.SetOffline(true)
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	legacyPath := filepath.Join(root, ".github", "actionlint.yaml")
 	outside := t.TempDir()
@@ -187,12 +187,12 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 		filepath.Join(root, ".github", "workflows", "repo.yml"),
 		workflow,
 	}}
-	err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want unmanaged-input plugin error", err)
 	}
-	if len(registry.Requests) != 0 {
-		t.Fatalf("migration resolved plugins before rejecting unmanaged input: %v", registry.Requests)
+	if len(registry.Requests()) != 0 {
+		t.Fatalf("migration resolved plugins before rejecting unmanaged input: %v", registry.Requests())
 	}
 	if got := mustReadFile(t, legacyPath); !bytes.Equal(got, []byte("config-variables: []\n")) {
 		t.Fatalf("migration changed config before rejecting unmanaged input: %q", got)
@@ -200,7 +200,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 }
 
 func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	alias := filepath.Join(t.TempDir(), "repo-alias")
 	if err := os.Symlink(root, alias); err != nil {
@@ -210,7 +210,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 		filepath.Join(root, ".github", "workflows", "root.yml"),
 		filepath.Join(alias, ".github", "workflows", "alias.yml"),
 	}}
-	if err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -221,7 +221,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 	if len(migrated.Plugins) != 2 {
 		t.Fatalf("active defaults were not migrated through physical alias: %+v", migrated.Plugins)
 	}
-	if len(registry.Requests) == 0 {
+	if len(registry.Requests()) == 0 {
 		t.Fatal("active default plugins did not resolve")
 	}
 }

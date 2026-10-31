@@ -20,22 +20,26 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	t.Setenv("HOME", cache)
 	a, b, c := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
 	backend := func(path string) *toolconfig.Backend {
-		return &toolconfig.Backend{Wasm: &toolconfig.Module{Path: path}}
+		module, err := toolconfig.NewModule(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return toolconfig.WasmBackend(module)
 	}
 	tools := config.ToolsConfig{
-		Ruff:       config.RuffToolConfig{Backend: backend("sha256://" + b)},
-		Shellcheck: config.ShellcheckToolConfig{Backend: backend("https://127.0.0.1:1/shell.wasm#sha256=" + c)},
+		"ruff":       {Backend: backend("sha256://" + b)},
+		"shellcheck": {Backend: backend("https://127.0.0.1:1/shell.wasm#sha256=" + c)},
 	}
 	sources := PluginSources{
 		Paths: []string{"sha256://" + a, "sha256://" + a, "https://127.0.0.1:1/plugin.wasm#sha256=" + strings.ToUpper(a), "local.wasm"},
 		configs: []*config.Config{{
 			Tools: tools,
 			Overrides: []config.Override{{Tools: &config.ToolsConfig{
-				Ruff: config.RuffToolConfig{Backend: backend("sha256://" + c)},
+				"ruff": {Backend: backend("sha256://" + c)},
 			}}},
 		}},
 	}
-	plan, err := sources.CachePlan()
+	plan, err := sources.CachePlan(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +67,7 @@ func TestCachePlanRejectsMalformedCandidateSources(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			sources := PluginSources{Paths: []string{source}}
-			if _, err := sources.CachePlan(); err == nil {
+			if _, err := sources.CachePlan(t.Context()); err == nil {
 				t.Fatalf("invalid candidate entered cache plan: %q", source)
 			}
 		})

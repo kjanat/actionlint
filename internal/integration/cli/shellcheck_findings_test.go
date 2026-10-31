@@ -32,7 +32,7 @@ jobs:
 `
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--no-color", "--no-ruff", "--shellcheck=" + command, "--json", "--summary=false"}
+			args := []string{"actionlint", "--no-config", "--no-color", "--no-tool=ruff", "--tool=shellcheck=" + command, "--json", "--summary=false"}
 			if modern {
 				args = append(args, "check")
 			}

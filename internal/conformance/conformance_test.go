@@ -29,10 +29,9 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	ownedyaml "actionlint.kjanat.dev/v2/internal/yaml"
 
 	"github.com/google/go-cmp/cmp"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 var conformanceLog string
@@ -374,7 +373,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		checker := exprlang.NewChecker(false, nil)
 		contexts := map[string]exprlang.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = exprlang.AnyType{}
+			contexts[strings.ToLower(name)] = exprlang.AnyType()
 		}
 		checker.SetContextTypes(contexts)
 		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
@@ -390,16 +389,20 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				diagnostics = append(diagnostics, errs...)
 			case *exprlang.FuncCallNode:
 				callChecker := exprlang.NewChecker(false, nil)
-				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType{}})
+				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
 				args := make([]exprlang.Node, len(n.Args))
 				for i := range args {
-					argument, err := parser.Parse(exprlang.NewLexer("argument}}"))
+					parsed, err := parser.Parse(exprlang.NewLexer("argument}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					*argument.Token() = *n.Args[i].Token()
+					argument, ok := parsed.(*exprlang.VariableNode)
+					if !ok {
+						t.Fatalf("argument placeholder parsed as %T", parsed)
+					}
+					argument.First = n.Args[i].Token()
 					args[i] = argument
 				}
 				call := *n
@@ -424,16 +427,17 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
-		var meta actionmeta.Metadata
-		if err := ownedyaml.Unmarshal([]byte(c.Input), &meta); err != nil {
-			return []string{err.Error()}
-		}
 		root := t.TempDir()
 		dir := filepath.Join(root, "action")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(c.Input), 0o644); err != nil {
+		metadataPath := filepath.Join(dir, "action.yml")
+		meta, err := actionmeta.Parse(metadataPath, []byte(c.Input))
+		if err != nil {
+			return []string{err.Error()}
+		}
+		if err := os.WriteFile(metadataPath, []byte(c.Input), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		// Manifest-parser fixtures assume companion files exist; their contents are never executed.
@@ -456,12 +460,8 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				t.Fatal(err)
 			}
 		}
-		metadata, err := actionmeta.Parse(filepath.Join(dir, "action.yml"), []byte(c.Input))
-		if err != nil {
-			t.Fatal(err)
-		}
 		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
-		out := upstreamDiagnostics(actioncheck.Check(metadata, &workflowlang.Pos{Line: 1, Col: 1}))
+		out := upstreamDiagnostics(actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")

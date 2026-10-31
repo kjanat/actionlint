@@ -12,9 +12,38 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/cli"
-	ruffcheck "actionlint.kjanat.dev/v2/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 )
+
+// probeBundledVersion runs the version probe of the bundled provider named
+// name against executable and returns its error.
+func probeBundledVersion(t *testing.T, name, executable string) error {
+	t.Helper()
+	manifests, err := provider.Bundled()
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := slices.IndexFunc(manifests, func(m provider.Manifest) bool { return m.Rule.Name == name })
+	if index < 0 {
+		t.Fatalf("no bundled provider %s", name)
+	}
+	processes := analyzerhost.NewProcessPool(t.Context(), 1)
+	defer processes.Wait()
+	command, err := processes.NewCommandRunner(executable, false)
+	if err != nil {
+		return err
+	}
+	backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundled.Program, Required: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = backend.ProbeVersion(t.Context())
+	return err
+}
 
 func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	ruff, err := exec.LookPath("ruff")
@@ -23,19 +52,13 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	}
 	// Keep tool-manager shims in the repository's version context. Both the
 	// native command and actionlint disable configuration discovery below.
-	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, key := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatal(err)
 		}
 	}
-	var probeErr error
-	if err := ruffcheck.CheckCompatibility(t.Context(), func(args []string, stdin string, callback func([]byte, error) error) {
-		cmd := exec.CommandContext(t.Context(), ruff, args...)
-		cmd.Stdin = strings.NewReader(stdin)
-		output, err := cmd.Output()
-		probeErr = callback(output, err)
-	}, func() error { return probeErr }); err != nil {
+	if err := probeBundledVersion(t, "ruff", ruff); err != nil {
 		t.Skipf("Ruff integration requires a compatible executable (%s): %v", ruff, err)
 	}
 	script := "x = 1\nimport os\nif x == None:\n    print(missing)\n"
@@ -71,12 +94,12 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 			{"defaults", nil, defaults},
 			{"legacy Pyflakes", []string{"--pyflakes=old-command"}, pyflakes},
 			{"single dash Pyflakes", []string{"-pyflakes", "old-command"}, pyflakes},
-			{"explicit Ruff", []string{"--pyflakes=old-command", "--ruff"}, defaults},
-			{"explicit Ruff first", []string{"--ruff", "--pyflakes=old-command"}, defaults},
-			{"explicit Ruff command", []string{"--pyflakes=old-command", "--ruff=" + ruff}, defaults},
-			{"disabled Ruff", []string{"--pyflakes=old-command", "--no-ruff"}, nil},
-			{"empty Ruff", []string{"--pyflakes=old-command", "--ruff="}, nil},
-			{"empty Pyflakes with Ruff", []string{"--pyflakes=", "--ruff"}, defaults},
+			{"explicit Ruff", []string{"--pyflakes=old-command", "--tool", "ruff"}, defaults},
+			{"explicit Ruff first", []string{"--tool", "ruff", "--pyflakes=old-command"}, defaults},
+			{"explicit Ruff command", []string{"--pyflakes=old-command", "--tool=ruff=" + ruff}, defaults},
+			{"disabled Ruff", []string{"--pyflakes=old-command", "--no-tool", "ruff"}, nil},
+			{"empty Ruff", []string{"--pyflakes=old-command", "--tool", "ruff="}, nil},
+			{"empty Pyflakes with Ruff", []string{"--pyflakes=", "--tool", "ruff"}, defaults},
 			{"empty Pyflakes", []string{"--pyflakes="}, nil},
 			{"disabled Pyflakes", []string{"--pyflakes=false"}, nil},
 		} {

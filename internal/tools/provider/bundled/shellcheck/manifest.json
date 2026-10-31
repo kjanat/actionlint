@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "id": "actionlint.kjanat.dev/providers/shellcheck",
+  "version": "bundled",
+  "role": "script",
+  "scope": "source",
+  "transport": "process",
+  "rule": {
+    "name": "shellcheck",
+    "description": "Analyze embedded shell scripts with ShellCheck",
+    "category": "correctness",
+    "subcategory": "shell",
+    "maturity": "stable",
+    "provider": "shellcheck",
+    "recommended": true,
+    "explanation": "Analyze embedded shell scripts with ShellCheck.",
+    "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+    "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+    "fix_availability": "suggested"
+  },
+  "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
+  "integration": { "tool": "shellcheck", "contract": "kjanat:actionlint/shellcheck-config@0.1.0" },
+  "deprecated_flags": [{ "name": "shellcheck", "value": "command" }],
+  "selectors": { "filename": "actionlint.sh" },
+  "capabilities": {
+    "fixes": true,
+    "reported_sources": true,
+    "resources": ["workspace", "directory"],
+    "message_template": "shellcheck reported issue in this script: {code}:{severity}:{row}:{column}: {message}",
+    "severities": { "error": "error", "warning": "warning", "info": "info", "style": "info" }
+  },
+  "config_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$comment": "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see tools/config/README.md.",
+    "title": "ShellCheck 0.11.0 inline directives for actionlint",
+    "description": "Is a typed representation of project-wide ShellCheck directives.",
+    "markdownDescription": "Is a typed representation of project-wide ShellCheck directives.",
+    "type": "object",
+    "properties": {
+      "disable": {
+        "title": "disable",
+        "description": "Lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].",
+        "markdownDescription": "Lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].",
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "enable": {
+        "title": "enable",
+        "description": "Selects optional check names. Scalar all or true expands to [all]. This selection does not change the tool enabled setting.",
+        "markdownDescription": "Selects optional check names. Scalar all or true expands to [all]. This selection does not change the tool enabled setting.",
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z-]+$"
+            }
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "enum": [
+              "all"
+            ]
+          },
+          {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        ]
+      },
+      "extended-analysis": {
+        "title": "extended-analysis",
+        "description": "Enables or disables ShellCheck dataflow analysis. Omission keeps its default.",
+        "markdownDescription": "Enables or disables ShellCheck dataflow analysis. Omission keeps its default.",
+        "oneOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "external-sources": {
+        "title": "external-sources",
+        "description": "Controls following sourced files. Omission preserves actionlint's enabled default.",
+        "markdownDescription": "Controls following sourced files. Omission preserves actionlint's enabled default.",
+        "oneOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "shell": {
+        "title": "shell",
+        "description": "Overrides the inferred dialect of scripts selected for ShellCheck.",
+        "markdownDescription": "Overrides the inferred dialect of scripts selected for ShellCheck.",
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "sh",
+              "bash",
+              "dash",
+              "ksh",
+              "busybox"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "source-path": {
+        "title": "source-path",
+        "description": "Lists directories searched for sourced files, relative to the run step's effective working directory. Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.",
+        "markdownDescription": "Lists directories searched for sourced files, relative to the run step's effective working directory. Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.",
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "anyOf": [
+                {
+                  "not": {
+                    "pattern": "\""
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "'"
+                  }
+                },
+                {
+                  "not": {
+                    "pattern": "[ \\t]|^['\"]"
+                  }
+                }
+              ],
+              "not": {
+                "pattern": "[\\x00\\r\\n]"
+              }
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false
+  },
+  "process": {
+    "entry": "shellcheck",
+    "stdin": "source",
+    "exit_codes": [0, 1],
+    "args": [
+      "{user-args}",
+      "{switch:config_file:--rcfile:--norc}",
+      "{var:config_file}",
+      "{switch:external_sources:-x:}",
+      "-f",
+      "json1",
+      "{flag:dialect:--shell}",
+      "-e",
+      "{list:exclude:,}",
+      "-"
+    ],
+    "env_passthrough": [
+      "SHELLCHECK_OPTS",
+      "PATH",
+      "PATHEXT",
+      "HOME",
+      "USERPROFILE",
+      "APPDATA",
+      "LOCALAPPDATA",
+      "TMPDIR",
+      "TEMP",
+      "TMP"
+    ],
+    "config": { "render": "none" },
+    "config_files": {
+      "names": [".shellcheckrc", "shellcheckrc"],
+      "search": ["upward", "home", "xdg"]
+    },
+    "output": {
+      "format": "json",
+      "transform": {
+        "language": "jq",
+        "digest": "sha256:f7b02f7a638d7b66773552fd5933f8515d24f59b06ce2431af865e8897e19142"
+      },
+      "coordinates": { "rows": "lf", "columns": "chars", "end": "exclusive" }
+    },
+    "user_args": {
+      "operands": true,
+      "value_options": [
+        "--shell",
+        "--include",
+        "--exclude",
+        "--extended-analysis",
+        "--format",
+        "--rcfile",
+        "--enable",
+        "--source-path",
+        "--severity",
+        "--wiki-link-count"
+      ],
+      "value_shorts": "iefosPSW",
+      "attached_shorts": "C",
+      "overrides": [{ "flag": "--shell", "short": "s", "drops": "dialect" }],
+      "env_options": ["SHELLCHECK_OPTS"]
+    },
+    "concurrency": "pool"
+  }
+}

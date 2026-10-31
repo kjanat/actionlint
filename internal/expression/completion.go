@@ -19,8 +19,8 @@ var (
 	completionRoot   = regexp.MustCompile(`(?i)[a-z_][a-z0-9_-]*$`)
 )
 
-// Complete uses the same checker scope and property types as diagnostics. It
-// accepts unfinished dot/bracket access and retains UTF-8 byte edit positions.
+// Complete suggests names from the checker's scope for unfinished dot/bracket
+// access. The offset and returned edit positions count UTF-8 bytes.
 func (sema *Checker) Complete(source string, offset int) []Completion {
 	if offset < 0 || offset > len(source) {
 		return nil
@@ -51,11 +51,11 @@ func (sema *Checker) Complete(source string, offset int) []Completion {
 		if len(errs) != 0 {
 			return nil
 		}
-		if array, ok := ty.(*ArrayType); ok && array.Deref {
-			ty = array.Elem
+		if array, ok := ty.Array(); ok && array.Deref() {
+			ty = array.Elem()
 		}
-		if object, ok := ty.(*ObjectType); ok {
-			properties = object.Props
+		if object, ok := ty.Object(); ok {
+			properties = maps.Collect(object.Properties())
 		}
 	} else {
 		match := completionRoot.FindStringIndex(before)
@@ -114,12 +114,11 @@ func identifierByte(b byte) bool {
 }
 
 func typeLabel(t Type) string {
-	switch t := t.(type) {
-	case *ObjectType:
+	if t.Kind() == KindObject {
 		return "object"
-	case *ArrayType:
-		return "array<" + typeLabel(t.Elem) + ">"
-	default:
-		return t.String()
 	}
+	if array, ok := t.Array(); ok {
+		return "array<" + typeLabel(array.Elem()) + ">"
+	}
+	return t.String()
 }

@@ -8,7 +8,7 @@ import (
 	stringutil "actionlint.kjanat.dev/v2/internal/stringutil"
 )
 
-func errorAtToken(kind findingKind, t *Token, msg string) *Error {
+func errorAtToken(kind findingKind, t Token, msg string) *Error {
 	return &Error{
 		Message: msg,
 		Rule:    kind.rule, Code: kind.code,
@@ -35,7 +35,7 @@ func NewParser() *Parser {
 
 func (p *Parser) error(msg string) {
 	if p.err == nil {
-		p.err = errorAtToken(syntax, p.cur, msg)
+		p.err = errorAtToken(syntax, *p.cur, msg)
 	}
 }
 
@@ -70,11 +70,12 @@ func (p *Parser) next() *Token {
 
 type parsedExprNode interface {
 	Node
-	setSpan(Span)
+	location() *Location
 }
 
+// node sets n's range from start through the last consumed token.
 func (p *Parser) node(n parsedExprNode, start *Token) parsedExprNode {
-	n.setSpan(Span{start.Offset, p.last.Offset + len(p.last.Value), start.Line, start.Column})
+	n.location().Range = Span{start.Offset, p.last.Offset + len(p.last.Value), start.Line, start.Column}
 	return n
 }
 
@@ -84,8 +85,7 @@ func (p *Parser) peek() *Token {
 
 func (p *Parser) parseIdent() parsedExprNode {
 	ident := p.next() // eat ident
-	switch p.peek().Kind {
-	case TokenKindLeftParen:
+	if p.peek().Kind == TokenKindLeftParen {
 		// Parse function call as primary expression though generally function call is parsed as
 		// postfix expression. The reason is that only built-in function call is allowed in workflow
 		// expression syntax, meant that callee is always built-in function name, not a general
@@ -105,33 +105,31 @@ func (p *Parser) parseIdent() parsedExprNode {
 
 				args = append(args, arg)
 
-				switch p.peek().Kind {
-				case TokenKindComma:
-					p.next() // eat ','
-					// continue to next argument
-				case TokenKindRightParen:
+				if p.peek().Kind == TokenKindRightParen {
 					p.next() // eat ')'
 					break LoopArgs
-				default:
+				}
+				if p.peek().Kind != TokenKindComma {
 					p.unexpected("arguments of function call", []TokenKind{TokenKindComma, TokenKindRightParen})
 					return nil
 				}
+				p.next() // eat ','
+				// continue to next argument
 			}
 		}
-		return p.node(&FuncCallNode{Callee: ident.Value, Args: args, tok: ident}, ident)
+		return p.node(&FuncCallNode{First: *ident, Callee: ident.Value, Args: args}, ident)
+	}
+	// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
+	switch ident.Value {
+	case "null":
+		return p.node(&NullNode{First: *ident}, ident)
+	case "true":
+		return p.node(&BoolNode{First: *ident, Value: true}, ident)
+	case "false":
+		return p.node(&BoolNode{First: *ident, Value: false}, ident)
 	default:
-		// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
-		switch ident.Value {
-		case "null":
-			return p.node(&NullNode{tok: ident}, ident)
-		case "true":
-			return p.node(&BoolNode{Value: true, tok: ident}, ident)
-		case "false":
-			return p.node(&BoolNode{Value: false, tok: ident}, ident)
-		default:
-			// Variable name access is case insensitive. github.event and GITHUB.event are the same.
-			return p.node(&VariableNode{Name: strings.ToLower(ident.Value), tok: ident}, ident)
-		}
+		// Variable name access is case insensitive. github.event and GITHUB.event are the same.
+		return p.node(&VariableNode{First: *ident, Name: strings.ToLower(ident.Value)}, ident)
 	}
 }
 
@@ -163,7 +161,7 @@ func (p *Parser) parseInt() parsedExprNode {
 
 	p.next() // eat int
 
-	return p.node(&IntNode{Value: int(i), tok: t}, t)
+	return p.node(&IntNode{First: *t, Value: int(i)}, t)
 }
 
 func (p *Parser) parseFloat() parsedExprNode {
@@ -176,7 +174,7 @@ func (p *Parser) parseFloat() parsedExprNode {
 
 	p.next() // eat float
 
-	return p.node(&FloatNode{Value: f, tok: t}, t)
+	return p.node(&FloatNode{First: *t, Value: f}, t)
 }
 
 func (p *Parser) parseString() parsedExprNode {
@@ -184,34 +182,37 @@ func (p *Parser) parseString() parsedExprNode {
 	s := t.Value
 	s = s[1 : len(s)-1]                  // strip first and last single quotes
 	s = strings.ReplaceAll(s, "''", "'") // unescape ''
-	return p.node(&StringNode{Value: s, tok: t}, t)
+	return p.node(&StringNode{First: *t, Value: s}, t)
 }
 
 func (p *Parser) parsePrimaryExpr() parsedExprNode {
-	switch p.peek().Kind {
-	case TokenKindIdent:
+	kind := p.peek().Kind
+	if kind == TokenKindIdent {
 		return p.parseIdent()
-	case TokenKindLeftParen:
-		return p.parseNestedExpr()
-	case TokenKindInt:
-		return p.parseInt()
-	case TokenKindFloat:
-		return p.parseFloat()
-	case TokenKindString:
-		return p.parseString()
-	default:
-		p.unexpected(
-			"variable access, function call, null, bool, int, float or string",
-			[]TokenKind{
-				TokenKindIdent,
-				TokenKindLeftParen,
-				TokenKindInt,
-				TokenKindFloat,
-				TokenKindString,
-			},
-		)
-		return nil
 	}
+	if kind == TokenKindLeftParen {
+		return p.parseNestedExpr()
+	}
+	if kind == TokenKindInt {
+		return p.parseInt()
+	}
+	if kind == TokenKindFloat {
+		return p.parseFloat()
+	}
+	if kind == TokenKindString {
+		return p.parseString()
+	}
+	p.unexpected(
+		"variable access, function call, null, bool, int, float or string",
+		[]TokenKind{
+			TokenKindIdent,
+			TokenKindLeftParen,
+			TokenKindInt,
+			TokenKindFloat,
+			TokenKindString,
+		},
+	)
+	return nil
 }
 
 func (p *Parser) parsePostfixOp() parsedExprNode {
@@ -222,40 +223,48 @@ func (p *Parser) parsePostfixOp() parsedExprNode {
 	}
 
 	for {
-		switch p.peek().Kind {
-		case TokenKindDot:
+		kind := p.peek().Kind
+		if kind == TokenKindDot {
 			p.next() // eat '.'
-			switch p.peek().Kind {
-			case TokenKindStar:
-				p.next() // eat '*'
-				ret = p.node(&ArrayDerefNode{Receiver: ret}, start)
-			case TokenKindIdent:
-				t := p.next() // eat 'b' of 'a.b'
-				// Property name is case insensitive. github.event and github.EVENT are the same
-				ret = p.node(&ObjectDerefNode{Receiver: ret, Property: strings.ToLower(t.Value), propertyToken: t}, start)
-			default:
-				p.unexpected(
-					"object property dereference like 'a.b' or array element dereference like 'a.*'",
-					[]TokenKind{TokenKindIdent, TokenKindStar},
-				)
+			ret = p.parseDeref(ret, start)
+			if ret == nil {
 				return nil
 			}
-		case TokenKindLeftBracket:
-			p.next() // eat '['
-			idx := p.parseLogicalOr()
-			if idx == nil {
-				return nil
-			}
-			if p.peek().Kind != TokenKindRightBracket {
-				p.unexpected("closing bracket ']' for index access", []TokenKind{TokenKindRightBracket})
-				return nil
-			}
-			p.next() // eat ']'
-			ret = p.node(&IndexAccessNode{Operand: ret, Index: idx}, start)
-		default:
+			continue
+		}
+		if kind != TokenKindLeftBracket {
 			return ret
 		}
+		p.next() // eat '['
+		idx := p.parseLogicalOr()
+		if idx == nil {
+			return nil
+		}
+		if p.peek().Kind != TokenKindRightBracket {
+			p.unexpected("closing bracket ']' for index access", []TokenKind{TokenKindRightBracket})
+			return nil
+		}
+		p.next() // eat ']'
+		ret = p.node(&IndexAccessNode{First: ret.Token(), Operand: ret, Index: idx}, start)
 	}
+}
+
+// parseDeref parses the property or '*' following '.' in 'a.b' or 'a.*'.
+func (p *Parser) parseDeref(receiver Node, start *Token) parsedExprNode {
+	if p.peek().Kind == TokenKindStar {
+		p.next() // eat '*'
+		return p.node(&ArrayDerefNode{First: receiver.Token(), Receiver: receiver}, start)
+	}
+	if p.peek().Kind == TokenKindIdent {
+		t := p.next() // eat 'b' of 'a.b'
+		// Property name is case insensitive. github.event and github.EVENT are the same
+		return p.node(&ObjectDerefNode{First: receiver.Token(), Receiver: receiver, Property: strings.ToLower(t.Value), PropertyToken: *t}, start)
+	}
+	p.unexpected(
+		"object property dereference like 'a.b' or array element dereference like 'a.*'",
+		[]TokenKind{TokenKindIdent, TokenKindStar},
+	)
+	return nil
 }
 
 func (p *Parser) parsePrefixOp() parsedExprNode {
@@ -270,7 +279,17 @@ func (p *Parser) parsePrefixOp() parsedExprNode {
 		return nil
 	}
 
-	return p.node(&NotOpNode{Operand: o, tok: t}, t)
+	return p.node(&NotOpNode{First: *t, Operand: o}, t)
+}
+
+// compareOpTokens maps comparison operator tokens to their node kinds.
+var compareOpTokens = map[TokenKind]CompareOpNodeKind{
+	TokenKindLess:      CompareOpNodeKindLess,
+	TokenKindLessEq:    CompareOpNodeKindLessEq,
+	TokenKindGreater:   CompareOpNodeKindGreater,
+	TokenKindGreaterEq: CompareOpNodeKindGreaterEq,
+	TokenKindEq:        CompareOpNodeKindEq,
+	TokenKindNotEq:     CompareOpNodeKindNotEq,
 }
 
 func (p *Parser) parseCompareBinOp() parsedExprNode {
@@ -280,21 +299,8 @@ func (p *Parser) parseCompareBinOp() parsedExprNode {
 		return nil
 	}
 
-	var k CompareOpNodeKind
-	switch p.peek().Kind {
-	case TokenKindLess:
-		k = CompareOpNodeKindLess
-	case TokenKindLessEq:
-		k = CompareOpNodeKindLessEq
-	case TokenKindGreater:
-		k = CompareOpNodeKindGreater
-	case TokenKindGreaterEq:
-		k = CompareOpNodeKindGreaterEq
-	case TokenKindEq:
-		k = CompareOpNodeKindEq
-	case TokenKindNotEq:
-		k = CompareOpNodeKindNotEq
-	default:
+	k, ok := compareOpTokens[p.peek().Kind]
+	if !ok {
 		return l
 	}
 	p.next() // eat the operator token
@@ -304,7 +310,7 @@ func (p *Parser) parseCompareBinOp() parsedExprNode {
 		return nil
 	}
 
-	return p.node(&CompareOpNode{Kind: k, Left: l, Right: r}, start)
+	return p.node(&CompareOpNode{First: l.Token(), Kind: k, Left: l, Right: r}, start)
 }
 
 func (p *Parser) parseLogicalAnd() parsedExprNode {
@@ -321,7 +327,7 @@ func (p *Parser) parseLogicalAnd() parsedExprNode {
 	if r == nil {
 		return nil
 	}
-	return p.node(&LogicalOpNode{Kind: LogicalOpNodeKindAnd, Left: l, Right: r}, start)
+	return p.node(&LogicalOpNode{First: l.Token(), Kind: LogicalOpNodeKindAnd, Left: l, Right: r}, start)
 }
 
 func (p *Parser) parseLogicalOr() parsedExprNode {
@@ -338,7 +344,7 @@ func (p *Parser) parseLogicalOr() parsedExprNode {
 	if r == nil {
 		return nil
 	}
-	return p.node(&LogicalOpNode{Kind: LogicalOpNodeKindOr, Left: l, Right: r}, start)
+	return p.node(&LogicalOpNode{First: l.Token(), Kind: LogicalOpNodeKindOr, Left: l, Right: r}, start)
 }
 
 // Err returns an error which was caused while previous parsing.
@@ -346,7 +352,7 @@ func (p *Parser) Err() *Error {
 	if err := p.lexer.Err(); err != nil {
 		return err
 	}
-	return p.err
+	return p.err.detached()
 }
 
 // Parse parses token sequence lexed by a given lexer into syntax tree.
@@ -375,11 +381,11 @@ func (p *Parser) Parse(l *Lexer) (Node, *Error) {
 			c++
 		}
 		p.errorf("parser did not reach end of input after parsing the expression. %d remaining token(s) in the input: %s", c, qb.Build())
-		return nil, p.err
+		return nil, p.err.detached()
 	}
 	if node := expressionExceedingDepth(root); node != nil {
 		p.err = errorAtToken(syntax, node.Token(), "exceeded max expression depth 50")
-		return nil, p.err
+		return nil, p.err.detached()
 	}
 
 	return root, nil
@@ -448,7 +454,6 @@ func ParseAssignedExpression(s string) Node {
 }
 
 // IsMappingInsertion recognizes insert only as the complete expression in a mapping key.
-// Elsewhere it remains an ordinary variable subject to expression validation.
 //
 // Mapping insertion syntax reference (Azure Pipelines):
 // https://learn.microsoft.com/en-us/azure/devops/pipelines/process/template-expressions?view=azure-devops&source=recommendations#insertion

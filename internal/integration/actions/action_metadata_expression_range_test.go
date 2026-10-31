@@ -24,7 +24,7 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 		{"escaped", strings.Replace(composite, "echo ok", `"${{ \u0066orbidden.value }} ${{ forbidden.value }}"`, 1), "forbidden"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\n" + tc.body
 			testutil.WriteFixture(t, root, "inner/action.yml", metadata)
@@ -64,7 +64,7 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 func TestMetadataExpressionSyntaxRanges(t *testing.T) {
 	for _, token := range []string{"+", "unexpected"} {
 		t.Run(token, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ${{ github.ref "+token+" }}\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})

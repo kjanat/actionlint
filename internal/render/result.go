@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/report"
 )
 
@@ -20,12 +20,12 @@ type Result struct {
 	Diagnostics    []diagnostic.Diagnostic
 	Findings       []Finding
 	Documents      documentmodel.Outlines
-	Configurations []repoconfig.Report
+	Configurations []configreport.Report
 	Rules          []Rule
 }
 
-// Prepare adapts an analysis snapshot for display. Presentation-only inclusive
-// columns are computed here; analysis retains canonical half-open spans.
+// Prepare adapts an analysis snapshot for display, converting half-open spans
+// to inclusive columns.
 func Prepare(analysis report.Analysis) Result {
 	r := Result{
 		FileCount: analysis.FileCount, Diagnostics: analysis.Diagnostics,
@@ -38,6 +38,7 @@ func Prepare(analysis report.Analysis) Result {
 		}
 		finding := FindingOf(d, source.Content)
 		finding.RawScript = source.RawScript
+		finding.Unavailable = source.Unavailable
 		r.Findings = append(r.Findings, finding)
 	}
 	return r
@@ -62,11 +63,11 @@ type CheckResult struct {
 
 // ResultConfig identifies the configuration used for a project, including overlays.
 type ResultConfig struct {
-	File      string                       `json:"file"`
-	Project   string                       `json:"project"`
-	Overrides []string                     `json:"overrides"`
-	Origins   map[string]repoconfig.Origin `json:"origins,omitempty"`
-	Warnings  []repoconfig.Warning         `json:"warnings,omitempty"`
+	File      string                         `json:"file"`
+	Project   string                         `json:"project"`
+	Overrides []string                       `json:"overrides"`
+	Origins   map[string]configreport.Origin `json:"origins,omitempty"`
+	Warnings  []configreport.Warning         `json:"warnings,omitempty"`
 }
 
 // CheckSummary counts the selected inputs and reported findings.
@@ -76,7 +77,6 @@ type CheckSummary struct {
 }
 
 // NewCheckResult initializes a result with a consistent status and non-null lists.
-// FileCount remains null until input selection is known. Unknown exit codes mean failure.
 func NewCheckResult(code int) CheckResult {
 	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []diagnostic.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}}
 	switch code {
@@ -93,7 +93,7 @@ func NewCheckResult(code int) CheckResult {
 }
 
 // AddConfiguration preserves selection provenance without serializing internal config state.
-func (r *CheckResult) AddConfiguration(config repoconfig.Report) {
+func (r *CheckResult) AddConfiguration(config configreport.Report) {
 	r.Configs = append(r.Configs, ResultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
 }
 
@@ -151,7 +151,7 @@ func WriteGitHub(out io.Writer, diagnostics []diagnostic.Diagnostic) error {
 		switch diagnostic.Severity {
 		case "warning":
 			level = "warning"
-		case "info", "style", "note":
+		case "info", "note":
 			level = "notice"
 		}
 		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -55,7 +55,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 	options := application.Options{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml"}
 	check(application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}}))
 	check(application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}}))
-	planning := application.Options{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml", Tools: (adapters.Options{ShellCheck: "shellcheck"}).Registrations()}
+	planning := application.Options{WorkingDir: "repo", ConfigFile: "repo/actionlint.yml", Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	for _, path := range []string{workflow, filepath.Join(".github", "workflows", "ci.yml")} {
 		needed, err := application.RequiredTools(t.Context(), planning, []string{path})
 		if err != nil || !needed["shellcheck"] {
@@ -87,7 +87,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			writeFixture(t, root, ".github/actionlint.yaml", tc.config)
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", goodWorkflow)
 
-			options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellcheckOptions: &processconfig.Options{Executable: &executable, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}).Registrations()}
+			options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &processconfig.Options{Executable: &executable, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
 			needed, err := application.RequiredTools(t.Context(), options, []string{workflow})
 			if err != nil || needed["shellcheck"] != tc.enabled {
 				t.Fatalf("tool requirement: %+v, %v", needed, err)

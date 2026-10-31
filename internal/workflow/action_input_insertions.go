@@ -1,56 +1,102 @@
 package workflow
 
-import "actionlint.kjanat.dev/v2/internal/mapping"
+import (
+	"actionlint.kjanat.dev/v2/diagnostic"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+)
 
-var InputResolver = mapping.Resolver[*String]{
-	Text:          func(s *String) string { return s.Value },
-	HasExpression: (*String).ContainsExpression,
-	Evaluate:      WorkflowExpressionLiteral,
-	NewText: func(value string, source *String) *String {
-		if source == nil {
-			return &String{Value: value}
-		}
-		result := *source
-		result.Value = value
-		return &result
-	},
+func SemanticValue(node *String) value.Value {
+	if node == nil {
+		return value.Value{}
+	}
+	origin := value.Origin{}
+	if node.Pos != nil {
+		origin.Span.Start = diagnostic.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+	}
+	if node.SourceScalar.Evaluated {
+		origin.FromExpression = true
+		return value.FromJSON(node.Value, origin)
+	}
+	if node.ContainsExpression() {
+		origin.FromExpression = true
+		return value.Template(node.Value, origin)
+	}
+	return value.YAMLScalar(node.Value, YamlTagStr, origin)
 }
 
-func InputMapping(action *ExecAction) *mapping.Inputs[*String] {
-	return inputMappingView(&ActionInputMapping{Inputs: action.Inputs, Expression: action.InputsExpression, Insertions: action.InputInsertions})
+// MappingScalar converts a source scalar for env and action-input mappings.
+// SourceScalar is a pointer-free parse-boundary snapshot, so this conversion
+// preserves YAML null, boolean, and numeric values after AST normalization.
+func MappingScalar(text string, source SourceScalar, origin value.Origin) value.Value {
+	if source.Evaluated {
+		origin.FromExpression = true
+		return value.FromJSON(text, origin)
+	}
+	if exprlang.ContainsExpression(text) {
+		origin.FromExpression = true
+		return value.Template(text, origin)
+	}
+	if source.HasSource && source.Kind == SourceScalarScalar {
+		return value.YAMLScalar(source.Value, source.Tag, origin)
+	}
+	return value.YAMLScalar(text, YamlTagStr, origin)
 }
 
-func inputMappingView(source *ActionInputMapping) *mapping.Inputs[*String] {
-	result := &mapping.Inputs[*String]{Expression: source.Expression, Values: make(map[string]mapping.Input[*String], len(source.Inputs))}
+func semanticMappingValue(node *String) value.Value {
+	if node == nil {
+		return value.Value{}
+	}
+	origin := value.Origin{}
+	if node.Pos != nil {
+		origin.Span.Start = diagnostic.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+	}
+	return MappingScalar(node.Value, node.SourceScalar, origin)
+}
+
+func InputMapping(action *ExecAction) *mapping.Inputs {
+	if action == nil {
+		return nil
+	}
+	source := &ActionInputMapping{Inputs: action.Inputs, Expression: action.InputsExpression, Insertions: action.InputInsertions}
+	return actionMappingValues(source)
+}
+
+func mappingSourceText(source *String) string {
+	if source == nil {
+		return ""
+	}
+	return source.Value
+}
+
+func actionMappingValues(source *ActionInputMapping) *mapping.Inputs {
+	if source == nil {
+		return nil
+	}
+	result := &mapping.Inputs{
+		Expression: semanticMappingValue(source.Expression),
+		Values:     make(map[string]mapping.Input, len(source.Inputs)),
+	}
 	for name, input := range source.Inputs {
-		result.Values[name] = mapping.Input[*String]{Name: input.Name, Value: input.Value}
+		if input != nil {
+			result.Values[name] = mapping.Input{
+				Name: SemanticValue(input.Name), Value: semanticMappingValue(input.Value),
+				Source: mappingSourceText(input.Name),
+			}
+		}
 	}
 	for _, insertion := range source.Insertions {
-		result.Insertions = append(result.Insertions, inputMappingView(insertion))
+		result.Insertions = append(result.Insertions, actionMappingValues(insertion))
 	}
 	return result
 }
 
 func ActionInputValue(action *ExecAction, name string) (string, bool) {
-	return InputResolver.Value(InputMapping(action), name)
+	resolved := mapping.Resolve(InputMapping(action)).Lookup(name)
+	return resolved.ScalarString()
 }
 
-func ActionInputNames(action *ExecAction) (map[string]*Input, bool) {
-	names, complete := InputResolver.Names(InputMapping(action))
-	sources := map[*String]*ScriptSource{}
-	var collect func(*ActionInputMapping)
-	collect = func(mapping *ActionInputMapping) {
-		for _, input := range mapping.Inputs {
-			sources[input.Value] = input.Source
-		}
-		for _, insertion := range mapping.Insertions {
-			collect(insertion)
-		}
-	}
-	collect(&ActionInputMapping{Inputs: action.Inputs, Insertions: action.InputInsertions})
-	inputs := make(map[string]*Input, len(names))
-	for name, input := range names {
-		inputs[name] = &Input{Name: input.Name, Value: input.Value, Source: sources[input.Value]}
-	}
-	return inputs, complete
+func ResolvedActionInputs(action *ExecAction) mapping.Mapping {
+	return mapping.Resolve(InputMapping(action))
 }

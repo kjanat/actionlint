@@ -26,9 +26,9 @@ func TestRuffEnvironmentOutputRedirection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_RUFF_FLAGS", string(flags))
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", string(flags))
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -55,8 +55,8 @@ func TestRuffEnvironmentFileOperands(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -66,7 +66,7 @@ jobs:
         run: print(missing)
 `
 	for _, flags := range []string{`["other.py"]`, `["--select", "F", "."]`, `["--", "other.py"]`, `["-"]`} {
-		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
 		for _, prefix := range [][]string{nil, {"check"}} {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
@@ -84,9 +84,9 @@ func TestRuffEnvironmentStatistics(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_RUFF_FLAGS", `["--statistics"]`)
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", `["--statistics"]`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -110,8 +110,8 @@ func TestRuffEnvironmentSilent(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -121,7 +121,7 @@ jobs:
         run: print(missing)
 `
 	for _, flags := range []string{`["--silent"]`, `["-s"]`, `["-qs"]`} {
-		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
 		for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
@@ -138,8 +138,8 @@ func TestRuffEnvironmentSourceRemapping(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -149,7 +149,7 @@ jobs:
         run: print(missing)
 `
 	for _, flags := range []string{`["--extension", "py:ipynb"]`, `["--extension=py:pyi"]`} {
-		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
 		for _, prefix := range [][]string{nil, {"check"}} {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
@@ -182,8 +182,8 @@ jobs:
 		for _, prefix := range [][]string{nil, {"check"}} {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-			args := append([]string{"actionlint", "--no-color", "--shellcheck="}, prefix...)
-			status := command.Main(append(args, "--ruff="+strconv.Quote(env)+" "+suffix, "--no-config", "-"))
+			args := append([]string{"actionlint", "--no-color", "--no-tool=shellcheck"}, prefix...)
+			status := command.Main(append(args, "--tool=ruff="+strconv.Quote(env)+" "+suffix, "--no-config", "-"))
 			if strings.Contains(suffix, "--") {
 				if status != 3 {
 					t.Fatalf("invalid launcher appeared clean: %d, %s, %s", status, &stdout, &stderr)
@@ -200,8 +200,8 @@ func TestRuffEnvironmentIntegrationFlags(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -211,7 +211,7 @@ jobs:
         run: print(missing)
 `
 	for _, flags := range []string{`["--no-cache"]`, `["--isolated"]`, `["--ignore-noqa"]`, `["--no-fix"]`, `["--target-version", "py314"]`, `["--target-version=py314"]`, `["--stdin-filename", "actionlint.py"]`, `["--stdin-filename=actionlint.py"]`} {
-		t.Setenv("ACTIONLINT_RUFF_FLAGS", flags)
+		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
 		for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
@@ -228,8 +228,8 @@ func TestRuffEnvironmentNonDiagnosticModes(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", ruff)
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", ruff)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	source := `on: push
 jobs:
   test:
@@ -243,7 +243,7 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("ACTIONLINT_RUFF_FLAGS", string(flags))
+		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", string(flags))
 		for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}

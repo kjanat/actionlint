@@ -13,10 +13,18 @@ import (
 	"actionlint.kjanat.dev/v2/resolver"
 )
 
+// Analyzer reports dependencies that provider resolves to a commit the
+// reference does not already pin. It remembers the repository ID each
+// repository first resolved to and rejects later results with another ID.
 type Analyzer struct {
-	Resolver      resolver.Resolver
+	provider      resolver.Resolver
 	mu            sync.Mutex
 	repositoryIDs map[string]uint64
+}
+
+// NewAnalyzer returns an analyzer that resolves dependencies through provider.
+func NewAnalyzer(provider resolver.Resolver) *Analyzer {
+	return &Analyzer{provider: provider}
 }
 
 func (*Analyzer) Descriptor() analyzer.Descriptor {
@@ -55,7 +63,7 @@ func (a *Analyzer) resolve(ctx context.Context, request resolver.Request) (resol
 	a.mu.Lock()
 	request.ExpectedRepositoryID = a.repositoryIDs[repository]
 	a.mu.Unlock()
-	result, err := a.Resolver.Resolve(ctx, request)
+	result, err := a.provider.Resolve(ctx, request)
 	if err != nil {
 		return result, err
 	}

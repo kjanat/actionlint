@@ -22,8 +22,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/wacogo"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
 )
 
 const (
@@ -97,17 +97,21 @@ type EngineVersion struct {
 	Version string `json:"version"`
 }
 
-// Capabilities lists what the engine supports.
+// Capabilities lists what the engine supports. Fixes, ReportedSources and
+// Resources take effect only with check version 3; Resources may name only
+// analyzer.ToolDirectory.
 type Capabilities struct {
-	ScriptShells     []string               `json:"script_shells,omitempty"`
-	ScriptInputs     []analyzer.ScriptInput `json:"script_inputs,omitempty"`
-	Check            bool                   `json:"check"`
-	ValidateConfig   bool                   `json:"validate_config"`
-	ConfigSchema     bool                   `json:"config_schema"`
-	Fixes            bool                   `json:"fixes"`
-	Format           bool                   `json:"format"`
-	PositionEncoding string                 `json:"position_encoding"`
-	MaxInputBytes    int                    `json:"max_input_bytes"`
+	ScriptShells     []string                    `json:"script_shells,omitempty"`
+	ScriptInputs     []analyzer.ScriptInput      `json:"script_inputs,omitempty"`
+	Check            bool                        `json:"check"`
+	ValidateConfig   bool                        `json:"validate_config"`
+	ConfigSchema     bool                        `json:"config_schema"`
+	Fixes            bool                        `json:"fixes"`
+	ReportedSources  bool                        `json:"reported_sources,omitempty"`
+	Resources        []analyzer.ToolResourceKind `json:"resources,omitempty"`
+	Format           bool                        `json:"format"`
+	PositionEncoding string                      `json:"position_encoding"`
+	MaxInputBytes    int                         `json:"max_input_bytes"`
 }
 
 // Engine is a loaded core module. It implements analyzer.ScriptBackend and
@@ -118,8 +122,10 @@ type Engine struct {
 	limits   Limits
 	metadata Metadata
 	check    string
-	validate string
-	maxInput int
+	// checkVersion is the negotiated check operation version: 1, 2 or 3.
+	checkVersion int
+	validate     string
+	maxInput     int
 
 	runtime  wazero.Runtime
 	cache    wazero.CompilationCache
@@ -208,7 +214,6 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 
 func (e *Engine) load(ctx context.Context, data, staticMetadata []byte) error {
 	// Native compilation can take longer than one guest call on a cold cache.
-	// Bound it independently, while retaining any earlier caller deadline.
 	compileCtx, compileCancel := context.WithTimeout(ctx, defaultCompileTimeout)
 	defer compileCancel()
 	if err := compileCtx.Err(); err != nil {
@@ -327,50 +332,64 @@ func (e *Engine) negotiate(raw []byte) error {
 	if metadata.Interfaces == nil {
 		metadata.Interfaces = map[string][]Interface{"check": {{1, "check"}}, "validate_config": {{1, "validate_config"}}, "metadata": {{1, "metadata"}}}
 	}
+	if metadata.TemplateContract != "" && metadata.TemplateContract != analyzer.TemplateEffectsContract {
+		return errors.New("unsupported template effects contract")
+	}
+	for _, resource := range metadata.Capabilities.Resources {
+		if resource != analyzer.ToolDirectory {
+			return fmt.Errorf("metadata requests unsupported resource %q; core engines may request %q", resource, analyzer.ToolDirectory)
+		}
+	}
 	exports := e.compiled.ExportedFunctions()
-	resolve := func(operation string) (string, error) {
-		for _, candidate := range metadata.Interfaces[operation] {
-			if operation == "check" && metadata.TemplateContract != "" {
-				if metadata.TemplateContract != analyzer.TemplateEffectsContract {
-					return "", errors.New("unsupported template effects contract")
-				}
-				if candidate.Version != 2 {
+	// resolve returns the export of the first supported version in the
+	// host's preference order.
+	resolve := func(operation string, versions ...int) (string, int, error) {
+		for _, version := range versions {
+			for _, candidate := range metadata.Interfaces[operation] {
+				if candidate.Version != version {
 					continue
 				}
-			} else if candidate.Version != 1 {
-				continue
+				if candidate.Export == "" {
+					return "", 0, fmt.Errorf("metadata advertises %s version %d without an export", operation, version)
+				}
+				definition, ok := exports[candidate.Export]
+				if !ok || !slices.Equal(definition.ParamTypes(), requiredExports[operation].params) || !slices.Equal(definition.ResultTypes(), requiredExports[operation].results) {
+					return "", 0, fmt.Errorf("metadata advertises %s version %d through export %q, which the module does not provide with that signature", operation, version, candidate.Export)
+				}
+				return candidate.Export, version, nil
 			}
-			if candidate.Export == "" {
-				return "", fmt.Errorf("metadata advertises %s version 1 without an export", operation)
-			}
-			definition, ok := exports[candidate.Export]
-			if !ok || !slices.Equal(definition.ParamTypes(), requiredExports[operation].params) || !slices.Equal(definition.ResultTypes(), requiredExports[operation].results) {
-				return "", fmt.Errorf("metadata advertises %s version 1 through export %q, which the module does not provide with that signature", operation, candidate.Export)
-			}
-			return candidate.Export, nil
 		}
-		return "", nil
+		return "", 0, nil
 	}
-	check, err := resolve("check")
+	// Check 3 carries template effects when the engine declares a template
+	// contract, as check 2 does; otherwise it extends check 1.
+	checkVersions := []int{3, 1}
+	if metadata.TemplateContract != "" {
+		checkVersions = []int{3, 2}
+	}
+	check, version, err := resolve("check", checkVersions...)
 	if err != nil {
 		return err
 	}
 	if check == "" {
 		if metadata.TemplateContract != "" {
-			return errors.New("metadata advertises no check version compatible with its template contract")
+			return errors.New("metadata advertises no check version compatible with its template contract (versions 2 and 3)")
 		}
-		return errors.New("metadata advertises no check version this host supports (version 1)")
+		return errors.New("metadata advertises no check version this host supports (versions 1 and 3)")
 	}
-	validate, err := resolve("validate_config")
+	validate, _, err := resolve("validate_config", 1)
 	if err != nil {
 		return err
 	}
 	if metadata.Capabilities.MaxInputBytes > 0 {
 		e.maxInput = metadata.Capabilities.MaxInputBytes
 	}
-	e.metadata, e.check, e.validate = metadata, check, validate
+	e.metadata, e.check, e.checkVersion, e.validate = metadata, check, version, validate
 	return nil
 }
+
+// CheckVersion returns the negotiated check operation version.
+func (e *Engine) CheckVersion() int { return e.checkVersion }
 
 // Path returns the module file the engine was loaded from.
 func (e *Engine) Path() string { return e.path }
@@ -396,8 +415,15 @@ func (e *Engine) Metadata() Metadata {
 }
 
 // ScriptDescriptor exposes negotiated capabilities to every host entrypoint.
+// Fixes, reported sources and resources are capabilities of check 3 only.
 func (e *Engine) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
-	return e.Metadata().ScriptDescriptor()
+	descriptor := e.Metadata().ScriptDescriptor()
+	if e.checkVersion == 3 {
+		capabilities := e.metadata.Capabilities
+		descriptor.Fixes, descriptor.ReportedSources = capabilities.Fixes, capabilities.ReportedSources
+		descriptor.Resources = slices.Clone(capabilities.Resources)
+	}
+	return descriptor
 }
 
 func (m Metadata) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
@@ -408,9 +434,11 @@ func (m Metadata) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 			break
 		}
 	}
-	return analyzer.ScriptEngineDescriptor{ID: m.ID, Version: m.PluginVersion, Name: m.Name,
+	return analyzer.ScriptEngineDescriptor{
+		ID: m.ID, Version: m.PluginVersion, Name: m.Name,
 		Engine: m.Engine.Name, EngineVersion: m.Engine.Version, TemplateContract: m.TemplateContract,
-		Shells: slices.Clone(m.Capabilities.ScriptShells), ScriptInputs: slices.Clone(m.Capabilities.ScriptInputs), Rule: descriptor}
+		Shells: slices.Clone(m.Capabilities.ScriptShells), ScriptInputs: slices.Clone(m.Capabilities.ScriptInputs), Rule: descriptor,
+	}
 }
 
 type response struct {
@@ -419,9 +447,49 @@ type response struct {
 	Errors      []string                    `json:"errors"`
 }
 
+// checkRequest is the check 1 and check 2 request.
+type checkRequest struct {
+	Source   string          `json:"source"`
+	Filename string          `json:"filename"`
+	Config   json.RawMessage `json:"config,omitempty"`
+}
+
+// checkRequest3 is the check 3 request. Directory is sent only to engines
+// that request the directory resource; it names the host directory and
+// grants no access, since core modules import nothing.
+type checkRequest3 struct {
+	Source    string          `json:"source"`
+	Filename  string          `json:"filename"`
+	Config    json.RawMessage `json:"config,omitempty"`
+	Excluded  []string        `json:"excluded"`
+	Directory string          `json:"directory,omitempty"`
+}
+
+// encodeRequest encodes request for the negotiated check version.
+func (e *Engine) encodeRequest(request analyzer.ScriptRequest) ([]byte, error) {
+	if e.checkVersion != 3 {
+		return json.Marshal(checkRequest{Source: request.Source, Filename: request.Filename, Config: request.Config})
+	}
+	payload := checkRequest3{Source: request.Source, Filename: request.Filename, Config: request.Config, Excluded: request.Excluded}
+	if payload.Excluded == nil {
+		payload.Excluded = []string{}
+	}
+	payload.Directory = e.requestDirectory(request)
+	return json.Marshal(payload)
+}
+
+// requestDirectory is the directory a check 3 request carries: the
+// request's own when the engine requested the directory resource, else "".
+func (e *Engine) requestDirectory(request analyzer.ScriptRequest) string {
+	if e.checkVersion != 3 || !slices.Contains(e.metadata.Capabilities.Resources, analyzer.ToolDirectory) {
+		return ""
+	}
+	return request.Directory
+}
+
 // Check sends one snippet request and returns its diagnostics.
 func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
-	body, err := json.Marshal(request)
+	body, err := e.encodeRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -442,22 +510,92 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 		if e.metadata.TemplateContract == "" {
 			finding.TemplateEffect = ""
 		}
+		if e.checkVersion != 3 {
+			// Checks 1 and 2 define neither member; an engine sending them
+			// is read as before they existed.
+			finding.Source, finding.Fixes = "", nil
+		} else if problem := e.checkFindings3(finding, e.requestDirectory(request)); problem != "" {
+			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d %s", e.name(), i, problem))
+			continue
+		}
 		start, end := finding.Location, finding.EndLocation
-		if start.Row < 1 || start.Column < 1 || end != (analyzer.ScriptPosition{}) &&
-			(end.Row < 1 || end.Column < 1 || end.Row < start.Row || end.Row == start.Row && end.Column < start.Column) {
+		if !validRange(start, end) {
 			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d has invalid range %v-%v", e.name(), i, start, end))
 			continue
 		}
 		valid = append(valid, finding)
-		last := &valid[len(valid)-1]
-		if last.Location.Row <= len(starts) {
-			last.Location = scriptcoords.SourcePosition(starts, last.Location)
+		if finding.Source != "" {
+			// Positions are the reported file's own, not the snippet's.
+			continue
 		}
-		if last.EndLocation.Row > 0 && last.EndLocation.Row <= len(starts) {
-			last.EndLocation = scriptcoords.SourcePosition(starts, last.EndLocation)
+		last := &valid[len(valid)-1]
+		last.Location = sourcePosition(starts, last.Location)
+		last.EndLocation = sourcePosition(starts, last.EndLocation)
+		for f := range last.Fixes {
+			replacements := slices.Clone(last.Fixes[f].Replacements)
+			for r := range replacements {
+				replacement := &replacements[r]
+				start := sourcePosition(starts, analyzer.ScriptPosition{Row: replacement.Row, Column: replacement.Column})
+				end := sourcePosition(starts, analyzer.ScriptPosition{Row: replacement.EndRow, Column: replacement.EndColumn})
+				replacement.Row, replacement.Column, replacement.EndRow, replacement.EndColumn = start.Row, start.Column, end.Row, end.Column
+			}
+			last.Fixes[f].Replacements = replacements
 		}
 	}
 	return valid, err
+}
+
+// checkFindings3 reports why a check 3 diagnostic uses a capability the
+// engine did not declare or carries an invalid source or fix, or "".
+// Directory is the one the request carried. A reported source must be a
+// relative path below it: the host reads that file to show the finding, and
+// a core module, which reads no files, must not choose any other.
+func (e *Engine) checkFindings3(finding analyzer.ScriptDiagnostic, directory string) string {
+	capabilities := e.metadata.Capabilities
+	if finding.Source != "" {
+		switch {
+		case !capabilities.ReportedSources:
+			return fmt.Sprintf("reports source %q without the reported_sources capability", finding.Source)
+		case directory == "":
+			return fmt.Sprintf("reports source %q but the request carried no directory", finding.Source)
+		case !scriptcoords.ReportedSource(finding.Source):
+			return fmt.Sprintf("reports invalid source %q; sources are relative slash-separated paths below the request directory", finding.Source)
+		case len(finding.Fixes) != 0:
+			return fmt.Sprintf("has fixes for reported source %q", finding.Source)
+		}
+		return ""
+	}
+	if len(finding.Fixes) != 0 && !capabilities.Fixes {
+		return "has fixes without the fixes capability"
+	}
+	for _, fix := range finding.Fixes {
+		if len(fix.Replacements) == 0 {
+			return "has a fix without replacements"
+		}
+		for _, r := range fix.Replacements {
+			start, end := analyzer.ScriptPosition{Row: r.Row, Column: r.Column}, analyzer.ScriptPosition{Row: r.EndRow, Column: r.EndColumn}
+			if start.Row < 1 || start.Column < 1 || !validRange(start, end) || end == (analyzer.ScriptPosition{}) {
+				return fmt.Sprintf("has a fix with invalid range %v-%v", start, end)
+			}
+		}
+	}
+	return ""
+}
+
+// validRange accepts a positive start and an absent end or one that does not
+// precede the start.
+func validRange(start, end analyzer.ScriptPosition) bool {
+	return start.Row >= 1 && start.Column >= 1 && (end == (analyzer.ScriptPosition{}) ||
+		end.Row >= 1 && end.Column >= 1 && (end.Row > start.Row || end.Row == start.Row && end.Column >= start.Column))
+}
+
+// sourcePosition converts a snippet position to decoded-source rows; an
+// absent or out-of-range position is left unchanged.
+func sourcePosition(starts []analyzer.ScriptPosition, position analyzer.ScriptPosition) analyzer.ScriptPosition {
+	if position.Row < 1 || position.Row > len(starts) {
+		return position
+	}
+	return scriptcoords.SourcePosition(starts, position)
 }
 
 // ValidateConfig asks the engine to validate an options object. Engines that
@@ -516,7 +654,7 @@ func (e *Engine) call(ctx context.Context, operation string, body []byte) (*resp
 		_ = instance.Close(context.WithoutCancel(ctx))
 		return nil, e.failure(ctx, err)
 	}
-	e.release(instance)
+	e.release(ctx, instance)
 	var result response
 	if err := jsonv2.Unmarshal(raw, &result); err != nil {
 		return nil, fmt.Errorf("engine %s: %s returned invalid JSON: %w", e.name(), operation, err)
@@ -601,11 +739,13 @@ func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 	return instance, nil
 }
 
-func (e *Engine) release(instance api.Module) {
+// release returns instance to the idle pool, or closes it when the engine has
+// closed. Cleanup keeps ctx values but must finish even after cancellation.
+func (e *Engine) release(ctx context.Context, instance api.Module) {
 	e.mu.Lock()
 	if e.closed {
 		e.mu.Unlock()
-		_ = instance.Close(context.Background())
+		_ = instance.Close(context.WithoutCancel(ctx))
 		return
 	}
 	e.idle = append(e.idle, instance)

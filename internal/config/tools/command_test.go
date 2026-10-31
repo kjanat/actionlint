@@ -1,11 +1,13 @@
 package tools
 
 import (
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestBackendSelectsOneTransport(t *testing.T) {
@@ -31,8 +33,56 @@ func TestBackendSelectsOneTransport(t *testing.T) {
 		}
 	}
 	var backend Backend
-	if err := yaml.Unmarshal([]byte("wasm: {path: ./engines/ruff.wasm}"), &backend); err != nil || backend.Process != nil || backend.Wasm.Path != "./engines/ruff.wasm" {
-		t.Fatalf("backend=%+v err=%v", backend, err)
+	if err := yaml.Unmarshal([]byte("wasm: {path: ./engines/ruff.wasm}"), &backend); err != nil {
+		t.Fatal(err)
+	}
+	module, isWasm := backend.Wasm()
+	if _, isProcess := backend.Process(); isProcess || !isWasm || module.Path() != "./engines/ruff.wasm" {
+		t.Fatalf("backend=%+v", backend)
+	}
+}
+
+func TestBackendRoundTripsThroughYAML(t *testing.T) {
+	for _, input := range []string{
+		"process:\n    executable: ruff\n    args:\n        - --isolated\n    env:\n        MODE: strict\n",
+		"wasm:\n    path: engines/ruff.wasm\n",
+	} {
+		var backend Backend
+		if err := yaml.Unmarshal([]byte(input), &backend); err != nil {
+			t.Fatal(err)
+		}
+		data, err := yaml.Marshal(&backend)
+		if err != nil || string(data) != input {
+			t.Fatalf("%q encoded as %q, err=%v", input, data, err)
+		}
+	}
+}
+
+func TestCommandOwnsItsArgumentsAndEnvironment(t *testing.T) {
+	args, env := []string{"--isolated"}, map[string]string{"MODE": "strict"}
+	command, err := NewCommand("ruff", args, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args[0], env["MODE"] = "changed", "changed"
+	command.Args()[0], command.Env()["MODE"] = "changed", "changed"
+	if !slices.Equal(command.Args(), []string{"--isolated"}) || !maps.Equal(command.Env(), map[string]string{"MODE": "strict"}) {
+		t.Fatalf("command shares storage: args=%q env=%q", command.Args(), command.Env())
+	}
+	for _, tc := range []struct {
+		executable string
+		args       []string
+		env        map[string]string
+	}{
+		{"ru\x00ff", nil, nil},
+		{"ruff", []string{"a\x00"}, nil},
+		{"ruff", nil, map[string]string{"": "x"}},
+		{"ruff", nil, map[string]string{"A=B": "x"}},
+		{"ruff", nil, map[string]string{"A": "\x00"}},
+	} {
+		if _, err := NewCommand(tc.executable, tc.args, tc.env); err == nil {
+			t.Fatalf("accepted %q %q %q", tc.executable, tc.args, tc.env)
+		}
 	}
 }
 

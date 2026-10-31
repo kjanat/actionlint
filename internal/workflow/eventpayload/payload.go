@@ -3,24 +3,23 @@ package eventpayload
 
 import (
 	expr "actionlint.kjanat.dev/v2/internal/expression"
-	workflow "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
-func Type(w *workflow.Workflow) *expr.ObjectType {
-	if w == nil {
+func Type(workflow workflowdecl.WorkflowView) expr.ObjectType {
+	if !workflow.Present() {
 		return expr.NewEmptyObjectType()
 	}
-	triggers := make([]Trigger, 0, len(w.On))
-	for _, event := range w.On {
+	var triggers []Trigger
+	for event := range workflow.On() {
 		trigger := Trigger{Name: event.EventName()}
-		switch hook := event.(type) {
-		case *workflow.WebhookEvent:
-			for _, action := range hook.Types {
-				trigger.Actions = append(trigger.Actions, action.Value)
+		if hook, ok := event.WebhookEvent(); ok {
+			for action := range hook.Types() {
+				trigger.Actions = append(trigger.Actions, action.Value())
 			}
-		case *workflow.RepositoryDispatchEvent:
-			for _, action := range hook.Types {
-				trigger.Actions = append(trigger.Actions, action.Value)
+		} else if hook, ok := event.RepositoryDispatchEvent(); ok {
+			for action := range hook.Types() {
+				trigger.Actions = append(trigger.Actions, action.Value())
 			}
 		}
 		triggers = append(triggers, trigger)

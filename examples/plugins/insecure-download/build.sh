@@ -21,7 +21,7 @@ package example:insecure-download;
 
 world insecure-download {
     include wasi:cli/imports@0.2.0;
-    include kjanat:actionlint/plugin@0.1.0;
+    include kjanat:actionlint/plugin@0.2.0;
 }
 WIT
 

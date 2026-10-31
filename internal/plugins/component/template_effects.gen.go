@@ -4,8 +4,8 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	TemplateEffectsInterface      = "kjanat:actionlint/template-effects@0.1.0"
-	templateEffectsContractDigest = "2589cea2b7cb765c814a0347cab3da6ad1b6614d20ac2f5d1dc2acdd4ebf12f4"
+	TemplateEffectsInterface      = "kjanat:actionlint/template-effects@0.2.0"
+	templateEffectsContractDigest = "90722c112a92ba8e098609c2bf11170892504477d5526f62ae7f3a4cdf270fba"
 )
 
 func expectedTemplateEffectsContract() *wp.ComponentType {

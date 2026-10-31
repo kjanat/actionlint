@@ -22,7 +22,7 @@ func TestGenerateConfigActionOnlyRepository(t *testing.T) {
 	if project == nil {
 		t.Fatal("action-only repository not found")
 	}
-	path, err := repoconfig.Generate(project.RootDir(), false, "test")
+	path, err := repoconfig.Generate(t.Context(), project.RootDir(), false, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestGenerateConfigActionOnlyRepository(t *testing.T) {
 	if _, err := repoconfig.Parse(content); err != nil {
 		t.Fatalf("invalid generated config: %v", err)
 	}
-	if _, err := repoconfig.Generate(project.RootDir(), false, "test"); err == nil {
+	if _, err := repoconfig.Generate(t.Context(), project.RootDir(), false, "test"); err == nil {
 		t.Fatal("existing config overwritten")
 	}
 }

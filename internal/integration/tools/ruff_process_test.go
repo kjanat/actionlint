@@ -28,10 +28,11 @@ func runRuffHelperProcess() {
 			os.Exit(3)
 		}
 		os.Args = append(os.Args[:1], os.Args[len(expected)+1:]...)
-		if len(os.Args) == 2 && os.Args[1] == "--version" {
-			fmt.Println("ruff 0.17.0")
-			os.Exit(0)
-		}
+	}
+	// The bundled Ruff provider checks the minimum version first.
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		fmt.Println("ruff 0.17.0")
+		os.Exit(0)
 	}
 	_, _ = io.Copy(io.Discard, os.Stdin)
 	if os.Getenv("ACTIONLINT_TEST_RUFF_WAIT") == "1" {

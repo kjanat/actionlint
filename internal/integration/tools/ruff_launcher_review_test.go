@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -80,7 +80,7 @@ jobs:
 						t.Fatal(err)
 					}
 				}
-				_, err := application.Analyze(t.Context(), application.Options{Tools: (adapters.Options{RuffOptions: options}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(input), Config: config}})
+				_, err := application.Analyze(t.Context(), application.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(input), Config: config}})
 				if (err != nil) != (disabled == "") {
 					t.Fatalf("invalid launcher result: optional=%v disabled=%s error=%v", optional, disabled, err)
 				}
@@ -109,7 +109,7 @@ jobs:
 						options.Arguments = flags
 					}
 					options.Optional = true
-					_, err := application.Analyze(t.Context(), application.Options{Tools: (adapters.Options{Ruff: command, RuffOptions: options}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+					_, err := application.Analyze(t.Context(), application.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 					content, readErr := os.ReadFile(calls)
 					if flags[0] != "--preview" {
 						if err == nil || !os.IsNotExist(readErr) {

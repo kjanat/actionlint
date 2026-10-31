@@ -22,7 +22,7 @@ func TestGitHubAnnotationEscaping(t *testing.T) {
 }
 
 func TestGitHubAnnotationLevels(t *testing.T) {
-	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}, {"style", "notice"}} {
+	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
 		var out bytes.Buffer
 		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Severity: tc.severity, Start: diagmodel.Position{Line: 1, Column: 1}, End: diagmodel.Position{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)

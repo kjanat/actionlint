@@ -13,7 +13,7 @@ func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
 			if len(invalid) != 0 {
 				t.Fatal(invalid)
 			}
-			result := Evaluate(directives, nil)
+			result, _ := Evaluate(directives, nil)
 			if !result.Suppresses("expression", 3, 3) || result.Suppresses("expression", 4, 4) {
 				t.Fatalf("flow scalar suppression must end before sibling: %+v", directives)
 			}
@@ -50,7 +50,7 @@ func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
 				if len(invalid) != 0 {
 					t.Fatal(invalid)
 				}
-				result := Evaluate(directives, nil)
+				result, _ := Evaluate(directives, nil)
 				if !result.Suppresses("expression", body, body) || result.Suppresses("expression", sibling, sibling) {
 					t.Fatalf("scalar body should be ignored without swallowing sibling: %+v", directives)
 				}

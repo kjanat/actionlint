@@ -1,4 +1,4 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
 /// Optional replacement of a host tool through an explicitly versioned profile.
 /// Package names and analyzer names never participate in negotiation.

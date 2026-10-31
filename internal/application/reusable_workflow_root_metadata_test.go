@@ -10,7 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -64,18 +65,18 @@ jobs:
 			if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
-			event, ok := workflow.FindWorkflowCallEvent()
+			_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
-			request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 			var previousMetadata *calls.Metadata
 			var previousDiagnostics []*findingmodel.Finding
 			for _, fromAST := range []bool{false, true} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				if fromAST {
-					cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+					seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 				}
 				metadata, err := cache.FindMetadata("./callee.yaml")
 				if err != nil {
@@ -88,7 +89,7 @@ jobs:
 				}
 				previousMetadata = metadata
 				for pass := range 2 {
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -109,7 +110,7 @@ jobs:
 					}
 					previousDiagnostics = errs
 				}
-				errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
+				errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -182,21 +183,21 @@ jobs:
 				if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
-				event, ok := workflow.FindWorkflowCallEvent()
+				_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("workflow_call event missing")
 				}
-				request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 				var previousMetadata *calls.Metadata
 				var previousDiagnostics []*findingmodel.Finding
 				for _, fromAST := range []bool{false, true} {
-					cache := calls.NewCache(project.RootDir(), root, nil)
+					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					if fromAST {
-						cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+						seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 					}
 					for pass := range 2 {
-						errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
+						errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -227,7 +228,7 @@ jobs:
 						}
 					}
 					previousMetadata = metadata
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}

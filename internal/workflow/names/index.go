@@ -15,20 +15,27 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
-// Names is a complete inventory only when every workflow name could be read.
+// Names is an immutable workflow-name inventory handle shared by concurrent
+// checks. It is complete only when every workflow name could be read.
 type Names struct {
-	Values   map[string]bool
-	Complete bool
+	values   map[string]bool
+	complete bool
 }
 
 // Index shares immutable inventories across concurrent workflow checks.
 type Index struct {
-	Load   func(string) (name string, known bool, err error)
-	Reader *fsread.Reader
-	// Paths includes in-memory source files which may not exist on disk yet.
-	Paths []string
+	load   func(string) (name string, known bool, err error)
+	reader *fsread.Reader
+	// paths includes in-memory source files which may not exist on disk yet.
+	paths []string
 	mu    sync.Mutex
 	cache map[string]func() (Names, error)
+}
+
+// NewIndex inventories workflow names under each root through reader, adding
+// the source paths, which may exist only in memory. load reads one workflow's name.
+func NewIndex(paths []string, reader *fsread.Reader, load func(string) (name string, known bool, err error)) *Index {
+	return &Index{load: load, reader: reader, paths: slices.Clone(paths)}
 }
 
 // SamePath compares checkout aliases while preserving distinct workflow filenames.
@@ -188,11 +195,11 @@ func (i *Index) ForRoot(root string) (Names, error) {
 	}
 	if !exists {
 		load = sync.OnceValues(func() (Names, error) {
-			names := Names{Values: map[string]bool{}, Complete: true}
+			names := Names{values: map[string]bool{}, complete: true}
 			dir := filepath.Join(root, ".github", "workflows")
-			entries, err := i.Reader.ReadDir(dir)
+			entries, err := i.reader.ReadDir(dir)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				names.Complete = false
+				names.complete = false
 			}
 			var candidates []string
 			for _, entry := range entries {
@@ -206,18 +213,18 @@ func (i *Index) ForRoot(root string) (Names, error) {
 				key := filenameKey(path)
 				diskPaths[key] = append(diskPaths[key], path)
 			}
-			candidates = append(candidates, i.Paths...)
+			candidates = append(candidates, i.paths...)
 			for _, path := range workflowPaths(dir, candidates, runtime.GOOS == "windows") {
-				name, known, err := i.Load(path)
+				name, known, err := i.load(path)
 				if err != nil {
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 						return names, err
 					}
-					names.Complete = false
+					names.complete = false
 					continue
 				}
 				if !known {
-					names.Complete = false
+					names.complete = false
 					continue
 				}
 				if name == "" {
@@ -230,7 +237,7 @@ func (i *Index) ForRoot(root string) (Names, error) {
 					}
 					name = ".github/workflows/" + filename
 				}
-				names.Values[name] = true
+				names.values[name] = true
 			}
 			return names, nil
 		})

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.
@@ -40,20 +40,31 @@ type checkInvocation struct {
 	Config                repoconfig.Selection
 	StdinFilename         string
 	IgnoreRegex           []string
-	ShellCheck            string
-	Ruff                  string
-	RuffOptions           *processconfig.Options
-	Pyflakes              string
-	Plugins               []string
-	PluginLock            string
-	ShellcheckOptions     *processconfig.Options
-	Verbose               bool
-	Debug                 bool
-	Strict                bool
-	Experimental          bool
-	ExperimentalSet       bool
-	PreCommit             bool
-	AllowConfigProcesses  bool
+	// ToolFlags lists the --tool values, ID or ID=COMMAND, in command-line
+	// order. --no-tool ID and the deprecated command flags, such as
+	// --shellcheck=COMMAND, add their values here too.
+	ToolFlags []string
+	// DeprecatedToolFlags lists uses of deprecated flags whose value is
+	// ignored, such as --pyflakes.
+	DeprecatedToolFlags []deprecatedToolFlag
+	// Tools selects every bundled tool. applyEnvironment sets it, and the
+	// two lists below, from the flags above and the environment.
+	Tools registry.Selections
+	// DisabledTools lists the tool ids the flags disabled.
+	DisabledTools []string
+	// NamedTools lists the tool ids --tool and --no-tool named.
+	NamedTools []string
+	// Deprecations holds a warning for each deprecated flag used.
+	Deprecations         []string
+	Plugins              []string
+	PluginLock           string
+	Verbose              bool
+	Debug                bool
+	Strict               bool
+	Experimental         bool
+	ExperimentalSet      bool
+	PreCommit            bool
+	AllowConfigProcesses bool
 }
 
 // renderOptions controls result presentation without changing analysis.
@@ -66,6 +77,7 @@ type renderOptions struct {
 	TemplateFile       string
 	OutputFile         string
 	Color              render.Color
+	Width              int
 	Oneline            bool
 	Quiet              bool
 	Summary            bool
@@ -74,8 +86,8 @@ type renderOptions struct {
 func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
-		Render:    renderOptions{PrettyJSON: true, Summary: true},
-		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
+		Render:    renderOptions{PrettyJSON: true, Summary: true, Width: 100},
+		Check:     checkInvocation{StdinFilename: "<stdin>"},
 	}
 }
 
@@ -98,6 +110,7 @@ const (
 	operationConfigPath     operation = "config path"
 	operationConfigShow     operation = "config show"
 	operationConfigValidate operation = "config validate"
+	operationConfigSchema   operation = "config schema"
 	operationConfigMigrate  operation = "config migrate"
 	operationConfigInit     operation = "config init"
 	operationCompletion     operation = "completion"
@@ -110,15 +123,11 @@ func (a *commandApp) prepareInvocation() error {
 	}
 	jsonRequested := i.JSON
 	i.JSON = a.jsonOutput()
-	if !i.Legacy {
-		switch i.Operation {
-		case operationCompletion:
-			i.Shell = i.Check.Paths[0]
-		case operationRules:
-			if len(i.Check.Paths) > 0 {
-				i.Rule = i.Check.Paths[0]
-			}
-		}
+	if !i.Legacy && i.Operation == operationCompletion {
+		i.Shell = i.Check.Paths[0]
+	}
+	if !i.Legacy && i.Operation == operationRules && len(i.Check.Paths) > 0 {
+		i.Rule = i.Check.Paths[0]
 	}
 	if i.Operation != "check" && i.Render.OutputFile != "" {
 		return commandUsageError{errors.New("--output-file is only supported for checks")}
@@ -148,14 +157,20 @@ func (a *commandApp) prepareInvocation() error {
 	if (i.Render.Template != "" || i.Render.TemplateFile != "") && (i.JSON || explicitOutput) {
 		return commandUsageError{errors.New("--template/--format cannot be combined with --json or --output-format")}
 	}
+	if a.set["diagnostic-width"] && o.output != "pretty" {
+		return commandUsageError{errors.New("--diagnostic-width requires --output-format=pretty")}
+	}
+	if i.Render.Width < 40 || i.Render.Width > 400 {
+		return commandUsageError{errors.New("--diagnostic-width must be between 40 and 400")}
+	}
 	switch o.output {
-	case "text", "oneline", "json", "jsonl", "sarif", "github":
+	case "text", "pretty", "oneline", "json", "jsonl", "sarif", "github":
 		if explicitOutput || i.JSON {
 			i.Render.Oneline = false
 			i.Render.Format = render.Format(o.output)
 		}
 	default:
-		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, oneline, json, jsonl, sarif or github", o.output)}
+		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, json, jsonl, sarif or github", o.output)}
 	}
 	if a.set["log-level"] {
 		switch o.logLevel {
@@ -187,10 +202,9 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationDoctor:
 		return doctorRequest{
 			ResolverCommand: inv.Check.ResolverCommand, ResolverArguments: inv.Check.ResolverArguments,
-			Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
-			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
-			ShellcheckOptions: inv.Check.ShellcheckOptions,
-			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
+			Config: inv.Check.Config, Plugins: inv.Check.Plugins, Tools: inv.Check.Tools,
+			NamedTools: inv.Check.NamedTools, Deprecations: inv.Check.Deprecations,
+			JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
 		}, nil
 	case operationConfigPath:
 		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
@@ -198,6 +212,8 @@ func (inv invocation) request() (commandRequest, error) {
 		return configShowRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON, Origin: inv.Origin}, nil
 	case operationConfigValidate:
 		return configValidateRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON}, nil
+	case operationConfigSchema:
+		return configSchemaRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins}, nil
 	case operationConfigMigrate:
 		if inv.MigrationWrite && inv.MigrationCheck {
 			return nil, commandUsageError{errors.New("config migrate: --write and --check cannot be combined")}
@@ -217,6 +233,9 @@ func (inv invocation) request() (commandRequest, error) {
 		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationCheck:
 		return checkRequest{Check: inv.Check, Render: inv.Render, Yes: inv.Yes, JSON: inv.JSON, Legacy: inv.Legacy}, nil
+	case operationCompletion:
+		// Completion output is not a command request.
+		fallthrough
 	default:
 		return nil, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
 	}

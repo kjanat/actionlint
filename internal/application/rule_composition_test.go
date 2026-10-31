@@ -8,7 +8,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/render"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
@@ -18,10 +18,11 @@ type customRuleForTest struct {
 	count int
 }
 
-func (r *customRuleForTest) VisitStep(n *workflowlang.Step) error {
+func (r *customRuleForTest) VisitStep(n workflowdecl.StepView) error {
 	r.count++
 	if r.count > 1 {
-		r.Errorf(n.Pos, "only single step is allowed but got %d steps", r.count)
+		position, _ := n.Pos()
+		r.Errorf(&position, "only single step is allowed but got %d steps", r.count)
 	}
 	return nil
 }

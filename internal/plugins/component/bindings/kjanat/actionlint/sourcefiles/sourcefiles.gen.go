@@ -9,7 +9,7 @@ import (
 
 // InterfaceName is the canonical WIT id of the interface this binding
 // was generated from.
-const InterfaceName = "kjanat:actionlint/source-files@0.1.0"
+const InterfaceName = "kjanat:actionlint/source-files@0.2.0"
 
 // Read-only mounts granted for this analysis. No access outside these roots.
 type SourceFiles interface {

@@ -2,7 +2,6 @@ package runner
 
 import (
 	"fmt"
-	"maps"
 	"path"
 	"slices"
 	"strings"
@@ -10,16 +9,16 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
-	"actionlint.kjanat.dev/v2/internal/workflow/schema"
-	runnerapi "actionlint.kjanat.dev/v2/runner"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	matrixmodel "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 type runnerOSCompat uint
 
 const (
-	compatInvalid                   = 0
+	compatInvalid    runnerOSCompat = 0
 	compatUbuntu2204 runnerOSCompat = 1 << iota
 	compatUbuntu2404
 	compatUbuntu2604
@@ -45,63 +44,19 @@ const (
 	compatWindows11VS2026Arm
 )
 
-// https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
 var allGitHubHostedRunnerLabels = []string{
-	"windows-latest",
-	"windows-latest-8-cores",
-	"windows-2025",
-	"windows-2025-vs2026",
-	"windows-2022",
-	"windows-11-arm",
-	"windows-11-vs2026-arm",
-	"ubuntu-slim",
-	"ubuntu-latest",
-	"ubuntu-latest-4-cores",
-	"ubuntu-latest-8-cores",
-	"ubuntu-latest-16-cores",
-	"ubuntu-26.04",
-	"ubuntu-26.04-arm",
-	"ubuntu-24.04",
-	"ubuntu-24.04-arm",
-	"ubuntu-22.04",
-	"ubuntu-22.04-arm",
-	"xcode-27",
-	"xcode-27-xlarge",
-	"macos-latest",
-	"macos-latest-xlarge",
-	"macos-latest-large",
-	"macos-26-intel",
-	"macos-26-xlarge",
-	"macos-26-large",
-	"macos-26",
-	"macos-15-intel",
-	"macos-15-xlarge",
-	"macos-15-large",
-	"macos-15",
-	"macos-14-xlarge",
-	"macos-14-large",
-	"macos-14",
+	"windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm",
+	"ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm",
+	"xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14",
 }
 
-// https://docs.github.com/en/actions/hosting-your-own-runners/using-self-hosted-runners-in-a-workflow#using-default-labels-to-route-jobs
-var selfHostedRunnerPresetOSLabels = []string{
-	"linux",
-	"macos",
-	"windows",
-}
-
-// https://docs.github.com/en/actions/hosting-your-own-runners/using-self-hosted-runners-in-a-workflow#using-default-labels-to-route-jobs
-var selfHostedRunnerPresetOtherLabels = []string{
-	"self-hosted",
-	"x64",
-	"arm",
-	"arm64",
-}
+var (
+	selfHostedRunnerPresetOSLabels    = []string{"linux", "macos", "windows"}
+	selfHostedRunnerPresetOtherLabels = []string{"self-hosted", "x64", "arm", "arm64"}
+)
 
 var defaultRunnerOSCompats = map[string]runnerOSCompat{
-	"ubuntu-slim": compatUbuntu2404,
-	// GitHub migrates this alias during October 19-November 19, 2026.
-	// Both images can serve the alias during the rollout.
+	"ubuntu-slim":            compatUbuntu2404,
 	"ubuntu-latest":          compatUbuntu2404 | compatUbuntu2604,
 	"ubuntu-latest-4-cores":  compatUbuntu2404,
 	"ubuntu-latest-8-cores":  compatUbuntu2404,
@@ -133,521 +88,335 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"windows-2025":           compatWindows2025VS2026,
 	"windows-2025-vs2026":    compatWindows2025VS2026,
 	"windows-2022":           compatWindows2022,
-	// The alias migrates from VS2022 to VS2026 during September 21-30, 2026.
-	// Allow both images while GitHub rolls the alias forward.
-	"windows-11-arm":        compatWindows11Arm | compatWindows11VS2026Arm,
-	"windows-11-vs2026-arm": compatWindows11VS2026Arm,
-	"linux":                 compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204 | compatUbuntu2604ARM | compatUbuntu2404ARM | compatUbuntu2204ARM, // Note: "linux" does not always indicate Ubuntu. It might be Fedora or Arch or ...
-	"macos":                 compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL | compatMacOS140 | compatMacOS140L | compatMacOS140XL,
-	"windows":               compatWindows2025VS2026 | compatWindows2022 | compatWindows11Arm | compatWindows11VS2026Arm,
+	"windows-11-arm":         compatWindows11Arm | compatWindows11VS2026Arm,
+	"windows-11-vs2026-arm":  compatWindows11VS2026Arm,
+	"linux":                  compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204 | compatUbuntu2604ARM | compatUbuntu2404ARM | compatUbuntu2204ARM,
+	"macos":                  compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL | compatMacOS140 | compatMacOS140L | compatMacOS140XL,
+	"windows":                compatWindows2025VS2026 | compatWindows2022 | compatWindows11Arm | compatWindows11VS2026Arm,
 }
 
-// Check validates runner labels and their matrix-dependent compatibility.
-// Custom labels are supplied explicitly, without repository configuration.
-func Check(job *workflowlang.Job, customLabels []string) []diagnostic.Diagnostic {
-	rule := checker{labels: customLabels}
-	rule.checkJob(job)
-	findings := make([]diagnostic.Diagnostic, 0, len(rule.rejections))
-	for _, rejection := range rule.rejections {
-		findings = append(findings, diagnostic.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason})
+type labelFact struct {
+	text   string
+	source string
+	start  diagnostic.Position
+}
+
+type checker struct {
+	rejections    []runner.Rejection
+	labels        []string
+	compats       map[runnerOSCompat]labelFact
+	labelsKnown   bool
+	unknownLabels bool
+}
+
+// LabelSet distinguishes a complete additional-label set from unavailable
+// repository knowledge. Its zero value leaves additional labels unknown.
+type LabelSet struct {
+	patterns []string
+	known    bool
+}
+
+func KnownLabels(patterns []string) LabelSet {
+	return LabelSet{patterns: slices.Clone(patterns), known: true}
+}
+
+// Check owns built-in runner-label diagnostics. Spelling is checked on declared
+// alternatives; compatibility is checked only on execution selectors.
+func Check(job workflowdecl.JobView, customLabels []string) []diagnostic.Diagnostic {
+	return CheckWithLabels(job, KnownLabels(customLabels))
+}
+
+// CheckWithLabels retains built-in compatibility checks when repository labels
+// are unavailable; unavailable names do not establish an unknown-label finding.
+func CheckWithLabels(job workflowdecl.JobView, customLabels LabelSet) []diagnostic.Diagnostic {
+	return labelFindings(labelRejections(job, customLabels))
+}
+
+// labelFindings reports runner-label rejections as fresh diagnostics.
+func labelFindings(rejections []runner.Rejection) []diagnostic.Diagnostic {
+	if len(rejections) == 0 {
+		return nil
+	}
+	findings := make([]diagnostic.Diagnostic, len(rejections))
+	for i, rejection := range rejections {
+		findings[i] = diagnostic.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}
 	}
 	return findings
 }
 
-type checker struct {
-	rejections []runnerapi.Rejection
-	labels     []string
-	compats    map[runnerOSCompat]*workflowlang.String
-}
-
-func (rule *checker) checkJob(n *workflowlang.Job) {
-	if n.RunsOn == nil {
-		return
-	}
-	if rule.checkCorrelatedMatrixLabels(n) {
-		return
-	}
-
-	if len(n.RunsOn.Labels) == 1 {
-		rule.checkLabel(n.RunsOn.Labels[0], n.Strategy)
-		return
-	}
-
-	rule.compats = map[runnerOSCompat]*workflowlang.String{}
-	switch {
-	case n.RunsOn.Expression != nil:
-		rule.checkLabelAndConflict(n.RunsOn.Expression, n.Strategy)
-	case n.RunsOn.LabelsExpr != nil:
-		rule.checkLabelAndConflict(n.RunsOn.LabelsExpr, n.Strategy)
-	default:
-		for _, label := range n.RunsOn.Labels {
-			rule.checkLabelAndConflict(label, n.Strategy)
-		}
-	}
-
-	rule.compats = nil // reset
-}
-
-// https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
-func (rule *checker) checkLabelAndConflict(l *workflowlang.String, strategy *workflowlang.Strategy) {
-	if l.ContainsExpression() {
-		if labels, known := ExpressionLabels(l); known {
-			for _, label := range labels {
-				rule.checkCompat(rule.verifyRunnerLabel(label), label)
-			}
-			return
-		}
-		rule.checkMatrixLabels(rule.tryToGetLabelsInMatrix(l, strategy))
-		return
-	}
-
-	comp := rule.verifyRunnerLabel(l)
-	rule.checkCompat(comp, l)
-}
-
-func (rule *checker) checkLabel(l *workflowlang.String, strategy *workflowlang.Strategy) {
-	if l.ContainsExpression() {
-		if labels, known := ExpressionLabels(l); known {
-			for _, label := range labels {
-				rule.verifyRunnerLabel(label)
-			}
-			return
-		}
-		for _, labels := range rule.tryToGetLabelsInMatrix(l, strategy) {
-			for _, label := range labels {
-				rule.verifyRunnerLabel(label)
-			}
-		}
-		return
-	}
-
-	rule.verifyRunnerLabel(l)
-}
-
-// ExpressionLabels resolves constant runner-label expressions without guessing dynamic values.
-func ExpressionLabels(expr *workflowlang.String) ([]*workflowlang.String, bool) {
-	value, known := workflowlang.WorkflowExpressionLiteral(expr)
-	if !known {
-		return nil, false
-	}
-	return runnerExpressionLabels(value, expr.Pos, false), true
-}
-
-func runnerExpressionLabels(value any, pos *workflowlang.Pos, nullIsLabel bool) []*workflowlang.String {
-	if object, ok := value.(map[string]any); ok {
-		value = nil
-		found := false
-		for name, field := range object {
-			if strings.EqualFold(name, "labels") {
-				value, found = field, true
-				break
-			}
-		}
-		if !found {
-			return nil
-		}
-	}
-	var labels []*workflowlang.String
-	appendLabel := func(value any) {
-		if value == nil && !nullIsLabel {
-			return // The runs-on schema reports null values.
-		}
-		if label := runnerExpressionLabel(value, pos); label != nil {
-			labels = append(labels, label)
-		}
-	}
-	if array, ok := value.([]any); ok {
-		for _, item := range array {
-			appendLabel(item)
-		}
-	} else {
-		appendLabel(value)
-	}
-	return labels
-}
-
-func runnerExpressionLabel(value any, pos *workflowlang.Pos) *workflowlang.String {
-	label, ok := workflowlang.WorkflowScalarString(value)
-	if !ok {
+// labelRejections lists the distinct built-in label rejections of a job, in
+// the order they were found.
+func labelRejections(job workflowdecl.JobView, customLabels LabelSet) []runner.Rejection {
+	if !job.Present() {
 		return nil
 	}
-	return &workflowlang.String{Value: label, Pos: pos}
-}
-
-func knownStrategyRunnerLabels(expr *workflowlang.String, property string) [][]*workflowlang.String {
-	value, known := workflowlang.WorkflowExpressionLiteral(expr)
-	if !known {
-		return nil
-	}
-	strategy, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	matrix, ok := schema.Property(strategy, "matrix").(map[string]any)
-	if !ok {
-		return nil
-	}
-	var labels [][]*workflowlang.String
-	if row, ok := schema.Property(matrix, property).([]any); ok {
-		for _, value := range row {
-			labels = append(labels, runnerExpressionLabels(value, expr.Pos, true))
-		}
-	}
-	if include, ok := schema.Property(matrix, "include").([]any); ok {
-		for _, value := range include {
-			if assignments, ok := value.(map[string]any); ok {
-				for name, value := range assignments {
-					if strings.EqualFold(name, property) {
-						labels = append(labels, runnerExpressionLabels(value, expr.Pos, true))
-						break
-					}
-				}
+	selection := job.RunsOn().Selection()
+	strategy := job.Strategy().MatrixResolution()
+	check := checker{labels: customLabels.patterns, labelsKnown: customLabels.known}
+	combinations, complete := strategy.DeclarationCombinations(256)
+	if !complete {
+		combinations = []matrixmodel.Combination{{}}
+		for _, item := range selectionValues(selection) {
+			property := runnerMatrixProperty(item.Source())
+			if property == "" {
+				continue
+			}
+			for _, candidate := range strategy.DeclarationReachable(property).Values {
+				combinations = append(combinations, (matrixmodel.Combination{}).With(property, candidate))
 			}
 		}
 	}
-	return labels
+	for _, combination := range combinations {
+		check.checkDeclaredSelection(selection, combination)
+	}
+	if executed, complete := strategy.Combinations(256); !complete || len(executed) != 0 {
+		for _, selector := range Selectors(job) {
+			check.checkSelector(selector)
+		}
+	}
+	var distinct []runner.Rejection
+	seen := map[runner.Rejection]bool{}
+	for _, rejection := range check.rejections {
+		if !seen[rejection] {
+			seen[rejection] = true
+			distinct = append(distinct, rejection)
+		}
+	}
+	return distinct
 }
 
-func (rule *checker) verifyRunnerLabel(label *workflowlang.String) runnerOSCompat {
-	l := label.Value
-	if c, ok := defaultRunnerOSCompats[strings.ToLower(l)]; ok {
-		return c
+func (rule *checker) checkDeclaredSelection(selection value.Value, combination matrixmodel.Combination) {
+	labels := selectionLabels(selection, combination)
+	allowNull := hasMatrixReference(selection)
+	if len(labels) == 0 {
+		return
 	}
+	for _, label := range labels {
+		if label.Kind() == value.Null && !allowNull {
+			continue
+		}
+		fact, ok := knownLabel(label)
+		if !ok {
+			continue
+		}
+		rule.verifyRunnerLabel(fact)
+	}
+}
 
-	for _, p := range selfHostedRunnerPresetOtherLabels {
-		if strings.EqualFold(l, p) {
+func (rule *checker) checkSelector(selector runner.Selector) ([]value.Value, bool) {
+	rule.compats = map[runnerOSCompat]labelFact{}
+	rule.unknownLabels = false
+	unknown := selector.Expression != "" || selector.Incomplete
+	if selector.Group != nil {
+		_, unresolved := selector.Group.Value.(runner.Expression)
+		unknown = unknown || unresolved
+	}
+	var labels []value.Value
+	for _, constraint := range selector.Labels {
+		switch term := constraint.Value.(type) {
+		case runner.Literal:
+			item := value.FromJSON(string(term), value.Origin{Span: value.Span{Start: constraint.Position}})
+			labels = append(labels, item)
+			fact, _ := knownLabel(item)
+			rule.checkCompat(rule.verifyRunnerLabel(fact), fact)
+		case runner.Expression:
+			unknown = true
+		}
+	}
+	return labels, unknown || rule.unknownLabels
+}
+
+func hasMatrixReference(selection value.Value) bool {
+	for _, candidate := range selectionValues(selection) {
+		if runnerMatrixProperty(candidate.Source()) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func (rule *checker) verifyRunnerLabel(label labelFact) runnerOSCompat {
+	lower := strings.ToLower(label.text)
+	if compat, ok := defaultRunnerOSCompats[lower]; ok {
+		return compat
+	}
+	for _, preset := range selfHostedRunnerPresetOtherLabels {
+		if strings.EqualFold(label.text, preset) {
 			return compatInvalid
 		}
 	}
-
-	known := rule.getKnownLabels()
-	for _, k := range known {
-		m, err := path.Match(k, l)
+	for _, known := range rule.labels {
+		matched, err := path.Match(known, label.text)
 		if err != nil {
-			rule.Errorf(label.Pos, "label pattern %q is an invalid glob. kindly check list of labels in actionlint.yaml config file: %v", k, err)
+			rule.Errorf(label.start, "label pattern %q is an invalid glob. kindly check list of labels in actionlint.yaml config file: %v", known, err)
 			return compatInvalid
 		}
-		if m {
-			if windowsLabel(l) {
+		if matched {
+			if windowsLabel(label.text) {
 				return defaultRunnerOSCompats["windows"]
 			}
 			return compatInvalid
 		}
 	}
-
-	rule.Errorf(
-		label.Pos,
-		"label %q is unknown. available labels are %s. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file",
-		label.Value,
-		stringutil.QuotesAll(
-			allGitHubHostedRunnerLabels,
-			selfHostedRunnerPresetOtherLabels,
-			selfHostedRunnerPresetOSLabels,
-			known,
-		),
-	)
-
+	if !rule.labelsKnown {
+		rule.unknownLabels = true
+		return compatInvalid
+	}
+	rule.Errorf(label.start, "label %q is unknown. available labels are %s. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file", label.text, stringutil.QuotesAll(allGitHubHostedRunnerLabels, selfHostedRunnerPresetOtherLabels, selfHostedRunnerPresetOSLabels, rule.labels))
 	return compatInvalid
 }
 
-func (rule *checker) tryToGetLabelsInMatrix(label *workflowlang.String, strategy *workflowlang.Strategy) [][]*workflowlang.String {
-	if strategy == nil {
-		return nil
+func (rule *checker) checkCompat(compat runnerOSCompat, label labelFact) {
+	if compat == compatInvalid {
+		return
 	}
-	prop := runnerMatrixProperty(label)
-	if prop == "" {
-		return nil
-	}
-	if strategy.Expression != nil {
-		return knownStrategyRunnerLabels(strategy.Expression, prop)
-	}
-	m := strategy.Matrix
-	if m != nil && len(m.Insertions) != 0 {
-		m, _ = matrixcheck.Expand(m)
-	}
-	if m == nil {
-		return nil
-	}
-	var labels [][]*workflowlang.String
-
-	if row := m.Rows[prop]; row != nil {
-		elements, _ := matrixcheck.RowElements(row, true)
-		for _, element := range elements {
-			if scalar, ok := element.Value.(*workflowlang.RawYAMLString); ok && (!element.Expressions || !exprlang.ContainsExpression(scalar.Value)) {
-				labels = append(labels, []*workflowlang.String{{Value: scalar.Value, Quoted: false, Pos: scalar.Pos()}})
-			}
+	for previousCompat, previous := range rule.compats {
+		if previousCompat&compat == 0 {
+			rule.Errorf(label.start, "label %q conflicts with label %q defined at line:%d,col:%d. note: to run your job on each workers, use matrix", label.text, previous.text, previous.start.Line, previous.start.Column)
+			return
 		}
 	}
-	for _, combination := range matrixcheck.Combinations(m.Include, true) {
-		if assign := combination.Combination.Assigns[prop]; assign != nil {
-			if scalar, ok := assign.Value.(*workflowlang.RawYAMLString); ok && (!combination.Expressions || !exprlang.ContainsExpression(scalar.Value)) {
-				labels = append(labels, []*workflowlang.String{{Value: scalar.Value, Quoted: false, Pos: scalar.Pos()}})
-			}
-		}
+	if _, exists := rule.compats[compat]; !exists {
+		rule.compats[compat] = label
 	}
-
-	return labels
 }
 
-func runnerMatrixProperty(label *workflowlang.String) string {
-	deref, ok := exprlang.ParseAssignedExpression(label.Value).(*exprlang.ObjectDerefNode)
-	if !ok {
-		return ""
+func (rule *checker) Errorf(position diagnostic.Position, format string, args ...any) {
+	rule.rejections = append(rule.rejections, runner.Rejection{Position: position, Reason: fmt.Sprintf(format, args...)})
+}
+
+func selectionLabels(selection value.Value, combination matrixmodel.Combination) []value.Value {
+	candidate := selection
+	if selection.State() == value.Dynamic {
+		if resolved, ok := resolveMatrixValue(selection, combination); ok {
+			return labelItems(resolved, true)
+		}
+		return nil
 	}
-	if recv, ok := deref.Receiver.(*exprlang.VariableNode); ok && recv.Name == "matrix" {
-		return deref.Property
+	if selection.Known() && selection.Kind() == value.Object {
+		labels, ok := selection.Prop("labels")
+		if !ok {
+			return nil
+		}
+		candidate = labels
+	}
+	if candidate.Known() && candidate.Kind() == value.Array {
+		var result []value.Value
+		for item := range candidate.Items() {
+			result = append(result, expressionLabels(item, combination)...)
+		}
+		return result
+	}
+	return expressionLabels(candidate, combination)
+}
+
+func expressionLabels(expression value.Value, combination matrixmodel.Combination) []value.Value {
+	if expression.State() == value.Missing {
+		return nil
+	}
+	if expression.State() == value.Dynamic {
+		if property := runnerMatrixProperty(expression.Source()); property != "" {
+			if item, ok := combination.Get(property); ok {
+				return labelItems(item, true)
+			}
+		}
+		return nil
+	}
+	return labelItems(expression, false)
+}
+
+func labelItems(candidate value.Value, nullIsLabel bool) []value.Value {
+	if candidate.Known() && candidate.Kind() == value.Object {
+		candidate, _ = candidate.Prop("labels")
+		if candidate.State() == value.Missing {
+			return nil
+		}
+	}
+	if candidate.Known() && candidate.Kind() == value.Array {
+		var labels []value.Value
+		for item := range candidate.Items() {
+			if item.Kind() == value.Null && !nullIsLabel {
+				continue
+			}
+			labels = append(labels, item)
+		}
+		return labels
+	}
+	if candidate.Kind() == value.Null && !nullIsLabel {
+		return nil
+	}
+	return []value.Value{candidate}
+}
+
+func knownLabel(candidate value.Value) (labelFact, bool) {
+	text, ok := candidate.ScalarString()
+	if !ok {
+		return labelFact{}, false
+	}
+	return labelFact{text: text, source: candidate.Source(), start: candidate.Origin().Span.Start}, true
+}
+
+func runnerMatrixProperty(expression string) string {
+	var receiver exprlang.Node
+	var property string
+	switch reference := exprlang.ParseAssignedExpression(strings.TrimSpace(expression)).(type) {
+	case *exprlang.ObjectDerefNode:
+		receiver, property = reference.Receiver, reference.Property
+	case *exprlang.IndexAccessNode:
+		key, literal := reference.Index.(*exprlang.StringNode)
+		if !literal {
+			return ""
+		}
+		receiver, property = reference.Operand, key.Value
+	}
+	if context, variable := receiver.(*exprlang.VariableNode); variable && strings.EqualFold(context.Name, "matrix") {
+		return strings.ToLower(property)
 	}
 	return ""
 }
 
-func (rule *checker) checkCorrelatedMatrixLabels(job *workflowlang.Job) bool {
-	properties := make([]string, len(job.RunsOn.Labels))
-	references := 0
-	for i, label := range job.RunsOn.Labels {
-		properties[i] = runnerMatrixProperty(label)
-		if properties[i] != "" {
-			references++
-		}
-	}
-	if references < 2 {
-		return false
-	}
-
-	rule.compats = map[runnerOSCompat]*workflowlang.String{}
-	defer func() { rule.compats = nil }()
-	checkLabels := func(labels []*workflowlang.String) {
-		for _, label := range labels {
-			rule.checkCompat(defaultRunnerOSCompats[strings.ToLower(label.Value)], label)
-		}
-	}
-	for i, label := range job.RunsOn.Labels {
-		rule.checkLabel(label, job.Strategy)
-		if properties[i] == "" {
-			if labels, known := ExpressionLabels(label); known {
-				checkLabels(labels)
-			} else if !label.ContainsExpression() {
-				checkLabels([]*workflowlang.String{label})
-			}
-		}
-	}
-	fixed := rule.compats
-	if combinations, known := MatrixCombinations(job.Strategy); known {
-		for _, combination := range combinations {
-			rule.compats = maps.Clone(fixed)
-			for _, property := range properties {
-				if value, ok := combination[property]; ok {
-					checkLabels(runnerMatrixValueLabels(value))
-				}
-			}
-		}
-	} else {
-		// Unknown combinations retain checks against fixed labels and within each value.
-		for i, label := range job.RunsOn.Labels {
-			if properties[i] == "" {
-				continue
-			}
-			for _, labels := range rule.tryToGetLabelsInMatrix(label, job.Strategy) {
-				rule.compats = maps.Clone(fixed)
-				checkLabels(labels)
-			}
-		}
-	}
-	return true
-}
-
-type runnerMatrixCombination map[string]workflowlang.RawYAMLValue
-
-// MatrixCombinations expands a bounded, statically known matrix for correlated runner labels.
-func MatrixCombinations(strategy *workflowlang.Strategy) ([]runnerMatrixCombination, bool) {
-	if strategy == nil {
-		return nil, false
-	}
-	matrix := strategy.Matrix
-	evaluated := strategy.Expression != nil
-	if evaluated {
-		matrix = matrixcheck.KnownStrategy(strategy.Expression)
-	}
-	if matrix != nil && matrix.Expression == nil {
-		var complete bool
-		matrix, complete = matrixcheck.Expand(matrix)
-		if !complete {
-			return nil, false
-		}
-	}
-	if matrix == nil || matrix.Expression != nil {
-		return nil, false
-	}
-	resolved := *matrix
-	var complete bool
-	resolved.Include, complete = matrixcheck.ExpandCombinations(matrix.Include)
-	if !complete {
-		return nil, false
-	}
-	resolved.Exclude, complete = matrixcheck.ExpandCombinations(matrix.Exclude)
-	if !complete {
-		return nil, false
-	}
-	matrix = &resolved
-	known := func(value workflowlang.RawYAMLValue) bool {
-		return evaluated || !exprlang.ContainsExpression(value.String())
-	}
-	for _, combinations := range []*workflowlang.MatrixCombinations{matrix.Include, matrix.Exclude} {
-		if combinations == nil {
+func PlatformOf(selection value.Value) Platform {
+	platform := Any
+	for _, label := range Labels(selection) {
+		fact, ok := knownLabel(label)
+		if !ok {
 			continue
 		}
-		if combinations.ContainsExpression() {
-			return nil, false
+		name := strings.ToLower(fact.text)
+		current := Any
+		if windowsLabel(name) {
+			current = Windows
+		} else if defaultRunnerOSCompats[name]&(defaultRunnerOSCompats["macos"]|defaultRunnerOSCompats["linux"]) != 0 {
+			current = MacOrLinux
 		}
-		for _, combination := range combinations.Combinations {
-			for _, assign := range combination.Assigns {
-				if !combination.Evaluated && !known(assign.Value) {
-					return nil, false
-				}
-			}
+		if current != Any && platform != Any && platform != current {
+			return Any
 		}
-	}
-
-	// GitHub permits at most 256 matrix jobs. Bound expansion before allocating rows.
-	const limit = 256
-	var originals []runnerMatrixCombination
-	if len(matrix.Rows) != 0 {
-		originals = []runnerMatrixCombination{{}}
-	}
-	for _, name := range slices.Sorted(maps.Keys(matrix.Rows)) {
-		row := matrix.Rows[name]
-		elements, complete := matrixcheck.RowElements(row, !evaluated)
-		if !complete || len(elements) > 0 && len(originals) > limit/len(elements) {
-			return nil, false
-		}
-		for _, element := range elements {
-			if element.Expressions && !known(element.Value) {
-				return nil, false
-			}
-		}
-		expanded := make([]runnerMatrixCombination, 0, len(originals)*len(elements))
-		for _, original := range originals {
-			for _, element := range elements {
-				combination := maps.Clone(original)
-				combination[name] = element.Value
-				expanded = append(expanded, combination)
-			}
-		}
-		originals = expanded
-	}
-	if matrix.Exclude != nil {
-		originals = slices.DeleteFunc(originals, func(combination runnerMatrixCombination) bool {
-			for _, exclude := range matrix.Exclude.Combinations {
-				matches := true
-				for name, assign := range exclude.Assigns {
-					if !matrixcheck.Subset(combination[name], assign.Value, false) {
-						matches = false
-						break
-					}
-				}
-				if matches {
-					return true
-				}
-			}
-			return false
-		})
-	}
-	result := make([]runnerMatrixCombination, 0, len(originals))
-	for _, original := range originals {
-		result = append(result, maps.Clone(original))
-	}
-	if matrix.Include != nil {
-		for _, include := range matrix.Include.Combinations {
-			added := false
-			for i, original := range originals {
-				matches := true
-				for name, assign := range include.Assigns {
-					if value, exists := original[name]; exists && !matrixcheck.Subset(value, assign.Value, false) {
-						matches = false
-						break
-					}
-				}
-				if matches {
-					for name, assign := range include.Assigns {
-						if _, axis := matrix.Rows[name]; !axis {
-							result[i][name] = assign.Value
-						}
-					}
-					added = true
-				}
-			}
-			if !added {
-				if len(result) == limit {
-					return nil, false
-				}
-				combination := runnerMatrixCombination{}
-				for name, assign := range include.Assigns {
-					combination[name] = assign.Value
-				}
-				result = append(result, combination)
-			}
+		if current != Any {
+			platform = current
 		}
 	}
-	return result, true
+	return platform
 }
 
-func runnerMatrixValueLabels(value workflowlang.RawYAMLValue) []*workflowlang.String {
-	if object, ok := value.(*workflowlang.RawYAMLObject); ok {
-		value = object.Props["labels"]
-	}
-	var labels []*workflowlang.String
-	appendLabel := func(value workflowlang.RawYAMLValue) {
-		if scalar, ok := value.(*workflowlang.RawYAMLString); ok {
-			labels = append(labels, runnerExpressionLabel(scalar.ScalarValue(), scalar.Pos()))
-		}
-	}
-	if array, ok := value.(*workflowlang.RawYAMLArray); ok {
-		for _, item := range array.Elems {
-			appendLabel(item)
-		}
-	} else {
-		appendLabel(value)
-	}
-	return labels
+func Labels(selection value.Value) []value.Value {
+	return selectionLabels(selection, matrixmodel.Combination{})
 }
 
-func (rule *checker) checkConflict(comp runnerOSCompat, label *workflowlang.String) bool {
-	for c, l := range rule.compats {
-		if c&comp == 0 {
-			rule.Errorf(label.Pos, "label %q conflicts with label %q defined at %s. note: to run your job on each workers, use matrix", label.Value, l.Value, l.Pos)
+func Hosted(selection value.Value) bool {
+	if selection.Known() && selection.Kind() == value.Object {
+		if group, ok := selection.Prop("group"); ok && group.State() != value.Missing {
 			return false
 		}
 	}
-	return true
+	labels := Labels(selection)
+	if len(labels) != 1 {
+		return false
+	}
+	label, ok := knownLabel(labels[0])
+	return ok && slices.Contains(allGitHubHostedRunnerLabels, strings.ToLower(label.text))
 }
 
-func (rule *checker) checkCompat(comp runnerOSCompat, label *workflowlang.String) {
-	if comp == compatInvalid || !rule.checkConflict(comp, label) {
-		return
-	}
-	if _, ok := rule.compats[comp]; !ok {
-		rule.compats[comp] = label
-	}
-}
-
-func (rule *checker) checkMatrixLabels(groups [][]*workflowlang.String) {
-	previous := rule.compats
-	combined := maps.Clone(previous)
-	for _, labels := range groups {
-		rule.compats = maps.Clone(previous)
-		for _, label := range labels {
-			rule.checkCompat(rule.verifyRunnerLabel(label), label)
-		}
-		for compat, label := range rule.compats {
-			if _, exists := combined[compat]; !exists {
-				combined[compat] = label
-			}
-		}
-	}
-	rule.compats = combined
-}
-
-func (rule *checker) getKnownLabels() []string { return rule.labels }
-
-func (rule *checker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	rule.rejections = append(rule.rejections, runnerapi.Rejection{Position: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Reason: fmt.Sprintf(format, args...)})
+func windowsLabel(label string) bool {
+	return slices.Contains(strings.Split(strings.ToLower(label), "-"), "windows")
 }

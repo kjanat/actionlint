@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 
@@ -36,13 +38,13 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowlang.ParseDocument(src)
+	w, errs := workflowparser.ParseDocument(src)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, "cache-mode") {
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
-	event, _ := w.FindWorkflowCallEvent()
+	cache := newCapturedWorkflowCache(t, root, root, nil)
+	event, _ := workflowlang.FindWorkflowCallEvent(w)
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, ok := cache.Lookup("./callee.yaml")
 	if !ok {
@@ -52,8 +54,8 @@ jobs:
 		t.Fatal(diff)
 	}
 	for id, want := range map[string]workflowlang.CacheModeKind{"base": workflowlang.CacheModeRead, "alias": workflowlang.CacheModeRead, "save": workflowlang.CacheModeWriteOnly, "none": workflowlang.CacheModeNone, "invalid": workflowlang.CacheModeInvalid, "scalar-alias": workflowlang.CacheModeRead} {
-		if mode := fromFile.JobCacheAccess[id].Mode; mode == nil || mode.Kind != want {
-			t.Errorf("%s: wanted %v, got %v", id, want, mode)
+		if kind, declared := fromFile.JobCacheAccess[id].Mode.Kind(); !declared || kind != want {
+			t.Errorf("%s: wanted %v, got %v (declared %t)", id, want, kind, declared)
 		}
 	}
 }

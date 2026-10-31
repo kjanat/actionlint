@@ -7,9 +7,9 @@ publish           = false
 [lib]
 crate-type = ["cdylib"]
 
-[features]
-oversized-descriptor-values = []
-oversized-descriptor-bytes = []
-
 [dependencies]
 wit-bindgen.workspace = true
+
+[features]
+oversized-descriptor-bytes  = []
+oversized-descriptor-values = []

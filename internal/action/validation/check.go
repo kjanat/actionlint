@@ -15,7 +15,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/semantics/identifier"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 type validator struct {
@@ -32,24 +34,24 @@ func (rule *validator) Errorf(pos *workflowlang.Pos, format string, args ...any)
 }
 
 // Check validates a manifest reached from a workflow call site. Findings which
-// cannot point inside the manifest retain the caller's uses position.
+// cannot point inside the manifest point to the caller's uses position.
 func Check(meta *actionmeta.Metadata, caller *workflowlang.Pos) []*findingmodel.Finding {
 	rule := validator{}
-	rule.checkLocalActionMetadata(meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Pos: caller}})
+	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
 }
 
 // Standalone validates a manifest's declarations at their own source positions.
 func Standalone(meta *actionmeta.Metadata) []*findingmodel.Finding {
 	rule := validator{standalone: meta}
-	rule.checkLocalActionMetadata(meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
+	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
 	return rule.errs
 }
 
 // Inputs validates supplied and required inputs against resolved action metadata.
-func Inputs(meta *actionmeta.Metadata, exec *workflowlang.ExecAction, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
+func Inputs(meta *actionmeta.Metadata, exec workflowdecl.ExecActionView, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
 	rule := validator{}
-	rule.checkAction(meta, exec, describe)
+	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
 }
 
@@ -393,18 +395,18 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, action *workflowlang.ExecAction) {
+func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, caller *workflowlang.Pos) {
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
-		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "name"), "name is required in action metadata %q", meta.Path())
+		rule.Errorf(rule.metadataFieldPosition(caller, "name"), "name is required in action metadata %q", meta.Path())
 	}
 	if meta.Description == "" {
-		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "description"), "description is required in metadata of %q action at %q", meta.Name, meta.Path())
+		rule.Errorf(rule.metadataFieldPosition(caller, "description"), "description is required in metadata of %q action at %q", meta.Name, meta.Path())
 	}
 	if meta.Branding.Icon != "" {
 		if _, ok := brandingIcons[strings.ToLower(meta.Branding.Icon)]; !ok {
 			rule.Errorf(
-				rule.metadataFieldPosition(action.Uses.Pos, "branding", "icon"),
+				rule.metadataFieldPosition(caller, "branding", "icon"),
 				"incorrect icon name %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon",
 				meta.Branding.Icon,
 				meta.Name,
@@ -415,7 +417,7 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, actio
 	if meta.Branding.Color != "" {
 		if _, ok := brandingColors[strings.ToLower(meta.Branding.Color)]; !ok {
 			rule.Errorf(
-				rule.metadataFieldPosition(action.Uses.Pos, "branding", "color"),
+				rule.metadataFieldPosition(caller, "branding", "color"),
 				"incorrect color %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor",
 				meta.Branding.Color,
 				meta.Name,
@@ -423,28 +425,37 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, actio
 			)
 		}
 	}
-	rule.checkLocalActionInputs(meta, action.Uses.Pos)
+	rule.checkLocalActionInputs(meta, caller)
 	rule.checkActionInputDefaults(meta)
-	rule.checkLocalActionRuns(meta, action.Uses.Pos)
+	rule.checkLocalActionRuns(meta, caller)
 }
 
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
-func (rule *validator) checkAction(meta *actionmeta.Metadata, exec *workflowlang.ExecAction, describe func(*actionmeta.Metadata) string) {
-	inputs, known := workflowlang.ActionInputNames(exec)
+func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl.ExecActionView, description string) {
+	inputs := exec.ResolvedInputs()
+	known := inputs.Complete()
 	// Check specified inputs are defined in action's inputs spec
-	for id, i := range inputs {
-		m, ok := meta.Inputs[id]
+	for key := range inputs.KeyedEntries() {
+		name, scalar := key.ScalarString()
+		if !scalar {
+			continue
+		}
+		id := strings.ToLower(name)
+		position := key.Origin().Span.Start
+		pos := &workflowlang.Pos{Line: position.Line, Col: position.Column}
+		m, ok := meta.Input(id)
 		if !ok {
-			ns := make([]string, 0, len(meta.Inputs))
-			for _, i := range meta.Inputs {
+			ns := make([]string, 0, len(meta.InputNames()))
+			for _, inputID := range meta.InputNames() {
+				i, _ := meta.Input(inputID)
 				ns = append(ns, i.Name)
 			}
 			rule.Errorf(
-				i.Name.Pos,
+				pos,
 				"input %q is not defined in action %s. available inputs are %s",
-				i.Name.Value,
-				describe(meta),
+				name,
+				description,
 				stringutil.SortedQuotes(ns),
 			)
 		} else if m.Deprecated && !m.Required {
@@ -452,32 +463,34 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec *workflowlang
 			// happen normally).
 			msg := fmt.Sprintf(
 				"avoid using deprecated input %q in action %s",
-				i.Name.Value,
-				describe(meta),
+				name,
+				description,
 			)
 			d := reNewlineWithIndent.ReplaceAllString(strings.TrimRight(m.DeprecationMessage, ". "), " ")
 			if d != "" {
 				msg += ": " + d
 			}
-			rule.Error(i.Name.Pos, msg)
+			rule.Error(pos, msg)
 		}
 	}
 
 	// Check mandatory inputs are specified
-	for id, i := range meta.Inputs {
+	for _, id := range meta.InputNames() {
+		i, _ := meta.Input(id)
 		if i.Required && known {
-			if _, ok := inputs[id]; !ok {
-				ns := make([]string, 0, len(meta.Inputs))
-				for _, i := range meta.Inputs {
+			if inputs.Lookup(id).State() == value.Missing {
+				ns := make([]string, 0, len(meta.InputNames()))
+				for _, inputID := range meta.InputNames() {
+					i, _ := meta.Input(inputID)
 					if i.Required {
 						ns = append(ns, i.Name)
 					}
 				}
 				rule.Errorf(
-					exec.Uses.Pos,
+					positionPointer(exec.Uses().Pos()),
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,
-					describe(meta),
+					description,
 					stringutil.SortedQuotes(ns),
 				)
 			}
@@ -495,7 +508,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 }
 
 // Missing fields point at their nearest declared parent. Existing fields point
-// at their key. Workflow-call diagnostics retain their original uses: position.
+// at their key. Workflow-call diagnostics point to the caller's uses: value.
 func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields ...string) *workflowlang.Pos {
 	if rule.standalone == nil {
 		return fallback
@@ -503,10 +516,10 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 	node := actionmeta.Node(rule.standalone.Root)
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	for _, field := range fields {
-		if node == nil || node.Kind != yaml.MappingNode {
+		if node == nil || node.Kind != syntax.MappingNode {
 			break
 		}
-		var next *yaml.Node
+		var next *syntax.Node
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			if strings.EqualFold(actionmeta.Key(key), field) {

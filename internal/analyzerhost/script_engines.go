@@ -19,7 +19,8 @@ type scriptEngineLoad struct {
 	err     error
 }
 
-// ScriptEngines retains at most four distinct module paths, including failed loads.
+// ScriptEngines caches module loads. Failed and in-flight loads count toward
+// the four-path session limit.
 type ScriptEngines struct {
 	mu      sync.Mutex
 	load    func(context.Context, string) (analyzer.ScriptBackend, error)

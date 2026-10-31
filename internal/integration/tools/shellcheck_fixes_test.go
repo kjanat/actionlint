@@ -10,10 +10,10 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/source/text"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
@@ -28,7 +28,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := yamlsource.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := text.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -43,9 +43,9 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 }
 
 func TestShellcheckStructuredDiagnostic(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\n"
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{ShellCheck: command}).Registrations()}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if changed != strings.Replace(workflow, "$VALUE", `"$VALUE"`, 1) {
 		t.Fatalf("wrong ShellCheck edit: %q", changed)
 	}
-	rechecked, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{ShellCheck: command}).Registrations()}, []workspace.Source{{Path: "workflow.yml", Content: []byte(changed)}})
+	rechecked, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: "workflow.yml", Content: []byte(changed)}})
 	if err != nil || len(rechecked.Diagnostics) != 0 {
 		t.Fatalf("fixed workflow findings: %+v, %v", rechecked, err)
 	}
@@ -80,8 +80,8 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 }
 
 func TestShellcheckCompositeFixPath(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	input := `name: test
 description: test
@@ -93,7 +93,7 @@ runs:
         echo $VALUE
 `
 	path := testutil.WriteFixture(t, root, "local/action.yml", input)
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 1 || len(result.Diagnostics[0].Fixes) != 1 {
 		t.Fatalf("composite fixes missing: %+v", result.Diagnostics)
 	}
@@ -110,7 +110,7 @@ runs:
 	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if checked := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()}); len(checked.Diagnostics) != 0 {
+	if checked := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}); len(checked.Diagnostics) != 0 {
 		t.Fatalf("fixed composite findings: %+v", checked.Diagnostics)
 	}
 }

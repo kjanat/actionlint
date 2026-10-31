@@ -3,8 +3,8 @@ package expression
 import "testing"
 
 func TestEventProjectionIsNotMutated(t *testing.T) {
-	array := &ArrayType{Elem: NewStrictObjectType(map[string]Type{"message": StringType{}})}
-	event := NewStrictObjectType(map[string]Type{"commits": array})
+	array := NewArrayType(NewStrictObjectType(map[string]Type{"message": StringType()}).Type())
+	event := NewStrictObjectType(map[string]Type{"commits": array.Type()})
 	checker := NewChecker(false, nil)
 	checker.SetContextAvailability([]string{"github"})
 	checker.UpdateEvent(event)
@@ -15,11 +15,11 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 	if _, errs := checker.Check(node); len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	if array.Deref {
+	if array.Deref() {
 		t.Fatal("filter mutated shared array type")
 	}
-	checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"flag": BoolType{}}))
-	if _, ok := event.Props["inputs"]; ok {
+	checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"flag": BoolType()}))
+	if _, ok := event.Property("inputs"); ok {
 		t.Fatal("dispatch update mutated shared event")
 	}
 }

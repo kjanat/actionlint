@@ -36,7 +36,7 @@ func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
 		t.Fatal("snapshot update required rebuilding provider or host")
 	}
 	if answers[2].Evidence.Dataset == originalDataset {
-		t.Fatal("updated catalogue retained the old dataset identity")
+		t.Fatal("updated catalogue reused the old dataset identity")
 	}
 }
 

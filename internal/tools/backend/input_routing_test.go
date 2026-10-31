@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -30,7 +31,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 			if c.ProjectRoot != "" || c.ProjectConfig != nil || len(c.Config.Overrides) != 0 {
 				t.Fatal("input eligibility used project planning instead of resolved script configuration")
 			}
-			return c.Config.Tools.Ruff.Enabled == nil
+			return c.Config.Tools["ruff"].Enabled == nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
 			return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -41,7 +42,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 			}), nil
 		},
 	}
-	disabled.Tools.Ruff.Enabled = new(false)
+	disabled.Tools = config.ToolsConfig{"ruff": {Enabled: new(false)}}
 	calls := 0
 	backend := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		calls++
@@ -81,12 +82,12 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
-		PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), OriginalLine: func(line int) int {
+		PrepareInput: func(script tools.Script) (profile.Prepared, error) {
+			return profile.Prepared{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), LineMap: func(line int) profile.Line {
 				if line < 2 {
-					return 0
+					return profile.Line{Origin: profile.LineDirective}
 				}
-				return line - 1
+				return profile.Line{Line: line - 1, Origin: profile.LineScript}
 			}}, nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
@@ -114,7 +115,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
-	if err == nil || !strings.Contains(err.Error(), "configuration diagnostic: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (diagnostic.Position{Line: 11, Column: 7}) {
+	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (diagnostic.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
 }
@@ -135,7 +136,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	}}
 	engine := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		inputCalls++
-		if request.Source != "input" || request.Filename != inputFilename(site) {
+		if request.Source != "input" || request.Filename != inputFilename(site, "") {
 			t.Fatalf("input route analyzed a native run: %+v", request)
 		}
 		return []analyzer.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2}}}, inputFailure
@@ -167,8 +168,8 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 
 func TestInputFilterCannotHideForeignSource(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
-	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-		return tools.PreparedInput{Source: script.Text, AcceptDiagnostic: func(analyzer.ScriptDiagnostic) bool { return false }}, nil
+	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (profile.Prepared, error) {
+		return profile.Prepared{Source: script.Text, AcceptDiagnostic: func(analyzer.ScriptDiagnostic) bool { return false }}, nil
 	}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 	engine := routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		return []analyzer.ScriptDiagnostic{{Filename: "foreign.py", Code: "F821", Message: "synthetic"}}, nil
@@ -191,8 +192,8 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	for _, contract := range []string{"", "unknown", analyzer.TemplateEffectsContract} {
 		calls := 0
-		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-			return tools.PreparedInput{Source: script.Text, TemplateContract: analyzer.TemplateEffectsContract}, nil
+		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (profile.Prepared, error) {
+			return profile.Prepared{Source: script.Text, TemplateContract: analyzer.TemplateEffectsContract}, nil
 		}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 		engine := routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 			calls++

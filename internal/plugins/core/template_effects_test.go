@@ -2,10 +2,11 @@ package core
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero/api"
 )
 
 func TestTemplateEffectNegotiation(t *testing.T) {
@@ -65,7 +66,7 @@ func TestPartialOutcomeRejectsUnknownTemplateEffects(t *testing.T) {
 	read := false
 	engine.idle = []api.Module{responseModule{Module: module, pointer: pointer, length: uint32(len(payload)), read: &read}}
 	findings, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "fixture"})
-	if err == nil || len(findings) != 1 || findings[0] != good {
+	if err == nil || len(findings) != 1 || !reflect.DeepEqual(findings[0], good) {
 		t.Fatalf("findings=%+v error=%v", findings, err)
 	}
 }

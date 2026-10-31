@@ -1,6 +1,6 @@
 // Package plugin loads WebAssembly plugins: components that implement
-// kjanat:actionlint/analyzer, runner-provider or script-engine and core engines that follow the
-// actionlint-plugin-ruff JSON ABI.
+// kjanat:actionlint/analyzer, runner-provider or script-engine, and core modules that
+// speak the wasm-core-json ABI.
 package plugin
 
 import (
@@ -17,7 +17,7 @@ import (
 // to analysis.Tool.Backend. Components may implement several roles.
 type Component = component.Plugin
 
-// Analyzer is the original name for Component, retained for compatibility.
+// Analyzer is a compatibility alias for Component.
 type Analyzer = component.Plugin
 
 // Options configures a component.

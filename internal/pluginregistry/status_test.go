@@ -29,7 +29,7 @@ func publishStatuses(t *testing.T, registry *testutil.PluginRegistry, statuses .
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry.Files[testutil.FixtureRegistryURL+"statuses.json"] = data
+	registry.SetFile(testutil.FixtureRegistryURL+"statuses.json", data)
 }
 
 func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
@@ -90,12 +90,12 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	if err := lock.RefreshStatuses(t.Context(), pluginregistry.StatusOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
-	requests := len(registry.Requests)
+	registry.SetOffline(true)
+	requests := len(registry.Requests())
 	if err := lock.Sync(t.Context(), artifacts); err != nil {
 		t.Fatalf("withdrawal broke existing cached lock: %v", err)
 	}
-	if len(registry.Requests) != requests {
+	if len(registry.Requests()) != requests {
 		t.Fatal("ordinary checking contacted the registry")
 	}
 	var warnings []string
@@ -104,7 +104,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 		!strings.Contains(warnings[0], "could not refresh") || !strings.Contains(warnings[1], "withdrawn") {
 		t.Fatalf("offline refresh: %v %v", err, warnings)
 	}
-	registry.Offline = false
+	registry.SetOffline(false)
 	publishStatuses(t, registry, releaseStatus(pin, pluginregistry.ReleaseRevoked))
 	if err := lock.RefreshStatuses(t.Context(), options); err == nil || !strings.Contains(err.Error(), "revoked") {
 		t.Fatalf("revocation did not block lock: %v", err)
@@ -114,12 +114,12 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	if _, err := client.RefreshStatuses(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
-	requests = len(registry.Requests)
+	registry.SetOffline(true)
+	requests = len(registry.Requests())
 	if err := lock.Sync(t.Context(), artifacts); err == nil || !strings.Contains(err.Error(), "revoked") {
 		t.Fatalf("cached revoked bytes executed: %v", err)
 	}
-	if len(registry.Requests) != requests {
+	if len(registry.Requests()) != requests {
 		t.Fatal("cached revocation contacted the registry")
 	}
 	otherTag := pin
@@ -146,12 +146,12 @@ func TestStatusRequiresExactDigestAndValidSnapshot(t *testing.T) {
 		t.Fatalf("mismatched status accepted: %v", err)
 	}
 	for _, data := range []string{`{"schema_version":1}`, `{"schema_version":2,"releases":[]}`, `{"schema_version":1,"releases":null}`} {
-		registry.Files[testutil.FixtureRegistryURL+"statuses.json"] = []byte(data)
+		registry.SetFile(testutil.FixtureRegistryURL+"statuses.json", []byte(data))
 		if _, err := client.Resolve(t.Context(), pin.Name, pin.Version); err == nil {
 			t.Fatalf("invalid snapshot accepted: %s", data)
 		}
 	}
-	delete(registry.Files, testutil.FixtureRegistryURL+"statuses.json")
+	registry.DeleteFile(testutil.FixtureRegistryURL + "statuses.json")
 	if _, err := client.Resolve(t.Context(), pin.Name, pin.Version); err == nil {
 		t.Fatal("fresh selection ignored missing status policy")
 	}

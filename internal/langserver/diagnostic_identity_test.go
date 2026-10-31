@@ -25,7 +25,7 @@ func TestDiagnosticSeverities(t *testing.T) {
 		severity string
 		want     int
 	}{
-		{"error", 1}, {"warning", 2}, {"warn", 2}, {"info", 3}, {"style", 3},
+		{"error", 1}, {"warning", 2}, {"warn", 2}, {"info", 3},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
 			doc := Document{Text: "value"}

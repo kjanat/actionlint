@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"syscall/js"
@@ -12,12 +11,9 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
-
-// Set by the site build to reject catalogue/WASM deployment mismatches.
-var catalogueDigest string
 
 var (
 	window      = js.Global().Get("window")
@@ -68,7 +64,7 @@ func shellcheck(args []string, stdin string) ([]byte, error) {
 
 func lint(source string, check uint64) {
 	src := []byte(source)
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/", Tools: adapters.Options{ShellcheckRunner: shellcheck}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/", Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: shellcheck}})}, []workspace.Source{{Path: "test.yaml", Content: src}})
 	if check != latestCheck {
 		return // An edit superseded this worker request.
 	}
@@ -93,21 +89,6 @@ func runActionlint(_this js.Value, args []js.Value) any {
 }
 
 func main() {
-	value := window.Get("actionlintCatalogue")
-	if value.Type() != js.TypeString {
-		fail(errors.New("action catalogue was not loaded"), "initializing action metadata")
-		return
-	}
-	data := []byte(value.String())
-	window.Delete("actionlintCatalogue")
-	if catalogueDigest == "" || fmt.Sprintf("%x", sha256.Sum256(data)) != catalogueDigest {
-		fail(errors.New("action catalogue does not match this playground build; reload the page"), "initializing action metadata")
-		return
-	}
-	if err := application.LoadActionCatalog(data); err != nil {
-		fail(err, "initializing action metadata")
-		return
-	}
 	if window.Get("runShellcheck").Type() != js.TypeFunction {
 		fail(errors.New("ShellCheck worker was not loaded"), "initializing ShellCheck")
 		return

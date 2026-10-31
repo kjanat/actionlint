@@ -1,10 +1,12 @@
 package composition
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 )
 
 // Regression for #409
@@ -91,41 +93,38 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
+			collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: actionlocal.NewResolver(nil, nil)}
 
-			w := &workflowlang.Workflow{}
+			var source strings.Builder
+			source.WriteString("on: push\n")
 			if tc.workflow != "" {
-				w.Defaults = &workflowlang.Defaults{
-					Run: &workflowlang.DefaultsRun{
-						Shell: &workflowlang.String{Value: tc.workflow},
-					},
-				}
+				fmt.Fprintf(&source, "defaults: {run: {shell: %q}}\n", tc.workflow)
 			}
-			collector.beginWorkflow(w)
-
-			j := &workflowlang.Job{}
+			source.WriteString("jobs:\n  test:\n")
 			if tc.job != "" {
-				j.Defaults = &workflowlang.Defaults{
-					Run: &workflowlang.DefaultsRun{
-						Shell: &workflowlang.String{Value: tc.job},
-					},
-				}
+				fmt.Fprintf(&source, "    defaults: {run: {shell: %q}}\n", tc.job)
 			}
 			if tc.runner != "" {
-				j.RunsOn = &workflowlang.Runner{
-					Labels: []*workflowlang.String{
-						{Value: tc.runner},
-					},
-				}
+				fmt.Fprintf(&source, "    runs-on: %q\n", tc.runner)
 			}
-			collector.beginJob(j)
-
-			e := &workflowlang.ExecRun{}
+			source.WriteString("    steps:\n      - run: echo ok\n")
 			if tc.step != "" {
-				e.Shell = &workflowlang.String{Value: tc.step}
+				fmt.Fprintf(&source, "        shell: %q\n", tc.step)
 			}
-			e.Run = &workflowlang.String{Value: "echo ok"}
-			if err := collector.collectScript(&workflowlang.Step{Exec: e}, nil, "", nil, nil, nil); err != nil {
+			content := []byte(source.String())
+			document := documentparse.Workflow("fixture.yml", content)
+			registry, snapshot := registeredWorkflowSnapshot(t, content, document)
+			w := workflowView(t, snapshot)
+			j := workflowJob(t, w, "test")
+			step := workflowStepViews(t, w, "test")[0]
+			startWorkflowEntry(t, collector, registry, snapshot)
+			if err := collector.beginWorkflow(w); err != nil {
+				t.Fatal(err)
+			}
+			if err := collector.beginJob(j); err != nil {
+				t.Fatal(err)
+			}
+			if err := collector.collectScript(step, nil, nil, nil); err != nil {
 				t.Fatal(err)
 			}
 			if s := collector.scripts[0].Execution.Shell.Name; s != tc.want {

@@ -38,25 +38,25 @@ runs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if outline.ParseStatus != "complete" || outline.Name != "Example" || outline.Description != "Test action" {
+	if outline.ParseStatus() != "complete" || outline.Name() != "Example" || outline.Description() != "Test action" {
 		t.Fatalf("wrong manifest: %+v", outline)
 	}
-	if len(outline.Inputs) != 2 || outline.Inputs[0].ID != "Zed" || outline.Inputs[1].ID != "Alpha" {
-		t.Fatalf("input order/casing lost: %+v", outline.Inputs)
+	if len(outline.Inputs()) != 2 || outline.Inputs()[0].ID != "Zed" || outline.Inputs()[1].ID != "Alpha" {
+		t.Fatalf("input order/casing lost: %+v", outline.Inputs())
 	}
-	input := outline.Inputs[0]
+	input := outline.Inputs()[0]
 	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (diagmodel.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared input metadata lost: %+v", input)
 	}
-	if second := outline.Inputs[1]; second.Required == nil || *second.Required || second.Default != nil {
+	if second := outline.Inputs()[1]; second.Required == nil || *second.Required || second.Default != nil {
 		t.Fatalf("omitted default/explicit false lost: %+v", second)
 	}
-	if len(outline.Outputs) != 1 || outline.Outputs[0].ID != "Value" || outline.Outputs[0].Value == nil || *outline.Outputs[0].Value != "${{ steps.build.outputs.value }}" {
-		t.Fatalf("output declaration lost: %+v", outline.Outputs)
+	if len(outline.Outputs()) != 1 || outline.Outputs()[0].ID != "Value" || outline.Outputs()[0].Value == nil || *outline.Outputs()[0].Value != "${{ steps.build.outputs.value }}" {
+		t.Fatalf("output declaration lost: %+v", outline.Outputs())
 	}
-	runs, ok := outline.Runs.(documentmodel.CompositeRuns)
-	if !ok || len(runs.Steps) != 2 || runs.Steps[0].Kind != "run" || runs.Steps[0].ID != "build" || runs.Steps[1].Reference == nil {
-		t.Fatalf("composite declarations lost: %+v", outline.Runs)
+	runs, ok := outline.Runs().(documentmodel.CompositeRuns)
+	if !ok || len(runs.Steps()) != 2 || runs.Steps()[0].Kind() != "run" || runs.Steps()[0].ID() != "build" || runs.Steps()[1].Reference() == nil {
+		t.Fatalf("composite declarations lost: %+v", outline.Runs())
 	}
 	encoded, err := json.Marshal(outline)
 	if err != nil {
@@ -90,10 +90,10 @@ func TestParseActionOutlineRuntimes(t *testing.T) {
   entrypoint: /entry.sh
   pre-entrypoint: /pre.sh
   post-entrypoint: /post.sh
-  args: [test, 42]`, documentmodel.DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
+  args: [test, 42]`, documentmodel.NewDockerRuns(documentmodel.DockerRunsFields{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}})},
 		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", documentmodel.PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
 		{"empty composite", `using: composite
-  steps: []`, documentmodel.CompositeRuns{Steps: []documentmodel.Step{}}},
+  steps: []`, documentmodel.NewCompositeRuns([]documentmodel.Step{})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yaml", []byte(`name: Test
@@ -103,8 +103,8 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(outline.Runs, tc.want) {
-				t.Fatalf("runtime: got %+v, want %+v", outline.Runs, tc.want)
+			if !reflect.DeepEqual(outline.Runs(), tc.want) {
+				t.Fatalf("runtime: got %+v, want %+v", outline.Runs(), tc.want)
 			}
 			encoded, err := json.Marshal(outline)
 			if err != nil {
@@ -134,18 +134,18 @@ runs: {using: node24, main: main.mjs}
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yml", []byte(tc.source))
-			if err == nil || outline.ParseStatus != tc.status {
-				t.Fatalf("status=%q error=%v; wanted %q with error", outline.ParseStatus, err, tc.status)
+			if err == nil || outline.ParseStatus() != tc.status {
+				t.Fatalf("status=%q error=%v; wanted %q with error", outline.ParseStatus(), err, tc.status)
 			}
-			if tc.status == "partial" && outline.Name != "Keep" {
+			if tc.status == "partial" && outline.Name() != "Keep" {
 				t.Fatalf("partial name lost: %+v", outline)
 			}
 			if tc.name == "invalid inputs" {
-				if runs, ok := outline.Runs.(documentmodel.JavaScriptRuns); !ok || runs.Main != "main.mjs" {
-					t.Fatalf("early decode error lost later runs declaration: %+v", outline.Runs)
+				if runs, ok := outline.Runs().(documentmodel.JavaScriptRuns); !ok || runs.Main != "main.mjs" {
+					t.Fatalf("early decode error lost later runs declaration: %+v", outline.Runs())
 				}
 			}
-			if outline.Inputs == nil || outline.Outputs == nil || outline.Runs == nil {
+			if outline.Inputs() == nil || outline.Outputs() == nil || outline.Runs() == nil {
 				t.Fatalf("incomplete action has nil collections/runtime: %+v", outline)
 			}
 		})
@@ -171,18 +171,18 @@ func TestActionOutlineParseStatusDoesNotValidate(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yml", []byte(tc.source))
-			if err != nil || outline.ParseStatus != "complete" {
-				t.Fatalf("decoded declarations treated as validation failure: status=%q error=%v", outline.ParseStatus, err)
+			if err != nil || outline.ParseStatus() != "complete" {
+				t.Fatalf("decoded declarations treated as validation failure: status=%q error=%v", outline.ParseStatus(), err)
 			}
 			if tc.name == "unknown runtime" {
-				if runtime, ok := outline.Runs.(documentmodel.UnknownRuns); !ok || runtime.Using != "future-runtime" {
-					t.Fatalf("unknown classification lost declaration: %+v", outline.Runs)
+				if runtime, ok := outline.Runs().(documentmodel.UnknownRuns); !ok || runtime.Using != "future-runtime" {
+					t.Fatalf("unknown classification lost declaration: %+v", outline.Runs())
 				}
 			}
 			if tc.name == "conflicting step" {
-				runtime, ok := outline.Runs.(documentmodel.CompositeRuns)
-				if !ok || len(runtime.Steps) != 1 || runtime.Steps[0].Kind != "unknown" || runtime.Steps[0].Uses != "actions/checkout@v7" || runtime.Steps[0].Reference == nil {
-					t.Fatalf("conflicting step lost declarations or invented execution: %+v", outline.Runs)
+				runtime, ok := outline.Runs().(documentmodel.CompositeRuns)
+				if !ok || len(runtime.Steps()) != 1 || runtime.Steps()[0].Kind() != "unknown" || runtime.Steps()[0].Uses() != "actions/checkout@v7" || runtime.Steps()[0].Reference() == nil {
+					t.Fatalf("conflicting step lost declarations or invented execution: %+v", outline.Runs())
 				}
 			}
 		})
@@ -211,10 +211,10 @@ runs: {using: node24, main: main.mjs}
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(outline.Inputs) != 2 {
-				t.Fatalf("inputs lost: %+v", outline.Inputs)
+			if len(outline.Inputs()) != 2 {
+				t.Fatalf("inputs lost: %+v", outline.Inputs())
 			}
-			for _, input := range outline.Inputs {
+			for _, input := range outline.Inputs() {
 				if input.Required == nil || *input.Required != tc.want {
 					t.Fatalf("required %s: got %+v, want %t", tc.literal, input, tc.want)
 				}
@@ -226,7 +226,7 @@ runs: {using: node24, main: main.mjs}
 func TestStandaloneMetadataConstruction(t *testing.T) {
 	for _, content := range []string{"null\n", "name: standalone\nruns: {using: composite, steps: []}\n"} {
 		outline, err := ParseActionOutline("action.yml", []byte(content))
-		if (err != nil) != (content == "null\n") || outline.Path != "action.yml" {
+		if (err != nil) != (content == "null\n") || outline.DocumentPath() != "action.yml" {
 			t.Fatalf("standalone construction: %+v, %v", outline, err)
 		}
 	}

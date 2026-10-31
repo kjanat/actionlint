@@ -1,6 +1,7 @@
 package analyzerhost
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -27,17 +28,39 @@ type Execution struct {
 	Env            []string
 	UnsetEnv       []string
 	Dir            string
+	// InheritEnvironment starts the child with the host environment plus Env,
+	// minus UnsetEnv. Otherwise the child sees Env alone: tool providers run
+	// scrubbed and name every variable they pass through.
+	InheritEnvironment bool
+	// ExitCodes, when not empty, are the only statuses accepted, and a nonzero
+	// one only with nonempty stdout. They replace MaxExitCode and RequireSuccess.
+	ExitCodes []int
 }
 
 func (e *Execution) Run(ctx context.Context) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, e.Cmd, e.Args...)
+	stdout, _, err := e.RunStatus(ctx)
+	return stdout, err
+}
+
+// RunStatus runs the execution and also returns the accepted exit status.
+func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
+	// The child command and the status checks work on detached copies, so the
+	// caller's slices are never shared with os/exec or the filters below.
+	args, unsetEnv, exitCodes := slices.Clone(e.Args), slices.Clone(e.UnsetEnv), slices.Clone(e.ExitCodes)
+	cmd := exec.CommandContext(ctx, e.Cmd, args...)
 	cmd.Dir = e.Dir
 	cmd.Stderr = nil
-	if len(e.Env) > 0 || len(e.UnsetEnv) > 0 {
+	switch {
+	case !e.InheritEnvironment:
+		// A non-nil empty slice keeps os/exec from inheriting the host environment.
+		cmd.Env = append([]string{}, e.Env...)
+	case len(e.Env) > 0 || len(unsetEnv) > 0:
 		cmd.Env = append(cmd.Environ(), e.Env...)
+	}
+	if len(unsetEnv) > 0 && cmd.Env != nil {
 		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
 			name, _, _ := strings.Cut(entry, "=")
-			return slices.ContainsFunc(e.UnsetEnv, func(unset string) bool {
+			return slices.ContainsFunc(unsetEnv, func(unset string) bool {
 				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
 			})
 		})
@@ -64,23 +87,29 @@ func (e *Execution) Run(ctx context.Context) ([]byte, error) {
 			}
 
 			if code < 0 {
-				return nil, fmt.Errorf("%s was terminated. stderr: %q", e.Cmd, stderr)
+				return nil, code, fmt.Errorf("%s was terminated. stderr: %q", e.Cmd, stderr)
 			}
-			if e.RequireSuccess || e.MaxExitCode > 0 && code > e.MaxExitCode {
-				return nil, fmt.Errorf("%s exited with status %d. stderr: %q", e.Cmd, code, stderr)
+			accepted := !e.RequireSuccess && (e.MaxExitCode <= 0 || code <= e.MaxExitCode)
+			if len(exitCodes) > 0 {
+				accepted = slices.Contains(exitCodes, code)
+			}
+			if !accepted {
+				return nil, code, fmt.Errorf("%s exited with status %d. stderr: %q", e.Cmd, code, stderr)
 			}
 
 			if len(stdout) == 0 {
-				return nil, fmt.Errorf("%s exited with status %d but stdout was empty. stderr: %q", e.Cmd, code, stderr)
+				return nil, code, fmt.Errorf("%s exited with status %d but stdout was empty. stderr: %q", e.Cmd, code, stderr)
 			}
 
 			// Providers may use an allowed nonzero status to report findings.
-		} else {
-			return nil, err
+			return stdout, code, nil
 		}
+		return nil, 0, err
 	}
-
-	return stdout, nil
+	if len(exitCodes) > 0 && !slices.Contains(exitCodes, 0) {
+		return nil, 0, fmt.Errorf("%s exited with status 0, which the tool does not report", e.Cmd)
+	}
+	return stdout, 0, nil
 }
 
 // ProcessPool is a manager to run process concurrently. Since running process consumes OS
@@ -218,7 +247,7 @@ func (cmd *Command) RunInDirectory(args []string, stdin, dir string, callback fu
 		})
 		return
 	}
-	exec := &Execution{Cmd: cmd.Exe, Args: args, Stdin: stdin, CombineOutput: cmd.CombineOutput, Env: cmd.Env, UnsetEnv: cmd.UnsetEnv, Dir: dir, MaxExitCode: cmd.MaxExitCode, RequireSuccess: cmd.RequireSuccess}
+	exec := &Execution{Cmd: cmd.Exe, Args: args, Stdin: stdin, CombineOutput: cmd.CombineOutput, Env: cmd.Env, UnsetEnv: cmd.UnsetEnv, Dir: dir, MaxExitCode: cmd.MaxExitCode, RequireSuccess: cmd.RequireSuccess, InheritEnvironment: true}
 	cmd.proc.Run(&cmd.eg, exec, callback)
 }
 
@@ -249,6 +278,31 @@ func (cmd *Command) Execute(ctx context.Context, args []string, stdin string) ([
 		return nil, err
 	}
 	defer cmd.proc.sema.Release(1)
-	execution := Execution{Cmd: cmd.Exe, Args: slices.Concat(cmd.LauncherArgs, cmd.Args, args), Stdin: stdin, Dir: cmd.Dir, Env: cmd.Env, UnsetEnv: cmd.UnsetEnv, MaxExitCode: cmd.MaxExitCode, RequireSuccess: cmd.RequireSuccess, CombineOutput: cmd.CombineOutput}
+	execution := Execution{Cmd: cmd.Exe, Args: slices.Concat(cmd.LauncherArgs, cmd.Args, args), Stdin: stdin, Dir: cmd.Dir, Env: cmd.Env, UnsetEnv: cmd.UnsetEnv, MaxExitCode: cmd.MaxExitCode, RequireSuccess: cmd.RequireSuccess, CombineOutput: cmd.CombineOutput, InheritEnvironment: true}
 	return execution.Run(ctx)
+}
+
+// Invoke runs execution synchronously under the pool's shared process limit.
+// The caller assembles the complete argument vector and environment; the
+// command contributes its executable, or its embedded runner, which reports
+// status 0. Unlike Execute, nothing of the command's own arguments,
+// environment or directory is added.
+func (cmd *Command) Invoke(ctx context.Context, execution Execution) ([]byte, int, error) {
+	cmd.proc.wg.Add(1)
+	defer cmd.proc.wg.Done()
+	if err := cmd.proc.sema.Acquire(ctx, 1); err != nil {
+		return nil, 0, err
+	}
+	defer cmd.proc.sema.Release(1)
+	if cmd.Runner != nil {
+		// The runner may keep its output and errors; callers own what Invoke
+		// returns.
+		stdout, err := cmd.Runner(execution.Args, execution.Stdin)
+		if err != nil {
+			return nil, 0, errors.New(err.Error())
+		}
+		return bytes.Clone(stdout), 0, nil
+	}
+	execution.Cmd = cmd.Exe
+	return execution.RunStatus(ctx)
 }

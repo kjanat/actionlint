@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -27,7 +27,7 @@ func TestRunnerExpressionNonemptyLabels(t *testing.T) {
 		{"unknown labels", `{labels: "${{ fromJSON(vars.LABELS) }}"}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
 

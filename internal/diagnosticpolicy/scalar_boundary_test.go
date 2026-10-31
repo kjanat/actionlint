@@ -7,7 +7,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
@@ -54,8 +54,7 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 					}
 				}
 				source := []byte(strings.ReplaceAll(tc.source, "\n", ending))
-				var document yaml.Node
-				if err := yaml.Unmarshal(source, &document); err != nil {
+				if _, err := codec.Parse(source); err != nil {
 					t.Fatalf("invalid YAML fixture: %v", err)
 				}
 				var findings []*findingmodel.Finding
@@ -89,8 +88,7 @@ func TestInlineSuppressionDedentedCommentBeforeScalarBody(t *testing.T) {
     body_marker
   uses: sibling
 `
-		var document yaml.Node
-		if err := yaml.Unmarshal([]byte(source), &document); err == nil {
+		if _, err := codec.Parse([]byte(source)); err == nil {
 			t.Fatalf("dedented comment unexpectedly allowed before scalar body: %s", source)
 		}
 	}

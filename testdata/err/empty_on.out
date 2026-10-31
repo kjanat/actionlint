@@ -1,1 +1,1 @@
-test.yaml:1:4: string should not be empty [syntax-check]
+test.yaml:1:1: workflow declares no triggers in "on", so no event ever starts it [empty-triggers]

@@ -13,56 +13,68 @@ func (sema *Checker) IsScriptScalar(node Node) bool {
 		// toJSON(toJSON(true)) serializes a string and introduces quote syntax.
 		node = call.Args[0]
 	}
-	switch sema.scriptReferenceType(node).(type) {
-	case BoolType, NumberType, NullType:
-		return true
-	default:
+	ty, known := sema.scriptReferenceType(node)
+	if !known {
 		return false
 	}
+	k := ty.Kind()
+	return k == KindBool || k == KindNumber || k == KindNull
 }
 
-func (sema *Checker) scriptReferenceType(node Node) Type {
-	property := func(receiver Type, name string) Type {
-		if object, ok := receiver.(*ObjectType); ok {
-			if value, exists := object.Props[strings.ToLower(name)]; exists {
-				return value
-			}
-			return object.Mapped
+// scriptReferenceType types literals, status functions and static context
+// references without reporting errors. known is false for anything else,
+// including a property that a strict object does not declare.
+func (sema *Checker) scriptReferenceType(node Node) (ty Type, known bool) {
+	property := func(receiver Type, name string) (Type, bool) {
+		object, ok := receiver.Object()
+		if !ok {
+			return Type{}, false
 		}
-		return nil
+		if value, exists := object.Property(strings.ToLower(name)); exists {
+			return value, true
+		}
+		return object.Mapped()
 	}
 	switch n := node.(type) {
 	case *BoolNode, *CompareOpNode, *NotOpNode:
-		return BoolType{}
+		return BoolType(), true
 	case *IntNode, *FloatNode:
-		return NumberType{}
+		return NumberType(), true
 	case *NullNode:
-		return NullType{}
+		return NullType(), true
 	case *FuncCallNode:
 		if isSafeFuncCall(n) {
-			return BoolType{}
+			return BoolType(), true
 		}
 		switch strings.ToLower(n.Callee) {
 		case "success", "failure", "cancelled", "always":
-			return BoolType{}
+			return BoolType(), true
 		}
 	case *VariableNode:
-		return sema.vars[n.Name]
+		ty, known := sema.vars[n.Name]
+		return ty, known
 	case *ObjectDerefNode:
-		return property(sema.scriptReferenceType(n.Receiver), n.Property)
+		receiver, known := sema.scriptReferenceType(n.Receiver)
+		if !known {
+			return Type{}, false
+		}
+		return property(receiver, n.Property)
 	case *IndexAccessNode:
-		receiver := sema.scriptReferenceType(n.Operand)
-		if array, ok := receiver.(*ArrayType); ok {
-			return array.Elem
+		receiver, known := sema.scriptReferenceType(n.Operand)
+		if !known {
+			return Type{}, false
+		}
+		if array, ok := receiver.Array(); ok {
+			return array.Elem(), true
 		}
 		if key, ok := n.Index.(*StringNode); ok {
 			return property(receiver, key.Value)
 		}
-		if object, ok := receiver.(*ObjectType); ok {
-			return object.Mapped
+		if object, ok := receiver.Object(); ok {
+			return object.Mapped()
 		}
 	}
-	return nil
+	return Type{}, false
 }
 
 // SafeScriptLiteral recognizes text without quoting, expansion, whitespace or
@@ -112,22 +124,22 @@ const (
 // Callers omit it when a specific secret or untrusted-input finding exists.
 func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, position ScriptPosition, safeReference func(Node) bool) []*Error {
 	scalarArgument := position == ScriptShellArgument
-	if _, stringValue := ty.(StringType); stringValue && sema.IsScriptScalar(expr) {
-		// toJSON of a primitive retains scalar syntax; its position still needs proof.
+	if ty.Kind() == KindString && sema.IsScriptScalar(expr) {
 		if scalarArgument {
 			return nil
 		}
 		return unsafeScalarScriptInterpolation(expr)
 	}
-	switch ty.(type) {
-	case NullType, *ObjectType, *ArrayType:
+	switch ty.Kind() {
+	case KindNull, KindObject, KindArray:
 		// Template type validation already rejects these values in every position.
 		return nil
-	case BoolType, NumberType:
+	case KindBool, KindNumber:
 		if scalarArgument {
 			return nil
 		}
 		return unsafeScalarScriptInterpolation(expr)
+	case KindAny, KindString:
 	}
 	if position == ScriptUnknownPosition {
 		return unsafeScriptInterpolation(expr)
@@ -243,6 +255,8 @@ func safeTruthyScriptResult(expr Node, scalarArgument bool, safeReference func(N
 		return safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
 	case LogicalOpNodeKindOr:
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
+	case LogicalOpNodeKindInvalid:
+		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
@@ -266,12 +280,13 @@ func safeFalsyScriptResult(expr Node, scalarArgument bool, safeReference func(No
 		return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
 	case LogicalOpNodeKindOr:
 		return safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
+	case LogicalOpNodeKindInvalid:
+		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
-// Known step outcomes/conclusions and dependency results are fixed status enums.
-// Missing or dynamic selectors may produce empty text; outputs remain arbitrary.
+// Step outcomes/conclusions and dependency results use fixed status enums.
 func safeScriptStatusReference(node Node, scalarArgument bool, safeReference func(Node) bool) bool {
 	var receiver Node
 	var property string

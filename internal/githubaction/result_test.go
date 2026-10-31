@@ -79,8 +79,8 @@ jobs:
 				outputPath := filepath.Join(t.TempDir(), "output")
 				env := map[string]string{
 					"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-					"INPUT_PYFLAKES": "false", "INPUT_WORKING-DIRECTORY": "work",
-					"INPUT_FILES": tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
+					"INPUT_WORKING-DIRECTORY": "work",
+					"INPUT_FILES":             tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
 					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
@@ -183,7 +183,7 @@ jobs:
 		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
 		"ACTIONLINT_ACTION_RESULT": resultPath,
 		"INPUT_FILES":              "my workflow.yml", "INPUT_FORMAT": "sarif",
-		"INPUT_OUTPUT-FILE": "report.sarif", "INPUT_PYFLAKES": "false",
+		"INPUT_OUTPUT-FILE": "report.sarif",
 	}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 1 {
@@ -271,7 +271,7 @@ jobs:
 			path := filepath.Join(t.TempDir(), "result.json")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "ACTIONLINT_ACTION_RESULT": path,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			var output strings.Builder
 			if got := Main(func(key string) string { return env[key] }, &output); got != tc.code {
@@ -311,7 +311,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	env := map[string]string{
 		"GITHUB_WORKSPACE": t.TempDir(), "ACTIONLINT_ACTION_RESULT": path,
 		"GITHUB_OUTPUT": outputPath, "INPUT_FORMAT": "json",
-		"INPUT_FILES": "missing.yml", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+		"INPUT_FILES": "missing.yml", "INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 3 {
@@ -326,7 +326,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.Completed || result.Status != "failure" || result.Error == "" {
-		t.Fatalf("failure not retained: %s", data)
+		t.Fatalf("failure data missing: %s", data)
 	}
 	if rendered := parseOutputs(read(t, outputPath))["output"]; rendered != strings.TrimSuffix(string(data), "\n") {
 		t.Fatalf("failure differs between JSON output and persisted result: %s", rendered)
@@ -353,7 +353,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
 				"ACTIONLINT_ACTION_RESULT": resultPath,
 				"INPUT_FILES":              "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SARIF": tc.sarif,
-				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+				"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 			}
 			var stdout strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {

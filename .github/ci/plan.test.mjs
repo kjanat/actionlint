@@ -359,30 +359,14 @@ test('Windows matrix jobs serialize setup to avoid shared event payload writes',
 	}
 });
 
-test('pinned formatter helper and workflow changes select installer tests', () => {
-	for (const name of ['action.yml', 'setup.bash', 'pins.tsv', 'mise.toml']) {
-		assert.equal(
-			selectJobs(workflowFilters('ci'), [`.github/actions/setup-formatters/${name}`]).javascript,
-			true,
-			name,
-		);
-	}
+test('workflow changes select installer tests', () => {
 	const root = new URL('../../', import.meta.url);
 	const read = (/** @type {string} */ path) => readFileSync(new URL(path, root), 'utf8');
-	const autofix = read('.github/workflows/autofix.yml');
-	assert.match(autofix, /uses: \$\/\.github\/actions\/setup-formatters/);
-	assert.doesNotMatch(autofix, /install_args:.*(?:dprint|tombi)/);
-	assert.doesNotMatch(autofix, /uses: kjanat\/install-dprint/);
-	assert.match(read('dprint.toml'), /command\s*= "tombi format - --stdin-filename \{\{file_path\}\}"/);
-	assert.match(read('package.json'), /\/\/\.github\/actions\/setup-formatters:test/);
-	assert.match(read('.mise.toml'), /"\.github\/actions\/setup-formatters"/);
 	const pages = read('.github/workflows/pages.yml');
 	assert.match(pages, /uses: \$\/\.github\/actions\/setup-runner/);
 	assert.match(pages, /uses: \$\/\.github\/actions\/setup-pandoc/);
 	assert.doesNotMatch(pages, /install_args:.*(?:runner|pandoc)/);
 	const upkeep = read('.github/workflows/upkeep.yml');
-	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-formatters/);
-	assert.doesNotMatch(upkeep, /uses: kjanat\/install-dprint/);
 	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-shellcheck/);
 	assert.match(
 		upkeep,

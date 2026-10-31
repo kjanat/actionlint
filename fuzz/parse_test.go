@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/syntax"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func canParseByGoYAML(data []byte) (ret bool) {

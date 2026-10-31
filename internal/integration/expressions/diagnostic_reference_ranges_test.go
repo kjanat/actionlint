@@ -71,7 +71,7 @@ func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
 func TestCompositeDeprecatedCommands(t *testing.T) {
 	for _, mode := range []string{"enabled", "inline", "disabled", "nested", "override-off", "override-on"} {
 		t.Run(mode, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			config := "tools: {shellcheck: false, ruff: false}\n"
 			if mode == "disabled" || mode == "override-on" {
 				config += "lint: {rules: {correctness: {deprecated-commands: off}}}\n"

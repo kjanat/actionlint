@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
@@ -30,14 +29,14 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 					return []runnerapi.Answer{{Resolution: resolution, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 				}}
-				k, err := Prepare(t.Context(), workflow, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
+				k, err := Prepare(t.Context(), workflow.Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
 				if err != nil {
 					t.Fatal(err)
 				}
 				return k
 			}
 			value, pointer := prepare(tc.value), prepare(tc.pointer)
-			if !reflect.DeepEqual(value.Report, pointer.Report) || !reflect.DeepEqual(value.Job(workflow.Jobs["test"]), pointer.Job(workflow.Jobs["test"])) {
+			if !reflect.DeepEqual(value.Report(), pointer.Report()) || !reflect.DeepEqual(value.Job(workflow.Views["test"]), pointer.Job(workflow.Views["test"])) {
 				t.Fatalf("pointer changed semantic evidence: value=%+v pointer=%+v", value, pointer)
 			}
 		})
@@ -49,17 +48,14 @@ func TestProviderPointerResolutionValidation(t *testing.T) {
 		p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 			return []runnerapi.Answer{{Resolution: resolution, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 		}}
-		if _, err := Prepare(t.Context(), runnerWorkflow(t, "queue"), nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope"); err == nil {
+		if _, err := Prepare(t.Context(), runnerWorkflow(t, "queue").Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope"); err == nil {
 			t.Fatalf("accepted invalid pointer resolution: %#v", resolution)
 		}
 	}
 }
 
 func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
-	w, errs := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [windows-latest]\n        unknown: '${{ fromJSON(vars.AXIS) }}'\n    runs-on: ${{ matrix.os }}\n    steps: [{run: echo ok}]\n"))
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
+	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [windows-latest]\n        unknown: '${{ fromJSON(vars.AXIS) }}'\n    runs-on: ${{ matrix.os }}\n    steps: [{run: echo ok}]\n")
 	p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 		answers := make([]runnerapi.Answer, len(r.Selectors))
 		for i := range answers {
@@ -67,7 +63,7 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 		}
 		return answers, nil
 	}}
-	k, err := Prepare(t.Context(), w, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
+	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,12 +73,12 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 			continue
 		}
 		partial++
-		unknown, ok := k.Report.Answers[i].Resolution.(runnerapi.Unknown)
+		unknown, ok := k.Report().Answers[i].Resolution.(runnerapi.Unknown)
 		if !ok || !strings.Contains(unknown.Reason, "incomplete") {
-			t.Fatalf("pointer supplied false completeness: %+v", k.Report.Answers[i])
+			t.Fatalf("pointer supplied false completeness: %+v", k.Report().Answers[i])
 		}
 	}
-	if partial == 0 || k.Job(w.Jobs["test"]).Shell != "" {
+	if partial == 0 || k.Job(w.Views["test"]).Shell != "" {
 		t.Fatalf("partial matrix inferred a shell: %+v", k)
 	}
 }
@@ -103,17 +99,17 @@ func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
 			w := runnerWorkflow(t, tc.selector)
-			k, err := Prepare(t.Context(), w, nil, runnerapi.Options{}, "scope")
+			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, ok := k.Report.Answers[0].Resolution.(runnerapi.Resolved)
+			resolved, ok := k.Report().Answers[0].Resolution.(runnerapi.Resolved)
 			if !ok || len(resolved.Candidates) != 1 {
-				t.Fatalf("resolution=%+v", k.Report.Answers[0])
+				t.Fatalf("resolution=%+v", k.Report().Answers[0])
 			}
 			candidate := resolved.Candidates[0]
 			known := tc.caseMode != runnerapi.UnknownCase
-			job := w.Jobs["test"]
+			job := w.Views["test"]
 			if candidate.OS != tc.os || candidate.CaseSensitivity != tc.caseMode || k.Job(job).PathsKnown != known || builtinJob(job).PathsKnown != known {
 				t.Fatalf("case guarantee incorrect: candidate=%+v knowledge=%+v direct=%+v", candidate, k.Job(job), builtinJob(job))
 			}

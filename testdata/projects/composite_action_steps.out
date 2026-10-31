@@ -12,3 +12,5 @@
 /invalid_steps/action\.yaml:28:7: "runs\.steps\[10\]" in metadata of "Composite steps" action must be a mapping with "run" or "uses" key \[action\]/
 /invalid_steps/action\.yaml:33:7: "runs\.steps\[13\]" in metadata of "Composite steps" action must have a string value at "run" key \[action\]/
 /invalid_steps/action\.yaml:35:7: "runs\.steps\[14\]" in metadata of "Composite steps" action has empty "uses" value \[action\]/
+/ok/action\.yaml:26:7: YAML anchors are not supported in action metadata; remove anchor "greet" \[action\]/
+/ok/action\.yaml:29:7: YAML aliases are not supported in action metadata; replace alias "greet" \[action\]/

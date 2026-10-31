@@ -13,7 +13,7 @@ import (
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/experimental"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -41,7 +41,7 @@ func TestComponentTableReservationsShareLinearMemoryBudget(t *testing.T) {
 	}
 	memory.Free()
 	if budget.used != 0 {
-		t.Fatalf("closed allocations retained %d bytes", budget.used)
+		t.Fatalf("closed allocations still account for %d bytes", budget.used)
 	}
 	for _, table := range []wacogo.CoreTable{{Min: 0}, {Min: 0, Max: wasmparser.Some(uint32(math.MaxUint32))}} {
 		if _, err := budget.allocateTables([]wacogo.CoreTable{table}); err == nil || budget.used != 0 {
@@ -114,9 +114,11 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin := &Plugin{path: path, engine: engine, hostFactory: factory, component: withoutTables,
+	plugin := &Plugin{
+		path: path, engine: engine, hostFactory: factory, component: withoutTables,
 		limits: Limits{Timeout: time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
-		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {}}
+		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {},
+	}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })
 	if _, err := plugin.callAnalyzer(t.Context(), "describe"); err != nil {
 		t.Fatal(err)

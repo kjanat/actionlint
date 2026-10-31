@@ -62,8 +62,9 @@ func TestCaseInsensitiveRepositoryPathRecordsListings(t *testing.T) {
 	if _, err := execution.CaseInsensitiveRepositoryPath(filepath.Join(root, "absent"), "./x", fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })); err == nil || listed != nil {
 		t.Fatalf("absent root resolved with %v, listed %q", err, listed)
 	}
-	paths := execution.Paths{Workspace: root, Analysis: root, CaseInsensitive: true, Reader: fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })}
-	if mapped, known := paths.AnalysisPath("SCRIPTS/nested"); !known || mapped != filepath.Join(root, "scripts", "Nested") {
+	paths := execution.Paths{Workspace: root, Analysis: root, CaseInsensitive: true}
+	reader := fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })
+	if mapped, known := paths.AnalysisPath("SCRIPTS/nested", reader); !known || mapped != filepath.Join(root, "scripts", "Nested") {
 		t.Fatalf("analysisPath = %q, %v", mapped, known)
 	}
 	if want := []string{root, filepath.Join(root, "scripts")}; !slices.Equal(listed, want) {

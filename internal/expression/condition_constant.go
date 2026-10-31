@@ -24,9 +24,9 @@ func ExpressionTruthy(value any) bool {
 	}
 }
 
-// ConditionConstantValue evaluates a conservative subset shared by condition
-// diagnostics and invocation reachability. Unsupported functions, ambiguous
-// JSON members and mode-dependent serialization remain unknown.
+// ConditionConstantValue evaluates the subset used by condition diagnostics and
+// invocation reachability. It reports unknown for unsupported functions,
+// ambiguous JSON members and mode-dependent serialization.
 func ConditionConstantValue(expr Node) (any, bool) {
 	switch n := expr.(type) {
 	case *NullNode:
@@ -34,7 +34,7 @@ func ConditionConstantValue(expr Node) (any, bool) {
 	case *BoolNode:
 		return n.Value, true
 	case *IntNode:
-		if n.Value == 0 && n.tok != nil && strings.HasPrefix(n.tok.Value, "-") {
+		if n.Value == 0 && strings.HasPrefix(n.First.Value, "-") {
 			return math.Copysign(0, -1), true
 		}
 		return float64(n.Value), true
@@ -259,6 +259,9 @@ func compareConditionNumbers(kind CompareOpNodeKind, a, b float64) bool {
 		return a > b
 	case CompareOpNodeKindGreaterEq:
 		return a >= b
+	case CompareOpNodeKindInvalid:
+		// An invalid operator never holds.
+		fallthrough
 	default:
 		return false
 	}
