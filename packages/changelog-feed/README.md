@@ -27,7 +27,17 @@ import '@kjlint/changelog-rss';
 The reader expects the DOM structure from
 [`playground/github-changelog/index.html`](../../playground/github-changelog/index.html).
 It loads the current feed, caches entries in IndexedDB, and wires up filtering,
-pagination, refresh, and article rendering.
+pagination, refresh, and article rendering. The displayed feed date comes from
+page 1; loading historical pages does not move it backwards.
+
+The XML view loads CodeMirror on demand, with syntax highlighting, folding,
+search, page navigation, and an article selector. It remains focusable for keyboard
+search and copying, but cannot be edited. If the CDN fails, the rendered reader
+remains available and the XML panel offers a page reload.
+
+The site builds the reader from this checkout. Its import map pins the XML viewer
+and its shared dependencies on esm.sh; external imports are limited to the XML
+viewer, so the main playground keeps its bundled dependencies.
 
 The same entrypoint can be loaded from an ESM CDN:
 
