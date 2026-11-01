@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -376,6 +377,8 @@ func TestLineOriginsAndMessages(t *testing.T) {
 }
 
 func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
+	previous := runtime.GOMAXPROCS(2)
+	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	started := make(chan struct{}, 2)
 	release := make(chan struct{})
 	backend := &reportingBackend{concurrent: true, result: func(request analyzer.ScriptRequest) process.Result {

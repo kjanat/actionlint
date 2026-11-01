@@ -215,9 +215,6 @@ type Metadata struct {
 	// Outputs is "outputs" field of action.yaml. Key is name of output. Description is omitted
 	// since actionlint does not use it.
 	Outputs Outputs `yaml:"outputs" json:"outputs"`
-	// SkipInputs is flag to specify behavior of inputs check. When it is true, inputs for this
-	// action will not be checked.
-	SkipInputs bool `yaml:"-" json:"skip_inputs"`
 	// SkipOutputs is flag to specify a bit loose typing to outputs object. If it is set to
 	// true, the outputs object accepts any properties along with strictly typed props.
 	SkipOutputs bool `yaml:"-" json:"skip_outputs"`

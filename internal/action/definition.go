@@ -90,14 +90,22 @@ func cloneDiagnostics(diagnostics []diagnostic.Diagnostic) []diagnostic.Diagnost
 	return cloned
 }
 
+type inputContract uint8
+
+const (
+	declaredInputs inputContract = iota
+	additionalInputs
+)
+
 // Definition owns the immutable facts used to validate an action call.
 // It exposes no manifest syntax, source bytes, or writable metadata pointers.
 type Definition struct {
-	present                 bool
-	using                   string
-	skipInputs, skipOutputs bool
-	inputs                  map[string]Input
-	outputs                 []string
+	present       bool
+	using         string
+	inputContract inputContract
+	skipOutputs   bool
+	inputs        map[string]Input
+	outputs       []string
 }
 
 // NewDefinition copies call-site facts from parsed metadata.
@@ -118,14 +126,27 @@ func NewDefinition(metadata *Metadata) Definition {
 	}
 	slices.Sort(outputs)
 	// An omitted declaration does not establish that an action produces no outputs.
-	return Definition{present: true, using: metadata.Runs.Using, skipInputs: metadata.SkipInputs, skipOutputs: metadata.SkipOutputs || metadata.Outputs == nil, inputs: inputs, outputs: outputs}
+	return Definition{present: true, using: metadata.Runs.Using, inputContract: declaredInputs, skipOutputs: metadata.SkipOutputs || metadata.Outputs == nil, inputs: inputs, outputs: outputs}
 }
 
 func (d Definition) Present() bool                   { return d.present }
 func (d Definition) Using() string                   { return d.using }
-func (d Definition) SkipInputs() bool                { return d.skipInputs }
 func (d Definition) SkipOutputs() bool               { return d.skipOutputs }
 func (d Definition) Input(name string) (Input, bool) { input, ok := d.inputs[name]; return input, ok }
+
+// AllowsAdditionalInputs reports implementation-backed support for parameters
+// beyond the manifest declarations. Declared inputs retain their requirements.
+func (d Definition) AllowsAdditionalInputs() bool { return d.inputContract == additionalInputs }
+
+// WithAdditionalInputs returns a definition with additional parameter support.
+// Only reviewed implementation evidence may establish this contract; manifests
+// themselves cannot declare it. Declared inputs and outputs are preserved.
+func (d Definition) WithAdditionalInputs() Definition {
+	if d.present {
+		d.inputContract = additionalInputs
+	}
+	return d
+}
 
 func (d Definition) InputNames() []string {
 	names := make([]string, 0, len(d.inputs))

@@ -73,14 +73,25 @@ readonly_result="$(docker run --rm --platform "${platform}" --network none \
 	--mount "type=volume,source=${volume},target=/w,readonly" \
 	--entrypoint /bin/sh "${image}" -ec '
 	test "$(id -u)" = 405
-	test -w "${HOME}/.cache"
-	test ! -w /w/legacy/.github
+	assert_readonly() {
+		test -d "$1"
+		probe="$1/.actionlint-write-probe"
+		if ( : > "${probe}" ) 2>/dev/null; then
+			rm "${probe}"
+			printf "Expected a read-only checkout: %s\n" "$1" >&2
+			exit 1
+		fi
+	}
+	cache_probe="${HOME}/.cache/.actionlint-write-probe"
+	: > "${cache_probe}"
+	rm "${cache_probe}"
+	assert_readonly /w/legacy/.github
 	cd /w/legacy
 	actionlint --no-tool shellcheck --no-tool ruff workflow.yml >/dev/null
 	actionlint check --no-tool shellcheck --no-tool ruff workflow.yml >/dev/null
 	test ! -e .github/actionlint.plugins.lock.json
 	test ! -e .github/actionlint.plugins.lock.json.project-writing
-	test ! -w /w/project/.github
+	assert_readonly /w/project/.github
 	cd /w/project
 	status=0
 	actionlint --json workflow.yml || status=$?

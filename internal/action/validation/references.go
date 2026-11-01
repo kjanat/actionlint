@@ -103,10 +103,6 @@ func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecAction
 	if problem := actionmeta.RuntimeProblem(meta.Using()); problem != "" {
 		rule.Errorf(positionPointer(exec.Uses().Pos()), "%s. update the version of action %q", problem, spec)
 	}
-	if meta.SkipInputs() {
-		return
-	}
-
 	rule.checkAction(meta, exec, strconv.Quote(spec))
 }
 

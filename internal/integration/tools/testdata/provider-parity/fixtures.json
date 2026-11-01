@@ -643,7 +643,7 @@
       "\u003crepository\u003e/testdata/err/issue-442-download-artifact-v3-workaround.yaml": {
         "revision": {
           "document": "\u003crepository\u003e/testdata/err/issue-442-download-artifact-v3-workaround.yaml",
-          "digest": "b417786b70fcd839b6bda523fa60db3dfc6cb49168790bac5c0b929b1bd67871"
+          "digest": "1f1bb951a3e368ed4f73b1a00bc6f6099117b41590c712894659f8580a6083fb"
         },
         "coordinates": "yaml",
         "coordinates_available": true
@@ -1075,7 +1075,7 @@
       "\u003crepository\u003e/testdata/err/outputs_of_action_skipping_inputs_check.yaml": {
         "revision": {
           "document": "\u003crepository\u003e/testdata/err/outputs_of_action_skipping_inputs_check.yaml",
-          "digest": "fe06e41b9b1f5c8b0a0925f86f6677dbfc1463ebade03de42d5238fe5f747ab1"
+          "digest": "b92ae466c35f238f08bfb75e9eb9815c03412a83e275302cf7edcaf6f36cddf5"
         },
         "coordinates": "yaml",
         "coordinates_available": true

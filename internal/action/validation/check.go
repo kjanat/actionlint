@@ -446,6 +446,9 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 		pos := &workflowlang.Pos{Line: position.Line, Col: position.Column}
 		m, ok := meta.Input(id)
 		if !ok {
+			if meta.AllowsAdditionalInputs() {
+				continue
+			}
 			ns := make([]string, 0, len(meta.InputNames()))
 			for _, inputID := range meta.InputNames() {
 				i, _ := meta.Input(inputID)

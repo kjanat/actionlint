@@ -12,5 +12,5 @@ jobs:
           repo: request-action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # octkit/request-action skips inputs check, but outputs are still checked
+      # Declared inputs and outputs stay checked; additional API parameters are allowed.
       - run: "echo latest release: ${{ steps.get_latest_release.outputs.this_output_does_not_exist }}"

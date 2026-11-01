@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
@@ -40,11 +39,7 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 }
 
 func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("HOME", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LOCALAPPDATA", cache)
-	var requests atomic.Int32
+	registry := testutil.NewPluginRegistry(t)
 	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -57,28 +52,23 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests.Add(1)
-		if r.URL.Path == "/component" {
-			_, _ = w.Write(component)
-		} else {
-			_, _ = w.Write(module)
-		}
-	}))
-	defer server.Close()
-	config := writeEngineConfig(t, fmt.Sprintf("%s/echo#sha256=%x", server.URL, sha256.Sum256(module)))
+	const engineURL = testutil.FixtureRegistryURL + "echo"
+	const componentURL = testutil.FixtureRegistryURL + "component"
+	registry.SetFile(engineURL, module)
+	registry.SetFile(componentURL, component)
+	config := writeEngineConfig(t, fmt.Sprintf("%s#sha256=%x", engineURL, sha256.Sum256(module)))
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("remote backend: %+v", got)
 	}
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo true\n"
-	source := fmt.Sprintf("%s/component#sha256=%x", server.URL, sha256.Sum256(component))
+	source := fmt.Sprintf("%s#sha256=%x", componentURL, sha256.Sum256(component))
 	got = testRunCommand(workflow, "check", "--no-config", "--plugin", source, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "sudo") {
 		t.Fatalf("remote component: %+v", got)
 	}
-	if requests.Load() != 2 {
-		t.Fatalf("fetched more than once per invocation: %d", requests.Load())
+	if requests := registry.Requests(); len(requests) != 2 {
+		t.Fatalf("fetched more than once per invocation: %v", requests)
 	}
 }
 
@@ -89,16 +79,14 @@ func TestRealRemoteRuffArtifact(t *testing.T) {
 	if path == "" {
 		t.Skip("set ACTIONLINT_TEST_RUFF_WASM to a packaged Ruff artifact")
 	}
-	cache := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LOCALAPPDATA", cache)
+	registry := testutil.NewPluginRegistry(t)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(data) }))
-	defer server.Close()
-	uri := fmt.Sprintf("%s/ruff#sha256=%x", server.URL, sha256.Sum256(data))
+	const artifactURL = testutil.FixtureRegistryURL + "ruff"
+	registry.SetFile(artifactURL, data)
+	uri := fmt.Sprintf("%s#sha256=%x", artifactURL, sha256.Sum256(data))
 	got := testRunCommand("", "plugin", "inspect", uri, "--json")
 	if got.Status != 0 || !strings.Contains(got.Stdout, `"wasm-core-json"`) {
 		t.Fatalf("Ruff custom section: %+v", got)
