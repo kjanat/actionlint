@@ -8,7 +8,8 @@ export interface CommandResult {
 
 /**
  * Run a captured-source tool with separate argument tokens and no shell expansion.
- * Only selected host environment variables are inherited; declare needed names on the provider too.
+ * Inherit the callback's environment, which the host already filters using the manifest.
+ * Supply env to replace that environment for this command; no second SDK allowlist is applied.
  * @example
  * ```ts
  * import { runCommand } from '@kjanat-actionlint/plugin-sdk/process';
@@ -21,17 +22,23 @@ export interface CommandResult {
 export async function runCommand(
 	command: string,
 	args: string[],
-	options: { stdin?: string; cwd?: string; allowedExitCodes?: number[]; timeoutMs?: number } = {},
+	options: {
+		/** Captured UTF-8 source or request written to the tool's stdin; defaults to empty input. */
+		stdin?: string;
+		/** Working directory for the child; defaults to the callback's working directory. */
+		cwd?: string;
+		/** Replace the inherited environment completely. Undefined values omit a variable. */
+		env?: Readonly<Record<string, string | undefined>>;
+		/** Accepted exit codes; defaults to [0]. Other codes reject with the tool's stderr. */
+		allowedExitCodes?: number[];
+		/** Kill the child after this many milliseconds; defaults to 60,000. */
+		timeoutMs?: number;
+	} = {},
 ): Promise<CommandResult> {
-	const environment: NodeJS.ProcessEnv = {};
-	for (const key of ['PATH', 'SystemRoot', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'HOME', 'USERPROFILE']) {
-		const value = process.env[key];
-		if (value !== undefined) environment[key] = value;
-	}
 	return new Promise((resolve, reject) => {
 		const child = spawn(command, args, {
 			cwd: options.cwd,
-			env: environment,
+			env: options.env,
 			shell: false,
 			windowsHide: true,
 			stdio: ['pipe', 'pipe', 'pipe'],

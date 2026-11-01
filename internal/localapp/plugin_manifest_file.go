@@ -383,6 +383,12 @@ func editPluginManifest(path string, original []byte, refs []pluginref.Reference
 	if err := validateManifestRoot(node); err != nil {
 		return nil, err
 	}
+	// YAML serialization consumes scalar tag hints. Capture the original
+	// settings before an editor can mutate the nodes it serializes.
+	before, err := tree.Expand(node, map[*yaml.Node]bool{})
+	if err != nil {
+		return nil, err
+	}
 	sequence, err := pluginManifestSequence(refs)
 	if err != nil {
 		return nil, err
@@ -402,10 +408,6 @@ func editPluginManifest(path string, original []byte, refs []pluginref.Reference
 	updated, err := tree.Decode(path, edited)
 	if err != nil {
 		return nil, fmt.Errorf("cannot safely edit plugin config: %w", err)
-	}
-	before, err := tree.Expand(node, map[*yaml.Node]bool{})
-	if err != nil {
-		return nil, err
 	}
 	after, err := tree.Expand(updated, map[*yaml.Node]bool{})
 	if err != nil {

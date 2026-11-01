@@ -59,6 +59,8 @@ func TestPluginManifestFormats(t *testing.T) {
 		{"config.yaml", "# intro\nplugins: [old/plugin] # dependencies\n# lint settings\nlint:\n  rules: {unknown-plugin-rule: warn}\n", "# lint settings\nlint:\n  rules: {unknown-plugin-rule: warn}\n"},
 		{"config.yml", "plugins:\n  - old/plugin\n\n# retain this\nother: 'quoted'\n", "\n# retain this\nother: 'quoted'\n"},
 		{"flow.yaml", "{plugins: [old/plugin], other: kept}\n", "other: kept"},
+		{"flow-nested.yaml", `{"tools":{"ruff":false,"shellcheck":false},"lint":{"rules":{"plugins":{"yamllint":{"level":"on","options":{"config_data":"{rules: {trailing-spaces: enable}}"}}}}}}`, `"config_data": "{rules: {trailing-spaces: enable}}"`},
+		{"flow-types.yaml", `{"other":{"enabled":false,"limit":3,"empty":null,"text":"false"}}`, `"text": "false"`},
 		{"config.json", "{\n \"plugins\": [\"old/plugin\"],\n \"other\" : {\"kept\":true}\n}\n", "\"other\" : {\"kept\":true}"},
 		{"config.toml", "# intro\nplugins = [\n 'old/plugin',\n] # dependencies\n[lint.rules]\nunknown-plugin-rule = 'warn'\n", "# dependencies\n[lint.rules]\nunknown-plugin-rule = 'warn'"},
 		{"missing.yaml", "", ""},

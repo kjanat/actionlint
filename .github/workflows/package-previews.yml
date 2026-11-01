@@ -51,6 +51,30 @@ jobs:
           @kjanat-actionlint/plugin-trailing-space:pack
           @kjanat-actionlint/plugin-yamllint:pack
           @kjanat-actionlint/plugin-zizmor:pack
+      - name: Install scanners for example installation checks
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          install_args: yamllint zizmor
+          add_shims_to_path: false
+        env: { MISE_ENABLE_TOOLS: "yamllint,zizmor" }
+      - name: Check installed yamllint example
+        uses: kjanat/actionlint-registry/check@dcb78310dfd8132fcf5318c5d4b5b4a0a37b19d9 # master
+        with:
+          artifact: examples/plugins/external-linters/yamllint/actionlint-provider.json
+          fixture: examples/plugins/external-linters/yamllint/installation.ts
+          actionlint: ${{ runner.temp }}/actionlint
+          kind: manifest
+          allow-config-processes: true
+          report: ${{ runner.temp }}/yamllint-candidate.json
+      - name: Check installed zizmor example
+        uses: kjanat/actionlint-registry/check@dcb78310dfd8132fcf5318c5d4b5b4a0a37b19d9 # master
+        with:
+          artifact: examples/plugins/external-linters/zizmor/actionlint-provider.json
+          fixture: examples/plugins/external-linters/zizmor/installation.ts
+          actionlint: ${{ runner.temp }}/actionlint
+          kind: manifest
+          allow-config-processes: true
+          report: ${{ runner.temp }}/zizmor-candidate.json
       - name: Publish SDK and example package previews
         run: bun run --bun pkg-pr-new publish --bun --packageManager=bun --previewVersion
           ./packages/changelog-feed

@@ -11,6 +11,7 @@
   "files": [
     "/actionlint.plugin.ts",
     "/actionlint.js",
+    "/installation.ts",
     "/actionlint-provider.json"
   ],
   "scripts": {

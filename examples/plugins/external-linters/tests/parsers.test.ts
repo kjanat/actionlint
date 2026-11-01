@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: gh-syntax */
 import assert from 'node:assert/strict';
 
 import { readFile } from 'node:fs/promises';
@@ -84,7 +83,7 @@ test('image references retain complete YAML scalar spans and reject unresolved Y
 		},
 	]);
 	assert.throws(
-		() => imageReferences('jobs:\n  scan:\n    container: "${{ vars.IMAGE }}"\n', 'workflow'),
+		() => imageReferences(`jobs:\n  scan:\n    container: "\${{ vars.IMAGE }}"\n`, 'workflow'),
 		/dynamic image reference/u,
 	);
 	assert.throws(
