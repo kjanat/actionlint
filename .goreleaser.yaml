@@ -16,7 +16,7 @@ before:
 builds:
   - <<: &build_defaults
       main: ./cmd/actionlint
-      ldflags: -s -w -X {{ .ModulePath }}/internal/buildinfo.ReleaseVersion={{ .Version }} -X "{{ .ModulePath }}/internal/buildinfo.InstallOrigin={{ trimsuffix .GitURL ".git" }}/releases/tag/{{ .Tag }}"
+      ldflags: -s -w -X {{ .ModulePath }}/internal/buildinfo.ReleaseVersion={{ .Version }} -X "{{ .ModulePath }}/internal/buildinfo.InstallOrigin={{ trimsuffix .GitURL ".git" }}/{{ if .IsSnapshot }}tree/{{ .FullCommit }}{{ else }}releases/tag/{{ .Tag }}{{ end }}"
       env:
         - CGO_ENABLED=0
     id: macos

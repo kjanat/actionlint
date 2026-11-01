@@ -391,8 +391,8 @@ test('autofix bootstraps mise for README and installs Node.js only for tables', 
 		/working_directory: \$\{\{ steps\.inputs\.outputs\.tables == 'true' && github\.workspace \|\| runner\.temp \}\}/,
 	);
 	assert.match(bootstrap, /mise_dir: \$\{\{ env\.ACTIONLINT_MISE_DIR \}\}/);
-	assert.match(bootstrap, /install_args: node npm/);
-	assert.match(bootstrap, /MISE_ENABLE_TOOLS: "node,npm"/);
+	assert.match(bootstrap, /install_args: node npm bun/);
+	assert.match(bootstrap, /MISE_ENABLE_TOOLS: "node,npm,bun"/);
 	assert.doesNotMatch(workflow, /uses: actions\/setup-node@/);
 	const readme = steps.findIndex(step => /id: readme\n/.test(step));
 	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');

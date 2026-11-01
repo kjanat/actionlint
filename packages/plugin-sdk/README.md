@@ -13,6 +13,15 @@ bun pm pack --filename plugin-sdk-0.1.0.tgz
 
 Copy the resulting tarball into the author package and run `bun add --dev file:./plugin-sdk-0.1.0.tgz`. A normal registry version range is not installable until publication. Pull requests also run the repository's `pkg-pr-new` package preview workflow; use the preview links it reports after that workflow completes.
 
+For `validate`, `test`, and `pack`, use a matching actionlint CLI. The CI release-snapshot job uploads native archives and SHA-256 checksums as `actionlint-cli-preview`. Find the CI run for the SDK preview's commit, then download its host archives:
+
+```sh
+gh run list --repo kjanat/actionlint --workflow ci.yml --commit <preview-commit>
+gh run download <run-id> --repo kjanat/actionlint --name actionlint-cli-preview --dir actionlint-host
+```
+
+Extract the archive for your operating system and CPU, then set `ACTIONLINT` to the extracted executable or pass `--actionlint` to the SDK CLI. Host preview artifacts are retained for seven days. From a source checkout, `go build -o actionlint ./cmd/actionlint` builds the current host instead.
+
 ## Public exports and runtimes
 
 The package exports ESM JavaScript and TypeScript declarations at `.`, `/stdio`, `/authoring`, `/testing`, `/config`, `/files`, `/process`, `/sarif`, and `/images`. Bun is used for development and builds; tsdown produces the distributable files.
