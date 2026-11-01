@@ -256,8 +256,7 @@ actionlint check --strict --experimental
 `--strict` selects all stable catalog rules, including non-recommended suspicious checks
 and opt-in repository policies. It respects explicit group and rule exceptions,
 timeout bounds, permission scopes, suppression report modes and rule-ID/path
-ignores. It does not invent a
-`required-actions` list or install missing external linters. `--experimental`
+ignores. It does not install missing external linters. `--experimental`
 enables nursery rules except those explicitly excluded. Strict
 mode alone does not enable nursery rules. Both switches apply after file
 overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.

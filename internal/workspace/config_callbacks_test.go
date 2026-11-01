@@ -112,7 +112,7 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 			for _, input := range []struct{ name, value string }{
 				{"config", reset},
 				{"policy", "cache-operation: false"},
-				{"policy", "required-actions: []"},
+				{"policy", "require-permissions: true"},
 			} {
 				overlay, err := repoconfig.ParseOverlay(input.name, []byte(input.value))
 				if err != nil {

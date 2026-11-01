@@ -416,12 +416,6 @@ Use `{ scope: job }` to require one on every job, including reusable workflow ca
 the workflow declares permissions. Empty mappings, named scopes, `read-all`, and `write-all`
 satisfy the check. This policy checks declaration presence; it does not infer least privilege.
 
-**policy.required-actions**
-: List actions every workflow must use. Entries accept name and ref glob patterns, such as
-`actions/checkout` or `my-org/security-scan@v2*`. Only steps directly in the workflow are
-searched. Workflows consisting entirely of reusable workflow calls, or containing an
-expression-based action reference, are skipped.
-
 **policy.cache-write-untrusted**
 : Enabled by default. Report explicit cache write grants on low-trust triggers that can access
 default-branch caches. Set to `false` to disable this check.
@@ -463,7 +457,6 @@ policy:
   require-commit-hash: true
   require-job-timeout: { min-minutes: 5, max-minutes: 60 }
   require-permissions: true
-  required-actions: [actions/checkout]
 paths:
   ".github/workflows/**/*.{yml,yaml}":
     ignore: ['shellcheck reported issue in this script: SC2086:.+']

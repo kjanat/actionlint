@@ -150,7 +150,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 		"policy: {require-job-timeout: {level: error, options: {max-minutes: -1}}}",
 		"policy: {require-job-timeout: {level: error, options: {max-minute: 5}}}",
 		"policy: {require-permissions: {level: error, options: {scope: step}}}",
-		"policy: {required-actions: {level: error, options: {actions: ['[']}}}",
+		"policy: {required-actions: on}",
 	} {
 		t.Run(rules, func(t *testing.T) {
 			if _, err := repoconfig.Parse([]byte("lint: {rules: {" + rules + "}}")); err == nil {
@@ -167,7 +167,6 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
     policy:
       require-job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}
       require-permissions: {level: warn, options: {scope: job}}
-      required-actions: {level: error, options: {actions: ['actions/checkout@v*']}}
       disallow-suppressions: {level: error, options: {rules: [expression], report: violation}}
 `))
 	if err != nil {
@@ -178,7 +177,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 {
 			t.Fatal(got.Policy)
 		}
-		if got.RequiresPermissions().Scope() != "job" || len(got.RequiredActions()) != 1 || got.Policy.DisallowSuppressions.Report() != "violation" {
+		if got.RequiresPermissions().Scope() != "job" || got.Policy.DisallowSuppressions.Report() != "violation" {
 			t.Fatal(got.Policy)
 		}
 		if repoconfig.DiagnosticLevel(got, "expression") != "warn" {
@@ -197,7 +196,6 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 
 func TestTypedRuleOptionsNull(t *testing.T) {
 	for rule, fields := range map[string][]string{
-		"required-actions":      {"actions"},
 		"require-job-timeout":   {"min-minutes", "max-minutes"},
 		"require-permissions":   {"scope"},
 		"disallow-suppressions": {"rules", "report"},
@@ -221,23 +219,10 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 			}
 		})
 	}
-	for _, text := range []string{
-		"policy: {required-actions: null}",
-		"lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}",
-	} {
-		cfg, err := repoconfig.Parse([]byte(text))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := repoconfig.ResolveRules(repoconfig.Presets{}, cfg).RequiredActions(); len(got) != 0 {
-			t.Fatalf("empty selection invented required actions: %v", got)
-		}
-	}
 }
 
 func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
 	for name, options := range map[string]any{
-		"required-actions":    &repoconfig.RequiredActionsOptions{Actions: []string{"["}},
 		"require-job-timeout": map[string]any{"max-minute": 5},
 	} {
 		t.Run(name, func(t *testing.T) {

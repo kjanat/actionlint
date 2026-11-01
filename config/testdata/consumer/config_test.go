@@ -18,18 +18,19 @@ const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    step
 
 func TestValidatedRuleOptions(t *testing.T) {
 	for _, tc := range []struct {
-		name, action, rule string
-		exclude            []string
+		name    string
+		exclude []string
+		want    int
 	}{
-		{"required action", "actions/upload-artifact", "required-actions", []string{"actions/checkout"}},
-		{"commit pin", "actions/checkout", "require-commit-hash", nil},
+		{"commit pin", nil, 1},
+		{"excluded action", []string{"actions/checkout"}, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			exclusions, err := json.Marshal(tc.exclude)
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := config.Parse([]byte(fmt.Sprintf(`lint: {rules: {preset: none, policy: {required-actions: {level: error, options: {actions: [%q]}}, require-commit-hash: {level: error, options: {exclude: %s}}}}}`, tc.action, exclusions)))
+			cfg, err := config.Parse([]byte(fmt.Sprintf(`lint: {rules: {preset: none, policy: {require-commit-hash: {level: error, options: {exclude: %s}}}}}`, exclusions)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,8 +41,13 @@ func TestValidatedRuleOptions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.rule {
+			if len(result.Diagnostics) != tc.want {
 				t.Fatalf("typed rule options ignored: %#v", result.Diagnostics)
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule != "require-commit-hash" {
+					t.Fatalf("unexpected rule: %#v", diagnostic)
+				}
 			}
 		})
 	}

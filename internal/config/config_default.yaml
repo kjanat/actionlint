@@ -25,9 +25,6 @@ lint:
     #   require-permissions:
     #     level: error
     #     options: {scope: job}
-    #   required-actions:
-    #     level: error
-    #     options: {actions: [actions/checkout]}
     # external:
     #   shellcheck: on
     #   ruff: on

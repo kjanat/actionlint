@@ -839,22 +839,6 @@ including reusable calls. Empty mappings, named scopes, `read-all` and `write-al
 all satisfy the check. This policy only requires a declaration; it does not assess
 least privilege.
 
-### required-actions
-
-```yaml
-lint:
-  rules:
-    policy:
-      required-actions:
-        level: on
-        options: { actions: [actions/checkout, "my-org/security-scan@v2*"] }
-```
-
-Patterns match action names case-insensitively and refs case-sensitively; `*` does
-not cross `/`. Omitting `@ref` accepts any ref. Search is limited to steps declared
-directly in the workflow. Workflows containing unresolved `uses`
-expressions or only reusable-call jobs are skipped.
-
 ## Generate the initial configuration
 
 ```sh

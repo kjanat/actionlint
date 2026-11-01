@@ -1,39 +1,12 @@
 package config
 
 import (
-	"fmt"
 	"slices"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/rule"
-
-	"github.com/kjanat/go-yaml/v4"
 )
-
-// RequiredActionsOptions configures exact actions or action/ref glob patterns.
-// An empty selection requires nothing; presets never invent an action list.
-type RequiredActionsOptions struct {
-	// Actions contains action names or action/ref glob patterns required by this repository.
-	Actions []string `yaml:"actions" jsonschema:"required"`
-}
-
-// UnmarshalYAML shares validation with the legacy policy setting.
-func (o *requiredActionsWire) UnmarshalYAML(n *yaml.Node) error {
-	var wire struct {
-		Actions yaml.Node `yaml:"actions"`
-	}
-	if err := n.Load(&wire, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
-		return err
-	}
-	if wire.Actions.Kind != yaml.SequenceNode {
-		return fmt.Errorf("yaml: required-actions options.actions must be a sequence at line:%d,col:%d", wire.Actions.Line, wire.Actions.Column)
-	}
-	return decodeRequiredActions(&wire.Actions, &o.Actions)
-}
-
-// requiredActionsWire validates external option syntax before producing a DTO.
-type requiredActionsWire RequiredActionsOptions
 
 // Scope selects which document's configuration a rule reads.
 type Scope uint8
@@ -106,7 +79,6 @@ func Rules() []Rule {
 		{Name: "require-action-metadata", Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata })},
 		{Name: "require-job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
 		{Name: "require-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
-		{Name: "required-actions", Options: func() any { return &RequiredActionsOptions{} }, Configure: configureRequiredActions},
 		{Name: "cache-write-untrusted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
 		{Name: "cache-call-unrestricted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
 		{Name: "cache-operation", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
@@ -187,15 +159,5 @@ func configureSuppressionsPolicy(c *Config, s Setting) {
 		c.Policy.DisallowSuppressions = options
 	} else if !c.Policy.DisallowSuppressions.Enabled() {
 		c.Policy.DisallowSuppressions, _ = DisallowSuppressions("all")
-	}
-}
-
-func configureRequiredActions(c *Config, s Setting) {
-	if s.Level() == "off" {
-		c.Policy.RequiredActions = nil
-		return
-	}
-	if options := new(RequiredActionsOptions); loadOptions(s, options) {
-		c.Policy.RequiredActions = options.Actions
 	}
 }

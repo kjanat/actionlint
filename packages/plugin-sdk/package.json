@@ -1,0 +1,21 @@
+{
+  "name": "@kjanat/actionlint-plugin-sdk",
+  "version": "0.1.0",
+  "description": "Author process-based actionlint plugins in TypeScript",
+  "repository": "https://github.com/kjanat/actionlint",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "bin": { "actionlint-plugin": "./bin/actionlint-plugin.js" },
+  "files": ["dist", "bin", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "test": "npm run build && node --test tests/*.test.js"
+  },
+  "dependencies": { "esbuild": "^0.28.0" },
+  "devDependencies": { "@types/node": "^26.0.0", "typescript": "^6.0.0" },
+  "engines": { "node": ">=22.18" }
+}

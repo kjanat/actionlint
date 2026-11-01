@@ -465,11 +465,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"group preset", `lint: {rules: {policy: {preset: all}}}`, true, true},
 		{"group null", `lint: {rules: {policy: null}}`, true, true},
 		{"rule options", `lint: {rules: {policy: {require-job-timeout: {level: error, options: {max-minutes: 30}}}}}`, true, true},
-		{"rule actions", `lint: {rules: {policy: {required-actions: {level: warn, options: {actions: ['actions/checkout']}}}}}`, true, true},
-		{"rule empty actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}`, true, true},
-		{"rule null actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: null}}}}}`, false, false},
-		{"rule omitted actions", `lint: {rules: {policy: {required-actions: {level: on, options: {}}}}}`, false, false},
-		{"rule null options", `lint: {rules: {policy: {required-actions: {level: on, options: null}}}}`, true, true},
+		{"removed required actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: [actions/checkout]}}}}}`, false, false},
+		{"removed empty required actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}`, false, false},
+		{"null rule options", `lint: {rules: {policy: {require-job-timeout: {level: on, options: null}}}}`, true, true},
 		{"rule null timeout bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {max-minutes: null}}}}}`, false, false},
 		{"rule null minimum bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: null}}}}}`, false, false},
 		{"rule null permissions scope", `lint: {rules: {policy: {require-permissions: {level: on, options: {scope: null}}}}}`, false, false},
@@ -590,7 +588,6 @@ policy:
   require-commit-hash: true
   require-job-timeout: {min-minutes: 5, max-minutes: 60.5}
   require-permissions: {scope: job}
-  required-actions: [actions/checkout, 'github/codeql-action/*@v4*']
 `, true, true},
 		{"null settings", `
 self-hosted-runner: null
@@ -603,14 +600,14 @@ policy: null
 		{"null nested settings", `
 self-hosted-runner: {labels: null}
 paths: {'**': {ignore: null}}
-policy: {require-commit-hash: null, require-job-timeout: null, require-permissions: null, required-actions: null}
+policy: {require-commit-hash: null, require-job-timeout: null, require-permissions: null}
 `, true, true},
 		{"empty lists", `
 self-hosted-runner: {labels: []}
 config-variables: []
 config-secrets: []
 paths: {'**': {ignore: []}}
-policy: {required-actions: []}
+policy: {}
 `, true, true},
 		{"restricted permissions", `assume-default-permissions: restricted`, true, true},
 		{"timeout enabled", `policy: {require-job-timeout: true}`, true, true},
@@ -673,13 +670,12 @@ policy: {required-actions: []}
 		{"unclosed path class", `paths: {'[': {ignore: []}}`, true, false},
 		{"unclosed path alternatives", `paths: {'{foo,bar': {ignore: []}}`, true, false},
 		{"non-boolean policy", `policy: {require-commit-hash: 1}`, false, false},
+		{"removed legacy required actions", `policy: {required-actions: [actions/checkout]}`, false, false},
+		{"removed empty legacy required actions", `policy: {required-actions: []}`, false, false},
 		{"timeout string", `policy: {require-job-timeout: 'true'}`, false, false},
 		{"timeout zero", `policy: {require-job-timeout: {max-minutes: 0}}`, false, false},
 		{"timeout negative", `policy: {require-job-timeout: {max-minutes: -1}}`, false, false},
 		{"timeout null maximum", `policy: {require-job-timeout: {max-minutes: null}}`, false, false},
-		{"scalar required actions", `policy: {required-actions: actions/checkout}`, false, false},
-		{"empty action", `policy: {required-actions: ['']}`, false, false},
-		{"non-string action", `policy: {required-actions: [1]}`, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

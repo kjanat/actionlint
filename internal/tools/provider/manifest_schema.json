@@ -555,7 +555,11 @@
           ],
           "properties": {
             "args": {
-              "$ref": "#/$defs/strings"
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/text"
+              }
             },
             "minimum": {
               "$ref": "#/$defs/token"
@@ -880,6 +884,9 @@
         }
       },
       "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object"
     },
     "preparation": {
       "$ref": "#/$defs/token"

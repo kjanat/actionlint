@@ -40,6 +40,18 @@ func TestParseMinimalManifest(t *testing.T) {
 	}
 }
 
+func TestVersionProbeLiteralArguments(t *testing.T) {
+	document := strings.Replace(minimal, `"config": {"render": "none"}`,
+		`"config": {"render": "none"}, "version": {"args": ["-Command", "(Get-Module PSScriptAnalyzer).Version.ToString()"], "pattern": "^([0-9.]+)$"}`, 1)
+	manifest, err := provider.Parse([]byte(document))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Process == nil || manifest.Process.Version == nil || len(manifest.Process.Version.Args) != 2 || manifest.Process.Version.Args[1] != "(Get-Module PSScriptAnalyzer).Version.ToString()" {
+		t.Fatalf("version probe arguments changed: %+v", manifest.Process)
+	}
+}
+
 func TestParseRejects(t *testing.T) {
 	replace := func(from, to string) string {
 		if !strings.Contains(minimal, from) {

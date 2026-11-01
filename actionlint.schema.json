@@ -155,7 +155,6 @@
                   "require-action-metadata",
                   "require-job-timeout",
                   "require-permissions",
-                  "required-actions",
                   "cache-write-untrusted",
                   "cache-call-unrestricted",
                   "cache-operation",
@@ -2460,7 +2459,6 @@
                           "require-action-metadata",
                           "require-job-timeout",
                           "require-permissions",
-                          "required-actions",
                           "cache-write-untrusted",
                           "cache-call-unrestricted",
                           "cache-operation",
@@ -3076,7 +3074,6 @@
                                                           "require-commit-hash",
                                                           "require-job-timeout",
                                                           "require-permissions",
-                                                          "required-actions",
                                                           "ruff",
                                                           "runner-label",
                                                           "script-injection",
@@ -3517,106 +3514,6 @@
                                                   "additionalProperties": false
                                                 }
                                               ]
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              ]
-                            },
-                            "required-actions": {
-                              "title": "required-actions",
-                              "description": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
-                              "oneOf": [
-                                {
-                                  "anyOf": [
-                                    {
-                                      "type": "string",
-                                      "enum": [
-                                        "default",
-                                        "off",
-                                        "on",
-                                        "info",
-                                        "warn",
-                                        "error"
-                                      ]
-                                    },
-                                    {
-                                      "type": "boolean"
-                                    },
-                                    {
-                                      "type": "null",
-                                      "doNotSuggest": true
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "object",
-                                  "required": [
-                                    "level"
-                                  ],
-                                  "properties": {
-                                    "level": {
-                                      "title": "level",
-                                      "description": "Diagnostic level for this rule: default",
-                                      "markdownDescription": "Diagnostic level for this rule: default",
-                                      "anyOf": [
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "default",
-                                            "off",
-                                            "on",
-                                            "info",
-                                            "warn",
-                                            "error"
-                                          ]
-                                        },
-                                        {
-                                          "type": "boolean"
-                                        },
-                                        {
-                                          "type": "null",
-                                          "doNotSuggest": true
-                                        }
-                                      ]
-                                    },
-                                    "options": {
-                                      "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
-                                              "markdownDescription": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
-                                              "type": "object",
-                                              "required": [
-                                                "actions"
-                                              ],
-                                              "properties": {
-                                                "actions": {
-                                                  "title": "actions",
-                                                  "description": "Contains action names or action/ref glob patterns required by this repository.",
-                                                  "markdownDescription": "Contains action names or action/ref glob patterns required by this repository.",
-                                                  "type": "array",
-                                                  "items": {
-                                                    "type": "string"
-                                                  }
-                                                }
-                                              },
-                                              "additionalProperties": false
                                             }
                                           ]
                                         }
@@ -6938,7 +6835,6 @@
                                     "require-action-metadata",
                                     "require-job-timeout",
                                     "require-permissions",
-                                    "required-actions",
                                     "cache-write-untrusted",
                                     "cache-call-unrestricted",
                                     "cache-operation",
@@ -7554,7 +7450,6 @@
                                                                     "require-commit-hash",
                                                                     "require-job-timeout",
                                                                     "require-permissions",
-                                                                    "required-actions",
                                                                     "ruff",
                                                                     "runner-label",
                                                                     "script-injection",
@@ -7995,106 +7890,6 @@
                                                             "additionalProperties": false
                                                           }
                                                         ]
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            },
-                                            "additionalProperties": false
-                                          }
-                                        ]
-                                      },
-                                      "required-actions": {
-                                        "title": "required-actions",
-                                        "description": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Require actions listed in the project policy. Stable; not enabled by the recommended preset.",
-                                        "oneOf": [
-                                          {
-                                            "anyOf": [
-                                              {
-                                                "type": "string",
-                                                "enum": [
-                                                  "default",
-                                                  "off",
-                                                  "on",
-                                                  "info",
-                                                  "warn",
-                                                  "error"
-                                                ]
-                                              },
-                                              {
-                                                "type": "boolean"
-                                              },
-                                              {
-                                                "type": "null",
-                                                "doNotSuggest": true
-                                              }
-                                            ]
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "level"
-                                            ],
-                                            "properties": {
-                                              "level": {
-                                                "title": "level",
-                                                "description": "Diagnostic level for this rule: default",
-                                                "markdownDescription": "Diagnostic level for this rule: default",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "default",
-                                                      "off",
-                                                      "on",
-                                                      "info",
-                                                      "warn",
-                                                      "error"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "boolean"
-                                                  },
-                                                  {
-                                                    "type": "null",
-                                                    "doNotSuggest": true
-                                                  }
-                                                ]
-                                              },
-                                              "options": {
-                                                "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
-                                                        "markdownDescription": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
-                                                        "type": "object",
-                                                        "required": [
-                                                          "actions"
-                                                        ],
-                                                        "properties": {
-                                                          "actions": {
-                                                            "title": "actions",
-                                                            "description": "Contains action names or action/ref glob patterns required by this repository.",
-                                                            "markdownDescription": "Contains action names or action/ref glob patterns required by this repository.",
-                                                            "type": "array",
-                                                            "items": {
-                                                              "type": "string"
-                                                            }
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
                                                       }
                                                     ]
                                                   }

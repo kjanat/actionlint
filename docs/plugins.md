@@ -257,6 +257,17 @@ image manifest has exactly one primary layer:
   `transport: "process"`. Its `artifacts` list names the executable for each platform by digest, and its
   transforms are named by digest too; both are other layers of the same image manifest.
 
+Stage a built Wasm plugin in an OCI image layout with ORAS:
+
+```sh
+oras push --oci-layout ./plugin-layout:example --artifact-type application/wasm plugin.wasm:application/wasm
+oras manifest fetch --oci-layout ./plugin-layout:example
+```
+
+This creates a local packaging result. Publishing it to an OCI registry and registering it in the
+actionlint catalogue are separate operations. The current catalogue admits Wasm release assets;
+The registry accepts release assets and digest-pinned OCI sources, including process providers.
+
 Every manifest and layer is verified against its digest before it is stored in the artifact cache,
 `actionlint/artifacts/<sha256 hex>`. A blob that does not match its digest is never stored; a stored blob
 that no longer matches, such as one left by an interrupted download, is fetched again. A provider's
@@ -770,6 +781,43 @@ and how to run the command:
 
 Inline `tools.<id>.config` settings reach the tool through `process.config.render`, after an optional
 `process.config.transform`. The manifest replaces a bundled tool with the same rule name for that invocation.
+
+### PSScriptAnalyzer example
+
+The [PSScriptAnalyzer provider](../examples/plugins/psscriptanalyzer/provider.json) checks snippets selected by
+`shell: pwsh` and `shell: powershell`. It uses PowerShell 7 to run the installed
+[PSScriptAnalyzer](https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/overview)
+module, version 1.25.0 or newer. Install the module explicitly; the provider does not install tools during analysis:
+
+```powershell
+Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser
+```
+
+Load the provider alongside your configuration:
+
+```sh
+actionlint check --plugin ./examples/plugins/psscriptanalyzer/provider.json .github/workflows/ci.yml
+```
+
+Its configuration is PSScriptAnalyzer settings data:
+
+```yaml
+tools:
+  psscriptanalyzer:
+    config:
+      IncludeRules: [PSAvoidUsingCmdletAliases, PSAvoidUsingInvokeExpression]
+```
+
+The provider passes the prepared snippet and settings as JSON on stdin. PowerShell emits diagnostic records;
+the digest-bound [jq transform](../examples/plugins/psscriptanalyzer/output.jq) converts messages, severities
+and suggested corrections. The host converts UTF-16 columns and script extents into workflow source locations
+and suggested edits. Parse errors remain errors; a missing module or crashed process fails the provider.
+Analyzing a `powershell` snippet with this provider uses the installed PowerShell 7 parser; configure
+PSScriptAnalyzer compatibility rules when targeting an older PowerShell language version.
+
+The [sample workflow](../examples/plugins/psscriptanalyzer/workflow.yml) deliberately uses an alias in both
+shells, including one after an emoji to exercise column conversion. The example has been exercised with
+PSScriptAnalyzer 1.25.0. It is a local process provider, not a published registry package.
 
 ## Remote artifacts and static metadata
 

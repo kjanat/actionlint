@@ -17,6 +17,7 @@ require (
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mattn/go-runewidth v0.0.31
 	github.com/mattn/go-shellwords v1.0.16
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/oras-project/oras-go/v3 v3.0.0-rc.4
 	github.com/pelletier/go-toml/v2 v2.4.3
@@ -42,7 +43,6 @@ require (
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	go-modules.kjanat.dev v0.8.1-0.20261025190330-2e183b7fc3f2 // indirect

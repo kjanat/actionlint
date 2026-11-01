@@ -432,6 +432,13 @@ func SyncPlugins(ctx context.Context, lock pluginregistry.Lock) error {
 	if err := lock.Sync(ctx, options); err != nil {
 		return err
 	}
+	for _, pin := range lock.Plugins {
+		if pluginartifact.IsOCI(pin.Source()) {
+			if err := oci.PullLayers(ctx, pin.Source(), options); err != nil {
+				return err
+			}
+		}
+	}
 	for _, pin := range lock.Sources {
 		if err := oci.PullLayers(ctx, pin.Source(), options); err != nil {
 			return err

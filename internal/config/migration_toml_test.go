@@ -182,7 +182,7 @@ paths = { "**/*.yml" = { ignore = [
   # path comment
   "legacy.*message",
 ] } }
-policy = { cache-operation = false, require-job-timeout = { min-minutes = 5, max-minutes = 30 }, required-actions = [] }
+policy = { cache-operation = false, require-job-timeout = { min-minutes = 5, max-minutes = 30 } }
 [lint.rules.correctness]
 expression-reference = { level = "on", options = { secrets = ["TOKEN"] } }
 # first tools comment

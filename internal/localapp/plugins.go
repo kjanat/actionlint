@@ -247,9 +247,8 @@ func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, 
 	return engine, nil
 }
 
-// pulledProvider parses the tool provider manifest layer of an oci://
-// artifact. The manifest must use the process transport: a WebAssembly
-// plugin is published as a wasm layer instead.
+// pulledProvider parses a distributed process-provider manifest. A standalone
+// JSON file uses a PATH command and inline transforms; OCI supplies blob layers.
 func pulledProvider(artifact *pluginartifact.Artifact) (provider.Manifest, error) {
 	manifest, err := provider.Parse(artifact.Bytes)
 	if err != nil {
@@ -257,6 +256,16 @@ func pulledProvider(artifact *pluginartifact.Artifact) (provider.Manifest, error
 	}
 	if manifest.Transport != provider.TransportProcess {
 		return provider.Manifest{}, fmt.Errorf("plugin %s: tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", artifact.Info.Source, manifest.Rule.Name, manifest.Transport, pluginartifact.MediaTypeWasm)
+	}
+	if !pluginartifact.IsOCI(artifact.Info.Source) {
+		if len(manifest.Artifacts) != 0 {
+			return provider.Manifest{}, errors.New("a standalone process provider cannot include executable artifacts; package its blob graph as OCI")
+		}
+		for _, transform := range []*provider.Transform{manifest.Process.Config.Transform, manifest.Process.Output.Transform} {
+			if transform != nil && transform.Digest != "" {
+				return provider.Manifest{}, errors.New("a standalone process provider requires inline transforms; package digest-addressed programs as OCI")
+			}
+		}
 	}
 	return manifest, nil
 }

@@ -20,7 +20,7 @@ const (
 )
 
 // Kind is the format of an artifact. Sniff detects the WebAssembly kinds
-// from the bytes; the media type of an OCI layer selects ProviderManifest.
+// from the bytes; SniffPackage also recognizes process-provider JSON.
 // A provider's executables are blobs its manifest names, not artifacts.
 type Kind string
 
@@ -58,6 +58,47 @@ type Info struct {
 type Artifact struct {
 	Info  Info
 	Bytes []byte
+}
+
+// SniffPackage recognizes a Wasm module or a process-provider manifest without
+// compiling or executing it. Runtime schema validation belongs to the provider
+// loader; this boundary checks the package framing and discovery metadata.
+func SniffPackage(data []byte) (Kind, json.RawMessage, error) {
+	if !bytes.HasPrefix(bytes.TrimSpace(data), []byte("{")) {
+		return Sniff(data)
+	}
+	metadata, err := ProviderMetadata(data)
+	return ProviderManifest, metadata, err
+}
+
+// ProviderMetadata reads the optional registry discovery object. Unpublished
+// manifests without it retain their full manifest as inspection metadata.
+func ProviderMetadata(data []byte) (json.RawMessage, error) {
+	if len(data) > maxMetadataBytes {
+		return nil, errors.New("tool provider manifest exceeds 1 MiB")
+	}
+	var manifest struct {
+		SchemaVersion int             `json:"schema_version"`
+		Transport     string          `json:"transport"`
+		Metadata      json.RawMessage `json:"metadata"`
+	}
+	if err := jsonv2.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("tool provider manifest: %w", err)
+	}
+	if manifest.SchemaVersion != 1 || manifest.Transport != "process" {
+		return nil, errors.New("tool provider manifest requires schema_version 1 and process transport")
+	}
+	if len(manifest.Metadata) == 0 {
+		return bytes.Clone(data), nil
+	}
+	var object map[string]json.RawMessage
+	if err := jsonv2.Unmarshal(manifest.Metadata, &object); err != nil {
+		return nil, fmt.Errorf("tool provider discovery metadata: %w", err)
+	}
+	if object == nil {
+		return nil, errors.New("tool provider discovery metadata must be an object")
+	}
+	return bytes.Clone(manifest.Metadata), nil
 }
 
 // Sniff reads only the module envelope and top-level custom sections. Nested

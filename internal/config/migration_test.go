@@ -21,7 +21,6 @@ paths: {"**": {ignore: ["legacy.*message"]}}
 policy:
   cache-operation: false
   require-job-timeout: {min-minutes: 5, max-minutes: 30}
-  required-actions: []
 `)
 	result, err := MigrateDocument("actionlint.yaml", original)
 	if err != nil {

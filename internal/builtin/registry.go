@@ -107,9 +107,6 @@ func ruleBehaviours() map[string]behaviour {
 		"require-permissions": {Build: func(c Context) workflowvisit.Rule {
 			return NewRuleRequirePermissions(c.Config.RequiresPermissions())
 		}, Enabled: func(c Context) bool { return c.Config.RequiresPermissions().Enabled() }},
-		"required-actions": {Build: func(c Context) workflowvisit.Rule {
-			return NewRuleRequiredActions(c.Config.RequiredActions())
-		}, Enabled: func(c Context) bool { return len(c.Config.RequiredActions()) > 0 }},
 		"cache-write-untrusted":   {Build: func(c Context) workflowvisit.Rule { return NewRuleCacheWriteUntrusted() }, Enabled: func(c Context) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") }},
 		"cache-call-unrestricted": {Build: func(c Context) workflowvisit.Rule { return NewRuleCacheCallUnrestricted() }, Enabled: func(c Context) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }},
 		"cache-operation":         {Build: func(c Context) workflowvisit.Rule { return newRuleCacheOperation(c.Workflows) }, Enabled: func(c Context) bool { return c.Config.CachePolicyEnabled("cache-operation") }},

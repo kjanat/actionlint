@@ -144,8 +144,6 @@ func policyEnabled(cfg *Config, name string) (bool, bool) {
 		return cfg.RequiresJobTimeout().Enabled(), true
 	case "require-permissions":
 		return cfg.RequiresPermissions().Enabled(), true
-	case "required-actions":
-		return len(cfg.RequiredActions()) > 0, true
 	case "cache-write-untrusted", "cache-call-unrestricted", "cache-operation":
 		return cfg.CachePolicyEnabled(name), true
 	default:

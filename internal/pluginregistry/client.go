@@ -339,23 +339,29 @@ func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest
 	if r.Source != "" {
 		return Pin{}, errors.New("HTTPS registries cannot serve local candidates")
 	}
+	if err := r.Submission.validateSource(); err != nil {
+		return Pin{}, err
+	}
 	switch {
 	case r.RecordVersion == 2 && d != nil && r.Validation == nil:
-		if d.SHA256 != r.Submission.SHA256 {
+		if d.SHA256 != r.Submission.sourceDigest() {
 			return Pin{}, errors.New("registry artifact checksum disagrees with submission")
 		}
-	case r.RecordVersion == 0 && d == nil && r.Validation != nil:
+	case r.RecordVersion == 0 && d == nil && r.Validation != nil && r.Submission.SchemaVersion == 1:
 		d = r.Validation
 	default:
 		return Pin{}, errors.New("unsupported registry version record")
 	}
 	i, s, ri := m.Plugin, r.Submission, r.Receipt.Identity
-	if s.SchemaVersion != 1 || s.Tag != v.Version || s.Provider != i.Provider || s.Repository != i.Repository ||
+	if s.Tag != v.Version || s.Provider != i.Provider || s.Repository != i.Repository ||
 		r.Receipt.SchemaVersion != 1 || r.Receipt.Submission != s || ri.Issuer != i.Issuer || ri.RepositoryID != i.RepositoryID || ri.OwnerID != i.OwnerID || ri.Repository != i.Repository || ri.Ref != "refs/tags/"+v.Version || ri.Commit != r.Commit ||
 		strconv.FormatInt(r.RepositoryID, 10) != i.RepositoryID || strconv.FormatInt(r.OwnerID, 10) != i.OwnerID || d.PluginID != i.PluginID || d.Kind != s.Kind || !strings.EqualFold(d.Repository, "https://"+p.Name) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("registry version disagrees with publisher identity or selected release")
 	}
-	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.Asset, URL: r.URL, SHA256: s.SHA256, Contract: d.Contract}
+	if s.isOCI() && r.URL != s.Artifact.reference {
+		return Pin{}, errors.New("registry OCI location disagrees with publication source")
+	}
+	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.assetName(), URL: r.URL, SHA256: s.sourceDigest(), Contract: d.Contract}
 	if len(p.Aliases) == 1 {
 		pin.Alias = p.Aliases[0]
 	}

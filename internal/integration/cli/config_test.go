@@ -118,7 +118,6 @@ lint:
       expression-reference: {level: on}
     policy:
       require-commit-hash: off
-      required-actions: {level: on, options: {actions: []}}
       require-job-timeout: {level: on, options: {min-minutes: 2, max-minutes: 10}}
 `
 	if err := os.WriteFile(".github/actionlint.yml", []byte(config), 0o600); err != nil {
@@ -129,7 +128,7 @@ lint:
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	for key, state := range map[string]string{"/repository/variables": "value", "/repository/secrets": "null", "/lint/rules/policy/require-commit-hash": "value", "/lint/rules/policy/required-actions/options/actions": "value"} {
+	for key, state := range map[string]string{"/repository/variables": "value", "/repository/secrets": "null", "/lint/rules/policy/require-commit-hash": "value", "/lint/rules/policy/require-job-timeout/options/min-minutes": "value"} {
 		origin := inspection.Origins[key]
 		if origin.Source != "config" || origin.State != state || origin.Line == 0 {
 			t.Errorf("%s: %+v", key, origin)
@@ -146,7 +145,7 @@ lint:
 	if repoconfig.VariableNames(resolved.Facts()) == nil || repoconfig.SecretNames(resolved.Facts()) != nil {
 		t.Fatal("[] and null lost their distinction")
 	}
-	if repoconfig.DiagnosticLevel(resolved, "require-commit-hash") != "off" || resolved.Policy.RequiredActions == nil {
+	if repoconfig.DiagnosticLevel(resolved, "require-commit-hash") != "off" {
 		t.Fatal(resolved.Policy)
 	}
 	for _, args := range [][]string{{"config", "validate"}, {"config", "path"}, {"config", "show"}} {
@@ -237,7 +236,7 @@ lint:
 
 func TestConfigOriginNestedReplacement(t *testing.T) {
 	t.Chdir(t.TempDir())
-	for _, replacement := range []string{"{}", "null", "{required-actions: {level: on, options: {actions: [actions/checkout]}}}"} {
+	for _, replacement := range []string{"{}", "null", "{require-permissions: {level: on, options: {scope: job}}}"} {
 		source := `defaults: &defaults
   policy:
     require-commit-hash: on

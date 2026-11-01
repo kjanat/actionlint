@@ -24,7 +24,7 @@ type providerPackage struct {
 
 func publishProvider(t *testing.T, registry *ocitest.Registry) providerPackage {
 	t.Helper()
-	manifest := registry.Blob(artifact.MediaTypeProviderManifest, []byte(`{"schema_version":1}`))
+	manifest := registry.Blob(artifact.MediaTypeProviderManifest, []byte(`{"schema_version":1,"transport":"process"}`))
 	platforms := map[string]ocitest.Descriptor{}
 	var host ocitest.Descriptor
 	for _, platform := range []string{"linux/amd64", "darwin/arm64", "windows/amd64", artifact.HostPlatform()} {
@@ -60,7 +60,7 @@ func TestPullSelectsHostPlatform(t *testing.T) {
 	if info.Kind != artifact.ProviderManifest || info.SHA256 != pkg.index.Hex() || info.Platform != artifact.HostPlatform() || info.Source != pkg.reference {
 		t.Fatalf("info = %+v", info)
 	}
-	if !bytes.Equal(pulled.Bytes, []byte(`{"schema_version":1}`)) || !bytes.Equal(info.Metadata, pulled.Bytes) {
+	if !bytes.Equal(pulled.Bytes, []byte(`{"schema_version":1,"transport":"process"}`)) || !bytes.Equal(info.Metadata, pulled.Bytes) {
 		t.Fatalf("primary layer = %q, metadata = %q", pulled.Bytes, info.Metadata)
 	}
 	if !slices.Equal(info.Blobs, []string{pkg.manifest.Hex(), pkg.executable.Hex()}) {

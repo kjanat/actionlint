@@ -293,14 +293,10 @@ func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Optio
 	}
 	info.Size, info.ModuleSize = len(data), len(data)
 	if layers[primary].MediaType == artifact.MediaTypeProviderManifest {
-		var object map[string]json.RawMessage
-		if err := json.Unmarshal(data, &object); err != nil {
+		info.Kind = artifact.ProviderManifest
+		if info.Metadata, err = artifact.ProviderMetadata(data); err != nil {
 			return nil, fmt.Errorf("tool provider manifest layer: %w", err)
 		}
-		if object == nil {
-			return nil, errors.New("tool provider manifest layer must be a JSON object")
-		}
-		info.Kind, info.Metadata = artifact.ProviderManifest, data
 	} else if info.Kind, info.Metadata, err = artifact.Sniff(data); err != nil {
 		return nil, err
 	}

@@ -91,28 +91,6 @@ jobs:
 	workers.Wait()
 }
 
-func TestRequiredActionsDoNotRetainEarlierWorkflow(t *testing.T) {
-	parse := func(src string) declaration.WorkflowView {
-		t.Helper()
-		ast, errs := workflowparser.Parse([]byte(src))
-		if len(errs) != 0 {
-			t.Fatal(errs)
-		}
-		return declaration.Publish(src, ast, false, "").Bind("test").Workflow()
-	}
-	withAction := parse("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v5\n")
-	withoutAction := parse("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n")
-	required := []string{"actions/checkout"}
-	for range 3 {
-		if got := RequiredActions(withAction, required); len(got) != 0 {
-			t.Fatalf("present action: %+v", got)
-		}
-		if got := RequiredActions(withoutAction, required); len(got) != 1 {
-			t.Fatalf("missing action: %+v", got)
-		}
-	}
-}
-
 func jobView(w declaration.WorkflowView, key string) declaration.JobView {
 	job, _ := w.Job(key)
 	return job

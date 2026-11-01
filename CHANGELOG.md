@@ -4,6 +4,7 @@
 
 *See the [v2 release and migration notes](docs/releases/v2.0.0.md) before upgrading.*
 
+- **Breaking:** Remove the `required-actions` rule and configuration. Remove its entries before migrating configuration.
 - Show help on stdout and exit 0 when `actionlint` is launched without arguments. Use `actionlint check` for repository discovery; it exits 3 when no workflow or action inputs are found.
 - **Breaking:** Move Go imports and source installation to `actionlint.kjanat.dev/v2`; replace the former flat library API with the focused public packages described in the [API migration](docs/api.md#migration-from-the-flat-api).
 - **Breaking:** Migrate legacy configuration into `lint.rules` and root `plugins` declarations; install and pin the default ShellCheck and Ruff Wasm plugins when initializing configuration or migrating an omitted plugin selection, preserving explicit disables and native backends. Commit the configuration and adjacent `actionlint.plugins.lock.json`; direct HTTPS dependencies require a SHA256 pin and need no lock row. ([`bb10ea0d`](https://github.com/kjanat/actionlint/commit/bb10ea0d), [`0617342b`](https://github.com/kjanat/actionlint/commit/0617342b))

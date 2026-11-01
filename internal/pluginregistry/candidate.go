@@ -158,7 +158,7 @@ func (p Pin) validateCandidate() error {
 	if _, err := pluginref.LocalRegistryDirectory(p.Registry); err != nil {
 		return err
 	}
-	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !idPattern.MatchString(p.PluginID) || !pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || !candidatePath(p.URL) || p.Asset != path.Base(p.URL) || !namePattern.MatchString(p.Asset) || (!strings.HasSuffix(p.Asset, ".wasm") && !strings.HasSuffix(p.Asset, ".wasm.gz")) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" || (p.Kind != artifact.Core && p.Kind != artifact.Component) {
+	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !idPattern.MatchString(p.PluginID) || !pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || !candidatePath(p.URL) || p.Asset != path.Base(p.URL) || !validAsset(p.Kind, p.Asset) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return errors.New("invalid local candidate pin")
 	}
 	return nil

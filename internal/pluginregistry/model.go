@@ -75,9 +75,10 @@ type submission struct {
 	Provider      string        `json:"provider"`
 	Repository    string        `json:"repository"`
 	Tag           string        `json:"tag"`
-	Asset         string        `json:"asset"`
-	SHA256        string        `json:"sha256"`
+	Asset         string        `json:"asset,omitempty"`
+	SHA256        string        `json:"sha256,omitempty"`
 	Kind          artifact.Kind `json:"kind"`
+	Artifact      distribution  `json:"artifact,omitzero"`
 }
 
 type declaration struct {
@@ -141,6 +142,9 @@ func (p Pin) Source() string {
 	if p.Origin == "candidate" {
 		return "sha256://" + p.SHA256
 	}
+	if artifact.IsOCI(p.URL) {
+		return p.URL
+	}
 	return p.URL + "#sha256=" + p.SHA256
 }
 
@@ -191,9 +195,18 @@ func (p Pin) Validate() error {
 	}
 	if !canonicalName(p.Name) || p.Alias != "" && !pluginref.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
 		!pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
-		!namePattern.MatchString(p.Asset) || (!strings.HasSuffix(p.Asset, ".wasm") && !strings.HasSuffix(p.Asset, ".wasm.gz")) ||
-		(p.Kind != artifact.Core && p.Kind != artifact.Component) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
+		(p.Kind != artifact.Core && p.Kind != artifact.Component && p.Kind != artifact.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return fmt.Errorf("invalid registry pin for %q", p.Name)
+	}
+	if artifact.IsOCI(p.URL) {
+		ref, err := artifact.ParseOCI(p.URL)
+		if err != nil || ref.String() != p.URL || ref.Digest() != p.SHA256 || p.Asset != "" {
+			return errors.New("invalid registry OCI pin")
+		}
+		return nil
+	}
+	if !validAsset(p.Kind, p.Asset) {
+		return errors.New("invalid registry release asset")
 	}
 	var expected string
 	if strings.HasPrefix(p.Name, "github.com/") {
@@ -251,6 +264,9 @@ func (p Pin) verifyMetadata(data []byte) error {
 		if component.Interface != "" && digestPattern.MatchString(component.Digest) {
 			contract = component.Interface + "#sha256=" + component.Digest
 		}
+	}
+	if p.Kind == artifact.ProviderManifest && m.Transport == "process" {
+		contract = "process/1"
 	}
 	if contract == "" || contract != p.Contract {
 		return errors.New("plugin contract disagrees with registry pin")

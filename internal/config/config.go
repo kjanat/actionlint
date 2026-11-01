@@ -111,42 +111,6 @@ type Policy struct {
 	//
 	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.
 	RequirePermissions *PermissionsPolicy `yaml:"require-permissions" jsonschema:"nullable"`
-	// RequiredActions lists actions that every workflow must use in its steps.
-	//
-	// Write entries like `uses:` values: `actions/checkout` accepts any ref, while
-	// `actions/checkout@v4*` also matches the ref. Both halves support glob patterns; `*` does not
-	// match `/`. Names are matched case-insensitively and refs case-sensitively.
-	//
-	// Use `[]` to disable the check. Omit this key or use `null` to leave it unset; no actions
-	// are required by default. Actions inside composite actions or called workflows are not counted.
-	RequiredActions []string `yaml:"required-actions" jsonschema:"nullable,minLength=1"`
-}
-
-// decodeRequiredActions decodes the value of the "required-actions" key and validates every entry of
-// it. A null value leaves the destination untouched so that a key set to nothing keeps the meaning of
-// an absent key.
-func decodeRequiredActions(n *yaml.Node, out *[]string) error {
-	if n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
-		return nil
-	}
-	if n.Kind != yaml.SequenceNode {
-		return fmt.Errorf("yaml: \"required-actions\" must be a sequence node at line:%d,col:%d", n.Line, n.Column)
-	}
-	as := make([]string, 0, len(n.Content))
-	for _, c := range n.Content {
-		if c.Kind != yaml.ScalarNode || c.Tag != "!!str" {
-			return fmt.Errorf("yaml: an entry of \"required-actions\" must be a string at line:%d,col:%d", c.Line, c.Column)
-		}
-		if c.Value == "" {
-			return fmt.Errorf("yaml: an entry of \"required-actions\" must not be empty at line:%d,col:%d", c.Line, c.Column)
-		}
-		if p, ok := InvalidActionPattern(c.Value); ok {
-			return fmt.Errorf("yaml: invalid glob pattern %q in an entry of \"required-actions\" at line:%d,col:%d", p, c.Line, c.Column)
-		}
-		as = append(as, c.Value)
-	}
-	*out = as
-	return nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
@@ -174,8 +138,6 @@ func (p *policyWire) UnmarshalYAML(n *yaml.Node) error {
 			err = v.Decode(&p.RequireJobTimeout)
 		case "require-permissions":
 			err = v.Decode(&p.RequirePermissions)
-		case "required-actions":
-			err = decodeRequiredActions(v, &p.RequiredActions)
 		default:
 			return fmt.Errorf("yaml: unknown key %q in \"policy\" at line:%d,col:%d", k.Value, k.Line, k.Column)
 		}
@@ -432,15 +394,6 @@ func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
 		return nil
 	}
 	return new(*cfg.Policy.RequirePermissions)
-}
-
-// RequiredActions returns the actions which every workflow must use following the "required-actions"
-// policy. It returns nil when the receiver is nil or when the key is not set.
-func (cfg *Config) RequiredActions() []string {
-	if cfg == nil {
-		return nil
-	}
-	return slices.Clone(cfg.Policy.RequiredActions)
 }
 
 // Parse parses the given bytes as an actionlint config file. When deserializing the YAML file

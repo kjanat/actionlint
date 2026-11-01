@@ -828,9 +828,3 @@ from   = "internal/workflow/parser"
 to     = "internal/workspace"
 tests  = true
 reason = "A cache-mode test calls workspace.Identity for a project root to build a calls cache. A fixture helper should supply the root."
-
-[[exception]]
-from   = "internal/workflow/checks"
-to     = "internal/config"
-tests  = true
-reason = "required_actions_test.go tests config.SplitActionRef and config.InvalidActionPattern, which belong to the configuration package; those cases should move to internal/config."

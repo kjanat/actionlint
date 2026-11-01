@@ -253,7 +253,7 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 			policies := value
 			if value.ShortTag() == "!!null" {
 				policies = mapping()
-				for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "require-permissions", "required-actions"} {
+				for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "require-permissions"} {
 					setField(policies, name, value)
 				}
 			}
@@ -276,11 +276,6 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 				case "!!map":
 					level = "on"
 					setField(setting, "options", selected)
-				case "!!seq":
-					level = "on"
-					options := mapping()
-					setField(options, "actions", selected)
-					setField(setting, "options", options)
 				}
 				levelNode := textNode(level)
 				levelNode.Line, levelNode.Column = selected.Line, selected.Column

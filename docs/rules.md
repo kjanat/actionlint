@@ -753,20 +753,6 @@ Declare explicit permissions at the scope required by repository policy.
 
 Configure this rule with `lint.rules.policy.require-permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
-## required-actions
-
-Require actions listed in the project policy.
-
-Add the required action or adjust the repository required-actions policy.
-
-- Category: `policy/actions`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-- Fixes: `none`
-
-Configure this rule with `lint.rules.policy.required-actions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
-
 ## ruff
 
 Analyze embedded Python scripts with Ruff.

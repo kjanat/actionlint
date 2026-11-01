@@ -40,6 +40,9 @@ migration refuses the rewrite; convert that selected document to YAML or JSON fi
 | `policy.<rule>`              | `lint.rules.<group>.<rule>`                                                                           |
 | `paths.<glob>.ignore`        | `lint.message-ignores.<glob>`                                                                         |
 
+The `required-actions` rule has been removed. Delete its configuration entries
+before migrating; migration rejects remaining entries.
+
 Older knowledge options on `runner-label`, `expression-reference` and `workflow-call`
 also migrate to `repository` without changing their diagnostic levels. Repository facts
 remain available when those rules are off. Null means unknown; empty collections mean

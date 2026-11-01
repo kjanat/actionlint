@@ -9,7 +9,7 @@ import (
 )
 
 func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {
-	for _, typ := range []reflect.Type{reflect.TypeFor[*Config](), reflect.TypeFor[*Policy](), reflect.TypeFor[*RequiredActionsOptions]()} {
+	for _, typ := range []reflect.Type{reflect.TypeFor[*Config](), reflect.TypeFor[*Policy]()} {
 		if _, exists := typ.MethodByName("UnmarshalYAML"); exists {
 			t.Fatalf("%s owns decoding instead of its wire adapter", typ)
 		}
@@ -24,7 +24,7 @@ func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {
 func TestConfigCodecPreservesProgrammaticProjectionsAndResets(t *testing.T) {
 	initial := &Config{
 		Paths:  map[string]PathConfig{"**/*.yml": {Ignore: IgnorePatterns{regexp.MustCompile("message")}}},
-		Policy: Policy{RequireCommitHash: new(true), RequiredActions: []string{"actions/checkout"}},
+		Policy: Policy{RequireCommitHash: new(true)},
 	}
 	encoded, err := Marshal(initial)
 	if err != nil {
@@ -37,7 +37,7 @@ func TestConfigCodecPreservesProgrammaticProjectionsAndResets(t *testing.T) {
 	if err := Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if !decoded.RequiresCommitHash() || !slices.Equal(decoded.RequiredActions(), initial.Policy.RequiredActions) || !decoded.Paths["**/*.yml"].Ignore.Match("message") {
+	if !decoded.RequiresCommitHash() || !decoded.Paths["**/*.yml"].Ignore.Match("message") {
 		t.Fatalf("programmatic projections were lost: %+v", decoded)
 	}
 	if err := Unmarshal([]byte("repository: null\n"), &decoded); err != nil {
@@ -60,10 +60,8 @@ func TestConfigGetterResultsDetached(t *testing.T) {
 	pattern := regexp.MustCompile("a|ab")
 	cfg := &Config{
 		Paths:  map[string]PathConfig{"**": {Ignore: IgnorePatterns{pattern}}},
-		Policy: Policy{RequiredActions: []string{"actions/checkout"}, RequireJobTimeout: RequireJobTimeout(30), RequirePermissions: permissions},
+		Policy: Policy{RequireJobTimeout: RequireJobTimeout(30), RequirePermissions: permissions},
 	}
-	actions := cfg.RequiredActions()
-	actions[0] = "changed"
 	timeout := cfg.RequiresJobTimeout()
 	if timeout == nil {
 		t.Fatal("missing timeout")
@@ -81,7 +79,7 @@ func TestConfigGetterResultsDetached(t *testing.T) {
 	paths[0].Ignore[0].Longest()
 	paths[0].Ignore[0] = regexp.MustCompile("changed")
 	maximum, _ := cfg.RequiresJobTimeout().MaxMinutes()
-	if cfg.RequiredActions()[0] != "actions/checkout" || maximum != 30 || cfg.RequiresPermissions().Scope() != "workflow" || pattern.FindString("ab") != "a" || !cfg.Paths["**"].Ignore.Match("ab") {
+	if maximum != 30 || cfg.RequiresPermissions().Scope() != "workflow" || pattern.FindString("ab") != "a" || !cfg.Paths["**"].Ignore.Match("ab") {
 		t.Fatal("getter result mutated stored settings")
 	}
 }

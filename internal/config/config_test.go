@@ -138,45 +138,6 @@ paths:
 			in:   "assume-default-permissions: [restricted]\n",
 			want: `yaml: "assume-default-permissions" must be "restricted" or "permissive" but got "" at line:1,col:29`,
 		},
-		{
-			in: `
-policy:
-  required-actions: true
-`,
-			want: `"required-actions" must be a sequence node at line:3,col:21`,
-		},
-		{
-			in: `
-policy:
-  required-actions:
-    - 42
-`,
-			want: `an entry of "required-actions" must be a string at line:4,col:7`,
-		},
-		{
-			in: `
-policy:
-  required-actions:
-    - ""
-`,
-			want: `an entry of "required-actions" must not be empty at line:4,col:7`,
-		},
-		{
-			in: `
-policy:
-  required-actions:
-    - actions/[checkout
-`,
-			want: `invalid glob pattern "actions/[checkout" in an entry of "required-actions" at line:4,col:7`,
-		},
-		{
-			in: `
-policy:
-  required-actions:
-    - actions/checkout@[v5
-`,
-			want: `invalid glob pattern "[v5" in an entry of "required-actions" at line:4,col:7`,
-		},
 	}
 
 	for _, tc := range tests {
@@ -506,76 +467,33 @@ func TestConfigPolicyNilConfig(t *testing.T) {
 	if c.RequiresCommitHash() {
 		t.Fatal("\"require-commit-hash\" is enabled for a nil config")
 	}
-	if as := c.RequiredActions(); as != nil {
-		t.Fatalf("\"required-actions\" is %v for a nil config", as)
-	}
 }
 
-func TestConfigParseRequiredActionsOK(t *testing.T) {
-	tests := []struct {
-		what  string
-		input string
-		want  []string
-	}{
-		{
-			what:  "key is not set",
-			input: "policy: {}\n",
-			want:  nil,
-		},
-		{
-			what: "key is null",
-			input: `policy:
-  required-actions:
-`,
-			want: nil,
-		},
-		{
-			what: "key is an empty sequence",
-			input: `policy:
-  required-actions: []
-`,
-			want: []string{},
-		},
-		{
-			what: "one action without a ref",
-			input: `policy:
-  required-actions:
-    - actions/checkout
-`,
-			want: []string{"actions/checkout"},
-		},
-		{
-			what: "one action with a ref",
-			input: `policy:
-  required-actions:
-    - my-org/scan@v2
-`,
-			want: []string{"my-org/scan@v2"},
-		},
-		{
-			what: "glob patterns",
-			input: `policy:
-  required-actions:
-    - github/codeql-action/*
-    - actions/checkout@v4*
-`,
-			want: []string{"github/codeql-action/*", "actions/checkout@v4*"},
-		},
+func TestRemovedRequiredActions(t *testing.T) {
+	if _, exists := FindRule("required-actions"); exists {
+		t.Fatal("removed rule remains in the catalog")
 	}
-
-	for _, tc := range tests {
-		t.Run(tc.what, func(t *testing.T) {
-			c, err := Parse([]byte(tc.input))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if diff := cmp.Diff(tc.want, c.Policy.RequiredActions); diff != "" {
-				t.Fatal(diff)
-			}
-			if diff := cmp.Diff(tc.want, c.RequiredActions()); diff != "" {
-				t.Fatal(diff)
-			}
-		})
+	for _, input := range []string{
+		"policy: {required-actions: [actions/checkout]}",
+		"policy: {required-actions: []}",
+		"policy: {required-actions: null}",
+		"lint: {rules: {policy: {required-actions: on}}}",
+		"lint: {rules: {policy: {required-actions: off}}}",
+		"lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}",
+	} {
+		if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), "required-actions") {
+			t.Fatalf("removed setting accepted or misdiagnosed: %s: %v", input, err)
+		}
+	}
+	for _, input := range []struct{ path, content string }{
+		{"config.yaml", "policy: {required-actions: [actions/checkout]}"},
+		{"config.yaml", "policy: {required-actions: []}"},
+		{"config.toml", "[policy]\nrequired-actions = ['actions/checkout']"},
+		{"config.toml", "[policy]\nrequired-actions = []"},
+	} {
+		if _, err := MigrateDocument(input.path, []byte(input.content)); err == nil || !strings.Contains(err.Error(), "required-actions") {
+			t.Fatalf("migration accepted or dropped removed setting: %s: %v", input.content, err)
+		}
 	}
 }
 

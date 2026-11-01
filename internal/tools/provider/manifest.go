@@ -57,13 +57,16 @@ const (
 // Manifest is one tool provider. Rule.Name is the tool id used by
 // configuration (tools.<name>), rule policy and the command line.
 type Manifest struct {
-	SchemaVersion int             `json:"schema_version"`
-	ID            string          `json:"id"`
-	Version       string          `json:"version"`
-	Role          Role            `json:"role"`
-	Rule          rule.Descriptor `json:"rule"`
-	Scope         Scope           `json:"scope"`
-	Transport     Transport       `json:"transport"`
+	SchemaVersion int `json:"schema_version"`
+	// Metadata declares publisher identity for registry admission. It does not
+	// grant capabilities or change the provider's execution contract.
+	Metadata  json.RawMessage `json:"metadata,omitempty"`
+	ID        string          `json:"id"`
+	Version   string          `json:"version"`
+	Role      Role            `json:"role"`
+	Rule      rule.Descriptor `json:"rule"`
+	Scope     Scope           `json:"scope"`
+	Transport Transport       `json:"transport"`
 	// Artifacts lists per-platform executables or modules; empty means the
 	// process entry is discovered on PATH.
 	Artifacts []Artifact `json:"artifacts,omitempty"`
@@ -368,6 +371,8 @@ type Transform struct {
 
 // VersionProbe identifies the installed engine version.
 type VersionProbe struct {
+	// Args are literal arguments, including spaces within an argument. Version
+	// probes do not substitute the check command's argument placeholders.
 	Args []string `json:"args"`
 	// Pattern is an RE2 expression with exactly one capture group.
 	Pattern string `json:"pattern"`

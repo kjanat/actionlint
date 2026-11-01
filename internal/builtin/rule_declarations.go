@@ -106,12 +106,6 @@ func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) workflowvis
 	return r
 }
 
-func NewRuleRequiredActions(required []string) workflowvisit.Rule {
-	r := newDeclarationRule("required-actions")
-	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding { return checks.RequiredActions(w, required) }
-	return r
-}
-
 func NewRuleRequireCommitHash(excluded func(string) bool) workflowvisit.Rule {
 	r := newDeclarationRule("require-commit-hash")
 	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.CommitHashJob(j, excluded) }

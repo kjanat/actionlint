@@ -164,7 +164,7 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	info.Kind, info.Metadata, err = Sniff(data)
+	info.Kind, info.Metadata, err = SniffPackage(data)
 	if err != nil {
 		return nil, fmt.Errorf("plugin artifact %s: %w", display, err)
 	}

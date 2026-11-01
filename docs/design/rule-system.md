@@ -95,7 +95,7 @@ Environment names, conditions, permission declarations, identifiers and job depe
 checks have stateless implementations in `internal/semantics`; identifiers and dependencies
 receive complete scopes, without accumulating state through callback order.
 `internal/workflow/checks` also owns events, credentials, glob validation, parallel
-steps and the required-actions, commit-pinning, timeout and required-permissions checks.
+steps and the commit-pinning, timeout and required-permissions checks.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/workflow/calls`, and evaluated field shapes in `internal/workflow/schema`.
