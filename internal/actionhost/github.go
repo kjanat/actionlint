@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/actions"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/knowledge"
 	"actionlint.kjanat.dev/v2/resolver"
 )
@@ -318,7 +319,8 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, id uint64, c
 	if err := ctx.Err(); err != nil {
 		return cacheRecord{}, false, err
 	}
-	file, err := os.Open(filepath.Join(g.bucket(ref, commit), strconv.FormatUint(id, 10)+".json"))
+	reader := fsread.New(ctx, nil, nil)
+	file, err := reader.Open(filepath.Join(g.bucket(ref, commit), strconv.FormatUint(id, 10)+".json"))
 	if errors.Is(err, os.ErrNotExist) {
 		return cacheRecord{}, false, nil
 	}
@@ -347,7 +349,9 @@ func (g *GitHub) offline(ctx context.Context, ref actions.Reference) (actions.Ma
 	if g.cacheDir == "" {
 		return actions.UnavailableManifest(knowledge.CacheMiss()), nil
 	}
-	directory, err := os.Open(g.bucket(ref, ref.Ref()))
+	reader := fsread.New(ctx, nil, nil)
+	bucket := g.bucket(ref, ref.Ref())
+	directory, err := reader.Open(bucket)
 	if errors.Is(err, os.ErrNotExist) {
 		return actions.UnavailableManifest(knowledge.CacheMiss()), nil
 	}

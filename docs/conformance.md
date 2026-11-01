@@ -20,8 +20,11 @@ GitHub's language server lives in `actions/languageservices`. Its shared express
 designed for use across languages. We also import the language-service tests for service container commands and YAML
 anchors. The runner fixtures come from `ActionManifestManagerL0.cs` and `ExpressionParserL0.cs`.
 
-SchemaStore and YAML Test Suite provide additional comparisons. They do not define GitHub's runtime behavior. In
-particular, a schema-valid example can still contain undefined context properties, incomplete jobs, or retired actions.
+SchemaStore supplies interesting test inputs. Its positive and negative labels describe that schema's expectations;
+they are not correctness expectations for actionlint or evidence of GitHub acceptance. Agreement counts measure
+comparison with those labels, not type accuracy. A schema-valid example can still contain undefined context
+properties, incomplete jobs, or retired actions. YAML Test Suite comparisons cover YAML stream acceptance, not
+GitHub's runtime behavior.
 
 ## Run locally
 
@@ -140,7 +143,6 @@ reference in the fixture. Its `reference-gap` assessment records the reference s
 output is not evidence that the TypeScript reader supports insertion. A removed diagnostic still requires review of
 its recorded expectation.
 
-For the whitespace fixture, the lexer compatibility issue and retired-action diagnostic are separate findings.
 The checked-in [service and runner probe results](expression-results/2026-09-14.md) establish support for the nonfinite
 expression literals and several numeric spellings. Reference-only limits and nonfinite timeout validity are not
 treated as proven GitHub runtime defects. Assessments record unresolved validity questions for negative hexadecimal
@@ -152,8 +154,8 @@ sets an output only when that key exists. SchemaStore's stricter requirement is 
 For expression whitespace, the
 [runner lexer](https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Sdk/DTExpressions2/Expressions2/Tokens/LexicalAnalyzer.cs#L19)
 uses `Char.IsWhiteSpace`, which includes U+00A0; actionlint's four-character whitespace set does not. That is an
-actionlint compatibility gap against the runner implementation. The shared whitespace fixture skips TypeScript,
-and its retired-action finding is independent of that gap.
+actionlint compatibility gap against the runner implementation. The shared whitespace fixture skips TypeScript.
+Action lifecycle findings require fetched action metadata, which this adapter does not provide.
 
 Examples worth investigating include bracket wildcards, numeric expression spellings, expression depth limits,
 Docker `pre-if`/`post-if`, Docker environment contexts, action output metadata, and reserved job ID prefixes. An

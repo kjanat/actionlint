@@ -48,7 +48,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/bad-character.yml": "1d8ab89b615d9d71589df722882a0259f10253c94fd246ef2017ae8cb09131aa"
+      "languageservices/workflow-parser/testdata/reader/bad-character.yml": "43d4e09fe0357cc78c84758a3cdf70d57d82b1a3d193c24c6917797acb0e15f9"
     },
     "findings": [
       {
@@ -58,21 +58,10 @@
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/bad-character.yml",
           "https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Sdk/DTExpressions2/Expressions2/Tokens/LexicalAnalyzer.cs#L19",
-          "expr_lexer.go"
+          "source:internal/expression/expr_lexer.go"
         ],
-        "diagnostic_indices": [
-          1
-        ]
-      },
-      {
-        "category": "extra-lint",
-        "scope": "diagnostic",
         "diagnostic_indices": [
           0
-        ],
-        "rationale": "The retired actions/checkout@v3 runtime is an independent lifecycle finding.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/bad-character.yml"
         ]
       }
     ]
@@ -454,52 +443,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/workflow-env.yml": "b060369f0577e3ed81b837709da6fa9d748a71526f012f575c40239dfdd862a5"
-    },
-    "findings": [
-      {
-        "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Extra lifecycle check: the fixture uses the retired windows-2019 runner label.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/workflow-env.yml"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps": "509338ff634b584f7a6e606eb8134018dbcf65d20145427b7c96c6682fd2e220",
-      "languageservices/workflow-parser/testdata/reader/background-steps.yml": "74501443fbaba1c7056e5e9c880cbf1f7c8b940f577a4ade8fbf73596666b5c6",
-      "languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml": "c0587ec23fa0ab2fe13e53efc0529c0bf9fd4ca93d4d9c74db52c78aafdd5c52",
-      "languageservices/workflow-parser/testdata/reader/events-mapping.yml": "1f1deadc3f3c0d4a5f42111dc7809899dbe32b04cd5f1314c6dc0aee3d2c7535",
-      "languageservices/workflow-parser/testdata/reader/events-sequence.yml": "27e98d932919516ff6e7e28f3f629d4b385d8e6f2bf53555713aaf61456c7453",
-      "languageservices/workflow-parser/testdata/reader/events-single-with-types.yml": "451a0970813735a1e3685b6aafa6117370d4ccc5a9ae1873d89025b90a3bf369",
-      "languageservices/workflow-parser/testdata/reader/events-single.yml": "f917281de0c2eb783adf6f84c679445d154363f1b4f9a4796433742c459058d3",
-      "languageservices/workflow-parser/testdata/reader/float-folded-style.yml": "abf71f5929f93641dab9936d08d45d8bb665e80168dacd8953559cdb6a665495",
-      "languageservices/workflow-parser/testdata/reader/misc-steps.yml": "1325a3ebb6279ce1c7e7492787cc749eef000282035ed4f5a8cbfa476d7f832d",
-      "languageservices/workflow-parser/testdata/reader/mvp.yml": "ffeede1da46717e93d268e31705aca21223e8920b136ea61724c9387f984310a",
-      "languageservices/workflow-parser/testdata/reader/permissions.yml": "6c427a5da5994af9cc251175268850ecf5101e20b659dc32d2ca9b36b698ef21",
-      "languageservices/workflow-parser/testdata/reader/root-env-defaults.yml": "7ce5f004d62a0dfc5ad1007b32a4ac1cbebdfd9e53956ec4678aac00917f2703",
-      "languageservices/workflow-parser/testdata/reader/step-id-generates-counter-per-collision.yml": "cc3f585af641584b0ffed9c65d6b49e3ef4ea9fc33500af9d761e2bdd121d654",
-      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty-and-considers-collisions.yml": "f7f7a57043d173688888c146bbeb043e2b642cfc5a522b0bcd6f2611cc4ebee7",
-      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty.yml": "91f73174181f866ddd02f872fe7e5df5d544cac671b614d5d3959368f8c37787",
-      "languageservices/workflow-parser/testdata/reader/step-id.yml": "d266f4690209ed3e4feeb00a14447cef31025f84d1f9a4d5e95aa7566830b8cb",
       "runner/src/Test/TestData/node16action.yml": "46f16736c690039255438b4792ebd65d982da12743dc35c8682ab8e6af1b51a9",
       "runner/src/Test/TestData/node20action.yml": "01817c26d6ec933cc8a899c44b3c7906a1933232e37315f1b147f2e28b4459a2",
       "runner/src/Test/TestData/nodeaction.yml": "05f59c3dbfb53997a4b2f3a23b92dd18edf16872457b26818accedf519249448",
       "runner/src/Test/TestData/nodeaction_cleanup.yml": "3128b0d767e0bcabb2fb3821590fff77fd9d26ff2c2fee4528d57cba28dba929",
       "runner/src/Test/TestData/nodeaction_cleanup_default.yml": "3fffaf7393d0e7b2341e486ddf9fc2e021ca763efc7b0a7b8c4f1aa67ee143ad",
       "runner/src/Test/TestData/nodeaction_init.yml": "37382ae78d239c8c9f57b1fee28f0ad9e1c7c6ea48b985bf8a3d008587ef12d1",
-      "runner/src/Test/TestData/nodeaction_init_default.yml": "5cf599cb4960d1901674ee15732aba7c56d459ce8576c8d2ec5557a55b12f8d0",
-      "schemastore/src/test/github-workflow/1567.yaml": "4ab14641ff3d05a39b5272cfa0c4e5d827a149b5d2b947018759f82056b73458",
-      "schemastore/src/test/github-workflow/919.yaml": "7f02f2dda6c563902eb34de6371db4bf72d5b3bdc7d7523c9f22cdabdf1a3c9a",
-      "schemastore/src/test/github-workflow/env-from-json.yaml": "eb7a1b361b702a408ba729a575c122172e7b58957a29d983eb49622ca43e01eb",
-      "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": "5d1c23d23652d4a7fa624c07efb70a4054998a1fd25de5388d9b60cacf95d2da",
-      "schemastore/src/test/github-workflow/npm-publish.yaml": "759533cf506c4845839f6ef9c5a8645f476a99e3077d4e3a68103ef86f0756ef",
-      "schemastore/src/test/github-workflow/parallel-steps.yaml": "cb69e50c8bfc12c51a10989c1f15ad6467fce04eeb294cb7f37cc41196cac086",
-      "schemastore/src/test/github-workflow/runs-on-interpolated.yaml": "113953425614c94984953b60ea88794272087b216c5398c7e493cf7121aa815b",
-      "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": "7f891cfe0210d6c2776718d7d12e8917e574a0181c693fe2b0c5a4ea7a2800e5"
+      "runner/src/Test/TestData/nodeaction_init_default.yml": "5cf599cb4960d1901674ee15732aba7c56d459ce8576c8d2ec5557a55b12f8d0"
     },
     "findings": [
       {
@@ -507,22 +457,6 @@
         "scope": "fixture",
         "rationale": "Extra lifecycle checks: these historical fixtures remain parser-valid, while actionlint reports their deprecated or retired action runtimes.",
         "evidence": [
-          "fixture:languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps",
-          "fixture:languageservices/workflow-parser/testdata/reader/background-steps.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/events-mapping.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/events-sequence.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/events-single-with-types.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/events-single.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/float-folded-style.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/misc-steps.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/mvp.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/permissions.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/root-env-defaults.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/step-id-generates-counter-per-collision.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty-and-considers-collisions.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/step-id.yml",
           "fixture:runner/src/Test/TestData/node16action.yml",
           "fixture:runner/src/Test/TestData/node20action.yml",
           "fixture:runner/src/Test/TestData/nodeaction.yml",
@@ -530,39 +464,23 @@
           "fixture:runner/src/Test/TestData/nodeaction_cleanup_default.yml",
           "fixture:runner/src/Test/TestData/nodeaction_init.yml",
           "fixture:runner/src/Test/TestData/nodeaction_init_default.yml",
-          "fixture:schemastore/src/test/github-workflow/1567.yaml",
-          "fixture:schemastore/src/test/github-workflow/919.yaml",
-          "fixture:schemastore/src/test/github-workflow/env-from-json.yaml",
-          "fixture:schemastore/src/test/github-workflow/issue_2463_file_1.yaml",
-          "fixture:schemastore/src/test/github-workflow/npm-publish.yaml",
-          "fixture:schemastore/src/test/github-workflow/parallel-steps.yaml",
-          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml",
-          "fixture:schemastore/src/test/github-workflow/runs-on-interpolated.yaml",
-          "fixture:schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml"
+          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml"
         ]
       }
     ]
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/reusable-workflow.yaml": "ac359e9c0bbc1f684dbcea50ff8e7c5eee080bcb3334495b589c1f2873807b9f"
+      "schemastore/src/test/github-workflow/reusable-workflow.yaml": "f873b81bd1c3ddb0db56cfe27d74fb6f20be99a5ef5cd9ef54182d5318def8fb"
     },
     "findings": [
       {
         "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Extra lifecycle checks: these historical fixtures remain parser-valid, while actionlint reports their deprecated or retired action runtimes.",
-        "evidence": [
-          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml"
-        ]
-      },
-      {
-        "category": "extra-lint",
         "scope": "diagnostic",
         "diagnostic_indices": [
-          1
+          0
         ],
-        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "rationale": "Actionlint reports that a templated value is inserted in a script position where it may change script syntax.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml",
           "source:internal/expression/script_interpolation.go",
@@ -618,13 +536,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/escape-html-values.yml": "eccc8757f0875dec792e3ffa57894523ad43da54aac05061a0d7df4154ddaa9b"
+      "languageservices/workflow-parser/testdata/reader/escape-html-values.yml": "8f4bbe011339197b6cd9a9009bcb0b704fd264eefc1c7a527107bf08b2c76962"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Extra lint checks: misleading and constant conditions, incompatible runner labels, and a placeholder runner label are accepted by this serialization fixture.",
+        "rationale": "The fixture exercises workflow serialization. Actionlint reports misleading or constant conditions and incompatible runner labels. The adapter supplies no repository runner inventory, so custom-label validity is unavailable.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/escape-html-values.yml"
         ]
@@ -633,28 +551,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-runs-on.yml": "d6caa575aaa1632a27dd302642aa32f7c74f8d0bda91a6e3c7fdd2c421d7a506"
+      "languageservices/workflow-parser/testdata/reader/concurrency.yml": "335ccd036c6f90da68b6236f09edc14096ff9ba0990689092f7cb535a37a152f"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Extra lint checks: the fixture uses arbitrary runner labels without configuring them as self-hosted labels.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/job-runs-on.yml"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/concurrency.yml": "805286c21355c540a52156e8a7b0afb720a091573e8cd851a82af4551101657c"
-    },
-    "findings": [
-      {
-        "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Extra lint checks: the reader accepts incomplete jobs and string coercion in cancel-in-progress; actionlint requires steps and a boolean expression. A retired action is also reported.",
+        "rationale": "The fixture contains incomplete jobs and string coercion in cancel-in-progress; actionlint reports these independently. The adapter does not provide remote action metadata, so action lifecycle findings are unavailable.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/concurrency.yml"
         ]
@@ -718,16 +621,18 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "2287fa3c0e9d2de18326444354431f13a1f114a589080700af8a66bf1f05dfc6"
+      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "1f266104a829ff2bfd74644e63a74e87c7ae67871abda72371430f17e58c8505"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Mixed reader differences: missing steps, undefined matrix and step properties, numeric expression type checks, and github.event.number on a push trigger. The pinned OpenAPI push payload has no number member. The reader accepts the expression syntactically; the payload finding is additional lint feedback, not a claim that GitHub rejects the workflow.",
+        "rationale": "Additional lint over the pinned reader conversion: empty-job warnings, undefined matrix and step references, a string-valued timeout expression, and github.event.number on a push trigger. The pinned OpenAPI push payload has no number member. These findings do not establish that GitHub rejects the workflow.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/misc-jobs.yml",
-          "internal/webhook/payload/catalogue.json (@octokit/openapi-webhooks-types 12.2.0, push)"
+          "internal/webhook/payload/catalogue.json (@octokit/openapi-webhooks, revision 592754e9bee3fab1f3c11f51bcde825eb2d19112, push)",
+          "source:internal/workflow/checks/shape.go",
+          "source:internal/workflow/expressions/fields.go"
         ]
       }
     ]
@@ -764,28 +669,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-basic.yml": "e8c602fc9dc272abd4498ffbb478444adc016bd45c8d0cc7734562b9f54fe5ec"
+      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "391be2fbacd48a2573e4ade293a42b63958cf5535afedd52291f8b85b0f653b6"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Reader versus lint policy: this fixture uses the retired windows-2019 runner label.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/job-basic.yml"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "9195162d4974d9a199e47ece1866eb3122f7be3034114baab6a93f728fb9b366"
-    },
-    "findings": [
-      {
-        "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Reader fixture versus lint checks: combined include/exclude filters, retired events, one-minute schedules, and required inputs with defaults produce additional diagnostics.",
+        "rationale": "The fixture combines include/exclude filters, obsolete webhook event names, one-minute schedules, and required inputs with defaults; actionlint reports these additional event findings.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-all.yml"
         ]
@@ -926,13 +816,14 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "b0f2119a90ba8e3aff5b92ac20a72c4b27fc17b9d6b4778841d5b72a8f79164c"
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "d4fae5fbf4751900a147ec5836d0ad7a766d1b4a26ccf964ff2e8cb5923ed1e3"
     },
     "findings": [
       {
         "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, deprecated-commands, runner-label). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "scope": "diagnostic",
+        "diagnostic_indices": [0, 1, 2, 3, 5, 7, 8, 10, 12, 14, 15, 21],
+        "rationale": "Actionlint reports deprecated set-output workflow commands independently of SchemaStore's labels. Remote action and runner-label checks are unavailable without metadata and inventory.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml"
         ]
@@ -941,25 +832,25 @@
         "category": "extra-lint",
         "scope": "diagnostic",
         "diagnostic_indices": [
-          8,
+          6,
+          9,
           11,
           13,
-          15,
+          16,
+          17,
+          18,
+          19,
           20,
-          21,
           22,
           23,
           24,
-          34,
-          35,
-          36,
-          37,
-          43,
-          44,
-          45,
-          46
+          25,
+          26,
+          27,
+          28,
+          29
         ],
-        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "rationale": "Actionlint reports that templated values are inserted in script positions where they may change script syntax.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml",
           "source:internal/expression/script_interpolation.go",
@@ -970,9 +861,9 @@
         "category": "extra-lint",
         "scope": "diagnostic",
         "diagnostic_indices": [
-          6
+          4
         ],
-        "rationale": "The hashFiles result is inserted into a Python string. Bounded shell-word syntax does not prove a safe position in Python; the reference schema validates template syntax only.",
+        "rationale": "Actionlint reports that templated values are inserted in script positions where they may change script syntax.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml",
           "source:internal/expression/script_interpolation.go",
@@ -983,14 +874,14 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/918.yaml": "0d3a8368867a04bafed17027fe3222e00620698acda2b122b12fa28ed196f7fc",
-      "schemastore/src/test/github-workflow/event-trigger.yaml": "8c88d689a047c92433f5f0eaac6f2aa324f9e571a40845383b1d5e638548f6e2"
+      "schemastore/src/test/github-workflow/918.yaml": "13448d3a483d2a433919815a50823c7fcf197dc23266db4b4964312748fccd2f",
+      "schemastore/src/test/github-workflow/event-trigger.yaml": "ad484ae81c870776f8d69242a83385d0531b9aa234ac71aa26a6f955fb4fc487"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, events). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "These fixtures exercise actionlint event checks, including the unsupported create-event tags filter and one-minute schedules. The adapter does not provide remote action metadata, so action lifecycle findings are unavailable.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/918.yaml",
           "fixture:schemastore/src/test/github-workflow/event-trigger.yaml"
@@ -1000,16 +891,16 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "770b6c8b3d4eeeb45eb717d05f0951e71f9296578535a5885c24ee812a477053",
-      "schemastore/src/test/github-workflow/matrix_include.yaml": "c61a9fc39c31e964aff3d76a12c56c19e4ad1a6826589e3b1f14fec88b4af747",
-      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "46cc13bfb6791a20ee7198190f1fc731b9af63f098d0d158e7e4fc48001d9e1e",
-      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "a47d268395151901297d0248aefa84059991b9ba5295572d02820a7eb9b4a0a0"
+      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "632a76ca12324ed200aca5950506d6947a092153430199e13a40df4ea3abda87",
+      "schemastore/src/test/github-workflow/matrix_include.yaml": "5c6df079dd9312b2d2929dbf3f0c3f9fc56c0043d3968816680022ab451039d5",
+      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "c70b3c97b17ba720ba36c800afd92a37b4ec9e222457429d1d60af306c757baf",
+      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "21e2eaf8a4991de0416e062d38556399d60c95f22c2572982e85b9c0785cb0e5"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, expression). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "These fixtures contain expression references absent from the local matrix, needs, or inputs contexts; actionlint reports the undefined references. The adapter does not provide remote action metadata, so action lifecycle findings are unavailable.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/matrix_from_json.yaml",
           "fixture:schemastore/src/test/github-workflow/matrix_include.yaml",
@@ -1021,13 +912,13 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/conditions.yaml": "dbf13513fcf155d17ccbf960d98bf3388c0b6085624edc8cedead4c25d56e2ff"
+      "schemastore/src/test/github-workflow/conditions.yaml": "2dc5c5038aa385e7f28fed39316e146c24df490876bbd5b076188c1adbc5c559"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, if-cond). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Actionlint reports constant-condition findings. The adapter does not provide remote action metadata, so action lifecycle findings are unavailable.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/conditions.yaml"
         ]
@@ -1036,43 +927,14 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/2579-1.yaml": "249e961b77eea4892234c966065fe3cdd2129a945b40acb18f0a68d4d60977d1"
+      "schemastore/src/test/github-workflow/runs-on.yaml": "b1abbff6b1bab3883c32ab530512c9b484430833a25901083d67b9f37994a84c"
     },
     "findings": [
       {
         "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, runner-label). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
-        "evidence": [
-          "fixture:schemastore/src/test/github-workflow/2579-1.yaml"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "schemastore/src/test/github-workflow/with-from-json.yaml": "49604d10291ecb39ed76b4727a0a93993bbb9446c3fb401337fd24d5dcdbe7d6"
-    },
-    "findings": [
-      {
-        "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Schema versus lint policy: the fixture uses retired actions/checkout@v1 and actions/setup-node@v1 runtimes; its dynamic with mapping is supported.",
-        "evidence": [
-          "fixture:schemastore/src/test/github-workflow/with-from-json.yaml"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "schemastore/src/test/github-workflow/runs-on.yaml": "8c33c733842fb6b5095a7126dc634c555b0a2d1ef05648eced1397e0a695d51b"
-    },
-    "findings": [
-      {
-        "category": "extra-lint",
-        "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, runner-label). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "scope": "diagnostic",
+        "diagnostic_indices": [0, 1],
+        "rationale": "Actionlint reports one-minute schedules independently of SchemaStore's labels. Runner-label validity is unavailable without a repository inventory.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/runs-on.yaml"
         ]
@@ -1081,22 +943,22 @@
         "category": "extra-lint",
         "scope": "diagnostic",
         "diagnostic_indices": [
+          2,
           3,
+          4,
           5,
+          6,
           7,
+          8,
           9,
           10,
           11,
           12,
+          13,
           14,
-          17,
-          18,
-          19,
-          20,
-          24,
-          27
+          15
         ],
-        "rationale": "PowerShell and unresolved runner shells have no shell-word position proof. This includes retired labels whose selected runner provider supplies no shell; their spelling cannot establish Bash semantics. The extra diagnostics record that analysis boundary for runner.os substitutions, independently of runner-label validation.",
+        "rationale": "These script-interpolation findings target shell positions where expressions can change script syntax. PowerShell and unresolved shell assignments have no shell-word position proof; the conformance adapter supplies no repository runner snapshot.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/runs-on.yaml",
           "source:internal/expression/script_interpolation.go",
@@ -1108,15 +970,19 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/on-event_name-null.yaml": "337c9ca50343b0afcce9d42684fd708bc48a86fd9166e0a0fbe1159303c7c1c7"
+      "schemastore/src/test/github-workflow/on-event_name-null.yaml": "75766c5968397ba50ef8b1008451e99f565d6f4f0bda4989ffabe1e13506051c"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, syntax-check). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "Actionlint's supported trigger catalogue excludes project, project_card and project_column; the fixture also declares workflow_run without workflows and an empty run script. These are event-validation findings and an empty-run warning. The corpus acceptance label establishes no GitHub service behavior.",
         "evidence": [
-          "fixture:schemastore/src/test/github-workflow/on-event_name-null.yaml"
+          "fixture:schemastore/src/test/github-workflow/on-event_name-null.yaml",
+          "source:internal/webhook/webhooks.gen.go",
+          "source:internal/webhook/generate/sources/manifest.json",
+          "source:internal/workflow/checks/events.go",
+          "source:internal/workflow/checks/shape.go"
         ]
       }
     ]
@@ -1166,14 +1032,14 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/2579-2.yaml": "d104707fbe32fbd5f39be817438005aeed16f3c41eeb659fed763ab44941c724",
-      "schemastore/src/test/github-workflow/issue-3208.yaml": "f1e2662048f787402dc47fd5ee1cb3006eb0cf83f21ba1dfb5c1bf2e58f96810"
+      "schemastore/src/test/github-workflow/2579-2.yaml": "0b910d43f9fc01c9d9acf90ce92ffdd03729db37bd84dd360f8758ca5df7ffe4",
+      "schemastore/src/test/github-workflow/issue-3208.yaml": "42afae34e6126b1bee7d74eefd986da57fbdbf64b22fa52c3c324c44822b5624"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (runner-label, syntax-check). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "These fixtures contain empty jobs reported by actionlint. Runner-label validation is unavailable because the adapter supplies no repository inventory.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/2579-2.yaml",
           "fixture:schemastore/src/test/github-workflow/issue-3208.yaml"
@@ -1183,23 +1049,24 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/1162.yaml": "7f43eb300f2338decc3feff7d698151756be81fdb736570a2fb7ba11a171396f",
-      "schemastore/src/test/github-workflow/concurrency.yaml": "32359054ba4d294d51bbb00662732f8ef3b80482fc33d25d155384b849182e86",
-      "schemastore/src/test/github-workflow/containers.yaml": "269278f96d77601e8011e8d4e8ee77897dbd78f67e1448715037d6bc72b9feb7",
-      "schemastore/src/test/github-workflow/environments.yaml": "26571434a419e8b5a84811e7de253583504923ded4196b428bbc2373838e7570",
-      "schemastore/src/test/github-workflow/fail-fast.yaml": "da49c7bbfd214eb7b423f870a45479692f11ff3cebd8c284856ddf8c7f8dc5ec"
+      "schemastore/src/test/github-workflow/1162.yaml": "f76ffb295efa24e5b426571115e79339e286c2f0c08bf91660971e0186ca2f98",
+      "schemastore/src/test/github-workflow/concurrency.yaml": "35a783fd43bf936e6f733f5e06127665618b9a2ed61b743333a4d48f7e301a01",
+      "schemastore/src/test/github-workflow/containers.yaml": "4b60f579ac898096acb490b418296d877c9810b57bd4338f48b0183a25c7c3fd",
+      "schemastore/src/test/github-workflow/environments.yaml": "b2cb663ef5c8b3160319cb18111aa45124f32e7677f8b3ce95e0e03f52c238f0",
+      "schemastore/src/test/github-workflow/fail-fast.yaml": "6ea03431de2bbca9b2892f1f6a9084659b326414525f24f7bce11ce542be8c66"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (syntax-check). The exact diagnostics are recorded for review; schema acceptance alone does not establish runtime validity.",
+        "rationale": "These corpus fixtures contain jobs without steps or reusable-workflow calls; concurrency.yaml also contains an empty run script. The observations are actionlint's advisory empty-job and empty-run checks. The corpus acceptance labels establish no GitHub service behavior.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/1162.yaml",
           "fixture:schemastore/src/test/github-workflow/concurrency.yaml",
           "fixture:schemastore/src/test/github-workflow/containers.yaml",
           "fixture:schemastore/src/test/github-workflow/environments.yaml",
-          "fixture:schemastore/src/test/github-workflow/fail-fast.yaml"
+          "fixture:schemastore/src/test/github-workflow/fail-fast.yaml",
+          "source:internal/workflow/checks/shape.go"
         ]
       }
     ]
@@ -2194,6 +2061,41 @@
           "fixture:languageservices/workflow-parser/testdata/reader/job-strategy.yml",
           "source:internal/expression/script_interpolation.go",
           "source:internal/workflow/expressions/script_values.go"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-matrix-max-depth.yml": "8f111542f055201e0f843d9e3a2d6f2e99ddefaf105554e23593ff24894fe5b3"
+    },
+    "findings": [
+      {
+        "category": "unassessed",
+        "scope": "feature",
+        "rationale": "The shared fixture expects a structural depth error, while actionlint accepts the nested matrix. The pinned runner SDK defaults to a maximum element depth of 50, but its parser budget has not been established as actionlint's intended validation contract. This records the comparison without claiming hosted GitHub validity or a type-accuracy result.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/errors-matrix-max-depth.yml",
+          "https://github.com/actions/runner/blob/1ba885c2065fd9be317808ab3fd406f392635cf7/src/Sdk/WorkflowParser/ParseOptions.cs",
+          "https://github.com/actions/runner/blob/1ba885c2065fd9be317808ab3fd406f392635cf7/src/Sdk/WorkflowParser/ObjectTemplating/TemplateMemory.cs"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "schemastore/src/negative_test/github-workflow/workflow_dispatch-inputs-bool-default-.yaml": "ae6f8cb41ba56d03cc04e69a086371e61f4bf2da307c580653e583035e22e6fd",
+      "schemastore/src/negative_test/github-workflow/workflow_dispatch-inputs-string-default-bool.yaml": "11fa255fc548b77b2493f85db6e5a84fdaf0e00a04db79b1a2d8ed60c30b376c"
+    },
+    "findings": [
+      {
+        "category": "unassessed",
+        "scope": "feature",
+        "rationale": "SchemaStore rejects a quoted boolean default and a native boolean default on a string input. Those exploratory schema labels do not establish GitHub validity. The pinned language-services converter asserts different token types, but that editor implementation alone does not establish hosted acceptance either. Actionlint's existing behavior is retained until a reference that validates dispatch defaults establishes the intended contract.",
+        "evidence": [
+          "fixture:schemastore/src/negative_test/github-workflow/workflow_dispatch-inputs-bool-default-.yaml",
+          "fixture:schemastore/src/negative_test/github-workflow/workflow_dispatch-inputs-string-default-bool.yaml",
+          "https://github.com/actions/languageservices/blob/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5/workflow-parser/src/model/converter/workflow-dispatch.ts"
         ]
       }
     ]

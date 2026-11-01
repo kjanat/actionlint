@@ -40,7 +40,7 @@ func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
 			default:
 				t.Fatalf("unexpected endpoint %s", r.URL)
 			}
-			return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 		})})
 		if err != nil {
 			t.Fatal(err)
@@ -63,12 +63,12 @@ func TestMissingObjectNeverFallsBackToNamedTag(t *testing.T) {
 	requests := 0
 	client, err := New(Options{Mode: Online, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		requests++
-		status, body := 200, `{"id":42,"full_name":"example/action"}`
+		status, body := http.StatusOK, `{"id":42,"full_name":"example/action"}`
 		if r.URL.Path != "/repos/example/action" {
 			if r.URL.Path != "/repos/example/action/git/commits/"+sha {
 				t.Fatalf("object fallback: %s", r.URL)
 			}
-			status = 404
+			status = http.StatusNotFound
 			body = ""
 		}
 		return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
@@ -87,7 +87,7 @@ func TestManifestFallbackLimitAndIdentityGuard(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			repoReads := 0
 			client, err := New(Options{Mode: Online, Transport: transport(func(r *http.Request) (*http.Response, error) {
-				status, body := 200, actionSource
+				status, body := http.StatusOK, actionSource
 				switch r.URL.Path {
 				case "/repos/example/action":
 					repoReads++
@@ -98,9 +98,10 @@ func TestManifestFallbackLimitAndIdentityGuard(t *testing.T) {
 				case "/repos/example/action/git/commits/" + sha:
 					body = `{"sha":"` + sha + `"}`
 				case "/repos/example/action/contents/action.yml":
-					if scenario == "yaml" {
-						status = 404
-					} else if scenario == "oversized" {
+					switch scenario {
+					case "yaml":
+						status = http.StatusNotFound
+					case "oversized":
 						body = strings.Repeat("x", maxBody+1)
 					}
 				case "/repos/example/action/contents/action.yaml":

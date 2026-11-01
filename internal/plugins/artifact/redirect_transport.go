@@ -21,15 +21,15 @@ func acquisitionError(err error) error {
 		return err
 	}
 	switch failure {
-	case acquisitionhttp.PrivateDestination:
+	case acquisitionhttp.ErrPrivateDestination:
 		return errRedirectAddress
-	case acquisitionhttp.UnsupportedTransport:
+	case acquisitionhttp.ErrUnsupportedTransport:
 		return errRedirectTransport
-	case acquisitionhttp.UnsupportedProxy:
+	case acquisitionhttp.ErrUnsupportedProxy:
 		return errRedirectProxy
-	case acquisitionhttp.DNSFailed:
+	case acquisitionhttp.ErrDNSFailed:
 		return errRedirectDNS
-	case acquisitionhttp.InvalidEndpoint, acquisitionhttp.ConnectionFailed:
+	case acquisitionhttp.ErrInvalidEndpoint, acquisitionhttp.ErrConnectionFailed:
 		return failure
 	}
 	return failure

@@ -18,10 +18,7 @@ type ruleRequireActionMetadata struct {
 	ctx    context.Context
 }
 
-func newRuleRequireActionMetadata(remote *actionremote.Service, ctx context.Context) *ruleRequireActionMetadata {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+func newRuleRequireActionMetadata(ctx context.Context, remote *actionremote.Service) *ruleRequireActionMetadata {
 	return &ruleRequireActionMetadata{Base: builtinRuleBase("require-action-metadata"), remote: remote, ctx: ctx}
 }
 

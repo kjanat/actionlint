@@ -67,13 +67,13 @@ func TestDownloadExplicitGrantPreservesInitialAndConfinesRedirect(t *testing.T) 
 }
 
 func TestAcquisitionErrorClassifications(t *testing.T) {
-	for failure, expected := range map[acquisitionhttp.Failure]error{
-		acquisitionhttp.InvalidEndpoint:      acquisitionhttp.InvalidEndpoint,
-		acquisitionhttp.ConnectionFailed:     acquisitionhttp.ConnectionFailed,
-		acquisitionhttp.PrivateDestination:   errRedirectAddress,
-		acquisitionhttp.UnsupportedTransport: errRedirectTransport,
-		acquisitionhttp.UnsupportedProxy:     errRedirectProxy,
-		acquisitionhttp.DNSFailed:            errRedirectDNS,
+	for failure, expected := range map[acquisitionhttp.PolicyError]error{
+		acquisitionhttp.ErrInvalidEndpoint:      acquisitionhttp.ErrInvalidEndpoint,
+		acquisitionhttp.ErrConnectionFailed:     acquisitionhttp.ErrConnectionFailed,
+		acquisitionhttp.ErrPrivateDestination:   errRedirectAddress,
+		acquisitionhttp.ErrUnsupportedTransport: errRedirectTransport,
+		acquisitionhttp.ErrUnsupportedProxy:     errRedirectProxy,
+		acquisitionhttp.ErrDNSFailed:            errRedirectDNS,
 	} {
 		wrapped := &url.Error{Op: "Get", URL: "https://example.org/?signed=secret", Err: failure}
 		if err := acquisitionError(wrapped); !errors.Is(err, expected) || strings.Contains(err.Error(), "secret") {

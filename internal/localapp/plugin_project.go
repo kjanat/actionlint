@@ -284,13 +284,14 @@ func (p *PluginProject) checkConfiguredRelease(ctx context.Context, pin pluginre
 		}
 		client.StatusOptions = p.StatusOptions
 		var previous pluginregistry.Pin
-		if configured.CandidateDigest() != "" {
+		switch {
+		case configured.CandidateDigest() != "":
 			previous, err = client.LookupCandidate(ctx, configured.Name(), configured.Version(), configured.CandidateDigest())
-		} else if strings.HasPrefix(configured.Registry(), "file:") {
+		case strings.HasPrefix(configured.Registry(), "file:"):
 			// A new candidate declaration has no previous release evidence to
 			// compare. Its bytes are verified during installation and then pinned.
 			continue
-		} else {
+		default:
 			previous, err = client.Lookup(ctx, configured.Name(), configured.Version())
 		}
 		if err != nil {

@@ -12,7 +12,7 @@ func (t *transport) publicAddresses(ctx context.Context, host string) ([]netip.A
 		addresses = append(addresses, ip)
 	} else {
 		if t.lookup == nil {
-			return nil, DNSFailed
+			return nil, ErrDNSFailed
 		}
 		resolved, err := t.lookup(ctx, "ip", host)
 		if err != nil {
@@ -25,7 +25,7 @@ func (t *transport) publicAddresses(ctx context.Context, host string) ([]netip.A
 			if errors.Is(err, context.DeadlineExceeded) {
 				return nil, context.DeadlineExceeded
 			}
-			return nil, DNSFailed
+			return nil, ErrDNSFailed
 		}
 		addresses = append(addresses, resolved...)
 	}
@@ -33,12 +33,12 @@ func (t *transport) publicAddresses(ctx context.Context, host string) ([]netip.A
 		return nil, err
 	}
 	if len(addresses) == 0 || len(addresses) > 64 {
-		return nil, PrivateDestination
+		return nil, ErrPrivateDestination
 	}
 	for i, ip := range addresses {
 		ip = ip.Unmap()
 		if !publicAddress(ip) {
-			return nil, PrivateDestination
+			return nil, ErrPrivateDestination
 		}
 		addresses[i] = ip
 	}

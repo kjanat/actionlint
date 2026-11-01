@@ -79,6 +79,18 @@ func TestUnavailableMetadataAndCancellation(t *testing.T) {
 	}
 }
 
+func TestProviderFailureCannotHideAnalysisCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
+		cancel()
+		return actions.Manifest{}, errors.New("network unavailable")
+	}))
+	if _, err := service.Inspect(ctx, "example/action@v1"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("provider failure hid analysis cancellation: %v", err)
+	}
+}
+
 func TestImmutableIdentityCannotChangeContent(t *testing.T) {
 	for _, initial := range []string{source, "name: ["} {
 		calls := 0

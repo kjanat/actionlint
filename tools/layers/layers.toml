@@ -482,7 +482,7 @@ tests    = ["source"]
 name     = "action-acquisition"
 doc      = "Explicit host acquisition of remote action manifests. Network access and the immutable source cache stay outside semantic analysis."
 packages = ["internal/actionhost"]
-allow    = ["repository-contracts", "contract-leaves"]
+allow    = ["repository-contracts", "contract-leaves", "leaves"]
 deny-std = ["os/exec"]
 
 [[layer]]

@@ -45,28 +45,28 @@ func New(provider actions.Provider) *Service {
 type pendingLookup struct {
 	ready   chan struct{}
 	result  Result
-	failure lookupFailure
+	failure lookupError
 }
 
 // Shared acquisition publishes immutable error data, never a retained error
 // interface through which callers could reach request-owned state.
-type lookupFailure struct {
+type lookupError struct {
 	message                     string
 	present, canceled, deadline bool
 }
 
-func failureOf(err error) lookupFailure {
+func failureOf(err error) lookupError {
 	if err == nil {
-		return lookupFailure{}
+		return lookupError{}
 	}
-	return lookupFailure{message: err.Error(), present: true, canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded)}
+	return lookupError{message: err.Error(), present: true, canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded)}
 }
-func (f lookupFailure) Error() string { return f.message }
-func (f lookupFailure) Is(target error) bool {
+func (f lookupError) Error() string { return f.message }
+func (f lookupError) Is(target error) bool {
 	return f.canceled && target == context.Canceled || f.deadline && target == context.DeadlineExceeded
 }
 
-func (f lookupFailure) err() error {
+func (f lookupError) err() error {
 	if !f.present {
 		return nil
 	}
@@ -96,7 +96,9 @@ func (s *Service) Inspect(ctx context.Context, spec string) (Result, error) {
 	}
 	reference, err := actions.ParseReference("github.com", spec)
 	if err != nil {
-		return Result{}, nil
+		// Syntax rules own malformed references; no metadata lookup is needed.
+		// Cancellation still belongs to this analysis, even on that path.
+		return Result{}, ctx.Err()
 	}
 	if s == nil {
 		return Result{availability: actions.MissingMetadata(knowledge.LookupDisabled())}, nil
@@ -149,7 +151,9 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Resul
 		if errors.Is(err, context.DeadlineExceeded) {
 			return Result{}, context.DeadlineExceeded
 		}
-		return Result{availability: actions.MissingMetadata(knowledge.Failed())}, nil
+		// Provider failures are metadata unavailability. Cancellation of the
+		// analysis remains fatal, including cancellation during that lookup.
+		return Result{availability: actions.MissingMetadata(knowledge.Failed())}, ctx.Err()
 	}
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
@@ -224,6 +228,8 @@ func reasonOf(reason knowledge.Reason) knowledge.Unavailability {
 		return knowledge.Inaccessible()
 	case knowledge.LimitReason:
 		return knowledge.Limit()
+	case knowledge.NotFetchedReason:
+		return knowledge.NotFetched()
 	default:
 		return knowledge.NotFetched()
 	}

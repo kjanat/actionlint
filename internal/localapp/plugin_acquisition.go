@@ -21,7 +21,7 @@ func explicitPluginSources(paths []string) (PluginSources, error) {
 	return sources, nil
 }
 
-func (s PluginSources) artifactOptions(source string) pluginartifact.Options {
+func (s *PluginSources) artifactOptions(source string) pluginartifact.Options {
 	options := artifactOptions()
 	options.Network = s.grants[source]
 	return options

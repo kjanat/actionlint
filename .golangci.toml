@@ -3074,7 +3074,7 @@ allow     = [
 
 # Layer action-acquisition: Explicit host acquisition of remote action manifests. Network access and
 # the immutable source cache stay outside semantic analysis.
-# Imports: itself, repository-contracts, contract-leaves.
+# Imports: itself, repository-contracts, contract-leaves, leaves.
 [linters.settings.depguard.rules.layer-action-acquisition]
 files     = [
   "**/internal/actionhost/*.go",
@@ -3086,6 +3086,18 @@ allow     = [
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/actionhost$",
+  "actionlint.kjanat.dev/v2/internal/buildinfo$",
+  "actionlint.kjanat.dev/v2/internal/config/address$",
+  "actionlint.kjanat.dev/v2/internal/expression/context$",
+  "actionlint.kjanat.dev/v2/internal/fsread$",
+  "actionlint.kjanat.dev/v2/internal/pluginref$",
+  "actionlint.kjanat.dev/v2/internal/schemapath$",
+  "actionlint.kjanat.dev/v2/internal/source/text$",
+  "actionlint.kjanat.dev/v2/internal/stringutil$",
+  "actionlint.kjanat.dev/v2/internal/webhook$",
+  "actionlint.kjanat.dev/v2/internal/webhook/payload$",
+  "actionlint.kjanat.dev/v2/internal/yaml/schema$",
+  "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
@@ -3105,6 +3117,18 @@ allow     = [
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/actionhost$",
+  "actionlint.kjanat.dev/v2/internal/buildinfo$",
+  "actionlint.kjanat.dev/v2/internal/config/address$",
+  "actionlint.kjanat.dev/v2/internal/expression/context$",
+  "actionlint.kjanat.dev/v2/internal/fsread$",
+  "actionlint.kjanat.dev/v2/internal/pluginref$",
+  "actionlint.kjanat.dev/v2/internal/schemapath$",
+  "actionlint.kjanat.dev/v2/internal/source/text$",
+  "actionlint.kjanat.dev/v2/internal/stringutil$",
+  "actionlint.kjanat.dev/v2/internal/webhook$",
+  "actionlint.kjanat.dev/v2/internal/webhook/payload$",
+  "actionlint.kjanat.dev/v2/internal/yaml/schema$",
+  "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",

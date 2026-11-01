@@ -40,12 +40,12 @@ func (g Grant) Allows(endpoint *url.URL) bool {
 
 func authorityOf(endpoint *url.URL) (authority, error) {
 	if endpoint == nil || endpoint.User != nil || endpoint.Opaque != "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Hostname() == "" {
-		return authority{}, InvalidEndpoint
+		return authority{}, ErrInvalidEndpoint
 	}
 	// Callers may construct url.URL directly; reject malformed authority
 	// syntax before Port can mistake an invalid explicit port for no port.
 	if _, err := url.Parse(endpoint.String()); err != nil {
-		return authority{}, InvalidEndpoint
+		return authority{}, ErrInvalidEndpoint
 	}
 	host := endpoint.Hostname()
 	if ip, err := netip.ParseAddr(host); err == nil {
@@ -53,7 +53,7 @@ func authorityOf(endpoint *url.URL) (authority, error) {
 	} else {
 		ascii, err := idna.Lookup.ToASCII(host)
 		if err != nil {
-			return authority{}, InvalidEndpoint
+			return authority{}, ErrInvalidEndpoint
 		}
 		// Preserve a trailing dot: an absolute DNS name must not grant the
 		// corresponding search-relative name access to private addresses.
@@ -68,7 +68,7 @@ func authorityOf(endpoint *url.URL) (authority, error) {
 	}
 	number, err := strconv.ParseUint(port, 10, 16)
 	if err != nil {
-		return authority{}, InvalidEndpoint
+		return authority{}, ErrInvalidEndpoint
 	}
 	return authority{scheme: endpoint.Scheme, host: host, port: strconv.FormatUint(number, 10)}, nil
 }
@@ -100,7 +100,7 @@ func newTransport(initial *url.URL, grant Grant, base http.RoundTripper, lookup 
 
 func (t *transport) RoundTrip(request *http.Request) (*http.Response, error) {
 	if request == nil {
-		return nil, InvalidEndpoint
+		return nil, ErrInvalidEndpoint
 	}
 	selected, err := authorityOf(request.URL)
 	if err != nil {
@@ -110,9 +110,9 @@ func (t *transport) RoundTrip(request *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	if t.base == nil {
-		return nil, UnsupportedTransport
+		return nil, ErrUnsupportedTransport
 	}
-	if selected == t.initial && selected == t.grant.endpoint {
+	if selected == t.initial && t.grant.Allows(request.URL) {
 		return t.base.RoundTrip(request)
 	}
 	var original *http.Transport
@@ -120,10 +120,7 @@ func (t *transport) RoundTrip(request *http.Request) (*http.Response, error) {
 	case *http.Transport:
 		original = base
 	default:
-		return nil, UnsupportedTransport
-	}
-	if original == nil || original.DialTLS != nil || original.DialTLSContext != nil || (original.DialContext == nil && original.Dial != nil) {
-		return nil, UnsupportedTransport
+		return nil, ErrUnsupportedTransport
 	}
 	prepared, checked, err := t.prepare(request, selected, original)
 	if err != nil {
@@ -142,28 +139,31 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 	if err := request.Context().Err(); err != nil {
 		return nil, nil, err
 	}
+	checked, err := ownedTransport(original)
+	if err != nil {
+		return nil, nil, err
+	}
 	var proxy *url.URL
-	if original.Proxy != nil {
-		chosen, err := original.Proxy(request)
+	if checked.Proxy != nil {
+		chosen, err := checked.Proxy(request)
 		if err != nil {
-			return nil, nil, UnsupportedProxy
+			return nil, nil, ErrUnsupportedProxy
 		}
 		if chosen != nil {
-			copy := *chosen
-			proxy = &copy
+			proxyValue := *chosen
+			proxy = &proxyValue
 		}
 	}
 	// HTTP forward proxies use Request.Host as their absolute-form target;
 	// HTTPS proxies share TLS configuration between proxy and target. Neither
 	// supports this numeric-target pinning while preserving TLS identity.
 	if proxy != nil && (proxy.Scheme != "http" || request.URL.Scheme != "https") {
-		return nil, nil, UnsupportedProxy
+		return nil, nil, ErrUnsupportedProxy
 	}
 	addresses, err := t.publicAddresses(request.Context(), selected.host)
 	if err != nil {
 		return nil, nil, err
 	}
-	checked := original.Clone()
 	checked.DisableKeepAlives = true
 	checked.Proxy = func(*http.Request) (*url.URL, error) { return proxy, nil }
 	if checked.TLSClientConfig == nil {
@@ -192,7 +192,7 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		return nil, ConnectionFailed
+		return nil, ErrConnectionFailed
 	}
 	cloned := request.Clone(request.Context())
 	cloned.URL.Host = net.JoinHostPort(addresses[0].String(), selected.port)
@@ -200,4 +200,43 @@ func (t *transport) prepare(request *http.Request, selected authority, original 
 		cloned.Host = request.URL.Host
 	}
 	return cloned, checked, nil
+}
+
+// ownedTransport imports only supported settings into a fresh request executor.
+// Clone is a configuration snapshot, never the executor: its native HTTP/2
+// bookkeeping distinguishes caller-supplied TLSNextProto from automatically
+// installed handlers, while preserving nil versus an explicitly empty map.
+// Deprecated dial hooks and registered protocol handlers are never inherited.
+func ownedTransport(original *http.Transport) (*http.Transport, error) {
+	if original == nil || original.DialTLSContext != nil {
+		return nil, ErrUnsupportedTransport
+	}
+	configuration := original.Clone()
+	if len(configuration.TLSNextProto) != 0 {
+		return nil, ErrUnsupportedTransport
+	}
+	return &http.Transport{
+		Proxy:                  configuration.Proxy,
+		OnProxyConnectResponse: configuration.OnProxyConnectResponse,
+		DialContext:            configuration.DialContext,
+		TLSClientConfig:        configuration.TLSClientConfig,
+		TLSHandshakeTimeout:    configuration.TLSHandshakeTimeout,
+		DisableKeepAlives:      configuration.DisableKeepAlives,
+		DisableCompression:     configuration.DisableCompression,
+		MaxIdleConns:           configuration.MaxIdleConns,
+		MaxIdleConnsPerHost:    configuration.MaxIdleConnsPerHost,
+		MaxConnsPerHost:        configuration.MaxConnsPerHost,
+		IdleConnTimeout:        configuration.IdleConnTimeout,
+		ResponseHeaderTimeout:  configuration.ResponseHeaderTimeout,
+		ExpectContinueTimeout:  configuration.ExpectContinueTimeout,
+		TLSNextProto:           configuration.TLSNextProto,
+		ProxyConnectHeader:     configuration.ProxyConnectHeader,
+		GetProxyConnectHeader:  configuration.GetProxyConnectHeader,
+		MaxResponseHeaderBytes: configuration.MaxResponseHeaderBytes,
+		WriteBufferSize:        configuration.WriteBufferSize,
+		ReadBufferSize:         configuration.ReadBufferSize,
+		ForceAttemptHTTP2:      configuration.ForceAttemptHTTP2,
+		HTTP2:                  configuration.HTTP2,
+		Protocols:              configuration.Protocols,
+	}, nil
 }

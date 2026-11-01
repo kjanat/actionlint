@@ -42,7 +42,7 @@ func TestDecodeErrorPreservesSentinelIdentity(t *testing.T) {
 	if err.Error() != "configuration decode: first line second line" {
 		t.Fatalf("multiline diagnostic not normalized: %q", err.Error())
 	}
-	if !errors.Is(err, sentinel) || errors.Unwrap(err) != cause {
+	if !errors.Is(err, sentinel) || !errors.Is(err, cause) {
 		t.Fatal("decoder cause identity lost")
 	}
 }

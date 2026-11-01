@@ -54,7 +54,7 @@ type behaviour struct {
 
 func ruleBehaviours() map[string]behaviour {
 	return map[string]behaviour{
-		"require-action-metadata": {Build: func(c Context) workflowvisit.Rule { return newRuleRequireActionMetadata(c.RemoteActions, c.Context) }, Enabled: func(c Context) bool {
+		"require-action-metadata": {Build: func(c Context) workflowvisit.Rule { return newRuleRequireActionMetadata(c.Context, c.RemoteActions) }, Enabled: func(c Context) bool {
 			return c.Config != nil && c.Config.Policy.RequireActionMetadata != nil && *c.Config.Policy.RequireActionMetadata
 		}},
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {

@@ -30,10 +30,10 @@ func TestAutomaticOCIInitialAndPinNeverDialPrivate(t *testing.T) {
 	}}
 	t.Cleanup(func() { http.DefaultTransport = previous })
 	source := "oci://127.0.0.1:8443/actionlint/provider@sha256:" + strings.Repeat("a", 64)
-	if _, err := artifact.Resolve(t.Context(), source, artifact.Options{PullOCI: Pull}); !errors.Is(err, acquisitionhttp.PrivateDestination) {
+	if _, err := artifact.Resolve(t.Context(), source, artifact.Options{PullOCI: Pull}); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
 		t.Fatalf("private automatic OCI pull: %v", err)
 	}
-	if _, err := Pin(t.Context(), "oci://127.0.0.1:8443/actionlint/provider:v1", artifact.Options{}); !errors.Is(err, acquisitionhttp.PrivateDestination) {
+	if _, err := Pin(t.Context(), "oci://127.0.0.1:8443/actionlint/provider:v1", artifact.Options{}); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
 		t.Fatalf("private automatic OCI tag resolution: %v", err)
 	}
 	if dials != 0 {
@@ -84,7 +84,7 @@ func TestOCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority(t *testing.T) 
 				}
 				err = fetchErr
 			}
-			if !errors.Is(err, acquisitionhttp.UnsupportedTransport) || calls != 1 {
+			if !errors.Is(err, acquisitionhttp.ErrUnsupportedTransport) || calls != 1 {
 				t.Fatalf("OCI %s escaped initial grant: %v calls=%d", mode, err, calls)
 			}
 		})

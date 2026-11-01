@@ -1,3 +1,4 @@
+// Package executor runs configured analyzer tools under host-owned limits.
 package executor
 
 import (

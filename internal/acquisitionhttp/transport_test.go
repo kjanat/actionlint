@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -61,6 +63,15 @@ func (f responseTransport) RoundTrip(request *http.Request) (*http.Response, err
 	return f(request)
 }
 
+func roundTripError(t *testing.T, transport http.RoundTripper, request *http.Request) error {
+	t.Helper()
+	response, err := transport.RoundTrip(request)
+	if response != nil && response.Body != nil {
+		_ = response.Body.Close()
+	}
+	return err
+}
+
 func TestGrantAuthority(t *testing.T) {
 	grant := grantFor(t, "https://bücher.example:443/private?token=secret")
 	for _, test := range []struct {
@@ -86,10 +97,10 @@ func TestGrantAuthority(t *testing.T) {
 		t.Fatal("IPv6 identity or zone changed")
 	}
 	for _, endpoint := range []*url.URL{nil, {Scheme: "file", Path: "/tmp/plugin"}, {Scheme: "https"}, {Scheme: "https", Host: "example.org", User: url.User("secret")}, {Scheme: "https", Host: "example.org:invalid"}, {Scheme: "https", Host: "example.org:65536"}} {
-		if _, err := ExplicitEndpoint(endpoint); !errors.Is(err, InvalidEndpoint) {
+		if _, err := ExplicitEndpoint(endpoint); !errors.Is(err, ErrInvalidEndpoint) {
 			t.Fatalf("invalid grant endpoint: %v", err)
 		}
-		if _, err := Transport(endpoint, Grant{}); !errors.Is(err, InvalidEndpoint) {
+		if _, err := Transport(endpoint, Grant{}); !errors.Is(err, ErrInvalidEndpoint) {
 			t.Fatalf("invalid transport endpoint: %v", err)
 		}
 	}
@@ -104,14 +115,14 @@ func TestAutomaticPrivateDestinationsNeverDial(t *testing.T) {
 		t.Run(address, func(t *testing.T) {
 			for _, target := range []string{"https://" + net.JoinHostPort(address, "443") + "/plugin", "https://configured.example/plugin"} {
 				checked := transportFor(t, target, Grant{}, base, fixedLookup(address))
-				if _, err := checked.RoundTrip(requestFor(t, target)); !errors.Is(err, PrivateDestination) {
+				if err := roundTripError(t, checked, requestFor(t, target)); !errors.Is(err, ErrPrivateDestination) {
 					t.Fatalf("private initial destination accepted: %v", err)
 				}
 			}
 		})
 	}
 	checked := transportFor(t, "https://configured.example/", Grant{}, base, fixedLookup("8.8.8.8", "10.0.0.1"))
-	if _, err := checked.RoundTrip(requestFor(t, "https://configured.example/plugin")); !errors.Is(err, PrivateDestination) {
+	if err := roundTripError(t, checked, requestFor(t, "https://configured.example/plugin")); !errors.Is(err, ErrPrivateDestination) {
 		t.Fatalf("mixed DNS answers accepted: %v", err)
 	}
 	for _, address := range []string{"8.8.8.8", "1.1.1.1", "2606:4700:4700::1111", "2001:4860:4860::8888", "::ffff:8.8.8.8"} {
@@ -141,12 +152,12 @@ func TestExplicitInitialPreservesOpaqueTransport(t *testing.T) {
 		t.Fatal("explicit endpoint never reached host transport")
 	}
 	for _, target := range []string{"https://other.example/plugin", "https://[::1]:9443/plugin", "http://[::1]:8443/plugin"} {
-		if _, err := checked.RoundTrip(requestFor(t, target)); !errors.Is(err, UnsupportedTransport) {
+		if err := roundTripError(t, checked, requestFor(t, target)); !errors.Is(err, ErrUnsupportedTransport) {
 			t.Fatalf("opaque transport accepted different authority: %v", err)
 		}
 	}
 	checked = transportFor(t, request.URL.String(), Grant{}, base, fixedLookup("8.8.8.8"))
-	if _, err := checked.RoundTrip(request); !errors.Is(err, UnsupportedTransport) {
+	if err := roundTripError(t, checked, request); !errors.Is(err, ErrUnsupportedTransport) {
 		t.Fatalf("automatic opaque transport bypassed pinning: %v", err)
 	}
 }
@@ -160,12 +171,12 @@ func TestExplicitGrantNeverAuthorizesOtherInitialOrRedirectAuthority(t *testing.
 	grant := grantFor(t, initial)
 	checked := transportFor(t, initial, grant, base, fixedLookup("10.0.0.1"))
 	for _, target := range []string{"https://other.example/plugin", "https://origin.example:9443/plugin", "http://origin.example:8443/plugin", "https://origin.example.:8443/plugin"} {
-		if _, err := checked.RoundTrip(requestFor(t, target)); !errors.Is(err, PrivateDestination) {
+		if err := roundTripError(t, checked, requestFor(t, target)); !errors.Is(err, ErrPrivateDestination) {
 			t.Fatalf("private redirect accepted: %s: %v", target, err)
 		}
 	}
 	checked = transportFor(t, "https://other.example/", grant, base, fixedLookup("10.0.0.1"))
-	if _, err := checked.RoundTrip(requestFor(t, initial)); !errors.Is(err, PrivateDestination) {
+	if err := roundTripError(t, checked, requestFor(t, initial)); !errors.Is(err, ErrPrivateDestination) {
 		t.Fatalf("grant for different initial acquisition leaked: %v", err)
 	}
 }
@@ -244,7 +255,7 @@ func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
 	if err != nil || next.Host != "bücher.example" {
 		t.Fatalf("relative redirect base changed: %v %v", next, err)
 	}
-	if _, err := checked.RoundTrip(requestFor(t, next.String())); !errors.Is(err, PrivateDestination) || len(dialed) != 2 || lookups != 2 {
+	if err := roundTripError(t, checked, requestFor(t, next.String())); !errors.Is(err, ErrPrivateDestination) || len(dialed) != 2 || lookups != 2 {
 		t.Fatalf("same-authority DNS rebinding accepted: %v, dials=%v lookups=%d", err, dialed, lookups)
 	}
 }
@@ -272,7 +283,7 @@ func TestHTTPProxyPinsCONNECTAndTLSIdentity(t *testing.T) {
 	}
 	checked := transportFor(t, "https://cdn.example/plugin", Grant{}, base, fixedLookup("8.8.8.8"))
 	request := requestFor(t, "https://cdn.example/plugin")
-	if _, err := checked.RoundTrip(request); err == nil {
+	if err := roundTripError(t, checked, request); err == nil {
 		t.Fatal("scripted peer unexpectedly completed TLS")
 	}
 	written := connection.written()
@@ -312,7 +323,7 @@ func TestProxyPolicyAndOriginalURLSelection(t *testing.T) {
 			t.Fatal(err)
 		}
 		checked := transportFor(t, test.target, Grant{}, &http.Transport{Proxy: http.ProxyURL(proxyURL)}, fixedLookup("8.8.8.8"))
-		if _, err := checked.RoundTrip(requestFor(t, test.target)); !errors.Is(err, UnsupportedProxy) {
+		if err := roundTripError(t, checked, requestFor(t, test.target)); !errors.Is(err, ErrUnsupportedProxy) {
 			t.Fatalf("unsupported proxy accepted: %v", err)
 		}
 	}
@@ -322,9 +333,9 @@ func TestFailuresAndCancellation(t *testing.T) {
 	checked := transportFor(t, "https://configured.example/plugin", Grant{}, &http.Transport{}, func(context.Context, string, string) ([]netip.Addr, error) {
 		return nil, errors.New("lookup https://configured.example/?signed=secret")
 	})
-	_, err := checked.RoundTrip(requestFor(t, "https://configured.example/plugin"))
+	err := roundTripError(t, checked, requestFor(t, "https://configured.example/plugin"))
 	failure, found := Classify(&url.Error{Op: "Get", URL: "https://configured.example/?signed=secret", Err: err})
-	if !found || failure != DNSFailed || strings.Contains(err.Error(), "secret") {
+	if !found || failure != ErrDNSFailed || strings.Contains(err.Error(), "secret") {
 		t.Fatalf("DNS failure classification leaked details: %v %v", failure, err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
@@ -336,10 +347,166 @@ func TestFailuresAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checked.RoundTrip(request); !errors.Is(err, context.Canceled) {
+	if err := roundTripError(t, checked, request); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation lost: %v", err)
 	}
 	if _, found := Classify(context.Canceled); found {
 		t.Fatal("context cancellation classified as policy failure")
+	}
+}
+
+func TestOwnedTransportRejectsCustomTLSAndProtocolHandlersBeforeDial(t *testing.T) {
+	for _, kind := range []string{"TLS dialer", "protocol handler"} {
+		t.Run(kind, func(t *testing.T) {
+			base := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+				t.Error("unsupported transport reached dialer")
+				return nil, ErrConnectionFailed
+			}}
+			if kind == "TLS dialer" {
+				base.DialTLSContext = func(context.Context, string, string) (net.Conn, error) {
+					t.Error("custom TLS dialer executed")
+					return nil, ErrConnectionFailed
+				}
+			} else {
+				base.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{
+					"h2": func(string, *tls.Conn) http.RoundTripper {
+						t.Error("custom protocol handler executed")
+						return responseTransport(func(*http.Request) (*http.Response, error) { return nil, ErrConnectionFailed })
+					},
+				}
+			}
+			checked := transportFor(t, "https://cdn.example/plugin", Grant{}, base, func(context.Context, string, string) ([]netip.Addr, error) {
+				t.Error("unsupported transport reached DNS")
+				return nil, ErrDNSFailed
+			})
+			if err := roundTripError(t, checked, requestFor(t, "https://cdn.example/plugin")); !errors.Is(err, ErrUnsupportedTransport) {
+				t.Fatalf("unsupported configuration accepted: %v", err)
+			}
+		})
+	}
+}
+
+func TestOwnedTransportPreservesDetachedSupportedSettings(t *testing.T) {
+	proxyURL, err := url.Parse("http://operator:credential@proxy.example:8080")
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	sessions := tls.NewLRUClientSessionCache(4)
+	callbacks := 0
+	protocols := &http.Protocols{}
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+	base := &http.Transport{
+		Proxy:                  func(*http.Request) (*url.URL, error) { callbacks++; return proxyURL, nil },
+		OnProxyConnectResponse: func(context.Context, *url.URL, *http.Request, *http.Response) error { callbacks++; return nil },
+		TLSClientConfig: &tls.Config{
+			ServerName: "caller-config", RootCAs: roots, ClientSessionCache: sessions,
+			Certificates:     []tls.Certificate{{Certificate: [][]byte{{1, 2, 3}}}},
+			VerifyConnection: func(tls.ConnectionState) error { callbacks++; return nil },
+		},
+		TLSHandshakeTimeout:   3 * time.Second,
+		ResponseHeaderTimeout: 4 * time.Second,
+		ExpectContinueTimeout: 5 * time.Second,
+		IdleConnTimeout:       6 * time.Second,
+		DisableCompression:    true,
+		MaxIdleConns:          7, MaxIdleConnsPerHost: 8, MaxConnsPerHost: 9,
+		MaxResponseHeaderBytes: 1024, WriteBufferSize: 2048, ReadBufferSize: 4096,
+		ProxyConnectHeader: http.Header{"X-Fixture": []string{"original"}},
+		GetProxyConnectHeader: func(context.Context, *url.URL, string) (http.Header, error) {
+			callbacks++
+			return http.Header{"X-Dynamic": []string{"preserved"}}, nil
+		},
+		ForceAttemptHTTP2: true,
+		HTTP2:             &http.HTTP2Config{MaxReadFrameSize: 65536},
+		Protocols:         protocols,
+	}
+	owned, err := ownedTransport(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if callbacks != 0 {
+		t.Fatal("configuration snapshot executed caller callbacks")
+	}
+	if owned == base || owned.TLSClientConfig == base.TLSClientConfig || owned.HTTP2 == base.HTTP2 || owned.Protocols == base.Protocols {
+		t.Fatal("owned transport retained mutable configuration containers")
+	}
+	if owned.TLSClientConfig.RootCAs != roots || owned.TLSClientConfig.ClientSessionCache != sessions || !bytes.Equal(owned.TLSClientConfig.Certificates[0].Certificate[0], []byte{1, 2, 3}) {
+		t.Fatal("TLS trust, client certificate or session settings changed")
+	}
+	request := requestFor(t, "https://cdn.example/plugin")
+	selectedProxy, err := owned.Proxy(request)
+	if err != nil || selectedProxy != proxyURL {
+		t.Fatalf("proxy policy changed: %v %v", selectedProxy, err)
+	}
+	if err := owned.OnProxyConnectResponse(t.Context(), proxyURL, request, &http.Response{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := owned.TLSClientConfig.VerifyConnection(tls.ConnectionState{}); err != nil {
+		t.Fatal(err)
+	}
+	headers, err := owned.GetProxyConnectHeader(t.Context(), proxyURL, "8.8.8.8:443")
+	if err != nil || headers.Get("X-Dynamic") != "preserved" || callbacks != 4 {
+		t.Fatalf("supported proxy/TLS callbacks changed: %v %v callbacks=%d", headers, err, callbacks)
+	}
+	if owned.TLSHandshakeTimeout != 3*time.Second || owned.ResponseHeaderTimeout != 4*time.Second || owned.ExpectContinueTimeout != 5*time.Second || owned.IdleConnTimeout != 6*time.Second || !owned.DisableCompression {
+		t.Fatal("timeouts or compression policy changed")
+	}
+	if owned.MaxIdleConns != 7 || owned.MaxIdleConnsPerHost != 8 || owned.MaxConnsPerHost != 9 || owned.MaxResponseHeaderBytes != 1024 || owned.WriteBufferSize != 2048 || owned.ReadBufferSize != 4096 {
+		t.Fatal("connection, header or buffer limits changed")
+	}
+	owned.TLSClientConfig.ServerName = "owned-config"
+	owned.ProxyConnectHeader.Set("X-Fixture", "owned")
+	owned.HTTP2.MaxReadFrameSize = 32768
+	owned.Protocols.SetHTTP2(false)
+	if base.TLSClientConfig.ServerName != "caller-config" || base.ProxyConnectHeader.Get("X-Fixture") != "original" || base.HTTP2.MaxReadFrameSize != 65536 || !base.Protocols.HTTP2() {
+		t.Fatal("owned settings mutated caller configuration")
+	}
+}
+
+func TestOwnedTransportPreservesNativeHTTP2AndExplicitDisable(t *testing.T) {
+	debug := os.Getenv("GODEBUG")
+	if debug != "" {
+		debug += ","
+	}
+	t.Setenv("GODEBUG", debug+"http2client=1")
+	native := &http.Transport{ForceAttemptHTTP2: true}
+	// Clone initializes Go's native HTTP/2 callbacks on the source transport.
+	// Its snapshot omits those callbacks when the caller originally left the
+	// map nil, so a previously used native transport remains supported.
+	_ = native.Clone()
+	if len(native.TLSNextProto) == 0 {
+		t.Fatal("native HTTP/2 initialization did not install its callbacks")
+	}
+	owned, err := ownedTransport(native)
+	if err != nil || owned.TLSNextProto != nil || !owned.ForceAttemptHTTP2 {
+		t.Fatalf("native HTTP/2 configuration rejected or disabled: %v", err)
+	}
+	disabled := &http.Transport{ForceAttemptHTTP2: true, TLSNextProto: map[string]func(string, *tls.Conn) http.RoundTripper{}}
+	owned, err = ownedTransport(disabled)
+	if err != nil || owned.TLSNextProto == nil || len(owned.TLSNextProto) != 0 {
+		t.Fatalf("explicit HTTP/2 disable was lost: %v", err)
+	}
+}
+
+func TestOwnedTransportDoesNotInheritRegisteredProtocolExecutor(t *testing.T) {
+	connection := &scriptedConnection{input: bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"))}
+	base := &http.Transport{DialContext: func(_ context.Context, _ string, address string) (net.Conn, error) {
+		if address != "8.8.8.8:80" {
+			t.Errorf("unpinned dial: %s", address)
+		}
+		return connection, nil
+	}}
+	base.RegisterProtocol("http", responseTransport(func(*http.Request) (*http.Response, error) {
+		t.Error("registered protocol executor inherited")
+		return nil, ErrConnectionFailed
+	}))
+	checked := transportFor(t, "http://cdn.example/plugin", Grant{}, base, fixedLookup("8.8.8.8"))
+	response, err := checked.RoundTrip(requestFor(t, "http://cdn.example/plugin"))
+	if response != nil && response.Body != nil {
+		_ = response.Body.Close()
+	}
+	if err != nil || response == nil || response.StatusCode != http.StatusOK {
+		t.Fatalf("owned pinned executor failed: %v", err)
 	}
 }

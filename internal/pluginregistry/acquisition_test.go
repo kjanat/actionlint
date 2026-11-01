@@ -25,7 +25,7 @@ func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Search(t.Context(), ""); !errors.Is(err, acquisitionhttp.PrivateDestination) || dials != 0 {
+	if _, err := client.Search(t.Context(), ""); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) || dials != 0 {
 		t.Fatalf("automatic private registry: %v, dials=%d", err, dials)
 	}
 }
