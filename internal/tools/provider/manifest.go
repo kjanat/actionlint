@@ -60,10 +60,12 @@ type Manifest struct {
 	SchemaVersion int `json:"schema_version"`
 	// Metadata declares publisher identity for registry admission. It does not
 	// grant capabilities or change the provider's execution contract.
-	Metadata  json.RawMessage `json:"metadata,omitempty"`
-	ID        string          `json:"id"`
-	Version   string          `json:"version"`
-	Role      Role            `json:"role"`
+	Metadata json.RawMessage `json:"metadata,omitempty"`
+	ID       string          `json:"id"`
+	Version  string          `json:"version"`
+	Role     Role            `json:"role"`
+	// Requires requests shared facts for document providers. Source is implicit.
+	Requires  []analyzer.Fact `json:"requires,omitempty"`
 	Rule      rule.Descriptor `json:"rule"`
 	Scope     Scope           `json:"scope"`
 	Transport Transport       `json:"transport"`
@@ -144,6 +146,9 @@ type Artifact struct {
 
 // Selectors choose the scripts a provider receives.
 type Selectors struct {
+	// Documents restricts document providers to workflow or action documents.
+	// Empty selects both.
+	Documents []string `json:"documents,omitempty"`
 	// Shells pre-filters run scripts by canonical shell basename. Empty leaves
 	// selection to the preparation profile.
 	Shells []string `json:"shells,omitempty"`
@@ -222,6 +227,9 @@ const (
 
 // ProcessSpec describes a native executable transport.
 type ProcessSpec struct {
+	// Program is source code distributed in the verified manifest. The process
+	// receives its private materialized path through {program-file}.
+	Program *InlineProgram `json:"program,omitempty"`
 	// Entry is an artifact filename or a bare command discovered on PATH.
 	Entry string `json:"entry"`
 	// Args are literal tokens and closed-grammar placeholders: {var:NAME},
@@ -254,6 +262,13 @@ type ProcessSpec struct {
 	UserArgs        *UserArgs                                `json:"user_args,omitempty"`
 	// Concurrency defaults to ConcurrencyPool.
 	Concurrency Concurrency `json:"concurrency,omitempty"`
+}
+
+// InlineProgram is one source file, passed to an explicitly selected interpreter.
+// Its extension remains intact, including .mjs for an ES module.
+type InlineProgram struct {
+	Filename string `json:"filename"`
+	Inline   string `json:"inline"`
 }
 
 // Render selects how engine configuration reaches the process.

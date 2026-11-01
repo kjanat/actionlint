@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 )
 
 // PluginProject edits exact declarations and reads old project locks for migration.
@@ -172,13 +173,20 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
-			pulled, err := artifact.Resolve(ctx, source, p.artifactOptions())
+			if provider.IsLocalManifest(source) {
+				if err := validateLocalProvider(ctx, source); err != nil {
+					return err
+				}
+				continue
+			}
+			options := p.artifactOptions()
+			pulled, err := artifact.Resolve(ctx, source, options)
 			if err != nil {
 				return err
 			}
 			if pulled.Info.Kind == artifact.ProviderManifest {
-				// Refuse a broken provider now rather than at check time.
-				if _, err := pulledProvider(pulled); err != nil {
+				// Refuse an unusable provider before saving its declaration.
+				if err := validateProviderArtifact(ctx, pulled, options); err != nil {
 					return err
 				}
 			}
@@ -254,6 +262,22 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 		return err
 	}
 	for _, pin := range next.Plugins {
+		if pin.Kind != artifact.ProviderManifest {
+			continue
+		}
+		options := p.artifactOptions()
+		pulled, err := artifact.Resolve(ctx, pin.Source(), options)
+		if err != nil {
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		}
+		if pulled.Info.Kind != artifact.ProviderManifest {
+			return fmt.Errorf("plugin %s@%s: expected a process provider manifest, found %s", pin.Name, pin.Version, pulled.Info.Kind)
+		}
+		if err := validateProviderArtifact(ctx, pulled, options); err != nil {
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		}
+	}
+	for _, pin := range next.Plugins {
 		if pin.Origin != "candidate" {
 			continue
 		}
@@ -262,7 +286,9 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 			return err
 		}
 		client.StatusOptions = p.StatusOptions
-		if err := client.RememberCandidate(ctx, pin); err != nil {
+		options := p.artifactOptions()
+		options.PullOCI = oci.Cached
+		if err := client.RememberCandidate(ctx, pin, options); err != nil {
 			return err
 		}
 	}

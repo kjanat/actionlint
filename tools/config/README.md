@@ -37,7 +37,7 @@ The engine's metadata carries its configuration schema.
 The root schema provides small completion examples without constraining settings
 to one bundled Ruff release. Tests exercise base and override settings through
 the parser, JSON Schema validator, and the real YAML language service offline.
-Run `npm ci` first for the language-service test.
+Run `bun install --frozen-lockfile` first for the language-service test.
 
 `schemas/ruff` archives published Ruff snapshots; configuration decoding and schema
 generation use the selected engine's schema instead.

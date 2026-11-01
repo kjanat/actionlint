@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,7 +16,9 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/testutil/ocitest"
 )
 
 func candidateCatalogue(t *testing.T) (string, string, string, *testutil.PluginRegistry) {
@@ -147,6 +150,97 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	}
 	if len(network.Requests()) != 0 {
 		t.Fatalf("local candidate contacted network: %v", network.Requests())
+	}
+}
+
+// An OCI candidate binds the root digest through installation and normal checks.
+// The fixture preloads the real OCI store, then stops the registry: installation,
+// remembered selection and every check must work without acquisition authority.
+func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
+	transport := http.DefaultTransport
+	root, registry, previousDigest, _ := candidateCatalogue(t)
+	// The catalogue helper installs an in-memory HTTPS transport. This fixture
+	// instead serves OCI over loopback, so retain the original transport.
+	http.DefaultTransport = transport
+	candidateProject(t)
+	wasm, err := os.ReadFile(filepath.Join(root, "artifacts", "plugin.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := ocitest.New(t)
+	primary := remote.Blob(artifact.MediaTypeWasm, wasm)
+	manifest := remote.Manifest(t, primary)
+	index := remote.Index(t, map[string]ocitest.Descriptor{artifact.HostPlatform(): manifest})
+	source := remote.Reference(index)
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := artifact.Options{CacheDir: filepath.Join(cache, "actionlint", "artifacts")}
+	pluginCommandTest(t, 0, "plugin", "inspect", source)
+	remote.Close()
+	recordPath := filepath.Join(root, "plugins", "no-sudo", "versions", "v1.json")
+	data, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var record struct {
+		Source   string          `json:"source"`
+		Artifact json.RawMessage `json:"artifact"`
+		URL      string          `json:"url"`
+	}
+	if err := json.Unmarshal(data, &record); err != nil {
+		t.Fatal(err)
+	}
+	record.Artifact = bytes.ReplaceAll(record.Artifact, []byte(previousDigest), []byte(index.Hex()))
+	record.URL = source
+	data, err = json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(recordPath, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
+	configPath := filepath.Join(".github", "actionlint.yaml")
+	if got := candidateDigest(t, configPath); got != index.Hex() {
+		t.Fatalf("candidate pinned %q, want OCI root %q", got, index.Hex())
+	}
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(root); err != nil {
+		t.Fatal(err)
+	}
+	pluginCommandTest(t, 0, "plugin", "install")
+	check := []string{"check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"}
+	if output := pluginCommandTest(t, 1, check...); !strings.Contains(output, "[no-sudo]") {
+		t.Fatalf("OCI candidate did not execute: %s", output)
+	}
+	for _, descriptor := range []ocitest.Descriptor{index, manifest, primary} {
+		file := filepath.Join(options.CacheDir, descriptor.Hex())
+		cached, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(file); err != nil {
+			t.Fatal(err)
+		}
+		if output := pluginCommandTest(t, 3, check...); !strings.Contains(output, "plugin") {
+			t.Fatalf("missing OCI graph blob did not report a plugin error: %s", output)
+		}
+		if err := (artifact.Store{Dir: options.CacheDir}).Publish(t.Context(), descriptor.Hex(), cached); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pluginCommandTest(t, 1, check...)
+	after, err := os.ReadFile(configPath)
+	if err != nil || !bytes.Equal(after, config) {
+		t.Fatalf("OCI checks modified configuration: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(".github", pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("OCI candidate created a project lock: %v", err)
 	}
 }
 

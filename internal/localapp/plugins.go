@@ -13,19 +13,22 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 	"actionlint.kjanat.dev/v2/runner"
 )
 
 type loadedPlugins struct {
-	plugins []*component.Plugin
-	engines []scriptEngineRegistration
-	core    []*corewasm.Engine
+	processes *analyzerhost.ProcessPool
+	plugins   []*component.Plugin
+	engines   []scriptEngineRegistration
+	core      []*corewasm.Engine
 	// providers are process tool provider manifests read from a local path
 	// or pulled from an oci:// source.
 	providers []localProvider
@@ -87,7 +90,7 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 				loaded.skipped = append(loaded.skipped, manifest.Rule.Name)
 				continue
 			}
-			loaded.providers = append(loaded.providers, localProvider{manifest: manifest, programs: programs})
+			loaded.providers = append(loaded.providers, localProvider{manifest: manifest, programs: programs, repository: sources.repository})
 			continue
 		}
 		if err := pluginartifact.RequireRemotePin(path); err != nil {
@@ -185,6 +188,9 @@ func (l *loadedPlugins) runnerProviders() []runner.Registration {
 func (l *loadedPlugins) close(ctx context.Context) error {
 	ctx = context.WithoutCancel(ctx)
 	var err error
+	if l.processes != nil {
+		l.processes.Wait()
+	}
 	for _, plugin := range l.plugins {
 		err = errors.Join(err, plugin.Close(ctx))
 	}
@@ -268,6 +274,40 @@ func pulledProvider(artifact *pluginartifact.Artifact) (provider.Manifest, error
 		}
 	}
 	return manifest, nil
+}
+
+// validateProviderArtifact compiles a distributed provider's schemas and jq
+// programs. OCI transforms are fetched by digest, but the process entry is
+// never resolved, probed, or invoked.
+func validateProviderArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options pluginartifact.Options) error {
+	manifest, err := pulledProvider(artifact)
+	if err != nil {
+		return err
+	}
+	var programs provider.Programs
+	if pluginartifact.IsOCI(artifact.Info.Source) {
+		programs, err = provider.LoadPrograms(manifest, func(digest string) ([]byte, error) {
+			return oci.Layer(ctx, artifact.Info.Source, strings.TrimPrefix(digest, "sha256:"), options)
+		})
+		if err != nil {
+			return fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
+		}
+	}
+	if err := process.ValidateManifest(manifest, programs); err != nil {
+		return fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
+	}
+	return nil
+}
+
+func validateLocalProvider(ctx context.Context, path string) error {
+	manifest, programs, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
+	if err != nil {
+		return err
+	}
+	if err := process.ValidateManifest(manifest, programs); err != nil {
+		return fmt.Errorf("plugin %s: %w", path, err)
+	}
+	return nil
 }
 
 // fetch returns p with its transform programs and executable read from the
@@ -354,6 +394,11 @@ func PinPluginSource(ctx context.Context, source string) (string, error) {
 
 // InspectPlugin resolves and reads metadata without creating a runtime.
 func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, error) {
+	if provider.IsLocalManifest(source) {
+		if err := validateLocalProvider(ctx, source); err != nil {
+			return pluginartifact.Info{}, err
+		}
+	}
 	grant, err := pluginartifact.ExplicitSource(source)
 	if err != nil {
 		return pluginartifact.Info{}, err
@@ -363,6 +408,11 @@ func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, err
 	artifact, err := pluginartifact.Resolve(ctx, source, options)
 	if err != nil {
 		return pluginartifact.Info{}, err
+	}
+	if artifact.Info.Kind == pluginartifact.ProviderManifest && !provider.IsLocalManifest(source) {
+		if err := validateProviderArtifact(ctx, artifact, options); err != nil {
+			return pluginartifact.Info{}, err
+		}
 	}
 	return artifact.Info, nil
 }

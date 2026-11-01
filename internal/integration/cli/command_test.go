@@ -46,8 +46,8 @@ func TestModernCommandDispatch(t *testing.T) {
 		}
 	}
 	directory := testRunCommand("", "check", ".github/workflows")
-	if directory.Status != 3 {
-		t.Fatalf("directory input was expanded: %+v", directory)
+	if directory.Status != 1 || !strings.Contains(directory.Stdout, `undefined variable "missing"`) || directory.Stderr != "" {
+		t.Fatalf("directory input did not report its workflow finding: %+v", directory)
 	}
 	for _, name := range []string{"check", "config", "rules", "doctor", "completion", "version", "help", "__complete"} {
 		if err := os.WriteFile(name, []byte(commandGoodWorkflow), 0o600); err != nil {

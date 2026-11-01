@@ -200,7 +200,13 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 			return p, m, err
 		}
 		i := m.Plugin
-		if m.Source != "" || i.SchemaVersion != 1 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || i.Provider+".com/"+i.Repository != p.Name || i.PluginID != p.PluginID || p.Manifest != "plugins/"+hash(i.Issuer+"\n"+i.RepositoryID)+"/index.json" || m.Versions == nil {
+		repository := i.Provider + ".com/" + i.Repository
+		name, key := repository, hash(i.Issuer+"\n"+i.RepositoryID)
+		if i.SchemaVersion == 2 {
+			name = strings.ToLower(i.PluginID)
+			key = hash("package-v2\n" + i.Issuer + "\n" + i.RepositoryID + "\n" + i.PluginID)
+		}
+		if m.Source != "" || i.SchemaVersion != 1 && i.SchemaVersion != 2 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || !pluginref.ValidRepository(repository) || name != p.Name || i.SchemaVersion == 2 && !strings.HasPrefix(name, repository+"/") || i.PluginID != p.PluginID || p.Manifest != "plugins/"+key+"/index.json" || m.Versions == nil {
 			return p, m, errors.New("registry manifest disagrees with catalogue identity")
 		}
 		seen := map[string]bool{}
@@ -353,15 +359,18 @@ func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest
 		return Pin{}, errors.New("unsupported registry version record")
 	}
 	i, s, ri := m.Plugin, r.Submission, r.Receipt.Identity
-	if s.Tag != v.Version || s.Provider != i.Provider || s.Repository != i.Repository ||
+	if (i.SchemaVersion == 1 && r.IdentityVersion != 0 || i.SchemaVersion == 2 && r.IdentityVersion != 2) || s.Tag != v.Version || s.Provider != i.Provider || s.Repository != i.Repository ||
 		r.Receipt.SchemaVersion != 1 || r.Receipt.Submission != s || ri.Issuer != i.Issuer || ri.RepositoryID != i.RepositoryID || ri.OwnerID != i.OwnerID || ri.Repository != i.Repository || ri.Ref != "refs/tags/"+v.Version || ri.Commit != r.Commit ||
-		strconv.FormatInt(r.RepositoryID, 10) != i.RepositoryID || strconv.FormatInt(r.OwnerID, 10) != i.OwnerID || d.PluginID != i.PluginID || d.Kind != s.Kind || !strings.EqualFold(d.Repository, "https://"+p.Name) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
+		strconv.FormatInt(r.RepositoryID, 10) != i.RepositoryID || strconv.FormatInt(r.OwnerID, 10) != i.OwnerID || d.PluginID != i.PluginID || d.Kind != s.Kind || !strings.EqualFold(d.Repository, "https://"+i.Provider+".com/"+i.Repository) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("registry version disagrees with publisher identity or selected release")
 	}
 	if s.isOCI() && r.URL != s.Artifact.reference {
 		return Pin{}, errors.New("registry OCI location disagrees with publication source")
 	}
 	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.assetName(), URL: r.URL, SHA256: s.sourceDigest(), Contract: d.Contract}
+	if i.SchemaVersion == 2 {
+		pin.Repository = i.Provider + ".com/" + i.Repository
+	}
 	if len(p.Aliases) == 1 {
 		pin.Alias = p.Aliases[0]
 	}

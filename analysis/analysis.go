@@ -127,7 +127,8 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 	return applicationResultView(result), err
 }
 
-// Files checks explicit paths with project discovery and configuration loading.
+// Files checks explicit files and recursively selected directories with project
+// discovery and configuration loading.
 func Files(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
 	settings, err := fileOptions(options)
 	if err != nil {

@@ -6,11 +6,13 @@ This document describes how to use [actionlint](../README.md).
 
 ## `actionlint` command
 
-With no arguments, `actionlint` prints help to stdout and exits successfully.
-Run `actionlint check` to check workflows and `action.yml`/`action.yaml`
-manifests in the current repository, including actions that no workflow references.
-Repositories containing only actions are supported too. If discovery finds no
-inputs, `actionlint check` exits 3.
+With no arguments inside a Git repository, `actionlint` checks workflows and
+`action.yml`/`action.yaml` manifests in that repository. Outside a repository,
+it prints help to stdout and exits 0. `actionlint check` explicitly requests
+repository discovery and reports an error outside a repository.
+
+Discovery includes actions that no workflow references. Repositories containing
+only actions are supported too. If discovery finds no inputs, the check exits 3.
 
 ```sh
 actionlint check
@@ -20,6 +22,17 @@ When paths to YAML workflow files are given as arguments, actionlint checks them
 
 ```sh
 actionlint path/to/workflow1.yaml path/to/workflow2.yaml
+```
+
+Directory arguments are traversed recursively. A repository root or `.github`
+selects its workflows and action manifests; other directories select YAML files
+below that directory. File exclusions still apply. Overlapping directories and
+explicit files do not repeat discovered inputs. Empty directories report an error.
+
+```sh
+actionlint .
+actionlint .github/
+actionlint check .github/workflows/ .github/actions/
 ```
 
 Explicit `action.yml` and `action.yaml` inputs are checked as action metadata,
@@ -84,9 +97,8 @@ actionlint doctor
 actionlint version
 ```
 
-`check` accepts workflow files, action manifests or a lone `-` for stdin. With no
-paths, it uses the same repository discovery as the root. Directory
-arguments are not supported. Use `--stdin-filename=action.yml` to check action
+`check` accepts workflow files, action manifests, directories or a lone `-` for stdin. With no
+paths, it uses repository discovery. Use `--stdin-filename=action.yml` to check action
 metadata from stdin.
 
 An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,

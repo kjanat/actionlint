@@ -201,8 +201,14 @@ func (a *Session) filesSelected(paths []string) {
 	}
 }
 
-// Files analyzes paths in order, discovering each file's project when project is nil.
+// Files expands directory inputs and analyzes paths in order, discovering each
+// file's project when project is nil. Explicit duplicate file inputs are preserved.
 func (a *Session) Files(paths []string, project *Project) (*Selection, error) {
+	listed := &Inputs{}
+	paths, err := a.expandDirectories(paths, listed)
+	if err != nil {
+		return nil, err
+	}
 	a.filesSelected(paths)
 	if len(paths) == 0 {
 		return &Selection{Sources: []Source{}}, nil
@@ -210,7 +216,57 @@ func (a *Session) Files(paths []string, project *Project) (*Selection, error) {
 	if len(paths) > 1 {
 		a.selectionLog("Linting", len(paths), "files")
 	}
-	return a.ReadFiles(paths, project)
+	result, err := a.ReadFiles(paths, project)
+	if result != nil {
+		result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, listed.List()...))))
+	}
+	return result, err
+}
+
+func (a *Session) expandDirectories(paths []string, listed *Inputs) ([]string, error) {
+	directories := make(map[int]string)
+	explicit := make(map[string]bool)
+	for index, path := range paths {
+		if err := a.ctx.Err(); err != nil {
+			return nil, err
+		}
+		full := path
+		if !filepath.IsAbs(full) {
+			full = filepath.Join(a.cwd, full)
+		}
+		full = filepath.Clean(full)
+		if info, err := os.Stat(full); err == nil && info.IsDir() {
+			directories[index] = full
+		} else {
+			// File bytes may come from a virtual ReadFile provider. Preserve its
+			// handling of missing paths and read errors instead of requiring stat.
+			explicit[full] = true
+		}
+	}
+	var expanded []string
+	seen := make(map[string]bool)
+	for index, path := range paths {
+		dir, directory := directories[index]
+		if !directory {
+			expanded = append(expanded, path)
+			continue
+		}
+		files, err := DirectoryPaths(a.ctx, dir, fsread.New(a.ctx, nil, listed.Add))
+		if err != nil {
+			return nil, err
+		}
+		if len(files) == 0 {
+			return nil, fmt.Errorf("no workflow or action files were found in %q", path)
+		}
+		for _, file := range files {
+			listed.Add(file)
+			if !explicit[file] && !seen[file] {
+				seen[file] = true
+				expanded = append(expanded, file)
+			}
+		}
+	}
+	return expanded, nil
 }
 
 // Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
@@ -240,10 +296,14 @@ func (a *Session) ReadFiles(paths []string, project *Project) (*Selection, error
 	sources := make([]Source, 0, len(paths))
 	configProjects := make([]*Project, 0, len(paths))
 	for _, path := range paths {
+		inputPath := path
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			inputPath = filepath.Join(a.cwd, path)
+		}
 		proj := project
 		if proj == nil {
 			var err error
-			proj, err = a.projects.At(path)
+			proj, err = a.projects.At(inputPath)
 			if err != nil {
 				return nil, err
 			}
@@ -257,11 +317,11 @@ func (a *Session) ReadFiles(paths []string, project *Project) (*Selection, error
 		if proj != nil {
 			root = absPath(proj.RootDir())
 		}
-		fullPath := absPath(path)
+		fullPath := absPath(inputPath)
 		if !cfg.IncludesFile(fullPath, root) {
 			continue
 		}
-		content, err := a.readFile(path)
+		content, err := a.readFile(inputPath)
 		if err != nil {
 			return nil, fmt.Errorf("could not read %q: %w", path, err)
 		}

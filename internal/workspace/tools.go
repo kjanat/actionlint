@@ -34,6 +34,12 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 				return needed, err
 			}
 		}
+	} else {
+		var err error
+		paths, err = a.expandDirectories(paths, &Inputs{})
+		if err != nil {
+			return needed, err
+		}
 	}
 	for _, path := range paths {
 		if err := ctx.Err(); err != nil {

@@ -79,8 +79,10 @@ overrides:
         external: {shellcheck: on, ruff: on}
 `)
 	options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}, "ruff": {Command: "ruff"}})}
-	got, err := application.RequiredTools(t.Context(), options, nil)
-	if err != nil || !got["shellcheck"] || !got["ruff"] {
-		t.Fatalf("action override must enable both tools; got %+v, error %v", got, err)
+	for _, paths := range [][]string{nil, {"."}, {root}} {
+		got, err := application.RequiredTools(t.Context(), options, paths)
+		if err != nil || !got["shellcheck"] || !got["ruff"] {
+			t.Fatalf("action override must enable both tools for %v; got %+v, error %v", paths, got, err)
+		}
 	}
 }

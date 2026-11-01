@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"slices"
+
+	"actionlint.kjanat.dev/v2/internal/projectpath"
 
 	"github.com/spf13/cobra"
 )
@@ -33,10 +36,18 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		args = args[1:]
 	}
 	if len(args) == 0 {
-		app.root.SetContext(ctx)
-		app.streams.Stderr = app.streams.Stdout
-		app.help(app.root, nil)
-		return app.status
+		directory, err := os.Getwd()
+		if err != nil {
+			return app.reportError(err)
+		}
+		if projectpath.RepositoryRoot(directory) == "" {
+			app.root.SetContext(ctx)
+			app.streams.Stderr = app.streams.Stdout
+			app.help(app.root, nil)
+			return app.status
+		}
+		// Force the check command even when the repository has a file named check.
+		args = []string{"--command", "check"}
 	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)

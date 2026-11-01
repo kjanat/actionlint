@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -136,4 +137,91 @@ func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(".github", "actionlint.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("install declared an invalid provider: %v", err)
 	}
+}
+
+func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
+	testutil.IsolateUserCache(t)
+	root := t.TempDir()
+	t.Chdir(root)
+	t.Setenv("ACTIONLINT_CONFIG", "")
+	t.Setenv("ACTIONLINT_NO_CONFIG", "")
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(".github", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	original := []byte("{\"schema_version\":1,\"plugins\":[]}\n")
+	config := filepath.Join(".github", "actionlint.yaml")
+	if err := os.WriteFile(config, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	registry := ocitest.New(t)
+	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProcessManifest(t, "must-not-execute", "["))
+	reference := registry.Reference(registry.Manifest(t, manifest))
+	output := pluginCommandTest(t, 3, "plugin", "install", reference)
+	if !strings.Contains(output, reference) || !strings.Contains(output, "parse jq transform") {
+		t.Fatalf("install did not report source-specific jq failure:\n%s", output)
+	}
+	inspectOutput := pluginCommandTest(t, 3, "plugin", "inspect", reference)
+	if !strings.Contains(inspectOutput, reference) || !strings.Contains(inspectOutput, "parse jq transform") {
+		t.Fatalf("inspect did not report source-specific jq failure:\n%s", inspectOutput)
+	}
+	actual, err := os.ReadFile(config)
+	if err != nil || !bytes.Equal(actual, original) {
+		t.Fatalf("failed install changed config: %s, %v", actual, err)
+	}
+	if _, err := os.Stat(filepath.Join(".github", pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("failed install wrote a lock: %v", err)
+	}
+}
+
+func TestPluginInstallDoesNotResolveProcessEntry(t *testing.T) {
+	testutil.IsolateUserCache(t)
+	root := t.TempDir()
+	t.Chdir(root)
+	t.Setenv("ACTIONLINT_CONFIG", "")
+	t.Setenv("ACTIONLINT_NO_CONFIG", "")
+	if err := os.Mkdir(".git", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	registry := ocitest.New(t)
+	program := registry.Blob("application/vnd.actionlint.jq", []byte("[]"))
+	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProcessManifest(t, "actionlint-install-tool-does-not-exist", "sha256:"+program.Hex()))
+	reference := registry.Reference(registry.Manifest(t, manifest, program))
+	output := pluginCommandTest(t, 0, "plugin", "install", reference)
+	if !strings.Contains(output, reference) {
+		t.Fatalf("install output lacks source %s:\n%s", reference, output)
+	}
+	if count := registry.Fetches(program); count == 0 {
+		t.Fatalf("digest jq program was not fetched for validation")
+	}
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.yaml")); err != nil {
+		t.Fatalf("valid provider was not installed: %v", err)
+	}
+}
+
+func ociProcessManifest(t *testing.T, entry, transform string) []byte {
+	t.Helper()
+	transformSpec := map[string]any{"language": "jq"}
+	if digest, ok := strings.CutPrefix(transform, "sha256:"); ok {
+		transformSpec["digest"] = "sha256:" + digest
+	} else {
+		transformSpec["inline"] = transform
+	}
+	manifest, err := json.Marshal(map[string]any{
+		"schema_version": 1, "id": "example.com/oci-authoring", "version": "1.0.0", "role": "script", "scope": "source", "transport": "process",
+		"rule":         map[string]any{"name": "oci-authoring", "description": "Authoring test provider", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "oci-authoring"},
+		"preparation":  "kjanat:actionlint/expression-mask@0.1.0",
+		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
+		"capabilities": map[string]any{"fixes": false, "reported_sources": false},
+		"process": map[string]any{
+			"entry": entry, "args": []string{}, "stdin": "source", "config": map[string]any{"render": "none"},
+			"output": map[string]any{"format": "json", "transform": transformSpec},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manifest
 }

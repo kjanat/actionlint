@@ -40,10 +40,10 @@ jobs:
             "wasm": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
               "packages/changelog-feed/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go", "package.json",
-              "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile", ".github/actions/setup-pandoc/**"
+              "bun.lock", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile", ".github/actions/setup-pandoc/**"
             ],
             "javascript": [
-              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/*.mts", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
+              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/*.mts", "**/package.json", "**/tsconfig*.json", "**/bun.lock", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", "tools/**/mise.toml", "distribution/**/mise.toml"
             ],
@@ -51,7 +51,7 @@ jobs:
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
               ".goreleaser.yaml", ".github/actions/setup-pandoc/**", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
               "tools/release/build-action-release.mjs", "tools/release/*.mjs", "action.yml", "package.json",
-              "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
+              "bun.lock", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
               "!tools/**/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
             ],
             "modules": [
@@ -70,11 +70,11 @@ jobs:
             "action": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
               "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs",
-              ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
+              ".goreleaser.yaml", "package.json", "bun.lock", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
             ],
             "action-tests": [
-              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs", "action.yml", "package.json", "bun.lock",
               ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
             ],
             "plugins": [
@@ -117,7 +117,7 @@ jobs:
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Install the project Node.js and npm versions
         if: env.CI_UNIT == 'true'
-        uses: &SetupMise jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: &SetupMise jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with: &NodeTools
           cache: true
           auto_update: true
@@ -125,9 +125,9 @@ jobs:
           cache_save_post: true
           cache_key: &MiseCacheKey >-
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: node npm
+          install_args: go node npm bun
           add_shims_to_path: false
-        env: &NodeToolsEnv { MISE_ENABLE_TOOLS: "node,npm" }
+        env: &NodeToolsEnv { MISE_ENABLE_TOOLS: "node,npm,bun" }
       - name: Install ShellCheck
         if: env.CI_UNIT == 'true'
         uses: $/.github/actions/setup-shellcheck
@@ -136,12 +136,11 @@ jobs:
         run: uv tool install ruff==0.17.0
       - name: Install shells for completion tests on Linux
         if: ${{ env.CI_UNIT == 'true' && runner.os == 'Linux' }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion;
           zsh --version; fish --version
       - name: Install the YAML language server for editor completion tests
         if: env.CI_UNIT == 'true'
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - if: env.CI_UNIT == 'true'
         run: go test -v ./...
       # Check build without CGO
@@ -162,7 +161,7 @@ jobs:
       - *PrepareMiseCache
       - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
-      - { name: Install the YAML language server for editor completion tests, run: npm ci --ignore-scripts }
+      - { name: Install the YAML language server for editor completion tests, run: bun install --frozen-lockfile --ignore-scripts }
 
       - run: go test -v -race -coverpkg=./... -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -192,20 +191,22 @@ jobs:
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           cache_key: *MiseCacheKey
-          install_args: go node npm
+          install_args: go node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
       - name: Install runner
         uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
       - name: Install Pandoc
         uses: $/.github/actions/setup-pandoc
       - name: Install JavaScript dependencies
-        run: runner install --pm npm --no-tools --frozen
+        run: runner install --pm bun --no-tools --frozen
       - name: Build command manual
         run: run make:man
       - name: Build and test playground
-        run: run -s actionlint-playground:build actionlint-playground:test
+        run: run -sk
+          actionlint-playground:build
+          actionlint-playground:test
       - name: Lint playground
         run: run actionlint-playground:lint
   javascript:
@@ -224,15 +225,19 @@ jobs:
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           cache_key: *MiseCacheKey
-          install_args: node npm
+          install_args: go node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "node,npm" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
       - name: Install runner
         uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
       - name: Install dependencies and test JavaScript tooling
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
-        run: runner install --pm npm --no-tools --frozen test:js lint:biome
+        run: runner install --pm bun --no-tools --frozen test:js lint:biome
+      - name: Check the plugin SDK
+        run: run -sk
+          @kjanat-actionlint/plugin-sdk:typecheck
+          @kjanat-actionlint/plugin-sdk:test
   release-snapshot:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['release']) }}
@@ -250,7 +255,7 @@ jobs:
             uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
           - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - name: Build JavaScript Action release files outside the checkout
-        run: npm ci --ignore-scripts;
+        run: bun install --frozen-lockfile --ignore-scripts;
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
           node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
@@ -270,12 +275,13 @@ jobs:
       # Self-contained modules under a dot-directory, which the go tool skips
       # when expanding a ... pattern. Test each in place.
       - name: Test and vet each action module
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
           for mod in .github/actions/*/go.mod; do
             dir="$(dirname "${mod}")"
             echo "::group::${dir}"
-            (cd "${dir}" && go vet ./... && go test ./...)
+            go -C "${dir}" vet ./...
+            go -C "${dir}" test ./...
             echo "::endgroup::"
           done
   lint:
@@ -290,8 +296,7 @@ jobs:
       # golangci-lint-action builds .custom-gcl.yml itself and leaves the base
       # binary off PATH; make lint rebuilds custom-gcl through it.
       - name: Install golangci-lint
-        run: |
-          version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)"
+        run: version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)";
           go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
       - run: go mod tidy -diff
       - name: Build through Makefile
@@ -313,7 +318,7 @@ jobs:
       - parallel:
           - *Go
           - uses: $/.github/actions/setup-wasm-toolchain
-          - name: Install TinyGo
+          - name: Install TinyGo and wasi-sdk
             uses: *SetupMise
             with:
               cache: true
@@ -321,16 +326,11 @@ jobs:
               mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
               cache_save_post: true
               cache_key: *MiseCacheKey
-              install_args: tinygo
+              install_args: tinygo wasi-sdk
               add_shims_to_path: false
-            env: { MISE_ENABLE_TOOLS: "tinygo" }
+            env: { MISE_ENABLE_TOOLS: "tinygo,wasi-sdk" }
           - name: Install the pinned Rust toolchain and targets
             run: rustup toolchain install
-          - name: Install wasi-sdk
-            run: |
-              curl --silent --show-error --location --output "${RUNNER_TEMP}/wasi-sdk.tar.gz" https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
-              tar -xzf "${RUNNER_TEMP}/wasi-sdk.tar.gz" -C "${RUNNER_TEMP}"
-              echo "WASI_SDK_PATH=${RUNNER_TEMP}/wasi-sdk-34.0-x86_64-linux" >> "${GITHUB_ENV}"
       - name: Cache Cargo dependencies and workspace builds
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -350,12 +350,10 @@ jobs:
       - name: Build the plugin fixtures from source
         run: make -B plugins
       - name: Verify generated plugin interfaces
-        run: |
-          go run -C tools/plugin-contract .
+        run: go run -C tools/plugin-contract .;
           git diff --exit-code -- ':(glob)internal/plugins/component/*.gen.go'
       - name: Load the Rust, C and TinyGo examples
-        run: >-
-          go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
+        run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
           --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
           --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
           --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm
@@ -363,8 +361,7 @@ jobs:
       - name: Test plugins including Wasmtime runner parity
         env:
           ACTIONLINT_RUNNER_HOST: ${{ github.workspace }}/tools/runner-host/target/debug/actionlint-runner-host
-        run: |
-          test -x "${ACTIONLINT_RUNNER_HOST}"
+        run: test -x "${ACTIONLINT_RUNNER_HOST}";
           go test -count=1 -v ./internal/plugins/component ./internal/plugins/core ./plugin
       - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/localapp ./internal/integration/cli
   docker:
@@ -418,7 +415,7 @@ jobs:
         uses: $/.github/actions/setup-shellcheck
       - name: Install JavaScript Action build dependencies
         # Packaging also runs when JavaScript-only tests are not selected.
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
@@ -430,7 +427,7 @@ jobs:
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
         run: go run ./cmd/actionlint --shellcheck='shellcheck -o all'
-          .github/workflows/*.y*ml # **/action.y*ml
+          .github/workflows/*.y*ml **/action.y*ml
       - name: Prepare the ordinary binary and release action
         env:
           BINARY_SUFFIX: ${{ runner.os == 'Windows' && '.exe' || '' }}
@@ -439,7 +436,7 @@ jobs:
           GIT_COMMITTER_NAME: Action release test
           GIT_COMMITTER_EMAIL: action-release-test@example.invalid
         run: |
-          npm ci --ignore-scripts
+          bun install --frozen-lockfile --ignore-scripts
           binary="${RUNNER_TEMP}/actionlint-test${BINARY_SUFFIX}"
           go build -o "${binary}" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${binary}" >> "${GITHUB_ENV}"
@@ -467,8 +464,7 @@ jobs:
           install-only: true
           shellcheck: false
       - name: Check the installed version and prepare a version file
-        run: |
-          actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0'
+        run: actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0';
           printf 'nodejs 24.0.0\nactionlint 1.17.0\n' > .actionlint-action-test/.tool-versions
       - name: Install from a tool version file
         id: setup-version-file
@@ -599,7 +595,5 @@ jobs:
       - name: Require all Action platforms to pass
         env: { RESULT: "${{ needs.action.result }}", SLIM_RESULT: "${{ needs.action-slim.result }}" }
         run: |
-          if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then
-            exit 0
-          fi
+          if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then exit 0; fi
           test "${RESULT}" = success && test "${SLIM_RESULT}" = success

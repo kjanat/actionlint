@@ -340,7 +340,7 @@ tests     = ["source"]
 name      = "tool-providers"
 doc       = "Tool provider loading and process providers. Configuration reaches providers as typed values, and they hold no WebAssembly runtime."
 packages  = ["internal/tools/provider", "internal/tools/provider/process"]
-allow     = ["contract-leaves", "analysis-contracts", "leaves", "provider-data", "analyzer-host"]
+allow     = ["source", "contract-leaves", "analysis-contracts", "leaves", "provider-data", "core-helpers", "analyzer-host"]
 externals = ["github.com/itchyny/gojq", "github.com/pelletier/go-toml/v2", "github.com/santhosh-tekuri/jsonschema/v6"]
 tests     = ["process-config"]
 
@@ -593,6 +593,7 @@ packages  = ["internal/localapp"]
 allow     = [
   "acquisition-http",
   "analysis-contracts",
+  "analyzer-host",
   "application",
   "catalog",
   "config",
@@ -780,7 +781,7 @@ externals = ["golang.org/x/net"]
 [[layer]]
 name           = "test-suites"
 doc            = "Packages that hold only tests: integration suites, fuzz targets, architecture and toolchain checks. They exercise the application boundary, never the engine."
-packages       = ["fuzz", "internal/architecture", "internal/integration/...", "tools/toolchain"]
+packages       = ["examples/plugins/psscriptanalyzer", "fuzz", "internal/architecture", "internal/integration/...", "tools/toolchain"]
 tests          = [
   "analyzer-executor",
   "adapters",

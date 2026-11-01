@@ -206,7 +206,7 @@
     "placeholder": {
       "type": "string",
       "maxLength": 4096,
-      "pattern": "^(?:[^{}]*|\\{var:[a-z][a-z0-9_]*\\}|\\{flag:[a-z][a-z0-9_]*:-[^:{}]+\\}|\\{option:[a-z][a-z0-9_]*:-[^:{}=]+\\}|\\{switch:[a-z][a-z0-9_]*:(?:-[^:{}]+)?:(?:-[^:{}]+)?\\}|\\{list:[a-z][a-z0-9_]*:[^{}]+\\}|\\{config:toml-pairs:-[^:{}]+\\}|\\{config:(?:toml|json)-file\\}|\\{user-args\\})$"
+      "pattern": "^(?:[^{}]*|\\{var:[a-z][a-z0-9_]*\\}|\\{flag:[a-z][a-z0-9_]*:-[^:{}]+\\}|\\{option:[a-z][a-z0-9_]*:-[^:{}=]+\\}|\\{switch:[a-z][a-z0-9_]*:(?:-[^:{}]+)?:(?:-[^:{}]+)?\\}|\\{list:[a-z][a-z0-9_]*:[^{}]+\\}|\\{config:toml-pairs:-[^:{}]+\\}|\\{config:(?:toml|json)-file\\}|\\{user-args\\}|\\{program-file\\})$"
     },
     "process": {
       "type": "object",
@@ -409,6 +409,25 @@
               ]
             }
           }
+        },
+        "program": {
+          "type": "object",
+          "required": [
+            "filename",
+            "inline"
+          ],
+          "properties": {
+            "filename": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+            },
+            "inline": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 524288
+            }
+          },
+          "additionalProperties": false
         },
         "stdin": {
           "enum": [
@@ -663,6 +682,17 @@
     "selectors": {
       "type": "object",
       "properties": {
+        "documents": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "workflow",
+              "action"
+            ]
+          }
+        },
         "filename": {
           "type": "string",
           "pattern": "^[A-Za-z0-9._-]{1,255}$",
@@ -893,6 +923,17 @@
     },
     "process": {
       "$ref": "#/$defs/process"
+    },
+    "requires": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "source",
+          "dependencies"
+        ]
+      }
     },
     "role": {
       "enum": [

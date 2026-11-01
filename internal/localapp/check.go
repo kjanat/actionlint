@@ -7,13 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 
 	"actionlint.kjanat.dev/v2/internal/application"
 )
@@ -151,6 +156,7 @@ func (l *loadedPlugins) configure(ctx context.Context, options application.Optio
 			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", name)}
 		}
 		seen[name] = true
+		l.ids = append(l.ids, name)
 		if local.repository && !options.AllowConfigProcesses {
 			return options, &PluginLoadError{fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.source)}
 		}
@@ -161,6 +167,26 @@ func (l *loadedPlugins) configure(ctx context.Context, options application.Optio
 				return options, &PluginLoadError{fmt.Errorf("plugin %s: %w", local.source, err)}
 			}
 			local = fetched
+		}
+		if local.manifest.Role == provider.RoleDocument {
+			if options.Processes == nil {
+				options.Processes = analyzerhost.NewProcessPool(ctx, runtime.NumCPU())
+			}
+			l.processes = options.Processes
+			commandOptions := &processconfig.Options{WorkingDir: options.WorkingDir}
+			if local.executable != "" {
+				commandOptions.Executable = &local.executable
+			}
+			command, err := options.Processes.ConfiguredCommandRunner(local.manifest.Process.Entry, commandOptions, false)
+			if err != nil {
+				return options, &PluginLoadError{err}
+			}
+			checker, err := process.NewDocumentAnalyzer(local.manifest, command, process.Options{Programs: local.programs, Required: true})
+			if err != nil {
+				return options, &PluginLoadError{err}
+			}
+			options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Analyzer: checker})
+			continue
 		}
 		selection := backend.Selection{Command: name}
 		if local.executable != "" {

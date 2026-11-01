@@ -3,6 +3,7 @@ package localapp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -11,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
@@ -67,9 +69,12 @@ func InstalledProviders(ctx context.Context, selection config.Selection, paths [
 	var manifests []provider.Manifest
 	for _, path := range sources.Paths {
 		if provider.IsLocalManifest(path) {
-			manifest, _, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
+			manifest, programs, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, err
+			}
+			if err := process.ValidateManifest(manifest, programs); err != nil {
+				return nil, fmt.Errorf("plugin %s: %w", path, err)
 			}
 			manifests = append(manifests, manifest)
 			continue
@@ -85,6 +90,9 @@ func InstalledProviders(ctx context.Context, selection config.Selection, paths [
 		}
 		if artifact.Info.Kind != pluginartifact.ProviderManifest {
 			continue
+		}
+		if err := validateProviderArtifact(ctx, artifact, sources.artifactOptions(path)); err != nil {
+			return nil, err
 		}
 		manifest, err := pulledProvider(artifact)
 		if err != nil {

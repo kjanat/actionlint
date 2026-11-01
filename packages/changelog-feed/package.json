@@ -86,7 +86,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "npm run build",
+    "prepack": "bun run build",
     "test": "node --conditions=source --test ./tests/*.test.ts",
     "typecheck": "tsc"
   },

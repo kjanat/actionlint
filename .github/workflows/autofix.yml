@@ -59,7 +59,7 @@ jobs:
             base=${BASE_SHA}
           fi
           bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
-      - uses: kjanat/install-dprint@7dafce0e5019151901bae232b12cf8b7bd330b2a # v2
+      - uses: kjanat/install-dprint@ad298f8bd07a6bf8dcb3bd13cd567a3e6a85af71 # v2
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
@@ -76,7 +76,7 @@ jobs:
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Set up mise for the affected generators
         if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           install: ${{ steps.inputs.outputs.tables == 'true' }}
           env: ${{ steps.inputs.outputs.tables == 'true' }}
@@ -88,11 +88,11 @@ jobs:
           cache_save_post: true
           cache_key: >-
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: node npm
-        env: { MISE_ENABLE_TOOLS: "node,npm" }
+          install_args: node npm bun
+        env: { MISE_ENABLE_TOOLS: "node,npm,bun" }
       - name: Install catalogue generator dependencies
         if: steps.inputs.outputs.tables == 'true'
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'

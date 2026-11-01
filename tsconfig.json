@@ -13,7 +13,15 @@
     "allowImportingTsExtensions": true
   },
   "include": ["**/*", ".github/ci/*.mjs"],
-  "exclude": ["node_modules", "packages", "playground", "testdata", "github-docs"],
+  "exclude": [
+    "node_modules",
+    "packages",
+    "playground",
+    "testdata",
+    "github-docs",
+    "examples/plugins/external-linters",
+    "examples/plugins/**/actionlint.js"
+  ],
   "references": [
     { "path": "./playground/tsconfig.json" }
   ]

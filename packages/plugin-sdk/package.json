@@ -1,21 +1,80 @@
 {
-  "name": "@kjanat/actionlint-plugin-sdk",
+  "name": "@kjanat-actionlint/plugin-sdk",
   "version": "0.1.0",
   "description": "Author process-based actionlint plugins in TypeScript",
   "repository": "https://github.com/kjanat/actionlint",
   "license": "MIT",
   "type": "module",
+  "imports": {
+    "#pkg": "./package.json",
+    "#*": "./src/*.ts"
+  },
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./stdio": {
+      "types": "./dist/stdio.d.ts",
+      "import": "./dist/stdio.js"
+    },
+    "./authoring": {
+      "types": "./dist/authoring.d.ts",
+      "import": "./dist/authoring.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./process": {
+      "types": "./dist/process.d.ts",
+      "import": "./dist/process.js"
+    },
+    "./sarif": {
+      "types": "./dist/sarif.d.ts",
+      "import": "./dist/sarif.js"
+    },
+    "./files": {
+      "types": "./dist/files.d.ts",
+      "import": "./dist/files.js"
+    },
+    "./images": {
+      "types": "./dist/images.d.ts",
+      "import": "./dist/images.js"
+    }
   },
-  "bin": { "actionlint-plugin": "./bin/actionlint-plugin.js" },
-  "files": ["dist", "bin", "README.md"],
+  "bin": {
+    "actionlint-plugin": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prepare": "npm run build",
-    "test": "npm run build && node --test tests/*.test.js"
+    "build": "bun --bun tsdown",
+    "prepack": "bun run build",
+    "typecheck": "run -q --package typescript tsc --noEmit -p tsconfig.json",
+    "test": "bun scripts/test.ts",
+    "test:package": "bun scripts/test.ts ./scripts/package.test.ts"
   },
-  "dependencies": { "esbuild": "^0.28.0" },
-  "devDependencies": { "@types/node": "^26.0.0", "typescript": "^6.0.0" },
-  "engines": { "node": ">=22.18" }
+  "dependencies": {
+    "@kjanat/dreamcli": "catalog:",
+    "jiti": "^2.7.0",
+    "tsdown": "^0.23.4",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^6.0.0"
+  },
+  "packageManager": "bun@1.4.4",
+  "devEngines": {
+    "runtime": {
+      "name": "bun"
+    }
+  }
 }

@@ -1,0 +1,66 @@
+name: package previews
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and publish package previews
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - parallel:
+          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+            with: { go-version-file: go.mod, cache: false }
+          - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+            with: { bun-version-file: .tool-versions }
+          - uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # master
+            with: { version-file: .tool-versions }
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+      - name: Build the plugin SDK and changelog feed
+        run: run -pk
+          @kjanat-actionlint/plugin-sdk:build
+          @kjlint/changelog-rss:build
+      - name: Build actionlint plugin host
+        env: &a { ACTIONLINT: "${{ runner.temp }}/actionlint" }
+        run: go build -o "${ACTIONLINT}" ./cmd/actionlint
+      - name: Verify the packed plugin SDK
+        env: *a
+        run: run -pk @kjanat-actionlint/plugin-sdk:test:package
+      - name: Pack example plugins
+        env: *a
+        run: run -pk
+          @kjanat-actionlint/plugin-grant:pack
+          @kjanat-actionlint/plugin-grype:pack
+          @kjanat-actionlint/plugin-poutine:pack
+          @kjanat-actionlint/plugin-psscriptanalyzer:pack
+          @kjanat-actionlint/plugin-runner-guard:pack
+          @kjanat-actionlint/plugin-syft:pack
+          @kjanat-actionlint/plugin-trailing-space:pack
+          @kjanat-actionlint/plugin-yamllint:pack
+          @kjanat-actionlint/plugin-zizmor:pack
+      - name: Publish SDK and example package previews
+        run: bun run --bun pkg-pr-new publish --bun --packageManager=bun --previewVersion
+          ./packages/changelog-feed
+          ./packages/plugin-sdk
+          ./examples/plugins/typescript
+          ./examples/plugins/psscriptanalyzer
+          ./examples/plugins/external-linters/grant
+          ./examples/plugins/external-linters/grype
+          ./examples/plugins/external-linters/poutine
+          ./examples/plugins/external-linters/runner-guard
+          ./examples/plugins/external-linters/syft
+          ./examples/plugins/external-linters/yamllint
+          ./examples/plugins/external-linters/zizmor

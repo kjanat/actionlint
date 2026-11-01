@@ -95,7 +95,7 @@ check_input internal/webhook/generate/main.go true false
 check_input internal/webhook/payload/generate/main.mts true false
 check_input internal/webhook/payload/catalogue.json true false
 check_input package.json true false
-check_input package-lock.json true false
+check_input bun.lock true false
 check_input internal/expression/context/generate/main.go true false
 check_input internal/expression/context/availability.gen.go true false
 check_input internal/action/availability.gen.go true false

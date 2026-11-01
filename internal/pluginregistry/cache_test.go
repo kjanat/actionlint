@@ -30,7 +30,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err := (pluginregistry.Lock{SchemaVersion: pluginregistry.LockSchemaVersion, Plugins: []pluginregistry.Pin{first}}).Sync(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.RememberCandidate(t.Context(), first); err != nil {
+	if err := client.RememberCandidate(t.Context(), first, options); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,7 +62,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err := (pluginregistry.Lock{SchemaVersion: pluginregistry.LockSchemaVersion, Plugins: []pluginregistry.Pin{second}}).Sync(t.Context(), options); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.RememberCandidate(t.Context(), second); err != nil {
+	if err := client.RememberCandidate(t.Context(), second, options); err != nil {
 		t.Fatal(err)
 	}
 

@@ -73,3 +73,11 @@ func TestManifestPublicationIdentity(t *testing.T) {
 		t.Fatal("process manifest accepted with a Wasm contract")
 	}
 }
+
+func TestLegacyPublicationRejectsManifest(t *testing.T) {
+	data := `{"schema_version":1,"provider":"github","repository":"publisher/plugin","tag":"v1.0.0","asset":"provider.json","sha256":"` + strings.Repeat("a", 64) + `","kind":"manifest"}`
+	var published submission
+	if err := jsonv2.Unmarshal([]byte(data), &published); err == nil {
+		t.Fatal("legacy publication accepted a process manifest; manifests require schema v2")
+	}
+}

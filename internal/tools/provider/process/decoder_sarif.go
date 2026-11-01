@@ -170,7 +170,7 @@ func sameArtifact(uri, path string) bool {
 		return true
 	}
 	parsed, err := url.Parse(uri)
-	if err != nil || parsed.Scheme != "file" {
+	if err != nil || parsed.Scheme != "file" || parsed.User != nil || parsed.Host != "" && !strings.EqualFold(parsed.Host, "localhost") || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return false
 	}
 	name := parsed.Path

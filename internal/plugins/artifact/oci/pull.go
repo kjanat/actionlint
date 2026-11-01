@@ -76,10 +76,11 @@ func (d document) index() bool {
 // puller fetches the manifests and blobs of one oci:// source through the
 // store.
 type puller struct {
-	ref   artifact.OCIReference
-	repo  *remote.Repository
-	store artifact.Store
-	limit int64
+	ref    artifact.OCIReference
+	repo   *remote.Repository
+	store  artifact.Store
+	limit  int64
+	inline map[string][]byte
 }
 
 func newPuller(ref artifact.OCIReference, options artifact.Options) (*puller, error) {
@@ -111,6 +112,9 @@ func (p *puller) cached(ctx context.Context, digest string, limit int64) ([]byte
 	case err == nil:
 		return data, true, nil
 	case errors.Is(err, os.ErrNotExist), errors.Is(err, artifact.ErrCorrupt):
+		if p.repo == nil {
+			return nil, false, err
+		}
 		return nil, false, nil
 	default:
 		return nil, false, err
@@ -119,7 +123,11 @@ func (p *puller) cached(ctx context.Context, digest string, limit int64) ([]byte
 
 // manifest returns the verified index or image manifest with SHA256 digest.
 func (p *puller) manifest(ctx context.Context, digest string) (document, error) {
-	data, ok, err := p.cached(ctx, digest, maxManifestBytes)
+	data, ok := p.inline[digest]
+	var err error
+	if !ok {
+		data, ok, err = p.cached(ctx, digest, maxManifestBytes)
+	}
 	if err != nil {
 		return document{}, err
 	}
@@ -155,6 +163,9 @@ func (p *puller) blob(ctx context.Context, desc ocispec.Descriptor) ([]byte, err
 	if desc.Size < 0 || desc.Size > p.limit {
 		return nil, fmt.Errorf("layer sha256:%s: %d bytes exceeds %d byte limit", digest, desc.Size, p.limit)
 	}
+	if desc.Data != nil {
+		return p.cacheEmbedded(ctx, desc, p.limit)
+	}
 	data, ok, err := p.cached(ctx, digest, p.limit)
 	if err != nil || ok {
 		return data, err
@@ -167,6 +178,22 @@ func (p *puller) blob(ctx context.Context, desc ocispec.Descriptor) ([]byte, err
 		return nil, err
 	}
 	return data, nil
+}
+
+// Embedded descriptors bind bytes exactly as fetched descriptors do. Keep the
+// selected inline manifests available even when persistent caching is disabled.
+func (p *puller) cacheEmbedded(ctx context.Context, desc ocispec.Descriptor, limit int64) ([]byte, error) {
+	digest, err := descriptorDigest(desc)
+	if err != nil {
+		return nil, err
+	}
+	if desc.Size < 0 || desc.Size > limit || int64(len(desc.Data)) != desc.Size {
+		return nil, fmt.Errorf("embedded OCI object sha256:%s: size disagrees with descriptor or exceeds limit", digest)
+	}
+	if err := p.store.Publish(ctx, digest, desc.Data); err != nil {
+		return nil, err
+	}
+	return desc.Data, nil
 }
 
 // platforms returns the image manifest digest of every platform the root
@@ -191,6 +218,16 @@ func (p *puller) platforms(ctx context.Context) (map[string]string, error) {
 		digest, err := descriptorDigest(entry)
 		if err != nil {
 			return nil, err
+		}
+		if entry.Data != nil {
+			data, err := p.cacheEmbedded(ctx, entry, maxManifestBytes)
+			if err != nil {
+				return nil, err
+			}
+			if p.inline == nil {
+				p.inline = map[string][]byte{}
+			}
+			p.inline[digest] = data
 		}
 		key := entry.Platform.OS + "/" + entry.Platform.Architecture
 		if _, ok := platforms[key]; !ok {
@@ -268,6 +305,24 @@ func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Optio
 	if err != nil {
 		return nil, err
 	}
+	return pull.resolve(ctx)
+}
+
+// Cached reconstructs an OCI artifact exclusively from verified stored blobs.
+// It creates no registry client and refuses missing or corrupt content without
+// network access. It implements artifact.PullOCI for cache-only consumers.
+func Cached(ctx context.Context, ref artifact.OCIReference, options artifact.Options) (*artifact.Artifact, error) {
+	ctx, cancel := withTimeout(ctx, options)
+	defer cancel()
+	limit := options.MaxBytes
+	if limit <= 0 {
+		limit = artifact.DefaultMaxBytes
+	}
+	pull := &puller{ref: ref, store: artifact.Store{Dir: options.CacheDir}, limit: limit}
+	return pull.resolve(ctx)
+}
+
+func (pull *puller) resolve(ctx context.Context) (*artifact.Artifact, error) {
 	platform, manifest, err := pull.hostManifest(ctx)
 	if err != nil {
 		return nil, err
@@ -276,7 +331,7 @@ func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Optio
 	if err != nil {
 		return nil, err
 	}
-	info := artifact.Info{Source: ref.String(), SHA256: ref.Digest(), Manifest: manifest, Platform: platform}
+	info := artifact.Info{Source: pull.ref.String(), SHA256: pull.ref.Digest(), Manifest: manifest, Platform: platform}
 	for _, layer := range layers {
 		digest, err := descriptorDigest(layer)
 		if err != nil {

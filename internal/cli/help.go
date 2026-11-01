@@ -168,7 +168,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	name := terminalLink(links, "actionlint", projectURL)
 	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s — Check workflows, actions and embedded scripts", buildinfo.Version()))
 	_, _ = fmt.Fprintf(out, "\n%s\n  %s [flags] [files...]\n  %s [flags] -\n  %s <command>\n", heading.Sprint("Usage:"), command.Sprint(name), command.Sprint(name), command.Sprint(name))
-	_, _ = fmt.Fprintln(out, "\nNo arguments: show help. Run actionlint check to discover workflows and actions.\nUse - for stdin. Use -- before filenames beginning with a dash.")
+	_, _ = fmt.Fprintln(out, "\nNo arguments: scan the current Git repository; show help outside a repository.\nUse - for stdin. Use -- before filenames beginning with a dash.")
 	_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
 	for _, sub := range a.root.Commands() {
 		if !sub.Hidden && sub.Name() != "help" {

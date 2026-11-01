@@ -52,7 +52,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.root = &cobra.Command{
 		Use:           "actionlint [flags] [--] [files... | -]",
 		Short:         "Check GitHub Actions workflows",
-		Long:          "Check workflows, actions and embedded scripts.\nRun actionlint check to discover workflows and actions in the current repository.\nWith no arguments, show help. Pass - alone to read stdin.",
+		Long:          "Check workflows, actions and embedded scripts.\nWith no arguments, scan the current Git repository or show help outside a repository.\nPass - alone to read stdin.",
 		SilenceErrors: true, SilenceUsage: true, DisableFlagsInUseLine: true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		RunE:              a.capture("check"),
@@ -68,7 +68,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.root.Flags().SetInterspersed(true)
 	check := &cobra.Command{
 		Use: "check [flags] [--] [files... | -]", Short: "Check workflows and actions",
-		Long: "Check workflow and action files, stdin, or the current repository.\nOptions may appear before or after filenames. Directory inputs are not expanded.",
+		Long: "Check workflow and action files, directories, stdin, or the current repository.\nOptions may appear before or after paths. Directories are traversed recursively.",
 		Args: cobra.ArbitraryArgs, RunE: a.capture("check"),
 		ValidArgsFunction: cobra.FixedCompletions([]string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt),
 	}

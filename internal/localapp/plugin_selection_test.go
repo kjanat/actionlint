@@ -23,6 +23,21 @@ func pluginRepository(t *testing.T) string {
 	return root
 }
 
+func TestDirectoryPluginSelectionUsesDirectoryRepository(t *testing.T) {
+	root := pluginRepository(t)
+	if err := os.Mkdir(filepath.Join(root, ".github"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte("plugins: ["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".", root, filepath.Join(root, ".github")} {
+		if _, err := (PluginSelection{}).Select(t.Context(), root, application.Input{Kind: application.Files, Paths: []string{path}}); err == nil {
+			t.Fatalf("directory %q skipped its repository plugin configuration", path)
+		}
+	}
+}
+
 func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
 	root := pluginRepository(t)
 	if err := os.Mkdir(filepath.Join(root, ".github"), 0o700); err != nil {

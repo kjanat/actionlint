@@ -184,14 +184,7 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
-	gitRepository(t, ".")
-	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	// A bare invocation shows help. Importing the test binary's own flags
+	// Outside a repository, a bare invocation shows help. Importing the test binary's flags
 	// instead would end in a usage error.
 	for _, args := range [][]string{nil, {"actionlint"}} {
 		var out, errout bytes.Buffer
@@ -199,6 +192,13 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 		if code := cmd.Main(args); code != 0 || !strings.Contains(out.String(), "Usage:") || errout.Len() != 0 {
 			t.Fatalf("empty args imported process args: %d %s %s", code, &out, &errout)
 		}
+	}
+	gitRepository(t, ".")
+	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
+		t.Fatal(err)
 	}
 	got := testRunCommand("", "--init-config", "--json")
 	var created struct {

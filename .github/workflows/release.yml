@@ -179,7 +179,9 @@ jobs:
         with: *Node24
       - uses: *Download
         with: { name: verified-release, path: .release-assets }
-      - run: npm ci --ignore-scripts
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with: { bun-version: "1.4.4" }
+      - run: bun install --frozen-lockfile --ignore-scripts
       - name: Generate the manifests from the published release
         env:
           GH_TOKEN: ${{ github.token }}

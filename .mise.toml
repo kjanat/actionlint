@@ -18,6 +18,7 @@ command = "go"
 args    = ["run", "golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest"]
 
 [tools]
+bun                               = "1.4.4"
 npm                               = "12.2.0"
 go                                = "1.27.3"
 node                              = "26"
@@ -52,25 +53,36 @@ depends = ["rshellcheck"]
 [tools."github:kjanat/dprint"]
 version = "0.60.6-kjanat"
 
+[tools.wasi-sdk]
+version        = "34"
+version_prefix = "wasi-sdk-"
+filter_bins    = ["wasm32-wasip2-clang", "wasm32-wasip2-clang++"]
+
+[tools.wasi-sdk.platforms]
+windows-x64   = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
+windows-arm64 = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
+
 [tool_alias]
 tombi       = "github:tombi-toml/tombi"
 shellcheck  = "github:koalaman/shellcheck"
 rshellcheck = "github:kjanat/shellcheck-rs"
+wasi-sdk    = "github:WebAssembly/wasi-sdk"
 
 [settings]
 experimental                        = true
-idiomatic_version_file_enable_tools = ["go", "node"]
+idiomatic_version_file_enable_tools = ["go", "node", "bun"]
 minimum_release_age                 = "0s"
 
 [env]
-_.path       = ["{{config_root}}/node_modules/.bin"]
-GOFLAGS      = "-buildvcs=true"
-VOLTA_BYPASS = 1
+_.path        = ["{{config_root}}/node_modules/.bin"]
+GOFLAGS       = "-buildvcs=true"
+VOLTA_BYPASS  = 1
+WASI_SDK_PATH = { value = "{% if 'wasi-sdk' in tools %}{{ tools['wasi-sdk'].path }}{% endif %}", tools = true }
 
 [deps]
-[deps.npm]
+[deps.bun]
 auto = false
-run  = "npm i --no-fund --no-audit --ignore-scripts"
+run  = "bun i"
 
 [deps.go]
 auto = false

@@ -154,6 +154,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
 		input, inputErr := composition.AnalyzerInput(composed, path, sourcePath, content, document, references)
+		input.Directory = root
 		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()
 		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)

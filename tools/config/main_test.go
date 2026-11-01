@@ -164,7 +164,7 @@ func TestRuffEditorCompletions(t *testing.T) {
 		t.Skip("Node.js is not installed")
 	}
 	if _, err := os.Stat(filepath.Join("..", "..", "node_modules", "yaml-language-server", "package.json")); err != nil {
-		t.Skip("run npm ci first: yaml-language-server is not installed")
+		t.Skip("run bun install --frozen-lockfile first: yaml-language-server is not installed")
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()

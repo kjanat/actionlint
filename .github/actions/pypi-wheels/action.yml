@@ -17,16 +17,18 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      if: inputs.assets-dir != ''
+      with: { bun-version: "1.4.4" }
     - name: Build the wheels
       if: inputs.assets-dir != ''
-      shell: bash
+      shell: bash -euo pipefail {0}
       env:
         VERSION: ${{ inputs.version }}
         ASSETS_DIR: ${{ inputs.assets-dir }}
         OUT_DIR: ${{ inputs.out-dir }}
       run: |
-        set -euo pipefail
-        npm ci --ignore-scripts
+        bun install --frozen-lockfile --ignore-scripts
         node distribution/pypi/src/cli.ts build --version "${VERSION}" --assets "${ASSETS_DIR}" --out "${OUT_DIR}"
     - name: Install the ${{ inputs.smoke }} wheel and run actionlint -version
       shell: pwsh

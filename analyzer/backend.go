@@ -172,7 +172,7 @@ type ScriptDiagnostic struct {
 	Message        string               `json:"message"`
 	Severity       string               `json:"severity,omitempty"`
 	Location       ScriptPosition       `json:"location"`
-	EndLocation    ScriptPosition       `json:"end_location"`
+	EndLocation    ScriptPosition       `json:"end_location,omitzero"`
 	URL            string               `json:"url,omitempty"`
 	TemplateEffect ScriptTemplateEffect `json:"template_effect,omitempty"`
 	Source         string               `json:"source,omitempty"`

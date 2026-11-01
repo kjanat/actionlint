@@ -58,6 +58,19 @@ func Parse(data []byte) (Manifest, error) {
 
 // validate checks what the schema cannot express.
 func validate(m Manifest) error {
+	seenFacts := map[analyzer.Fact]bool{}
+	for _, fact := range m.Requires {
+		if fact != analyzer.Source && fact != analyzer.Dependencies || seenFacts[fact] {
+			return fmt.Errorf("unsupported or duplicate document fact %q", fact)
+		}
+		seenFacts[fact] = true
+	}
+	if m.Role != RoleDocument && (len(m.Requires) != 0 || len(m.Selectors.Documents) != 0) {
+		return errors.New("document facts and selectors require the document role")
+	}
+	if m.Role == RoleDocument && (len(m.Selectors.Inputs) != 0 || len(m.Selectors.Shells) != 0) {
+		return errors.New("document providers cannot select script inputs or shells")
+	}
 	if err := analyzer.ValidateScriptInputs(m.Selectors.Inputs); err != nil {
 		return err
 	}
@@ -71,6 +84,9 @@ func validate(m Manifest) error {
 		return nil
 	}
 	p := m.Process
+	if err := p.ValidateProgram(); err != nil {
+		return err
+	}
 	if err := validateConfigSchema("process.config_schema", p.ConfigSchema); err != nil {
 		return err
 	}

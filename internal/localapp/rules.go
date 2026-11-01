@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
@@ -33,6 +34,11 @@ func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Des
 		return nil, err
 	}
 	var extensions []rule.Descriptor
+	for _, local := range plugins.providers {
+		if local.manifest.Role == provider.RoleDocument {
+			extensions = append(extensions, local.manifest.Rule.Clone())
+		}
+	}
 	for _, plugin := range plugins.plugins {
 		if !plugin.HasAnalyzer() {
 			continue

@@ -86,7 +86,7 @@ func ProviderMetadata(data []byte) (json.RawMessage, error) {
 		return nil, fmt.Errorf("tool provider manifest: %w", err)
 	}
 	if manifest.SchemaVersion != 1 || manifest.Transport != "process" {
-		return nil, errors.New("tool provider manifest requires schema_version 1 and process transport")
+		return nil, errors.New("invalid tool provider manifest: discovery requires schema_version 1 and process transport")
 	}
 	if len(manifest.Metadata) == 0 {
 		return bytes.Clone(data), nil

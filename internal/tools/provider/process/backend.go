@@ -79,6 +79,13 @@ func NewBackend(manifest provider.Manifest, command *analyzerhost.Command, optio
 		return nil, fmt.Errorf("tool provider %s has no command", manifest.Rule.Name)
 	}
 	spec := *manifest.Process
+	if err := spec.ValidateProgram(); err != nil {
+		return nil, err
+	}
+	if spec.Program != nil {
+		program := *spec.Program
+		spec.Program = &program
+	}
 	b := &Backend{name: manifest.Rule.Name, spec: spec, capabilities: manifest.Capabilities, command: command, options: options, probe: options.Probe}
 	if b.probe == nil {
 		b.probe = &VersionProbe{}
@@ -313,7 +320,8 @@ func (b *Backend) execution(args []string, stdin, directory string) analyzerhost
 		exitCodes = []int{0}
 	}
 	return analyzerhost.Execution{
-		Args: append(slices.Clone(b.launcher), args...), Stdin: stdin, Dir: directory,
+		OutputLimit: MaxOutputBytes,
+		Args:        append(slices.Clone(b.launcher), args...), Stdin: stdin, Dir: directory,
 		Env: slices.Clone(b.env), UnsetEnv: append(slices.Clone(b.command.UnsetEnv), b.spec.EnvUnset...), ExitCodes: exitCodes,
 	}
 }
@@ -324,7 +332,7 @@ func (b *Backend) execution(args []string, stdin, directory string) analyzerhost
 // are the host's own. An optional provider whose version cannot be
 // established returns no result and no error.
 func (b *Backend) Run(ctx context.Context, request analyzer.ScriptRequest, vars map[string]string) (Result, error) {
-	result, err := b.run(ctx, request, vars)
+	result, err := b.run(ctx, request, vars, nil)
 	return result, owned(ctx, err)
 }
 
@@ -340,7 +348,7 @@ func owned(ctx context.Context, err error) error {
 	return errors.New(err.Error())
 }
 
-func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars map[string]string) (Result, error) {
+func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars map[string]string, document *analyzer.DocumentRequest) (result Result, err error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
@@ -363,6 +371,9 @@ func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars 
 	}
 	values["filename"] = request.Filename
 	values["filename_abs"] = filepath.Join(directory, request.Filename)
+	if filepath.IsAbs(request.Filename) {
+		values["filename_abs"] = request.Filename
+	}
 	config, err := decodeConfig(request.Config)
 	if err != nil {
 		return Result{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
@@ -391,6 +402,14 @@ func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars 
 		return Result{}, err
 	}
 	in := argInputs{vars: values, user: b.user}
+	if b.spec.Program != nil {
+		path, cleanup, programErr := materializeProgram(ctx, *b.spec.Program)
+		if programErr != nil {
+			return Result{}, programErr
+		}
+		defer func() { err = errors.Join(err, cleanup()) }()
+		in.programFile = path
+	}
 	switch b.spec.Config.Render {
 	case provider.RenderTOMLPairs:
 		if in.tomlPairs, err = tomlPairs(pairsOption(b.spec.Args), engine.value); err != nil {
@@ -409,7 +428,20 @@ func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars 
 	if err != nil {
 		return Result{}, err
 	}
-	stdin, err := b.stdin(request, engine.value)
+	var stdin string
+	if document != nil && b.spec.Stdin == provider.StdinRequest {
+		payload := *document
+		if b.spec.Config.Render == provider.RenderJSONStdin && engine.value != nil {
+			payload.Config, err = json.Marshal(engine.value)
+		}
+		if err == nil {
+			var encoded []byte
+			encoded, err = json.Marshal(payload)
+			stdin = string(encoded)
+		}
+	} else {
+		stdin, err = b.stdin(request, engine.value)
+	}
 	if err != nil {
 		return Result{}, err
 	}
@@ -428,11 +460,14 @@ func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars 
 		decoding, cancel = context.WithTimeout(context.WithoutCancel(ctx), canceledDecodeLimit)
 		defer cancel()
 	}
-	result, err := b.decoder.Decode(decoding, stdout, values)
+	result, err = b.decoder.Decode(decoding, stdout, values)
 	if err != nil {
 		return Result{}, fmt.Errorf("tools.%s: %w", b.name, err)
 	}
 	result.Directory = directory
+	if document != nil {
+		result.Diagnostics = documentFindings(result.Diagnostics, request, directory)
+	}
 	if err := b.review(&result, request); err != nil {
 		return Result{}, err
 	}

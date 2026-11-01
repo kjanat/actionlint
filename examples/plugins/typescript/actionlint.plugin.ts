@@ -1,4 +1,4 @@
-import { type Diagnostic, defineScriptProvider } from '@kjanat/actionlint-plugin-sdk';
+import { type Diagnostic, defineScriptProvider } from '@kjanat-actionlint/plugin-sdk';
 
 function trailingWhitespace(source: string, filename: string): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
@@ -33,12 +33,12 @@ function trailingWhitespace(source: string, filename: string): Diagnostic[] {
 }
 
 export default defineScriptProvider({
-	id: 'example/trailing-whitespace',
+	id: 'github.com/kjanat/actionlint/examples/trailing-space',
 	version: '0.1.0',
 	name: 'Trailing whitespace example',
 	description: 'Reports and removes trailing spaces and tabs in a script source.',
 	license: 'MIT',
-	repository: 'https://github.com/example/actionlint-trailing-space',
+	repository: 'https://github.com/kjanat/actionlint',
 	shells: ['bash'],
 	rule: {
 		name: 'trailing-space',
@@ -46,9 +46,8 @@ export default defineScriptProvider({
 		subcategory: 'formatting',
 		maturity: 'nursery',
 		description: 'Lines should not end in spaces or tabs.',
-		provider: 'example/trailing-whitespace',
+		provider: 'github.com/kjanat/actionlint/examples/trailing-space',
 	},
 	fixes: true,
-	shells: ['bash'],
 	check: ({ source, filename }) => trailingWhitespace(source, filename),
 });

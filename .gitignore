@@ -23,6 +23,13 @@
 /man/actionlint.1
 /man/actionlint.1.html
 /packages/*/dist/
+# Generated TypeScript plugin packages.
+/examples/plugins/**/actionlint.js
+/examples/plugins/**/actionlint.mjs
+/examples/plugins/**/actionlint-provider.json
+/examples/plugins/**/plugin-layout/
+/examples/plugins/**/*.tgz
+/packages/plugin-sdk/*.tgz
 /playground-dist
 /result
 /result-*

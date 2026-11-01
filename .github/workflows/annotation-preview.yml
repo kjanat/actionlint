@@ -48,12 +48,14 @@ jobs:
         env: { GOTOOLCHAIN: auto }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with: { bun-version: "1.4.4" }
       - name: Build this branch's binary and Action
         run: |
-          npm ci
+          bun install --frozen-lockfile
           go build -o "${RUNNER_TEMP}/actionlint-preview" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${RUNNER_TEMP}/actionlint-preview" >> "${GITHUB_ENV}"
-          npm run build --workspace actionlint-action -- --out-dir "${RUNNER_TEMP}/annotation-preview"
+          bun run --filter actionlint-action build --out-dir "${RUNNER_TEMP}/annotation-preview"
       - name: Preview annotation and summary
         run: node "${RUNNER_TEMP}/annotation-preview/action.mjs"
       - name: Link annotation step logs

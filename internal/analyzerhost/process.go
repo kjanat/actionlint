@@ -35,6 +35,9 @@ type Execution struct {
 	// ExitCodes, when not empty, are the only statuses accepted, and a nonzero
 	// one only with nonempty stdout. They replace MaxExitCode and RequireSuccess.
 	ExitCodes []int
+	// OutputLimit bounds combined stdout/stderr bytes while the child runs.
+	// Zero preserves the caller's existing capture behavior.
+	OutputLimit int64
 }
 
 func (e *Execution) Run(ctx context.Context) ([]byte, error) {
@@ -44,10 +47,12 @@ func (e *Execution) Run(ctx context.Context) ([]byte, error) {
 
 // RunStatus runs the execution and also returns the accepted exit status.
 func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
+	runContext, cancel := context.WithCancel(ctx)
+	defer cancel()
 	// The child command and the status checks work on detached copies, so the
 	// caller's slices are never shared with os/exec or the filters below.
 	args, unsetEnv, exitCodes := slices.Clone(e.Args), slices.Clone(e.UnsetEnv), slices.Clone(e.ExitCodes)
-	cmd := exec.CommandContext(ctx, e.Cmd, args...)
+	cmd := exec.CommandContext(runContext, e.Cmd, args...)
 	cmd.Dir = e.Dir
 	cmd.Stderr = nil
 	switch {
@@ -70,8 +75,11 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 	cmd.Stdin = strings.NewReader(e.Stdin)
 
 	var stdout []byte
+	var capturedStderr []byte
 	var err error
-	if e.CombineOutput {
+	if e.OutputLimit > 0 {
+		stdout, capturedStderr, err = boundedCommandOutput(cmd, e.OutputLimit, e.CombineOutput, cancel)
+	} else if e.CombineOutput {
 		stdout, err = cmd.CombinedOutput()
 	} else {
 		stdout, err = cmd.Output()
@@ -82,6 +90,9 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 			code := exitErr.ExitCode()
 
 			stderr := exitErr.Stderr
+			if e.OutputLimit > 0 {
+				stderr = capturedStderr
+			}
 			if e.CombineOutput {
 				stderr = stdout
 			}

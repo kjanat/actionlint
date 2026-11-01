@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "id": "github.com/kjanat/actionlint/examples/psscriptanalyzer",
+  "id": "psscriptanalyzer",
   "version": "0.1.0",
   "role": "script",
   "scope": "source",
@@ -124,8 +124,18 @@
       },
       "transform": {
         "language": "jq",
-        "digest": "sha256:17191df6bad66e7add96dfffcc6a78bfed8cc55fdfd926ffd464cb55ceda2194"
+        "inline": "# PSScriptAnalyzer DiagnosticRecord[] -> actionlint snippet diagnostics.\n# Severity is the DiagnosticSeverity enum's numeric JSON representation.\ndef severity:\n  if . == 0 then \"info\"\n  elif . == 1 then \"warning\"\n  elif . == 2 or . == 3 then \"error\"\n  else error(\"Unknown PSScriptAnalyzer severity\")\n  end;\n\nmap({\n  filename: $vars.filename,\n  code: .RuleName,\n  message: .Message,\n  severity: (.Severity | severity),\n  location: {row: .Extent.StartLineNumber, column: .Extent.StartColumnNumber},\n  end_location: {row: .Extent.EndLineNumber, column: .Extent.EndColumnNumber},\n  fixes: [(.SuggestedCorrections // [])[] | {\n    description: .Description,\n    replacements: [{\n      row: .StartLineNumber,\n      column: .StartColumnNumber,\n      end_row: .EndLineNumber,\n      end_column: .EndColumnNumber,\n      text: .Text\n    }]\n  }]\n})\n"
       }
     }
+  },
+  "metadata": {
+    "metadata_version": 1,
+    "id": "psscriptanalyzer",
+    "name": "PSScriptAnalyzer",
+    "description": "PowerShell script analysis through the generic actionlint process protocol.",
+    "license": "MIT",
+    "repository": "https://github.com/kjanat/actionlint-plugin-psscriptanalyzer",
+    "plugin_version": "0.1.0",
+    "transport": "process"
   }
 }

@@ -19,7 +19,7 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 	if c.base.Scheme == "file" {
 		return Pin{}, errors.New("local candidate lookup requires a configured SHA256 digest; run actionlint plugin install to bind it")
 	}
-	if !pluginref.ValidRepository(name) || !pluginref.ValidVersion(version) || version == "latest" {
+	if !pluginref.ValidName(name) || !pluginref.ValidVersion(version) || version == "latest" {
 		return Pin{}, errors.New("registry plugins require a canonical package and exact version; run actionlint plugin install to resolve the declaration")
 	}
 	if err := ctx.Err(); err != nil {
@@ -92,7 +92,7 @@ func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, 
 // local candidate digest. An uncached selection may be restored from staging
 // only when the staged artifact still has that digest.
 func (c *Client) LookupCandidate(ctx context.Context, name, version, digest string) (Pin, error) {
-	if c.base.Scheme != "file" || !pluginref.ValidRepository(name) || !pluginref.ValidVersion(version) || version == "latest" || !digestPattern.MatchString(digest) {
+	if c.base.Scheme != "file" || !pluginref.ValidName(name) || !pluginref.ValidVersion(version) || version == "latest" || !digestPattern.MatchString(digest) {
 		return Pin{}, errors.New("candidate lookup requires a local registry, canonical package, exact version, and SHA256 digest")
 	}
 	if err := ctx.Err(); err != nil {
@@ -116,8 +116,9 @@ func (c *Client) LookupCandidate(ctx context.Context, name, version, digest stri
 }
 
 // RememberCandidate stores verified candidate metadata under an immutable
-// per-digest key. It never changes a mutable name/version alias.
-func (c *Client) RememberCandidate(ctx context.Context, pin Pin) error {
+// per-digest key. Callers supply the execution cache and a cache-only OCI
+// resolver. It never changes a mutable name/version alias.
+func (c *Client) RememberCandidate(ctx context.Context, pin Pin, options artifact.Options) error {
 	if c.base.Scheme != "file" || pin.Origin != "candidate" || !SameRegistry(pin.Registry, c.base.String()) {
 		return errors.New("candidate pin belongs to another registry")
 	}
@@ -125,7 +126,7 @@ func (c *Client) RememberCandidate(ctx context.Context, pin Pin) error {
 	if err := pin.Validate(); err != nil {
 		return err
 	}
-	artifact, err := artifact.Resolve(ctx, pin.Source(), candidateArtifactOptions())
+	artifact, err := artifact.Resolve(ctx, pin.Source(), options)
 	if err != nil {
 		return fmt.Errorf("candidate artifact is not verified in the artifact cache: %w", err)
 	}
@@ -179,14 +180,6 @@ func (c *Client) candidateCachePath(name, version, digest string) (string, error
 		return "", err
 	}
 	return filepath.Join(directory, "candidates", hash(name+"\n"+version+"\n"+digest)+".json"), nil
-}
-
-func candidateArtifactOptions() artifact.Options {
-	base, err := os.UserCacheDir()
-	if err != nil {
-		return artifact.Options{}
-	}
-	return artifact.Options{CacheDir: filepath.Join(base, "actionlint", "artifacts")}
 }
 
 func sameCandidate(left, right Pin) bool {

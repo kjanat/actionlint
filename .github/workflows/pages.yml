@@ -25,7 +25,7 @@ on:
       - "!internal/githubaction/**"
       - "!**/*_test.go"
       - "package.json"
-      - "package-lock.json"
+      - "bun.lock"
       - ".node-version"
       - ".tool-versions"
       - ".mise.toml"
@@ -58,18 +58,18 @@ jobs:
           fetch-depth: 0
           ref: "${{ github.event_name == 'workflow_run' && github.event.repository.default_branch || github.sha }}"
       - name: Install project tools
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           cache: true
           auto_update: true
-          install_args: go node npm
+          install_args: go node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
       - uses: $/.github/actions/setup-runner
       - uses: $/.github/actions/setup-pandoc
       - parallel:
           - name: Install JavaScript dependencies
-            run: runner install --pm npm --no-tools --frozen
+            run: runner install --pm bun --no-tools --frozen
           - name: Build command manual
             run: run make:man
       - name: Build and test playground

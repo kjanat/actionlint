@@ -40,6 +40,7 @@ func TestParse(t *testing.T) {
 		{"github.com/kjanat/actionlint-plugin-ruff@v1.2.3", "github.com/kjanat/actionlint-plugin-ruff", "v1.2.3", "github.com/kjanat/actionlint-plugin-ruff@v1.2.3"},
 		{"github.com/other/actionlint-plugin-ruff", "github.com/other/actionlint-plugin-ruff", "latest", "github.com/other/actionlint-plugin-ruff"},
 		{"github.com/owner/.github", "github.com/owner/.github", "latest", "github.com/owner/.github"},
+		{"github.com/Owner/Repo/tools/grant@v1.2.3", "github.com/owner/repo/tools/grant", "v1.2.3", "github.com/owner/repo/tools/grant@v1.2.3"},
 		{"Kjanat/Shellcheck", "github.com/kjanat/shellcheck", "latest", "github.com/kjanat/shellcheck"},
 		{"github.com/Kjanat/Shellcheck@v1.2.3", "github.com/kjanat/shellcheck", "v1.2.3", "github.com/kjanat/shellcheck@v1.2.3"},
 		{"gitlab.com/Group/Subgroup/Plugin@latest", "gitlab.com/group/subgroup/plugin", "latest", "gitlab.com/group/subgroup/plugin"},
@@ -66,7 +67,7 @@ func TestParse(t *testing.T) {
 func TestRejectInvalidReference(t *testing.T) {
 	for _, input := range []string{
 		"", ".plugin", "under_score", strings.Repeat("a", 65), "owner/repo@", "owner/repo@@v1", "owner/repo@^1.0", "owner/repo@v1//extra", "owner/repo@v1/../extra",
-		"github.com/owner/repo/extra", "github.com/owner/.", "github.com/owner/..", "https://github.com/owner/repo", "codeberg.org/owner/repo",
+		"github.com/owner/repo/../extra", "github.com/owner/repo//extra", "github.com/owner/repo/./extra", "github.com/owner/.", "github.com/owner/..", "https://github.com/owner/repo", "codeberg.org/owner/repo",
 		"owner/repo@area/..", "owner/repo@area/v1.lock", "owner/repo@area/v1.", "owner/repo@area//v1",
 		"../repo", "owner/../repo", " owner/repo", "owner/repo ", "gitlab.com/group//repo",
 		"github.com/backend.services/plugin", "gitlab.com/-group/plugin", "gitlab.com/group./plugin",

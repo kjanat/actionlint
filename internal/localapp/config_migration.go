@@ -316,7 +316,7 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 			if !filepath.IsAbs(path) {
 				path = filepath.Join(directory, path)
 			}
-			starts = append(starts, filepath.Dir(path))
+			starts = append(starts, pluginSelectionStart(path))
 		}
 	case input.Kind == application.Stdin && input.Name != "" && input.Name != "<stdin>":
 		path := input.Name

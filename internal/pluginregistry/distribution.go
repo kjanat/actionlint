@@ -102,7 +102,7 @@ func (s *submission) UnmarshalJSON(data []byte) error {
 func (s submission) validateSource() error {
 	switch s.SchemaVersion {
 	case 1:
-		if !s.Artifact.IsZero() || !validAsset(s.Kind, s.Asset) || !digestPattern.MatchString(s.SHA256) {
+		if (s.Kind != artifact.Core && s.Kind != artifact.Component) || !s.Artifact.IsZero() || !validAsset(s.Kind, s.Asset) || !digestPattern.MatchString(s.SHA256) {
 			return errors.New("invalid legacy registry publication source")
 		}
 	case 2:

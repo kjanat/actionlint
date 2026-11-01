@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -12,21 +13,54 @@ import (
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
+// DirectoryPaths discovers workflows and action manifests within dir. Repository
+// roots and .github directories use the standard workflows location; an explicitly
+// selected ordinary directory is a recursive YAML input directory.
+func DirectoryPaths(ctx context.Context, dir string, reader *fsread.Reader) ([]string, error) {
+	workflows := dir
+	switch {
+	case projectpath.RepositoryRoot(dir) == dir:
+		workflows = filepath.Join(dir, ".github", "workflows")
+	case filepath.Base(dir) == ".github":
+		workflows = filepath.Join(dir, "workflows")
+	}
+	if workflows == dir {
+		if info, err := os.Stat(filepath.Join(dir, ".github")); err == nil && info.IsDir() {
+			workflows = filepath.Join(dir, ".github", "workflows")
+		}
+	}
+	if workflows == dir {
+		return projectpath.YAML(ctx, dir, reader)
+	}
+	return projectDocumentPaths(ctx, dir, workflows, reader)
+}
+
 func RepositoryPaths(ctx context.Context, project *Project, reader *fsread.Reader) ([]string, error) {
-	paths, err := projectpath.Actions(ctx, project.RootDir(), reader)
+	return projectDocumentPaths(ctx, project.RootDir(), project.WorkflowsDir(), reader)
+}
+
+func projectDocumentPaths(ctx context.Context, dir, workflows string, reader *fsread.Reader) ([]string, error) {
+	dir, workflows = filepath.Clean(dir), filepath.Clean(workflows)
+	paths, err := projectpath.Actions(ctx, dir, reader)
 	if err != nil {
 		return nil, err
 	}
-	workflows := project.WorkflowsDir()
-	if _, err := os.Stat(workflows); err == nil {
-		files, err := WorkflowPaths(reader, workflows)
+	// Explicit directory aliases are supported, but discovery must not follow
+	// a symlinked .github or workflows directory encountered below that input.
+	for child := workflows; child != dir; child = filepath.Dir(child) {
+		info, err := os.Lstat(child)
+		if os.IsNotExist(err) || err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return paths, nil
+		}
 		if err != nil {
 			return nil, err
 		}
-		paths = append(paths, files...)
-	} else if !os.IsNotExist(err) {
+	}
+	files, err := projectpath.YAML(ctx, workflows, reader)
+	if err != nil {
 		return nil, err
 	}
+	paths = append(paths, files...)
 	slices.Sort(paths)
 	return slices.Compact(paths), nil
 }

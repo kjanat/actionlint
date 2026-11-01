@@ -3,6 +3,7 @@ package process_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strconv"
@@ -18,6 +19,32 @@ import (
 
 func diagnostic(filename, code, message string, row, column int) analyzer.ScriptDiagnostic {
 	return analyzer.ScriptDiagnostic{Filename: filename, Code: code, Message: message, Location: analyzer.ScriptPosition{Row: row, Column: column}}
+}
+
+func TestPointDiagnosticJSONOmitsEndLocation(t *testing.T) {
+	encoded, err := json.Marshal(diagnostic("a.py", "E1", "point", 1, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var value map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &value); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := value["end_location"]; present {
+		t.Errorf("point diagnostic has zero end_location: %s", encoded)
+	}
+	ranged := diagnostic("a.py", "E1", "range", 1, 1)
+	ranged.EndLocation = analyzer.ScriptPosition{Row: 1, Column: 2}
+	encoded, err = json.Marshal(ranged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(encoded, &value); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := value["end_location"]; !present {
+		t.Errorf("ranged diagnostic omitted end_location: %s", encoded)
+	}
 }
 
 func TestEnvelopeDecode(t *testing.T) {

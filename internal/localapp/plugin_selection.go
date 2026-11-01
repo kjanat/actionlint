@@ -174,7 +174,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			if !filepath.IsAbs(path) {
 				path = filepath.Join(directory, path)
 			}
-			starts = append(starts, filepath.Dir(path))
+			starts = append(starts, pluginSelectionStart(path))
 		}
 	} else if input.Kind == application.Stdin {
 		// Match workspace.Session.Content by discovering project plugins for named, existing stdin paths.
@@ -247,6 +247,14 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --config explicitly")
 	}
 	return s.sourcesFromProject(ctx, selectedProject, selected.root)
+}
+
+// Directory arguments belong to their own repository, not their parent's.
+func pluginSelectionStart(path string) string {
+	if info, err := os.Stat(path); err == nil && info.IsDir() {
+		return path
+	}
+	return filepath.Dir(path)
 }
 
 func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config, error) {

@@ -24,14 +24,26 @@ import (
 // Inside a Git repository, git decides which manifests and directories its
 // ignore rules exclude, and tracked manifests in ignored directories stay discovered.
 func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
+	return discoverFiles(ctx, root, reader, isManifest, false)
+}
+
+// YAML discovers YAML inputs within an explicitly selected directory, applying
+// the same repository boundaries, ignore rules and directory skips as Actions.
+func YAML(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
+	return discoverFiles(ctx, root, reader, func(name string) bool {
+		return strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml")
+	}, true)
+}
+
+func discoverFiles(ctx context.Context, root string, reader *fsread.Reader, selected func(string) bool, workflows bool) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
-		return nil, fmt.Errorf("could not resolve action discovery root %q: %w", root, err)
+		return nil, fmt.Errorf("could not resolve discovery root %q: %w", root, err)
 	}
 	var filter *gitFilter
 	if RepositoryRoot(physical) != "" {
 		if filter, err = newGitFilter(ctx, physical, reader); err != nil {
-			return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
+			return nil, fmt.Errorf("could not discover files in %q: %w", root, err)
 		}
 	}
 	logical := reader.Mapped(func(path string) string {
@@ -41,9 +53,9 @@ func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string,
 		}
 		return filepath.Join(root, relative)
 	})
-	relatives, err := walkActions(ctx, physical, logical, filter)
+	relatives, err := walkFiles(ctx, physical, logical, filter, selected, workflows)
 	if err != nil {
-		return nil, fmt.Errorf("could not discover actions in %q: %w", root, err)
+		return nil, fmt.Errorf("could not discover files in %q: %w", root, err)
 	}
 	paths := make([]string, 0, len(relatives))
 	for _, relative := range relatives {
@@ -93,7 +105,7 @@ func newGitFilter(ctx context.Context, root string, reader *fsread.Reader) (*git
 		output, err := run(optional, args...)
 		return strings.TrimSuffix(strings.TrimSuffix(string(output), "\n"), "\r"), err
 	}
-	manifests, err := run(false, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/action.yml", ":(glob)**/action.yaml")
+	manifests, err := run(false, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ":(glob)**/*.yml", ":(glob)**/*.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +286,7 @@ func gitEnvironment() []string {
 	return append(env, "GIT_DISCOVERY_ACROSS_FILESYSTEM=1")
 }
 
-func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter *gitFilter) ([]string, error) {
+func walkFiles(ctx context.Context, root string, reader *fsread.Reader, filter *gitFilter, selected func(string) bool, workflows bool) ([]string, error) {
 	var relatives []string
 	err := reader.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -291,7 +303,10 @@ func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter
 			return err
 		}
 		if entry.IsDir() {
-			skip, err := skipDirectory(root, path)
+			if !workflows && path == filepath.Join(root, ".github", "workflows") {
+				return filepath.SkipDir
+			}
+			skip, err := skipDirectory(path)
 			if err != nil {
 				return err
 			}
@@ -306,7 +321,7 @@ func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter
 		if filter != nil && entry.Name() == ".gitignore" {
 			reader.Record(path)
 		}
-		if isManifest(entry.Name()) && (filter == nil || filter.manifests[filter.key(filepath.ToSlash(relative))]) {
+		if selected(entry.Name()) && (filter == nil || filter.manifests[filter.key(filepath.ToSlash(relative))]) {
 			relatives = append(relatives, relative)
 		}
 		return nil
@@ -314,10 +329,7 @@ func walkActions(ctx context.Context, root string, reader *fsread.Reader, filter
 	return relatives, err
 }
 
-func skipDirectory(root, path string) (bool, error) {
-	if path == filepath.Join(root, ".github", "workflows") {
-		return true, nil
-	}
+func skipDirectory(path string) (bool, error) {
 	switch filepath.Base(path) {
 	case ".git", "node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata":
 		return true, nil

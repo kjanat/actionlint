@@ -28,13 +28,16 @@ func load(t *testing.T) (provider.Manifest, provider.Programs) {
 }
 
 func TestRecordedPSScriptAnalyzerOutput(t *testing.T) {
-	manifest, programs := load(t)
+	manifest, _ := load(t)
 	if manifest.Process == nil || manifest.Process.Output.Transform == nil {
 		t.Fatal("missing process output transform")
 	}
-	program, ok := programs(manifest.Process.Output.Transform.Digest)
-	if !ok {
-		t.Fatal("output transform digest does not match output.jq")
+	program, err := os.ReadFile("output.jq")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Process.Output.Transform.Inline != string(program) {
+		t.Fatal("inline published transform differs from output.jq")
 	}
 	decoder, err := process.NewJQ(string(program), process.JQJSON)
 	if err != nil {

@@ -92,12 +92,13 @@ type declaration struct {
 }
 
 type record struct {
-	Source        string       `json:"source,omitempty"`
-	RecordVersion int          `json:"record_version"`
-	Artifact      *declaration `json:"artifact"`
-	Validation    *declaration `json:"validation"`
-	Submission    submission   `json:"submission"`
-	Receipt       struct {
+	IdentityVersion int          `json:"identity_version,omitempty"`
+	Source          string       `json:"source,omitempty"`
+	RecordVersion   int          `json:"record_version"`
+	Artifact        *declaration `json:"artifact"`
+	Validation      *declaration `json:"validation"`
+	Submission      submission   `json:"submission"`
+	Receipt         struct {
 		SchemaVersion int        `json:"schema_version"`
 		Submission    submission `json:"submission"`
 		Identity      struct {
@@ -121,6 +122,7 @@ type Pin struct {
 	Origin       string        `json:"source,omitempty"`
 	Registry     string        `json:"registry"`
 	Name         string        `json:"name"`
+	Repository   string        `json:"repository,omitempty"`
 	Alias        string        `json:"alias,omitempty"`
 	RepositoryID string        `json:"repository_id,omitempty"`
 	OwnerID      string        `json:"owner_id,omitempty"`
@@ -139,11 +141,11 @@ type Pin struct {
 func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
 
 func (p Pin) Source() string {
-	if p.Origin == "candidate" {
-		return "sha256://" + p.SHA256
-	}
 	if artifact.IsOCI(p.URL) {
 		return p.URL
+	}
+	if p.Origin == "candidate" {
+		return "sha256://" + p.SHA256
 	}
 	return p.URL + "#sha256=" + p.SHA256
 }
@@ -180,7 +182,24 @@ func numericID(value string) bool {
 }
 
 func canonicalName(name string) bool {
-	return pluginref.ValidRepository(name)
+	return pluginref.ValidName(name)
+}
+
+// RepositoryName returns the publishing repository, independently of a package
+// selector. Historical pins omit Repository and retain their original Name.
+func (p Pin) RepositoryName() string {
+	if p.Repository != "" {
+		return p.Repository
+	}
+	return p.Name
+}
+
+func (p Pin) validIdentity() bool {
+	repository := p.RepositoryName()
+	if !pluginref.ValidRepository(repository) {
+		return false
+	}
+	return p.Repository == "" || p.Name == strings.ToLower(p.PluginID) && strings.HasPrefix(p.Name, repository+"/")
 }
 
 func (p Pin) Validate() error {
@@ -193,7 +212,7 @@ func (p Pin) Validate() error {
 	if _, err := registryURL(p.Registry); err != nil {
 		return err
 	}
-	if !canonicalName(p.Name) || p.Alias != "" && !pluginref.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
+	if !canonicalName(p.Name) || !p.validIdentity() || p.Alias != "" && !pluginref.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
 		!pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
 		(p.Kind != artifact.Core && p.Kind != artifact.Component && p.Kind != artifact.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return fmt.Errorf("invalid registry pin for %q", p.Name)
@@ -210,7 +229,7 @@ func (p Pin) Validate() error {
 	}
 	var expected string
 	if strings.HasPrefix(p.Name, "github.com/") {
-		expected = "https://" + p.Name + "/releases/download/" + url.PathEscape(p.Version) + "/" + url.PathEscape(p.Asset)
+		expected = "https://" + p.RepositoryName() + "/releases/download/" + url.PathEscape(p.Version) + "/" + url.PathEscape(p.Asset)
 	} else {
 		expected = "https://gitlab.com/api/v4/projects/" + p.RepositoryID + "/packages/generic/actionlint-plugin/" + url.PathEscape(p.Version) + "/" + url.PathEscape(p.Asset)
 	}
@@ -238,7 +257,7 @@ func (p Pin) verifyMetadata(data []byte) error {
 	if err := jsonv2.Unmarshal(data, &m); err != nil {
 		return fmt.Errorf("plugin metadata: %w", err)
 	}
-	if m.Version != 1 || m.ID != p.PluginID || strings.TrimPrefix(m.PluginVersion, "v") != strings.TrimPrefix(p.Version, "v") || !strings.EqualFold(m.Repository, "https://"+p.Name) {
+	if m.Version != 1 || m.ID != p.PluginID || strings.TrimPrefix(m.PluginVersion, "v") != strings.TrimPrefix(p.Version, "v") || !strings.EqualFold(m.Repository, "https://"+p.RepositoryName()) {
 		return errors.New("plugin metadata disagrees with registry identity or version")
 	}
 	contract := ""

@@ -31,12 +31,13 @@ are enabled by default; ordinary workflow checks do not require configuration.
 
 # USAGE
 
-With no arguments, **actionlint** prints help to stdout and exits 0.
-With no paths, **actionlint check** discovers workflow and action files in the
-current repository and exits 3 if no inputs are found.
-Pass explicit filenames or **-** for stdin.
-Passing a directory does not enable recursive input expansion;
-action manifests are also discovered and can be passed as explicit inputs.
+With no arguments inside a Git repository, **actionlint** discovers and checks
+its workflow and action files. Outside a repository, it prints help to stdout
+and exits 0. **actionlint check** explicitly requests repository discovery;
+it exits 3 outside a repository or if no inputs are found.
+Pass explicit files, directories or **-** for stdin. Directories are traversed
+recursively: repository roots and **.github** select workflows and action
+manifests; other directories select YAML files below them.
 
     $ actionlint check
     $ actionlint file1.yaml file2.yaml

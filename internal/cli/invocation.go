@@ -100,6 +100,8 @@ const (
 	operationVersion        operation = "version"
 	operationRules          operation = "rules"
 	operationPluginInspect  operation = "plugin inspect"
+	operationPluginValidate operation = "plugin validate"
+	operationPluginTest     operation = "plugin test"
 	operationPluginSearch   operation = "plugin search"
 	operationPluginVersions operation = "plugin versions"
 	operationPluginInstall  operation = "plugin install"
@@ -192,6 +194,14 @@ func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
 	case operationPluginInspect:
 		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
+	case operationPluginValidate:
+		path := ""
+		if len(inv.Check.Paths) > 0 {
+			path = inv.Check.Paths[0]
+		}
+		return pluginValidateRequest{Path: path, JSON: inv.JSON}, nil
+	case operationPluginTest:
+		return pluginTestRequest{Paths: inv.Check.Paths, JSON: inv.JSON}, nil
 	case operationPluginSearch, operationPluginVersions, operationPluginInstall, operationPluginList, operationPluginUpdate, operationPluginRemove, operationPluginSync:
 		return pluginRegistryRequest{Operation: inv.Operation, Options: inv.Plugin, Paths: inv.Check.Paths, LockFile: inv.Check.PluginLock, Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case "lsp":

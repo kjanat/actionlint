@@ -52,7 +52,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			paths = strings.Fields(step.With.AddPaths)
 		}
 	}
-	if script == "" || !slices.Equal(paths, []string{"go.mod", "Dockerfile", "CONTRIBUTING.md", "flake.nix", "flake.lock"}) {
+	if script == "" || !slices.Equal(paths, []string{"go.mod", ".mise.toml", "Dockerfile", "CONTRIBUTING.md", "flake.nix", "flake.lock"}) {
 		t.Fatalf("missing update step or incomplete PR paths: %v", paths)
 	}
 	original := make(map[string]string, len(paths))

@@ -254,8 +254,9 @@ image manifest has exactly one primary layer:
 
 - `application/wasm`: a WebAssembly module, loaded like any other plugin.
 - `application/vnd.actionlint.tool-provider.v1+json`: a tool provider manifest with
-  `transport: "process"`. Its `artifacts` list names the executable for each platform by digest, and its
-  transforms are named by digest too; both are other layers of the same image manifest.
+  `transport: "process"`. It can embed program and jq source inline, as the TypeScript SDK does, or
+  reference companion layers by digest. An `artifacts` list selects executable layers by platform;
+  digest-backed transforms must also be layers of the selected image manifest.
 
 Stage a built Wasm plugin in an OCI image layout with ORAS:
 
@@ -265,8 +266,10 @@ oras manifest fetch --oci-layout ./plugin-layout:example
 ```
 
 This creates a local packaging result. Publishing it to an OCI registry and registering it in the
-actionlint catalogue are separate operations. The current catalogue admits Wasm release assets;
-The registry accepts release assets and digest-pinned OCI sources, including process providers.
+actionlint catalogue are separate operations. The registry accepts release assets and digest-pinned
+OCI sources, including process providers. Its shared candidate check accepts `--oci-layout` to test
+the exact local graph before uploading it; see the
+[OCI publication checks](https://github.com/kjanat/actionlint-registry/blob/master/docs/publishing.md#oci-checks-before-upload).
 
 Every manifest and layer is verified against its digest before it is stored in the artifact cache,
 `actionlint/artifacts/<sha256 hex>`. A blob that does not match its digest is never stored; a stored blob
@@ -809,7 +812,7 @@ tools:
 ```
 
 The provider passes the prepared snippet and settings as JSON on stdin. PowerShell emits diagnostic records;
-the digest-bound [jq transform](../examples/plugins/psscriptanalyzer/output.jq) converts messages, severities
+the inline [jq transform](../examples/plugins/psscriptanalyzer/output.jq), included in the manifest's digest, converts messages, severities
 and suggested corrections. The host converts UTF-16 columns and script extents into workflow source locations
 and suggested edits. Parse errors remain errors; a missing module or crashed process fails the provider.
 Analyzing a `powershell` snippet with this provider uses the installed PowerShell 7 parser; configure

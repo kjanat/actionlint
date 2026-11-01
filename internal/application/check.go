@@ -33,6 +33,9 @@ import (
 
 // Options selects configuration and analysis backends for one application session.
 type Options struct {
+	// Processes shares the invocation's process budget with native analyzers.
+	// Nil creates an application-owned pool.
+	Processes     *analyzerhost.ProcessPool
 	RemoteActions actions.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository             func(context.Context, string) repository.Snapshot
@@ -154,7 +157,10 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		log = io.Discard
 	}
 
-	processes := analyzerhost.NewProcessPool(ctx, runtime.NumCPU())
+	processes := options.Processes
+	if processes == nil {
+		processes = analyzerhost.NewProcessPool(ctx, runtime.NumCPU())
+	}
 	engines := analyzerhost.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}

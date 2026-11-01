@@ -31,12 +31,13 @@ func (a *commandApp) pluginLockFlag(f *pflag.FlagSet) {
 
 func (a *commandApp) pluginCommand() *cobra.Command {
 	parent := &cobra.Command{
-		Use: "plugin", Short: "Discover, install and inspect WebAssembly plugins", Args: cobra.NoArgs,
+		Use: "plugin", Short: "Discover, install and inspect plugins", Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error { a.help(c, args); return nil },
 	}
 	a.commonFlags(parent, parent.PersistentFlags())
 	a.configFlags(parent.PersistentFlags())
 	parent.AddCommand(&cobra.Command{Use: "inspect <path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)})
+	parent.AddCommand(a.pluginAuthoringCommands()...)
 	for _, item := range []struct {
 		use, description string
 		op               operation

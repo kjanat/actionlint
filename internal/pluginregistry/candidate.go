@@ -141,10 +141,17 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (P
 		return Pin{}, err
 	}
 	d := r.Artifact
-	if r.Source != "candidate" || d.PluginID != p.PluginID || !strings.EqualFold(d.Repository, "https://"+p.Name) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
+	repository := strings.ToLower(strings.TrimPrefix(d.Repository, "https://"))
+	if r.Source != "candidate" || d.PluginID != p.PluginID || !pluginref.ValidRepository(repository) || (!strings.EqualFold(p.Name, repository) && (p.Name != strings.ToLower(p.PluginID) || !strings.HasPrefix(p.Name, repository+"/"))) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("candidate declaration disagrees with catalogue")
 	}
 	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract}
+	if artifact.IsOCI(r.URL) {
+		pin.Asset = ""
+	}
+	if !strings.EqualFold(p.Name, repository) {
+		pin.Repository = repository
+	}
 	if err := pin.Validate(); err != nil {
 		return Pin{}, err
 	}
@@ -158,17 +165,27 @@ func (p Pin) validateCandidate() error {
 	if _, err := pluginref.LocalRegistryDirectory(p.Registry); err != nil {
 		return err
 	}
-	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !idPattern.MatchString(p.PluginID) || !pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || !candidatePath(p.URL) || p.Asset != path.Base(p.URL) || !validAsset(p.Kind, p.Asset) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
+	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !p.validIdentity() || !idPattern.MatchString(p.PluginID) || !pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || (p.Kind != artifact.Core && p.Kind != artifact.Component && p.Kind != artifact.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return errors.New("invalid local candidate pin")
+	}
+	if artifact.IsOCI(p.URL) {
+		ref, err := artifact.ParseOCI(p.URL)
+		if err != nil || ref.String() != p.URL || ref.Digest() != p.SHA256 || p.Asset != "" {
+			return errors.New("invalid local candidate OCI pin")
+		}
+		return nil
+	}
+	if !candidatePath(p.URL) || p.Asset != path.Base(p.URL) || !validAsset(p.Kind, p.Asset) {
+		return errors.New("invalid local candidate artifact path")
 	}
 	return nil
 }
 
 // Installation and sync import candidate bytes into the execution cache.
 func (p Pin) importCandidate(ctx context.Context, options artifact.Options) error {
-	if _, err := artifact.Resolve(ctx, p.Source(), options); err == nil {
-		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
+	if a, err := artifact.Resolve(ctx, p.Source(), options); err == nil {
+		return p.Verify(a.Info)
+	} else if artifact.IsOCI(p.URL) || !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	directory, err := pluginref.LocalRegistryDirectory(p.Registry)

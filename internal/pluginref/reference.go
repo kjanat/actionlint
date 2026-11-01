@@ -69,6 +69,25 @@ func ValidRepository(name string) bool {
 	return true
 }
 
+// ValidName accepts a repository selector or a package beneath its GitHub
+// repository. GitLab's nested namespaces already share this path grammar;
+// authenticated catalogue evidence establishes its repository boundary.
+func ValidName(name string) bool {
+	if ValidRepository(name) {
+		return true
+	}
+	parts := strings.Split(name, "/")
+	if len(parts) < 4 || parts[0] != "github.com" || !ValidRepository(strings.Join(parts[:3], "/")) || len(name) > 523 {
+		return false
+	}
+	for _, part := range parts[3:] {
+		if !gitlabSegmentPattern.MatchString(part) || part == "." || part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
 // Reference declares a registry alias or repository, requested release, and catalogue.
 // Only Parse, New and NewCandidate build one, so values remain normalized.
 // The zero Reference declares nothing.
@@ -96,8 +115,8 @@ func (r Reference) Registry() string { return r.registry }
 // It is empty for unpinned local install requests and published registries.
 func (r Reference) CandidateDigest() string { return r.candidateDigest }
 
-// Parse accepts a registry alias, owner/repo or a supported forge-qualified
-// repository, optionally followed by @latest or an exact release tag.
+// Parse accepts an alias, owner/repo or forge-qualified repository/package,
+// optionally followed by @latest or an exact release tag.
 func Parse(value string) (Reference, error) {
 	if strings.Contains(value, "://") {
 		return directURL(value)
@@ -142,7 +161,7 @@ func NewCandidate(name, version, registry, digest string) (Reference, error) {
 	if err != nil {
 		return Reference{}, err
 	}
-	if ref.IsAlias() || !ValidRepository(ref.Name()) {
+	if ref.IsAlias() || !ValidName(ref.Name()) {
 		return Reference{}, errors.New("candidate digest requires a canonical plugin repository")
 	}
 	if ref.Version() == "latest" {
@@ -202,8 +221,8 @@ func New(name, version, registry string) (Reference, error) {
 	if strings.Count(name, "/") == 1 {
 		name = "github.com/" + name
 	}
-	if !ValidAlias(name) && !ValidRepository(name) {
-		return Reference{}, fmt.Errorf("invalid plugin reference %q: use a registry alias, owner/repo, github.com/owner/repo, or gitlab.com/group/repo", name)
+	if !ValidAlias(name) && !ValidName(name) {
+		return Reference{}, fmt.Errorf("invalid plugin reference %q: use a registry alias, owner/repo, or a forge-qualified repository/package", name)
 	}
 	if version == "" {
 		version = "latest"

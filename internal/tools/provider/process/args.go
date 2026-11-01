@@ -16,10 +16,11 @@ import (
 // Variables come from preparation and the configuration transform; a list
 // variable holds its items separated by newlines.
 type argInputs struct {
-	vars       map[string]string
-	user       []string
-	tomlPairs  []string
-	configFile string
+	vars        map[string]string
+	user        []string
+	tomlPairs   []string
+	configFile  string
+	programFile string
 }
 
 // renderArgs substitutes the closed placeholder grammar into argument
@@ -80,6 +81,11 @@ func renderArgs(templates []string, in argInputs) ([]string, error) {
 			}
 		case "user-args":
 			args = append(args, in.user...)
+		case "program-file":
+			if in.programFile == "" {
+				return nil, errors.New("program-file placeholder has no materialized program")
+			}
+			args = append(args, in.programFile)
 		default:
 			return nil, fmt.Errorf("unknown argument placeholder %q", template)
 		}

@@ -32,7 +32,7 @@ jobs:
               "!**/*_test.go"
             ],
             "javascript-typescript": [
-              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json",
+              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "**/bun.lock",
               ".github/codeql/**", "!testdata/**", "!**/testdata/**"
             ],
             "actions": [".github/workflows/**", ".github/actions/**", "action.yml", ".github/codeql/**", "!.github/actions/**/testdata/**"]
