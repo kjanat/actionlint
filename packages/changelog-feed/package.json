@@ -92,14 +92,14 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@codemirror/commands": "6.11.0",
+    "@codemirror/commands": "6.11.1",
     "@codemirror/lang-xml": "6.1.0",
-    "@codemirror/language": "6.12.4",
-    "@codemirror/search": "6.7.1",
-    "@codemirror/state": "6.7.1",
-    "@codemirror/view": "6.43.9",
-    "@lezer/highlight": "1.2.3",
-    "xml-formatter": "3.6.7"
+    "@codemirror/language": "6.13.1",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/highlight": "1.2.5",
+    "xml-formatter": "3.7.0"
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",

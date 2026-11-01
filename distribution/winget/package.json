@@ -14,7 +14,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@kjanat/dreamcli": "4.1.0",
+    "@kjanat/dreamcli": "5.0.0",
     "remark": "15.0.1",
     "remark-gfm": "4.0.1",
     "strip-markdown": "6.0.0",

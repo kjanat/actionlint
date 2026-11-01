@@ -13,7 +13,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@kjanat/dreamcli": "4.1.0"
+    "@kjanat/dreamcli": "5.0.0"
   },
   "devDependencies": {
     "typescript": ">=7"

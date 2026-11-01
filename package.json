@@ -45,7 +45,7 @@
     "@typescript/native": "npm:typescript@^7",
     "biome": "npm:@biomejs/biome@^2.5",
     "runner-run": "^0.28",
-    "tsc-rs": "^0.7",
+    "tsc-rs": "^0.8",
     "typescript": "npm:@typescript/typescript6@^6",
     "vscode-languageserver-textdocument": "^1",
     "yaml-language-server": "^2"
