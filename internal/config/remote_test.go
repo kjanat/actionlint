@@ -40,8 +40,8 @@ func TestRemoteConfigPaths(t *testing.T) {
 				}
 			case err != nil:
 				t.Fatal(err)
-			case loaded.Config.Sources()[0] != remote:
-				t.Fatalf("sources = %v", loaded.Config.Sources())
+			case loaded.Provenance.Sources()[0] != remote:
+				t.Fatalf("sources = %v", loaded.Provenance.Sources())
 			}
 		})
 	}

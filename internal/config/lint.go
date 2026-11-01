@@ -110,7 +110,7 @@ func validateOptions(d Rule, setting Setting) error {
 	if d.Options == nil {
 		return errors.New("rule does not accept options")
 	}
-	_, err := setting.LoadOptions(d.Options())
+	_, err := decodeOptions(setting, d.Options())
 	return err
 }
 

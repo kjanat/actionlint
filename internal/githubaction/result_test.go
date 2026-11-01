@@ -272,6 +272,7 @@ jobs:
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "ACTIONLINT_ACTION_RESULT": path,
 				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_CONFIG": "repository: {runners: []}",
 			}
 			var output strings.Builder
 			if got := Main(func(key string) string { return env[key] }, &output); got != tc.code {

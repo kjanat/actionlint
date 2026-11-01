@@ -1,46 +1,33 @@
-package config
+package config_test
 
 import (
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
-type remoteConfigTransport func(*http.Request) (*http.Response, error)
-
-func (f remoteConfigTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return f(request)
-}
-
 func TestMigrationRemoteDependencySnapshot(t *testing.T) {
+	registry := testutil.NewPluginRegistry(t)
 	path := filepath.Join(t.TempDir(), "actionlint.yaml")
-	remote := "https://example.test/base.yaml"
+	remote := testutil.FixtureRegistryURL + "base.yaml"
 	original := "extends: [" + remote + "]\nconfig-variables: [LOCAL]\n"
 	if err := os.WriteFile(path, []byte(original), 0600); err != nil {
 		t.Fatal(err)
 	}
-	body := "policy: {require-commit-hash: true}"
-	reads := 0
-	transport := http.DefaultTransport
-	http.DefaultTransport = remoteConfigTransport(func(request *http.Request) (*http.Response, error) {
-		reads++
-		if request.URL.String() != remote {
-			t.Fatalf("unexpected request %s", request.URL)
-		}
-		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}, Request: request}, nil
-	})
-	t.Cleanup(func() { http.DefaultTransport = transport })
-	plan, err := PrepareMigration(t.Context(), path)
+	body := []byte("policy: {require-commit-hash: true}")
+	registry.SetFile(remote, body)
+	plan, err := repoconfig.PrepareMigration(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reads != 1 {
-		t.Fatalf("preparation fetched dependency %d times", reads)
+	if requests := registry.Requests(); len(requests) != 1 || requests[0] != remote {
+		t.Fatalf("preparation requests = %v", requests)
 	}
-	if err := plan.CheckSources(map[string][]byte{path: []byte(original), remote: []byte(body)}); err != nil {
+	if err := plan.CheckSources(map[string][]byte{path: []byte(original), remote: body}); err != nil {
 		t.Fatalf("matching captured graph: %v", err)
 	}
 	if err := plan.CheckSources(map[string][]byte{path: []byte(original), remote: []byte("plugins: [different/plugin]")}); err == nil || !strings.Contains(err.Error(), remote) {
@@ -49,15 +36,22 @@ func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 	if err := plan.CheckSources(map[string][]byte{path: []byte(original)}); err == nil {
 		t.Fatal("accepted an incomplete captured graph")
 	}
-	if reads != 1 {
-		t.Fatal("comparing captured graphs performed network IO")
+	if requests := registry.Requests(); len(requests) != 1 {
+		t.Fatalf("comparing captured graphs performed network IO: %v", requests)
 	}
 	if err := plan.CheckUnchanged(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	body = "policy: {require-commit-hash: false}"
+	if requests := registry.Requests(); len(requests) != 2 || requests[1] != remote {
+		t.Fatalf("source check requests = %v", requests)
+	}
+	registry.SetFile(remote, []byte("policy: {require-commit-hash: false}"))
+	registry.ResetRequests()
 	if err := plan.Apply(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") || !strings.Contains(err.Error(), remote) {
 		t.Fatalf("changed remote error = %v", err)
+	}
+	if requests := registry.Requests(); len(requests) != 1 || requests[0] != remote {
+		t.Fatalf("changed-source check requests = %v", requests)
 	}
 	content, err := os.ReadFile(path)
 	if err != nil || string(content) != original {
@@ -66,7 +60,7 @@ func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 }
 
 func TestMigrationRemoteLeafReadOnly(t *testing.T) {
-	_, err := PrepareMigration(t.Context(), "https://example.test/actionlint.yaml")
+	_, err := repoconfig.PrepareMigration(t.Context(), "https://example.test/actionlint.yaml")
 	if err == nil || !strings.Contains(err.Error(), "read-only") {
 		t.Fatalf("remote leaf error = %v", err)
 	}

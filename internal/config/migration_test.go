@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestMigrationCanonicalSettings(t *testing.T) {
@@ -295,7 +293,7 @@ func TestMigrationAliasesRetainGlobalKnowledge(t *testing.T) {
 self-hosted-runner: *labels
 `)
 	var direct Config
-	if err := yaml.Unmarshal(source, &direct); err != nil {
+	if err := Unmarshal(source, &direct); err != nil {
 		t.Fatal(err)
 	}
 	overlay, err := ParseOverlay("config", source)
@@ -386,7 +384,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := yaml.Marshal(cfg)
+	data, err := Marshal(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

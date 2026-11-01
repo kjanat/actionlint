@@ -109,9 +109,11 @@ then the declaring file wins. Maps merge recursively; arrays and scalar values
 replace earlier values. `null` resets the selected setting. Inherited ShellCheck
 rc paths resolve relative to the configuration that declares them.
 
-Remote files may extend other HTTPS configurations. Downloads require HTTPS,
-reject credentials and redirects, and have a 30-second timeout and 4 MiB limit per
-document. Use the final URL directly so relative references retain their origin.
+Remote files may extend other HTTPS configurations. Downloads require HTTPS and
+public destination addresses, reject credentials and redirects, and have a
+30-second timeout and 4 MiB limit per document. DNS answers are checked and pinned
+before connecting; a configuration declaration cannot authorize private network
+access. Use the final URL directly so relative references retain their origin.
 Remote configuration cannot extend local files or select a `file://` plugin
 registry. Relative filesystem paths for native tool executables, modules and rc
 files, including `${{ configdir }}`, require a local configuration; repository

@@ -165,7 +165,7 @@ func (r documentRunner) sourceFiles(ctx context.Context, script tools.Script, re
 		return nil, errors.New("tool source access exceeds 32 search directories")
 	}
 	directory := sourcePath(script.Execution.Directory, "")
-	paths := backend.PathContext(script.Scope, script.Config)
+	paths := backend.PathContext(script.Scope)
 	settings, err := r.options(script.Config)
 	if err != nil {
 		return nil, err

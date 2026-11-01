@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
-	"strings"
 
 	configaddress "actionlint.kjanat.dev/v2/internal/config/address"
 	configsource "actionlint.kjanat.dev/v2/internal/config/source"
@@ -150,7 +150,7 @@ func decodeRequiredActions(n *yaml.Node, out *[]string) error {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (p *Policy) UnmarshalYAML(n *yaml.Node) error {
+func (p *policyWire) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind != yaml.MappingNode {
 		return fmt.Errorf("yaml: \"policy\" must be a mapping node at line:%d,col:%d", n.Line, n.Column)
 	}
@@ -347,8 +347,6 @@ func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 // `.github/actionlint.toml`, or select a file with `--config`.
 // Every setting is optional; normal workflow correctness checks run without a configuration file.
 type Config struct {
-	filename    string
-	configFiles []string
 	// Extends loads local or HTTPS YAML, JSON and TOML configurations in order.
 	// Relative references resolve against their declaring file or URL. Later
 	// bases override earlier bases; this file wins over all bases.
@@ -400,7 +398,13 @@ func (cfg *Config) PathConfigs(path string) []PathConfig {
 		for p, c := range cfg.Paths {
 			// Glob patterns were validated in `Parse()`
 			if doublestar.MatchUnvalidated(p, path) {
-				ret = append(ret, c)
+				patterns := slices.Clone(c.Ignore)
+				for i, pattern := range c.Ignore {
+					if pattern != nil {
+						patterns[i] = new(*pattern)
+					}
+				}
+				ret = append(ret, PathConfig{Ignore: patterns})
 			}
 		}
 	}
@@ -416,18 +420,18 @@ func (cfg *Config) RequiresCommitHash() bool {
 // RequiresJobTimeout returns the "require-job-timeout" policy. It returns nil when the receiver is
 // nil or when the key is not set.
 func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
-	if cfg == nil {
+	if cfg == nil || cfg.Policy.RequireJobTimeout == nil {
 		return nil
 	}
-	return cfg.Policy.RequireJobTimeout
+	return new(*cfg.Policy.RequireJobTimeout)
 }
 
 // RequiresPermissions returns the "require-permissions" policy, or nil for an unset key or nil receiver.
 func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
-	if cfg == nil {
+	if cfg == nil || cfg.Policy.RequirePermissions == nil {
 		return nil
 	}
-	return cfg.Policy.RequirePermissions
+	return new(*cfg.Policy.RequirePermissions)
 }
 
 // RequiredActions returns the actions which every workflow must use following the "required-actions"
@@ -436,7 +440,7 @@ func (cfg *Config) RequiredActions() []string {
 	if cfg == nil {
 		return nil
 	}
-	return cfg.Policy.RequiredActions
+	return slices.Clone(cfg.Policy.RequiredActions)
 }
 
 // Parse parses the given bytes as an actionlint config file. When deserializing the YAML file
@@ -454,18 +458,19 @@ func Parse(b []byte, additional ...string) (*Config, error) {
 
 // Resolved keeps validated values and their provenance from the same document.
 type Resolved struct {
-	Node     *yaml.Node
-	Inputs   map[*yaml.Node]Input
-	Config   *Config
-	Values   map[string]any
-	Origins  map[string]Origin
-	Warnings []Warning
+	Provenance Provenance
+	Node       *yaml.Node
+	Inputs     map[*yaml.Node]Input
+	Config     *Config
+	Values     map[string]any
+	Origins    map[string]Origin
+	Warnings   []Warning
 }
 
 func ResolveDocument(b []byte, additional ...string) (Resolved, error) {
 	var document yaml.Node
 	if err := yaml.Unmarshal(b, &document); err != nil {
-		return Resolved{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+		return Resolved{}, decodeError{cause: err}
 	}
 	var root *yaml.Node
 	if len(document.Content) > 0 {
@@ -494,8 +499,8 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 	}
 	var c Config
 	if root != nil {
-		if err := root.Decode(&c); err != nil {
-			return Resolved{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+		if err := DecodeNode(root, &c); err != nil {
+			return Resolved{}, decodeError{cause: err}
 		}
 		// YAML null bypasses field decoders. Preserve its explicit selection of
 		// no plugins, including when it replaces an inherited declaration.
@@ -543,12 +548,13 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
-// Load reads the actionlint config file (actionlint.yaml) from the given file path.
+// Load reads settings from a configuration file. Read also retains source provenance.
 func Load(path string, additional ...string) (*Config, error) {
 	return LoadContext(context.Background(), path, additional...)
 }
 
-// LoadContext reads local or HTTPS inheritance with cancellable acquisition.
+// LoadContext reads settings with cancellable local or HTTPS inheritance.
+// ReadContext also retains source provenance for analysis and path interpolation.
 func LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
 	source, err := ReadContext(ctx, path, nil, additional...)
 	if err != nil {
@@ -587,8 +593,7 @@ func ReadContext(ctx context.Context, path string, readFile func(string) ([]byte
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	resolved.Config.filename = absPath(path)
-	resolved.Config.configFiles = loaded.Files
+	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])
@@ -602,9 +607,14 @@ var RepositoryConfigNames = []string{"actionlint.yaml", "actionlint.yml", "actio
 // LoadRepository reads the first existing file named in RepositoryConfigNames
 // from the repository's .github directory.
 func LoadRepository(root string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, string, error) {
+	return LoadRepositoryContext(context.Background(), root, readFile, additional...)
+}
+
+// LoadRepositoryContext discovers configuration with cancellable inheritance.
+func LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, string, error) {
 	for _, f := range RepositoryConfigNames {
 		p := filepath.Join(root, ".github", f)
-		c, err := Read(p, readFile, additional...)
+		c, err := ReadContext(ctx, p, readFile, additional...)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			continue
@@ -615,22 +625,6 @@ func LoadRepository(root string, readFile func(string) ([]byte, error), addition
 		}
 	}
 	return nil, "", nil
-}
-
-// Path returns the absolute path of the file this configuration was loaded from.
-func (cfg *Config) Path() string {
-	if cfg == nil {
-		return ""
-	}
-	return cfg.filename
-}
-
-// Sources lists every file that contributed to this configuration, bases first.
-func (cfg *Config) Sources() []string {
-	if cfg == nil {
-		return nil
-	}
-	return cfg.configFiles
 }
 
 func absPath(path string) string {

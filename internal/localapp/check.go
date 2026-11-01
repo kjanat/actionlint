@@ -26,7 +26,11 @@ func (e *PluginLoadError) Unwrap() error { return e.Err }
 
 // Check loads selected plugins, runs analysis and releases plugin resources.
 func Check(ctx context.Context, options application.Options, input application.Input, paths []string) (result *application.Result, err error) {
-	return CheckSources(ctx, options, input, PluginSources{Paths: paths})
+	sources, err := explicitPluginSources(paths)
+	if err != nil {
+		return nil, err
+	}
+	return CheckSources(ctx, options, input, sources)
 }
 
 // CheckSources selects tool integrations from their exported WIT contracts.
@@ -65,7 +69,11 @@ func CheckSources(ctx context.Context, options application.Options, input applic
 // RequiredTools applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
 func RequiredTools(ctx context.Context, options application.Options, paths, plugins []string) (needed application.ToolRequirements, err error) {
-	return RequiredToolsSources(ctx, options, paths, PluginSources{Paths: plugins})
+	sources, err := explicitPluginSources(plugins)
+	if err != nil {
+		return needed, err
+	}
+	return RequiredToolsSources(ctx, options, paths, sources)
 }
 
 // RequiredToolsSources applies the selected plugins before checking which

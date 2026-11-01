@@ -42,6 +42,7 @@ type compositionSession struct {
 	passes                 []workflowvisit.Pass
 	metadataFindings       []*findingmodel.Finding
 	configForFile          func(string) (*repoconfig.Config, error)
+	configProvenance       repoconfig.Provenance
 	sourceSnapshots        *documentparse.SourceSnapshots
 	invocations            *invocation.Builder
 	budget                 invocation.Budget
@@ -103,7 +104,7 @@ func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deploy
 
 func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.Deployment) {
 	analysis.scriptScope = &scriptexecution.Scope{
-		Paths: analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig,
+		Paths: analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig, ConfigProvenance: analysis.configProvenance,
 		Deployment: deployment, Context: analysis.context,
 	}
 	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, deployment.ActionPath())

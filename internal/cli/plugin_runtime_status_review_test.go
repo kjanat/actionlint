@@ -29,13 +29,17 @@ func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 	if err := json.Unmarshal([]byte(installed), &lock); err != nil || len(lock.Plugins) != 1 {
 		t.Fatalf("invalid installed lock: %s: %v", installed, err)
 	}
+	lockPath := filepath.Join(root, ".github", pluginregistry.LockName)
+	if err := os.WriteFile(lockPath, []byte(installed), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	for _, scenario := range []struct {
 		name   string
 		args   []string
 		status int
 	}{
 		{"automatic", nil, 3},
-		{"lock", []string{"--plugin-lock", filepath.Join(root, ".github", pluginregistry.LockName)}, 3},
+		{"lock", []string{"--plugin-lock", lockPath}, 3},
 		{"config", []string{"--config", filepath.Join(root, ".github", "actionlint.yaml")}, 3},
 		{"explicit", []string{"--plugin", lock.Plugins[0].Source()}, 2},
 	} {

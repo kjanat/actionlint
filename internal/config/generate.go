@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
-	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 )
 
 // Generate creates the repository configuration without producing terminal output.
@@ -22,7 +21,7 @@ func Generate(ctx context.Context, root string, skipConfig bool, version string)
 		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
 	}
 	if !skipConfig {
-		if _, _, err := LoadRepository(root, configsource.New(ctx, nil).ReadFile); err != nil {
+		if _, _, err := LoadRepositoryContext(ctx, root, nil); err != nil {
 			return "", err
 		}
 	}

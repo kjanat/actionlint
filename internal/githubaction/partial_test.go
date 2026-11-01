@@ -57,6 +57,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
 		"ACTIONLINT_ACTION_RESULT": resultPath,
 		"INPUT_DISABLE-TOOLS":      "ruff",
+		"INPUT_CONFIG":             "repository: {runners: []}",
 	}
 	var output strings.Builder
 	// Trigger expiration only after the native process has started. Its startup
@@ -166,6 +167,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
 				"ACTIONLINT_ACTION_RESULT": resultPath, "INPUT_DISABLE-TOOLS": "ruff",
+				"INPUT_CONFIG": "repository: {runners: []}",
 			}
 			var output strings.Builder
 			a := &action{

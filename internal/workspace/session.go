@@ -19,11 +19,12 @@ import (
 
 // Source associates the displayed path with the file read for analysis.
 type Source struct {
-	Path      string
-	Content   []byte
-	Config    *repoconfig.Config
-	Project   *Project
-	InputPath string
+	Path             string
+	Content          []byte
+	Config           *repoconfig.Config
+	ConfigProvenance repoconfig.Provenance
+	Project          *Project
+	InputPath        string
 }
 
 // Selection is a prepared batch. Inputs includes configuration and excluded discovery candidates.
@@ -39,6 +40,7 @@ type Options struct {
 	// Config, when set, is used for every input instead of the repository's
 	// configuration file. It cannot be combined with ConfigFile.
 	Config            *repoconfig.Config
+	ConfigProvenance  repoconfig.Provenance
 	ConfigOverlays    []repoconfig.Overlay
 	OnConfigLoaded    func(configreport.Report)
 	SkipProjectConfig bool
@@ -54,16 +56,17 @@ type Session struct {
 	projects *Projects
 	// defaultConfig comes from Options.Config or Options.ConfigFile and
 	// replaces every project's configuration.
-	defaultConfig     *repoconfig.Config
-	defaultConfigPath string
-	configState       *configState
-	ctx               context.Context
-	cwd, stdin        string
-	onFilesSelected   func([]string)
-	readFile          func(string) ([]byte, error)
-	log               func(...any)
-	logOut            io.Writer
-	ruleNames         []string
+	defaultConfig           *repoconfig.Config
+	defaultConfigProvenance repoconfig.Provenance
+	defaultConfigPath       string
+	configState             *configState
+	ctx                     context.Context
+	cwd, stdin              string
+	onFilesSelected         func([]string)
+	readFile                func(string) ([]byte, error)
+	log                     func(...any)
+	logOut                  io.Writer
+	ruleNames               []string
 }
 
 // New prepares a session whose file reads and config loads stop when ctx is canceled.
@@ -72,18 +75,20 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
 	a := &Session{projects: NewProjects(), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
+	a.defaultConfigProvenance = opts.ConfigProvenance
 	if a.log == nil {
 		a.log = func(...any) {}
 	}
 	if a.logOut == nil {
 		a.logOut = io.Discard
 	}
+	a.projects.ctx = ctx
 	a.projects.readFile = a.readFile
 	a.projects.ruleNames = a.ruleNames
 	a.projects.skipConfig = opts.SkipProjectConfig
 	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*repoconfig.Config), reports: make(map[*Project]configreport.Report)}
 	if opts.ConfigFile != "" {
-		source, err := repoconfig.Read(opts.ConfigFile, a.readFile, a.ruleNames...)
+		source, err := repoconfig.ReadContext(ctx, opts.ConfigFile, a.readFile, a.ruleNames...)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +228,7 @@ func (a *Session) Empty() (*Selection, error) {
 			return nil, err
 		}
 		a.configState.Lock()
-		inputs.AddConfig(a.configState.loaded[project], project, a.cwd)
+		inputs.AddConfig(a.configState.loaded[project], a.configState.provenance[project], project, a.cwd)
 		result.Configurations = append(result.Configurations, configurationSnapshot(a.configState.reports[project]))
 		a.configState.Unlock()
 	}
@@ -326,6 +331,7 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 			return nil, err
 		}
 		sources[i].Config = cfg
+		sources[i].ConfigProvenance = a.ConfigProvenanceForProject(sources[i].Project)
 	}
 	// Report only projects used by this input selection.
 	projects := make([]*Project, 0, len(sources)+len(configProjects))
@@ -350,7 +356,7 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 	for _, project := range projects {
 		if !seen[project] {
 			seen[project] = true
-			inputs.AddConfig(a.configState.loaded[project], project, a.cwd)
+			inputs.AddConfig(a.configState.loaded[project], a.configState.provenance[project], project, a.cwd)
 			result.Configurations = append(result.Configurations, configurationSnapshot(a.configState.reports[project]))
 		}
 	}

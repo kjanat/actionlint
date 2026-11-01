@@ -203,6 +203,41 @@ Direct declarations contain their exact artifact pin. Changing the artifact requ
 or digest explicitly. Registry withdrawal information does not cover independent direct URLs.
 Remote execution through `--plugin` or configured Wasm backends also requires a digest pin.
 
+### Acquisition and redirects
+
+Repository configuration, inherited configuration and legacy locks may select only
+public network destinations. This applies to the initial request and same-authority
+redirects for artifacts and registry records. A digest verifies bytes; it does not
+authorize private network access.
+
+An explicit `--plugin` source, direct inspect/install URL, public plugin API source,
+or `--registry` endpoint authorizes its selected scheme, host and effective port for
+that invocation, including a private endpoint. Saving the declaration does not save
+that authority. Selecting a configuration or lock file, running install/sync, and
+`--allow-config-processes` do not grant private network access. Configured script
+engines use the same public-only acquisition policy.
+
+A redirect to a different authority must resolve entirely to public addresses.
+Independent public artifact hosts and CDN redirects remain supported; there is no fixed hostname allowlist.
+IPv4-mapped IPv6 addresses are checked as IPv4. Special-purpose, transition and
+documentation ranges are refused, conservatively including protocol-assignment
+ranges with public exceptions and IPv6 outside global `2000::/3`.
+
+For every request without a matching invocation grant, the downloader resolves once and connects only to numeric
+addresses from that checked answer. It retains the original HTTP Host, TLS
+server name and redirect base. A later DNS answer cannot redirect that connection
+into a private network. Existing timeout, size, digest and HTTPS-downgrade checks
+still apply; a digest alone does not authorize contacting another endpoint.
+
+Proxy selection uses the original URL, preserving environment proxy and
+`NO_PROXY` behaviour. Direct connections and HTTPS targets through an HTTP
+proxy are supported; CONNECT names the checked numeric destination. For requests
+requiring public address screening, plain HTTP through a forward proxy, HTTPS/SOCKS proxies, custom TLS
+dialers and nonstandard global transports are refused explicitly when destination
+pinning cannot be established. They are not silently bypassed or disabled.
+Requests covered by an explicit endpoint grant retain their existing transport behaviour.
+These host acquisition rules are independent of a plugin guest's network permissions.
+
 ### Pull from an OCI registry
 
 A plugin or tool provider can also be published as an OCI artifact, for example to GHCR with the
@@ -230,8 +265,10 @@ added on Windows) and re-hashed on every use.
 
 Tags are not pins. `actionlint plugin install oci://ghcr.io/owner/provider:v1` resolves the tag once and
 declares the digest it names; everywhere else, including `--plugin` and `plugin inspect`, a tag is refused.
-The registry is reached anonymously, answering its bearer challenge as public GHCR images require;
-`localhost` and loopback registries are reached over plain HTTP. Each pull has the 30-second deadline.
+The registry is reached anonymously, answering its bearer challenge as public GHCR images require.
+Registry requests, token realms, retries and blob redirects follow the acquisition policy above.
+Explicitly selected `localhost` and loopback registries use plain HTTP; repository configuration
+cannot authorize them. Each pull has the 30-second deadline.
 
 The configured OCI digest binds the index, selected platform manifest and layers. No project metadata
 duplicates that graph. Cache planning reads the index and this host's manifest to enumerate the required

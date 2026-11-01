@@ -36,8 +36,22 @@ func NewGroup(preset Preset, level Level, rules map[string]Setting) Group {
 // it resolves rules. A caller that resolves rules without validating them
 // gets the rule's default options when decoding fails.
 func loadOptions(s Setting, dst any) bool {
-	loaded, err := s.LoadOptions(dst)
+	loaded, err := decodeOptions(s, dst)
 	return loaded && err == nil
+}
+
+// decodeOptions keeps syntax validation at the boundary while the catalogue's
+// Options values remain ordinary DTOs for programmatic construction and schema reflection.
+func decodeOptions(s Setting, dst any) (bool, error) {
+	if options, ok := dst.(*RequiredActionsOptions); ok {
+		var wire requiredActionsWire
+		loaded, err := s.LoadOptions(&wire)
+		if loaded && err == nil {
+			*options = RequiredActionsOptions(wire)
+		}
+		return loaded, err
+	}
+	return s.LoadOptions(dst)
 }
 
 // PluginOptions decodes the options set for the registered analyzer name in

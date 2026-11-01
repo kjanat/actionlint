@@ -1,24 +1,51 @@
 package cli_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/localapp"
 
 	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
-	metadata := testRunCommand("", "rules", "--json")
-	want := rulecatalog.Rules()
+	metadata := testRunCommand("", "rules", "--no-config", "--json")
+	want, err := localapp.RulesSources(t.Context(), localapp.PluginSources{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	slices.SortFunc(want, func(a, b rule.Descriptor) int { return strings.Compare(a.Name, b.Name) })
 	var rules []rule.Descriptor
-	if err := json.Unmarshal([]byte(metadata.Stdout), &rules); err != nil || metadata.Status != 0 || metadata.Stderr != "" || !reflect.DeepEqual(rules, want) {
+	if err := json.Unmarshal([]byte(metadata.Stdout), &rules); err != nil || metadata.Status != 0 || metadata.Stderr != "" {
 		t.Fatalf("rules JSON contract changed: %+v, %v", metadata, err)
+	}
+	for _, descriptors := range [][]rule.Descriptor{rules, want} {
+		for i := range descriptors {
+			if len(descriptors[i].OptionsSchema) == 0 {
+				continue
+			}
+			var compact bytes.Buffer
+			if err := json.Compact(&compact, descriptors[i].OptionsSchema); err != nil {
+				t.Fatalf("invalid options schema for %s: %v", descriptors[i].Name, err)
+			}
+			descriptors[i].OptionsSchema = compact.Bytes()
+		}
+	}
+	if !reflect.DeepEqual(rules, want) {
+		if len(rules) != len(want) {
+			t.Fatalf("rules JSON count=%d catalog count=%d", len(rules), len(want))
+		}
+		for i := range rules {
+			if !reflect.DeepEqual(rules[i], want[i]) {
+				t.Fatalf("rule JSON differs for %s: actual=%+v expected=%+v", rules[i].Name, rules[i], want[i])
+			}
+		}
+		t.Fatal("rules JSON differs from catalog")
 	}
 	byName := map[string]rule.Descriptor{}
 	for i, rule := range rules {
@@ -27,7 +54,10 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 		}
 		byName[rule.Name] = rule
 	}
-	got := testRunCommand("", "rules")
+	if metadata, ok := byName["require-action-metadata"]; !ok || metadata.Category != "policy" {
+		t.Fatalf("missing policy metadata rule: %+v", metadata)
+	}
+	got := testRunCommand("", "rules", "--no-config")
 	if got.Status != 0 || got.Stderr != "" {
 		t.Fatal(got)
 	}

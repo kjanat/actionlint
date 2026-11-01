@@ -51,7 +51,7 @@ func TestPluginDeclarations(t *testing.T) {
 	if diff := cmp.Diff(want, declarationFields(cfg.Plugins)); diff != "" {
 		t.Fatal(diff)
 	}
-	data, err := yaml.Marshal(cfg)
+	data, err := Marshal(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

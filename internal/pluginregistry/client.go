@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"golang.org/x/mod/semver"
 )
@@ -47,13 +48,44 @@ func registryURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
+// New constructs a client for an endpoint explicitly selected by its caller.
+// Repository declarations use NewWithGrant with invocation-owned authority.
 func New(raw string) (*Client, error) {
 	u, err := registryURL(raw)
 	if err != nil {
 		return nil, err
 	}
+	var grant acquisitionhttp.Grant
+	if u.Scheme != "file" {
+		grant, err = acquisitionhttp.ExplicitEndpoint(u)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return newClient(u, grant)
+}
+
+// NewWithGrant constructs a registry client without deriving private-network
+// authority from raw. A zero grant permits only public destination addresses.
+func NewWithGrant(raw string, grant acquisitionhttp.Grant) (*Client, error) {
+	u, err := registryURL(raw)
+	if err != nil {
+		return nil, err
+	}
+	return newClient(u, grant)
+}
+
+func newClient(u *url.URL, grant acquisitionhttp.Grant) (*Client, error) {
 	c := &Client{base: u}
-	c.http = &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	var transport http.RoundTripper
+	if u.Scheme != "file" {
+		checked, err := acquisitionhttp.Transport(u, grant)
+		if err != nil {
+			return nil, err
+		}
+		transport = checked
+	}
+	c.http = &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || !c.contains(req.URL) {
 			return errors.New("registry redirect leaves catalogue or exceeds limit")
 		}

@@ -68,21 +68,21 @@ host-specific compatibility evidence when listing versions.
 **plugin install** [*PLUGIN*] [**--version** *TAG|latest*]
 : Declare a dependency in the config's root **plugins** list and download it
 without executing it. Accepts `owner/repo@tag` and forge-qualified names.
-Save its exact version, URL, publisher identity and SHA256 in the adjacent
-`actionlint.plugins.lock.json`. Commit config and lock. Without a name, install
+Save the canonical package and exact version in configuration; verified release
+metadata and artifact bytes live in the shared user cache. Without a name, install
 declared dependencies, preserving matching pins; migrate older lock-only projects.
 The default selector for new dependencies is the highest stable full semantic version;
 prereleases and arbitrary tags require exact selection. Admission does not prove
 runtime compatibility. Runner targets still require explicit selection.
 
 **plugin list**, **plugin update** [*PLUGIN*], **plugin remove** *PLUGIN*, **plugin sync**
-: List declared pins offline; resolve declared versions and update pins;
-remove a declaration and its pin; or restore exact declared pins without catalogue access.
+: List declared dependencies; resolve new versions and update configuration;
+remove a declaration; or acquire declared exact releases into the shared cache.
 Update accepts **--version** for one named plugin. Exact selectors stay exact;
 latest cannot downgrade unless an exact tag is explicitly selected. Failed updates
-preserve the old lock. Checks restore missing pinned artifacts and reuse verified
+preserve configuration. Checks restore missing pinned artifacts and reuse verified
 cached bytes offline. Only declared plugins load automatically. Missing or mismatched
-pins require **plugin install**. Removal leaves the shared cache intact. Use **--config**
+legacy pins require **plugin install** to migrate. Removal leaves the shared cache intact. Use **--config**
 for a custom config or outside a repository. Management rejects **--no-config**.
 
 **plugin inspect** *PATH-OR-URI*
@@ -135,6 +135,12 @@ Missing optional tools are reported; malformed selected config returns status 3.
 
 **--resolver-arg** *VALUE*
 : Pass a literal argument to the resolver. Repeat for multiple arguments.
+
+**--action-metadata** *MODE*
+: Select remote action metadata acquisition: `off` (default), `offline` (immutable
+cached manifests only), or `online` (GitHub acquisition). Named references in
+online mode require **--resolve-with**. Online requests use `GH_TOKEN`, falling
+back to `GITHUB_TOKEN`. This option does not create project lockfiles.
 
 These options belong to the root and to **check**, unless noted otherwise.
 The root accepts single- and double-dash spellings; **check**
@@ -242,8 +248,8 @@ WebAssembly module or a tool provider published to an OCI registry; see
 : Explicitly load every pin from this lock, bypassing config declarations.
 Available on check, fix, rules, lsp and
 plugin management commands. Cannot accompany **--plugin**. Explicit **--plugin**
-sources replace automatic lock selection; **--no-config** disables automatic
-selection. Explicit **--config** selects its declarations and adjacent lock. On
+sources replace automatic plugin selection; **--no-config** disables automatic
+selection. Explicit **--config** selects its declarations and any legacy lock. On
 management commands, **--plugin-lock** places a default config beside that lock
 unless **--config** selects another file. LSP snapshots selection
 until restart. See the **plugin** commands.

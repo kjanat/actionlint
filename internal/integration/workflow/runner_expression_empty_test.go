@@ -4,10 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/registry"
-	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestRunnerExpressionNonemptyLabels(t *testing.T) {
@@ -27,10 +24,6 @@ func TestRunnerExpressionNonemptyLabels(t *testing.T) {
 		{"unknown labels", `{labels: "${{ fromJSON(vars.LABELS) }}"}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
-			var err error
-
 			source := `on: push
 jobs:
   build:
@@ -38,11 +31,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
-			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-			if err != nil {
-				t.Fatal(err)
-			}
+			errs := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 			if tc.kind != "" {
 				if len(errs) != 1 || errs[0].Rule != tc.kind {
 					t.Fatalf("want one nonempty-labels diagnostic, got %v", errs)

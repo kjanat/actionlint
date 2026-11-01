@@ -488,7 +488,9 @@ func (b *Backend) directory(requested string) (string, error) {
 	if !info.IsDir() {
 		return "", fmt.Errorf("tools.%s: working directory is not a directory: %q", b.name, directory)
 	}
-	return directory, nil
+	// Tools can report paths through getcwd, which resolves directory symlinks.
+	// Bind output filenames to the same physical directory before execution.
+	return filepath.EvalSymlinks(directory)
 }
 
 // stdin is the snippet, or the JSON request carrying rendered configuration

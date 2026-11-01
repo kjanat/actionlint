@@ -246,7 +246,7 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 			}
 			setField(lint, "message-ignores", messages)
 		case "policy":
-			var policy Policy
+			var policy policyWire
 			if err = value.Decode(&policy); err != nil {
 				break
 			}

@@ -1,46 +1,29 @@
 package localapp
 
 import (
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
-type migrationConfigTransport func(*http.Request) (*http.Response, error)
-
-func (f migrationConfigTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return f(request)
-}
-
 func TestConfigMigrationRejectsMixedRemoteSnapshots(t *testing.T) {
+	registry := testutil.NewPluginRegistry(t)
 	root := pluginRepository(t)
 	path := filepath.Join(root, "actionlint.yaml")
-	original := "extends: [https://example.test/base.yaml]\nconfig-variables: [LOCAL]\n"
+	remote := testutil.FixtureRegistryURL + "base.yaml"
+	original := "extends: [" + remote + "]\nconfig-variables: [LOCAL]\n"
 	if err := os.WriteFile(path, []byte(original), 0600); err != nil {
 		t.Fatal(err)
 	}
-	reads := 0
-	transport := http.DefaultTransport
-	http.DefaultTransport = migrationConfigTransport(func(request *http.Request) (*http.Response, error) {
-		if request.URL.String() != "https://example.test/base.yaml" {
-			t.Fatalf("unexpected acquisition: %s", request.URL)
-		}
-		reads++
-		body := "plugins: []"
-		if reads == 2 {
-			body = "plugins: [github.com/example/plugin@v1.0.0]"
-		}
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: request}, nil
-	})
-	t.Cleanup(func() { http.DefaultTransport = transport })
+	registry.SetFileSequence(remote, []byte("plugins: []"), []byte("plugins: [github.com/example/plugin@v1.0.0]"))
 	if _, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{}); err == nil || !strings.Contains(err.Error(), "changed during migration preparation") {
 		t.Fatalf("mixed remote snapshots accepted: %v", err)
 	}
-	if reads != 2 {
-		t.Fatalf("snapshot comparison fetched remote again: %d reads", reads)
+	if requests := registry.Requests(); len(requests) != 2 || requests[0] != remote || requests[1] != remote {
+		t.Fatalf("snapshot comparison requests = %v", requests)
 	}
 	content, err := os.ReadFile(path)
 	if err != nil || string(content) != original {

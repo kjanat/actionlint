@@ -4,32 +4,83 @@ import (
 	"github.com/kjanat/go-yaml/v4"
 )
 
+// configWire owns YAML decoding independently of the runtime settings DTO.
+type configWire struct{ settings Config }
+
+// policyWire validates legacy policy syntax before migration into rule settings.
+type policyWire Policy
+
+// Unmarshal decodes external YAML settings through the configuration wire adapter.
+func Unmarshal(source []byte, dst *Config) error {
+	var wire configWire
+	if err := yaml.Unmarshal(source, &wire); err != nil {
+		return err
+	}
+	*dst = wire.settings
+	return nil
+}
+
+// DecodeNode decodes one configuration value, including legacy normalization.
+// Successful decoding replaces dst; errors leave it untouched.
+func DecodeNode(node *yaml.Node, dst *Config) error {
+	var wire configWire
+	if err := node.Decode(&wire); err != nil {
+		return err
+	}
+	*dst = wire.settings
+	return nil
+}
+
+// EncodeNode emits canonical syntax, including programmatic policy projections.
+func EncodeNode(cfg *Config) (*yaml.Node, error) {
+	if cfg == nil {
+		var node yaml.Node
+		if err := node.Encode(nil); err != nil {
+			return nil, err
+		}
+		return &node, nil
+	}
+	var node yaml.Node
+	if err := node.Encode(configWire{settings: *cfg}); err != nil {
+		return nil, err
+	}
+	return &node, nil
+}
+
+// Marshal encodes settings through the canonical configuration wire contract.
+func Marshal(cfg *Config) ([]byte, error) {
+	node, err := EncodeNode(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(node)
+}
+
 // UnmarshalYAML normalizes old documents at the boundary. Runtime values and
 // subsequent serialization use the same canonical grouped configuration.
-func (cfg *Config) UnmarshalYAML(node *yaml.Node) error {
+func (wire *configWire) UnmarshalYAML(node *yaml.Node) error {
 	next, err := NormalizeForMerge(node)
 	if err != nil {
 		return err
 	}
-	type plain Config
-	var decoded plain
+	var decoded Config
 	if err := next.Decode(&decoded); err != nil {
 		return err
 	}
-	*cfg = Config(decoded)
 	if repository := field(next, "repository"); repository != nil && repository.ShortTag() == "!!null" {
-		cfg.Repository = RepositoryConfig{reset: true}
+		decoded.Repository = RepositoryConfig{reset: true}
 	}
-	projectSettings(cfg)
+	projectSettings(&decoded)
+	wire.settings = decoded
 	return nil
 }
 
 // MarshalYAML preserves programmatic callers using the Go API projections,
 // while emitting only the current configuration syntax.
-func (cfg *Config) MarshalYAML() (any, error) {
-	type plain Config
+func (wire configWire) MarshalYAML() (any, error) {
+	cfg := wire.settings
 	var root yaml.Node
-	if err := root.Encode(plain(*cfg)); err != nil {
+	if err := root.Encode(cfg); err != nil {
 		return nil, err
 	}
 	add := func(key string, value any) error {

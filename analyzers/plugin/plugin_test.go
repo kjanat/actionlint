@@ -74,15 +74,20 @@ func (c *Counter) Inc() { atomic.AddInt64(&c.Value, 1) }
 		return messages
 	}
 	messages := strings.Join(run(true), "\n")
-	for _, code := range []string{"ARC001", "ARC002", "ARC003", "ARC004"} {
+	for _, code := range []string{"ARC001", "ARC002"} {
 		if !strings.Contains(messages, code) {
 			t.Fatalf("missing %s: %s", code, messages)
 		}
 	}
+	for _, code := range []string{"ARC003", "ARC004"} {
+		if strings.Contains(messages, code) {
+			t.Fatalf("default policy enabled conservative auditing: %s", messages)
+		}
+	}
 	write("api.go", `package unrelated
-import "bytes"
+import "example.org/unrelated/helper"
 type RenamedAgain struct { private []byte; writable int }
-func (s *RenamedAgain) Retrieve() []byte { return bytes.Clone(s.private) }
+func (s *RenamedAgain) Retrieve() []byte { return helper.View(s.private) }
 `)
 	if messages := run(false); len(messages) != 0 {
 		t.Fatalf("fixed source still failed: %v", messages)

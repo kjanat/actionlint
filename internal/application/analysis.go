@@ -95,8 +95,8 @@ type inputFiles struct{ workspace.Inputs }
 
 func (f *inputFiles) add(path string) { f.Add(path) }
 func (f *inputFiles) list() []string  { return f.List() }
-func (f *inputFiles) addConfig(cfg *repoconfig.Config, project *workspace.Project, workingDir string) {
-	f.AddConfig(cfg, project, workingDir)
+func (f *inputFiles) addConfig(cfg *repoconfig.Config, provenance repoconfig.Provenance, project *workspace.Project, workingDir string) {
+	f.AddConfig(cfg, provenance, project, workingDir)
 }
 
 // runAnalysis checks resolved workflows and action manifests without rendering diagnostics.
@@ -311,8 +311,11 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	selected := make([]sourceUnit, 0, len(request.Sources))
 	for _, source := range allSources {
+		if source.ConfigProvenance.Path() == "" && source.Project != nil && source.Config == source.Project.Config() {
+			source.ConfigProvenance = source.Project.ConfigProvenance()
+		}
 		// Selection itself consumes configuration, even when no source survives.
-		inputs.addConfig(source.Config, source.Project, request.WorkingDir)
+		inputs.addConfig(source.Config, source.ConfigProvenance, source.Project, request.WorkingDir)
 		root := request.WorkingDir
 		if source.Project != nil {
 			root = source.Project.RootDir()
@@ -429,7 +432,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			if err == nil {
 				file.captured = captured
 				file.source.Content = captured.Bytes()
-				file.errors, file.outline, err = session.check(source.Path, source.InputPath, captured, source.Project, source.Config, proc, ac, wc, &file.rules)
+				file.errors, file.outline, err = session.check(source.Path, source.InputPath, captured, source.Project, source.Config, source.ConfigProvenance, proc, ac, wc, &file.rules)
 			}
 			if err != nil {
 				entryErrors[i] = &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}

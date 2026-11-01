@@ -93,7 +93,28 @@ type CallOutcome struct{ value CallResolution }
 
 // Value returns the payload, or nil for the zero outcome. Every variant holds
 // only strings, integers and Optional values, so the copy shares no storage.
-func (outcome CallOutcome) Value() CallResolution { return outcome.value }
+func (outcome CallOutcome) Value() CallResolution {
+	switch value := outcome.value.(type) {
+	case ExpandedCall:
+		return value
+	case OpaqueCall:
+		return value
+	case UnavailableCall:
+		return value
+	case UnresolvedCall:
+		return value
+	case DynamicCall:
+		return value
+	case CycleCall:
+		return value
+	case DepthLimitedCall:
+		return value
+	case InterruptedCall:
+		return value
+	default:
+		return nil
+	}
+}
 
 // NewCallOutcome accepts value variants only, so the stored payload is immutable.
 func NewCallOutcome(value CallResolution) (CallOutcome, error) {

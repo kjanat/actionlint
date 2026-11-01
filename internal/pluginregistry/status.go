@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 )
 
@@ -50,6 +51,8 @@ type StatusSnapshot struct {
 }
 
 type StatusOptions struct {
+	// Network comes from invocation endpoint selection, never lock contents.
+	Network acquisitionhttp.Grant
 	// CacheDir defaults to the user's actionlint/registry cache.
 	CacheDir string
 	Warning  func(string)
@@ -303,7 +306,7 @@ func (l Lock) RefreshStatuses(ctx context.Context, options StatusOptions) error 
 			continue
 		}
 		seen[directory] = true
-		client, err := New(pin.Registry)
+		client, err := NewWithGrant(pin.Registry, options.Network)
 		if err != nil {
 			return err
 		}

@@ -132,6 +132,19 @@ func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, e
 	project.StatusOptions.Warning = func(message string) {
 		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+message)
 	}
+	// Only an endpoint supplied in this invocation grants private-network
+	// authority. Selecting configuration, locks or an operation grants none.
+	explicitEndpoint := r.Options.Registry
+	if strings.Contains(name, "://") {
+		explicitEndpoint = name
+	}
+	if explicitEndpoint != "" {
+		grant, err := pluginartifact.ExplicitSource(explicitEndpoint)
+		if err != nil {
+			return 0, commandUsageError{err}
+		}
+		project.StatusOptions.Network = grant
+	}
 	var selected pluginregistry.Lock
 	switch r.Operation {
 	case operationPluginInstall:
@@ -385,7 +398,7 @@ func declaredPlugin(ctx context.Context, project *localapp.PluginProject, refs [
 			if ref.DirectSource() != "" || registry != "" && !pluginregistry.SameRegistry(ref.Registry(), registry) {
 				continue
 			}
-			client, err := pluginregistry.New(ref.Registry())
+			client, err := pluginregistry.NewWithGrant(ref.Registry(), project.StatusOptions.Network)
 			if err != nil {
 				return -1, err
 			}

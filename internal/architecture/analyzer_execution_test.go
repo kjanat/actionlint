@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost/executor"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -27,7 +27,7 @@ func TestAnalyzerInvocationsUseSharedExecutor(t *testing.T) {
 		t.Fatal(err)
 	}
 	contract := executionContract(t, loaded)
-	owner := runtime.FuncForPC(reflect.ValueOf(analyzerhost.RunOne).Pointer()).Name()
+	owner := runtime.FuncForPC(reflect.ValueOf(executor.RunOne).Pointer()).Name()
 	calls, violations := analyzerExecutionViolations(loaded, contract, owner)
 	for _, violation := range violations {
 		t.Error(violation)
@@ -73,7 +73,7 @@ func executionEnvironment(goos, goarch string) []string {
 }
 
 func TestAnalyzerExecutorRejectsBypasses(t *testing.T) {
-	owner := runtime.FuncForPC(reflect.ValueOf(analyzerhost.RunOne).Pointer()).Name()
+	owner := runtime.FuncForPC(reflect.ValueOf(executor.RunOne).Pointer()).Name()
 	ownerPackage := owner[:strings.LastIndexByte(owner, '.')]
 	contractType := reflect.TypeFor[analyzer.Analyzer]()
 	loaded, err := packages.Load(&packages.Config{

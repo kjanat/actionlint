@@ -26,7 +26,11 @@ type editorSession struct {
 }
 
 func newEditorSession(ctx context.Context, options application.Options, paths []string) (*editorSession, error) {
-	return newEditorSources(ctx, options, PluginSources{Paths: paths})
+	sources, err := explicitPluginSources(paths)
+	if err != nil {
+		return nil, err
+	}
+	return newEditorSources(ctx, options, sources)
 }
 
 func newEditorSources(ctx context.Context, options application.Options, sources PluginSources) (*editorSession, error) {

@@ -49,7 +49,7 @@ overrides:
 		if config.Tools["shellcheck"].Enabled == nil || !*config.Tools["shellcheck"].Enabled {
 			t.Fatal("mutated parent tool config")
 		}
-		encoded, err = codec.Marshal(config)
+		encoded, err = repoconfig.Marshal(config)
 		if err != nil {
 			t.Fatal(err)
 		}

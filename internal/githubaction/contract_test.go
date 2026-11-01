@@ -80,6 +80,13 @@ jobs:
     steps:
       - run: echo ok
 `, 0, false},
+		{"remote metadata unavailable", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: example/action@v1
+`, 0, false},
 		{"findings", `on: push
 jobs:
   test:
@@ -108,9 +115,13 @@ jobs:
 			if err := os.WriteFile("ci.yml", []byte(tc.source), 0600); err != nil {
 				t.Fatal(err)
 			}
+			configPath := filepath.Join(workspace, "actionlint.yaml")
+			if err := os.WriteFile(configPath, []byte("repository: {runners: []}\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdout: &stdout, Stderr: &stderr}
-			if code := command.Main([]string{"actionlint", "check", "--json", "--no-tool=shellcheck", "--no-tool=ruff", "ci.yml"}); code != tc.code {
+			if code := command.Main([]string{"actionlint", "check", "--json", "--config-file", configPath, "--no-tool=shellcheck", "--no-tool=ruff", "ci.yml"}); code != tc.code {
 				t.Fatalf("CLI status %d: %s", code, &stderr)
 			}
 			var cliResult render.CheckResult
@@ -121,7 +132,8 @@ jobs:
 			outputPath := filepath.Join(workspace, "outputs")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_CONFIG-FILE": configPath,
+				"INPUT_FILES":       "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			stdout.Reset()
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {

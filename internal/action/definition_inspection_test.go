@@ -73,3 +73,26 @@ func TestInspectDefinitionRejectsEmptyManifest(t *testing.T) {
 		t.Fatal("empty manifest produced no diagnostic")
 	}
 }
+
+func TestInspectDefinitionOutputKnowledge(t *testing.T) {
+	for _, test := range []struct {
+		name, declaration string
+		unknown           bool
+		names             []string
+	}{
+		{name: "omitted outputs", unknown: true},
+		{name: "explicit empty outputs", declaration: "outputs: {}\n"},
+		{name: "declared output", declaration: "outputs: {result: {description: result, value: ready}}\n", names: []string{"result"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			inspection := InspectDefinition([]byte("name: fixture\ndescription: fixture\n" + test.declaration + "runs: {using: composite, steps: []}\n"))
+			definition, valid := inspection.Definition()
+			if !valid {
+				t.Fatal(inspection.Diagnostics())
+			}
+			if definition.SkipOutputs() != test.unknown || !slices.Equal(definition.OutputNames(), test.names) {
+				t.Fatalf("output knowledge: unknown=%v names=%v", definition.SkipOutputs(), definition.OutputNames())
+			}
+		})
+	}
+}

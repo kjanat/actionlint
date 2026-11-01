@@ -39,15 +39,20 @@ func publishProvider(t *testing.T, registry *ocitest.Registry) providerPackage {
 }
 
 // options pulls oci:// sources into cache, or keeps nothing when cache is "".
-func options(cache string) artifact.Options {
-	return artifact.Options{CacheDir: cache, PullOCI: oci.Pull}
+func options(t *testing.T, source, cache string) artifact.Options {
+	t.Helper()
+	grant, err := artifact.ExplicitSource(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return artifact.Options{CacheDir: cache, PullOCI: oci.Pull, Network: grant}
 }
 
 func TestPullSelectsHostPlatform(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
-	pulled, err := artifact.Resolve(t.Context(), pkg.reference, options(cache))
+	pulled, err := artifact.Resolve(t.Context(), pkg.reference, options(t, pkg.reference, cache))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,15 +77,15 @@ func TestPullSelectsHostPlatform(t *testing.T) {
 	if got := registry.Fetches(pkg.executable); got != 0 {
 		t.Fatalf("Resolve fetched the executable %d times", got)
 	}
-	executable, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache))
+	executable, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(t, pkg.reference, cache))
 	if err != nil || string(executable) != "executable for "+artifact.HostPlatform() {
 		t.Fatalf("Layer = %q, %v", executable, err)
 	}
 	registry.Close()
-	if _, err := artifact.Resolve(t.Context(), pkg.reference, options(cache)); err != nil {
+	if _, err := artifact.Resolve(t.Context(), pkg.reference, options(t, pkg.reference, cache)); err != nil {
 		t.Fatalf("stored package not usable offline: %v", err)
 	}
-	if _, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache)); err != nil {
+	if _, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(t, pkg.reference, cache)); err != nil {
 		t.Fatalf("stored executable not usable offline: %v", err)
 	}
 }
@@ -89,7 +94,7 @@ func TestPullLayersStoresEveryHostLayer(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
-	if err := oci.PullLayers(t.Context(), pkg.reference, options(cache)); err != nil {
+	if err := oci.PullLayers(t.Context(), pkg.reference, options(t, pkg.reference, cache)); err != nil {
 		t.Fatal(err)
 	}
 	for _, layer := range []ocitest.Descriptor{pkg.manifest, pkg.executable} {
@@ -103,7 +108,7 @@ func TestLayerRefusesDigestOutsideManifest(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	other := registry.Blob("application/octet-stream", []byte("not a layer"))
-	if _, err := oci.Layer(t.Context(), pkg.reference, other.Hex(), options("")); err == nil || !strings.Contains(err.Error(), "is not a layer") {
+	if _, err := oci.Layer(t.Context(), pkg.reference, other.Hex(), options(t, pkg.reference, "")); err == nil || !strings.Contains(err.Error(), "is not a layer") {
 		t.Fatalf("error = %v", err)
 	}
 	if registry.Fetches(other) != 0 {
@@ -115,7 +120,7 @@ func TestPullWasmLayer(t *testing.T) {
 	registry := ocitest.New(t)
 	wasm := registry.Blob(artifact.MediaTypeWasm, []byte("\x00asm\x01\x00\x00\x00"))
 	root := registry.Manifest(t, wasm)
-	pulled, err := artifact.Resolve(t.Context(), registry.Reference(root), options(""))
+	pulled, err := artifact.Resolve(t.Context(), registry.Reference(root), options(t, registry.Reference(root), ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +134,7 @@ func TestPullRejectsBlobNotMatchingDigest(t *testing.T) {
 	pkg := publishProvider(t, registry)
 	registry.Tamper(pkg.executable, bytes.Repeat([]byte("x"), int(pkg.executable.Size)))
 	cache := t.TempDir()
-	_, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache))
+	_, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(t, pkg.reference, cache))
 	if err == nil || !strings.Contains(err.Error(), "digest") {
 		t.Fatalf("forged blob accepted: %v", err)
 	}
@@ -142,7 +147,7 @@ func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
-	if err := oci.PullLayers(t.Context(), pkg.reference, options(cache)); err != nil {
+	if err := oci.PullLayers(t.Context(), pkg.reference, options(t, pkg.reference, cache)); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(cache, pkg.executable.Hex())
@@ -157,7 +162,7 @@ func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
 	if _, err := (artifact.Store{Dir: cache}).Read(t.Context(), pkg.executable.Hex(), 1<<20); !errors.Is(err, artifact.ErrCorrupt) {
 		t.Fatalf("half-written blob read as %v", err)
 	}
-	if _, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(cache)); err != nil {
+	if _, err := oci.Layer(t.Context(), pkg.reference, pkg.executable.Hex(), options(t, pkg.reference, cache)); err != nil {
 		t.Fatal(err)
 	}
 	if got := registry.Fetches(pkg.executable); got != 2 {
@@ -180,11 +185,12 @@ func TestPinResolvesTag(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	registry.Tag("v1", pkg.index)
-	pinned, err := oci.Pin(t.Context(), "oci://"+registry.Host()+"/"+ocitest.Repository+":v1", options(""))
+	tagged := "oci://" + registry.Host() + "/" + ocitest.Repository + ":v1"
+	pinned, err := oci.Pin(t.Context(), tagged, options(t, tagged, ""))
 	if err != nil || pinned != pkg.reference {
 		t.Fatalf("Pin = %q, %v; want %q", pinned, err, pkg.reference)
 	}
-	if again, err := oci.Pin(t.Context(), pinned, options("")); err != nil || again != pinned {
+	if again, err := oci.Pin(t.Context(), pinned, options(t, pinned, "")); err != nil || again != pinned {
 		t.Fatalf("digest reference changed: %q, %v", again, err)
 	}
 }
@@ -192,7 +198,7 @@ func TestPinResolvesTag(t *testing.T) {
 func TestDescribeReadsNoLayers(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
-	described, err := oci.Describe(t.Context(), pkg.reference, options(""))
+	described, err := oci.Describe(t.Context(), pkg.reference, options(t, pkg.reference, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +221,7 @@ func TestDescribeReadsNoLayers(t *testing.T) {
 func TestDigestPlanReadsOnlyHostManifests(t *testing.T) {
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
-	digests, err := oci.Digests(t.Context(), pkg.reference, options(""))
+	digests, err := oci.Digests(t.Context(), pkg.reference, options(t, pkg.reference, ""))
 	if err != nil {
 		t.Fatal(err)
 	}

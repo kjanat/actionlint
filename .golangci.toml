@@ -486,9 +486,44 @@ allow     = [
   "golang.org/x/tools/",
 ]
 
+# Layer acquisition-http: Host HTTP acquisition policy: public address screening and
+# invocation-owned endpoint grants.
+# Imports: itself.
+[linters.settings.depguard.rules.layer-acquisition-http]
+files     = [
+  "**/internal/acquisitionhttp/*.go",
+  "!$test",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
+  "golang.org/x/net$",
+  "golang.org/x/net/",
+]
+deny      = [
+  { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
+]
+
+[linters.settings.depguard.rules.layer-acquisition-http-tests]
+files     = [
+  "**/internal/acquisitionhttp/*_test.go",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
+  "github.com/google/go-cmp$",
+  "github.com/google/go-cmp/",
+  "golang.org/x/net$",
+  "golang.org/x/net/",
+  "golang.org/x/tools$",
+  "golang.org/x/tools/",
+]
+
 # Layer config: Configuration decoding and its parts. Configuration does not reach execution, the
 # host or the public API.
-# Imports: itself, contract-leaves, repository-contracts, leaves, action-reference, provider-data, catalog.
+# Imports: itself, contract-leaves, repository-contracts, leaves, action-reference, provider-data, catalog, acquisition-http.
 [linters.settings.depguard.rules.layer-config]
 files     = [
   "**/internal/config/*.go",
@@ -504,6 +539,7 @@ allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -555,6 +591,7 @@ allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -571,6 +608,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/schemapath$",
   "actionlint.kjanat.dev/v2/internal/source/text$",
   "actionlint.kjanat.dev/v2/internal/stringutil$",
+  "actionlint.kjanat.dev/v2/internal/testutil$",
   "actionlint.kjanat.dev/v2/internal/tools/provider$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/bundled$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/configschema$",
@@ -1809,9 +1847,39 @@ allow     = [
   "mvdan.cc/sh/v3/",
 ]
 
-# Layer analyzer-host: The shared analyzer executor and native process runner. It does not reach
-# traversal, workspaces or configuration.
-# Imports: itself, analysis-contracts, core-helpers, process-config.
+# Layer analyzer-executor: Pure analyzer admission and invocation. Shared by host execution and
+# public plugin adapters without granting process execution.
+# Imports: itself, analysis-contracts, core-helpers.
+[linters.settings.depguard.rules.layer-analyzer-executor]
+files     = [
+  "**/internal/analyzerhost/executor/*.go",
+  "!$test",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/diagnostic$",
+  "actionlint.kjanat.dev/v2/internal/analyzerhost/executor$",
+  "actionlint.kjanat.dev/v2/internal/analyzerref$",
+  "actionlint.kjanat.dev/v2/internal/related$",
+  "actionlint.kjanat.dev/v2/internal/scriptcoords$",
+  "actionlint.kjanat.dev/v2/internal/source/capture$",
+  "actionlint.kjanat.dev/v2/internal/source/position$",
+  "actionlint.kjanat.dev/v2/internal/sourceid$",
+  "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
+  "github.com/santhosh-tekuri/jsonschema/v6$",
+  "github.com/santhosh-tekuri/jsonschema/v6/",
+  "golang.org/x/sync$",
+  "golang.org/x/sync/",
+]
+deny      = [
+  { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
+]
+
+# Layer analyzer-host: Host adapters around the pure analyzer executor and the native process
+# runner. They do not reach traversal, workspaces or configuration.
+# Imports: itself, analysis-contracts, core-helpers, process-config, analyzer-executor.
 [linters.settings.depguard.rules.layer-analyzer-host]
 files     = [
   "**/internal/analyzerhost/*.go",
@@ -1823,6 +1891,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
+  "actionlint.kjanat.dev/v2/internal/analyzerhost/executor$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/processconfig$",
   "actionlint.kjanat.dev/v2/internal/related$",
@@ -1831,8 +1900,6 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/source/position$",
   "actionlint.kjanat.dev/v2/internal/sourceid$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
-  "github.com/santhosh-tekuri/jsonschema/v6$",
-  "github.com/santhosh-tekuri/jsonschema/v6/",
   "golang.org/x/sync$",
   "golang.org/x/sync/",
 ]
@@ -1848,6 +1915,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
+  "actionlint.kjanat.dev/v2/internal/analyzerhost/executor$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/invocationview$",
   "actionlint.kjanat.dev/v2/internal/processconfig$",
@@ -1864,8 +1932,6 @@ allow     = [
   "actionlint.kjanat.dev/v2/source$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
-  "github.com/santhosh-tekuri/jsonschema/v6$",
-  "github.com/santhosh-tekuri/jsonschema/v6/",
   "golang.org/x/sync$",
   "golang.org/x/sync/",
   "golang.org/x/sys$",
@@ -3129,7 +3195,7 @@ allow     = [
 ]
 
 # Layer plugin-artifacts: Plugin artifacts and the plugin registry.
-# Imports: itself, leaves.
+# Imports: itself, leaves, acquisition-http.
 [linters.settings.depguard.rules.layer-plugin-artifacts]
 files     = [
   "**/internal/pluginregistry/*.go",
@@ -3139,6 +3205,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config/address$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
@@ -3155,6 +3222,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "golang.org/x/mod$",
   "golang.org/x/mod/",
+  "golang.org/x/net$",
+  "golang.org/x/net/",
   "golang.org/x/sys$",
   "golang.org/x/sys/",
 ]
@@ -3170,6 +3239,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config/address$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
@@ -3193,6 +3263,8 @@ allow     = [
   "github.com/google/go-cmp/",
   "golang.org/x/mod$",
   "golang.org/x/mod/",
+  "golang.org/x/net$",
+  "golang.org/x/net/",
   "golang.org/x/sys$",
   "golang.org/x/sys/",
   "golang.org/x/tools$",
@@ -3201,7 +3273,7 @@ allow     = [
 
 # Layer plugin-transport: The OCI transport for plugin artifacts. Registry credential helpers run as
 # processes, so this layer may reach os/exec.
-# Imports: itself, plugin-artifacts.
+# Imports: itself, plugin-artifacts, acquisition-http.
 [linters.settings.depguard.rules.layer-plugin-transport]
 files     = [
   "**/internal/plugins/artifact/oci/*.go",
@@ -3210,6 +3282,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/pluginregistry$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact/oci$",
@@ -3226,6 +3299,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/pluginregistry$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact/oci$",
@@ -3235,6 +3309,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/testutil/tempdir$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
+  "github.com/opencontainers/go-digest$",
+  "github.com/opencontainers/go-digest/",
   "github.com/opencontainers/image-spec$",
   "github.com/opencontainers/image-spec/",
   "github.com/oras-project/oras-go/v3$",
@@ -3679,7 +3755,7 @@ allow     = [
 
 # Layer local-host: The local application host: plugins, tools and editors around the application.
 # It does not reach terminal adapters.
-# Imports: itself, analysis-contracts, application, catalog, config, contract-leaves, core-helpers, document-contracts, editing, language, leaves, plugin-artifacts, plugin-runtime, plugin-transport, process-config, source, tool-backends, tool-contracts, tool-providers, workspace.
+# Imports: itself, acquisition-http, analysis-contracts, application, catalog, config, contract-leaves, core-helpers, document-contracts, editing, language, leaves, plugin-artifacts, plugin-runtime, plugin-transport, process-config, source, tool-backends, tool-contracts, tool-providers, workspace.
 [linters.settings.depguard.rules.layer-local-host]
 files     = [
   "**/internal/localapp/*.go",
@@ -3692,6 +3768,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
@@ -3776,6 +3853,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
@@ -3913,6 +3991,8 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2$",
+  "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/config$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -3946,7 +4026,7 @@ allow     = [
 ]
 
 # Layer public-plugin: The public plugin package.
-# Imports: itself, plugin-artifacts, plugin-runtime.
+# Imports: itself, analysis-contracts, contract-leaves, document-contracts, analyzer-executor, plugin-artifacts, plugin-runtime, acquisition-http.
 [linters.settings.depguard.rules.layer-public-plugin]
 files     = [
   "**/plugin/*.go",
@@ -3955,6 +4035,12 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/diagnostic$",
+  "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
+  "actionlint.kjanat.dev/v2/internal/analyzerhost/executor$",
   "actionlint.kjanat.dev/v2/internal/pluginregistry$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact$",
   "actionlint.kjanat.dev/v2/internal/plugins/component$",
@@ -3965,7 +4051,11 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourcefiles$",
   "actionlint.kjanat.dev/v2/internal/plugins/core$",
   "actionlint.kjanat.dev/v2/internal/plugins/wasmbudget$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/plugin$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+  "actionlint.kjanat.dev/v2/runner$",
 ]
 deny      = [
   { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
@@ -3981,7 +4071,11 @@ allow     = [
   "actionlint.kjanat.dev/v2$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
+  "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
+  "actionlint.kjanat.dev/v2/internal/analyzerhost/executor$",
   "actionlint.kjanat.dev/v2/internal/pluginregistry$",
   "actionlint.kjanat.dev/v2/internal/plugins/artifact$",
   "actionlint.kjanat.dev/v2/internal/plugins/component$",
@@ -3992,7 +4086,11 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourcefiles$",
   "actionlint.kjanat.dev/v2/internal/plugins/core$",
   "actionlint.kjanat.dev/v2/internal/plugins/wasmbudget$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/plugin$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+  "actionlint.kjanat.dev/v2/runner$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
   "golang.org/x/tools$",
@@ -4001,7 +4099,7 @@ allow     = [
 
 # Layer public-analysis: The public analysis API and the root package. They use the application
 # boundary, not the engine or plugin runtimes.
-# Imports: itself, analysis-contracts, application, catalog, contract-leaves, document-contracts, process-config, public-config, repository-contracts, tool-backends, workspace.
+# Imports: itself, analysis-contracts, application, catalog, config, contract-leaves, document-contracts, process-config, public-config, repository-contracts, tool-backends, workspace.
 [linters.settings.depguard.rules.layer-public-analysis]
 files     = [
   "**/actionlint.go",
@@ -4028,7 +4126,13 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/application$",
+  "actionlint.kjanat.dev/v2/internal/config$",
+  "actionlint.kjanat.dev/v2/internal/config/rules$",
+  "actionlint.kjanat.dev/v2/internal/config/source$",
+  "actionlint.kjanat.dev/v2/internal/config/tools$",
+  "actionlint.kjanat.dev/v2/internal/config/tree$",
   "actionlint.kjanat.dev/v2/internal/config/value$",
+  "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/processconfig$",
   "actionlint.kjanat.dev/v2/internal/projectpath$",
   "actionlint.kjanat.dev/v2/internal/rulecatalog$",
@@ -4061,8 +4165,14 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/application$",
+  "actionlint.kjanat.dev/v2/internal/config$",
+  "actionlint.kjanat.dev/v2/internal/config/rules$",
+  "actionlint.kjanat.dev/v2/internal/config/source$",
+  "actionlint.kjanat.dev/v2/internal/config/tools$",
+  "actionlint.kjanat.dev/v2/internal/config/tree$",
   "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
+  "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/processconfig$",
   "actionlint.kjanat.dev/v2/internal/projectpath$",
   "actionlint.kjanat.dev/v2/internal/rulecatalog$",
@@ -4091,7 +4201,7 @@ allow     = [
 
 # Layer adapters: Terminal, GitHub Action and browser adapters. They consume the application and
 # presentation and do not construct the engine or plugin runtimes.
-# Imports: itself, action-acquisition, analysis-contracts, analyzer-host, application, catalog, config, contract-leaves, document-contracts, editing, editor-schema, leaves, local-host, plugin-artifacts, presentation, process-config, provider-data, public-analysis, repository-contracts, resolution, tool-backends, tool-providers, workspace.
+# Imports: itself, acquisition-http, action-acquisition, analysis-contracts, analyzer-host, application, catalog, config, contract-leaves, document-contracts, editing, editor-schema, leaves, local-host, plugin-artifacts, presentation, process-config, provider-data, public-analysis, repository-contracts, resolution, tool-backends, tool-providers, workspace.
 [linters.settings.depguard.rules.layer-adapters]
 files     = [
   "**/internal/cli/*.go",
@@ -4109,6 +4219,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/actionhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/application$",
@@ -4190,6 +4301,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
+  "actionlint.kjanat.dev/v2/internal/acquisitionhttp$",
   "actionlint.kjanat.dev/v2/internal/actionhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/application$",
@@ -4543,7 +4655,7 @@ allow     = [
 ]
 
 # Layer test-harness: The shared test harness around the application.
-# Imports: itself, analysis-contracts, leaves, config, tool-providers, workspace, application.
+# Imports: itself, analysis-contracts, contract-leaves, repository-contracts, leaves, config, tool-providers, workspace, application.
 [linters.settings.depguard.rules.layer-test-harness]
 files     = [
   "**/internal/testutil/*.go",
@@ -4552,7 +4664,9 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -4578,6 +4692,12 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+  "golang.org/x/net$",
+  "golang.org/x/net/",
 ]
 
 [linters.settings.depguard.rules.layer-test-harness-tests]
@@ -4587,7 +4707,9 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -4613,8 +4735,14 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
+  "golang.org/x/net$",
+  "golang.org/x/net/",
   "golang.org/x/tools$",
   "golang.org/x/tools/",
 ]
@@ -4648,6 +4776,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
+  "actionlint.kjanat.dev/v2/internal/analyzerhost/executor$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -4667,6 +4796,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/fsread$",
   "actionlint.kjanat.dev/v2/internal/githubaction$",
   "actionlint.kjanat.dev/v2/internal/langserver$",
+  "actionlint.kjanat.dev/v2/internal/localapp$",
   "actionlint.kjanat.dev/v2/internal/mapping$",
   "actionlint.kjanat.dev/v2/internal/pluginref$",
   "actionlint.kjanat.dev/v2/internal/pluginregistry$",
@@ -4778,6 +4908,7 @@ files = [
   "!**/document/*.go",
   "!**/examples/plugins/pinnedactions/*.go",
   "!**/fuzz/*.go",
+  "!**/internal/acquisitionhttp/*.go",
   "!**/internal/action/*.go",
   "!**/internal/action/generate/*.go",
   "!**/internal/action/local/*.go",
@@ -4786,6 +4917,7 @@ files = [
   "!**/internal/action/validation/*.go",
   "!**/internal/actionhost/*.go",
   "!**/internal/analyzerhost/*.go",
+  "!**/internal/analyzerhost/executor/*.go",
   "!**/internal/analyzerref/*.go",
   "!**/internal/application/*.go",
   "!**/internal/architecture/*.go",

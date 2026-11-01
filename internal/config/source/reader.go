@@ -1,4 +1,4 @@
-// Package source acquires local and explicitly declared HTTPS configuration
+// Package source acquires local and public HTTPS configuration
 // sources. Parsing and inheritance remain in package tree.
 package source
 
@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/config/address"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
@@ -29,12 +30,23 @@ type Reader struct {
 
 func New(ctx context.Context, contents fsread.Contents) *Reader {
 	return &Reader{ctx: ctx, contents: contents, client: &http.Client{
-		Timeout: 30 * time.Second,
+		Transport: publicHTTPS{},
+		Timeout:   30 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			// A byte-only reader cannot report the final origin to inheritance.
 			return errors.New("config redirects are unsupported; use the final HTTPS URL so relative extends keep their declaring origin")
 		},
 	}}
+}
+
+type publicHTTPS struct{}
+
+func (publicHTTPS) RoundTrip(request *http.Request) (*http.Response, error) {
+	transport, err := acquisitionhttp.Transport(request.URL, acquisitionhttp.Grant{})
+	if err != nil {
+		return nil, err
+	}
+	return transport.RoundTrip(request)
 }
 
 // ReadFile returns detached bytes. Remote acquisition is available only for an
@@ -52,7 +64,7 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 	case r.contents != nil:
 		content, err = r.contents(name)
 	case !address.Remote(name):
-		content, err = fsread.Disk(name)
+		content, err = fsread.New(r.ctx, nil, nil).ReadFile(name)
 	default:
 		content, err = r.readHTTPS(name)
 	}
@@ -71,13 +83,13 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 // Acquisition errors contain immutable failure data, never a transport's
 // retained request or a custom reader's writable error. Filesystem and context
 // classifications remain available through errors.Is and errors.As.
-type readFailure struct {
+type readError struct {
 	message                                                          string
 	canceled, deadline, notExist, permission, invalid, exist, closed bool
 }
 
-func (e readFailure) Error() string { return e.message }
-func (e readFailure) Is(target error) bool {
+func (e readError) Error() string { return e.message }
+func (e readError) Is(target error) bool {
 	return e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded ||
 		e.notExist && target == fs.ErrNotExist || e.permission && target == fs.ErrPermission ||
 		e.invalid && target == fs.ErrInvalid || e.exist && target == fs.ErrExist || e.closed && target == fs.ErrClosed
@@ -85,13 +97,13 @@ func (e readFailure) Is(target error) bool {
 
 func detachedReadError(err error) error {
 	if pathError, ok := errors.AsType[*fs.PathError](err); ok {
-		return &fs.PathError{Op: pathError.Op, Path: pathError.Path, Err: readFailureOf(pathError.Err)}
+		return &fs.PathError{Op: pathError.Op, Path: pathError.Path, Err: readErrorOf(pathError.Err)}
 	}
-	return readFailureOf(err)
+	return readErrorOf(err)
 }
 
-func readFailureOf(err error) readFailure {
-	return readFailure{
+func readErrorOf(err error) readError {
+	return readError{
 		message: err.Error(), canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded),
 		notExist: errors.Is(err, fs.ErrNotExist), permission: errors.Is(err, fs.ErrPermission), invalid: errors.Is(err, fs.ErrInvalid),
 		exist: errors.Is(err, fs.ErrExist), closed: errors.Is(err, fs.ErrClosed),

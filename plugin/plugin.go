@@ -11,38 +11,26 @@ import (
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 )
 
-// Component is a loaded plugin. Inspect HasAnalyzer, HasRunnerProvider and
-// HasScriptEngine before registering its roles. A script engine implements
-// analyzer.ScriptBackend and ScriptConfigValidator and can be assigned directly
-// to analysis.Tool.Backend. Components may implement several roles.
-type Component = component.Plugin
-
 // Analyzer is a compatibility alias for Component.
-type Analyzer = component.Plugin
-
-// Options configures a component.
-type Options = component.Options
-
-// Limits reports the bounds a component analyzer runs under.
-type Limits = component.Limits
-
-// EngineLimits reports the bounds a core script engine runs under.
-type EngineLimits = corewasm.Limits
+type Analyzer = Component
 
 // Load loads a component from a path, file URI or SHA256-pinned HTTP(S) URL.
 func Load(ctx context.Context, path string, options Options) (*Component, error) {
 	if err := pluginartifact.RequireRemotePin(path); err != nil {
 		return nil, err
 	}
-	return component.Load(ctx, path, options)
+	grant, err := pluginartifact.ExplicitSource(path)
+	if err != nil {
+		return nil, err
+	}
+	internal := options.internal()
+	internal.Artifact.Network = grant
+	loaded, err := component.Load(ctx, path, internal)
+	if err != nil {
+		return nil, err
+	}
+	return &Component{loaded: loaded}, nil
 }
-
-// Engine is a loaded core module. It implements analyzer.ScriptBackend and
-// analyzer.ScriptConfigValidator.
-type Engine = corewasm.Engine
-
-// EngineOptions configures a core script engine.
-type EngineOptions = corewasm.Options
 
 // LoadEngine loads a core script engine from a raw or gzip-compressed module
 // path, file URI or HTTP(S) URL. Set the result as analysis.Tool.Backend.
@@ -50,29 +38,31 @@ func LoadEngine(ctx context.Context, path string, options EngineOptions) (*Engin
 	if err := pluginartifact.RequireRemotePin(path); err != nil {
 		return nil, err
 	}
-	return corewasm.Load(ctx, path, options)
+	grant, err := pluginartifact.ExplicitSource(path)
+	if err != nil {
+		return nil, err
+	}
+	internal := options.internal()
+	internal.Artifact.Network = grant
+	loaded, err := corewasm.Load(ctx, path, internal)
+	if err != nil {
+		return nil, err
+	}
+	return &Engine{loaded: loaded}, nil
 }
-
-// ArtifactOptions configures bounded acquisition and pinned download caching.
-type ArtifactOptions = pluginartifact.Options
-
-// ArtifactInfo describes a binary and its untrusted static custom metadata.
-type ArtifactInfo = pluginartifact.Info
-
-// ArtifactKind identifies the binary format independently of its metadata.
-type ArtifactKind = pluginartifact.Kind
-
-const (
-	CoreArtifact      ArtifactKind = pluginartifact.Core
-	ComponentArtifact ArtifactKind = pluginartifact.Component
-)
 
 // Inspect resolves a plugin and reads its actionlint.plugin custom section.
 // It never compiles, instantiates or executes WebAssembly code.
 func Inspect(ctx context.Context, source string, options ArtifactOptions) (ArtifactInfo, error) {
-	artifact, err := pluginartifact.Resolve(ctx, source, options)
+	grant, err := pluginartifact.ExplicitSource(source)
 	if err != nil {
 		return ArtifactInfo{}, err
 	}
-	return artifact.Info, nil
+	internal := artifactOptionsToInternal(options)
+	internal.Network = grant
+	artifact, err := pluginartifact.Resolve(ctx, source, internal)
+	if err != nil {
+		return ArtifactInfo{}, err
+	}
+	return artifactInfoFromInternal(artifact.Info), nil
 }

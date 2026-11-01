@@ -37,3 +37,7 @@ control/evidence/
 /custom-gcl.exe
 /.bin/
 docs/superpowers
+
+# Temporary local fixtures from private repositories.
+runny-*
+commitish

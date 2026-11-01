@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestFileOverrideExplicitToolResets(t *testing.T) {
@@ -28,7 +27,7 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 				if overlay == "{shellcheck: {config: null}}" && (got.Tools["shellcheck"].Enabled == nil || *got.Tools["shellcheck"].Enabled) {
 					t.Fatal("config reset changed inherited tool enablement")
 				}
-				encoded, err := codec.Marshal(config)
+				encoded, err := repoconfig.Marshal(config)
 				if err != nil {
 					t.Fatal(err)
 				}

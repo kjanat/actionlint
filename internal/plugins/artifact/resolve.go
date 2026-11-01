@@ -17,11 +17,15 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.
 type Options struct {
+	// Network grants private access only to an invocation-selected authority.
+	// The zero value confines automatic acquisition to public destinations.
+	Network acquisitionhttp.Grant
 	// CacheDir stores verified downloads pinned by SHA256. Empty disables caching.
 	CacheDir string
 	// Timeout defaults to 30 seconds, including redirects and response reading.
@@ -302,7 +306,11 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 			return nil, err
 		}
 	}
-	client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	transport, err := acquisitionhttp.Transport(u, options.Network)
+	if err != nil {
+		return nil, acquisitionError(err)
+	}
+	client := &http.Client{Transport: transport, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 10 {
 			return errors.New("too many plugin redirects")
 		}
@@ -326,6 +334,9 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 		// errors but keep arbitrary transport details out of diagnostics.
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
+		}
+		if _, known := acquisitionhttp.Classify(err); known {
+			return nil, acquisitionError(err)
 		}
 		return nil, errors.New("plugin HTTP request failed (connection or redirect rejected)")
 	}

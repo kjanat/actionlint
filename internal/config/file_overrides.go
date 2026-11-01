@@ -183,11 +183,11 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 	if config.Lint.source == nil {
 		// Project programmatically constructed Go API values through the same
 		// canonical serialization before applying scoped lint overrides.
-		var document yaml.Node
-		if err := document.Encode(config); err != nil {
+		document, err := EncodeNode(config)
+		if err != nil {
 			return nil, err
 		}
-		if lint := field(&document, "lint"); lint != nil {
+		if lint := field(document, "lint"); lint != nil {
 			node = lint
 		}
 	}

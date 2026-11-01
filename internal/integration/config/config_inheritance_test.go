@@ -26,18 +26,19 @@ config-variables: [second]
 lint: {rules: {policy: {require-job-timeout: {level: warn, options: {max-minutes: 60}}}}}
 files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 `)
-	cfg, err := repoconfig.Load(path)
+	loaded, err := repoconfig.Read(path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg := loaded.Config
 	resolved := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
 	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(repoconfig.VariableNames(cfg.Facts()), []string{"second"}) {
 		t.Fatalf("%+v", resolved)
 	}
-	if len(cfg.Sources()) != 3 {
-		t.Fatal(cfg.Sources())
+	if len(loaded.Provenance.Sources()) != 3 {
+		t.Fatal(loaded.Provenance.Sources())
 	}
 	inspection, err := repoconfig.Inspect(repoconfig.Selection{Path: path}, true)
 	if err != nil {
@@ -65,7 +66,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 	for _, tc := range []struct{ name, content, want string }{
 		{"missing", "extends: [missing.yml]", "missing.yml"},
 		{"cycle", "extends: [actionlint.yml]", "cyclic"},
-		{"remote", "extends: ['https://example.com/config.yml']", "local file"},
+		{"insecure remote", "extends: ['http://example.com/config.yml']", "requires a local file or an absolute HTTPS URL"},
 		{"empty", "extends: ['']", "nonempty"},
 		{"nonstring", "extends: [123]", "strings"},
 	} {
@@ -80,6 +81,20 @@ func TestConfigExtendsFailures(t *testing.T) {
 			}
 		})
 	}
+	t.Run("HTTPS source via reader", func(t *testing.T) {
+		root := t.TempDir()
+		remote := "https://example.com/config.yml"
+		path := testutil.WriteFixture(t, root, "actionlint.yml", "extends: ["+remote+"]\n")
+		loaded, err := repoconfig.Read(path, func(source string) ([]byte, error) {
+			if source == remote {
+				return []byte("plugins: []\nrepository: {variables: {BASE: null}}\n"), nil
+			}
+			return os.ReadFile(source)
+		})
+		if err != nil || !slices.Equal(loaded.Provenance.Sources(), []string{remote, path}) {
+			t.Fatalf("HTTPS inheritance sources=%v error=%v", loaded, err)
+		}
+	})
 	if _, err := repoconfig.Parse([]byte("extends: [base.yml]")); err == nil {
 		t.Fatal("in-memory config silently ignored extends")
 	}

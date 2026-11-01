@@ -301,12 +301,15 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if len(registry.Requests()) != requests || !project.Lock.Lock.Plugins[0].SameRelease(original) {
 		t.Fatal("install upgraded an existing matching pin")
 	}
-	// A failed migration must leave the previous on-disk lock usable.
+	// A failed migration must preserve both the live selection and saved config.
 	artifactURL := "https://" + testutil.FixturePluginName + "/releases/download/v2.0.0/plugin.component.wasm"
 	good := registry.File(artifactURL)
 	registry.SetFile(artifactURL, []byte("corrupt"))
 	if err := project.Resolve(t.Context(), refs, refs); err == nil {
 		t.Fatal("accepted corrupted replacement")
+	}
+	if len(project.Lock.Lock.Plugins) != 1 || !project.Lock.Lock.Plugins[0].SameRelease(original) {
+		t.Fatal("failed update changed the live selection")
 	}
 	project, err = OpenPluginProject(t.Context(), root, "", "")
 	if err != nil {

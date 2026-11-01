@@ -60,12 +60,13 @@ type Collection struct {
 // Scope identifies a workflow or composite invocation independently of
 // whether it contains scripts, so configuration failures are still observable.
 type Scope struct {
-	Paths      workflowexecution.Paths
-	Reader     *fsread.Reader // records the filesystem reads tools make in this scope
-	Config     *repoconfig.Config
-	Deployment Deployment
-	Composite  bool
-	Context    invocation.Context
+	Paths            workflowexecution.Paths
+	Reader           *fsread.Reader // records the filesystem reads tools make in this scope
+	Config           *repoconfig.Config
+	ConfigProvenance repoconfig.Provenance
+	Deployment       Deployment
+	Composite        bool
+	Context          invocation.Context
 }
 
 type Execution struct {

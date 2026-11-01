@@ -41,7 +41,7 @@ func (f *Inputs) List() []string {
 	return paths
 }
 
-func (f *Inputs) AddConfig(config *repoconfig.Config, project *Project, workingDir string) {
+func (f *Inputs) AddConfig(config *repoconfig.Config, provenance repoconfig.Provenance, project *Project, workingDir string) {
 	if config != nil {
 		for _, name := range slices.Sorted(maps.Keys(config.Tools)) {
 			if module, ok := config.Tools[name].Backend.Wasm(); ok {
@@ -51,9 +51,9 @@ func (f *Inputs) AddConfig(config *repoconfig.Config, project *Project, workingD
 				}
 			}
 		}
-		for _, path := range config.Sources() {
-			f.Add(path)
-		}
+	}
+	for _, path := range provenance.Sources() {
+		f.Add(path)
 	}
 	if project != nil {
 		f.Add(project.configPath)

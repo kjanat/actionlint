@@ -9,7 +9,25 @@ import (
 )
 
 func TestStructuralRules(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), architecture.Analyzer, "sample/api", "sample/helper", "sample/internal/detail")
+	strict := architecture.New()
+	for _, flag := range []string{"strict-state", "strict-borrows"} {
+		if err := strict.Flags.Set(flag, "true"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	analysistest.Run(t, analysistest.TestData(), strict, "sample/api", "sample/helper", "sample/internal/detail")
+}
+
+func TestDefaultPolicy(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), architecture.New(), "defaultpolicy/api", "defaultpolicy/internal/detail", "defaultpolicy/internal/state")
+}
+
+func TestStrictStatePolicy(t *testing.T) {
+	strict := architecture.New()
+	if err := strict.Flags.Set("strict-state", "true"); err != nil {
+		t.Fatal(err)
+	}
+	analysistest.Run(t, analysistest.TestData(), strict, "strictpolicy/internal/state")
 }
 
 func TestTypesOnlyPass(t *testing.T) {

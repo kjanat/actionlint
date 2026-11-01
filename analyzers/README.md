@@ -7,9 +7,23 @@ list. It also works in modules unrelated to Actionlint.
 | Code   | Rule                                                                                                                                                                         |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ARC001 | Public API signatures, aliases, fields and constraints cannot expose types from an `internal` package. Implementation imports and private representation fields are allowed. |
-| ARC002 | An exported struct with private representation or receiver-mutating methods cannot expose writable fields. Plain value records without either property are allowed.          |
-| ARC003 | Exported methods cannot return mutable storage reachable from their receiver. Return detached storage or an opaque value handle.                                             |
-| ARC004 | Calls without source summaries may mutate receiver storage or return aliases. Unresolved ownership and detachment fail explicitly.                                           |
+| ARC002 | Default: public exported structs cannot mix private representation with writable fields. The state audit also includes internal/main packages and method-inferred state.     |
+| ARC003 | Opt-in borrowed-result audit: exported methods may return mutable storage reachable from their receiver, including intentional borrows.                                      |
+| ARC004 | Opt-in audits: unresolved mutation of writable fields (`strict-state`) or unresolved receiver-to-result aliases (`strict-borrows`).                                          |
+
+Default field enforcement covers Go public APIs: packages outside `internal`
+whose name is not `main`. Public mutable DTOs without private representation are
+allowed; mutation alone does not infer an encapsulation obligation. All packages
+still contribute flow summaries. Retained references do not prove exclusive
+ownership or deep immutability: parser borrows, mutable operation handles and
+identity-preserving error chains may intentionally share state. Immutable domain
+models keep their semantic detachment contracts and regression tests.
+
+`strict-state` enables the conservative all-package state audit, including known
+and unresolved receiver mutation. `strict-borrows` independently enables the
+borrowed-result audit. From the target repository root, run the built checker as
+`.bin/actionlintarch -strict-state -strict-borrows ./...` for both. The analysis
+below describes these audits and the flow summaries shared with default checks.
 
 ARC003 follows assignments, branches, field/index access, pointer loads,
 interfaces, closures, containers and function results. Parameter/result and
@@ -125,5 +139,5 @@ result cache after the plugin build. `make test-analyzers` tests the analyzer.
 an unrelated module, including a source-only fix under a warm cache, then runs
 product enforcement. Zed uses the built `custom-gcl` executable.
 
-Product enforcement is expected to fail until the reported ownership and API
-violations are fixed. Analyzer test success does not certify the whole core.
+Product enforcement uses the default policy. Analyzer test success does not
+certify deep immutability or the whole core.

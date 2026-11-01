@@ -1,18 +1,30 @@
 package testutil
 
 import (
+	"bufio"
 	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 // PluginPublisher is the identity a registry fixture publishes plugin versions
@@ -37,6 +49,7 @@ type PluginPublisher struct {
 type PluginRegistry struct {
 	mu        sync.Mutex
 	files     map[string][]byte
+	pending   map[string][][]byte
 	requests  []string
 	versions  []string
 	publisher PluginPublisher
@@ -57,12 +70,130 @@ func NewPluginRegistry(t *testing.T) *PluginRegistry {
 	IsolateUserCache(t)
 	r := &PluginRegistry{
 		files:     map[string][]byte{FixtureRegistryURL + "statuses.json": []byte(emptyStatuses)},
+		pending:   make(map[string][][]byte),
 		publisher: PluginPublisher{PluginID: "no-sudo", BaseURL: FixtureRegistryURL, Name: FixturePluginName, RepositoryID: 10},
 	}
-	previous := http.DefaultTransport
-	http.DefaultTransport = r
-	t.Cleanup(func() { http.DefaultTransport = previous })
+	previousTransport, previousResolver := http.DefaultTransport, net.DefaultResolver
+	transport := r.transport(t)
+	http.DefaultTransport = transport
+	net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: fixtureDNS}
+	t.Cleanup(func() {
+		transport.CloseIdleConnections()
+		http.DefaultTransport, net.DefaultResolver = previousTransport, previousResolver
+	})
 	return r
+}
+
+// transport exercises the standard HTTP client's DNS, pinning, TLS and Host
+// handling. Only in-memory connections are opened. A fixed-seed Ed25519 CA
+// avoids slow RSA generation; dynamically signed leaves preserve real hostname
+// verification for every fixture publisher and registry authority.
+func (r *PluginRegistry) transport(t *testing.T) *http.Transport {
+	t.Helper()
+	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{37}, ed25519.SeedSize))
+	ca := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "actionlint fixture CA"},
+		NotBefore: time.Unix(0, 0), NotAfter: time.Date(2100, time.January, 1, 0, 0, 0, 0, time.UTC),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, ca, ca, key.Public(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ca, err = x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(ca)
+	serverTLS := &tls.Config{GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		leaf := &x509.Certificate{
+			SerialNumber: big.NewInt(2),
+			NotBefore:    ca.NotBefore, NotAfter: ca.NotAfter,
+			KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		}
+		if hello.ServerName != "" {
+			leaf.DNSNames = []string{hello.ServerName}
+		} else {
+			// TLS sends no SNI for literal IP authorities. The fixture's
+			// explicit-private tests select loopback endpoints only.
+			leaf.IPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+		}
+		certificate, err := x509.CreateCertificate(rand.Reader, leaf, ca, key.Public(), key)
+		if err != nil {
+			return nil, err
+		}
+		return &tls.Certificate{Certificate: [][]byte{certificate}, PrivateKey: key}, nil
+	}}
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: roots},
+		DialContext: func(ctx context.Context, _, address string) (net.Conn, error) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			if _, _, err := net.SplitHostPort(address); err != nil {
+				return nil, err
+			}
+			client, server := net.Pipe()
+			go func() {
+				defer server.Close()
+				connection := tls.Server(server, serverTLS)
+				defer connection.Close()
+				request, err := http.ReadRequest(bufio.NewReader(connection))
+				if err != nil {
+					return
+				}
+				defer request.Body.Close()
+				request.URL.Scheme, request.URL.Host = "https", request.Host
+				response, err := r.RoundTrip(request)
+				if err != nil {
+					return
+				}
+				defer response.Body.Close()
+				response.Close = true
+				_ = response.Write(connection)
+			}()
+			return client, nil
+		},
+	}
+}
+
+// fixtureDNS supplies one public numeric answer through the resolver's normal
+// DNS protocol. The production transport must validate and pin that answer
+// before the fixture dialer handles the connection; no external DNS is used.
+func fixtureDNS(ctx context.Context, _, _ string) (net.Conn, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	client, server := net.Pipe()
+	go func() {
+		defer server.Close()
+		var size [2]byte
+		if _, err := io.ReadFull(server, size[:]); err != nil {
+			return
+		}
+		packet := make([]byte, binary.BigEndian.Uint16(size[:]))
+		if _, err := io.ReadFull(server, packet); err != nil {
+			return
+		}
+		var query dnsmessage.Message
+		if err := query.Unpack(packet); err != nil {
+			return
+		}
+		response := dnsmessage.Message{ID: query.ID, Response: true, RecursionDesired: true, RecursionAvailable: true, Questions: query.Questions}
+		for _, question := range query.Questions {
+			if question.Type == dnsmessage.TypeA {
+				response.Answers = append(response.Answers, dnsmessage.Resource{Header: dnsmessage.ResourceHeader{Name: question.Name, Type: dnsmessage.TypeA, Class: dnsmessage.ClassINET, TTL: 60}, Body: &dnsmessage.AResource{A: [4]byte{1, 1, 1, 1}}})
+			}
+		}
+		packed, err := response.Pack()
+		if err != nil || len(packed) > 65535 {
+			return
+		}
+		binary.BigEndian.PutUint16(size[:], uint16(len(packed)))
+		_, _ = server.Write(append(size[:], packed...))
+	}()
+	return client, nil
 }
 
 // RoundTrip records the request URL and serves the stored file, or 404 when no
@@ -81,6 +212,14 @@ func (r *PluginRegistry) RoundTrip(req *http.Request) (*http.Response, error) {
 	status := http.StatusOK
 	if !ok {
 		status = http.StatusNotFound
+	}
+	if pending := r.pending[req.URL.String()]; len(pending) != 0 {
+		r.files[req.URL.String()] = bytes.Clone(pending[0])
+		if len(pending) == 1 {
+			delete(r.pending, req.URL.String())
+		} else {
+			r.pending[req.URL.String()] = pending[1:]
+		}
 	}
 	// The body is read after the lock is released, so it gets its own copy
 	// instead of sharing storage with r.files.
@@ -134,6 +273,24 @@ func (r *PluginRegistry) SetFile(url string, data []byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.files[url] = bytes.Clone(data)
+	delete(r.pending, url)
+}
+
+// SetFileSequence serves first on the next request, then each next value on
+// later requests. The last value remains served after the sequence is exhausted.
+func (r *PluginRegistry) SetFileSequence(url string, first []byte, next ...[]byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.files[url] = bytes.Clone(first)
+	if len(next) == 0 {
+		delete(r.pending, url)
+		return
+	}
+	sequence := make([][]byte, len(next))
+	for i, data := range next {
+		sequence[i] = bytes.Clone(data)
+	}
+	r.pending[url] = sequence
 }
 
 // DeleteFile stops serving url, so requests for it get 404.
@@ -141,6 +298,7 @@ func (r *PluginRegistry) DeleteFile(url string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.files, url)
+	delete(r.pending, url)
 }
 
 // SetAliases replaces the catalogue aliases that later Add, AddArtifact and

@@ -1,12 +1,12 @@
 package githubaction
 
 import (
-	"context"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/render"
 
 	"actionlint.kjanat.dev/v2/internal/workspace"
@@ -25,7 +25,11 @@ jobs:
 
 func analysisForRenderSource(t *testing.T, source string) *application.Result {
 	t.Helper()
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+	config, err := repoconfig.Parse([]byte("repository: {runners: []}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source), Config: config}})
 	if err != nil {
 		t.Fatal(err)
 	}

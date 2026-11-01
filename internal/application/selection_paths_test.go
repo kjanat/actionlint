@@ -108,11 +108,11 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 		}
 	}
 	// Direct API callers also consume config dependencies before filtering.
-	cfg, err := repoconfig.Load(config)
+	loaded, err := repoconfig.Read(config, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root}, []workspace.Source{{Path: workflow, Content: []byte(goodWorkflow), Config: cfg}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root}, []workspace.Source{{Path: workflow, Content: []byte(goodWorkflow), Config: loaded.Config, ConfigProvenance: loaded.Provenance}})
 	if err != nil || result.FileCount != 0 || !slices.Contains(result.Inputs, base) || !slices.Contains(result.Inputs, config) {
 		t.Fatalf("direct analysis lost excluded configuration inputs: %+v, %v", result, err)
 	}

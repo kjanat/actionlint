@@ -19,7 +19,7 @@ type RequiredActionsOptions struct {
 }
 
 // UnmarshalYAML shares validation with the legacy policy setting.
-func (o *RequiredActionsOptions) UnmarshalYAML(n *yaml.Node) error {
+func (o *requiredActionsWire) UnmarshalYAML(n *yaml.Node) error {
 	var wire struct {
 		Actions yaml.Node `yaml:"actions"`
 	}
@@ -31,6 +31,9 @@ func (o *RequiredActionsOptions) UnmarshalYAML(n *yaml.Node) error {
 	}
 	return decodeRequiredActions(&wire.Actions, &o.Actions)
 }
+
+// requiredActionsWire validates external option syntax before producing a DTO.
+type requiredActionsWire RequiredActionsOptions
 
 // Scope selects which document's configuration a rule reads.
 type Scope uint8

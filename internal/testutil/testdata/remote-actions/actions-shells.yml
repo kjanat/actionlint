@@ -1,0 +1,28 @@
+# source: https://github.com/kjanat/actions-shells/blob/110e69e59b92a992c85bd1d734684c162417b1f3/action.yml
+# uses: kjanat/actions-shells@master
+# repository-id: 1357547160
+# ref: refs/heads/master
+---
+name: Actions Shells
+description: "More shells for 'run:' — use Rust, Go, Deno, Bun, Kotlin, Swift, C#, and more as 'shell:' in GitHub Actions steps"
+author: Kaj Kowalski
+branding: { icon: terminal, color: gray-dark }
+
+inputs:
+  doctor:
+    description: Run `actions-shell doctor` after install and print a readiness report
+    required: false
+    default: "false"
+  runtimes:
+    description: >-
+      Comma- or space-separated runtimes that must be ready when `doctor` is enabled.
+      The step fails if any of them is missing. Empty means "report all, fail none".
+    required: false
+    default: ""
+
+outputs:
+  bin-dir: { description: Directory containing the 'actions-shell' shim (already added to PATH) }
+  cli: { description: Absolute path to the bundled cli.mjs }
+  version: { description: Installed actions-shell version }
+
+runs: { using: node24, main: setup.mjs }

@@ -259,7 +259,7 @@ paths:
 `
 
 	var cfg Config
-	if err := yaml.Unmarshal([]byte(src), &cfg); err != nil {
+	if err := Unmarshal([]byte(src), &cfg); err != nil {
 		t.Fatal(err)
 	}
 
@@ -675,7 +675,7 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 			if ok != tc.wantHasMax || limit != tc.wantMax {
 				t.Fatalf("MaxMinutes() is (%v, %v) but wanted (%v, %v)", limit, ok, tc.wantMax, tc.wantHasMax)
 			}
-			if got := c.RequiresJobTimeout(); got != p {
+			if got := c.RequiresJobTimeout(); !cmp.Equal(got, p, cmp.AllowUnexported(JobTimeoutPolicy{})) {
 				t.Fatalf("RequiresJobTimeout() is %v but wanted %v", got, p)
 			}
 		})

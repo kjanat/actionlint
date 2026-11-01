@@ -184,7 +184,7 @@ jobs:
 `, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			errs := lintCredentialsExpressionTest(t, tc.source)
+			errs := lintMatrixWithKnownRunnerLabels(t, tc.source)
 			if tc.want == "" {
 				if len(errs) != 0 {
 					t.Fatal(errs)

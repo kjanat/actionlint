@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
@@ -52,7 +53,8 @@ type localProvider struct {
 	// from PATH.
 	executable string
 	// source is the oci:// source of a pulled manifest, empty for a local one.
-	source string
+	source  string
+	network acquisitionhttp.Grant
 	// repository is set when repository configuration declared source, so
 	// running it needs --allow-config-processes.
 	repository bool
@@ -74,6 +76,7 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 		}
 	}
 	for _, path := range sources.Paths {
+		network := sources.grants[path]
 		if provider.IsLocalManifest(path) {
 			// A local manifest names a command found on PATH; nothing is fetched.
 			manifest, programs, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
@@ -93,7 +96,7 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 		artifact := sources.artifacts[path]
 		if artifact == nil {
 			var err error
-			artifact, err = pluginartifact.Resolve(ctx, path, artifactOptions())
+			artifact, err = pluginartifact.Resolve(ctx, path, sources.artifactOptions(path))
 			if err != nil {
 				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 			}
@@ -110,7 +113,7 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			}
 			// configure fetches the executable and transform programs after
 			// the --allow-config-processes check.
-			loaded.providers = append(loaded.providers, localProvider{manifest: manifest, source: path, repository: sources.repository})
+			loaded.providers = append(loaded.providers, localProvider{manifest: manifest, source: path, network: network, repository: sources.repository})
 			continue
 		}
 		// Metadata is read only when --tool or --no-tool named an id, so
@@ -264,6 +267,7 @@ func pulledProvider(artifact *pluginartifact.Artifact) (provider.Manifest, error
 // store; without artifacts the process entry runs from PATH.
 func (p localProvider) fetch(ctx context.Context) (localProvider, error) {
 	options := artifactOptions()
+	options.Network = p.network
 	layer := func(digest string) ([]byte, error) {
 		return oci.Layer(ctx, p.source, strings.TrimPrefix(digest, "sha256:"), options)
 	}
@@ -330,12 +334,24 @@ func PinPluginSource(ctx context.Context, source string) (string, error) {
 	if !pluginartifact.IsOCI(source) {
 		return source, nil
 	}
-	return oci.Pin(ctx, source, artifactOptions())
+	grant, err := pluginartifact.ExplicitSource(source)
+	if err != nil {
+		return "", err
+	}
+	options := artifactOptions()
+	options.Network = grant
+	return oci.Pin(ctx, source, options)
 }
 
 // InspectPlugin resolves and reads metadata without creating a runtime.
 func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, error) {
-	artifact, err := pluginartifact.Resolve(ctx, source, artifactOptions())
+	grant, err := pluginartifact.ExplicitSource(source)
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	options := artifactOptions()
+	options.Network = grant
+	artifact, err := pluginartifact.Resolve(ctx, source, options)
 	if err != nil {
 		return pluginartifact.Info{}, err
 	}

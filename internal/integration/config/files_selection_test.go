@@ -6,7 +6,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestFilesSelection(t *testing.T) {
@@ -35,7 +34,7 @@ func TestFilesSelection(t *testing.T) {
 				if (len(result.Diagnostics) > 0) != tc.want || (result.FileCount > 0) != tc.want {
 					t.Fatal(result)
 				}
-				b, err := codec.Marshal(cfg)
+				b, err := repoconfig.Marshal(cfg)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -11,13 +11,13 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net"
 	"net/http"
 	"net/netip"
 	"os"
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3/content"
@@ -32,37 +32,26 @@ const (
 	dockerManifest     = "application/vnd.docker.distribution.manifest.v2+json"
 )
 
-// loopbackHost reports whether host, with an optional port, is localhost or
-// a loopback address. Like docker, the host reaches such registries over
-// plain HTTP.
-func loopbackHost(host string) bool {
-	name := host
-	if h, _, err := net.SplitHostPort(host); err == nil {
-		name = h
-	}
-	name = strings.Trim(name, "[]")
-	if strings.EqualFold(name, "localhost") {
-		return true
-	}
-	addr, err := netip.ParseAddr(name)
-	return err == nil && addr.IsLoopback()
-}
-
 // repository returns an anonymous oras-go client for the repository of ref.
 // The client answers the registry's bearer challenge with an anonymous
 // token and retries as oras-go's retry client does, honouring Retry-After;
 // the caller's context deadline bounds every pull.
-func repository(ref artifact.OCIReference) (*remote.Repository, error) {
+func repository(ref artifact.OCIReference, options artifact.Options) (*remote.Repository, error) {
 	repo, err := remote.NewRepository(ref.Host() + "/" + ref.Repository())
 	if err != nil {
 		return nil, err
 	}
+	endpoint := ref.Endpoint()
+	transport, err := acquisitionhttp.Transport(endpoint, options.Network)
+	if err != nil {
+		return nil, err
+	}
 	client := &auth.Client{
-		Client: retry.DefaultClient,
+		Client: &http.Client{Transport: retry.NewTransport(transport)},
 		Header: http.Header{"User-Agent": {"actionlint"}},
 		Cache:  auth.NewCache(),
 	}
-	if loopbackHost(ref.Host()) {
+	if endpoint.Scheme == "http" && options.Network.Allows(endpoint) {
 		// A loopback registry may name a loopback token realm; every
 		// other default block still applies.
 		client.BlockedRealmPrefixes = slices.DeleteFunc(auth.DefaultBlockedRealmPrefixes(), func(prefix netip.Prefix) bool { return prefix.Addr().IsLoopback() })
@@ -94,7 +83,7 @@ type puller struct {
 }
 
 func newPuller(ref artifact.OCIReference, options artifact.Options) (*puller, error) {
-	repo, err := repository(ref)
+	repo, err := repository(ref, options)
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +441,7 @@ func Pin(ctx context.Context, source string, options artifact.Options) (string, 
 	if ref.Digest() != "" {
 		return ref.String(), nil
 	}
-	repo, err := repository(ref)
+	repo, err := repository(ref, options)
 	if err != nil {
 		return "", err
 	}

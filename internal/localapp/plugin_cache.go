@@ -107,5 +107,5 @@ func (s *PluginSources) ociDigests(ctx context.Context, source string) ([]string
 			}
 		}
 	}
-	return oci.Digests(ctx, source, artifactOptions())
+	return oci.Digests(ctx, source, s.artifactOptions(source))
 }

@@ -1,15 +1,44 @@
 package actions_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/actions"
+	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/knowledge"
 )
+
+type pinnedMetadataFixture struct{ manifest actions.Manifest }
+
+func (p pinnedMetadataFixture) Lookup(_ context.Context, ref actions.Reference) (actions.Manifest, error) {
+	if ref == p.manifest.Selection().Request() {
+		return p.manifest, nil
+	}
+	return actions.UnavailableManifest(knowledge.NotFetched()), nil
+}
 
 func TestPinnedActionInputsAndOutputs(t *testing.T) {
 	const pinned = "11d5960a326750d5838078e36cf38b85af677262"
+	ref, err := actions.ParseReference("github.com", "actions/checkout@"+pinned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), 1, pinned, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := actions.NewSelection(ref, identity, pinned, actions.ObjectRoute(), "test-fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := actions.NewManifest(selection, []byte("name: checkout\ndescription: fixture\ninputs: {fetch-depth: {description: fetch depth}}\noutputs: {commit: {description: commit}}\nruns: {using: composite, steps: []}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
 		ref, input, output      string
 		inputError, outputError bool
@@ -31,7 +60,7 @@ jobs:
         env:
           VALUE: ${{ steps.checkout.outputs.%s }}
 `, tc.ref, tc.input, tc.output)
-		findings := testutil.WorkflowDiagnostics(t, source, "tools: {shellcheck: false, ruff: false}")
+		findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}", application.Options{RemoteActions: pinnedMetadataFixture{manifest}})
 		inputError, outputError := false, false
 		for _, d := range findings {
 			inputError = inputError || strings.Contains(d.Message, "misspelled-input")

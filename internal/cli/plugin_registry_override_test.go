@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,17 +30,19 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", testutil.FixtureRegistryURL)
-	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin", "--registry", mirror)
 	configPath := filepath.Join(".github", "actionlint.yaml")
-	lockPath := filepath.Join(".github", pluginregistry.LockName)
+	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", testutil.FixtureRegistryURL)
+	installed := pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin", "--registry", mirror, "--json")
+	var selected pluginregistry.Lock
+	if err := json.Unmarshal([]byte(installed), &selected); err != nil || len(selected.Plugins) != 1 {
+		t.Fatalf("invalid installed lock selection: %s: %v", installed, err)
+	}
 	cfg, err := repoconfig.Load(configPath)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry() != mirror || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("registry declaration: %#v, %v", cfg, err)
 	}
-	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Registry != mirror || lock.Lock.Plugins[0].Selector != "v1.0.0" || lock.Lock.Plugins[0].Version != "v1.0.0" {
-		t.Fatalf("registry pin: %#v, %v", lock, err)
+	if selected.Plugins[0].Registry != mirror || selected.Plugins[0].Selector != "v1.0.0" || selected.Plugins[0].Version != "v1.0.0" {
+		t.Fatalf("registry selection: %#v", selected.Plugins[0])
 	}
 	r.SetOffline(true)
 	requests := len(r.Requests())
@@ -48,20 +51,22 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 		t.Fatal("repeated installation contacted network")
 	}
 	r.SetOffline(false)
-	before, err := os.ReadFile(lockPath)
-	if err != nil {
+	lockPath := filepath.Join(".github", pluginregistry.LockName)
+	legacyLock := bytes.ReplaceAll([]byte(installed), []byte(`"owner_id":"5"`), []byte(`"owner_id":"6"`))
+	if bytes.Equal(legacyLock, []byte(installed)) {
+		t.Fatal("installed selection has no publisher identity to vary")
+	}
+	if err := os.WriteFile(lockPath, legacyLock, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	configBefore, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := r.RecordURL("v1.0.0")
-	r.SetFile(record, bytes.ReplaceAll(r.File(record), []byte(`"owner_id":5`), []byte(`"owner_id":6`)))
-	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", testutil.FixtureRegistryURL)
-	after, err := os.ReadFile(lockPath)
-	if err != nil || !bytes.Equal(before, after) {
-		t.Fatalf("rejected publisher changed lock: %v", err)
+	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", testutil.FixtureRegistryURL, "--plugin-lock", lockPath)
+	lockAfter, err := os.ReadFile(lockPath)
+	if err != nil || !bytes.Equal(legacyLock, lockAfter) {
+		t.Fatalf("rejected publisher changed legacy lock: %v", err)
 	}
 	configAfter, err := os.ReadFile(configPath)
 	if err != nil || !bytes.Equal(configBefore, configAfter) {

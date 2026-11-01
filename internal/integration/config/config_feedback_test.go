@@ -17,6 +17,8 @@ func TestCommitHashExceptionsPreserveOtherFindings(t *testing.T) {
       require-commit-hash:
         level: true
         options: {exclude: ['my-org/*']}
+policy:
+  require-action-metadata: true
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -37,7 +39,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	pins, retired := 0, false
+	pins, metadataUnavailable := 0, false
 	for _, d := range result.Diagnostics {
 		if d.Rule == "require-commit-hash" {
 			pins++
@@ -45,9 +47,9 @@ jobs:
 				t.Fatal(d.Message)
 			}
 		}
-		retired = retired || d.Rule == "action" && strings.Contains(d.Message, "retired")
+		metadataUnavailable = metadataUnavailable || d.Rule == "require-action-metadata"
 	}
-	if pins != 2 || !retired {
-		t.Fatalf("pins=%d retired=%v: %+v", pins, retired, result.Diagnostics)
+	if pins != 2 || !metadataUnavailable {
+		t.Fatalf("pins=%d metadata-unavailable=%v: %+v", pins, metadataUnavailable, result.Diagnostics)
 	}
 }

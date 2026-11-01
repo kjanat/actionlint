@@ -107,7 +107,7 @@ func TestWorkflowFixturesOK(t *testing.T) {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
 
-			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}
+			request := testutil.WithFixtureKnowledge(t, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
 			requestSources := testutil.FixtureSources(t, []string{f}, proj, &repoconfig.Config{})
 			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
 			if err != nil {
@@ -225,7 +225,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 					}
 					tool = shellcheck
 				}
-				request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})}
+				request := testutil.WithFixtureKnowledge(t, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})})
 				requestSources := []workspace.Source{{Path: "test.yaml", Content: b, Project: proj, Config: &repoconfig.Config{}}}
 				errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
 				if err != nil {
@@ -258,7 +258,7 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 	}
 	files = append(files, fs...)
 
-	request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}
+	request := testutil.WithFixtureKnowledge(t, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
 	requestSources := testutil.FixtureSources(t, files, proj, &repoconfig.Config{})
 	errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
 	if err != nil {
@@ -320,7 +320,7 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), application.Options{WorkingDir: cwd}, selection.Sources))
+			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), testutil.WithFixtureKnowledge(t, application.Options{WorkingDir: cwd}), selection.Sources))
 			if err != nil {
 				t.Fatal(err)
 			}

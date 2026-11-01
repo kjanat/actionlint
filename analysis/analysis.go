@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	configvalue "actionlint.kjanat.dev/v2/internal/config/value"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
@@ -120,7 +121,7 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 	project := workspace.Identity(options.WorkingDir)
 	sources := make([]workspace.Source, len(request.Sources))
 	for i, source := range request.Sources {
-		sources[i] = workspace.Source{Path: source.Path, Content: source.Content, Config: configvalue.Unwrap(source.Config), Project: project}
+		sources[i] = workspace.Source{Path: source.Path, Content: source.Content, Config: configvalue.Unwrap((*configvalue.Document)(source.Config)), ConfigProvenance: configvalue.Provenance((*configvalue.Document)(source.Config)), Project: project}
 	}
 	result, err := application.Analyze(ctx, options, sources)
 	return applicationResultView(result), err
@@ -206,14 +207,25 @@ func fileOptions(options FileOptions) (application.Options, error) {
 		Repository:    options.Repository,
 		RemoteActions: options.RemoteActions,
 		Resolver:      options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
-		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
+		ConfigOverlays: convertOverlays(options.ConfigOverlays), SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile:             options.ReadFile,
 		AllowConfigProcesses: options.AllowConfigProcesses,
 		LoadScriptEngine:     options.LoadScriptEngine,
 
-		Presets:        options.Presets,
+		Presets:        repoconfig.Presets(options.Presets),
 		IgnorePatterns: options.IgnorePatterns, Tools: registry.Registrations(selections),
 	}, nil
+}
+
+func convertOverlays(overlays []config.Overlay) []repoconfig.Overlay {
+	if overlays == nil {
+		return nil
+	}
+	converted := make([]repoconfig.Overlay, len(overlays))
+	for i, overlay := range overlays {
+		converted[i] = repoconfig.Overlay(overlay)
+	}
+	return converted
 }
 
 func applicationResultView(result *application.Result) *Result {

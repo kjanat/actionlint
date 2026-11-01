@@ -1,4 +1,4 @@
-// Package architecture checks representation ownership and public API boundaries
+// Package architecture checks state encapsulation and public API boundaries
 // from Go types and SSA. It contains no repository layout or protected-type list.
 package architecture
 
@@ -15,15 +15,27 @@ import (
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 )
 
-var Analyzer = &analysis.Analyzer{
-	Name:      "architecture",
-	Doc:       "check public API boundaries, state encapsulation and borrowed mutable storage",
-	Requires:  []*analysis.Analyzer{buildssa.Analyzer},
-	FactTypes: []analysis.Fact{new(flowFact)},
-	Run:       run,
+var Analyzer = New()
+
+type policy struct{ strictState, strictBorrows bool }
+
+// New creates an independent analyzer and flag set. Internal state and borrowed
+// results are opt-in audits; mutation alone does not establish exclusive ownership.
+func New() *analysis.Analyzer {
+	settings := &policy{}
+	analyzer := &analysis.Analyzer{
+		Name:      "architecture",
+		Doc:       "check public API boundaries and mixed private/public representation, with optional state and borrowed-result audits",
+		Requires:  []*analysis.Analyzer{buildssa.Analyzer},
+		FactTypes: []analysis.Fact{new(flowFact)},
+		Run:       settings.run,
+	}
+	analyzer.Flags.BoolVar(&settings.strictState, "strict-state", false, "audit state fields in all packages, including inferred and unresolved receiver mutation")
+	analyzer.Flags.BoolVar(&settings.strictBorrows, "strict-borrows", false, "audit mutable receiver-to-result aliases, including intentional borrows")
+	return analyzer
 }
 
-func run(pass *analysis.Pass) (any, error) {
+func (p *policy) run(pass *analysis.Pass) (any, error) {
 	// Drivers can schedule a types-only package without source files. There
 	// is no body to summarize, and some drivers cannot attach facts to it.
 	if len(pass.Files) == 0 {
@@ -53,7 +65,11 @@ func run(pass *analysis.Pass) (any, error) {
 			possiblyOwned[named.Origin()] = true
 		}
 	}
+	publicAPI := !internalPackage(pass.Pkg.Path()) && pass.Pkg.Name() != "main"
 	for _, file := range pass.Files {
+		if !publicAPI && !p.strictState {
+			continue
+		}
 		if strings.HasSuffix(pass.Fset.Position(file.Pos()).Filename, "_test.go") {
 			continue
 		}
@@ -79,11 +95,11 @@ func run(pass *analysis.Pass) (any, error) {
 			if !ok {
 				return true
 			}
-			stateful := owned[named.Origin()]
+			stateful := p.strictState && owned[named.Origin()]
 			for field := range fields.Fields() {
 				stateful = stateful || !field.Exported()
 			}
-			if stateful || possiblyOwned[named.Origin()] {
+			if stateful || p.strictState && possiblyOwned[named.Origin()] {
 				// Alias fields are reported at the alias that publishes them.
 				at := token.NoPos
 				if obj.IsAlias() {
@@ -100,22 +116,24 @@ func run(pass *analysis.Pass) (any, error) {
 			return true
 		})
 	}
-	for _, fn := range program.SrcFuncs {
-		obj, _ := fn.Object().(*types.Func)
-		if obj == nil || !obj.Exported() || fn.Signature.Recv() == nil || isTest(pass, obj.Pos()) {
-			continue
-		}
-		for index, origins := range flows[fn].Results {
-			resultType := fn.Signature.Results().At(index).Type()
-			effect := apiReadOnly
-			if storage(resultType) {
-				effect = mutatingAPI(pass, resultType, flows, map[types.Type]bool{})
+	if p.strictBorrows {
+		for _, fn := range program.SrcFuncs {
+			obj, _ := fn.Object().(*types.Func)
+			if obj == nil || !obj.Exported() || fn.Signature.Recv() == nil || isTest(pass, obj.Pos()) {
+				continue
 			}
-			exposed := mutable(resultType) || effect == apiMutating
-			if origins[0] && exposed {
-				pass.Reportf(obj.Pos(), "ARC003: %s result %d may expose mutable storage reachable from its receiver; return a detached value or an opaque value handle", obj.Name(), index+1)
-			} else if (origins[0] || origins[-1]) && (exposed || effect == apiUnresolved) {
-				pass.Reportf(obj.Pos(), "ARC004: %s result %d may alias receiver storage through a call without a source summary; detachment is not established", obj.Name(), index+1)
+			for index, origins := range flows[fn].Results {
+				resultType := fn.Signature.Results().At(index).Type()
+				effect := apiReadOnly
+				if storage(resultType) {
+					effect = mutatingAPI(pass, resultType, flows, map[types.Type]bool{})
+				}
+				exposed := mutable(resultType) || effect == apiMutating
+				if origins[0] && exposed {
+					pass.Reportf(obj.Pos(), "ARC003: %s result %d may expose mutable storage reachable from its receiver; return a detached value or an opaque value handle", obj.Name(), index+1)
+				} else if (origins[0] || origins[-1]) && (exposed || effect == apiUnresolved) {
+					pass.Reportf(obj.Pos(), "ARC004: %s result %d may alias receiver storage through a call without a source summary; detachment is not established", obj.Name(), index+1)
+				}
 			}
 		}
 	}

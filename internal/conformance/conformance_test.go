@@ -183,6 +183,10 @@ func TestUpstreamConformance(t *testing.T) {
 	if reportPath != "" {
 		writeConformanceJSON(t, reportPath, observations)
 	}
+	if len(results) != len(seen) {
+		t.Logf("partial conformance run: %d of %d cases; aggregate assessments require the complete inventory", len(results), len(seen))
+		return
+	}
 	// Regression assertions above depend only on observations and the baseline.
 	var assessments []upstreamAssessmentGroup
 	readConformanceJSON(t, "testdata/assessments.json", &assessments)

@@ -9,6 +9,7 @@ import (
 
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
@@ -56,7 +57,7 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, _, err := session.check(workflow, workflow, captured, project, nil, process, actions, workflows, &rules)
+		findings, _, err := session.check(workflow, workflow, captured, project, nil, repoconfig.Provenance{}, process, actions, workflows, &rules)
 		if err != nil {
 			t.Fatal(err)
 		}

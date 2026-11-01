@@ -57,6 +57,7 @@ type Runner interface {
 
 type Scope struct {
 	Config                             *config.Config
+	ConfigProvenance                   config.Provenance
 	AnalysisDir, Workspace, ActionPath string
 	Reader                             *fsread.Reader
 	Composite                          bool

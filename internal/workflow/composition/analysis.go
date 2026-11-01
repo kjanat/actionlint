@@ -39,6 +39,8 @@ type Options struct {
 	Paths                 execution.Paths
 	Reader                *fsread.Reader // records reads made while resolving script paths
 	Config                *repoconfig.Config
+	// ConfigProvenance is shared by the entry settings and per-file projections.
+	ConfigProvenance repoconfig.Provenance
 	// ConfigForFile resolves each logical manifest path once, including no-script scopes.
 	ConfigForFile func(string) (*repoconfig.Config, error)
 	// CollectScripts supplies execution units. Registration, selector errors and
@@ -129,10 +131,11 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 		actions:      options.Actions,
 		compositionSession: &compositionSession{
 			ctx: options.Context, passes: passes,
-			runners:        options.Runners,
-			scriptPaths:    options.Paths,
-			reader:         options.Reader,
-			collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
+			runners:          options.Runners,
+			scriptPaths:      options.Paths,
+			reader:           options.Reader,
+			configProvenance: options.ConfigProvenance,
+			collectScripts:   options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
 			budget:                invocation.DefaultBudget(),
 			scriptInputs:          scriptInputs,
 			scriptInputsForConfig: options.ScriptInputsForConfig,

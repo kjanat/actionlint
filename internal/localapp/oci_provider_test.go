@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/testutil/ocitest"
@@ -105,11 +106,10 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	}
 }
 
-// A binary provider declared in repository configuration, found
-// automatically or through --config, runs only with
-// --allow-config-processes. Without it the executable is never downloaded
-// or materialized.
-func TestOCIBinaryProviderFromConfigurationNeedsOptIn(t *testing.T) {
+// A configuration file cannot authorize its private OCI endpoint, even when
+// the invocation authorizes native execution. Selecting --config grants no
+// network authority either.
+func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
 			testutil.IsolateUserCache(t)
@@ -134,8 +134,8 @@ func TestOCIBinaryProviderFromConfigurationNeedsOptIn(t *testing.T) {
 			if !slices.Equal(sources.Paths, []string{pkg.reference}) {
 				t.Fatalf("selected %q", sources.Paths)
 			}
-			if _, err := CheckSources(t.Context(), application.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
-				t.Fatalf("repository-selected binary provider ran without opt-in: %v", err)
+			if _, err := CheckSources(t.Context(), application.Options{}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
+				t.Fatalf("repository-selected private endpoint was contacted: %v", err)
 			}
 			if got := pkg.registry.Fetches(pkg.executable); got != 0 {
 				t.Fatalf("executable downloaded %d times without opt-in", got)
@@ -143,12 +143,8 @@ func TestOCIBinaryProviderFromConfigurationNeedsOptIn(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(artifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
 				t.Fatalf("executable materialized without opt-in: %v", err)
 			}
-			result, err := CheckSources(t.Context(), application.Options{AllowConfigProcesses: true}, input(), sources)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(ociFindings(t, result)) != 1 {
-				t.Fatalf("findings = %+v", result.Diagnostics)
+			if _, err := CheckSources(t.Context(), application.Options{AllowConfigProcesses: true}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
+				t.Fatalf("process permission granted private network access: %v", err)
 			}
 		})
 	}
@@ -157,7 +153,11 @@ func TestOCIBinaryProviderFromConfigurationNeedsOptIn(t *testing.T) {
 func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	testutil.IsolateUserCache(t)
 	pkg := publishOCIProvider(t)
-	sources := PluginSources{Paths: []string{pkg.reference}, disabledTools: []string{"oci-tool"}, tools: []string{"oci-tool"}}
+	sources, err := explicitPluginSources([]string{pkg.reference})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources.disabledTools, sources.tools = []string{"oci-tool"}, []string{"oci-tool"}
 	result, err := CheckSources(t.Context(), application.Options{}, application.Input{Kind: application.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,10 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	testutil.IsolateUserCache(t)
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")
-	sources := PluginSources{Paths: []string{pkg.reference}}
+	sources, err := explicitPluginSources([]string{pkg.reference})
+	if err != nil {
+		t.Fatal(err)
+	}
 	plan, err := sources.CachePlan(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -193,7 +196,11 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := PluginProject{Manifest: &PluginManifest{References: []pluginref.Reference{ref}}}
+	grant, err := pluginartifact.ExplicitSource(pkg.reference)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := PluginProject{Manifest: &PluginManifest{References: []pluginref.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

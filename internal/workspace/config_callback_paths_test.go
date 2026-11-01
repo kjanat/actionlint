@@ -49,8 +49,8 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 				if !slices.Equal(reads, want) || repoconfig.DiagnosticLevel(config, "if-cond") != "warn" {
 					t.Fatalf("callback paths=%v, want=%v", reads, want)
 				}
-				if !slices.Contains(config.Sources(), filepath.Join(root, "config.yml")) {
-					t.Fatalf("config origin did not remain absolute: %v", config.Sources())
+				if !slices.Contains(selection.Sources[0].ConfigProvenance.Sources(), filepath.Join(root, "config.yml")) {
+					t.Fatalf("config origin did not remain absolute: %v", selection.Sources[0].ConfigProvenance.Sources())
 				}
 			})
 		}

@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,11 +62,11 @@ func (p *Project) ConfigPath() string { return p.configPath }
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
 func NewProject(root string) (*Project, error) {
-	return newProject(root, nil)
+	return newProject(context.Background(), root, nil)
 }
 
-func newProject(root string, readFile func(string) ([]byte, error), additional ...string) (*Project, error) {
-	c, path, err := repoconfig.LoadRepository(root, readFile, additional...)
+func newProject(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*Project, error) {
+	c, path, err := repoconfig.LoadRepositoryContext(ctx, root, readFile, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +102,19 @@ func (p *Project) Config() *repoconfig.Config {
 	return p.config.Config
 }
 
+// ConfigProvenance identifies the documents that supplied the project's settings.
+func (p *Project) ConfigProvenance() repoconfig.Provenance {
+	if p.config == nil {
+		return repoconfig.Provenance{}
+	}
+	return p.config.Provenance
+}
+
 // Projects represents set of projects. It caches Project instances which was created previously
 // and reuses them.
 // Create a new instance after changing repository boundaries or loaded configuration.
 type Projects struct {
+	ctx        context.Context
 	ruleNames  []string
 	known      []*Project
 	roots      map[string]string
@@ -120,6 +130,12 @@ func NewProjects() *Projects {
 // At returns the Project instance which the path belongs to. It returns nil if no project is found
 // from the path.
 func (ps *Projects) At(path string) (*Project, error) {
+	if ps.ctx == nil {
+		ps.ctx = context.Background()
+	}
+	if err := ps.ctx.Err(); err != nil {
+		return nil, err
+	}
 	// Discover the nearest repository before consulting cached configurations.
 	// A cached ancestor must not hide a nested repository or Git worktree.
 	if ps.roots == nil {
@@ -139,7 +155,7 @@ func (ps *Projects) At(path string) (*Project, error) {
 	p := &Project{root: root}
 	if !ps.skipConfig {
 		var err error
-		p, err = newProject(root, readFile, ps.ruleNames...)
+		p, err = newProject(ps.ctx, root, readFile, ps.ruleNames...)
 		if err != nil {
 			return nil, err
 		}

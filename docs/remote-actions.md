@@ -90,6 +90,9 @@ references, reusable workflow metadata and transitive dependencies are outside
 this remote-action coverage list. Disabling every metadata-dependent rule can
 leave the list empty; it does not establish full coverage.
 
+An omitted `outputs` declaration leaves output names unknown. It does not prove
+the action produces no outputs; explicit output declarations remain checkable.
+
 To require usable metadata, opt in independently of the network mode:
 
 ```yaml

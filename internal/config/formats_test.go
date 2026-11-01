@@ -157,7 +157,7 @@ func TestExtendsAcrossFormats(t *testing.T) {
 	if diff := cmp.Diff([]string{"STAGE"}, VariableNames(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
-	if len(cfg.Sources()) != 3 {
-		t.Fatalf("sources: %v", cfg.Sources())
+	if len(loaded.Provenance.Sources()) != 3 {
+		t.Fatalf("sources: %v", loaded.Provenance.Sources())
 	}
 }

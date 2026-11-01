@@ -4,8 +4,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestDefaultConfigReferenceExamples(t *testing.T) {
@@ -24,7 +22,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 		}
 	}
 	var config Config
-	if err := yaml.Unmarshal([]byte(example.String()), &config); err != nil {
+	if err := Unmarshal([]byte(example.String()), &config); err != nil {
 		t.Fatalf("invalid reference example: %v\n%s", err, example.String())
 	}
 }

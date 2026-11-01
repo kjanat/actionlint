@@ -117,7 +117,8 @@ func NewDefinition(metadata *Metadata) Definition {
 		outputs = append(outputs, name)
 	}
 	slices.Sort(outputs)
-	return Definition{present: true, using: metadata.Runs.Using, skipInputs: metadata.SkipInputs, skipOutputs: metadata.SkipOutputs, inputs: inputs, outputs: outputs}
+	// An omitted declaration does not establish that an action produces no outputs.
+	return Definition{present: true, using: metadata.Runs.Using, skipInputs: metadata.SkipInputs, skipOutputs: metadata.SkipOutputs || metadata.Outputs == nil, inputs: inputs, outputs: outputs}
 }
 
 func (d Definition) Present() bool                   { return d.present }

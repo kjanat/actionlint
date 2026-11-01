@@ -429,9 +429,6 @@
       "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
       "<stdin>:16:43: got unexpected character '\\u00a0' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]"
     ],
-    "languageservices/workflow-parser/testdata/reader/basic.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
-    ],
     "languageservices/workflow-parser/testdata/reader/concurrency.yml": [
       "<stdin>:9:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
       "<stdin>:15:3: job \"build2\" has no steps, so it does nothing [empty-job]",
@@ -442,6 +439,8 @@
     ],
     "languageservices/workflow-parser/testdata/reader/errors-job-id-leading-underscores.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-job-runs-on-group-invalid-prefix.yml": [],
+    "languageservices/workflow-parser/testdata/reader/errors-max-depth.yml": [],
+    "languageservices/workflow-parser/testdata/reader/errors-max-file-size.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-required.yml": [],

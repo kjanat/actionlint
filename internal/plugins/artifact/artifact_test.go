@@ -141,7 +141,11 @@ func TestRemoteAndCache(t *testing.T) {
 			defer server.Close()
 			pin := fmt.Sprintf("%x", sha256.Sum256(data))
 			location := server.URL + "/plugin?token=secret#sha256=" + pin
-			options := Options{CacheDir: t.TempDir()}
+			grant, err := ExplicitSource(location)
+			if err != nil {
+				t.Fatal(err)
+			}
+			options := Options{CacheDir: t.TempDir(), Network: grant}
 			artifact, err := Resolve(t.Context(), location, options)
 			if err != nil {
 				t.Fatal(err)
@@ -208,7 +212,12 @@ func TestRemoteFailures(t *testing.T) {
 		{"/#sha256=" + strings.Repeat("0", 64), Options{}, "SHA256 mismatch"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
-			_, err := Resolve(t.Context(), server.URL+tc.path, tc.options)
+			grant, err := ExplicitSource(server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tc.options.Network = grant
+			_, err = Resolve(t.Context(), server.URL+tc.path, tc.options)
 			if err == nil || !strings.Contains(err.Error(), tc.want) || strings.Contains(err.Error(), "secret") {
 				t.Fatalf("error=%v", err)
 			}

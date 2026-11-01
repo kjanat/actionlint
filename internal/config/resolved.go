@@ -108,8 +108,8 @@ func EffectiveValues(cfg *Config) (map[string]any, error) {
 		}
 		resolved.Tools[name] = tool
 	}
-	var document yaml.Node
-	if err := document.Encode(&resolved); err != nil {
+	document, err := EncodeNode(&resolved)
+	if err != nil {
 		return nil, err
 	}
 	var values map[string]any

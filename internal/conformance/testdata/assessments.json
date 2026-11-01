@@ -471,7 +471,6 @@
     "cases": {
       "languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps": "509338ff634b584f7a6e606eb8134018dbcf65d20145427b7c96c6682fd2e220",
       "languageservices/workflow-parser/testdata/reader/background-steps.yml": "74501443fbaba1c7056e5e9c880cbf1f7c8b940f577a4ade8fbf73596666b5c6",
-      "languageservices/workflow-parser/testdata/reader/basic.yml": "0e933ccec50cbd61efc4b29d31781f7ae140eec428b7d1b945618d374c260130",
       "languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml": "c0587ec23fa0ab2fe13e53efc0529c0bf9fd4ca93d4d9c74db52c78aafdd5c52",
       "languageservices/workflow-parser/testdata/reader/events-mapping.yml": "1f1deadc3f3c0d4a5f42111dc7809899dbe32b04cd5f1314c6dc0aee3d2c7535",
       "languageservices/workflow-parser/testdata/reader/events-sequence.yml": "27e98d932919516ff6e7e28f3f629d4b385d8e6f2bf53555713aaf61456c7453",
@@ -510,7 +509,6 @@
         "evidence": [
           "fixture:languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps",
           "fixture:languageservices/workflow-parser/testdata/reader/background-steps.yml",
-          "fixture:languageservices/workflow-parser/testdata/reader/basic.yml",
           "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml",
           "fixture:languageservices/workflow-parser/testdata/reader/events-mapping.yml",
           "fixture:languageservices/workflow-parser/testdata/reader/events-sequence.yml",
@@ -890,6 +888,8 @@
   },
   {
     "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-max-depth.yml": "6b1ae5fd45181160cd679a2c4c5b9a71efeecd2c5b70a7da985b1a46f33fa348",
+      "languageservices/workflow-parser/testdata/reader/errors-max-file-size.yml": "2be335404185eaed2055e1f0601ca87450b5d0dfaf409f3574a66f612ebd6bf7",
       "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": "cbb3e2b33dab8fb9556dcc0a9ac5b1601e974a34ab7cb14205f2b69fd4d0b03a",
       "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": "0014931cdd548d2d1b1b2af660264b769785654a1040d50dd1287014a39d0162",
       "languageservices/workflow-parser/testdata/reader/errors-step-run-exceeds-length.yml": "ce5540023b8ee016de3b361144d8c59765a495a665a42d3e6fa4c05f7dff4c71"
@@ -898,8 +898,10 @@
       {
         "category": "adapter-limit",
         "scope": "fixture",
-        "rationale": "Adapter limits: these fixtures depend on remote workflow expansion, a fixture-specific max-result-size, or the reader expression-length limit. The adapter neither supplies remote workflow bodies nor reproduces the complete reader limit configuration, so these acceptance differences are not scored as proven actionlint runtime defects.",
+        "rationale": "Adapter limits: these fixtures depend on remote workflow expansion, fixture-specific depth, file-size or result-size budgets, or the reader expression-length limit. In particular, errors-max-depth sets max-depth: 5 and errors-max-file-size sets max-file-size: 124; the adapter reads only their workflow document and does not apply those fixture options. The adapter neither supplies remote workflow bodies nor reproduces the complete reader limit configuration, so these acceptance differences are not scored as proven actionlint runtime defects.",
         "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/errors-max-depth.yml",
+          "fixture:languageservices/workflow-parser/testdata/reader/errors-max-file-size.yml",
           "fixture:languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml",
           "fixture:languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml",
           "fixture:languageservices/workflow-parser/testdata/reader/errors-step-run-exceeds-length.yml"

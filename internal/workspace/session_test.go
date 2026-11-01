@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -9,6 +11,24 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
+
+func TestProjectDiscoveryStopsWithSessionContext(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
+	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "{}\n")
+	ctx, cancel := context.WithCancel(t.Context())
+	session, err := New(ctx, Options{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if project, err := session.ProjectAt(root); err != nil || project == nil {
+		t.Fatalf("initial discovery = %v, %v", project, err)
+	}
+	cancel()
+	if _, err := session.ProjectAt(root); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cached discovery after cancellation = %v", err)
+	}
+}
 
 func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 	root := t.TempDir()

@@ -6,7 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixlang "actionlint.kjanat.dev/v2/internal/workflow/matrix"
@@ -20,7 +26,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 				matrix = "${{ insert }}:\n          " + strings.ReplaceAll(matrix, "\n        ", "\n          ")
 			}
 			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n        " + matrix + "\n    steps: [{run: echo ok}]\n"
-			errs := lintCredentialsExpressionTest(t, source)
+			errs := lintMatrixWithKnownRunnerLabels(t, source)
 			counts := map[string]int{}
 			for _, err := range errs {
 				counts[err.Rule]++
@@ -211,7 +217,7 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 					matrix = "{'${{ insert }}': " + matrix + "}"
 				}
 				source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
-				if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
+				if errs := lintMatrixWithKnownRunnerLabels(t, source); len(errs) != 0 {
 					t.Fatalf("resolved axis rejected: %v", errs)
 				}
 				workflow, errs := workflowparser.ParseDocument([]byte(source))
@@ -227,12 +233,28 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 					t.Fatalf("resolved ID or source key lost: %+v", row)
 				}
 				invalid := strings.Replace(source, "ubuntu-latest", "not-a-runner", 1)
-				if errs := lintCredentialsExpressionTest(t, invalid); len(errs) != 1 || errs[0].Rule != "runner-label" {
+				if errs := lintMatrixWithKnownRunnerLabels(t, invalid); len(errs) != 1 || errs[0].Rule != "runner-label" {
 					t.Fatalf("resolved axis bypassed runner validation: %v", errs)
 				}
 			})
 		}
 	}
+}
+
+func lintMatrixWithKnownRunnerLabels(t *testing.T, source string) []diagmodel.Diagnostic {
+	t.Helper()
+	cfg, err := repoconfig.Parse([]byte("repository: {runners: []}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	sources := []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Config: cfg}}
+	result, err := application.Analyze(t.Context(), options, sources)
+	errs, err := testutil.Diagnostics(result, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return errs
 }
 
 func TestUnknownScriptInputNames(t *testing.T) {

@@ -150,7 +150,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	}
 
 	if req.ConfigPath != "" {
-		if _, err := repoconfig.Load(req.ConfigPath); err != nil {
+		if _, err := repoconfig.LoadContext(ctx, req.ConfigPath); err != nil {
 			return err
 		}
 	}

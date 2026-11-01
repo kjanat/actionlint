@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"github.com/kjanat/go-yaml/v4"
@@ -36,17 +37,7 @@ type Overlay struct {
 
 // OverlayError reports individually valid inputs whose combined settings
 // are invalid, for example timeout bounds that conflict with the config file.
-type OverlayError struct {
-	inputs []string
-	cause  error
-}
-
-func (e *OverlayError) Error() string {
-	return fmt.Sprintf("configuration after inputs %s: %v", strings.Join(e.inputs, ", "), e.cause)
-}
-
-// Unwrap returns the configuration validation error.
-func (e *OverlayError) Unwrap() error { return e.cause }
+type OverlayError = configreport.OverlayError
 
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
 // the YAML/JSON value of one ConfigKeys entry. It rejects unknown keys.
@@ -96,7 +87,7 @@ func parseOverlay(input string, content []byte, bindRules bool, additional ...st
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
 	var config Config
-	if err := node.Load(&config, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := DecodeNode(node, &config); err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
 	if len(config.Extends) > 0 {
@@ -130,7 +121,7 @@ func ResolveBeforePlugins(node *yaml.Node, overlays []Overlay) (Resolved, error)
 	}
 	resolved, err := resolveNode(node, nil, false)
 	if err != nil && len(names) != 0 {
-		return Resolved{}, &OverlayError{names, err}
+		return Resolved{}, configreport.NewOverlayError(names, err)
 	}
 	return resolved, err
 }
@@ -184,15 +175,14 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...str
 		var err error
 		resolved, err = ResolveNode(node, inputs, additional...)
 		if err != nil {
-			return nil, Resolved{}, &OverlayError{names, err}
+			return nil, Resolved{}, configreport.NewOverlayError(names, err)
 		}
 		cfg = resolved.Config
 		if source != nil {
-			cfg.filename = absPath(source.Filename)
-			cfg.configFiles = source.Config.configFiles
+			resolved.Provenance = source.Provenance
 			for i := range resolved.Warnings {
 				if resolved.Warnings[i].File == "" {
-					resolved.Warnings[i].File = cfg.filename
+					resolved.Warnings[i].File = source.Provenance.Path()
 				}
 			}
 			resolved.Warnings = MergeWarnings(source.Warnings, resolved.Warnings)

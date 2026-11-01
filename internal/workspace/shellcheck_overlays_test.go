@@ -49,7 +49,7 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if cfg.Tools["shellcheck"].Enabled == nil || *cfg.Tools["shellcheck"].Enabled != tc.enabled || cfg.Tools["shellcheck"].Config.Path() != "./.shellcheckrc" || cfg.Path() != path {
+			if cfg.Tools["shellcheck"].Enabled == nil || *cfg.Tools["shellcheck"].Enabled != tc.enabled || cfg.Tools["shellcheck"].Config.Path() != "./.shellcheckrc" || session.ConfigProvenanceForProject(nil).Path() != path {
 				t.Fatalf("lost enabled, config or config file: %+v", cfg)
 			}
 			origin := report.Inspection.Origins["/tools/shellcheck/enabled"]

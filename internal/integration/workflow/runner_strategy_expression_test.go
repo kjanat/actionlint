@@ -28,10 +28,6 @@ func TestKnownStrategyRunnerLabelsLint(t *testing.T) {
 		{`{"include":[{"os":{"labels":null}}]}`, ""},
 	} {
 		t.Run(tc.matrix, func(t *testing.T) {
-			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
-			var err error
-
 			source := `on: push
 jobs:
   test:
@@ -40,11 +36,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
-			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-			if err != nil {
-				t.Fatal(err)
-			}
+			errs := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 			if len(errs) != 1 || errs[0].Rule != "runner-label" || !strings.Contains(errs[0].Message, fmt.Sprintf("label %q is unknown", tc.label)) {
 				t.Fatalf("wanted one runner-label diagnostic, got %v", errs)
 			}
@@ -139,14 +131,7 @@ jobs:
     steps:
       - run: echo ok
 `
-					request := application.Options{}
-					var requestSources []workspace.Source
-					var err error
-					requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
-					errors, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-					if err != nil {
-						t.Fatal(err)
-					}
+					errors := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 					if len(errors) != len(tc.want) {
 						t.Fatalf("wanted %v, got %v", tc.want, errors)
 					}
@@ -198,14 +183,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			request := application.Options{}
-			var requestSources []workspace.Source
-			var err error
-			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
-			errors, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-			if err != nil {
-				t.Fatal(err)
-			}
+			errors := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 			if tc.want == "" {
 				if len(errors) != 0 {
 					t.Fatal(errors)
@@ -226,14 +204,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	request := application.Options{}
-	var requestSources []workspace.Source
-	var err error
-	requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
-	errors, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-	if err != nil {
-		t.Fatal(err)
-	}
+	errors := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 	if len(errors) != 1 || errors[0].Rule != "runner-label" || !strings.Contains(errors[0].Message, `label "${{ vars.RUNNER }}" is unknown`) {
 		t.Fatalf("evaluated label data was reinterpreted: %v", errors)
 	}

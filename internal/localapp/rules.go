@@ -14,7 +14,11 @@ import (
 
 // Rules discovers selected providers without analyzing a document.
 func Rules(ctx context.Context, paths []string) (result []rule.Descriptor, err error) {
-	return RulesSources(ctx, PluginSources{Paths: paths})
+	sources, err := explicitPluginSources(paths)
+	if err != nil {
+		return nil, err
+	}
+	return RulesSources(ctx, sources)
 }
 
 // RulesSources lists managed document replacements under their existing tool

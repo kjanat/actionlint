@@ -30,6 +30,9 @@ func (a *action) checkResult(code int, failure error) render.CheckResult {
 	if a.result != nil {
 		lint := a.result
 		r.Documents = lint.documents
+		if lint.actionMetadata != nil {
+			r.ActionMetadata = lint.actionMetadata
+		}
 		if lint.fileCountKnown {
 			r.FileCount = &lint.fileCount
 		}

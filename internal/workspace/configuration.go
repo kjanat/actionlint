@@ -10,11 +10,12 @@ import (
 
 type configState struct {
 	sync.Mutex
-	source   *repoconfig.Loaded
-	overlays []repoconfig.Overlay
-	onLoaded func(configreport.Report)
-	loaded   map[*Project]*repoconfig.Config
-	reports  map[*Project]configreport.Report
+	source     *repoconfig.Loaded
+	overlays   []repoconfig.Overlay
+	onLoaded   func(configreport.Report)
+	loaded     map[*Project]*repoconfig.Config
+	provenance map[*Project]repoconfig.Provenance
+	reports    map[*Project]configreport.Report
 }
 
 func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error) {
@@ -68,10 +69,34 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 		}
 	}
 	s.loaded[project] = cfg
+	if s.provenance == nil {
+		s.provenance = make(map[*Project]repoconfig.Provenance)
+	}
+	provenance := resolved.Provenance
+	if source == nil && a.defaultConfig != nil {
+		provenance = a.defaultConfigProvenance
+	}
+	s.provenance[project] = provenance
 	s.reports[project] = configurationSnapshot(report)
 	if s.onLoaded != nil {
 		notify := configurationSnapshot(report)
 		notification = &notify
 	}
 	return cfg, nil
+}
+
+// ConfigProvenanceForProject reads the source owner selected by ConfigForProject.
+func (a *Session) ConfigProvenanceForProject(project *Project) repoconfig.Provenance {
+	if a.configState == nil {
+		if a.defaultConfig != nil {
+			return a.defaultConfigProvenance
+		}
+		if project != nil && project.config != nil {
+			return project.config.Provenance
+		}
+		return repoconfig.Provenance{}
+	}
+	a.configState.Lock()
+	defer a.configState.Unlock()
+	return a.configState.provenance[project]
 }

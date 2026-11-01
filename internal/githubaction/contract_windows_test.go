@@ -36,7 +36,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 		t.Skip("volume does not generate short filenames")
 	}
 	t.Chdir(shortPath)
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: invalid-runner\n    steps:\n      - run: echo ok\n"
+	const workflow = "on: [\n"
 	if err := os.WriteFile("ci.yml", []byte(workflow), 0600); err != nil {
 		t.Fatal(err)
 	}

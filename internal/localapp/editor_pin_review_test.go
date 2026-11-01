@@ -3,11 +3,8 @@ package localapp
 import (
 	"crypto/sha256"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -16,17 +13,13 @@ import (
 )
 
 func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
-	testutil.IsolateUserCache(t)
+	registry := testutil.NewPluginRegistry(t)
 	data, err := os.ReadFile("../plugins/core/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var requests atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		requests.Add(1)
-		_, _ = w.Write(data)
-	}))
-	defer server.Close()
+	const source = testutil.FixtureRegistryURL + "engine.wasm"
+	registry.SetFile(source, data)
 	session, err := newEditorSession(t.Context(), application.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -36,13 +29,12 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	source := server.URL + "/engine.wasm"
 	for _, suffix := range []string{"", "#sha256=bad"} {
 		if _, err := session.options.LoadScriptEngine(t.Context(), source+suffix); err == nil || !strings.Contains(err.Error(), "sha256") {
 			t.Fatalf("unpinned source accepted: %v", err)
 		}
 	}
-	if requests.Load() != 0 {
+	if len(registry.Requests()) != 0 {
 		t.Fatal("invalid pin reached the network")
 	}
 	pinned := fmt.Sprintf("%s#sha256=%x", source, sha256.Sum256(data))
@@ -57,7 +49,7 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	if _, err := session.options.LoadScriptEngine(t.Context(), pinned); err != nil {
 		t.Fatal(err)
 	}
-	if requests.Load() != 1 {
-		t.Fatalf("pinned snapshot downloaded %d times", requests.Load())
+	if requests := registry.Requests(); len(requests) != 1 || requests[0] != source {
+		t.Fatalf("pinned snapshot requests: %v", requests)
 	}
 }

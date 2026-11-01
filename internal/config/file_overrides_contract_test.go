@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestFileOverrideRuleSettings(t *testing.T) {
@@ -51,7 +50,7 @@ overrides:
 		if repoconfig.DiagnosticLevel(cfg, "if-cond") != "off" {
 			t.Fatal("override mutated base")
 		}
-		encoded, err := codec.Marshal(cfg)
+		encoded, err := repoconfig.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +83,7 @@ overrides:
 	}
 	for _, roundtrip := range []bool{false, true} {
 		if roundtrip {
-			encoded, err := codec.Marshal(cfg)
+			encoded, err := repoconfig.Marshal(cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,7 +162,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 					if err != nil || repoconfig.DiagnosticLevel(effective, "expression-reference") != tc.want {
 						t.Fatalf("programmatic=%t: want %s, got %+v, %v", programmatic, tc.want, effective, err)
 					}
-					encoded, err := codec.Marshal(cfg)
+					encoded, err := repoconfig.Marshal(cfg)
 					if err != nil {
 						t.Fatal(err)
 					}

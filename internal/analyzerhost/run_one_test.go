@@ -65,6 +65,31 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 	}
 }
 
+func TestForwardedAnalyzerUsesSharedAdmission(t *testing.T) {
+	failure := errors.New("runtime failure")
+	input := analyzer.Input{Path: "workflow.yml", Available: []analyzer.Fact{analyzer.Scripts}, Scripts: []analyzer.Script{{Text: "original"}}}
+	calls := 0
+	prepared, err := PrepareForwarding(analyzer.Registration{Analyzer: testAnalyzer{
+		descriptor: analyzer.Descriptor{Name: "forwarded", Requires: []analyzer.Fact{analyzer.Scripts}},
+		run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {
+			calls++
+			supplied.Scripts[0].Text = "changed"
+			return []diagnostic.Diagnostic{{Message: "partial"}}, failure
+		},
+	}}, input.Available)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := RunOne(t.Context(), input, prepared)
+	if !errors.Is(err, failure) || err.Error() != failure.Error() || len(findings) != 1 || findings[0].Rule != "forwarded" || input.Scripts[0].Text != "original" {
+		t.Fatalf("forwarding lost error text, metadata or isolation: %v %v", findings, err)
+	}
+	input.Available = append(input.Available, analyzer.Invocations)
+	if _, err := RunOne(t.Context(), input, prepared); !errors.Is(err, analyzer.ErrInvalidCallGraph) || calls != 1 {
+		t.Fatalf("forwarding bypassed graph admission: calls=%d error=%v", calls, err)
+	}
+}
+
 func TestRunInputValidationSurvivesNoRegistrations(t *testing.T) {
 	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Invocations}}
 	if _, err := Run(t.Context(), input, nil); !errors.Is(err, analyzer.ErrInvalidCallGraph) {

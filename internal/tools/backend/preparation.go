@@ -275,7 +275,7 @@ func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
 		expanded := *resolved.directives
 		expanded.SourcePath = make([]string, len(resolved.directives.SourcePath))
 		for i, path := range resolved.directives.SourcePath {
-			if expanded.SourcePath[i], err = paths.context(cfg).Expand(path); err != nil {
+			if expanded.SourcePath[i], err = paths.context().Expand(path); err != nil {
 				return scopeSettings{}, fmt.Errorf("tools.%s.config.source-path: %w", p.name, err)
 			}
 		}
@@ -296,11 +296,11 @@ func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
 		}
 	case p.route == routeEmbedded || path == "":
 	default:
-		base := paths.context(cfg).ConfigDir
+		base := paths.context().ConfigDir
 		if settings.FromInput() {
 			base = paths.analysis
 		}
-		file, err := paths.context(cfg).ResolveFrom(path, base)
+		file, err := paths.context().ResolveFrom(path, base)
 		if err == nil {
 			var files *fsread.Reader
 			if scope != nil {
@@ -345,6 +345,7 @@ func (p shellPreparation) input(script tools.Script) (profile.Prepared, error) {
 // against.
 type runPaths struct {
 	analysis, workspace, actionPath string
+	configPath                      string
 }
 
 // scopePaths defaults the analysis directory to the working directory and
@@ -352,7 +353,7 @@ type runPaths struct {
 func scopePaths(scope *tools.Scope) runPaths {
 	var paths runPaths
 	if scope != nil {
-		paths = runPaths{analysis: scope.AnalysisDir, workspace: scope.Workspace, actionPath: scope.ActionPath}
+		paths = runPaths{analysis: scope.AnalysisDir, workspace: scope.Workspace, actionPath: scope.ActionPath, configPath: scope.ConfigProvenance.Path()}
 	}
 	if paths.analysis == "" {
 		if cwd, err := os.Getwd(); err == nil {
@@ -365,18 +366,16 @@ func scopePaths(scope *tools.Scope) runPaths {
 	return paths
 }
 
-// PathContext is the path interpolation context of configuration cfg in a
-// script scope: its directory, the workspace and the runner's view of the
-// action path.
-func PathContext(scope *tools.Scope, cfg *config.Config) config.PathContext {
-	return scopePaths(scope).context(cfg)
+// PathContext uses the scope's configuration source, workspace and runner action path.
+func PathContext(scope *tools.Scope) config.PathContext {
+	return scopePaths(scope).context()
 }
 
 // context is the path interpolation context of a scope's configuration.
-func (paths runPaths) context(cfg *config.Config) config.PathContext {
+func (paths runPaths) context() config.PathContext {
 	configDir := paths.workspace
-	if cfg.Path() != "" && !address.Remote(cfg.Path()) {
-		configDir = filepath.Dir(cfg.Path())
+	if paths.configPath != "" && !address.Remote(paths.configPath) {
+		configDir = filepath.Dir(paths.configPath)
 	}
 	return config.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shellprofile.RunnerWorkspace(paths.workspace), ActionPath: shellprofile.RunnerActionPath(paths.actionPath)}
 }

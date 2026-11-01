@@ -65,7 +65,7 @@ type analysisSession struct {
 }
 
 // check dispatches the two document languages at the application input boundary.
-func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config,
+func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config, provenance repoconfig.Provenance,
 	processes *analyzerhost.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, error) {
 	if s.captures == nil || s.snapshots == nil {
@@ -77,14 +77,14 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Snapsh
 	}
 	if isActionInput(sourcePath) {
 		document := documentparse.Action(path, sourcePath, content)
-		return s.analyzeDocument(path, sourcePath, captured, content, document, true, project, config, processes, actions, workflows, usedRules)
+		return s.analyzeDocument(path, sourcePath, captured, content, document, true, project, config, provenance, processes, actions, workflows, usedRules)
 	}
 	document := documentparse.Workflow(path, content)
-	return s.analyzeDocument(path, sourcePath, captured, content, document, false, project, config, processes, actions, workflows, usedRules)
+	return s.analyzeDocument(path, sourcePath, captured, content, document, false, project, config, provenance, processes, actions, workflows, usedRules)
 }
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document documentparse.Document, action bool,
-	project *workspace.Project, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
+	project *workspace.Project, projectConfig *repoconfig.Config, provenance repoconfig.Provenance, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, resultErr error) {
 	outline = document.Outline
@@ -143,7 +143,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	}
 	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
-		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
+		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, provenance, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
 			return nil, outline, analysisErr
 		}
@@ -191,7 +191,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 }
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot documentparse.SourceSnapshot, action bool,
-	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
+	project *workspace.Project, cfg, projectConfig *repoconfig.Config, provenance repoconfig.Provenance, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
 	process := processes.Fork()
@@ -255,6 +255,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			return selected.inputSelectors(toolContext, cfg)
 		},
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader, Config: cfg,
+		ConfigProvenance: provenance,
 		ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {

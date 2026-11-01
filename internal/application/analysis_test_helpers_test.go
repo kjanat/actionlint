@@ -97,11 +97,13 @@ func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest,
 		defer proc.Wait()
 	}
 	cfg := source.Config
+	provenance := source.ConfigProvenance
 	if cfg == nil && source.Project != nil {
 		cfg = source.Project.Config()
+		provenance = source.Project.ConfigProvenance()
 	}
 	var rules []rule.Descriptor
-	findings, _, err := session.check(source.Path, address, captured, source.Project, cfg, proc, actions, workflowCache, &rules)
+	findings, _, err := session.check(source.Path, address, captured, source.Project, cfg, provenance, proc, actions, workflowCache, &rules)
 	return findings, err
 }
 

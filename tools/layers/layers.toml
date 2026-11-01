@@ -113,6 +113,13 @@ deny-std = ["os/exec"]
 tests    = ["tool-providers"]
 
 [[layer]]
+name      = "acquisition-http"
+doc       = "Host HTTP acquisition policy: public address screening and invocation-owned endpoint grants."
+packages  = ["internal/acquisitionhttp"]
+externals = ["golang.org/x/net"]
+deny-std  = ["os/exec"]
+
+[[layer]]
 name      = "config"
 doc       = "Configuration decoding and its parts. Configuration does not reach execution, the host or the public API."
 packages  = [
@@ -123,10 +130,10 @@ packages  = [
   "internal/config/tree",
   "internal/filefilter",
 ]
-allow     = ["contract-leaves", "repository-contracts", "leaves", "action-reference", "provider-data", "catalog"]
+allow     = ["contract-leaves", "repository-contracts", "leaves", "action-reference", "provider-data", "catalog", "acquisition-http"]
 externals = ["github.com/bmatcuk/doublestar/v4", "github.com/kjanat/go-yaml/v4", "github.com/pelletier/go-toml/v2"]
 deny-std  = ["os/exec"]
-tests     = ["tool-providers", "yaml-codec"]
+tests     = ["tool-providers", "yaml-codec", "test-harness"]
 
 [[layer]]
 name      = "process-config"
@@ -305,11 +312,19 @@ tests          = ["fixtures"]
 test-externals = ["github.com/kjanat/go-yaml/v4"]
 
 [[layer]]
+name      = "analyzer-executor"
+doc       = "Pure analyzer admission and invocation. Shared by host execution and public plugin adapters without granting process execution."
+packages  = ["internal/analyzerhost/executor"]
+allow     = ["analysis-contracts", "core-helpers"]
+externals = ["github.com/santhosh-tekuri/jsonschema/v6", "golang.org/x/sync"]
+deny-std  = ["os/exec"]
+
+[[layer]]
 name           = "analyzer-host"
-doc            = "The shared analyzer executor and native process runner. It does not reach traversal, workspaces or configuration."
+doc            = "Host adapters around the pure analyzer executor and the native process runner. They do not reach traversal, workspaces or configuration."
 packages       = ["internal/analyzerhost"]
-allow          = ["analysis-contracts", "core-helpers", "process-config"]
-externals      = ["github.com/santhosh-tekuri/jsonschema/v6", "golang.org/x/sync"]
+allow          = ["analysis-contracts", "core-helpers", "process-config", "analyzer-executor"]
+externals      = ["golang.org/x/sync"]
 tests          = ["source", "contract-leaves", "invocation", "invocation-view"]
 test-externals = ["golang.org/x/sys"]
 
@@ -481,18 +496,19 @@ deny-std = ["os/exec"]
 name      = "plugin-artifacts"
 doc       = "Plugin artifacts and the plugin registry."
 packages  = ["internal/pluginregistry", "internal/plugins/artifact"]
-allow     = ["leaves"]
-externals = ["golang.org/x/mod", "golang.org/x/sys"]
+allow     = ["leaves", "acquisition-http"]
+externals = ["golang.org/x/mod", "golang.org/x/net", "golang.org/x/sys"]
 deny-std  = ["os/exec"]
 tests     = ["fixtures", "test-harness"]
 
 [[layer]]
-name      = "plugin-transport"
-doc       = "The OCI transport for plugin artifacts. Registry credential helpers run as processes, so this layer may reach os/exec."
-packages  = ["internal/plugins/artifact/oci"]
-allow     = ["plugin-artifacts"]
-externals = ["github.com/opencontainers/image-spec", "github.com/oras-project/oras-go/v3"]
-tests     = ["fixtures"]
+name           = "plugin-transport"
+doc            = "The OCI transport for plugin artifacts. Registry credential helpers run as processes, so this layer may reach os/exec."
+packages       = ["internal/plugins/artifact/oci"]
+allow          = ["plugin-artifacts", "acquisition-http"]
+externals      = ["github.com/opencontainers/image-spec", "github.com/oras-project/oras-go/v3"]
+tests          = ["fixtures"]
+test-externals = ["github.com/opencontainers/go-digest"]
 
 [[layer]]
 name      = "plugin-runtime"
@@ -575,6 +591,7 @@ name      = "local-host"
 doc       = "The local application host: plugins, tools and editors around the application. It does not reach terminal adapters."
 packages  = ["internal/localapp"]
 allow     = [
+  "acquisition-http",
   "analysis-contracts",
   "application",
   "catalog",
@@ -605,12 +622,21 @@ packages  = ["config", "internal/config/value"]
 allow     = ["contract-leaves", "leaves", "config"]
 externals = ["github.com/kjanat/go-yaml/v4"]
 deny-std  = ["os/exec"]
+tests     = ["public-analysis"]
 
 [[layer]]
 name     = "public-plugin"
 doc      = "The public plugin package."
 packages = ["plugin"]
-allow    = ["plugin-artifacts", "plugin-runtime"]
+allow    = [
+  "analysis-contracts",
+  "contract-leaves",
+  "document-contracts",
+  "analyzer-executor",
+  "plugin-artifacts",
+  "plugin-runtime",
+  "acquisition-http"
+]
 deny-std = ["os/exec"]
 tests    = ["analysis-contracts", "public-analysis"]
 
@@ -622,6 +648,7 @@ allow    = [
   "analysis-contracts",
   "application",
   "catalog",
+  "config",
   "contract-leaves",
   "document-contracts",
   "process-config",
@@ -637,6 +664,7 @@ name      = "adapters"
 doc       = "Terminal, GitHub Action and browser adapters. They consume the application and presentation and do not construct the engine or plugin runtimes."
 packages  = ["internal/cli", "internal/githubaction", "playground"]
 allow     = [
+  "acquisition-http",
   "action-acquisition",
   "analysis-contracts",
   "analyzer-host",
@@ -734,16 +762,27 @@ externals      = [
 test-externals = ["github.com/kjanat/go-yaml/v4", "github.com/santhosh-tekuri/jsonschema/v6"]
 
 [[layer]]
-name     = "test-harness"
-doc      = "The shared test harness around the application."
-packages = ["internal/testutil"]
-allow    = ["analysis-contracts", "leaves", "config", "tool-providers", "workspace", "application"]
+name      = "test-harness"
+doc       = "The shared test harness around the application."
+packages  = ["internal/testutil"]
+allow     = [
+  "analysis-contracts",
+  "contract-leaves",
+  "repository-contracts",
+  "leaves",
+  "config",
+  "tool-providers",
+  "workspace",
+  "application"
+]
+externals = ["golang.org/x/net"]
 
 [[layer]]
 name           = "test-suites"
 doc            = "Packages that hold only tests: integration suites, fuzz targets, architecture and toolchain checks. They exercise the application boundary, never the engine."
 packages       = ["fuzz", "internal/architecture", "internal/integration/...", "tools/toolchain"]
 tests          = [
+  "analyzer-executor",
   "adapters",
   "analysis-contracts",
   "analyzer-host",
@@ -759,6 +798,7 @@ tests          = [
   "fixtures",
   "language",
   "leaves",
+  "local-host",
   "plugin-artifacts",
   "presentation",
   "process-config",

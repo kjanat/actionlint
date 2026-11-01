@@ -173,6 +173,11 @@ func Diagnostics(result *application.Result, err error) ([]diagnostic.Diagnostic
 // WorkflowDiagnostics checks a fixture with an explicit in-memory configuration.
 func WorkflowDiagnostics(t *testing.T, source, config string) []diagnostic.Diagnostic {
 	t.Helper()
+	return WorkflowDiagnosticsWithOptions(t, source, config, application.Options{})
+}
+
+func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options application.Options) []diagnostic.Diagnostic {
+	t.Helper()
 	var cfg *repoconfig.Config
 	if config != "" {
 		var err error
@@ -181,7 +186,7 @@ func WorkflowDiagnostics(t *testing.T, source, config string) []diagnostic.Diagn
 			t.Fatal(err)
 		}
 	}
-	result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Config: cfg}})
+	result, err := application.Analyze(t.Context(), options, []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}

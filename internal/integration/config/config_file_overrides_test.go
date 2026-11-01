@@ -8,7 +8,6 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestRuleLevelAliasOverrides(t *testing.T) {
@@ -39,7 +38,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 			if repoconfig.DiagnosticLevel(got, "expression-reference") != tc.want {
 				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, repoconfig.DiagnosticLevel(got, "expression-reference"), tc.want)
 			}
-			encoded, err := codec.Marshal(cfg)
+			encoded, err := repoconfig.Marshal(cfg)
 			if err != nil {
 				t.Fatal(err)
 			}

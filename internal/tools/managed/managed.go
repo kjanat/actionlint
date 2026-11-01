@@ -201,7 +201,7 @@ func (r documentRoute) negotiate(ctx context.Context, guest analyzer.ToolIntegra
 	}
 	if script != nil && script.Scope != nil && len(options.SourcePath) != 0 {
 		options.SourcePath = slices.Clone(options.SourcePath)
-		paths := backend.PathContext(&tools.Scope{AnalysisDir: script.Scope.AnalysisDir, Workspace: script.Scope.Workspace, ActionPath: script.Scope.ActionPath}, cfg)
+		paths := backend.PathContext(script.Scope)
 		for i, name := range options.SourcePath {
 			expanded, err := paths.Expand(name)
 			if err != nil {

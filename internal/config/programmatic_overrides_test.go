@@ -3,8 +3,6 @@ package config
 import (
 	"reflect"
 	"testing"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
@@ -32,7 +30,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 				if !reflect.DeepEqual(got.Tools, want.Tools) {
 					t.Fatalf("programmatic tools differ: got %#v, want %#v", got.Tools["shellcheck"], want.Tools["shellcheck"])
 				}
-				encoded, err := yaml.Marshal(config)
+				encoded, err := Marshal(config)
 				if err != nil {
 					t.Fatal(err)
 				}

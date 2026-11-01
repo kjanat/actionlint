@@ -69,15 +69,15 @@ func equivalent(t *testing.T, path string, internal, public reflect.Value) {
 		for _, key := range internal.MapKeys() {
 			equivalent(t, path+"["+key.String()+"]", internal.MapIndex(key), public.MapIndex(key))
 		}
-	case reflect.Uint8:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		if internal.Uint() != public.Uint() {
 			t.Errorf("%s: %d != %d", path, internal.Uint(), public.Uint())
 		}
-	case reflect.Int:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if internal.Int() != public.Int() {
 			t.Errorf("%s: %d != %d", path, internal.Int(), public.Int())
 		}
-	case reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		if internal.Float() != public.Float() {
 			t.Errorf("%s: %v != %v", path, internal.Float(), public.Float())
 		}
@@ -89,7 +89,11 @@ func equivalent(t *testing.T, path string, internal, public reflect.Value) {
 		if internal.Bool() != public.Bool() {
 			t.Errorf("%s: %t != %t", path, internal.Bool(), public.Bool())
 		}
-	default:
+	case reflect.Complex64, reflect.Complex128:
+		if internal.Complex() != public.Complex() {
+			t.Errorf("%s: %v != %v", path, internal.Complex(), public.Complex())
+		}
+	case reflect.Invalid, reflect.Array, reflect.Chan, reflect.Func, reflect.UnsafePointer:
 		t.Errorf("%s: unsupported kind %s", path, internal.Kind())
 	}
 }

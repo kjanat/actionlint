@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ func (f transportFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 }
 
 func TestHTTPSReaderPreservesCustomSource(t *testing.T) {
-	want := "https://example.test/base.yaml?version=1"
+	want := "https://127.0.0.1/base.yaml?version=1"
 	reader := New(t.Context(), func(name string) ([]byte, error) {
 		if name != want {
 			t.Fatalf("source = %q", name)
@@ -31,6 +32,29 @@ func TestHTTPSReaderPreservesCustomSource(t *testing.T) {
 	content, err := reader.ReadFile(want)
 	if err != nil || string(content) != "custom" {
 		t.Fatalf("read = %q, %v", content, err)
+	}
+}
+
+func TestHTTPSReaderRejectsPrivateDestinationBeforeDial(t *testing.T) {
+	previous := http.DefaultTransport
+	dialed := false
+	transport := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+		dialed = true
+		return nil, errors.New("unexpected dial")
+	}}
+	http.DefaultTransport = transport
+	t.Cleanup(func() {
+		http.DefaultTransport = previous
+		transport.CloseIdleConnections()
+	})
+
+	reader := New(t.Context(), nil)
+	_, err := reader.ReadFile("https://127.0.0.1/base.yaml")
+	if err == nil || !strings.Contains(err.Error(), "public destination addresses") {
+		t.Fatalf("private destination error = %v", err)
+	}
+	if dialed {
+		t.Fatal("private destination reached the transport dialer")
 	}
 }
 

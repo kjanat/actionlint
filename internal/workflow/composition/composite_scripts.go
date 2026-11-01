@@ -151,7 +151,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		return err
 	}
 	parentScope := analysis.scriptScope
-	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, Deployment: deployment, Composite: true, Context: callContext}
+	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Reader: analysis.reader, Config: scriptConfig, ConfigProvenance: analysis.configProvenance, Deployment: deployment, Composite: true, Context: callContext}
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}

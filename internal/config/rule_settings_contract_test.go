@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
@@ -71,7 +70,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 				if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(repoconfig.Presets{}, cfg), tc.name); got != tc.want {
 					t.Fatalf("got %s, want %s", got, tc.want)
 				}
-				encoded, err := codec.Marshal(cfg)
+				encoded, err := repoconfig.Marshal(cfg)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -185,7 +184,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		if repoconfig.DiagnosticLevel(got, "expression") != "warn" {
 			t.Fatal(got.Lint)
 		}
-		encoded, err := codec.Marshal(cfg)
+		encoded, err := repoconfig.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}

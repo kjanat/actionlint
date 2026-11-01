@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 
@@ -45,6 +46,15 @@ jobs:
     steps:
       - run: echo hi
 `
+
+func knownRunnerOverlay(t *testing.T) repoconfig.Overlay {
+	t.Helper()
+	overlay, err := repoconfig.ParseOverlay("config", []byte("repository: {runners: []}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return overlay
+}
 
 func workspaceWith(t *testing.T, files map[string]string) string {
 	t.Helper()
@@ -199,7 +209,7 @@ func TestRunLinterFindsProblems(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
 	if got.code != render.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -223,7 +233,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
 	if got.code != render.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -250,6 +260,7 @@ func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
 		format:     formatJSON,
 		files:      []string{"broken.yaml"},
 		ignore:     []string{`label "unknown-runner" is unknown`},
+		overlays:   []repoconfig.Overlay{knownRunnerOverlay(t)},
 	})
 	if got.code != render.ExitSuccessNoProblem {
 		t.Fatalf("wanted the problem ignored but got %d: %s%s", got.code, got.stderr, got.stdout)
@@ -317,7 +328,7 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
 	if got.code != render.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -357,7 +368,7 @@ func TestRunLinterReadsConfigFile(t *testing.T) {
 func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{"workflows/broken.yaml": brokenWorkflow})
 	outputPath := filepath.Join(t.TempDir(), "output")
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": "repository: {runners: []}"}
 	var out strings.Builder
 
 	a := &action{
@@ -410,7 +421,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 			})
 			outputPath := filepath.Join(t.TempDir(), "output")
 			resultPath := filepath.Join(t.TempDir(), "result.json")
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath, "INPUT_CONFIG": "repository: {runners: []}"}
 			var out strings.Builder
 			a := &action{
 				args:   args(tc.file, "github", "", "", tc.workingDir, "annotations.txt", "true"),
@@ -476,14 +487,14 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 				".github/workflows/test.yaml": strings.ReplaceAll(brokenWorkflow, "unknown-runner", "ubuntu-24.04-custom"),
 			}
 			if tc.configName != "" {
-				files[".github/"+tc.configName] = `self-hosted-runner:
-  labels:
-    - ubuntu-24.04-custom
-`
+				files[".github/"+tc.configName] = "repository: {runners: [ubuntu-24.04-custom]}\n"
 			}
 			workspace := workspaceWith(t, files)
 			outputPath := filepath.Join(t.TempDir(), "output")
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
+			if tc.configName == "" {
+				env["INPUT_CONFIG"] = "repository: {runners: []}"
+			}
 			var out strings.Builder
 			a := &action{
 				args:    args("", "github", in.Ignore, "", ".", "", "true"),
@@ -527,7 +538,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 			return runLinter(req)
 		},
 	}
-	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: formatJSON})
+	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: formatJSON, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
 
 	if resolved(t, seen) != resolved(t, dir) {
 		t.Errorf("wanted the process directory to remain %q while linting but got %q", dir, seen)

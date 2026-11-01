@@ -1,24 +1,57 @@
 package workflow_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/actions"
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/knowledge"
 	sourceref "actionlint.kjanat.dev/v2/source"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
+type literalMetadataFixture struct{ manifest actions.Manifest }
+
+func (p literalMetadataFixture) Lookup(_ context.Context, ref actions.Reference) (actions.Manifest, error) {
+	if ref == p.manifest.Selection().Request() {
+		return p.manifest, nil
+	}
+	return actions.UnavailableManifest(knowledge.NotFetched()), nil
+}
+
 func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 	root := t.TempDir()
+	const commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	ref, err := actions.ParseReference("github.com", "actions/checkout@v6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), 1, commit, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	route, err := actions.RefRoute("refs/tags/v6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selection, err := actions.NewSelection(ref, identity, commit, route, "test-fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote, err := actions.NewManifest(selection, []byte("name: checkout\ndescription: fixture\noutputs: {commit: {description: commit}}\nruns: {using: composite, steps: []}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Mkdir(filepath.Join(root, "action"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +99,7 @@ jobs:
     steps:
       - id: action
         uses: ` + uses + tc.extra + "\n"
-				request := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := application.Options{WorkingDir: root, RemoteActions: literalMetadataFixture{remote}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.Source
 				var err error
 				requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(root), Config: workspace.Identity(root).Config()}}

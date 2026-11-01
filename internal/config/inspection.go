@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -42,6 +43,14 @@ func SelectedPath(selection Selection) (string, error) {
 
 // Inspect validates settings and optionally records their YAML origins.
 func Inspect(selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
+	return InspectContext(context.Background(), selection, withOrigin, registeredRules...)
+}
+
+// InspectContext validates settings with cancellable configuration acquisition.
+func InspectContext(ctx context.Context, selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
+	if err := ctx.Err(); err != nil {
+		return Inspection{}, err
+	}
 	path, err := SelectedPath(selection)
 	if err != nil {
 		return Inspection{}, err
@@ -49,7 +58,7 @@ func Inspect(selection Selection, withOrigin bool, registeredRules ...string) (I
 	var resolved Resolved
 	if path != "" {
 		var source *Loaded
-		source, err = Read(path, nil, registeredRules...)
+		source, err = ReadContext(ctx, path, nil, registeredRules...)
 		if err != nil {
 			return Inspection{Path: path}, err
 		}

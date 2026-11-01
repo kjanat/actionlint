@@ -3,12 +3,14 @@ package value
 
 import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // Document owns validated settings. Its zero value selects ordinary defaults.
 // Construct documents with config.Parse or config.Load.
-type Document struct{ config *repoconfig.Config }
+type Document struct {
+	config     *repoconfig.Config
+	provenance repoconfig.Provenance
+}
 
 // Wrap transfers ownership from the configuration loader to an opaque document.
 func Wrap(config *repoconfig.Config) *Document {
@@ -16,6 +18,22 @@ func Wrap(config *repoconfig.Config) *Document {
 		return nil
 	}
 	return &Document{config: config}
+}
+
+// WrapLoaded retains the source owner when validated settings cross the API boundary.
+func WrapLoaded(loaded *repoconfig.Loaded) *Document {
+	if loaded == nil {
+		return nil
+	}
+	return &Document{config: loaded.Config, provenance: loaded.Provenance}
+}
+
+// Provenance carries loaded source identity into in-module analysis adapters.
+func Provenance(document *Document) repoconfig.Provenance {
+	if document == nil {
+		return repoconfig.Provenance{}
+	}
+	return document.provenance
 }
 
 // Unwrap is available only to in-module adapters. Public callers cannot mutate
@@ -31,4 +49,4 @@ func Unwrap(document *Document) *repoconfig.Config {
 }
 
 // MarshalText returns a newly encoded configuration document.
-func (d Document) MarshalText() ([]byte, error) { return yaml.Marshal(Unwrap(&d)) }
+func (d Document) MarshalText() ([]byte, error) { return repoconfig.Marshal(Unwrap(&d)) }

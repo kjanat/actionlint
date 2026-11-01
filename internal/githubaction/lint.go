@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/v2/actions"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
@@ -59,6 +60,7 @@ type lintOutcome struct {
 type lintResult struct {
 	*lintOutcome
 	diagnostics    []diagnostic.Diagnostic
+	actionMetadata []actions.MetadataReport
 	documents      documentmodel.Outlines
 	sarif          string
 	fileCount      int
@@ -155,6 +157,9 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 		}
 		result.documents = analysis.Documents
+		for _, coverage := range analysis.ActionMetadata {
+			result.actionMetadata = append(result.actionMetadata, coverage.Report())
+		}
 		result.fileCount = analysis.FileCount
 		result.fileCountKnown = true
 		for i := range analysis.Diagnostics {

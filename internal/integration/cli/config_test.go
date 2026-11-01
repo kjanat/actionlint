@@ -88,9 +88,9 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 		t.Fatal(got)
 	}
 	config := `plugins: []
-defaults: &defaults {config-variables: []}
-<<: *defaults
-config-secrets: null
+repository:
+  <<: &defaults {variables: {}}
+  secrets: null
 `
 	if err := os.WriteFile(result["path"], []byte(config), 0o600); err != nil {
 		t.Fatal(err)
@@ -100,7 +100,7 @@ config-secrets: null
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	if inspection.Origins["/lint/rules/correctness/expression-reference/options/variables"].Source != "config" || inspection.Origins["/lint/rules/correctness/expression-reference/options/secrets"].State != "null" {
+	if inspection.Origins["/repository/variables"].Source != "config" || inspection.Origins["/repository/variables"].State != "value" || inspection.Origins["/repository/secrets"].State != "null" {
 		t.Fatal(inspection.Origins)
 	}
 	if _, exists := inspection.Origins["/defaults"]; exists {
@@ -111,10 +111,11 @@ config-secrets: null
 func TestModernConfigSelectionAndOrigins(t *testing.T) {
 	commandTestRepo(t)
 	config := `plugins: []
+repository: {variables: {}, secrets: null}
 lint:
   rules:
     correctness:
-      expression-reference: {level: on, options: {variables: [], secrets: null}}
+      expression-reference: {level: on}
     policy:
       require-commit-hash: off
       required-actions: {level: on, options: {actions: []}}
@@ -128,7 +129,7 @@ lint:
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	for key, state := range map[string]string{"/lint/rules/correctness/expression-reference/options/variables": "value", "/lint/rules/correctness/expression-reference/options/secrets": "null", "/lint/rules/policy/require-commit-hash": "value", "/lint/rules/policy/required-actions/options/actions": "value"} {
+	for key, state := range map[string]string{"/repository/variables": "value", "/repository/secrets": "null", "/lint/rules/policy/require-commit-hash": "value", "/lint/rules/policy/required-actions/options/actions": "value"} {
 		origin := inspection.Origins[key]
 		if origin.Source != "config" || origin.State != state || origin.Line == 0 {
 			t.Errorf("%s: %+v", key, origin)
@@ -222,14 +223,14 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 		t.Fatalf("%+v", refused)
 	}
 	if err := os.WriteFile(created.Path, []byte(`plugins: []
-paths:
-  '**':
-    ignore: ['undefined variable']
+lint:
+  message-ignores:
+    '**': ['undefined variable']
 `), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got = testRunCommand(commandBadWorkflow, "--config-file", created.Path, "--json", "-")
-	if got.Status != 0 || !cleanCheckJSON(got.Stdout) || !strings.Contains(got.Stderr, "migrated configuration") {
+	if got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
 		t.Fatalf("explicit config not applied: %+v", got)
 	}
 }

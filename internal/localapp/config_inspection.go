@@ -48,7 +48,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	return config.Inspect(selection, origins, rules...)
+	return config.InspectContext(ctx, selection, origins, rules...)
 }
 
 // InstalledProviders returns the tool provider manifests among the plugins
@@ -79,7 +79,7 @@ func InstalledProviders(ctx context.Context, selection config.Selection, paths [
 			if err := pluginartifact.RequireRemotePin(path); err != nil {
 				return nil, err
 			}
-			if artifact, err = pluginartifact.Resolve(ctx, path, artifactOptions()); err != nil {
+			if artifact, err = pluginartifact.Resolve(ctx, path, sources.artifactOptions(path)); err != nil {
 				return nil, err
 			}
 		}

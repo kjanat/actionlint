@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/config/address"
@@ -52,7 +53,9 @@ type PluginSources struct {
 	lock      *pluginregistry.Lock
 	configs   []*config.Config
 	artifacts map[string]*pluginartifact.Artifact
-	overlays  []config.Overlay
+	// grants come only from explicit source arguments, never project files.
+	grants   map[string]acquisitionhttp.Grant
+	overlays []config.Overlay
 	// disabledTools and tools carry the ids set by SelectionWithTools
 	// to loading.
 	disabledTools, tools []string
@@ -135,7 +138,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 		if s.LockFile != "" {
 			return PluginSources{}, errors.New("--plugin and --plugin-lock cannot be combined")
 		}
-		return PluginSources{Paths: slices.Clone(s.Paths)}, nil
+		return explicitPluginSources(s.Paths)
 	}
 	if s.Disabled && s.LockFile == "" {
 		return PluginSources{}, nil
@@ -347,7 +350,7 @@ func (s *PluginSources) Hydrate(ctx context.Context) error {
 	}
 	artifacts := make(map[string]*pluginartifact.Artifact, len(s.lock.Plugins))
 	for _, pin := range s.lock.Plugins {
-		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), artifactOptions())
+		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), s.artifactOptions(pin.Source()))
 		if err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
@@ -360,7 +363,7 @@ func (s *PluginSources) Hydrate(ctx context.Context) error {
 		if !slices.Contains(s.Paths, pin.Source()) {
 			continue
 		}
-		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), artifactOptions())
+		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), s.artifactOptions(pin.Source()))
 		if err != nil {
 			return err
 		}

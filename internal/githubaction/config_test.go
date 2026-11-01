@@ -129,7 +129,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 }
 
 func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
-	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": brokenWorkflow})
+	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": "on: [\n"})
 	output := filepath.Join(t.TempDir(), "outputs")
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_ANNOTATIONS": "false"}
 	var out strings.Builder

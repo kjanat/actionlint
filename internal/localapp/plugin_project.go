@@ -39,11 +39,11 @@ func (p *PluginProject) DirectSources() []string {
 // SyncDirect restores directly declared artifacts without registry resolution.
 func (p *PluginProject) SyncDirect(ctx context.Context) error {
 	for _, source := range p.DirectSources() {
-		if _, err := artifact.Resolve(ctx, source, artifactOptions()); err != nil {
+		if _, err := artifact.Resolve(ctx, source, p.artifactOptions()); err != nil {
 			return err
 		}
 		if artifact.IsOCI(source) {
-			if err := oci.PullLayers(ctx, source, artifactOptions()); err != nil {
+			if err := oci.PullLayers(ctx, source, p.artifactOptions()); err != nil {
 				return err
 			}
 		}
@@ -125,7 +125,7 @@ func (p *PluginProject) selectedPins(ctx context.Context, refs []pluginref.Refer
 			continue
 		}
 		if digest := ref.CandidateDigest(); digest != "" {
-			client, err := pluginregistry.New(ref.Registry())
+			client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions.Network)
 			if err != nil {
 				return pluginregistry.Lock{}, err
 			}
@@ -152,7 +152,7 @@ func (p *PluginProject) selectedPins(ctx context.Context, refs []pluginref.Refer
 				continue
 			}
 		}
-		client, err := pluginregistry.New(ref.Registry())
+		client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions.Network)
 		if err != nil {
 			return pluginregistry.Lock{}, err
 		}
@@ -172,7 +172,7 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
-			pulled, err := artifact.Resolve(ctx, source, artifactOptions())
+			pulled, err := artifact.Resolve(ctx, source, p.artifactOptions())
 			if err != nil {
 				return err
 			}
@@ -183,13 +183,13 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 				}
 			}
 			if artifact.IsOCI(source) {
-				if err := oci.PullLayers(ctx, source, artifactOptions()); err != nil {
+				if err := oci.PullLayers(ctx, source, p.artifactOptions()); err != nil {
 					return err
 				}
 			}
 			continue
 		}
-		client, err := pluginregistry.New(ref.Registry())
+		client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions.Network)
 		if err != nil {
 			return err
 		}
@@ -234,26 +234,30 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 		if err := p.original.CheckResolved(pin, ref); err != nil {
 			return err
 		}
+		if err := p.Lock.CheckResolved(pin, ref); err != nil {
+			return err
+		}
 		if err := p.checkConfiguredRelease(ctx, pin, ref); err != nil {
 			return err
 		}
 		selected = append(selected, pin)
 	}
-	p.Lock.Lock.Plugins, p.Lock.Lock.Sources = selected, nil
-	if err := p.Lock.Lock.Validate(); err != nil {
+	next := p.Lock.Lock
+	next.Plugins, next.Sources = selected, nil
+	if err := next.Validate(); err != nil {
 		return err
 	}
-	if err := p.Lock.Lock.CheckStatuses(ctx, p.StatusOptions); err != nil {
+	if err := next.CheckStatuses(ctx, p.StatusOptions); err != nil {
 		return err
 	}
-	if err := SyncPlugins(ctx, p.Lock.Lock); err != nil {
+	if err := SyncPlugins(ctx, next); err != nil {
 		return err
 	}
-	for _, pin := range p.Lock.Lock.Plugins {
+	for _, pin := range next.Plugins {
 		if pin.Origin != "candidate" {
 			continue
 		}
-		client, err := pluginregistry.New(pin.Registry)
+		client, err := pluginregistry.NewWithGrant(pin.Registry, p.StatusOptions.Network)
 		if err != nil {
 			return err
 		}
@@ -262,6 +266,7 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 			return err
 		}
 	}
+	p.Lock.Lock = next
 	return nil
 }
 
@@ -273,7 +278,7 @@ func (p *PluginProject) checkConfiguredRelease(ctx context.Context, pin pluginre
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
 			continue
 		}
-		client, err := pluginregistry.New(configured.Registry())
+		client, err := pluginregistry.NewWithGrant(configured.Registry(), p.StatusOptions.Network)
 		if err != nil {
 			return err
 		}
@@ -322,7 +327,7 @@ func (p *PluginProject) resolvedDeclarations(ctx context.Context, refs []pluginr
 			resolved = append(resolved, ref)
 			continue
 		}
-		client, err := pluginregistry.New(selected.Registry)
+		client, err := pluginregistry.NewWithGrant(selected.Registry, p.StatusOptions.Network)
 		if err != nil {
 			return nil, err
 		}
