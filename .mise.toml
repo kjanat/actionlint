@@ -8,15 +8,28 @@ command = "go"
 args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
+[wrappers.poutine]
+command = "docker"
+args    = ["run", "-qt", "--rm", "--pull=always", "-eGH_TOKEN", "ghcr.io/boostsecurityio/poutine:latest"]
+env     = { GH_TOKEN = "{{ exec(command='gh auth token') | default(value='') }}" }
+
+[wrappers.modernize]
+command = "go"
+args    = ["run", "golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest"]
+
 [tools]
 npm                               = "12.2.0"
-go                                = { prefix = "1.27" }
-node                              = { prefix = "26" }
+go                                = "1.27.3"
+node                              = "26"
 shellcheck                        = { prefix = "0.11" }
-rshellcheck                       = { version = "latest" }
+rshellcheck                       = "latest"
+grype                             = "latest"
 ruff                              = "0.17.0"
+syft                              = "latest"
 tinygo                            = { prefix = "0.43" }
 wasm-tools                        = "latest"
+yamllint                          = "latest"
+zizmor                            = "latest"
 "github:charmbracelet/markscribe" = { prefix = "0.8" }
 "github:jgm/pandoc"               = { prefix = "3" }
 "github:kjanat/runner"            = { prefix = "0.28" }
@@ -37,8 +50,7 @@ version = "latest"
 depends = ["rshellcheck"]
 
 [tools."github:kjanat/dprint"]
-version = "0.60.5-kjanat"
-depends = ["tombi", "go"]
+version = "0.60.6-kjanat"
 
 [tool_alias]
 tombi       = "github:tombi-toml/tombi"
@@ -69,7 +81,9 @@ run  = "go mod tidy -diff"
 alias       = ["f", "fmt"]
 description = "Format code"
 run         = "dprint fmt"
-tools       = { tombi = { prefix = "1.9" } }
+
+[tasks.go-modernize]
+run = "modernize -fix ./..."
 
 [monorepo]
 config_roots = [
