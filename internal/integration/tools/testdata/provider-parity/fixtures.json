@@ -239,7 +239,7 @@
       "\u003crepository\u003e/testdata/err/evaluated_template.yaml": {
         "revision": {
           "document": "\u003crepository\u003e/testdata/err/evaluated_template.yaml",
-          "digest": "308626f414f6e45f8c90ca2e7432990787b5da7e15ff8ef5e0a6d73952a42d4c"
+          "digest": "af3f2ae479e9cfd5387883f971e8aaf1ea22558f167bd727bfc0704f986bbe5d"
         },
         "coordinates": "yaml",
         "coordinates_available": true

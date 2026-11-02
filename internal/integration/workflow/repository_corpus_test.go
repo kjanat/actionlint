@@ -40,6 +40,7 @@ func TestRepositoryWorkflowSyntax(t *testing.T) {
 	for _, name := range []string{
 		"actions-rs", "actup-autofix", "shellcheck-wiki", "runny-matrix-insertion",
 		"runny-conditions", "runner-release", "svg-release", "vw-release",
+		"kp2bw-windows-bw-cmd",
 	} {
 		t.Run(name, func(t *testing.T) { parseRepositoryWorkflow(t, name) })
 	}
@@ -49,13 +50,86 @@ func TestRepositoryWorkflowAnalysis(t *testing.T) {
 	for _, name := range []string{
 		"actup-autofix", "shellcheck-wiki", "runny-matrix-insertion",
 		"runner-release", "svg-release", "vw-release",
+		"kp2bw-windows-bw-cmd",
 	} {
 		t.Run(name, func(t *testing.T) {
 			findings := testutil.WorkflowDiagnostics(t, string(repositoryWorkflowSource(t, name)), "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}")
+			if name == "kp2bw-windows-bw-cmd" {
+				if len(findings) != 1 || findings[0].Severity != "info" || findings[0].Rule != "expression-call" || findings[0].Code != "permissive-json" || findings[0].Message != "you naughty boy, I see you" || findings[0].Start.Line != 24 {
+					t.Fatalf("expected only the loose JSON information: %v", findings)
+				}
+				return
+			}
 			if len(findings) != 0 {
 				t.Fatalf("unexpected repository workflow findings: %v", findings)
 			}
 		})
+	}
+}
+
+func TestKP2BWWindowsMatrix(t *testing.T) {
+	workflow := parseRepositoryWorkflow(t, "kp2bw-windows-bw-cmd")
+	job := workflow.Jobs["cmd-shim"]
+	if job == nil || job.RunsOn == nil || job.Defaults == nil || job.Defaults.Run == nil || job.Defaults.Run.Shell == nil || job.Defaults.Run.Shell.Value != "pwsh" {
+		t.Fatal("Windows job or PowerShell defaults were not recognized")
+	}
+	if len(job.RunsOn.Labels) != 1 || job.RunsOn.Labels[0].Value != "windows-latest" {
+		t.Fatalf("Windows runner selection was not recognized: %+v", job.RunsOn)
+	}
+	combinations, known := matrix.Resolve(job.Strategy).Combinations(16)
+	if !known || len(combinations) != 4 {
+		t.Fatalf("expected four known matrix combinations, got known=%v rows=%v", known, combinations)
+	}
+	action, ok := job.Steps[1].Exec.(*workflowlang.ExecAction)
+	if !ok || len(action.InputInsertions) != 1 || action.InputInsertions[0].Expression == nil {
+		t.Fatalf("mise action's dynamic input insertion was not recognized: %+v", job.Steps[1])
+	}
+	seen := make(map[string]bool)
+	for _, combination := range combinations {
+		pm, _ := combination.Get("pm")
+		cli, _ := combination.Get("cli")
+		packageManager, pmKnown := pm.Text()
+		command, cliKnown := cli.Text()
+		if !pmKnown || !cliKnown || pm.Kind() != value.String || cli.Kind() != value.String {
+			t.Fatalf("matrix axes lost their string type or value: %v", combination)
+		}
+		seen[packageManager+"/"+command] = true
+		tools, hasTools := combination.Get("tools")
+		if packageManager == "bun" {
+			if tool, known := tools.Text(); !hasTools || !known || tool != "bun" || tools.Kind() != value.String {
+				t.Fatalf("JSONC include lost its bun tool: %v", combination)
+			}
+		} else if hasTools {
+			t.Fatalf("bun-only tools leaked into npm row: %v", combination)
+		}
+		inputs := combination.Evaluate(action.InputInsertions[0].Expression.Value)
+		installArgs, present := inputs.Prop("install_args")
+		wantArgs := "nodejs uv python "
+		if packageManager == "bun" {
+			wantArgs += "bun"
+		}
+		if got, known := installArgs.Text(); !inputs.Known() || inputs.Kind() != value.Object || !present || !known || got != wantArgs {
+			t.Fatalf("%s/%s install_args: got %v, want %q", packageManager, command, inputs, wantArgs)
+		}
+		wantPackage := "@bitwarden/cli"
+		if command == "vw" {
+			wantPackage = "@kjanat/vaultwarden-cli"
+		}
+		if job.Env == nil || len(job.Env.Vars) != 2 {
+			t.Fatal("job environment declarations were not recognized")
+		}
+		for _, variable := range job.Env.Vars {
+			want := map[string]string{"KP2BW_CLI": command, "CLI_PACKAGE": wantPackage}[variable.Name.Value]
+			resolved := combination.Evaluate(variable.Value.Value)
+			if got, known := resolved.Text(); !known || got != want {
+				t.Fatalf("%s/%s %s: got %v, want %q", packageManager, command, variable.Name.Value, resolved, want)
+			}
+		}
+	}
+	for _, key := range []string{"npm/bw", "npm/vw", "bun/bw", "bun/vw"} {
+		if !seen[key] {
+			t.Errorf("matrix combination %s was not inferred", key)
+		}
 	}
 }
 
@@ -144,15 +218,16 @@ func TestRunnyConditionExecution(t *testing.T) {
 func TestActionsRsNestedExpressionDiagnostics(t *testing.T) {
 	source := repositoryWorkflowSource(t, "actions-rs")
 	findings := testutil.WorkflowDiagnostics(t, string(source), "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}")
-	// The two constant job conditions are truthy. The inner fromJSON argument
-	// deliberately contains non-JSON syntax; parsing this YAML must not conceal it.
-	truthy, invalidJSON, scriptValues := 0, 0, 0
+	// The two constant job conditions are truthy. The inner fromJSON uses valid
+	// loose runner syntax, verified against both Runny engines; it is not an error.
+	truthy, scriptValues, information := 0, 0, 0
 	for _, finding := range findings {
 		switch {
+		case finding.Rule == "expression-call" && finding.Code == "permissive-json" && finding.Severity == "info" &&
+			finding.Message == "you naughty boy, I see you" && finding.Start.Line == 39:
+			information++
 		case finding.Rule == "if-cond" && strings.Contains(finding.Message, "always truthy"):
 			truthy++
-		case finding.Rule == "expression-call" && finding.Code == "invalid-json":
-			invalidJSON++
 		case finding.Rule == "script-interpolation" && finding.Code == "unknown-script-value" &&
 			(finding.Start.Line == 65 || finding.Start.Line == 76) && strings.Contains(finding.Snippet, "dependencies.actions-rs.path"):
 			// A workspace path is unconstrained text inserted into a TOML string.
@@ -162,8 +237,8 @@ func TestActionsRsNestedExpressionDiagnostics(t *testing.T) {
 			t.Errorf("unexpected finding: %v", finding)
 		}
 	}
-	if truthy != 2 || invalidJSON != 1 || scriptValues != 2 {
-		t.Fatalf("want two truthy conditions, one invalid JSON argument and two script substitutions, got %v", findings)
+	if truthy != 2 || scriptValues != 2 || information != 1 {
+		t.Fatalf("want two truthy conditions, two script substitutions and one information diagnostic, got %v", findings)
 	}
 	workflow := parseRepositoryWorkflow(t, "actions-rs")
 	roundTrip := workflow.Jobs["round-trip"]

@@ -175,8 +175,16 @@ func (rule *Checker) checkContainer(c workflowdecl.ContainerView, workflowKey, c
 		if c.Credentials().Expression().Present() {
 			rule.checkWorkflowExpression(c.Credentials().Expression(), "credentials", k, schema.Credentials)
 		} else {
-			rule.checkString(c.Credentials().Username(), k)
-			rule.checkString(c.Credentials().Password(), k)
+			for _, field := range []struct {
+				name  string
+				value workflowdecl.StringView
+			}{{"username", c.Credentials().Username()}, {"password", c.Credentials().Password()}} {
+				if field.value.IsExpressionAssigned() {
+					rule.checkWorkflowExpression(field.value, "credentials."+field.name, k, schema.NonEmpty)
+				} else {
+					rule.checkString(field.value, k)
+				}
+			}
 		}
 	}
 	rule.checkEnv(c.Env(), childWorkflowKey+".env.<env_id>") // e.g. jobs.<job_id>.container.env.<env_id>
@@ -385,10 +393,16 @@ func (rule *Checker) checkIfCondition(str workflowdecl.StringView, workflowKey s
 
 func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
 	for _, t := range ts {
-		switch t.ty.Kind() {
-		case exprlang.KindObject, exprlang.KindArray, exprlang.KindNull:
-			rule.Errorf(&t.pos, "object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type %s", t.ty)
-		case exprlang.KindAny, exprlang.KindNumber, exprlang.KindBool, exprlang.KindString:
+		ty := t.templateInvalid
+		if ty.Kind() == exprlang.KindAny {
+			ty = t.ty
+		}
+		switch ty.Kind() {
+		case exprlang.KindObject, exprlang.KindArray:
+			rule.Errorf(&t.pos, "object and array values should not be evaluated in template with ${{ }} but evaluating the value of type %s", ty)
+		case exprlang.KindAny, exprlang.KindNumber, exprlang.KindBool, exprlang.KindString, exprlang.KindNull:
+			// The runner converts null to the empty string, including missing
+			// matrix members. Script-position checks still guard that insertion.
 		}
 	}
 }
@@ -417,16 +431,20 @@ func (rule *Checker) checkScriptString(str workflowdecl.StringView, workflowKey 
 		return
 	}
 
-	previous, previousPosition := rule.scriptScalarArgs, rule.scriptPosition
+	previous, previousLists, previousPosition := rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptPosition
 	rule.scriptScalarArgs = nil
+	rule.scriptWordLists = nil
 	rule.scriptPosition = exprlang.ScriptUnknownPosition
 	if len(shell) > 0 {
-		rule.scriptScalarArgs = scalarScriptArguments(str.Value(), shell[0])
+		proofs := proveScriptArguments(str.Value(), shell[0])
+		rule.scriptScalarArgs, rule.scriptWordLists = proofs.scalars, proofs.wordLists
 		if _, ok := scriptShellVariant(shell[0]); ok {
 			rule.scriptPosition = exprlang.ScriptShellWord
 		}
 	}
-	defer func() { rule.scriptScalarArgs, rule.scriptPosition = previous, previousPosition }()
+	defer func() {
+		rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptPosition = previous, previousLists, previousPosition
+	}()
 	ts, ok := rule.checkExprsIn(str.Value(), viewPosition(str), str.Quoted(), true, workflowKey)
 	if !ok {
 		return

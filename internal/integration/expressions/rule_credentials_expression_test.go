@@ -105,6 +105,7 @@ func TestCredentialsKnownPasswordExpressions(t *testing.T) {
 		{"computed secret password", "${{ fromJSON(secrets.CREDENTIALS).password }}", ""},
 		{"invalid known type", "${{ fromJSON('{}') }}", "expression"},
 		{"invalid null", "${{ null }}", "expression"},
+		{"invalid empty string", "${{ '' }}", "expression"},
 		{"malformed expression", "${{ fromJSON( }}", "expression-syntax"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -127,6 +128,29 @@ jobs:
 				}
 			} else if len(errs) != 1 || errs[0].Rule != tc.kind || errs[0].Start.Line != 9 {
 				t.Fatalf("want one %s diagnostic at password, got %v", tc.kind, errs)
+			}
+		})
+	}
+}
+
+func TestCredentialsKnownUsernameExpressions(t *testing.T) {
+	for _, value := range []string{"${{ null }}", "${{ '' }}"} {
+		t.Run(value, func(t *testing.T) {
+			source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: node:22
+      credentials:
+        username: ` + value + `
+        password: ${{ secrets.PASSWORD }}
+    steps:
+      - run: echo ok
+`
+			findings := lintCredentialsExpressionTest(t, source)
+			if len(findings) != 1 || findings[0].Rule != "expression" || findings[0].Start.Line != 8 || !strings.Contains(findings[0].Message, "credentials.username") {
+				t.Fatalf("empty username escaped its field schema: %v", findings)
 			}
 		})
 	}

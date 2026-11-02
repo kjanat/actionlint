@@ -42,11 +42,19 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 		if offsetAfter == 0 {
 			return nil, true
 		}
+		templateInvalid := exprlang.AnyType()
+		if ok {
+			inferred, invalid, known := rule.expressionType("${{" + s[:offsetAfter])
+			templateInvalid = invalid
+			if known {
+				ty = inferred
+			}
+		}
 		position := workflowlang.Pos{Line: line, Col: col - 3}
 		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
 			position = *mapped
 		}
-		ts = append(ts, typedExpr{ty, position})
+		ts = append(ts, typedExpr{ty: ty, pos: position, templateInvalid: templateInvalid})
 
 		s = s[offsetAfter:]
 		offset += offsetAfter
@@ -56,6 +64,10 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 }
 
 func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
+	rule.exprFinding(err, lineBase, colBase, "")
+}
+
+func (rule *Checker) exprFinding(err *exprlang.Error, lineBase, colBase int, severity string) {
 	if rule.compositeScript && err.Rule != "script-injection" && err.Rule != "script-interpolation" {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
@@ -63,7 +75,7 @@ func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
 	if kind == "" {
 		kind = "expression"
 	}
-	r := report{rule: kind, code: err.Code, message: err.Message, start: convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)}
+	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)}
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		r.start = *mapped
 		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
@@ -125,8 +137,14 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
 	}
 	ty, errs := c.Check(expr)
+	for _, finding := range exprlang.PermissiveJSONCalls(expr) {
+		rule.exprFinding(finding, line, col, "info")
+	}
 	canCheckInterpolation := len(errs) == 0 || rule.options.ScriptInjectionDisabled && !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule != "script-injection" })
-	if checkUntrusted && canCheckInterpolation {
+	// Serialized scalars still require a data-argument position. A closed
+	// string such as toJSON(null) must not bypass that check in eval or sh -c.
+	closedArgumentList := checkUntrusted && canCheckInterpolation && !c.IsScriptScalar(expr) && rule.scriptWordLists[rule.expressionOffset-3] && rule.safeScriptArgumentList(expr)
+	if checkUntrusted && canCheckInterpolation && !closedArgumentList {
 		scalarArgument := rule.scriptScalarArgs[rule.expressionOffset-3]
 		position := rule.scriptPosition
 		if scalarArgument {

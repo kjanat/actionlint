@@ -2,11 +2,30 @@ package expression
 
 import (
 	"encoding/json"
-	"errors"
-	"io"
 	"strings"
 	"unicode"
 )
+
+// PermissiveJSONCalls locates known fromJSON arguments accepted only by the
+// runner's loose reader. It does not change semantic validity or inferred types.
+func PermissiveJSONCalls(expr Node) []*Error {
+	var findings []*Error
+	Visit(expr, func(node, _ Node, entering bool) {
+		call, ok := node.(*FuncCallNode)
+		if !entering || !ok || !strings.EqualFold(call.Callee, "fromJSON") || len(call.Args) != 1 {
+			return
+		}
+		value, known := ConditionConstantValue(call.Args[0])
+		text, isString := value.(string)
+		if !known || !isString || json.Valid([]byte(text)) {
+			return
+		}
+		if _, _, err := readFromJSON(text); err == nil || err == errFromJSONUnsupported {
+			findings = append(findings, errorAtExpr(permissiveJSON, call.Args[0], "you naughty boy, I see you"))
+		}
+	})
+	return findings
+}
 
 type jsonMemberCollision struct {
 	First, Second string
@@ -25,58 +44,12 @@ func ordinalIgnoreCaseKey(s string) string {
 	}, s)
 }
 
-// JSONMemberCollisions finds case-insensitive duplicate keys in JSON objects.
+// JSONMemberCollisions finds case-insensitive duplicate keys in the first value
+// read by fromJSON. Invalid input is diagnosed by the shared reader instead.
 func JSONMemberCollisions(source string) []jsonMemberCollision {
-	dec := json.NewDecoder(strings.NewReader(source))
-	dec.UseNumber()
-	var collisions []jsonMemberCollision
-	var walk func(int) error
-	walk = func(depth int) error {
-		if depth > 10000 {
-			return errors.New("JSON nesting exceeds maximum depth")
-		}
-		token, err := dec.Token()
-		if err != nil {
-			return err
-		}
-		switch token {
-		case json.Delim('{'):
-			seen := map[string]string{}
-			for dec.More() {
-				token, err := dec.Token()
-				if err != nil {
-					return err
-				}
-				key, ok := token.(string)
-				if !ok {
-					return errors.New("JSON object member is not a string")
-				}
-				folded := ordinalIgnoreCaseKey(key)
-				if first, ok := seen[folded]; ok {
-					collisions = append(collisions, jsonMemberCollision{first, key, dec.InputOffset()})
-				} else {
-					seen[folded] = key
-				}
-				if err := walk(depth + 1); err != nil {
-					return err
-				}
-			}
-			_, err = dec.Token()
-		case json.Delim('['):
-			for dec.More() {
-				if err := walk(depth + 1); err != nil {
-					return err
-				}
-			}
-			_, err = dec.Token()
-		}
-		return err
-	}
-	if walk(0) != nil {
-		return nil // The JSON syntax check owns malformed input diagnostics.
-	}
-	if _, err := dec.Token(); err != io.EOF {
-		return nil // Reject trailing garbage and additional JSON values as well.
+	_, collisions, err := readFromJSON(source)
+	if err != nil && err != errFromJSONUnsupported {
+		return nil
 	}
 	return collisions
 }

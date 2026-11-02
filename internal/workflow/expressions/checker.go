@@ -15,6 +15,8 @@ import (
 type typedExpr struct {
 	ty  exprlang.Type
 	pos workflowlang.Pos
+	// A known row can be invalid in a template even when other rows merge to any.
+	templateInvalid exprlang.Type
 }
 
 // Checker validates expression syntax and types in workflow declarations.
@@ -43,6 +45,7 @@ type Checker struct {
 	scriptSources    map[workflowlang.Pos]workflowdecl.ScriptSourceView
 	expressionOffset int
 	scriptScalarArgs map[int]bool
+	scriptWordLists  map[int]bool
 	scriptPosition   exprlang.ScriptPosition
 	scriptJob        workflowdecl.JobView
 	compositeScript  bool
@@ -81,10 +84,11 @@ func New(dependencies Dependencies, options Options) *Checker {
 func (rule *Checker) Configure(options Options) { rule.options = options }
 
 // report is the stored form of an expression finding. Expression findings only
-// carry a rule, code, message and source range, so they are held as plain
+// carry a rule, code, severity, message and source range, so they are held as plain
 // values; every reader receives fresh findings and cannot alter the checker's.
 type report struct {
 	rule, code, message string
+	severity            string
 	start, end          workflowlang.Pos
 	// hasEnd records whether the expression mapped an inclusive end position.
 	hasEnd bool
@@ -93,6 +97,7 @@ type report struct {
 func (r report) finding() *findingmodel.Finding {
 	finding := findingmodel.At(&r.start, r.rule, r.message)
 	finding.Code = r.code
+	finding.Severity = r.severity
 	if r.hasEnd {
 		end := r.end
 		finding.EndPosition = &end

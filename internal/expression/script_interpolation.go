@@ -82,7 +82,24 @@ func (sema *Checker) scriptReferenceType(node Node) (ty Type, known bool) {
 // its contents to introduce those constructs; it does not validate the command.
 func SafeScriptLiteral(value string) bool {
 	for _, r := range value {
-		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_./:-", r) {
+		if scriptLiteralCharacter(r) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func scriptLiteralCharacter(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_./:-", r)
+}
+
+// SafeScriptArguments recognizes literal shell words separated by horizontal
+// whitespace. It requires an independent proof that insertion occupies a whole
+// command argument; it is not safe in command, assignment or redirection syntax.
+func SafeScriptArguments(value string) bool {
+	for _, r := range value {
+		if r == ' ' || r == '\t' || scriptLiteralCharacter(r) {
 			continue
 		}
 		return false
@@ -131,10 +148,10 @@ func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, position Scrip
 		return unsafeScalarScriptInterpolation(expr)
 	}
 	switch ty.Kind() {
-	case KindNull, KindObject, KindArray:
+	case KindObject, KindArray:
 		// Template type validation already rejects these values in every position.
 		return nil
-	case KindBool, KindNumber:
+	case KindBool, KindNumber, KindNull:
 		if scalarArgument {
 			return nil
 		}

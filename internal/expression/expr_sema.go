@@ -1,8 +1,6 @@
 package expression
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -1094,21 +1092,22 @@ func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) T
 		if !ok {
 			return sig.Ret
 		}
-		collisions := JSONMemberCollisions(lit.Value)
+		value, collisions, err := readFromJSON(lit.Value)
+		if err != nil && err != errFromJSONUnsupported {
+			if syntax, ok := err.(*fromJSONError); ok {
+				sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON() at offset %d: %s", syntax.Offset, syntax)
+			} else {
+				sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON(): %s", err)
+			}
+			return sig.Ret
+		}
 		for _, collision := range collisions {
 			sema.errorf(jsonCollision, lit, "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)
 		}
-		if len(collisions) > 0 {
+		if len(collisions) > 0 || err != nil {
 			return sig.Ret
 		}
-		var v any
-		err := json.Unmarshal([]byte(lit.Value), &v)
-		if err == nil {
-			return TypeOfJSONValue(v)
-		}
-		if s, ok := errors.AsType[*json.SyntaxError](err); ok {
-			sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON() at offset %d: %s", s.Offset, s)
-		}
+		return TypeOfJSONValue(value)
 	case "case":
 		if len(n.Args)%2 == 0 {
 			sema.calleeErrorf(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))

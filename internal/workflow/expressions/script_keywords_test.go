@@ -79,8 +79,19 @@ func TestScriptKeywordNeedsDataArgument(t *testing.T) {
 					want = 1
 				}
 				findings := rule.Findings()
-				if len(findings) != want || want == 1 && (findings[0].Rule != "script-interpolation" || findings[0].Code != "unknown-script-value") {
-					t.Fatalf("want %d interpolation findings, got %+v", want, findings)
+				if len(findings) != want {
+					t.Fatalf("want %d findings, got %+v", want, findings)
+				}
+				interpolations := 0
+				for _, finding := range findings {
+					if finding.Rule == "script-interpolation" && finding.Code == "unknown-script-value" && tc.unsafe {
+						interpolations++
+						continue
+					}
+					t.Fatalf("unexpected diagnostic: %+v", finding)
+				}
+				if tc.unsafe && interpolations != 1 {
+					t.Fatalf("lost independent diagnostics: %+v", findings)
 				}
 			})
 		}

@@ -87,12 +87,18 @@ func directShellScript(arguments []string) bool {
 	return false
 }
 
-// Scalar exceptions cover echo/printf data arguments in parsed POSIX shells.
-// This proves lexical position, not runtime command identity or argument semantics.
-func scalarScriptArguments(source, shell string) map[int]bool {
+type scriptArgumentProofs struct {
+	scalars   map[int]bool
+	wordLists map[int]bool
+}
+
+// Scalar exceptions cover echo/printf data arguments. Closed literal word lists
+// may occupy a whole literal argument of a statically named command. Neither
+// proof validates the command's own argument semantics.
+func proveScriptArguments(source, shell string) scriptArgumentProofs {
 	variant, ok := scriptShellVariant(shell)
 	if !ok {
-		return nil
+		return scriptArgumentProofs{}
 	}
 	masked := []byte(source)
 	type span struct{ first, last int }
@@ -105,7 +111,7 @@ func scalarScriptArguments(source, shell string) map[int]bool {
 		first := offset + index
 		lexer := exprlang.NewLexer(source[first+3:])
 		if _, err := exprlang.NewParser().Parse(lexer); err != nil {
-			return nil
+			return scriptArgumentProofs{}
 		}
 		last := first + 3 + lexer.Offset()
 		expressions = append(expressions, span{first, last})
@@ -118,22 +124,20 @@ func scalarScriptArguments(source, shell string) map[int]bool {
 		offset = last
 	}
 	if len(expressions) == 0 {
-		return nil
+		return scriptArgumentProofs{}
 	}
 	file, err := syntax.NewParser(syntax.Variant(variant)).Parse(strings.NewReader(string(masked)), "")
 	if err != nil {
-		return nil
+		return scriptArgumentProofs{}
 	}
-	positions := make(map[int]bool)
+	proofs := scriptArgumentProofs{scalars: map[int]bool{}, wordLists: map[int]bool{}}
 	syntax.Walk(file, func(node syntax.Node) bool {
 		call, ok := node.(*syntax.CallExpr)
 		if !ok || len(call.Args) < 2 {
 			return true
 		}
 		command := call.Args[0].Lit()
-		if command != "echo" && command != "printf" {
-			return true
-		}
+		staticCommand := command != "" && !strings.Contains(source[call.Args[0].Pos().Offset():call.Args[0].End().Offset()], "${{")
 		for _, argument := range call.Args[1:] {
 			if !literalScriptWord(argument.Parts) {
 				continue
@@ -144,12 +148,40 @@ func scalarScriptArguments(source, shell string) map[int]bool {
 				if expression.last > last {
 					break
 				}
-				positions[expression.first] = true
+				if command == "echo" || command == "printf" {
+					proofs.scalars[expression.first] = true
+				}
+				if staticCommand && wholeLiteralArgument(argument, expression.first, expression.last) {
+					proofs.wordLists[expression.first] = true
+				}
 			}
 		}
 		return true
 	})
-	return positions
+	return proofs
+}
+
+func wholeLiteralArgument(argument *syntax.Word, expressionFirst, expressionLast int) bool {
+	if len(argument.Parts) != 1 {
+		return false
+	}
+	first, last := int(argument.Pos().Offset()), int(argument.End().Offset())
+	switch part := argument.Parts[0].(type) {
+	case *syntax.Lit:
+	case *syntax.SglQuoted:
+		if part.Dollar {
+			return false
+		}
+		first, last = first+1, last-1
+	case *syntax.DblQuoted:
+		if part.Dollar || !literalScriptWord(part.Parts) {
+			return false
+		}
+		first, last = first+1, last-1
+	default:
+		return false
+	}
+	return first == expressionFirst && last == expressionLast
 }
 
 func literalScriptWord(parts []syntax.WordPart) bool {

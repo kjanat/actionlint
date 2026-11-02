@@ -19,8 +19,8 @@ every interpolation safe: `${{ inputs.flag }}` as a command can execute `true` o
 to `echo` or `printf` in successfully parsed Bash or POSIX shell scripts. It honors
 step, job and workflow shell selection. Command names, redirections, expansions,
 other commands and unsupported or unresolved shells receive no scalar exemption.
-Raw null values already fail template type validation; serialized null values
-follow the scalar position check.
+Null converts to an empty string. Both raw and serialized null values follow
+the scalar position check.
 
 This is a narrow syntax check, not proof of runtime command identity or behavior;
 aliases, functions and application-specific argument semantics are not modeled.
@@ -173,6 +173,12 @@ The corpus tests hexadecimal numbers, leading and trailing decimal points, singl
 | `{"role":"user","role":"admin"}` | Object with `role: "admin"`; the last duplicate key wins | [Results](expression-results/2026-09-14.md#json-duplicate-role)         |
 
 JavaScript's `JSON.parse()` rejects the first four inputs. It accepts the duplicate-key input and also keeps the last value.
+
+Actionlint uses the runner-compatible loose reader for literal validation and
+constant evaluation. For finite matrices it evaluates each row independently,
+so nested `fromJSON(format(...))` input mappings retain their property types
+without mixing values from different rows. Ambiguous member collisions and
+unsupported constructor serialization remain unknown.
 
 When input must be JSON, validate the entire document with a JSON parser and validate its shape and values. A `fromJSON()` call succeeding is not that validation. If duplicate keys must be forbidden, select a parser that explicitly rejects them.
 

@@ -1,0 +1,77 @@
+# source: https://github.com/kjanat/kp2bw/blob/258022ab2b7a25cdd39b8126ca14295e879c09cb/.github/workflows/windows-bw-cmd.yml
+# covers: JSONC matrix includes, nested format/fromJSON/toJSON/join, dynamic action inputs, Windows PowerShell scripts
+# oracle: Runny 0.3.0, runner 1ba885c2065fd9be317808ab3fd406f392635cf7; next/loose strategy with anchors, legacy+next/loose expressions
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Windows CLI launchers
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request: { paths-ignore: &pi ["**/*.md", "**/*dprint*", "**/*docker*"] }
+  push: { branches: [master], paths-ignore: *pi }
+permissions: {}
+jobs:
+  cmd-shim:
+    runs-on: windows-latest
+    permissions: { contents: read }
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        pm: [npm, bun]
+        cli: [bw, vw]
+        include:
+          - ${{ fromJSON('[/* npm ships inside nodejs */ {pm:''bun'', tools:''bun''},] that is all, folks') }}
+    env:
+      KP2BW_CLI: ${{ matrix.cli }}
+      CLI_PACKAGE: ${{ matrix.cli == 'vw' && '@kjanat/vaultwarden-cli' || '@bitwarden/cli' }}
+    defaults: { run: { shell: pwsh } }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          ${{ insert }}: ${{ fromJSON(format('{{install_args:''{0}'' /* npm ships inside nodejs */,}} that is all, folks', join(fromJSON(format('[''nodejs'',''uv'',''python'',{0},] // bun, if you insist', toJSON(matrix.tools))), ' '))) }}
+      - run: mise ls --installed
+      - if: matrix.pm == 'bun'
+        run: bun pm bin -g >> $env:GITHUB_PATH
+      - run: uv sync
+
+      # npm/bun installs provide .cmd and .ps1 launchers for both CLIs.
+      - name: Install CLI via ${{ matrix.pm }}
+        env: { PM: "${{ matrix.pm }}" }
+        run: "& $env:PM install -g $env:CLI_PACKAGE"
+
+      # Diagnostic only: PowerShell's Get-Command prefers bw.ps1, but kp2bw uses
+      # Python's shutil.which (PATHEXT-aware), which resolves bw.cmd. The smoke
+      # test below is the actual gate via resolve_cli_command.
+      - name: Diagnose CLI resolution
+        run: | # Py for syntax highlighting mostly.
+          $commands = (Get-Command $env:KP2BW_CLI -All | Format-Table CommandType, Name, Source -AutoSize | Out-String).Trim()
+          $pyWhich = & python -c 'import os, shutil; print(shutil.which(os.environ["KP2BW_CLI"]))' | Out-String -NoNewline
+          $pyJoinedComments = $pyWhich.Trim().Split("`n") -join "`n# "
+          $log = @"
+          ``PATHEXT``:
+
+          ~~~python
+          $env:PATHEXT
+          ~~~
+
+          ~~~sh
+          $($commands)
+          ~~~
+
+          ~~~python
+          shutil.which("$env:KP2BW_CLI")
+          # $($pyJoinedComments)
+          ~~~
+          "@; if ($env:GITHUB_STEP_SUMMARY) { $log | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 }
+          $log
+
+      - name: Run Windows CLI launcher smoke test
+        env: { KP2BW_RUN_WIN_CMD_SMOKE: 1 }
+        run: uv run tests/windows_bw_cmd_smoke.py
+
+      - name: Check isolated npx bootstrap
+        if: matrix.cli == 'vw' && matrix.pm == 'npm'
+        run: uv run tests/npx_bootstrap_test.py

@@ -15,6 +15,7 @@ var (
 	argumentCount          = findingKind{"expression-call", "argument-count"}
 	formatPlaceholder      = findingKind{"expression-call", "format-placeholder"}
 	invalidJSON            = findingKind{"expression-call", "invalid-json"}
+	permissiveJSON         = findingKind{"expression-call", "permissive-json"}
 	jsonCollision          = findingKind{"expression-call", "json-member-collision"}
 	argumentType           = findingKind{"expression-type", "argument-type"}
 	operandType            = findingKind{"expression-type", "operand-type"}

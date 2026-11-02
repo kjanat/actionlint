@@ -1,7 +1,6 @@
 package expression
 
 import (
-	"encoding/json"
 	"math"
 	"slices"
 	"strconv"
@@ -28,7 +27,52 @@ func ExpressionTruthy(value any) bool {
 // invocation reachability. It reports unknown for unsupported functions,
 // ambiguous JSON members and mode-dependent serialization.
 func ConditionConstantValue(expr Node) (any, bool) {
+	return ExpressionValue(expr, nil)
+}
+
+// ExpressionValue evaluates the same supported operations as constant folding,
+// with a caller-supplied lookup for known context variables. A missing lookup or
+// unknown variable stays unknown; absent properties of a known object are null.
+// It never changes the parsed expression or the caller's context values.
+func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) {
 	switch n := expr.(type) {
+	case *VariableNode:
+		if variables == nil {
+			return nil, false
+		}
+		return variables(n.Name)
+	case *ObjectDerefNode:
+		receiver, known := ExpressionValue(n.Receiver, variables)
+		if !known {
+			return nil, false
+		}
+		return constantProperty(receiver, n.Property)
+	case *IndexAccessNode:
+		receiver, known := ExpressionValue(n.Operand, variables)
+		if !known {
+			return nil, false
+		}
+		index, known := ExpressionValue(n.Index, variables)
+		if !known {
+			return nil, false
+		}
+		if name, ok := index.(string); ok {
+			switch receiver.(type) {
+			case nil, map[string]any:
+				return constantProperty(receiver, name)
+			default:
+				return nil, false
+			}
+		}
+		if items, ok := receiver.([]any); ok {
+			if index, ok := index.(float64); ok && !math.IsNaN(index) && !math.IsInf(index, 0) && math.Trunc(index) == index {
+				if index < 0 || index >= float64(len(items)) {
+					return nil, true
+				}
+				return items[int(index)], true
+			}
+		}
+		return nil, false
 	case *NullNode:
 		return nil, true
 	case *BoolNode:
@@ -43,20 +87,20 @@ func ConditionConstantValue(expr Node) (any, bool) {
 	case *StringNode:
 		return n.Value, true
 	case *NotOpNode:
-		v, ok := ConditionConstantValue(n.Operand)
+		v, ok := ExpressionValue(n.Operand, variables)
 		return !ExpressionTruthy(v), ok
 	case *LogicalOpNode:
-		left, ok := ConditionConstantValue(n.Left)
+		left, ok := ExpressionValue(n.Left, variables)
 		if !ok {
 			return nil, false
 		}
 		if ExpressionTruthy(left) == (n.Kind == LogicalOpNodeKindOr) {
 			return left, true
 		}
-		return ConditionConstantValue(n.Right)
+		return ExpressionValue(n.Right, variables)
 	case *CompareOpNode:
-		left, lok := ConditionConstantValue(n.Left)
-		right, rok := ConditionConstantValue(n.Right)
+		left, lok := ExpressionValue(n.Left, variables)
+		right, rok := ExpressionValue(n.Right, variables)
 		if !lok || !rok {
 			return nil, false
 		}
@@ -67,7 +111,7 @@ func ConditionConstantValue(expr Node) (any, bool) {
 				return nil, false
 			}
 			for i := 0; i < len(n.Args)-1; i += 2 {
-				value, known := ConditionConstantValue(n.Args[i])
+				value, known := ExpressionValue(n.Args[i], variables)
 				if !known {
 					return nil, false
 				}
@@ -76,15 +120,15 @@ func ConditionConstantValue(expr Node) (any, bool) {
 					return nil, false
 				}
 				if predicate {
-					return ConditionConstantValue(n.Args[i+1])
+					return ExpressionValue(n.Args[i+1], variables)
 				}
 			}
-			return ConditionConstantValue(n.Args[len(n.Args)-1])
+			return ExpressionValue(n.Args[len(n.Args)-1], variables)
 		}
 		args := make([]any, len(n.Args))
 		for i, arg := range n.Args {
 			var ok bool
-			if args[i], ok = ConditionConstantValue(arg); !ok {
+			if args[i], ok = ExpressionValue(arg, variables); !ok {
 				return nil, false
 			}
 		}
@@ -141,10 +185,12 @@ func ConditionConstantValue(expr Node) (any, bool) {
 			return strings.Join(parts, separator), true
 		case "fromjson":
 			if len(args) == 1 {
-				if s, ok := args[0].(string); ok && len(JSONMemberCollisions(s)) == 0 {
-					var value any
-					if json.Unmarshal([]byte(s), &value) == nil {
-						return value, true
+				if s, ok := args[0].(string); ok {
+					parsed, err := parseFromJSON(s)
+					// Loose JSON erases integer -0's sign; strict JSON can keep
+					// it. Do not turn mode-dependent formatting into a constant.
+					if err == nil && len(parsed.collisions) == 0 && !parsed.integerNegativeZero {
+						return parsed.value, true
 					}
 				}
 			}
@@ -184,6 +230,26 @@ func ConditionConstantValue(expr Node) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func constantProperty(receiver any, name string) (any, bool) {
+	object, ok := receiver.(map[string]any)
+	if !ok {
+		return nil, true
+	}
+	name = ordinalIgnoreCaseKey(name)
+	var value any
+	found := false
+	for key, item := range object {
+		if ordinalIgnoreCaseKey(key) != name {
+			continue
+		}
+		if found {
+			return nil, false
+		}
+		value, found = item, true
+	}
+	return value, true
 }
 
 func constantPredicateString(value any) (string, bool) {

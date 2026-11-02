@@ -134,6 +134,20 @@ func (v Value) ScalarString() (string, bool) {
 	return "", false
 }
 
+// StringAlternatives returns complete, bounded string results for a scalar or
+// its original template. Unsupported or ambiguous values stay unknown. Known
+// values are already evaluated data and are never parsed as templates again.
+// The returned slice belongs to the caller.
+func (v Value) StringAlternatives() ([]string, bool) {
+	if text, known := v.ScalarString(); known {
+		return []string{text}, true
+	}
+	if v.State() != Dynamic || !v.Origin().FromExpression || !strings.Contains(v.Source(), "${{") {
+		return nil, false
+	}
+	return exprlang.TemplateStringAlternatives(v.Source())
+}
+
 // Spelling returns the source text a YAML literal scalar was written with,
 // such as "TRUE", "~", or "+1.2e2". Diagnostics quote it so users see their
 // own input rather than its normalized semantic value. Values not built from a

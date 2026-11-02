@@ -72,6 +72,7 @@ func TestTemplateStringNeedsShellWordProof(t *testing.T) {
 		{name: "numeric environment value", expression: `env.FD`, env: `FD: "2"`},
 		{name: "numeric matrix value", expression: `matrix.fd`, matrix: `fd: ["2"]`},
 		{name: "empty literal", expression: `''`},
+		{name: "null literal", expression: `null`},
 		{name: "empty environment value", expression: `env.WORD`, env: `WORD: ""`},
 		{name: "empty matrix value", expression: `matrix.word`, matrix: `word: [""]`},
 		{name: "optional matrix object member", expression: `matrix.item.word`, matrix: `item: [{word: echo}, {}]`},

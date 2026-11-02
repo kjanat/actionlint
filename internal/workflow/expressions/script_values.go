@@ -41,6 +41,28 @@ func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
 	return known && scriptLiteralProof(text).safe(argument)
 }
 
+func (rule *Checker) safeScriptArgumentList(node exprlang.Node) bool {
+	var values []string
+	var complete bool
+	if name, env := strings.CutPrefix(exprlang.StaticReference(node), "env."); env {
+		if !rule.scriptEnv.Present() {
+			return false
+		}
+		values, complete = rule.scriptEnv.Mapping().Lookup(name).StringAlternatives()
+	} else {
+		values, complete = exprlang.StringAlternatives(node)
+	}
+	if !complete || len(values) == 0 {
+		return false
+	}
+	for _, text := range values {
+		if !exprlang.SafeScriptArguments(text) {
+			return false
+		}
+	}
+	return true
+}
+
 func (rule *Checker) matrixResolution(strategy workflowdecl.StrategyView) matrixcheck.Resolution {
 	if !strategy.Present() {
 		return matrixcheck.Resolution{}

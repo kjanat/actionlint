@@ -20,5 +20,5 @@ jobs:
         env: ${{ matrix.env }}
       # ERROR: loose object, strict object, and array
       - run: echo "${{github.event}} ${{steps.cache.outputs}} ${{github.event.commits.*}}"
-      # ERROR: null
+      # OK: null becomes an empty string in a data argument
       - run: echo "${{null}}"

@@ -63,7 +63,7 @@ func TestScalarScriptPositions(t *testing.T) {
 		{"echo '${{ inputs.count }}'", "", false},
 	} {
 		t.Run(tc.shell+"/"+tc.script, func(t *testing.T) {
-			positions := scalarScriptArguments(tc.script, tc.shell)
+			positions := proveScriptArguments(tc.script, tc.shell).scalars
 			if safe := positions[strings.Index(tc.script, "${{")]; safe != tc.safe {
 				t.Fatalf("safe=%t, want %t: %v", safe, tc.safe, positions)
 			}
@@ -118,12 +118,24 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 	}
 }
 
-func TestNullInterpolationRetainsTemplateTypeError(t *testing.T) {
-	for _, script := range []string{"${{ null }}", "echo '${{ null }}'"} {
+func TestNullInterpolationUsesScriptPosition(t *testing.T) {
+	for _, tc := range []struct {
+		script string
+		unsafe bool
+	}{
+		{"${{ null }}", true},
+		{"eval '${{ null }}'", true},
+		{"echo '${{ null }}'", false},
+	} {
 		rule := newTestChecker()
-		rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: script, Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.run", "bash")
-		if findings := rule.Findings(); len(findings) != 1 || findings[0].Rule != "expression" || !strings.Contains(findings[0].Message, "type null") {
-			t.Fatalf("null must remain rejected by template validation without duplicate interpolation findings: %+v", findings)
+		rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: tc.script, Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.run", "bash")
+		findings := rule.Findings()
+		if tc.unsafe {
+			if len(findings) != 1 || findings[0].Rule != "script-interpolation" {
+				t.Fatalf("null in script syntax lost its position check: %+v", findings)
+			}
+		} else if len(findings) != 0 {
+			t.Fatalf("null data argument was rejected: %+v", findings)
 		}
 	}
 }
