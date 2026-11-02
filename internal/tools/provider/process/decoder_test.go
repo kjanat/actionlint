@@ -136,6 +136,44 @@ func TestSARIFDecodeEdges(t *testing.T) {
 	}
 }
 
+func TestSARIFNativeSuppressionDecisions(t *testing.T) {
+	for _, tc := range []struct {
+		name, suppressions string
+		count              int
+		invalid            bool
+	}{
+		{"unspecified", `null`, 1, false},
+		{"empty", `[]`, 1, false},
+		{"in source", `[{"kind":"inSource"}]`, 0, false},
+		{"accepted", `[{"kind":"external","status":"accepted"}]`, 0, false},
+		{"under review", `[{"kind":"inSource","status":"underReview"}]`, 1, false},
+		{"rejected", `[{"kind":"inSource","status":"rejected"}]`, 1, false},
+		{"null status", `[{"kind":"inSource","status":null}]`, 0, false},
+		{"one accepted", `[{"kind":"external","status":"rejected"},{"kind":"inSource","status":"accepted"}]`, 0, false},
+		{"not array", `{}`, 0, true},
+		{"missing kind", `[{}]`, 0, true},
+		{"unknown kind", `[{"kind":"mystery"}]`, 0, true},
+		{"unknown status", `[{"kind":"inSource","status":"mystery"}]`, 0, true},
+		{"empty status", `[{"kind":"inSource","status":""}]`, 0, true},
+		{"invalid status", `[{"kind":"inSource","status":false}]`, 0, true},
+		{"invalid after accepted", `[{"kind":"inSource","status":"accepted"},{"kind":"invalid"}]`, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stdout := `{"version":"2.1.0","runs":[{"results":[{"ruleId":"X1","message":{"text":"finding"},"suppressions":` + tc.suppressions + `,"locations":[{"physicalLocation":{"artifactLocation":{"uri":"workflow.yml"},"region":{"startLine":1}}}]}]}]}`
+			got, err := (process.SARIF{}).Decode(t.Context(), []byte(stdout), map[string]string{"filename": "workflow.yml"})
+			if tc.invalid {
+				if err == nil {
+					t.Fatal("malformed native suppression accepted")
+				}
+				return
+			}
+			if err != nil || len(got.Diagnostics) != tc.count {
+				t.Fatalf("got %+v, %v; want %d active findings", got, err, tc.count)
+			}
+		})
+	}
+}
+
 func TestSARIFRejects(t *testing.T) {
 	location := `"locations":[{"physicalLocation":{"artifactLocation":{"uri":"a"},"region":{"startLine":1}}}]`
 	for name, stdout := range map[string]string{

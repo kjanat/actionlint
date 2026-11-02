@@ -191,7 +191,14 @@ test('captured warning output maps to a finding', async () => {
 - `/config` reads optional JSON settings with type and allowed-value checks.
 - `/files` materializes captured documents in a temporary directory for file-based tools.
 - `/process` runs commands without a shell and includes JSON response decoding helpers.
-- `/sarif` decodes SARIF 2.1.0 after applying a caller-supplied URI allowlist.
+- `/sarif` decodes active SARIF 2.1.0 findings with a caller-supplied URI allowlist. Applied/accepted native suppressions are honored; rejected or under-review requests remain findings.
 - `/images` extracts static OCI references from workflow/action YAML and builds image findings.
 
 These helpers do not install scanners, admit registry entries, fetch images, or sandbox native tools. Function-level imports and examples are documented in the subpath source JSDoc.
+
+Native suppression syntax belongs to your callback or wrapped linter: process it
+from the supplied source and return active diagnostics. Actionlint applies its
+own YAML/config ignores after mapping those diagnostics. Its
+`disallow-suppressions` policy does not audit directives or filters inside an
+external tool. See [suppression ownership](../../docs/plugins.md#suppression-ownership)
+for the contract shared by process, component and embedded plugins.

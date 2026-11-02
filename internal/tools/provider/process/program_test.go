@@ -165,6 +165,18 @@ func TestInlineProgramFailureAndCancellationCleanup(t *testing.T) {
 	}
 }
 
+func TestInlineProgramCreationFailureCleanup(t *testing.T) {
+	temporary := t.TempDir()
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, temporary)
+	}
+	path, cleanup, err := materializeProgram(t.Context(), provider.InlineProgram{Filename: "../escape.mjs", Inline: "exact source\n"})
+	if err == nil || path != "" || cleanup != nil {
+		t.Fatalf("invalid filename materialized: %q, %v", path, err)
+	}
+	assertProgramsCleaned(t, temporary)
+}
+
 func TestInlineProgramReadOnlyAndEntryProbe(t *testing.T) {
 	temporary := programTempRoot(t)
 	path, cleanup, err := materializeProgram(t.Context(), provider.InlineProgram{Filename: "source.mjs", Inline: "exact source\n"})

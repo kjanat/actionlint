@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 )
@@ -20,7 +19,13 @@ func materializeProgram(ctx context.Context, program provider.InlineProgram) (pa
 	if err != nil {
 		return "", nil, err
 	}
-	path = filepath.Join(directory, program.Filename)
+	// Keep the declared filename as a suffix, including interpreter extensions.
+	// CreateTemp atomically creates a new file with mode 0600.
+	file, err := os.CreateTemp(directory, "*-"+program.Filename)
+	if err != nil {
+		return "", nil, errors.Join(err, os.Remove(directory))
+	}
+	path = file.Name()
 	cleanup = func() error {
 		var failure error
 		if err := os.Chmod(path, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -33,10 +38,6 @@ func materializeProgram(ctx context.Context, program provider.InlineProgram) (pa
 			failure = errors.Join(failure, err)
 		}
 		return failure
-	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return "", nil, errors.Join(err, cleanup())
 	}
 	_, writeErr := file.WriteString(program.Inline)
 	if err = errors.Join(writeErr, file.Close()); err != nil {

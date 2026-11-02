@@ -33,6 +33,22 @@ test('reports callback exceptions in the response envelope', async () => {
 		.toEqual({ ok: false, diagnostics: [], errors: ['check failed'] });
 });
 
+test('native directives remain source text and callbacks own their suppression decisions', async () => {
+	const source = '# native-linter: disable X1\n# actionlint-ignore example\ncheck()\n';
+	const input = JSON.stringify({ source, filename: 'snippet.txt' });
+	const reported = await executeScriptCheck(request => {
+		expect(request.source).toBe(source);
+		return [{ filename: request.filename, code: 'X1', message: 'active finding', location: { row: 3, column: 1 } }];
+	}, input);
+	expect(reported.ok).toBe(true);
+	expect(reported.diagnostics).toHaveLength(1);
+	const suppressed = await executeScriptCheck(request => {
+		expect(request.source).toBe(source);
+		return [];
+	}, input);
+	expect(suppressed).toEqual({ ok: true, diagnostics: [], errors: [] });
+});
+
 test('rejects invalid fix ranges', async () => {
 	const output = await executeScriptCheck(({ filename }) => [{
 		filename,

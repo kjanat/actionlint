@@ -77,11 +77,12 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 	var stdout []byte
 	var capturedStderr []byte
 	var err error
-	if e.OutputLimit > 0 {
+	switch {
+	case e.OutputLimit > 0:
 		stdout, capturedStderr, err = boundedCommandOutput(cmd, e.OutputLimit, e.CombineOutput, cancel)
-	} else if e.CombineOutput {
+	case e.CombineOutput:
 		stdout, err = cmd.CombinedOutput()
-	} else {
+	default:
 		stdout, err = cmd.Output()
 	}
 

@@ -1,9 +1,11 @@
 package process
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -164,6 +166,38 @@ func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
 	}
 	if _, err := checker.Analyze(t.Context(), input); err != nil || calls != 1 {
 		t.Fatal("stdin-only capture rejected", err)
+	}
+}
+
+func TestDocumentProcessRejectsChangedDiskAfterExecution(t *testing.T) {
+	input := documentInput(t, "one\n")
+	pool := analyzerhost.NewProcessPool(t.Context(), 1)
+	calls := 0
+	command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) {
+		calls++
+		if err := os.WriteFile(input.Path, []byte("changed\n"), 0o600); err != nil {
+			return nil, err
+		}
+		return []byte(`{"ok":true,"diagnostics":[{"code":"D1","message":"stale finding","location":{"row":1,"column":1}}]}`), nil
+	})
+	manifest := documentManifest(provider.ProcessSpec{Stdin: provider.StdinSource, Output: provider.Output{Format: provider.FormatEnvelope}})
+	manifest.Capabilities.Resources = []provider.Resource{provider.ResourceDirectory}
+	checker, err := NewDocumentAnalyzer(manifest, command, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := checker.Analyze(t.Context(), input)
+	if err == nil || !strings.Contains(err.Error(), "on-disk source to match captured content") || len(findings) != 0 || calls != 1 {
+		t.Fatalf("changed disk admitted stale diagnostics: %+v, %v, calls=%d", findings, err, calls)
+	}
+}
+
+func TestDocumentProcessCanceledFreshnessCheck(t *testing.T) {
+	input := documentInput(t, "one\n")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := currentDocument(ctx, input); !errors.Is(err, context.Canceled) {
+		t.Fatalf("freshness check ignored cancellation: %v", err)
 	}
 }
 

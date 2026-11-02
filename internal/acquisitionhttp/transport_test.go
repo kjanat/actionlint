@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/netip"
 	"net/url"
 	"os"
@@ -219,14 +220,20 @@ func (c *scriptedConnection) written() string {
 }
 
 func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
-	connection := &scriptedConnection{input: bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"))}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != "xn--bcher-kva.example" {
+			t.Errorf("HTTP host identity changed: %s", r.Host)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
 	var dialed []string
-	base := &http.Transport{DialContext: func(_ context.Context, _ string, address string) (net.Conn, error) {
+	base := &http.Transport{DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
 		dialed = append(dialed, address)
 		if len(dialed) == 1 {
 			return nil, errors.New("first public address unavailable")
 		}
-		return connection, nil
+		return new(net.Dialer).DialContext(ctx, network, server.Listener.Addr().String())
 	}}
 	lookups := 0
 	checked := transportFor(t, "http://bücher.example/plugin", Grant{}, base, func(_ context.Context, _ string, host string) ([]netip.Addr, error) {
@@ -248,7 +255,7 @@ func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
 	if lookups != 1 || strings.Join(dialed, ",") != "8.8.8.8:80,1.1.1.1:80" {
 		t.Fatalf("DNS/dial pinning failed: lookups=%d dialed=%v", lookups, dialed)
 	}
-	if !strings.Contains(connection.written(), "Host: xn--bcher-kva.example\r\n") || request.URL.Host != "bücher.example" || response.Request != request {
+	if request.URL.Host != "bücher.example" || response.Request != request {
 		t.Fatal("HTTP identity or original response request changed")
 	}
 	next, err := response.Request.URL.Parse("next")
@@ -490,12 +497,18 @@ func TestOwnedTransportPreservesNativeHTTP2AndExplicitDisable(t *testing.T) {
 }
 
 func TestOwnedTransportDoesNotInheritRegisteredProtocolExecutor(t *testing.T) {
-	connection := &scriptedConnection{input: bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"))}
-	base := &http.Transport{DialContext: func(_ context.Context, _ string, address string) (net.Conn, error) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != "cdn.example" {
+			t.Errorf("HTTP host identity changed: %s", r.Host)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+	base := &http.Transport{DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
 		if address != "8.8.8.8:80" {
 			t.Errorf("unpinned dial: %s", address)
 		}
-		return connection, nil
+		return new(net.Dialer).DialContext(ctx, network, server.Listener.Addr().String())
 	}}
 	base.RegisterProtocol("http", responseTransport(func(*http.Request) (*http.Response, error) {
 		t.Error("registered protocol executor inherited")

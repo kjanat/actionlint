@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -16,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
@@ -57,7 +57,7 @@ func NewDocumentAnalyzer(manifest provider.Manifest, command *analyzerhost.Comma
 }
 
 func (d *DocumentAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: d.descriptor.Descriptor.Clone(), Requires: slices.Clone(d.descriptor.Requires)}
+	return analyzer.Descriptor{Descriptor: d.descriptor.Clone(), Requires: slices.Clone(d.descriptor.Requires)}
 }
 
 func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -79,7 +79,7 @@ func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([
 		if request.Directory == "" {
 			request.Directory = filepath.Dir(input.Path)
 		}
-		if err := currentDocument(input); err != nil {
+		if err := currentDocument(ctx, input); err != nil {
 			return nil, err
 		}
 	}
@@ -89,13 +89,13 @@ func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([
 			if dependency.Reference.Document != input.Revision.Document() || dependency.Reference.Revision != input.Revision.Digest() {
 				continue
 			}
-			request.Dependencies = append(request.Dependencies, analyzer.DocumentDependency{Reference: dependency.Reference, Uses: dependency.Uses, Kind: dependency.Kind, Start: dependency.Start, End: dependency.End})
+			request.Dependencies = append(request.Dependencies, analyzer.DocumentDependency(dependency))
 		}
 	}
 	transport := analyzer.ScriptRequest{Source: input.Content, Filename: input.Path, Directory: input.Directory, Config: slices.Clone(input.Options)}
 	result, err := d.backend.run(ctx, transport, nil, &request)
 	if d.directory {
-		if freshness := currentDocument(input); freshness != nil {
+		if freshness := currentDocument(ctx, input); freshness != nil {
 			return nil, errors.Join(owned(ctx, err), freshness)
 		}
 	}
@@ -113,9 +113,9 @@ func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([
 
 // A directory-capable process can read the file instead of stdin. Refuse stale
 // disk content before running it and before binding its output to this capture.
-func currentDocument(input analyzer.Input) (err error) {
+func currentDocument(ctx context.Context, input analyzer.Input) (err error) {
 	path := input.Revision.Document()
-	file, err := os.Open(path)
+	file, err := fsread.New(ctx, nil, nil).Open(path)
 	if err != nil {
 		return fmt.Errorf("document provider cannot verify captured source on disk: %w", err)
 	}

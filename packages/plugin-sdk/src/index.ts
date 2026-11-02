@@ -27,7 +27,10 @@ export interface Fix {
 		text: string;
 	}[];
 }
-/** A finding in the submitted source. The host maps snippet positions back to YAML. */
+/**
+ * An active finding after the plugin's native suppression processing.
+ * The host maps snippet positions back to YAML, then applies actionlint ignores.
+ */
 export interface Diagnostic {
 	/** Copy request.filename so the host can bind the finding to the captured source. */
 	filename: string;
@@ -46,7 +49,7 @@ export interface Diagnostic {
 }
 /** Input to a script callback: one prepared run snippet, not a complete workflow. */
 export interface ScriptRequest {
-	/** Prepared script text. GitHub expressions may have been masked by the host. */
+	/** Prepared script text; interpret native directives here in the plugin/linter. GitHub expressions may be masked. */
 	source: string;
 	/** Virtual snippet filename selected by the provider; use it in returned findings. */
 	filename: string;
@@ -101,7 +104,7 @@ export interface DocumentDependency {
 }
 /** Input to a whole-document callback; analysis should use captured source rather than rereading it. */
 export interface DocumentRequest {
-	/** Exact captured workflow/action YAML, including comments and original spelling. */
+	/** Exact captured YAML, including comments and original spelling. Interpret native directives; the host handles actionlint ignores. */
 	source: string;
 	/** Captured document filename; copy it into each returned diagnostic. */
 	filename: string;
@@ -121,7 +124,7 @@ export type DocumentCheck = (request: DocumentRequest) => DocumentDiagnostic[] |
 
 /** Rule identity shown in diagnostics and used to select this provider's options. */
 export interface RuleDescriptor {
-	/** Stable rule/config key, for example "yamllint"; avoid collisions with other providers. */
+	/** Stable rule/config key used by host ignores, such as "yamllint". Native check identifiers belong in Diagnostic.code. */
 	name: string;
 	/** Catalogue concern, for example "correctness", "style", or "security". */
 	category: string;

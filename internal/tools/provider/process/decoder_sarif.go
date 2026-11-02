@@ -13,7 +13,8 @@ import (
 )
 
 // SARIF decodes a SARIF 2.1.0 log. Results of every run become diagnostics;
-// suppressed results and results whose kind is not "fail" are skipped.
+// applied/accepted suppressions and results whose kind is not "fail" are skipped.
+// Suppressions under review or rejected remain active findings.
 // Columns are passed through as the log reports them; the manifest's output
 // coordinates describe their unit.
 type SARIF struct{}
@@ -63,7 +64,34 @@ type sarifResult struct {
 			} `json:"region"`
 		} `json:"physicalLocation"`
 	} `json:"locations"`
-	Suppressions []struct{} `json:"suppressions"`
+	Suppressions []sarifSuppression `json:"suppressions"`
+}
+
+type sarifSuppression struct {
+	Kind   string  `json:"kind"`
+	Status *string `json:"status"`
+}
+
+func sarifSuppressed(suppressions []sarifSuppression) (bool, error) {
+	suppressed := false
+	for _, suppression := range suppressions {
+		if suppression.Kind != "inSource" && suppression.Kind != "external" {
+			return false, fmt.Errorf("invalid SARIF suppression kind %q", suppression.Kind)
+		}
+		// No review status means the producer applied its native suppression.
+		if suppression.Status == nil {
+			suppressed = true
+			continue
+		}
+		switch *suppression.Status {
+		case "accepted":
+			suppressed = true
+		case "underReview", "rejected":
+		default:
+			return false, fmt.Errorf("invalid SARIF suppression status %q", *suppression.Status)
+		}
+	}
+	return suppressed, nil
 }
 
 // Decode implements Decoder. A result whose artifact is not vars["filename"]
@@ -86,7 +114,11 @@ func (SARIF) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	var result Result
 	for _, run := range log.Runs {
 		for _, entry := range run.Results {
-			if len(entry.Suppressions) != 0 || entry.Kind != "" && entry.Kind != "fail" {
+			suppressed, err := sarifSuppressed(entry.Suppressions)
+			if err != nil {
+				return Result{}, err
+			}
+			if suppressed || entry.Kind != "" && entry.Kind != "fail" {
 				continue
 			}
 			diagnostic, err := sarifDiagnostic(run.Tool.Driver.Rules, entry, vars)

@@ -128,6 +128,9 @@ func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
 // reports reading resolve from it. It grants no access by itself. Excluded
 // lists diagnostic codes the preparation profile excludes, such as "SC1091";
 // engines must not report them.
+// Native suppression directives in Source belong to the engine. Return active
+// findings after processing them; the host separately applies actionlint's YAML
+// and configured ignores after admitting and mapping returned diagnostics.
 //
 // DirectoryFS is the host's read-only grant of Directory for this call, or
 // nil. The host opens it inside the workspace and records the files read

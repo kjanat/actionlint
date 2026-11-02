@@ -186,7 +186,7 @@
       "name": "@kjanat-actionlint/plugin-sdk",
       "version": "0.1.0",
       "bin": {
-        "actionlint-plugin": "./dist/cli.js",
+        "actionlint-plugin": "./bin/actionlint-plugin.js",
       },
       "dependencies": {
         "@kjanat/dreamcli": "catalog:",

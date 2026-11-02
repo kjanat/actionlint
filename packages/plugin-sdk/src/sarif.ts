@@ -7,6 +7,8 @@ import { array, positiveInteger, record, text } from './process.ts';
 /**
  * Decode SARIF 2.1.0 results, accepting only artifact URIs allowed by the caller.
  * Columns and rows are retained as reported; the host validates the resulting ranges.
+ * Native suppressions with no review status or an accepted status are honored.
+ * Rejected/under-review requests remain active; malformed suppression records throw.
  * @example
  * ```ts
  * import { exactStagedUri, parseSarif } from '@kjanat-actionlint/plugin-sdk/sarif';
@@ -31,6 +33,10 @@ export function parseSarif(
 		const run = record(runValue, 'SARIF run');
 		for (const resultValue of array(run.results, 'SARIF results')) {
 			const result = record(resultValue, 'SARIF result');
+			const suppressed = nativeSuppression(result.suppressions);
+			const kind = result.kind ?? '';
+			if (typeof kind !== 'string') throw new Error('SARIF result kind must be a string');
+			if (suppressed || kind !== '' && kind !== 'fail') continue;
 			const locationValue = array(result.locations, 'SARIF result locations')[0];
 			if (locationValue === undefined) throw new Error('SARIF finding has no primary location');
 			const location = record(locationValue, 'SARIF primary location');
@@ -66,6 +72,30 @@ export function parseSarif(
 		}
 	}
 	return diagnostics;
+}
+
+function nativeSuppression(value: unknown): boolean {
+	if (value == null) return false;
+	let suppressed = false;
+	for (const entry of array(value, 'SARIF suppressions')) {
+		const suppression = record(entry, 'SARIF suppression');
+		if (suppression.kind !== 'inSource' && suppression.kind !== 'external') {
+			throw new Error(`invalid SARIF suppression kind ${String(suppression.kind)}`);
+		}
+		switch (suppression.status) {
+			case undefined:
+			case null:
+			case 'accepted':
+				suppressed = true;
+				break;
+			case 'underReview':
+			case 'rejected':
+				break;
+			default:
+				throw new Error(`invalid SARIF suppression status ${String(suppression.status)}`);
+		}
+	}
+	return suppressed;
 }
 
 /** Create an allowlist predicate for exactly one path inside a captured directory. */
