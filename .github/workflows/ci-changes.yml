@@ -2,7 +2,7 @@ name: Select CI checks
 on:
   workflow_call:
     inputs:
-      filters: { description: Ordered include and exclude paths for each check, required: true, type: string }
+      profile: { description: Workflow profile in .github/ci/filters.yml, required: true, type: string }
     outputs:
       jobs: { description: Check names mapped to run or skip, value: "${{ jobs.changes.outputs.jobs }}" }
 permissions: { contents: read }
@@ -14,9 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: { node-version: "24", package-manager-cache: false }
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with: { install_args: bun, add_shims_to_path: false }
+        env: { MISE_ENABLE_TOOLS: "bun" }
       - name: Select checks from changed paths and PR head commit trailers
         id: plan
-        env: { CI_FILTERS: "${{ inputs.filters }}" }
-        run: node .github/ci/plan.mjs
+        env: { CI_PROFILE: "${{ inputs.profile }}" }
+        run: bun .github/ci/plan.mjs

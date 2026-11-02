@@ -85,11 +85,11 @@ The PR must explain the motivation, scope, compatibility impact, and validation 
 
 ## Development
 
-`make` (3.81 or later) is useful to run each tasks and reduce redundant builds/tests.
+Root tasks are defined in `tasks.toml` and run with `mise run <task>` or `run <task>`. Shared task templates live in `.mise.toml`; `sources` and `outputs` control rebuilds. The Makefile forwards existing commands to these tasks.
 
 ### Selecting CI checks
 
-The CI, CodeQL, matcher, upstream-conformance and expression-probe workflows declare their inputs in each workflow's `filters` list. Paths start at the repository root: `*` matches within one directory, `**` crosses directories, and a later `!` pattern excludes an earlier match. A later positive pattern can include a path again. Each changed file is matched independently, so an excluded documentation change does not suppress checks for a source file in the same PR.
+The CI, CodeQL, matcher, upstream-conformance and expression-probe workflows select profiles from `.github/ci/filters.yml`. YAML anchors share ordered path lists; brace globs group related directories and extensions. Paths start at the repository root: `*` matches within one directory, `**/` crosses directories, and a later `!` pattern excludes an earlier match. A later positive pattern can include a path again. Each changed file is matched independently, so an excluded documentation change does not suppress checks for a source file in the same PR.
 
 Required workflows still start on every PR. Unneeded jobs are skipped; the unit-test matrix keeps its exact required check names using `ubuntu-slim` jobs with their setup and test steps skipped. Go test-only changes keep the relevant test and lint jobs without rebuilding packages. PR comparisons cover the full diff from the merge-base; pushes cover all commits in the push. Manual and scheduled runs select every check in their workflow. If comparison history, a path pattern or a trailer is invalid, selection falls back to running every check.
 
@@ -111,8 +111,8 @@ Task names are unique across sources:
 
 | Command                              | Runs                                                   |
 | ------------------------------------ | ------------------------------------------------------ |
-| `runner build`                       | Go binary via Make, using checked-in generated sources |
-| `runner test`                        | Go tests via Make, including its default race checks   |
+| `runner build`                       | Go binary via mise, using checked-in generated sources |
+| `runner test`                        | Go tests via mise, including its default race checks   |
 | `runner lint`                        | Go lint, vulnerability scan, and WebAssembly lint      |
 | `runner lint-docs`                   | Documentation examples; requires ShellCheck            |
 | `runner lint:biome`                  | Biome                                                  |
@@ -121,7 +121,7 @@ Task names are unique across sources:
 | `runner actionlint-playground:build` | Playground Vite build                                  |
 | `runner actionlint-playground:test`  | Playground JavaScript tests                            |
 
-`runner why lint` shows the selected command without executing it. To regenerate sources during a Go build, use `runner build SKIP_GO_GENERATE=`. When mise is not activated, use `mise exec -- runner lint` to expose its tools.
+`runner why lint` shows the selected command without executing it. Use `mise run generate` to regenerate sources. When mise is not activated, use `mise exec -- runner lint` to expose its tools.
 
 Python linting is not part of actionlint. Documentation examples require ShellCheck; CI runs both lint targets.
 
@@ -440,8 +440,6 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`man/actionlint.1.md`]: ./man/actionlint.1.md
 [`man/manual.css`]: ./man/manual.css
 [`playground/README.md`]: ./playground/README.md
-[`release.yml`]: .github/workflows/release.yml
-[actions/workflows/upkeep.yml]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
 [active branches]: https://github.com/kjanat/actionlint/branches
 [alpine]: https://hub.docker.com/_/alpine
 [autofix workflow]: .github/workflows/autofix.yml
@@ -475,4 +473,4 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 
 ## Architecture checks
 
-`make lint` builds the custom golangci-lint runner. The [structural analyzers](analyzers/README.md) check public API types and representation ownership directly from source; no package inventory is required. Run `make test-analyzers` when changing them. Product findings fail CI.
+`mise run lint` reuses the custom golangci-lint runner, rebuilding it when its sources or build configuration change. The [structural analyzers](analyzers/README.md) check public API types and representation ownership directly from source; no package inventory is required. Run `mise run test-analyzers` when changing them. Product findings fail CI.

@@ -3,6 +3,8 @@ import { appendFileSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { Glob, YAML } from 'bun';
+
 const optional = new Set(['nix', 'conformance', 'expression-probe']);
 
 /** @param {NodeJS.ProcessEnv} environment @param {string} name */
@@ -20,23 +22,46 @@ function commandFile(environment, name) {
 	return file;
 }
 
-/** Match the ordered *, ** and ! path patterns used by our workflows. @param {string} path @param {string[]} patterns */
+/** Match ordered globs, preserving exclusions and later re-inclusions. @param {string} path @param {string[]} patterns */
 export function matchesPaths(path, patterns) {
 	let included = false;
 	for (const pattern of patterns) {
 		const exclude = pattern.startsWith('!');
 		const glob = exclude ? pattern.slice(1) : pattern;
-		// Reject unsupported CI path syntax.
-		if (!glob || /[?+[\]{}\\]/.test(glob)) throw new Error('Unsupported CI path pattern');
-		const expression = glob.split(/(\*\*\/|\*\*|\*)/).map(part => {
-			if (part === '**/') return '(?:.*/)?';
-			if (part === '**') return '.*';
-			if (part === '*') return '[^/]*';
-			return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		}).join('');
-		if (new RegExp(`^${expression}$`).test(path)) included = !exclude;
+		if (!glob) throw new Error('Empty CI path pattern');
+		if (new Glob(glob).match(path)) included = !exclude;
 	}
 	return included;
+}
+
+/** @param {unknown} value @returns {Record<string, unknown>} */
+function fields(value) {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid CI path filters');
+	return Object.fromEntries(Object.entries(value));
+}
+
+/** Flatten shared YAML sequences without changing pattern order. @param {unknown} value @returns {string[]} */
+function patterns(value) {
+	if (!Array.isArray(value)) throw new Error('CI path filters must be sequences');
+	/** @type {unknown[]} */
+	const result = value.flat(Infinity);
+	if (!result.every(pattern => typeof pattern === 'string')) throw new Error('CI path patterns must be strings');
+	if (result.some(pattern => !pattern || pattern === '!')) throw new Error('Empty CI path pattern');
+	return result;
+}
+
+/** @typedef {{shared: string[], jobs: Record<string, string[]>}} Filters */
+/** @param {string} profile @param {string} cwd @returns {Filters} */
+export function readFilters(profile, cwd = process.cwd()) {
+	const config = fields(YAML.parse(readFileSync(resolve(cwd, '.github/ci/filters.yml'), 'utf8')));
+	const filters = fields(fields(config.workflows)[profile]);
+	const jobs = Object.fromEntries(
+		Object.entries(fields(filters.jobs)).map(([name, paths]) => {
+			if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error('Invalid CI check name');
+			return [name, patterns(paths)];
+		}),
+	);
+	return { shared: patterns(filters.shared), jobs };
 }
 
 /** @param {string} message @param {string} cwd */
@@ -55,7 +80,6 @@ export function ciTrailers(message, cwd = process.cwd()) {
 	return { full: false, skip };
 }
 
-/** @typedef {{shared: string[], jobs: Record<string, string[]>}} Filters */
 /** @param {Filters} filters @param {string[]} paths @param {{full: boolean, skip: string[]}} trailers */
 export function selectJobs(filters, paths, trailers = { full: false, skip: [] }) {
 	const shared = paths.some(path => matchesPaths(path, filters.shared));
@@ -97,14 +121,7 @@ export function changedInputs(environment, cwd = process.cwd()) {
 
 /** @param {NodeJS.ProcessEnv} environment @param {string} cwd */
 export function plan(environment = process.env, cwd = process.cwd()) {
-	/** @type {Filters} */
-	const filters = JSON.parse(required(environment, 'CI_FILTERS'));
-	if (
-		!filters.jobs || !Array.isArray(filters.shared)
-		|| Object.entries(filters.jobs).some(([name, patterns]) =>
-			!/^[a-z][a-z0-9-]*$/.test(name) || !Array.isArray(patterns)
-		)
-	) throw new Error('Invalid CI path filters');
+	const filters = readFilters(required(environment, 'CI_PROFILE'), cwd);
 	let jobs;
 	let fallback = false;
 	try {

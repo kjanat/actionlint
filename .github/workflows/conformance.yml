@@ -10,21 +10,7 @@ concurrency:
 jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml
-    with:
-      filters: |
-        {
-          "shared": [
-            ".github/workflows/conformance.yml", ".github/workflows/ci-changes.yml", ".github/ci/**",
-            ".tool-versions", ".mise.toml"
-          ],
-          "jobs": {
-            "conformance": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**",
-              "internal/conformance/fetch/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go",
-              "internal/conformance/**", "!**/*.md"
-            ]
-          }
-        }
+    with: { profile: conformance }
   conformance:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['conformance']) }}

@@ -11,20 +11,7 @@ permissions: { contents: read }
 jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml
-    with:
-      filters: |
-        {
-          "shared": [
-            ".github/workflows/matcher.yml", ".github/workflows/ci-changes.yml", ".github/ci/**",
-            ".tool-versions", ".mise.toml"
-          ],
-          "jobs": {
-            "matcher": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              "tools/matcher/**", ".github/actionlint-matcher.json", "testdata/**", "Makefile", ".node-version"
-            ]
-          }
-        }
+    with: { profile: matcher }
   matcher-test:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['matcher']) }}
@@ -51,11 +38,8 @@ jobs:
         env: *MiseNoAutoInstall
         run: |
           run //tools/matcher:generate
-          if git diff --quiet; then
-            echo 'OK'
+          if git diff --quiet; then echo 'OK';
           else
             echo 'ERROR! .github/actionlint-matcher.json is outdated. Update it by "run //tools/matcher:generate"' >&2
-            set -x
-            git diff
-            exit 1
+            set -x; git diff; exit 1
           fi

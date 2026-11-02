@@ -19,25 +19,7 @@ concurrency:
 jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml
-    with:
-      filters: |
-        {
-          "shared": [
-            ".github/workflows/codeql.yml", ".github/workflows/ci-changes.yml", ".github/ci/**", ".tool-versions",
-            ".mise.toml"
-          ],
-          "jobs": {
-            "go": [
-              "**/*.go", "go.mod", "go.sum", "internal/config/config_default.yaml", ".github/codeql/**", "!testdata/**", "!**/testdata/**",
-              "!**/*_test.go"
-            ],
-            "javascript-typescript": [
-              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.jsx", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "**/bun.lock",
-              ".github/codeql/**", "!testdata/**", "!**/testdata/**"
-            ],
-            "actions": [".github/workflows/**", ".github/actions/**", "action.yml", ".github/codeql/**", "!.github/actions/**/testdata/**"]
-          }
-        }
+    with: { profile: codeql }
   analyze-go:
     name: Analyze go
     needs: changes

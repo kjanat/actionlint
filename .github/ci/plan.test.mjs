@@ -4,14 +4,25 @@ import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
-import { changedInputs, ciTrailers, matchesPaths, plan, selectJobs } from './plan.mjs';
+import { changedInputs, ciTrailers, matchesPaths, plan, readFilters, selectJobs } from './plan.mjs';
 
 /** @param {import('node:test').TestContext} t */
 function repository(t) {
 	const cwd = mkdtempSync(join(tmpdir(), 'actionlint-ci-plan-'));
 	t.after(() => rmSync(cwd, { recursive: true, force: true }));
+	mkdirSync(join(cwd, '.github/ci'), { recursive: true });
+	writeFileSync(
+		join(cwd, '.github/ci/filters.yml'),
+		`workflows:
+  test:
+    shared: []
+    jobs:
+      unit: ['**/*.go']
+      nix: ['nix/**']
+`,
+	);
 	const git = (/** @type {string[]} */ args) =>
 		execFileSync('git', [
 			'-c',
@@ -61,11 +72,14 @@ test('paths are rooted, * does not cross directories, and ** does', () => {
 	assert.equal(matchesPaths('docs/a/file.md', ['docs/*']), false);
 	assert.equal(matchesPaths('docs/a/file.md', ['docs/**']), true);
 	assert.equal(matchesPaths('index.js', ['**.js']), true);
-	assert.equal(matchesPaths('src/index.js', ['**.js']), true);
+	assert.equal(matchesPaths('src/index.js', ['**.js']), false);
+	assert.equal(matchesPaths('src/index.js', ['**/*.js']), true);
 	assert.equal(matchesPaths('README.md', ['**/README.md']), true);
 	assert.equal(matchesPaths('docs/README.md', ['**/README.md']), true);
 	assert.equal(matchesPaths('.github/workflows/ci.yml', ['.github/workflows/**']), true);
-	assert.throws(() => matchesPaths('page.js', ['*.jsx?']), /Unsupported/);
+	assert.equal(matchesPaths('page.jsx', ['*.js?']), true);
+	assert.equal(matchesPaths('.github/actions/setup/main.mjs', ['**/*.{js,mjs,ts}']), true);
+	assert.equal(matchesPaths('internal/cli/check.go', ['{cmd,internal/cli}/**']), true);
 });
 
 test('ordered exclusions and re-inclusions apply to each changed path independently', () => {
@@ -132,7 +146,7 @@ test('missing history or invalid skip requests run all checks and explain the fa
 	const environment = {
 		...repo.environment,
 		...commands,
-		CI_FILTERS: JSON.stringify({ shared: [], jobs: { unit: ['**/*.go'], nix: ['nix/**'] } }),
+		CI_PROFILE: 'test',
 	};
 	for (const base of [repo.base, 'f'.repeat(40)]) {
 		repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
@@ -160,7 +174,7 @@ test('runner command files cannot escape through traversal, sibling prefixes or 
 					...repo.environment,
 					...commands,
 					GITHUB_EVENT_NAME: 'workflow_dispatch',
-					CI_FILTERS: JSON.stringify({ shared: [], jobs: { unit: ['**/*.go'] } }),
+					CI_PROFILE: 'test',
 					[name]: path,
 				}, repo.cwd), /runner command directory/);
 			assert.equal(readFileSync(outside, 'utf8'), 'unchanged');
@@ -183,10 +197,32 @@ test('manual and scheduled runs select all jobs', t => {
 /** @param {string} workflow */
 function workflowFilters(workflow) {
 	const text = readFileSync(new URL(`../workflows/${workflow}.yml`, import.meta.url), 'utf8');
-	const scalar = text.match(/ {6}filters: \|\n((?: {8}.*\n)+)/)?.[1];
-	assert.ok(scalar, `${workflow} must declare its check inputs`);
-	return JSON.parse(scalar);
+	assert.match(text, new RegExp(`profile: ${workflow}\\b`), `${workflow} must select its input profile`);
+	return readFilters(workflow, resolve(import.meta.dirname, '../..'));
 }
+
+test('shared selector and task changes select every check in every profile', () => {
+	for (const workflow of ['ci', 'codeql', 'conformance', 'matcher', 'expression-probe-tests']) {
+		for (const path of ['.github/ci/filters.yml', '.mise.toml', 'tasks.toml']) {
+			assert.ok(Object.values(selectJobs(workflowFilters(workflow), [path])).every(Boolean), `${workflow}: ${path}`);
+		}
+	}
+});
+
+test('missing profiles and malformed path lists fail instead of silently skipping checks', t => {
+	const repo = repository(t);
+	assert.throws(() => readFilters('missing', repo.cwd), /Invalid CI path filters/);
+	for (
+		const source of [
+			'workflows: {test: {shared: [42], jobs: {unit: ["**/*.go"]}}}',
+			'workflows: {test: {shared: [], jobs: {unit: ["!"]}}}',
+			'workflows: {test: {shared: [], jobs: {Unit: ["**/*.go"]}}}',
+		]
+	) {
+		writeFileSync(join(repo.cwd, '.github/ci/filters.yml'), source);
+		assert.throws(() => readFilters('test', repo.cwd), /CI (path|check)/);
+	}
+});
 
 test('plugin sources and Cargo inputs select the plugin checks', () => {
 	const ci = workflowFilters('ci');
