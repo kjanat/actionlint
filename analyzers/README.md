@@ -132,11 +132,12 @@ The default golangci-lint configuration additionally enables `dupl` for structur
 code duplication, `contextcheck` for propagation and `exhaustive` for enum switches.
 No diagnostics baseline or project-specific suppression is installed.
 
-`make lint-build` builds missing or outdated runners using golangci-lint 2.15.0.
-The runners rebuild when analyzer sources, module requirements or the custom
-build configuration change. `make test-analyzers` tests the analyzer.
-`make lint-architecture` runs the standalone checker without golangci exclusions;
-`make lint` runs both checks. The Architecture workflow tests the custom binary in
+`mise run lint-build` builds missing or outdated runners using the configured
+golangci-lint version. Mise tracks analyzer sources, module requirements and the
+custom build configuration through `sources` and `outputs` in `tasks.toml`.
+`mise run test-analyzers` tests the analyzer.
+`mise run lint-architecture` runs the standalone checker without golangci exclusions;
+`mise run lint` runs both checks. The Architecture workflow tests the custom binary in
 an unrelated module, including a source-only fix under a warm cache, then runs
 product enforcement. Zed uses the built `custom-gcl` executable.
 

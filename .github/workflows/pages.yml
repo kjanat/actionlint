@@ -29,6 +29,7 @@ on:
       - ".node-version"
       - ".tool-versions"
       - ".mise.toml"
+      - "tasks.toml"
       - "tsconfig.json"
       - "Makefile"
       - ".github/workflows/pages.yml"

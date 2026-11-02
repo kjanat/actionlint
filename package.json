@@ -29,15 +29,6 @@
     "packages/*",
     "playground"
   ],
-  "scripts": {
-    "lint:biome": "biome check . --error-on-warnings",
-    "lint:workspaces": "bun run --filter '*' --if-present lint",
-    "test:js": "run -p //.github/ci:test //.github/actions/comment-cop:test //.github/actions/setup-pandoc:test //.github/actions/setup-runner:test //.github/actions/setup-shellcheck:test //.github/actions/setup-wasm-toolchain:test //tools/matcher:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test",
-    "test:workspaces": "bun run --filter '*' --if-present test",
-    "typecheck": "run -s @kjanat-actionlint/plugin-sdk:build typecheck:root typecheck:workspaces",
-    "typecheck:root": "run -q @typescript/native --noEmit",
-    "typecheck:workspaces": "bun run --workspaces --sequential --shell=bun --if-present typecheck"
-  },
   "overrides": {
     "undici": ">=8.11.2"
   },
@@ -47,6 +38,7 @@
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
     "@octokit/openapi-webhooks-types": "latest",
+    "@types/bun": "^1.4.4",
     "@types/node": "^26",
     "@typescript/native": "npm:typescript@^7",
     "biome": "npm:@biomejs/biome@^2.5",

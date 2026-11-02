@@ -1,4 +1,5 @@
 #:schema https://mise.jdx.dev/schema/mise.json
+#:tombi toml-version = "v1.1.0"
 
 min_version   = { soft = "2026.10.13" }
 monorepo_root = true
@@ -22,8 +23,12 @@ bun                               = "1.4.4"
 npm                               = "12.2.0"
 go                                = "1.27.3"
 node                              = "26"
-shellcheck                        = { prefix = "0.11" }
-rshellcheck                       = "latest"
+"github:koalaman/shellcheck"      = { prefix = "0.11" }
+"github:kjanat/shellcheck-rs"     = {
+  version        = "1.0.0",
+  version_prefix = "rshellcheck-v",
+  matching_regex = '^rshellcheck-[0-9].*-(aarch64|x86_64|armv7|i686)-.+\.(tar\.gz|zip)$'
+}
 grype                             = "latest"
 ruff                              = "0.17.0"
 syft                              = "latest"
@@ -33,10 +38,17 @@ yamllint                          = "latest"
 zizmor                            = "latest"
 "github:charmbracelet/markscribe" = { prefix = "0.8" }
 "github:jgm/pandoc"               = { prefix = "3" }
+"github:kjanat/kprint"            = { version = "0.60.6-kjanat" }
 "github:kjanat/runner"            = { prefix = "0.28" }
 "github:microsoft/TypeScript"     = { prefix = "7" }
 "github:tombi-toml/tombi"         = { prefix = "1.9" }
 "github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
+"npm:@kjanat/fmt"                 = { version = "latest", minimum_release_age = "0s", depends = ["node"] }
+rust                              = {
+  version    = "latest",
+  components = ["clippy", "rustfmt"],
+  targets    = ["wasm32-unknown-unknown", "wasm32-wasip2"]
+}
 
 [tools."golangci-lint"]
 prefix  = "2"
@@ -44,14 +56,11 @@ depends = ["go"]
 
 [tools."github:kjanat/actionlint"]
 version = "latest"
-depends = ["rshellcheck"]
+depends = ["github:kjanat/shellcheck-rs"]
 
 [tools."github:rhysd/actionlint"]
 version = "latest"
-depends = ["rshellcheck"]
-
-[tools."github:kjanat/dprint"]
-version = "0.60.6-kjanat"
+depends = ["github:kjanat/shellcheck-rs"]
 
 [tools.wasi-sdk]
 version        = "34"
@@ -63,15 +72,20 @@ windows-x64   = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang
 windows-arm64 = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
 
 [tool_alias]
-tombi       = "github:tombi-toml/tombi"
-shellcheck  = "github:koalaman/shellcheck"
-rshellcheck = "github:kjanat/shellcheck-rs"
-wasi-sdk    = "github:WebAssembly/wasi-sdk"
+wasi-sdk = "github:WebAssembly/wasi-sdk"
 
 [settings]
 experimental                        = true
-idiomatic_version_file_enable_tools = ["go", "node", "bun"]
+idiomatic_version_file_enable_tools = ["go", "node", "bun", "rust"]
 minimum_release_age                 = "0s"
+minimum_release_age_excludes        = [
+  "npm:@kjanat/*",
+  "github:kjanat/*",
+  "npm:@kprint/*",
+  "github:koalaman/shellcheck",
+  "github:kjanat/shellcheck-rs",
+  "github:microsoft/TypeScript",
+]
 
 [env]
 _.path        = ["{{config_root}}/node_modules/.bin"]
@@ -88,14 +102,96 @@ run  = "bun i"
 auto = false
 run  = "go mod tidy -diff"
 
-[tasks]
-[tasks.format]
-alias       = ["f", "fmt"]
-description = "Format code"
-run         = "dprint fmt"
+[task_config]
+includes = ["tasks.toml"]
+shell    = "{% if os() == 'windows' %}powershell.exe -NoProfile -ExecutionPolicy Bypass -Command{% else %}bash -e -c{% endif %}"
 
-[tasks.go-modernize]
-run = "modernize -fix ./..."
+[task_templates."go-test"]
+vars        = { test_flags = "" }
+run         = '''
+race="${RACE--race}"
+if [ "${NORACE:-}" = 1 ] || [ "${CLAUDECODE:-}" = 1 ]; then race=; fi
+if [ -n "$race" ]; then
+  if probe="$(go test "$race" -run '^$' -count=1 ./internal/projectpath 2>&1)"; then
+    :
+  elif printf '%s\n' "$probe" | grep -Fq 'ThreadSanitizer: unsupported VMA range'; then
+    printf '%s\n' 'Race detector unavailable on this kernel; running tests without -race.'
+    race=
+  else
+    printf '%s\n' "$probe" >&2
+    exit 1
+  fi
+fi
+go test ${race:+$race} {{ vars.test_flags }} ./...
+
+'''
+run_windows = "go test {{ env.RACE | default(value='') }} {{ vars.test_flags }} ./..."
+
+[task_templates."analyzer-build"]
+sources = [".custom-gcl.yml", "analyzers/**/*.go", "!analyzers/**/*_test.go", "!analyzers/**/testdata/**", "analyzers/go.{mod,sum}"]
+
+[task_templates."plugin-contract"]
+sources = [
+  "crates/actionlint-extension-api/wit/**/*.wit",
+  "tools/plugin-contract/*.{go,mod,sum}",
+  "go.{mod,sum}",
+  "internal/plugins/component/generate.go"
+]
+
+[task_templates."manual"]
+vars    = { suffix = "", flags = "" }
+sources = ["man/*.{md,lua,css}"]
+outputs = ["man/actionlint.1{{ vars.suffix }}"]
+run     = "{{ env.PANDOC | default(value='pandoc --standalone --from=markdown-smart --syntax-highlighting=none') }} {{ vars.flags }} --output=man/actionlint.1{{ vars.suffix }} man/actionlint.1.md"
+
+[task_templates."matcher"]
+depends     = ["build"]
+outputs     = ["tools/matcher/testdata/{{ vars.output }}"]
+run         = "./actionlint {{ vars.flags }} ./testdata/err/one_error.yaml > tools/matcher/testdata/{{ vars.output }} || [ \"$?\" -eq 1 ]"
+run_windows = '''
+./actionlint.exe {{ vars.flags }} ./testdata/err/one_error.yaml > tools/matcher/testdata/{{ vars.output }}
+if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
+exit 0
+'''
+
+[task_templates."rust-plugin"]
+vars    = {
+  target       = "wasm32-wasip2",
+  profile      = "wasm",
+  target_dir   = "target",
+  features     = "",
+  package      = "",
+  artifact     = "",
+  metadata     = "",
+  fixture_root = "internal/plugins/component/testdata/plugins"
+}
+sources = [
+  "Cargo.{toml,lock}",
+  "rust-toolchain.toml",
+  "crates/actionlint-extension-api/**",
+  "crates/*/Cargo.toml",
+  "testdata/plugins/**",
+  "examples/plugins/*.{rs,json}",
+  "tools/plugin-fixture-metadata/*.go"
+]
+outputs = ["{{ vars.fixture_root }}/{{ vars.fixture }}.wasm"]
+run     = [
+  "cargo build --locked --profile {{ vars.profile }} --target {{ vars.target }} --target-dir \"{{ vars.target_dir }}\" {% if vars.package %}-p {{ vars.package }}{% else %}--example {{ vars.example | default(value=vars.fixture) }}{% endif %}{% if vars.features %} --features {{ vars.features }}{% endif %}",
+  '''
+{% if vars.artifact %}{% set artifact = vars.artifact %}{% elif vars.package %}{% set artifact = vars.package | replace(from="-", to="_") %}{% else %}{% set artifact = "examples/" ~ vars.fixture | replace(from="-", to="_") %}{% endif %}
+{% set source = vars.target_dir ~ "/" ~ vars.target ~ "/" ~ vars.profile ~ "/" ~ artifact ~ ".wasm" %}
+{% set output = vars.fixture_root ~ "/" ~ vars.fixture ~ ".wasm" %}
+{% if vars.metadata %}go run ./tools/plugin-fixture-metadata "{{ source }}" "{{ vars.metadata }}" "{{ output }}"{% else %}mise run fixture:copy "{{ source }}" "{{ output }}"{% endif %}
+'''
+]
+
+[task_templates."script-plugin"]
+sources = ["crates/actionlint-extension-api/wit/*.wit", "examples/plugins/{{ vars.fixture }}/**"]
+outputs = ["internal/plugins/component/testdata/plugins/{{ vars.fixture }}.wasm"]
+run     = "bash examples/plugins/{{ vars.fixture }}/build.sh \"{{ config_root }}/internal/plugins/component/testdata/plugins/{{ vars.fixture }}.wasm\""
+
+[vars]
+exe = "{% if os() == 'windows' %}.exe{% endif %}"
 
 [monorepo]
 config_roots = [

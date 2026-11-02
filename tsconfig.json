@@ -12,7 +12,7 @@
     "types": ["node"],
     "allowImportingTsExtensions": true
   },
-  "include": ["**/*", ".github/ci/*.mjs"],
+  "include": ["**/*"],
   "exclude": [
     "node_modules",
     "packages",
