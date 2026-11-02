@@ -24,16 +24,24 @@ When paths to YAML workflow files are given as arguments, actionlint checks them
 actionlint path/to/workflow1.yaml path/to/workflow2.yaml
 ```
 
-Directory arguments are traversed recursively. A repository root or `.github`
-selects its workflows and action manifests; other directories select YAML files
-below that directory. File exclusions apply during discovery. Explicitly naming
-an excluded directory selects its YAML files anyway. Overlapping directories and
-explicit files do not repeat discovered inputs. Empty directories report an error.
+Directories are search roots: actionlint finds `action.yml`/`action.yaml` manifests
+and YAML files below `.github/workflows`, including in nested repositories.
+Each repository uses its own Git ignore rules, configuration and plugins.
+Other YAML files are not selected by directory discovery. Overlapping paths and
+aliases check each physical file once. An empty selection reports an error.
+
+Directories and glob matches respect configured file filters and Git ignore rules.
+A literally named file overrides both, even outside the conventional locations.
+`--no-ignore` includes Git-ignored files during discovery; configured file filters
+still apply. Quote globs to let actionlint expand `*`, `?` and `[]` consistently
+across shells. A leading `~/` expands to the home directory.
 
 ```sh
 actionlint .
 actionlint .github/
 actionlint check .github/workflows/ .github/actions/
+actionlint '~/projects/*'
+actionlint ~/projects --no-ignore
 ```
 
 Use `-C DIR` to run from another directory, including configuration discovery and
@@ -59,15 +67,16 @@ caller-specific input errors still point to the workflow's `uses:` step.
 Files directly under `.github/workflows` are parsed as workflows regardless of filename.
 
 Metadata findings point into the action file. Configuration overrides, rule levels
-and ignores apply to that file. Discovery skips nested repositories and symlinks.
+and ignores apply to that file. Repository discovery without paths stays in that
+repository; directory searches also enter nested repositories. Directory symlinks
+are not followed unless explicitly named, and discovered action file symlinks are skipped.
 Inside a Git repository, discovery
 asks `git` 2.8 or newer which paths its ignore rules exclude: `.gitignore`,
 `.git/info/exclude` and the global excludes file apply, and tracked manifests in
 ignored directories stay discovered. Discovery fails when `git` is missing or
 reports an incomplete listing.
 Use [file exclusions](config.md) to
-omit fixtures or generated actions. Explicit paths can select Git-ignored actions;
-configured file exclusions still apply.
+omit fixtures or generated actions. Literally named files bypass discovery filters.
 
 Standalone actions have no known runner, so `executable-bit` is checked only when
 an action is reached through a workflow with a known runner. The Go API's

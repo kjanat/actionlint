@@ -288,6 +288,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.pluginLockFlag(f)
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
+	f.BoolVar(&a.inv.Check.NoIgnore, "no-ignore", false, "Include Git-ignored files during discovery; configured file filters still apply")
+	annotateFlag(f, "no-ignore", "Input")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
 	f.VarP(&a.opts.output, "output-format", "o", "Output mode: text, pretty, oneline, gcc, json, jsonl, sarif or github (repeatable)")
 	f.IntVar(&a.inv.Render.Width, "diagnostic-width", 100, "Pretty diagnostic width in columns (40-400)")

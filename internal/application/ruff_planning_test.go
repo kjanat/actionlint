@@ -189,7 +189,7 @@ overrides:
 func TestRuffRequiredToolsOverrides(t *testing.T) {
 	root := t.TempDir()
 	path := writeFixture(t, root, "actionlint.yml", `tools: {shellcheck: false}
-files: {excludes: [skip.yml]}
+files: {excludes: [skip.yml, '.github/workflows/skip.yml']}
 overrides:
   - includes: [disabled.yml]
     lint: {rules: {external: {ruff: off}}}
@@ -198,11 +198,16 @@ overrides:
 	for _, tc := range []struct {
 		path string
 		want bool
-	}{{"ci.yml", true}, {"skip.yml", false}, {"disabled.yml", false}} {
+	}{{"ci.yml", true}, {"skip.yml", true}, {"disabled.yml", false}} {
 		tools, err := application.RequiredTools(t.Context(), options, []string{tc.path})
 		if err != nil || tools["ruff"] != tc.want || tools["shellcheck"] {
 			t.Fatalf("%s: %+v %v", tc.path, tools, err)
 		}
+	}
+	writeFixture(t, root, ".github/workflows/skip.yml", goodWorkflow)
+	tools, err := application.RequiredTools(t.Context(), options, []string{".github/workflows"})
+	if err != nil || tools["ruff"] || tools["shellcheck"] {
+		t.Fatalf("discovery planned tools for an excluded workflow: %+v %v", tools, err)
 	}
 }
 

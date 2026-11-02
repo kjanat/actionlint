@@ -66,6 +66,7 @@ type checkInvocation struct {
 	Experimental         bool
 	ExperimentalSet      bool
 	PreCommit            bool
+	NoIgnore             bool
 	AllowConfigProcesses bool
 }
 

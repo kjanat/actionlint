@@ -137,10 +137,10 @@ discovery honours Git's ignore rules. Use `files.excludes` for explicit exclusio
 
 Omitted or `null` `includes` selects every input; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
-order. A negative-only include list selects nothing. Excluded files are skipped,
-including directly named files. Explicitly naming an excluded directory checks
-its workflow and action files; broader scans still honour exclusions inside that
-directory. Referenced actions, reusable workflows, and shell sources can still be
+order. A negative-only include list selects nothing during discovery. Directories
+and glob matches respect these filters. A literally named file is checked even
+when excluded. `--no-ignore` disables Git ignore rules, not these config filters.
+Referenced actions, reusable workflows, and shell sources can still be
 read as dependencies of included workflows. File selection does not restrict
 dependency reads.
 

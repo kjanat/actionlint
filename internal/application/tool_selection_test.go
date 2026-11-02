@@ -1,11 +1,14 @@
 package application_test
 
 import (
+	"errors"
+	"io/fs"
 	"path/filepath"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestRequiredToolsFileSelection(t *testing.T) {
@@ -19,15 +22,19 @@ overrides:
 	for _, tc := range []struct {
 		path string
 		want bool
-	}{{"ci.yml", true}, {"skip.yml", false}, {"disabled.yml", false}} {
+	}{{"ci.yml", true}, {"skip.yml", true}, {"disabled.yml", false}} {
 		got, err := application.RequiredTools(t.Context(), options, []string{tc.path})
 		if err != nil || got["shellcheck"] != tc.want {
 			t.Fatalf("%s: %+v, %v", tc.path, got, err)
 		}
 	}
 	// Exclusions must apply before trying to read this nonexistent input.
-	result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "skip.yml")}})
+	path := filepath.Join(root, "skip.yml")
+	result, err := application.Check(t.Context(), options, application.FileInput(workspace.FileSelection{Files: []workspace.File{{Path: path}}}))
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("excluded file: %+v, %v", result, err)
+	}
+	if _, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{path}}); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("literal file did not override the discovery filter: %v", err)
 	}
 }

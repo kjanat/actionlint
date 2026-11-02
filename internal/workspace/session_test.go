@@ -48,7 +48,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := session.Files([]string{filepath.Join(root, "excluded.yml"), filepath.Join(root, "broken.yml")}, nil)
+	selected, err := session.SelectedFiles(FileSelection{Files: []File{{Path: filepath.Join(root, "excluded.yml")}, {Path: filepath.Join(root, "broken.yml")}}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -320,7 +320,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if source.Project != nil {
 			root = source.Project.RootDir()
 		}
-		if source.Config.IncludesSelectedFile(source.InputPath, root, source.SelectionRoot) {
+		if source.Config.IncludesSelectedFile(source.InputPath, root, source.ExplicitFile) {
 			selected = append(selected, source)
 		}
 	}

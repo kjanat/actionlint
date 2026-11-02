@@ -6,6 +6,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -22,7 +23,7 @@ type ExternalToolRequirements map[string]bool
 // Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
 func (a *Session) RequiredTools(ctx context.Context, paths []string, options ToolOptions) (ExternalToolRequirements, error) {
 	needed := ExternalToolRequirements{}
-	var directories map[string]string
+	explicit := make(map[string]bool)
 	if len(paths) == 0 {
 		paths = []string{a.WorkingDir()}
 		project, err := a.ProjectAt(a.WorkingDir())
@@ -30,7 +31,7 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 			return needed, err
 		}
 		if project != nil {
-			paths, err = RepositoryPaths(ctx, project, fsread.New(ctx, nil, nil))
+			paths, err = projectpath.Documents(ctx, project.RootDir(), fsread.New(ctx, nil, nil), projectpath.Discovery{NoIgnore: a.noIgnore})
 			if err != nil {
 				return needed, err
 			}
@@ -38,15 +39,24 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 	} else {
 		resolved := make([]string, len(paths))
 		for index, path := range paths {
+			var err error
+			path, err = ExpandHome(path)
+			if err != nil {
+				return needed, err
+			}
 			if !filepath.IsAbs(path) {
 				path = filepath.Join(a.WorkingDir(), path)
 			}
 			resolved[index] = path
 		}
-		var err error
-		paths, directories, err = a.expandDirectories(resolved, &Inputs{})
+		selection, err := FindFiles(ctx, resolved, a.noIgnore)
 		if err != nil {
 			return needed, err
+		}
+		paths = nil
+		for _, file := range selection.Files {
+			paths = append(paths, file.Path)
+			explicit[absPath(file.Path)] = file.Explicit
 		}
 	}
 	for _, path := range paths {
@@ -68,7 +78,7 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 		if project != nil {
 			root = project.RootDir()
 		}
-		if !config.IncludesSelectedFile(path, root, directories[path]) {
+		if !config.IncludesSelectedFile(path, root, explicit[path]) {
 			continue
 		}
 		projectConfig := config

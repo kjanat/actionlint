@@ -115,7 +115,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 	var err error
 
 	for range 2 {
-		result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
+		result, err := application.Check(t.Context(), session, application.FileInput(workspace.FileSelection{Files: []workspace.File{{Path: workflow}}}))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -35,8 +35,8 @@ func TestModernCommandDispatch(t *testing.T) {
 	var result struct {
 		FileCount int `json:"file_count"`
 	}
-	if json.Unmarshal([]byte(multiple.Stdout), &result) != nil || multiple.Status != 0 || multiple.Stderr != "" || result.FileCount != 2 {
-		t.Fatalf("a flag between filenames changed the selected inputs: %+v", multiple)
+	if json.Unmarshal([]byte(multiple.Stdout), &result) != nil || multiple.Status != 0 || multiple.Stderr != "" || result.FileCount != 1 {
+		t.Fatalf("repeated filenames across a flag were not deduplicated: %+v", multiple)
 	}
 	for _, name := range []string{"check", "config", "rules", "doctor", "completion", "version"} {
 		got := testRunCommand("", "-version", name)

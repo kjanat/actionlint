@@ -89,12 +89,13 @@ func TestExcludedFilesDoNotReportSuccess(t *testing.T) {
 	}
 }
 
-func TestExplicitExcludedDirectoryIsChecked(t *testing.T) {
+func TestDirectoryExclusionsAndExplicitFileOverride(t *testing.T) {
 	commandTestRepo(t)
-	if err := os.Mkdir("testdata", 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join("testdata", ".github", "workflows"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join("testdata", "ci.yml"), []byte(commandBadWorkflow), 0o600); err != nil {
+	file := filepath.Join("testdata", ".github", "workflows", "ci.yml")
+	if err := os.WriteFile(file, []byte(commandBadWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, scope := range []string{
@@ -107,8 +108,12 @@ func TestExplicitExcludedDirectoryIsChecked(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := testRunCommandDefaults("", "-o", "pretty", "testdata")
-			if got.Status != 1 || !strings.Contains(got.Stdout, filepath.Join("testdata", "ci.yml")) || !strings.Contains(got.Stderr, "Checked 1 file") {
-				t.Fatalf("explicit directory was silently excluded: %+v", got)
+			if got.Status != 3 || strings.Contains(got.Stderr, "All clear") || !strings.Contains(got.Stderr, "no workflow or action files were selected") {
+				t.Fatalf("directory input overrode configured exclusions: %+v", got)
+			}
+			got = testRunCommandDefaults("", "-o", "pretty", file)
+			if got.Status != 1 || !strings.Contains(got.Stdout, file) || !strings.Contains(got.Stderr, "Checked 1 file") {
+				t.Fatalf("literal file did not override file filters: %+v", got)
 			}
 			got = testRunCommandDefaults("", "-o", "pretty", ".")
 			if got.Status != 1 || strings.Contains(got.Stdout, "testdata") || !strings.Contains(got.Stderr, "Checked 1 file") {

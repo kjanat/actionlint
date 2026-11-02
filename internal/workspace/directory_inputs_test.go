@@ -54,11 +54,11 @@ func TestDirectoryInputsDiscoverScopedDocuments(t *testing.T) {
 	}
 }
 
-func TestDirectoryInputsDeduplicateDiscoveryAndKeepExplicitDuplicates(t *testing.T) {
+func TestDirectoryInputsDeduplicateDiscoveryAndExplicitFiles(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	writeToolFixture(t, root, "workflows/a.yml", toolWorkflow)
-	writeToolFixture(t, root, "workflows/b.yaml", toolWorkflow)
+	writeToolFixture(t, root, ".github/workflows/a.yml", toolWorkflow)
+	writeToolFixture(t, root, ".github/workflows/b.yaml", toolWorkflow)
 	var selected []string
 	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, OnFilesSelected: func(paths []string) {
 		selected = slices.Clone(paths)
@@ -66,30 +66,29 @@ func TestDirectoryInputsDeduplicateDiscoveryAndKeepExplicitDuplicates(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	paths := []string{"workflows", "workflows/.", "workflows/a.yml", "workflows/a.yml"}
+	paths := []string{".github/workflows", ".github/workflows/.", ".github/workflows/a.yml", ".github/workflows/a.yml"}
 	selection, err := session.Files(paths, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(selection.Sources) != 3 || len(selected) != 3 || !slices.Equal(paths, []string{"workflows", "workflows/.", "workflows/a.yml", "workflows/a.yml"}) {
+	if len(selection.Sources) != 2 || len(selected) != 2 || !slices.Equal(paths, []string{".github/workflows", ".github/workflows/.", ".github/workflows/a.yml", ".github/workflows/a.yml"}) {
 		t.Fatalf("sources=%d callback=%v arguments=%v", len(selection.Sources), selected, paths)
 	}
-	if filepath.Base(selection.Sources[0].Path) != "b.yaml" || selection.Sources[1].Path != selection.Sources[2].Path {
+	if filepath.Base(selection.Sources[0].Path) != "b.yaml" || filepath.Base(selection.Sources[1].Path) != "a.yml" {
 		t.Fatalf("directory and explicit input order changed: %+v", selection.Sources)
 	}
 }
 
-func TestDirectoryInputsKeepDirectoryNamesAndSkipNestedRepositories(t *testing.T) {
+func TestDirectoryInputsKeepDirectoryNamesAndEnterNestedRepositories(t *testing.T) {
 	root := t.TempDir()
-	writeToolFixture(t, root, "ci.yml", toolWorkflow)
+	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
 	writeToolFixture(t, root, "nested/action.yml", "name: local\n")
 	for _, directory := range []string{"node_modules", "vendor", "testdata", ".cache"} {
-		writeToolFixture(t, root, directory+"/nested/ci.yaml", toolWorkflow)
+		writeToolFixture(t, root, directory+"/.github/workflows/ci.yaml", toolWorkflow)
 	}
-	writeToolFixture(t, root, "other/nested/ignored.yaml", "[not read")
-	if err := os.Mkdir(filepath.Join(root, "other", ".git"), 0o700); err != nil {
-		t.Fatal(err)
-	}
+	writeToolRepository(t, filepath.Join(root, "other"))
+	writeToolFixture(t, root, "other/.github/workflows/ci.yaml", toolWorkflow)
+	writeToolFixture(t, root, "other/arbitrary.yaml", "[not read")
 	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: filepath.Dir(root), SkipProjectConfig: true})
 	if err != nil {
 		t.Fatal(err)
@@ -98,8 +97,8 @@ func TestDirectoryInputsKeepDirectoryNamesAndSkipNestedRepositories(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(selection.Sources) != 6 {
-		t.Fatalf("directory name excluded or nested repository selected: %+v", selection.Sources)
+	if len(selection.Sources) != 7 {
+		t.Fatalf("directory name excluded or nested repository missed: %+v", selection.Sources)
 	}
 }
 
@@ -184,15 +183,15 @@ func TestDirectoryInputsHonourGitIgnoreForYaml(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	writeToolRepository(t, root)
-	writeToolFixture(t, root, ".gitignore", "workflows/ignored.yml\nworkflows/generated/\n")
-	writeToolFixture(t, root, "workflows/ci.yml", toolWorkflow)
-	writeToolFixture(t, root, "workflows/ignored.yml", "[not read")
-	writeToolFixture(t, root, "workflows/generated/ignored.yaml", "[not read")
+	writeToolFixture(t, root, ".gitignore", ".github/workflows/ignored.yml\n.github/workflows/generated/\n")
+	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
+	writeToolFixture(t, root, ".github/workflows/ignored.yml", "[not read")
+	writeToolFixture(t, root, ".github/workflows/generated/ignored.yaml", "[not read")
 	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := session.Files([]string{"workflows"}, nil)
+	selection, err := session.Files([]string{".github/workflows"}, nil)
 	if err != nil || len(selection.Sources) != 1 || filepath.Base(selection.Sources[0].Path) != "ci.yml" {
 		t.Fatalf("ignored YAML was discovered: %+v, %v", selection, err)
 	}

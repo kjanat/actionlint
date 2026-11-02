@@ -35,10 +35,12 @@ With no arguments inside a Git repository, **actionlint** discovers and checks
 its workflow and action files. Outside a repository, it prints help to stdout
 and exits 0. **actionlint check** explicitly requests repository discovery;
 it exits 3 outside a repository or if no inputs are found.
-Pass explicit files, directories or **-** for stdin. Directories are traversed
-recursively: repository roots and **.github** select workflows and action
-manifests; other directories select YAML files below them.
-Explicitly selecting an excluded directory includes its YAML files.
+Pass explicit files, directories, glob patterns or **-** for stdin. Directories
+find action manifests and YAML below **.github/workflows**, including in nested
+repositories. Each repository uses its own ignores, configuration and plugins.
+Directories and glob matches respect file filters; literally named files override
+them. Quote glob patterns for actionlint to expand them. Leading **~/** expands
+to the home directory. Overlapping inputs check each physical file once.
 **-C** *DIR* runs from another directory; repeat it to resolve each relative
 directory from the previous one. Input, output and configuration paths use that directory.
 
@@ -238,6 +240,9 @@ is the supported legacy name. Also available on **config** and **doctor**.
 **--no-config**, **--no-rc**, **--norc**
 : Use defaults without loading a configuration file. Cannot be combined with a
 nonempty explicit config path. Also available on **config** and **doctor**.
+
+**--no-ignore**
+: Include Git-ignored files during discovery. Configured file filters still apply.
 
 **--ignore-regex**, **--ignore** *REGEXP*
 : Suppress findings whose messages or `CODE: message` match this Go regular expression. Repeat to

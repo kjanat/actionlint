@@ -45,8 +45,10 @@ type Options struct {
 	WorkingDir, ConfigFile string
 	ConfigOverlays         []repoconfig.Overlay
 	SkipProjectConfig      bool
-	Analyzers              []analyzer.Registration
-	ReadFile               func(string) ([]byte, error)
+	// NoIgnore disables Git-ignore filtering during discovery, not config file filters.
+	NoIgnore  bool
+	Analyzers []analyzer.Registration
+	ReadFile  func(string) ([]byte, error)
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
 	SourceOverlays               []SourceOverlay
@@ -81,8 +83,9 @@ const (
 // Input describes where sources come from. AllowEmptyRepository implements the
 // pre-commit convention; it still validates and records selected configuration.
 type Input struct {
-	sources []workspace.Source
-	Kind    InputKind
+	selection *workspace.FileSelection
+	sources   []workspace.Source
+	Kind      InputKind
 	// Paths selects files and directories relative to the process directory.
 	// Options.WorkingDir controls configuration and display paths instead.
 	Paths                []string
@@ -91,6 +94,18 @@ type Input struct {
 	Name                 string
 	NormalizePath        bool
 	AllowEmptyRepository bool
+}
+
+// FileInput preserves literal-file intent after filesystem discovery, including
+// when a host partitions one search across independent repository plugin sets.
+func FileInput(selection workspace.FileSelection) Input {
+	selection.Files = slices.Clone(selection.Files)
+	selection.Inputs = slices.Clone(selection.Inputs)
+	paths := make([]string, 0, len(selection.Files))
+	for _, file := range selection.Files {
+		paths = append(paths, file.Path)
+	}
+	return Input{Kind: Files, Paths: paths, selection: &selection}
 }
 
 // Result is independent of the engine's traversal and mutable session state.
@@ -207,6 +222,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, RuleNames: names, Log: selectionLog, LogWriter: log,
+		NoIgnore: options.NoIgnore,
 	})
 	if err != nil {
 		return nil, err
@@ -214,7 +230,11 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	var selection *workspace.Selection
 	switch input.Kind {
 	case Files:
-		selection, err = session.Files(input.Paths, nil)
+		if input.selection != nil {
+			selection, err = session.SelectedFiles(*input.selection, nil)
+		} else {
+			selection, err = session.Files(input.Paths, nil)
+		}
 	case Stdin:
 		if input.Reader == nil {
 			return nil, errors.New("stdin source requires a reader")

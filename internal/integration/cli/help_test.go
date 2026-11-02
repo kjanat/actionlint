@@ -30,7 +30,7 @@ func TestRootHelpOverview(t *testing.T) {
 	for _, match := range flags.FindAllStringSubmatch(root.Stderr, -1) {
 		names = append(names, match[1])
 	}
-	want := []string{"strict", "experimental", "directory", "config", "ignore-regex", "json", "output-format", "output-file", "quiet", "help", "version"}
+	want := []string{"strict", "experimental", "directory", "config", "no-ignore", "ignore-regex", "json", "output-format", "output-file", "quiet", "help", "version"}
 	if !slices.Equal(names, want) {
 		t.Fatalf("root overview flags = %v, want %v", names, want)
 	}

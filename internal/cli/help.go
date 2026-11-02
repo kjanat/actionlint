@@ -188,6 +188,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 		{"Flags", []flagHelp{
 			{"directory", "Run from `DIR` (repeatable, like git -C)"},
 			{"config", "Read configuration from `PATH`"},
+			{"no-ignore", "Include Git-ignored files during discovery"},
 			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
 			{"json", "Write JSON results"},
 			{"output-format", "Output `FMT`: text, pretty, oneline, gcc, json, jsonl, sarif, github (repeatable)"},
