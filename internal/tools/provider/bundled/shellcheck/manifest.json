@@ -26,7 +26,6 @@
     "fixes": true,
     "reported_sources": true,
     "resources": ["workspace", "directory"],
-    "message_template": "shellcheck reported issue in this script: {code}:{severity}:{row}:{column}: {message}",
     "severities": { "error": "error", "warning": "warning", "info": "info", "style": "info" }
   },
   "config_schema": {

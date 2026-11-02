@@ -132,7 +132,7 @@ runs:
 					wantMetadata = decoy
 				}
 				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
-					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == wantMetadata && strings.Contains(d.Message, "SC2086")
+					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == wantMetadata && d.Code == "SC2086"
 				})
 				if found != tc.read {
 					t.Fatalf("current-tree script checked=%v, want %v: %+v", found, tc.read, result.Diagnostics)

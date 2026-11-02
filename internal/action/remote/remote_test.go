@@ -126,3 +126,22 @@ func TestInvalidReferencesNeverReachProvider(t *testing.T) {
 		t.Fatal("invalid reference reached provider")
 	}
 }
+
+func TestInvalidMetadataPreservesDiagnosticCodes(t *testing.T) {
+	for _, tc := range []struct{ source, code string }{
+		{"name: [", "metadata-parse"},
+		{strings.Replace(source, "name: test", "name: &name test", 1), "yaml-anchor"},
+	} {
+		service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
+			return manifest(t, "example/action", strings.Repeat("a", 40), "", reference.Ref(), tc.source), nil
+		}))
+		result, err := service.Inspect(t.Context(), "example/action@v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		problems := result.Availability().Problems()
+		if len(problems) != 1 || problems[0].Code != tc.code {
+			t.Fatalf("manifest problem codes: %+v, want %s", problems, tc.code)
+		}
+	}
+}

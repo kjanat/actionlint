@@ -78,13 +78,13 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	checkSyntax = func(n *syntax.Node) {
 		if n.Anchor != "" {
 			// Property diagnostics use the node start, including any preceding tag.
-			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "YAML anchors are not supported in action metadata; remove anchor %q", n.Anchor)
+			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLAnchor, "YAML anchors are not supported in action metadata; remove anchor %q", n.Anchor)
 		}
 		if n.Kind == syntax.AliasNode {
-			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "YAML aliases are not supported in action metadata; replace alias %q", n.Value)
+			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLAlias, "YAML aliases are not supported in action metadata; replace alias %q", n.Value)
 		}
 		if message := workflowparser.RawYAMLTagError(n); message != "" {
-			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s in action metadata", message)
+			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLTag, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
 			checkSyntax(child)
@@ -97,8 +97,8 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)
 }
 
-func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemapath.Path, message string) {
-	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, path.Display())
+func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemapath.Path, code DiagnosticCode, message string) {
+	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, code, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
 func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *syntax.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
@@ -124,7 +124,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 	// Match the runner's TemplateMemory maximum depth; insertion mappings may
 	// otherwise revisit the same YAML anchor indefinitely.
 	if depth > 100 {
-		rule.actionSchemaError(meta, n, location, "action metadata exceeds maximum nesting depth of 100")
+		rule.actionSchemaError(meta, n, location, CodeNestingDepth, "action metadata exceeds maximum nesting depth of 100")
 		return
 	}
 	d, ok := actionMetadataSchema[definition]
@@ -174,7 +174,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 						message = fmt.Sprintf("context %q is not available", violation.Context)
 					}
 					pos := ExpressionPosition(meta, value, violation.Offset)
-					rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, value, violation), "%s at \"%s\" in action metadata", message, location.Display())
+					rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, value, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
 				}
 			}
 			if definition == "step-if" {
@@ -183,7 +183,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value.Value}); known {
 				result, err := codec.Encode(literal)
 				if err != nil {
-					rule.actionSchemaError(meta, n, location, fmt.Sprintf("could not validate expression value: %v", err))
+					rule.actionSchemaError(meta, n, location, CodeExpressionType, fmt.Sprintf("could not validate expression value: %v", err))
 					return
 				}
 				actionSchemaSetPosition(result, n.Line, n.Column)
@@ -194,7 +194,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 		} else if !actionLiteralExpression(value.Value) {
 			// A literal string expression is an escape, accepted even when expressions
 			// are forbidden. It becomes a literal token before schema validation.
-			rule.actionSchemaError(meta, n, location, "expressions are not allowed")
+			rule.actionSchemaError(meta, n, location, CodeExpressionForbidden, "expressions are not allowed")
 		}
 	}
 
@@ -208,20 +208,20 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 		v := scalar(n)
 		if v == nil {
 			if evaluated || path != "runs.steps.*.run" && path != "runs.steps.*.shell" && path != "runs.steps.*.uses" {
-				rule.actionSchemaError(meta, n, location, "expected a scalar string")
+				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a scalar string")
 			}
 		} else if d.nonEmpty && *v == "" && path != "runs.steps.*.uses" {
-			rule.actionSchemaError(meta, n, location, "expected a non-empty string")
+			rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a non-empty string")
 		}
 	case actionSchemaBoolean:
 		if n.Kind != syntax.ScalarNode || n.Tag != "!!bool" {
-			rule.actionSchemaError(meta, n, location, "expected a boolean or expression")
+			rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a boolean or expression")
 		}
 	case actionSchemaSequence:
 		if n.Kind != syntax.SequenceNode {
 			// Missing/null composite steps already has a precise runtime diagnostic.
 			if path != "runs.steps" {
-				rule.actionSchemaError(meta, n, location, "expected a sequence")
+				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a sequence")
 			}
 			return
 		}
@@ -231,7 +231,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 	case actionSchemaMapping:
 		if n.Kind != syntax.MappingNode {
 			if path != "runs.steps.*" && (path != "runs" || n.Kind != syntax.ScalarNode || n.Tag != "!!null") {
-				rule.actionSchemaError(meta, n, location, "expected a mapping")
+				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a mapping")
 			}
 			return
 		}
@@ -243,7 +243,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 			key, value := n.Content[i], n.Content[i+1]
 			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
 				if _, allowed := actionMetadataAvailability[path]; !allowed {
-					rule.actionSchemaError(meta, key, location, "expressions are not allowed in keys")
+					rule.actionSchemaError(meta, key, location, CodeExpressionForbidden, "expressions are not allowed in keys")
 				} else if exprlang.IsMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
@@ -256,18 +256,18 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 							message = fmt.Sprintf("context %q is not available in keys", violation.Context)
 						}
 						pos := ExpressionPosition(meta, expr, violation.Offset)
-						rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, expr, violation), "%s at \"%s\" in action metadata", message, location.Display())
+						rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, expr, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
 					}
 				}
 			}
 			name := scalar(key)
 			if name == nil || *name == "" {
-				rule.actionSchemaError(meta, key, location, "expected a non-empty scalar key")
+				rule.actionSchemaError(meta, key, location, CodeInvalidFieldType, "expected a non-empty scalar key")
 				continue
 			}
 			lower := strings.ToLower(*name)
 			if seen[lower] {
-				rule.actionSchemaError(meta, key, location, fmt.Sprintf("duplicate key %q", *name))
+				rule.actionSchemaError(meta, key, location, CodeDuplicateField, fmt.Sprintf("duplicate key %q", *name))
 			}
 			seen[lower] = true
 			child, known := d.properties[lower]
@@ -278,7 +278,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 					// Existing step diagnostics also explain the allowed keys. Runs
 					// fields with values are already checked against the runtime.
 					if path != "runs.steps.*" && (path != "runs" || meta.Runs.Using == "" || !actionRunsPropertyChecked(meta, lower)) {
-						rule.actionSchemaError(meta, key, location, fmt.Sprintf("unexpected key %q", *name))
+						rule.actionSchemaError(meta, key, location, CodeUnexpectedField, fmt.Sprintf("unexpected key %q", *name))
 					}
 					continue
 				}
@@ -287,7 +287,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 		}
 		for _, key := range d.required {
 			if ownMapping && !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
-				rule.actionSchemaError(meta, n, location, fmt.Sprintf("missing required key %q", key))
+				rule.actionSchemaError(meta, n, location, CodeMissingField, fmt.Sprintf("missing required key %q", key))
 			}
 		}
 	case actionSchemaUnion:
@@ -355,8 +355,8 @@ type schemaChecker struct {
 	active   map[actionSchemaVisit]bool
 }
 
-func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, format string, args ...any) {
-	d := diagnostic.Diagnostic{Path: meta.Path(), Start: diagnostic.Position{Line: line, Column: column}, Rule: "action", Message: fmt.Sprintf(format, args...)}
+func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code DiagnosticCode, format string, args ...any) {
+	d := diagnostic.Diagnostic{Path: meta.Path(), Start: diagnostic.Position{Line: line, Column: column}, Rule: "action", Code: string(code), Message: fmt.Sprintf(format, args...)}
 	if end != nil {
 		d.End = diagnostic.Position{Line: end.Line, Column: end.Col}
 	}

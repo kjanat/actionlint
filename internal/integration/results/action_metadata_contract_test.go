@@ -50,7 +50,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	problem := actions.ManifestProblem{Message: "metadata unavailable", Path: "action.yml", Start: diagnostic.Position{}, End: diagnostic.Position{}}
+	problem := actions.ManifestProblem{Code: "invalid-field-type", Message: "metadata unavailable", Path: "action.yml", Start: diagnostic.Position{}, End: diagnostic.Position{}}
 	reports := []actions.MetadataReport{
 		(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.MissingMetadata(knowledge.Offline())}).Report(),
 		(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.AvailableMetadata(manifest)}).Report(),

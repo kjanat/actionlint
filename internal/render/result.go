@@ -79,12 +79,6 @@ type ResultConfig struct {
 	Warnings  []configreport.Warning         `json:"warnings,omitempty"`
 }
 
-// CheckSummary counts the selected inputs and reported findings.
-type CheckSummary struct {
-	Files    int `json:"files"`
-	Findings int `json:"findings"`
-}
-
 // NewCheckResult initializes a result with a consistent status and non-null lists.
 func NewCheckResult(code int) CheckResult {
 	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []diagnostic.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}, ActionMetadata: []ActionMetadataResult{}}
@@ -146,10 +140,15 @@ func (r Result) CheckResult() CheckResult {
 	return result
 }
 
+// Match @actions/core workflow-command escaping. Property values additionally
+// escape the separators between properties and between the header and body.
+var (
+	githubCommandData     = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
+	githubCommandProperty = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
+)
+
 // WriteGitHub writes one workflow command annotation per diagnostic.
 func WriteGitHub(out io.Writer, diagnostics []diagnostic.Diagnostic) error {
-	data := strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
-	property := strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
 	for _, diagnostic := range diagnostics {
 		endLine := diagnostic.End.Line
 		if endLine > diagnostic.Start.Line && diagnostic.End.Column == 1 {
@@ -166,7 +165,11 @@ func WriteGitHub(out io.Writer, diagnostics []diagnostic.Diagnostic) error {
 		case "info", "note":
 			level = "notice"
 		}
-		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {
+		title := diagnostic.Code
+		if title == "" {
+			title = diagnostic.Rule
+		}
+		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, githubCommandProperty.Replace(diagnostic.Path), position, githubCommandProperty.Replace(title), githubCommandData.Replace(diagnostic.Message)); err != nil {
 			return err
 		}
 	}

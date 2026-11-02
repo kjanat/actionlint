@@ -89,6 +89,25 @@ func TestCommandEscape(t *testing.T) {
 	}
 }
 
+func TestRenderAnalysisNativeCodeAndSeverity(t *testing.T) {
+	analysis := analysisForRender(t, "")
+	finding := &analysis.Diagnostics[0]
+	finding.Rule, finding.Code, finding.Message = "ruff", "F821", "Undefined name"
+	for _, tc := range []struct{ severity, command string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
+		finding.Severity = tc.severity
+		got, err := renderAnalysis(formatGitHub, analysis, ".", ".")
+		if err != nil || !strings.HasPrefix(got, "::"+tc.command+" file=") || !strings.Contains(got, "title=actionlint (ruff/F821)::Undefined name") {
+			t.Fatalf("severity=%q lost code or annotation level: %q (%v)", tc.severity, got, err)
+		}
+	}
+	for _, format := range []outputFormat{formatDefault, formatOneline, formatMarkdown} {
+		got, err := renderAnalysis(format, analysis, ".", ".")
+		if err != nil || !strings.Contains(got, "F821") || !strings.Contains(got, "Undefined name") {
+			t.Fatalf("format=%s lost native diagnostic code: %q (%v)", format, got, err)
+		}
+	}
+}
+
 func TestRenderAnalysisCompatibility(t *testing.T) {
 	analysis := analysisForRender(t, "")
 	for _, tc := range []struct {

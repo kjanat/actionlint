@@ -9,6 +9,7 @@ const (
 	FormatText    Format = "text"
 	FormatPretty  Format = "pretty"
 	FormatOneline Format = "oneline"
+	FormatGCC     Format = "gcc"
 	FormatJSON    Format = "json"
 	FormatJSONL   Format = "jsonl"
 	FormatSARIF   Format = "sarif"

@@ -19,6 +19,7 @@ const (
 // ManifestProblem is a source position in the selected manifest, not a finding
 // in the calling workflow. Selection identifies the bytes which were inspected.
 type ManifestProblem struct {
+	Code    string              `json:"code,omitempty"`
 	Message string              `json:"message"`
 	Path    string              `json:"path"`
 	Start   diagnostic.Position `json:"start"`

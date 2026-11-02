@@ -24,8 +24,7 @@
   "capabilities": {
     "template_contract": "kjanat:actionlint/template-effects@0.1.0",
     "fixes": false,
-    "reported_sources": false,
-    "message_template": "Ruff reported issue in this script: {code}: {message}"
+    "reported_sources": false
   },
   "config_schema": {
     "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",

@@ -25,12 +25,14 @@ type validator struct {
 	errs       []*findingmodel.Finding
 }
 
-func (rule *validator) Error(pos *workflowlang.Pos, message string) {
-	rule.errs = append(rule.errs, findingmodel.At(pos, "action", message))
+func (rule *validator) Error(pos *workflowlang.Pos, code actionmeta.DiagnosticCode, message string) {
+	finding := findingmodel.At(pos, "action", message)
+	finding.Code = string(code)
+	rule.errs = append(rule.errs, finding)
 }
 
-func (rule *validator) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	rule.errs = append(rule.errs, findingmodel.Errorf(pos, "action", format, args...))
+func (rule *validator) Errorf(pos *workflowlang.Pos, code actionmeta.DiagnosticCode, format string, args ...any) {
+	rule.Error(pos, code, fmt.Sprintf(format, args...))
 }
 
 // Check validates a manifest reached from a workflow call site. Findings which
@@ -75,7 +77,7 @@ func isImageOnDockerRegistry(image string) bool {
 
 func (rule *validator) missingRunsProp(pos *workflowlang.Pos, prop, ty, action, path string) {
 	pos = rule.metadataFieldPosition(pos, "runs", prop)
-	rule.Errorf(pos, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
+	rule.Errorf(pos, actionmeta.CodeMissingField, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
 }
 
 func (rule *validator) checkInvalidRunsProps(pos *workflowlang.Pos, r *actionmeta.Runs, ty, action, path string, props []string) {
@@ -95,7 +97,7 @@ func (rule *validator) checkInvalidRunsProps(pos *workflowlang.Pos, r *actionmet
 
 		if invalid {
 			pos := rule.metadataFieldPosition(pos, "runs", prop)
-			rule.Errorf(pos, `%q is not allowed in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
+			rule.Errorf(pos, actionmeta.CodeUnexpectedField, `%q is not allowed in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
 		}
 	}
 }
@@ -108,7 +110,7 @@ func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *wo
 	}
 	p := filepath.Join(dir, f)
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		rule.Errorf(pos, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
+		rule.Errorf(pos, actionmeta.CodeMissingFile, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
 	}
 }
 
@@ -121,7 +123,7 @@ func (rule *validator) checkLocalDockerActionRuns(r *actionmeta.Runs, dir, name 
 		rule.checkRunsFileExists(r.Image, dir, "image", name, pos)
 		if filepath.Base(filepath.FromSlash(r.Image)) != "Dockerfile" {
 			pos := rule.metadataFieldPosition(pos, "runs", "image")
-			rule.Errorf(pos, `the local file %q referenced from "image" key must be named "Dockerfile" in %q action. the action is defined at %q`, r.Image, name, dir)
+			rule.Errorf(pos, actionmeta.CodeInvalidDockerfile, `the local file %q referenced from "image" key must be named "Dockerfile" in %q action. the action is defined at %q`, r.Image, name, dir)
 		}
 	}
 	// Entrypoints resolve inside the container image; only a local Dockerfile can be checked here.
@@ -141,9 +143,9 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 			id := s.ID.Value
 			switch {
 			case !identifier.Valid(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
-				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, actionmeta.CodeInvalidStepID, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
 			case ids[strings.ToLower(id)]:
-				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, "has duplicate ID %q; step IDs are case insensitive", id)
+				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, actionmeta.CodeDuplicateStepID, "has duplicate ID %q; step IDs are case insensitive", id)
 			}
 			ids[strings.ToLower(id)] = true
 		}
@@ -154,15 +156,16 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 
 // compositeStepErrorf reports an error at the step's own position in the action metadata file
 // instead of at the "uses" site in the workflow being linted.
-func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, format string, args ...any) {
-	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, format, args...)
+func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, code actionmeta.DiagnosticCode, format string, args ...any) {
+	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, code, format, args...)
 }
 
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
-func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *workflowlang.Pos, format string, args ...any) {
+func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *workflowlang.Pos, code actionmeta.DiagnosticCode, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	err := findingmodel.At(&workflowlang.Pos{Line: line, Col: col}, "action", fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
+	err.Code = string(code)
 	err.Source = meta.Source
 	err.EndPosition = end
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
@@ -188,9 +191,10 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 }
 
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
-func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *workflowlang.Pos, format string, args ...any) {
+func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *workflowlang.Pos, code actionmeta.DiagnosticCode, format string, args ...any) {
 	err := findingmodel.Errorf(&workflowlang.Pos{Line: line, Col: col}, "action", format, args...)
 	err.Path = meta.Path()
+	err.Code = string(code)
 	err.Source = meta.Source
 	err.EndPosition = end
 	err.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
@@ -210,7 +214,7 @@ func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 				)
 			}
 			rule.metadataErrorfAt(
-				meta, pos.Line, pos.Col, actionmeta.ExpressionEndPosition(meta, &kv.Value, v),
+				meta, pos.Line, pos.Col, actionmeta.ExpressionEndPosition(meta, &kv.Value, v), v.Code,
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
 		}
@@ -220,14 +224,14 @@ func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 func (rule *validator) checkCompositeActionStepKeys(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, allowed []string) {
 	for _, k := range s.Keys {
 		if !slices.Contains(allowed, strings.ToLower(k)) {
-			rule.compositeStepErrorf(meta, s, idx, "has unexpected key %q. expected one of %s", k, stringutil.SortedQuotes(allowed))
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeUnexpectedField, "has unexpected key %q. expected one of %s", k, stringutil.SortedQuotes(allowed))
 		}
 	}
 }
 
 func (rule *validator) checkCompositeActionStep(meta *actionmeta.Metadata, s *actionmeta.Step, idx int) {
 	if !s.IsMapping {
-		rule.compositeStepErrorf(meta, s, idx, `must be a mapping with "run" or "uses" key`)
+		rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidStep, `must be a mapping with "run" or "uses" key`)
 		return
 	}
 
@@ -245,30 +249,30 @@ func (rule *validator) checkCompositeActionStep(meta *actionmeta.Metadata, s *ac
 
 	switch {
 	case hasRun && hasUses:
-		rule.compositeStepErrorf(meta, s, idx, `cannot have both "run" and "uses" keys`)
+		rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeConflictingStepKind, `cannot have both "run" and "uses" keys`)
 	case hasRun:
 		if s.Run == nil {
-			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "run" key`)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidFieldType, `must have a string value at "run" key`)
 		}
 		if !hasShell {
-			rule.compositeStepErrorf(meta, s, idx, `requires "shell" key since it has "run" key`)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeMissingShell, `requires "shell" key since it has "run" key`)
 		} else if s.Shell == nil {
-			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "shell" key`)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidFieldType, `must have a string value at "shell" key`)
 		}
 		rule.checkCompositeActionStepKeys(meta, s, idx, actionmeta.StepKeys("run-step"))
 	case hasUses:
 		if s.Uses == nil {
-			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidFieldType, `must have a string value at "uses" key`)
 		} else if *s.Uses == "" {
-			rule.compositeStepErrorf(meta, s, idx, `has empty "uses" value`)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidReference, `has empty "uses" value`)
 		} else if strings.HasPrefix(*s.Uses, "$/") && strings.ContainsRune(*s.Uses, '@') {
-			rule.compositeStepErrorf(meta, s, idx, `self-repository references do not support an '@ref' suffix at "uses" key`)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidReference, `self-repository references do not support an '@ref' suffix at "uses" key`)
 		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
-			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
+			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeReusableWorkflow, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
 		}
 		rule.checkCompositeActionStepKeys(meta, s, idx, actionmeta.StepKeys("uses-step"))
 	default:
-		rule.compositeStepErrorf(meta, s, idx, `requires either "run" or "uses" key`)
+		rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeMissingStepKind, `requires either "run" or "uses" key`)
 		keys := slices.Concat(actionmeta.StepKeys("run-step"), actionmeta.StepKeys("uses-step"))
 		slices.Sort(keys)
 		rule.checkCompositeActionStepKeys(meta, s, idx, slices.Compact(keys))
@@ -287,12 +291,12 @@ func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, 
 			end := actionmeta.ExpressionEndPosition(meta, v, violation)
 			if ctx := violation.Context; ctx != "" {
 				rule.compositeStepErrorfAt(
-					meta, idx, pos.Line, pos.Col, end,
+					meta, idx, pos.Line, pos.Col, end, violation.Code,
 					`uses context %q at %q key which is not available in a composite action. %s`,
 					ctx, key, compositeStepContextHint(ctx),
 				)
 			} else {
-				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, `%s at %q key`, violation.Message, key)
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, violation.Code, `%s at %q key`, violation.Message, key)
 			}
 		}
 	}
@@ -338,13 +342,13 @@ func (rule *validator) checkLocalJavaScriptActionRuns(r *actionmeta.Runs, dir, n
 	rule.checkRunsFileExists(r.Pre, dir, "pre", name, pos)
 	if r.Pre == "" && r.PreIf != "" {
 		pos := rule.metadataFieldPosition(pos, "runs", "pre-if")
-		rule.Errorf(pos, `"pre" is required when "pre-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
+		rule.Errorf(pos, actionmeta.CodeMissingField, `"pre" is required when "pre-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
 	}
 
 	rule.checkRunsFileExists(r.Post, dir, "post", name, pos)
 	if r.Post == "" && r.PostIf != "" {
 		pos := rule.metadataFieldPosition(pos, "runs", "post-if")
-		rule.Errorf(pos, `"post" is required when "post-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
+		rule.Errorf(pos, actionmeta.CodeMissingField, `"post" is required when "post-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
 	}
 
 	rule.checkInvalidRunsProps(pos, r, "JavaScript", name, dir, []string{"steps", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
@@ -355,6 +359,7 @@ func (rule *validator) checkLocalActionInputs(meta *actionmeta.Metadata, pos *wo
 		if i.Deprecated && i.DeprecationMessage == "" {
 			rule.Errorf(
 				rule.metadataFieldPosition(pos, "inputs", i.Name, "deprecationMessage"),
+				actionmeta.CodeEmptyDeprecationMessage,
 				"input %q is deprecated but \"deprecationMessage\" is empty in metadata of %q action at %q",
 				i.Name,
 				meta.Name,
@@ -373,7 +378,7 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 	switch using {
 	case "":
 		if r.Plugin == "" {
-			rule.Errorf(pos, `"runs.using" is missing in local action %q defined at %q`, meta.Name, meta.Dir())
+			rule.Errorf(pos, actionmeta.CodeMissingField, `"runs.using" is missing in local action %q defined at %q`, meta.Name, meta.Dir())
 		}
 	case "docker":
 		rule.checkLocalDockerActionRuns(r, meta.Dir(), meta.Name, pos)
@@ -381,9 +386,9 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 		rule.checkLocalCompositeActionRuns(meta, pos)
 	default:
 		if _, ok := actionmeta.Runtimes[using]; !ok {
-			rule.Errorf(pos, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are %s. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir(), actionmeta.ValidRuntimes())
+			rule.Errorf(pos, actionmeta.CodeRuntimeUnsupported, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are %s. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir(), actionmeta.ValidRuntimes())
 		} else if problem := actionmeta.RuntimeProblem(using); problem != "" {
-			rule.Errorf(pos, "%s. update runs.using in local action %q to a current runtime", problem, meta.Name)
+			rule.Errorf(pos, runtimeProblemCode(using), "%s. update runs.using in local action %q to a current runtime", problem, meta.Name)
 		}
 
 		// Validate JavaScript fields even when the runtime declaration has a diagnostic.
@@ -398,15 +403,16 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, caller *workflowlang.Pos) {
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
-		rule.Errorf(rule.metadataFieldPosition(caller, "name"), "name is required in action metadata %q", meta.Path())
+		rule.Errorf(rule.metadataFieldPosition(caller, "name"), actionmeta.CodeMissingField, "name is required in action metadata %q", meta.Path())
 	}
 	if meta.Description == "" {
-		rule.Errorf(rule.metadataFieldPosition(caller, "description"), "description is required in metadata of %q action at %q", meta.Name, meta.Path())
+		rule.Errorf(rule.metadataFieldPosition(caller, "description"), actionmeta.CodeMissingField, "description is required in metadata of %q action at %q", meta.Name, meta.Path())
 	}
 	if meta.Branding.Icon != "" {
 		if _, ok := brandingIcons[strings.ToLower(meta.Branding.Icon)]; !ok {
 			rule.Errorf(
 				rule.metadataFieldPosition(caller, "branding", "icon"),
+				actionmeta.CodeBrandingIcon,
 				"incorrect icon name %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon",
 				meta.Branding.Icon,
 				meta.Name,
@@ -418,6 +424,7 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, calle
 		if _, ok := brandingColors[strings.ToLower(meta.Branding.Color)]; !ok {
 			rule.Errorf(
 				rule.metadataFieldPosition(caller, "branding", "color"),
+				actionmeta.CodeBrandingColor,
 				"incorrect color %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor",
 				meta.Branding.Color,
 				meta.Name,
@@ -456,6 +463,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 			}
 			rule.Errorf(
 				pos,
+				actionmeta.CodeUnknownInput,
 				"input %q is not defined in action %s. available inputs are %s",
 				name,
 				description,
@@ -473,7 +481,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 			if d != "" {
 				msg += ": " + d
 			}
-			rule.Error(pos, msg)
+			rule.Error(pos, actionmeta.CodeDeprecatedInput, msg)
 		}
 	}
 
@@ -491,6 +499,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 				}
 				rule.Errorf(
 					positionPointer(exec.Uses().Pos()),
+					actionmeta.CodeRequiredInput,
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,
 					description,

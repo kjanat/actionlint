@@ -33,6 +33,18 @@ func TestGitHubAnnotationLevels(t *testing.T) {
 	}
 }
 
+func TestGitHubAnnotationUsesDiagnosticCode(t *testing.T) {
+	for _, code := range []string{"missing-file", "runtime-deprecated", "SC2035"} {
+		var out bytes.Buffer
+		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Rule: "action", Code: code, Message: "problem"}}); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), ",title="+code+"::problem\n") {
+			t.Fatalf("lost specific code in annotation: %s", &out)
+		}
+	}
+}
+
 func TestTemplateRangeUsesInclusiveEndColumn(t *testing.T) {
 	d := diagmodel.Diagnostic{Start: diagmodel.Position{Line: 1, Column: 2}, End: diagmodel.Position{Line: 2, Column: 4}}
 	if got := render.FindingOf(d, []byte("abc\ndefgh")).TemplateFields().EndColumn; got != 3 {

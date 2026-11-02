@@ -28,6 +28,9 @@ func (f Finding) printPretty(out io.Writer, width int) error {
 	if d.Rule != "" {
 		label += "[" + d.Rule + "]"
 	}
+	if d.Code != "" && d.Code != d.Rule {
+		label += " " + d.Code
+	}
 	writeWrapped(&b, "", label, width, style)
 	writeWrapped(&b, "  ", d.Message, width, nil)
 	writeWrapped(&b, "  --> ", fmt.Sprintf("%s:%d:%d", d.Path, d.Start.Line, d.Start.Column), width, nil)

@@ -96,7 +96,12 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 	}
 	if inspection.Availability().State() == actions.MetadataInvalid {
 		for _, problem := range inspection.Availability().Problems() {
-			rule.Report(findingmodel.Errorf(declarationPosition(e.Uses()), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message))
+			finding := findingmodel.Errorf(declarationPosition(e.Uses()), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message)
+			finding.Code = problem.Code
+			if finding.Code == "" {
+				finding.Code = string(actionmeta.CodeMetadataParse)
+			}
+			rule.Report(finding)
 		}
 	}
 	rule.Report(actioncheck.Repository(e, inspection.Definition())...)
@@ -118,7 +123,9 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 			rule.Report(findingmodel.At(declarationPosition(action.Uses()), "missing-local-action", err.Error()))
 		} else {
 			finding := findingmodel.At(declarationPosition(action.Uses()), rule.Name(), err.Error())
+			finding.Code = string(actionmeta.CodeMetadataRead)
 			if parseError, ok := errors.AsType[*actionlocal.ParseError](err); ok {
+				finding.Code = string(actionmeta.CodeMetadataParse)
 				finding.MetadataParseSource = source.Capture().Revision()
 				if !finding.MetadataParseSource.Valid() {
 					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path(), err)

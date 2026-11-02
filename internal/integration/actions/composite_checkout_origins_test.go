@@ -124,7 +124,7 @@ runs:
 					executable = append(executable, d)
 				}
 			}
-			if len(shell) != 1 || shell[0].Start.Line != 18 || !strings.Contains(shell[0].Message, "SC2086") {
+			if len(shell) != 1 || shell[0].Start.Line != 18 || shell[0].Code != "SC2086" {
 				t.Fatalf("only unknown workspace source should warn: %+v", shell)
 			}
 			if tc.executable {

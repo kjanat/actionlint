@@ -98,7 +98,7 @@ func (f Finding) TemplateFields() *TemplateFields {
 	}
 	return &TemplateFields{
 		Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
-		Kind: d.Rule, Snippet: snippet, EndColumn: end,
+		Kind: d.Rule, Code: d.Code, Severity: d.Severity, Snippet: snippet, EndColumn: end,
 	}
 }
 
@@ -112,6 +112,9 @@ func (f Finding) PrettyPrint(w io.Writer) {
 	_, _ = gray.Fprint(w, ":")
 	_, _ = fmt.Fprint(w, d.Start.Column)
 	_, _ = gray.Fprint(w, ": ")
+	if d.Code != "" && d.Code != d.Rule {
+		_, _ = bold.Fprintf(w, "%s: ", d.Code)
+	}
 	_, _ = bold.Fprint(w, d.Message)
 	_, _ = gray.Fprintf(w, " [%s]\n", d.Rule)
 

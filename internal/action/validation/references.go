@@ -101,7 +101,7 @@ func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecAction
 		return
 	}
 	if problem := actionmeta.RuntimeProblem(meta.Using()); problem != "" {
-		rule.Errorf(positionPointer(exec.Uses().Pos()), "%s. update the version of action %q", problem, spec)
+		rule.Errorf(positionPointer(exec.Uses().Pos()), runtimeProblemCode(meta.Using()), "%s. update the version of action %q", problem, spec)
 	}
 	rule.checkAction(meta, exec, strconv.Quote(spec))
 }
@@ -120,7 +120,7 @@ func (rule *validator) checkRepositoryReference(spec string, pos *workflowlang.P
 }
 
 func (rule *validator) invalidActionFormat(pos *workflowlang.Pos, spec string, why string) {
-	rule.Errorf(pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
+	rule.Errorf(pos, actionmeta.CodeInvalidReference, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
@@ -140,6 +140,7 @@ func (rule *validator) checkDockerAction(uri string, pos *workflowlang.Pos) {
 	if _, err := url.Parse(uri); err != nil {
 		rule.Errorf(
 			pos,
+			actionmeta.CodeInvalidReference,
 			"URI for Docker container %q is invalid: %s (tag=%s)",
 			uri,
 			err.Error(),
@@ -148,6 +149,14 @@ func (rule *validator) checkDockerAction(uri string, pos *workflowlang.Pos) {
 	}
 
 	if tagExists && tag == "" {
-		rule.Errorf(pos, "tag of Docker action should not be empty: %q", uri)
+		rule.Errorf(pos, actionmeta.CodeInvalidReference, "tag of Docker action should not be empty: %q", uri)
 	}
+}
+
+// Called after RuntimeProblem has established a lifecycle finding.
+func runtimeProblemCode(using string) actionmeta.DiagnosticCode {
+	if actionmeta.Runtimes[strings.ToLower(using)].Removed {
+		return actionmeta.CodeRuntimeRemoved
+	}
+	return actionmeta.CodeRuntimeDeprecated
 }

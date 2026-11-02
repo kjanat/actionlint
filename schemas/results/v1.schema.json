@@ -199,6 +199,9 @@
         "start"
       ],
       "properties": {
+        "code": {
+          "type": "string"
+        },
         "end": {
           "$ref": "#/definitions/manifestPosition"
         },

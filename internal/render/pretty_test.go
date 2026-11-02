@@ -1,6 +1,7 @@
 package render
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -29,6 +30,39 @@ func TestPrettyDiagnostic(t *testing.T) {
 	}
 	if err := r.Render(failingRenderWriter{}, Result{Findings: []Finding{FindingOf(d, nil)}}); err == nil {
 		t.Fatal("lost write failure")
+	}
+}
+
+func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
+	rule := Rule{Name: "shellcheck", Help: "Configure this plugin.", Explanation: "Checks shell snippets.", DocumentationURL: "https://example.com/rule"}
+	d := diagnostic.Diagnostic{
+		Rule: rule.Name, Code: "SC2035", Severity: "info", Message: "Use ./*glob* or -- *glob*",
+		Path: "ci.yml", Start: diagnostic.Position{Line: 440, Column: 36},
+		Help: rule.Help, Explanation: rule.Explanation,
+		DocumentationURL: rule.DocumentationURL,
+	}
+	r, err := New(FormatPretty, "", false, testVersion, []Rule{rule})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, specific := range []bool{false, true} {
+		if specific {
+			d.Help = "Quote this variable."
+		}
+		var out strings.Builder
+		result := Result{Diagnostics: []diagnostic.Diagnostic{d}, Findings: []Finding{FindingOf(d, nil)}}
+		if err := r.Render(&out, result); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "info[shellcheck] SC2035\n  Use ./*glob* or -- *glob*") ||
+			strings.Contains(out.String(), rule.Help) || strings.Contains(out.String(), rule.Explanation) ||
+			strings.Contains(out.String(), rule.DocumentationURL) ||
+			strings.Contains(out.String(), "Quote this variable.") != specific {
+			t.Fatalf("specific=%t: %s", specific, &out)
+		}
+		if !reflect.DeepEqual(result.Findings[0].Diagnostic, d) || !reflect.DeepEqual(result.Diagnostics[0], d) {
+			t.Fatal("pretty output changed diagnostic metadata")
+		}
 	}
 }
 

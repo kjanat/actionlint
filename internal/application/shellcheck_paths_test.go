@@ -72,7 +72,7 @@ jobs:
 				if len(result.Diagnostics) != 0 {
 					t.Fatalf("source should establish VALUE as a number: %+v", result.Diagnostics)
 				}
-			} else if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "SC2086") {
+			} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
 				t.Fatalf("source should not change the script analysis: %+v", result.Diagnostics)
 			}
 		})
@@ -229,7 +229,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 				}
 			}
 			if tc.unknown {
-				if len(findings) != 1 || !strings.Contains(findings[0].Message, "SC2086") {
+				if len(findings) != 1 || findings[0].Code != "SC2086" {
 					t.Fatalf("unknown directory must retain independent script analysis: %+v", findings)
 				}
 			} else if len(findings) != 0 {
@@ -314,7 +314,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 				}
 			}
 			if tc.unknown {
-				if len(findings) != 1 || !strings.Contains(findings[0].Message, "SC2086") {
+				if len(findings) != 1 || findings[0].Code != "SC2086" {
 					t.Fatalf("unknown runner path must disable source following: %+v", findings)
 				}
 			} else if len(findings) != 0 {
@@ -361,7 +361,7 @@ jobs:
 				t.Fatal(err)
 			}
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
-				return d.Rule == "shellcheck" && strings.Contains(d.Message, "SC2086")
+				return d.Rule == "shellcheck" && d.Code == "SC2086"
 			})
 			if found != tc.wantFinding {
 				t.Fatalf("available source must be analyzed; SC2086 = %v, diagnostics: %+v", found, result.Diagnostics)

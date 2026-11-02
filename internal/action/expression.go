@@ -17,6 +17,7 @@ type actionExpressionAvailability struct {
 
 // Violation identifies an unavailable context, invalid call or expression syntax.
 type Violation struct {
+	Code    DiagnosticCode
 	Context string
 	Message string
 	// Offsets are one-based decoded byte positions; endOffset is exclusive.
@@ -34,7 +35,7 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 	base, positionsKnown := 0, true
 	if bare && (!strings.Contains(s, "${{") || exprlang.LiteralExpressionValue(s) != nil) {
 		if _, err, _ := exprlang.ParseConditionExpression(s); err != nil {
-			violation := Violation{Message: "has an invalid expression: " + err.Message}
+			violation := Violation{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
 			if exprlang.ConditionSource(s) == s {
 				violation.Offset = err.Offset + 1
 				violation.EndOffset = err.EndOffset + 1
@@ -58,7 +59,7 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 		lex := exprlang.NewLexer(s)
 		expr, err := exprlang.NewParser().Parse(lex)
 		if err != nil {
-			violation := Violation{Message: "has an invalid expression: " + err.Message}
+			violation := Violation{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
 			if positionsKnown {
 				violation.Offset = expressionOffset + err.Offset + 1
 				violation.EndOffset = expressionOffset + err.EndOffset + 1
@@ -88,8 +89,10 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 						suggestion = exprlang.CloseName(name, avail.contexts)
 					}
 					if suggestion != "" {
+						v.Code = CodeExpressionReference
 						v.Message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 					} else {
+						v.Code = CodeExpressionContext
 						v.Context = name
 					}
 				}
@@ -98,7 +101,7 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 				if name == "fromjson" && len(n.Args) == 1 {
 					if literal, ok := n.Args[0].(*exprlang.StringNode); ok {
 						for _, collision := range exprlang.JSONMemberCollisions(literal.Value) {
-							v := Violation{Message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)}
+							v := Violation{Code: CodeJSONMemberCollision, Message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)}
 							if positionsKnown {
 								v.Offset = expressionOffset + n.Token().Offset + 1
 								v.EndOffset = v.Offset + len(n.Token().Value)
@@ -110,6 +113,7 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
 					signatures, ok := exprlang.BuiltinFuncSignatures[name]
 					if !ok {
+						v.Code = CodeExpressionCall
 						v.Message = fmt.Sprintf("calls unknown function %q", name)
 						var candidates []string
 						for candidate, signatures := range exprlang.BuiltinFuncSignatures {
@@ -128,14 +132,17 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 					} else if !actionFunctionArityMatches(signatures, len(n.Args)) ||
 						(name == "format" || name == "case") && len(n.Args) > 255 ||
 						name == "case" && len(n.Args)%2 == 0 {
+						v.Code = CodeExpressionCall
 						v.Message = fmt.Sprintf("calls function %q with an invalid number of arguments (%d)", name, len(n.Args))
 					}
 					break
 				}
 				bounds, ok := avail.functions[name]
 				if !ok {
+					v.Code = CodeExpressionCall
 					v.Message = fmt.Sprintf("calls function %q which is not available here", name)
 				} else if count := len(n.Args); count < bounds.min || bounds.max >= 0 && count > bounds.max {
+					v.Code = CodeExpressionCall
 					v.Message = fmt.Sprintf("calls function %q with %d argument(s); expected at least %d", name, count, bounds.min)
 					if bounds.max >= 0 {
 						v.Message += fmt.Sprintf(" and at most %d", bounds.max)

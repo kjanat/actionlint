@@ -35,7 +35,7 @@ type failingRenderWriter struct{}
 func (failingRenderWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 func TestRendererWriteErrors(t *testing.T) {
 	analysis := report.Analysis{FileCount: 1, Diagnostics: []diagnostic.Diagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}}
-	for _, format := range []Format{FormatText, FormatOneline, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub} {
+	for _, format := range []Format{FormatText, FormatOneline, FormatGCC, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub} {
 		t.Run(string(format), func(t *testing.T) {
 			renderer, err := New(format, "", false, func() string { return "test" }, nil)
 			if err != nil {

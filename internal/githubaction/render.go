@@ -15,7 +15,7 @@ func commandEscape(value string) string {
 	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(value)
 }
 
-const actionHeader = `{{define "header"}}{{if eq (printf "%.2s" .Filepath) "::"}}./{{end}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{.Message}} [{{.Kind}}]{{end}}`
+const actionHeader = `{{define "header"}}{{if eq (printf "%.2s" .Filepath) "::"}}./{{end}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{if and .Code (ne .Code .Kind)}}{{.Code}}: {{end}}{{.Message}} [{{.Kind}}]{{end}}`
 
 const actionDefault = actionHeader + `{{range .}}{{template "header" .}}
 {{if .Snippet}}{{$indent := printf "%*s " (len (printf "%d" .Line)) ""}}{{$indent}}|
@@ -25,7 +25,7 @@ const actionDefault = actionHeader + `{{range .}}{{template "header" .}}
 const actionOneline = actionHeader + `{{range .}}{{template "header" .}}
 {{end}}`
 
-const actionMarkdown = `{{range .}}### {{.Filepath}}:{{.Line}}:{{.Column}} ({{.Kind}})
+const actionMarkdown = `{{range .}}### {{.Filepath}}:{{.Line}}:{{.Column}} ({{.Kind}}{{if and .Code (ne .Code .Kind)}}/{{.Code}}{{end}})
 
 {{.Message}}
 {{if .Snippet}}
@@ -33,7 +33,7 @@ const actionMarkdown = `{{range .}}### {{.Filepath}}:{{.Line}}:{{.Column}} ({{.K
 {{end}}
 {{end}}`
 
-const actionGitHub = `{{define "data"}}{{replace . "%" "%25" (printf "%c" 13) "%0D" (printf "%c" 10) "%0A"}}{{end}}{{define "property"}}{{replace . "%" "%25" (printf "%c" 13) "%0D" (printf "%c" 10) "%0A" ":" "%3A" "," "%2C"}}{{end}}{{range .}}::error file={{template "property" .Filepath}},line={{.Line}},col={{.Column}},endColumn={{.EndColumn}},title={{template "property" (printf "actionlint (%s)" .Kind)}}::{{template "data" .Message}}{{if .Snippet}}%0A%0A{{template "data" .Snippet}}{{end}}
+const actionGitHub = `{{range .}}::{{if eq .Severity "info"}}notice{{else if eq .Severity "warning"}}warning{{else}}error{{end}} file={{escapeProperty .Filepath}},line={{.Line}},col={{.Column}},endColumn={{.EndColumn}},title=actionlint ({{escapeProperty .Kind}}{{if and .Code (ne .Code .Kind)}}/{{escapeProperty .Code}}{{end}})::{{escapeData .Message}}{{if .Snippet}}%0A%0A{{escapeData .Snippet}}{{end}}
 {{end}}`
 
 func renderAnalysis(format outputFormat, analysis *application.Result, workingDir, workspaceDir string) (string, error) {

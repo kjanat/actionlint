@@ -58,7 +58,7 @@ jobs:
 				}
 				return
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || !strings.Contains(result.Diagnostics[0].Message, "SC2086") || result.Diagnostics[0].Start.Line != 8 {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || result.Diagnostics[0].Code != "SC2086" || result.Diagnostics[0].Start.Line != 8 {
 				t.Fatalf("expected SC2086 on line 8 after the large comment: %+v", result.Diagnostics)
 			}
 		})

@@ -35,17 +35,17 @@ func InspectDefinition(content []byte) DefinitionInspection {
 		for _, item := range loadDiagnostics {
 			mark := item.Mark()
 			diagnostics = append(diagnostics, diagnostic.Diagnostic{
-				Rule: "action", Path: "action.yml", Message: item.Message(),
+				Rule: "action", Code: string(CodeMetadataParse), Path: "action.yml", Message: item.Message(),
 				Start: diagnostic.Position{Line: mark.Line, Column: mark.Column},
 			})
 		}
 		if len(diagnostics) == 0 {
-			diagnostics = append(diagnostics, diagnostic.Diagnostic{Rule: "action", Path: "action.yml", Message: err.Error()})
+			diagnostics = append(diagnostics, diagnostic.Diagnostic{Rule: "action", Code: string(CodeMetadataParse), Path: "action.yml", Message: err.Error()})
 		}
 		return DefinitionInspection{diagnostics: diagnostics}
 	}
 	if metadata == nil || metadata.Root == nil {
-		return DefinitionInspection{diagnostics: []diagnostic.Diagnostic{{Rule: "action", Path: "action.yml", Message: "action metadata is empty"}}}
+		return DefinitionInspection{diagnostics: []diagnostic.Diagnostic{{Rule: "action", Code: string(CodeMetadataEmpty), Path: "action.yml", Message: "action metadata is empty"}}}
 	}
 	diagnostics := Validate(metadata)
 	if len(diagnostics) != 0 {

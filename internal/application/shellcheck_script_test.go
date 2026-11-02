@@ -83,7 +83,7 @@ jobs:
 				t.Fatalf("want one %s finding, got %+v", tc.code, result.Diagnostics)
 			}
 			finding := result.Diagnostics[0]
-			if finding.Rule != "shellcheck" || !strings.Contains(finding.Message, tc.code) || finding.Start.Line != 6+tc.line {
+			if finding.Rule != "shellcheck" || finding.Code != tc.code || finding.Start.Line != 6+tc.line {
 				t.Fatalf("want %s on workflow line %d; got %+v", tc.code, 6+tc.line, finding)
 			}
 		})

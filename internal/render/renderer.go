@@ -23,7 +23,7 @@ func New(format Format, template string, oneline bool, version func() string, ru
 	}
 	r := &Renderer{format: format, oneline: oneline, version: version, rules: newRuleSet(rules), width: 100}
 	switch format {
-	case "", FormatPretty, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub:
+	case "", FormatPretty, FormatGCC, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub:
 	case FormatText:
 		r.oneline = false
 	case FormatOneline:
@@ -59,6 +59,8 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		r.rules.register(rule)
 	}
 	switch r.format {
+	case FormatGCC:
+		return WriteGCC(out, result.Diagnostics)
 	case FormatJSON, FormatJSONL:
 		report := result.CheckResult()
 		return report.WriteJSON(out, r.format == FormatJSONL)
@@ -72,6 +74,19 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 	fields := make([]*TemplateFields, 0, len(result.Findings))
 	for _, finding := range result.Findings {
 		if r.format == FormatPretty {
+			// Catalog descriptions explain a rule, not this occurrence. Keep
+			// diagnostic-specific advice, without repeating catalog defaults.
+			if rule := r.rules.lookup(finding.Diagnostic.Rule); rule != nil {
+				if finding.Diagnostic.Help == rule.Help {
+					finding.Diagnostic.Help = ""
+				}
+				if finding.Diagnostic.Explanation == rule.Explanation {
+					finding.Diagnostic.Explanation = ""
+				}
+				if finding.Diagnostic.DocumentationURL == rule.DocumentationURL {
+					finding.Diagnostic.DocumentationURL = ""
+				}
+			}
 			if err := finding.printPretty(out, r.width); err != nil {
 				return err
 			}

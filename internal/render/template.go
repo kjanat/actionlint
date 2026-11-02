@@ -24,6 +24,10 @@ type TemplateFields struct {
 	Column int `json:"column"`
 	// Kind is a rule name the error belongs to.
 	Kind string `json:"kind"`
+	// Code is the native diagnostic identifier, when supplied by the check.
+	Code string `json:"code,omitempty"`
+	// Severity is info, warning or error; empty means the default error level.
+	Severity string `json:"severity,omitempty"`
 	// Snippet is a code snippet and indicator to indicate where the error occurred.
 	Snippet string `json:"snippet,omitempty"`
 	// EndColumn is a column number where the error indicator (^~~~~~~) ends. When no indicator
@@ -70,6 +74,12 @@ func (s *ruleSet) sorted() []*Rule {
 	return ret
 }
 
+func (s *ruleSet) lookup(name string) *Rule {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.rules[name]
+}
+
 // Formatter renders TemplateFields with a user-supplied Go template.
 type Formatter struct {
 	temp  *template.Template
@@ -99,9 +109,11 @@ func newFormatter(format string, version func() string, known *ruleSet) (*Format
 		"replace": func(s string, oldnew ...string) string {
 			return strings.NewReplacer(oldnew...).Replace(s)
 		},
-		"toPascalCase": toPascalCase,
-		"getVersion":   version,
-		"allKinds":     known.sorted,
+		"escapeData":     githubCommandData.Replace,
+		"escapeProperty": githubCommandProperty.Replace,
+		"toPascalCase":   toPascalCase,
+		"getVersion":     version,
+		"allKinds":       known.sorted,
 	})
 	t, err := template.New("error formatter").Funcs(funcs).Parse(unescapeBackslash(format))
 	if err != nil {

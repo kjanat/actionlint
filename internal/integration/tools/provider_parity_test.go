@@ -2,6 +2,7 @@ package tools_test
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -24,6 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/source"
+	gocmp "github.com/google/go-cmp/cmp"
 )
 
 // The parity gate compares the bundled manifests, run by the generic process
@@ -32,8 +34,8 @@ import (
 // ShellCheck 0.11.0 and Ruff 0.17.0. The snapshots hold the adapters' raw
 // output: ShellCheck's severities such as "style" are mapped through the
 // manifest's severities table when compared, since the adapters left that
-// mapping to renderers. A deliberate change in findings updates the snapshot
-// by hand.
+// mapping to renderers. Message bodies reflect the current plain-text
+// presentation; codes, severity and source coordinates remain separate fields.
 
 // parityDiagnostics are a route's tool findings and its error, in a stable,
 // machine-independent form.
@@ -199,10 +201,11 @@ func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics 
 // compareParity fails t when got differs from want.
 func compareParity(t *testing.T, want, got parityDiagnostics) {
 	t.Helper()
+	want, got = normalizeParity(want), normalizeParity(got)
 	wantJSON, _ := json.MarshalIndent(want, "", "  ")
 	gotJSON, _ := json.MarshalIndent(got, "", "  ")
 	if string(wantJSON) != string(gotJSON) {
-		t.Fatalf("manifest route differs from the adapters' snapshot\nadapters:\n%s\nmanifests:\n%s", wantJSON, gotJSON)
+		t.Fatalf("manifest route differs from the adapters' snapshot (-snapshot +manifest):\n%s", gocmp.Diff(string(wantJSON), string(gotJSON)))
 	}
 }
 
@@ -281,7 +284,16 @@ func normalizeParity(snapshot parityDiagnostics) parityDiagnostics {
 			finding.Reference.Document = filepath.ToSlash(finding.Reference.Document)
 			finding.Reference.Node = ""
 		}
+		finding.Fixes = slices.Clone(finding.Fixes)
 		for j := range finding.Fixes {
+			fix := &finding.Fixes[j]
+			if fix.Revisions != nil {
+				revisions := make(map[string]string, len(fix.Revisions))
+				for path, digest := range fix.Revisions {
+					revisions[strings.ReplaceAll(path, `\`, "/")] = digest
+				}
+				fix.Revisions = revisions
+			}
 			for k := range finding.Fixes[j].Edits {
 				finding.Fixes[j].Edits[k].Path = filepath.ToSlash(finding.Fixes[j].Edits[k].Path)
 			}
@@ -295,7 +307,14 @@ func normalizeParity(snapshot parityDiagnostics) parityDiagnostics {
 		}
 	}
 	slices.SortStableFunc(pairs, func(a, b pair) int {
-		return strings.Compare(a.finding.Path+"\x00"+a.finding.Message, b.finding.Path+"\x00"+b.finding.Message)
+		return cmp.Or(
+			strings.Compare(a.finding.Path, b.finding.Path),
+			cmp.Compare(a.finding.Start.Line, b.finding.Start.Line),
+			cmp.Compare(a.finding.Start.Column, b.finding.Start.Column),
+			strings.Compare(a.finding.Rule, b.finding.Rule),
+			strings.Compare(a.finding.Code, b.finding.Code),
+			strings.Compare(a.finding.Message, b.finding.Message),
+		)
 	})
 	out := parityDiagnostics{Error: snapshot.Error}
 	for _, p := range pairs {
@@ -326,6 +345,21 @@ func normalizeParity(snapshot parityDiagnostics) parityDiagnostics {
 		out.Captured[filepath.ToSlash(alias)] = captured
 	}
 	return out
+}
+
+func TestParityRevisionPathsPortable(t *testing.T) {
+	fixture := func(path string) parityDiagnostics {
+		return parityDiagnostics{Findings: []diagnostic.Diagnostic{{
+			Rule: "shellcheck", Path: "workflows/check.yml", Message: "message",
+			Fixes: []diagnostic.Fix{{Revisions: map[string]string{path: "captured digest"}}},
+		}}}
+	}
+	windows := fixture(`workflows\check.yml`)
+	linux := fixture("workflows/check.yml")
+	compareParity(t, windows, linux)
+	if windows.Findings[0].Fixes[0].Revisions[`workflows\check.yml`] != "captured digest" {
+		t.Fatal("normalization mutated the historical snapshot")
+	}
 }
 
 // TestProviderParityFixtures runs every workflow fixture through the

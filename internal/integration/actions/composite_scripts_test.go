@@ -34,7 +34,7 @@ runs:
 					findings = append(findings, d)
 				}
 			}
-			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != metadata || findings[0].Start != (diagmodel.Position{Line: 8, Column: 14}) || !strings.Contains(findings[0].Message, "SC2086") {
+			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != metadata || findings[0].Start != (diagmodel.Position{Line: 8, Column: 14}) || findings[0].Code != "SC2086" {
 				t.Fatalf("metadata diagnostic: %+v", result.Diagnostics)
 			}
 			if !slices.Contains(result.Inputs, metadata) {
@@ -90,7 +90,7 @@ runs:
 					findings = append(findings, d)
 				}
 			}
-			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != inner || !strings.Contains(findings[0].Message, "SC2086") {
+			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != inner || findings[0].Code != "SC2086" {
 				t.Fatalf("action configuration leaked between invocations: %+v", findings)
 			}
 			if strings.Contains(selection, ".shellcheckrc") {
@@ -265,7 +265,7 @@ runs:
 				t.Errorf("conditional finding=%v, want %v: %+v", finding, tc.finding, result.Diagnostics)
 			}
 			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
-				return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "SC2086")
+				return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner && d.Code == "SC2086"
 			}) {
 				t.Fatalf("conditional nested script lost static checks: %+v", result.Diagnostics)
 			}
@@ -749,7 +749,7 @@ runs:
 			result := testutil.Composite(t, root, tc.steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			warnings := 0
 			for _, diagnostic := range result.Diagnostics {
-				if diagnostic.Rule == "shellcheck" && strings.Contains(diagnostic.Message, "SC2086") {
+				if diagnostic.Rule == "shellcheck" && diagnostic.Code == "SC2086" {
 					warnings++
 				}
 			}

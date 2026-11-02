@@ -378,7 +378,7 @@
         "rule": "shellcheck",
         "code": "SC2006",
         "severity": "style",
-        "message": "shellcheck reported issue in this script: SC2006:style:1:15: Use $(...) notation instead of legacy backticks `...`",
+        "message": "Use $(...) notation instead of legacy backticks `...`",
         "path": "testdata/err/if_cond_constants.yaml",
         "start": {
           "line": 7,
@@ -403,7 +403,7 @@
         "rule": "shellcheck",
         "code": "SC2046",
         "severity": "warning",
-        "message": "shellcheck reported issue in this script: SC2046:warning:1:15: Quote this to prevent word splitting",
+        "message": "Quote this to prevent word splitting",
         "path": "testdata/err/if_cond_constants.yaml",
         "start": {
           "line": 7,
@@ -743,7 +743,7 @@
         "rule": "shellcheck",
         "code": "SC2005",
         "severity": "style",
-        "message": "shellcheck reported issue in this script: SC2005:style:1:6: Useless echo? Instead of 'echo $(cmd)', just use 'cmd'",
+        "message": "Useless echo? Instead of 'echo $(cmd)', just use 'cmd'",
         "path": "testdata/err/issue207_work_dir_with_uses.yaml",
         "start": {
           "line": 9,
@@ -1253,7 +1253,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 15,
@@ -1278,7 +1278,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 20,
@@ -1303,7 +1303,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 30,
@@ -1328,7 +1328,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 42,
@@ -1353,7 +1353,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 47,
@@ -1378,7 +1378,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 53,
@@ -1403,7 +1403,7 @@
         "rule": "shellcheck",
         "code": "SC2283",
         "severity": "error",
-        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 15,
@@ -1428,7 +1428,7 @@
         "rule": "shellcheck",
         "code": "SC2283",
         "severity": "error",
-        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 20,
@@ -1453,7 +1453,7 @@
         "rule": "shellcheck",
         "code": "SC2283",
         "severity": "error",
-        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 30,
@@ -1478,7 +1478,7 @@
         "rule": "shellcheck",
         "code": "SC2283",
         "severity": "error",
-        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 42,
@@ -1503,7 +1503,7 @@
         "rule": "shellcheck",
         "code": "SC2283",
         "severity": "error",
-        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 47,
@@ -1528,7 +1528,7 @@
         "rule": "shellcheck",
         "code": "SC2283",
         "severity": "error",
-        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
         "path": "testdata/err/shellcheck_default_shell_detection.yaml",
         "start": {
           "line": 53,
@@ -2462,7 +2462,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:10: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 35,
@@ -2522,7 +2522,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 6,
@@ -2547,7 +2547,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 18,
@@ -2572,7 +2572,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 30,
@@ -2597,7 +2597,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:1:8: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 10,
@@ -2622,7 +2622,7 @@
         "rule": "shellcheck",
         "code": "SC2086",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2086:info:2:6: Double quote to prevent globbing and word splitting",
+        "message": "Double quote to prevent globbing and word splitting",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 25,
@@ -2682,7 +2682,7 @@
         "rule": "shellcheck",
         "code": "SC2291",
         "severity": "info",
-        "message": "shellcheck reported issue in this script: SC2291:info:1:1: Quote repeated spaces to avoid them collapsing into one",
+        "message": "Quote repeated spaces to avoid them collapsing into one",
         "path": "testdata/examples/shellcheck_integration.yaml",
         "start": {
           "line": 35,

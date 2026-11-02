@@ -43,12 +43,12 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 		field, expression string
 		want              []Violation
 	}{
-		{"runs.steps.*.run", "${{ github_repository }}", []Violation{{Message: `uses undefined variable "github_repository"; did you mean "github.repository"?`, Offset: 5}}},
-		{"runs.steps.*.if", "GITHUB_REPOSITORY", []Violation{{Message: `uses undefined variable "GITHUB_REPOSITORY"; did you mean "github.repository"?`, Offset: 1}}},
-		{"inputs.*.default", "${{ runner_os }}", []Violation{{Message: `uses undefined variable "runner_os"; did you mean "runner.os"?`, Offset: 5}}},
-		{"runs.args.*", "${{ github_repository }}", []Violation{{Context: "github_repository"}}},
-		{"runs.steps.*.run", "${{ secrets.TOKEN }}", []Violation{{Context: "secrets"}}},
-		{"runs.steps.*.run", "${{ github_nonexistent }}", []Violation{{Context: "github_nonexistent"}}},
+		{"runs.steps.*.run", "${{ github_repository }}", []Violation{{Code: CodeExpressionReference, Message: `uses undefined variable "github_repository"; did you mean "github.repository"?`, Offset: 5}}},
+		{"runs.steps.*.if", "GITHUB_REPOSITORY", []Violation{{Code: CodeExpressionReference, Message: `uses undefined variable "GITHUB_REPOSITORY"; did you mean "github.repository"?`, Offset: 1}}},
+		{"inputs.*.default", "${{ runner_os }}", []Violation{{Code: CodeExpressionReference, Message: `uses undefined variable "runner_os"; did you mean "runner.os"?`, Offset: 5}}},
+		{"runs.args.*", "${{ github_repository }}", []Violation{{Code: CodeExpressionContext, Context: "github_repository"}}},
+		{"runs.steps.*.run", "${{ secrets.TOKEN }}", []Violation{{Code: CodeExpressionContext, Context: "secrets"}}},
+		{"runs.steps.*.run", "${{ github_nonexistent }}", []Violation{{Code: CodeExpressionContext, Context: "github_nonexistent"}}},
 		{"runs.steps.*.run", "${{ inputs.github_token }} ${{ matrix.runner_os }}", nil},
 	} {
 		t.Run(tc.field+"/"+tc.expression, func(t *testing.T) {
@@ -95,35 +95,35 @@ func TestActionExpressionFunctions(t *testing.T) {
 		{"interpolated condition", "runs.steps.*.if", "${{ always() || failure() }}", true, nil},
 		{
 			"status outside condition", "runs.steps.*.name", "${{ success() }}", false,
-			[]Violation{{Message: `calls function "success" which is not available here`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "success" which is not available here`}},
 		},
 		{
 			"status in default", "inputs.*.default", "${{ always() }}", false,
-			[]Violation{{Message: `calls function "always" which is not available here`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}},
 		},
 		{
 			"hash with no patterns", "inputs.*.default", "${{ hashFiles() }}", false,
-			[]Violation{{Message: `calls function "hashfiles" with 0 argument(s); expected at least 1 and at most 255`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "hashfiles" with 0 argument(s); expected at least 1 and at most 255`}},
 		},
 		{
 			"status with argument", "runs.steps.*.if", "${{ success('x') }}", true,
-			[]Violation{{Message: `calls function "success" with 1 argument(s); expected at least 0 and at most 0`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "success" with 1 argument(s); expected at least 0 and at most 0`}},
 		},
 		{"case insensitive nested functions", "runs.steps.*.run", "${{ format('{0}', HASHFILES('*.go')) }}", false, nil},
 		{"caller properties have no invented types", "runs.steps.*.run", "${{ inputs.custom }} ${{ steps.custom.outputs.custom }}", false, nil},
 		{"quoted delimiters", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}", false, nil},
 		{
 			"literal then real function", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}${{ success() }}", false,
-			[]Violation{{Message: `calls function "success" which is not available here`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "success" which is not available here`}},
 		},
 		{
 			"repeated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
-			[]Violation{{Message: `calls function "always" which is not available here`}, {Message: `calls function "always" which is not available here`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}, {Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}},
 		},
 		{"hash maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 254) + "'x') }}", false, nil},
 		{
 			"hash over maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 255) + "'x') }}", false,
-			[]Violation{{Message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}},
+			[]Violation{{Code: CodeExpressionCall, Message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}},
 		},
 	}
 	for _, tc := range tests {
@@ -191,7 +191,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 			got := ExpressionViolations(tc.expr, tc.bare, "runs.steps.*.if", nil)
 			var want []Violation
 			for _, ctx := range tc.want {
-				want = append(want, Violation{Context: ctx})
+				want = append(want, Violation{Code: CodeExpressionContext, Context: ctx})
 			}
 			if diff := cmp.Diff(want, got, cmp.AllowUnexported(Violation{}), cmpopts.IgnoreFields(Violation{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
@@ -218,7 +218,7 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 			got := ExpressionViolations(tc.expr, false, "inputs.*.default", nil)
 			var want []Violation
 			for _, ctx := range tc.want {
-				want = append(want, Violation{Context: ctx})
+				want = append(want, Violation{Code: CodeExpressionContext, Context: ctx})
 			}
 			if diff := cmp.Diff(want, got, cmp.AllowUnexported(Violation{}), cmpopts.IgnoreFields(Violation{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)

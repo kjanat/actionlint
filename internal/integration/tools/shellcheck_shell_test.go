@@ -76,7 +76,7 @@ jobs:
 			if !tc.finding && len(shellFindings) == 0 {
 				return
 			}
-			if !tc.finding || len(shellFindings) != 1 || !strings.Contains(shellFindings[0].Message, "SC3010") || shellFindings[0].Start.Line != line || shellFindings[0].Start.Column != 11 {
+			if !tc.finding || len(shellFindings) != 1 || shellFindings[0].Code != "SC3010" || shellFindings[0].Start.Line != line || shellFindings[0].Start.Column != 11 {
 				t.Fatalf("expected bashism=%v at %d:11; got %v", tc.finding, line, shellFindings)
 			}
 		})

@@ -75,7 +75,7 @@ jobs:
 				return
 			}
 			line := 7 + strings.Count(tc.script, "\n")
-			if tc.finding == "" || len(found) != 1 || !strings.Contains(found[0].Message, tc.finding) || found[0].Start.Line != line {
+			if tc.finding == "" || len(found) != 1 || found[0].Code != tc.finding || found[0].Start.Line != line {
 				t.Fatalf("want %q on workflow line %d; got %v", tc.finding, line, found)
 			}
 		})
