@@ -88,10 +88,13 @@ func ruleBehaviours() map[string]behaviour {
 		}},
 		"deprecated-commands": {Script: workflowcommands.Analyzer{}},
 		"if-cond":             {Build: func(c Context) workflowvisit.Rule { return NewRuleIfCond() }},
-		"numeric-values":      {Build: func(c Context) workflowvisit.Rule { return NewRuleNumericValues() }},
-		"empty-triggers":      {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyTriggers() }},
-		"empty-job":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyJob() }},
-		"empty-run":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyRun() }},
+		"uncancellable-condition": {Build: func(Context) workflowvisit.Rule {
+			return newDeclarationRule("uncancellable-condition")
+		}},
+		"numeric-values": {Build: func(c Context) workflowvisit.Rule { return NewRuleNumericValues() }},
+		"empty-triggers": {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyTriggers() }},
+		"empty-job":      {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyJob() }},
+		"empty-run":      {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyRun() }},
 		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {
 			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {

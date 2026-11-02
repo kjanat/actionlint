@@ -18,6 +18,19 @@ func (v StringView) Semantic() value.Value {
 	return v.owner.record.strings[v.data()]
 }
 
+// ExpressionSource maps this scalar's decoded expression back to physical YAML.
+// The view borrows only the record's immutable, captured source mapping.
+func (v StringView) ExpressionSource() ScriptSourceView {
+	if !v.Present() || v.owner == nil || v.owner.record.workflow == nil {
+		return ScriptSourceView{}
+	}
+	pos, ok := v.Pos()
+	if !ok {
+		return ScriptSourceView{}
+	}
+	return makeScriptSourceView(v.owner, v.owner.record.workflow.ExpressionSources[pos])
+}
+
 func (v BoolView) Semantic() value.Value {
 	if !v.Present() || v.owner == nil {
 		return value.Value{}
@@ -102,6 +115,15 @@ func (v StepView) DeclaringJob() string {
 		return ""
 	}
 	return v.owner.references.StepJobs[v.data()]
+}
+
+// Job returns the job that declares this step, including nested parallel steps.
+// Composite metadata without a declaring workflow job returns an empty view.
+func (v StepView) Job() JobView {
+	if !v.Present() || v.owner.record.workflow == nil {
+		return JobView{}
+	}
+	return makeJobView(v.owner, v.owner.record.workflow.Jobs[v.DeclaringJob()])
 }
 
 func (v StepView) Run() (ExecRunView, bool)           { return v.Exec().Run() }

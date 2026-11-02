@@ -152,6 +152,8 @@ func (check Declaration) Job(job declaration.JobView) []Finding {
 			out = append(out, conditional(job.Snapshot().If())...)
 		}
 		return out
+	case "uncancellable-condition":
+		return uncancellableCondition(job.If(), "job")
 	case "id":
 		return identifiers(job)
 	}
@@ -164,6 +166,8 @@ func (check Declaration) Step(step declaration.StepView) []Finding {
 		return environment(step.Env())
 	case "if-cond":
 		return conditional(step.If())
+	case "uncancellable-condition":
+		return uncancellableCheckout(step)
 	case "empty-run":
 		return EmptyRun(step)
 	}

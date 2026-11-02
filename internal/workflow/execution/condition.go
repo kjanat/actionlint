@@ -51,6 +51,46 @@ func NeverRuns(expression exprlang.Node) bool {
 	return conditionNeverRunsInStatuses(expression, []string{"success", "failure", "other"})
 }
 
+// AlwaysIgnoresCancellation reports an explicit always() in a condition that
+// cannot be proved false during cancellation. Unknown context values stay
+// unknown; a guard such as !cancelled() must hold on every possible true path.
+func AlwaysIgnoresCancellation(expression exprlang.Node) bool {
+	hasAlways := false
+	exprlang.Visit(expression, func(node, _ exprlang.Node, entering bool) {
+		if call, ok := node.(*exprlang.FuncCallNode); entering && ok && len(call.Args) == 0 && strings.EqualFold(call.Callee, "always") {
+			hasAlways = true
+		}
+	})
+	if !hasAlways {
+		return false
+	}
+	return conditionMayRunCancelled(expression)
+}
+
+// CanRunDuringCancellation checks explicit status functions. Without one, GitHub
+// adds success() and cancellation stops the job. Context values stay unknown.
+func CanRunDuringCancellation(expression exprlang.Node) bool {
+	hasStatus := false
+	exprlang.Visit(expression, func(node, _ exprlang.Node, entering bool) {
+		if call, ok := node.(*exprlang.FuncCallNode); entering && ok && len(call.Args) == 0 {
+			switch strings.ToLower(call.Callee) {
+			case "always", "success", "failure", "cancelled":
+				hasStatus = true
+			}
+		}
+	})
+	return hasStatus && conditionMayRunCancelled(expression)
+}
+
+func conditionMayRunCancelled(expression exprlang.Node) bool {
+	for _, status := range []string{"success", "failure", "other"} {
+		if conditionStatusTruth(expression, status, true) != conditionFalse {
+			return true
+		}
+	}
+	return false
+}
+
 func conditionNeverRunsInStatuses(expression exprlang.Node, statuses []string) bool {
 	for _, status := range statuses {
 		for _, cancelled := range []bool{false, true} {
@@ -115,8 +155,50 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 			}
 		case exprlang.LogicalOpNodeKindInvalid:
 		}
+	case *exprlang.CompareOpNode:
+		if result, known := conditionStatusValue(node, status, cancelled); known {
+			return knownConditionTruth(exprlang.ExpressionTruthy(result))
+		}
 	}
 	return conditionUnknown
+}
+
+// Comparisons use operand values: && and || return an operand, rather
+// than converting it to bool. In particular, always() && 'x' is not true == 1.
+func conditionStatusValue(expression exprlang.Node, status string, cancelled bool) (any, bool) {
+	if constant, known := exprlang.ConditionConstantValue(expression); known {
+		return constant, true
+	}
+	switch node := expression.(type) {
+	case *exprlang.FuncCallNode, *exprlang.NotOpNode:
+		truth := conditionStatusTruth(expression, status, cancelled)
+		return truth == conditionTrue, truth != conditionUnknown
+	case *exprlang.LogicalOpNode:
+		left, known := conditionStatusValue(node.Left, status, cancelled)
+		if !known {
+			return nil, false
+		}
+		switch node.Kind {
+		case exprlang.LogicalOpNodeKindAnd:
+			if !exprlang.ExpressionTruthy(left) {
+				return left, true
+			}
+		case exprlang.LogicalOpNodeKindOr:
+			if exprlang.ExpressionTruthy(left) {
+				return left, true
+			}
+		case exprlang.LogicalOpNodeKindInvalid:
+			return nil, false
+		}
+		return conditionStatusValue(node.Right, status, cancelled)
+	case *exprlang.CompareOpNode:
+		left, leftKnown := conditionStatusValue(node.Left, status, cancelled)
+		right, rightKnown := conditionStatusValue(node.Right, status, cancelled)
+		if leftKnown && rightKnown {
+			return exprlang.CompareConditionValues(node.Kind, left, right)
+		}
+	}
+	return nil, false
 }
 
 func knownConditionTruth(value bool) conditionTruth {

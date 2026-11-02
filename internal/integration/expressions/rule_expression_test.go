@@ -30,7 +30,11 @@ func TestRuleExpressionBareFunctionCondition(t *testing.T) {
 					t.Fatal(err)
 				}
 				if condition == "always()" {
-					if len(result.Diagnostics) != 0 {
+					if location == "job" {
+						if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "uncancellable-condition" || result.Diagnostics[0].Severity != "warning" {
+							t.Fatalf("expected cancellation warning without an expression error: %+v", result.Diagnostics)
+						}
+					} else if len(result.Diagnostics) != 0 {
 						t.Fatalf("unexpected diagnostics: %+v", result.Diagnostics)
 					}
 					return

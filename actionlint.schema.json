@@ -149,6 +149,7 @@
                   "script-interpolation",
                   "deprecated-commands",
                   "if-cond",
+                  "uncancellable-condition",
                   "numeric-values",
                   "empty-triggers",
                   "empty-job",
@@ -2200,6 +2201,75 @@
                                 }
                               ]
                             },
+                            "uncancellable-condition": {
+                              "title": "uncancellable-condition",
+                              "description": "Report always() conditions that prevent cancellation",
+                              "markdownDescription": "Report always() conditions that prevent cancellation",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "unsound-ternary": {
                               "title": "unsound-ternary",
                               "description": "Report a && b || c expressions where b is always falsy",
@@ -2524,6 +2594,7 @@
                           "script-interpolation",
                           "deprecated-commands",
                           "if-cond",
+                          "uncancellable-condition",
                           "numeric-values",
                           "empty-triggers",
                           "empty-job",
@@ -3156,6 +3227,7 @@
                                                           "shellcheck",
                                                           "string-conditions",
                                                           "syntax-check",
+                                                          "uncancellable-condition",
                                                           "unsound-ternary",
                                                           "unused-suppression",
                                                           "workflow-call",
@@ -6718,6 +6790,75 @@
                                           }
                                         ]
                                       },
+                                      "uncancellable-condition": {
+                                        "title": "uncancellable-condition",
+                                        "description": "Report always() conditions that prevent cancellation",
+                                        "markdownDescription": "Report always() conditions that prevent cancellation",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "unsound-ternary": {
                                         "title": "unsound-ternary",
                                         "description": "Report a && b || c expressions where b is always falsy",
@@ -7042,6 +7183,7 @@
                                     "script-interpolation",
                                     "deprecated-commands",
                                     "if-cond",
+                                    "uncancellable-condition",
                                     "numeric-values",
                                     "empty-triggers",
                                     "empty-job",
@@ -7674,6 +7816,7 @@
                                                                     "shellcheck",
                                                                     "string-conditions",
                                                                     "syntax-check",
+                                                                    "uncancellable-condition",
                                                                     "unsound-ternary",
                                                                     "unused-suppression",
                                                                     "workflow-call",

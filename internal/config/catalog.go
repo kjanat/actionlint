@@ -39,7 +39,7 @@ func (r Rule) Nursery() bool { return r.Maturity == "nursery" }
 func Rules() []Rule {
 	rules := slices.Clone(registeredRules())
 	for i := range rules {
-		rules[i].Descriptor = rules[i].Descriptor.Clone()
+		rules[i].Descriptor = rules[i].Clone()
 	}
 	return rules
 }
@@ -96,6 +96,7 @@ func buildRegisteredRules() []Rule {
 
 		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
 		{Name: "if-cond"},
+		{Name: "uncancellable-condition", SupportsActions: true, DefaultLevel: "on"},
 		{Name: "numeric-values"},
 		{Name: "empty-triggers"},
 		{Name: "empty-job"},
@@ -135,7 +136,7 @@ func providerRules() []Rule {
 func FindRule(name string) (Rule, bool) {
 	for _, rule := range registeredRules() {
 		if rule.Name == name {
-			rule.Descriptor = rule.Descriptor.Clone()
+			rule.Descriptor = rule.Clone()
 			return rule, true
 		}
 	}

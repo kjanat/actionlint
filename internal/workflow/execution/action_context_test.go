@@ -229,13 +229,16 @@ func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.
 	content.WriteString("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ")
 	content.WriteString(strconv.Quote(uses))
 	if step.If != nil {
-		content.WriteString("\n        if: " + strconv.Quote(step.If.Value))
+		content.WriteString("\n        if: ")
+		content.WriteString(strconv.Quote(step.If.Value))
 	}
 	if step.ContinueOnError != nil {
-		content.WriteString("\n        continue-on-error: " + strconv.FormatBool(step.ContinueOnError.Value))
+		content.WriteString("\n        continue-on-error: ")
+		content.WriteString(strconv.FormatBool(step.ContinueOnError.Value))
 	}
 	if step.Background != nil {
-		content.WriteString("\n        background: " + strconv.FormatBool(step.Background.Value))
+		content.WriteString("\n        background: ")
+		content.WriteString(strconv.FormatBool(step.Background.Value))
 	}
 	content.WriteByte('\n')
 	bytes := []byte(content.String())

@@ -9,6 +9,8 @@ import (
 // Examples are executable workflow documents. Engine tests check that the before
 // form reports the named rule and the after form is clean without external tools.
 var examples = map[string][]rule.Example{
+	"uncancellable-condition": {example("Keep the job runnable after failure while allowing workflow cancellation.",
+		"    if: ${{ always() }}\n", "    if: ${{ !cancelled() }}\n")},
 	"missing-workflow-permissions": {example("Declare only the token permissions this job needs; this job uses no token scopes.",
 		"", "    permissions: {}\n")},
 	"script-injection": {

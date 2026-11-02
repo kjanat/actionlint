@@ -1015,6 +1015,42 @@ Check the indicated YAML field and its expected GitHub Actions value type.
 
 Configure this rule with `lint.rules.correctness.syntax-check`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## uncancellable-condition
+
+Warn when a job or actions/checkout step uses always() without checking for cancellation. Cancelling the workflow might not stop the job, and checkout can hang until its timeout. Other steps are not reported: cleanup and log uploads may need to run after cancellation. Checkout findings use info when their job can be cancelled and has a known, positive cancel-timeout-minutes. That setting does not reduce job-level findings. Unknown timeout values do not reduce severity. Error with --strict.
+
+Use !cancelled() to run after success or failure and stop when cancelled. For conditions with several branches, check cancellation in every branch that could run. Review suggested fixes because they change what happens on cancellation. See [GitHub's always() warning](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always) and the [job-versus-step cancellation test](https://github.com/kjanat/actionlint/actions/runs/41520665123).
+
+- Category: `correctness/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `suggested`
+
+Configure this rule with `lint.rules.correctness.uncancellable-condition`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Keep the job runnable after failure while allowing workflow cancellation.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - run: echo ok
+```
+
 ## unsound-ternary
 
 Report a && b || c expressions where b is always falsy.
