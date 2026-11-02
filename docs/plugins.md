@@ -405,8 +405,9 @@ limits. The run then continues with the next document and actionlint exits with 
 Component results and host-import arguments also have per-call budgets of 262,144 values and 8 MiB of accounted
 string and collection storage. Nested values and repeated aliases count toward these budgets; validation runs
 before host allocations and string encoding conversions.
-The pinned [`kjanat/wacogo`](https://github.com/kjanat/wacogo/tree/v0.1.0)
-runtime adds these allocation checks to wacogo.
+The maintained wacogo fork adds these allocation checks. See the
+[Go fork inventory](go-forks.md) for its selected tag, recursive dependencies and
+retained changes.
 
 Stdout, stderr and the direct `host.log` capability share a 1 MiB output budget per call, including when debug logging is disabled. Exceeding it fails
 the analysis even if the plugin handles the write error. Log lines are emitted in chunks of at most 64 KiB, and an

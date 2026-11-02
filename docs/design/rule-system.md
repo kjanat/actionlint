@@ -112,7 +112,9 @@ published until those sources are available to the editor adapter.
 The component contract is `kjanat:actionlint/analyzer@0.1.0`. The Ruff repository advertises the shared rule
 metadata through its existing core-engine ABI 1, and its rebuilt artifact works through
 the CLI's sanitizer and source mapper.
-The Go component host uses the original `partite-ai/wacogo` dependency.
+The Go component host uses the maintained `github.com/kjanat/wacogo` fork.
+The [Go fork inventory](../go-forks.md) records selected tags, recursive dependencies
+and upstream origins.
 
 The commitish provider is an optional process plugin with a versioned JSON contract.
 It resolves action and reusable-workflow references to immutable identities with evidence;
