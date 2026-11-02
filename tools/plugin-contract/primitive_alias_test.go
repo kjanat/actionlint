@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"go-modules.kjanat.dev/wit"
+	"github.com/kjanat/go-modules/wit"
 )
 
 func TestNamedPrimitiveKeepsDefinedTypeIdentity(t *testing.T) {

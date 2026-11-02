@@ -10,9 +10,9 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/itchyny/gojq v0.12.19
-	github.com/kjanat/go-yaml/v4 v4.0.0-rc.6.0.20261027160845-bf5e3e7bc566
-	github.com/kjanat/wacogo v0.1.2-0.20261029103812-8a2a9ec1f52a
-	github.com/kjanat/wazero v1.11.1-0.20261025184245-2dce1ead9408
+	github.com/kjanat/go-yaml/v4 v4.0.0-rc.7
+	github.com/kjanat/wacogo v0.1.3
+	github.com/kjanat/wazero v1.11.1
 	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mattn/go-runewidth v0.0.31
@@ -43,9 +43,9 @@ require (
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
+	github.com/kjanat/go-modules v0.9.1 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
-	go-modules.kjanat.dev v0.8.1-0.20261025190330-2e183b7fc3f2 // indirect
 )
 
 tool github.com/kjanat/wacogo/cmd/wacogo-witgen
