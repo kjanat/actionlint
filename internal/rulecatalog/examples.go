@@ -9,6 +9,8 @@ import (
 // Examples are executable workflow documents. Engine tests check that the before
 // form reports the named rule and the after form is clean without external tools.
 var examples = map[string][]rule.Example{
+	"missing-workflow-permissions": {example("Declare only the token permissions this job needs; this job uses no token scopes.",
+		"", "    permissions: {}\n")},
 	"script-injection": {
 		labeledExample("Prefer the tool's native environment variable: GitHub CLI reads GH_TOKEN directly, keeping the secret out of script text and command arguments. GitHub secrets are automatically masked in logs; register generated or fetched secrets with add-mask before use. Masking does not protect process arguments.",
 			"wrong: secret in script text", "correct: secret in environment variable",

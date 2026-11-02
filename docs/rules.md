@@ -575,6 +575,41 @@ Check the uses path and ensure the local action metadata or Dockerfile exists in
 
 Configure this rule with `lint.rules.correctness.missing-local-action`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## missing-workflow-permissions
+
+Report each job without explicit workflow-level or job-level token permissions when the workflow has a trigger other than workflow_call. Mirrors CodeQL's actions/missing-workflow-permissions check. Workflows triggered only by workflow_call inherit the caller's token ceiling; callers must declare permissions. This check does not infer the token scopes required by arbitrary actions. Warning when enabled; error with --strict.
+
+Declare least-privilege permissions at workflow or job scope. An empty mapping, read-all, write-all or a scope mapping counts as an explicit declaration; this check does not certify that the declared permissions are minimal. See [CodeQL's query](https://github.com/github/codeql/blob/main/actions/ql/src/Security/CWE-275/MissingActionsPermissions.ql).
+
+- Category: `security/permissions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.security.missing-workflow-permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Declare only the token permissions this job needs; this job uses no token scopes.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: echo ok
+```
+
 ## mixed-type-comparisons
 
 Flag condition comparisons that implicitly convert scalar types.

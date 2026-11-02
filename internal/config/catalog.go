@@ -82,6 +82,7 @@ func buildRegisteredRules() []Rule {
 		{Name: "id"},
 		{Name: "glob"},
 		{Name: "permissions"},
+		{Name: "missing-workflow-permissions", DefaultLevel: "warn"},
 		{Name: "workflow-call"},
 		{Name: "expression", SupportsActions: true},
 		{Name: "expression-syntax", SupportsActions: true},

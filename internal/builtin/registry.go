@@ -75,10 +75,13 @@ func ruleBehaviours() map[string]behaviour {
 		"executable-bit": {Build: func(c Context) workflowvisit.Rule {
 			return newRuleExecutableBit(c)
 		}, Enabled: func(c Context) bool { return c.ProjectRoot != "" && c.Index != nil }},
-		"env-var":       {Build: func(c Context) workflowvisit.Rule { return NewRuleEnvVar() }},
-		"id":            {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},
-		"glob":          {Build: func(c Context) workflowvisit.Rule { return NewRuleGlob() }},
-		"permissions":   {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
+		"env-var":     {Build: func(c Context) workflowvisit.Rule { return NewRuleEnvVar() }},
+		"id":          {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},
+		"glob":        {Build: func(c Context) workflowvisit.Rule { return NewRuleGlob() }},
+		"permissions": {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
+		"missing-workflow-permissions": {Build: func(Context) workflowvisit.Rule {
+			return newDeclarationRule("missing-workflow-permissions")
+		}},
 		"workflow-call": {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.SourceSnapshot, c.Workflows) }},
 		"expression": {Build: func(c Context) workflowvisit.Rule {
 			return newRuleExpressionWithRemote(c.Actions, c.Workflows, c.Runners, c.RemoteActions, c.Context)

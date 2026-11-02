@@ -136,6 +136,7 @@
                   "id",
                   "glob",
                   "permissions",
+                  "missing-workflow-permissions",
                   "workflow-call",
                   "expression",
                   "expression-syntax",
@@ -2510,6 +2511,7 @@
                           "id",
                           "glob",
                           "permissions",
+                          "missing-workflow-permissions",
                           "workflow-call",
                           "expression",
                           "expression-syntax",
@@ -3136,6 +3138,7 @@
                                                           "job-needs",
                                                           "matrix",
                                                           "missing-local-action",
+                                                          "missing-workflow-permissions",
                                                           "mixed-type-comparisons",
                                                           "mixed-type-matrix-filters",
                                                           "numeric-values",
@@ -3872,6 +3875,75 @@
                                 {
                                   "type": "null",
                                   "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "missing-workflow-permissions": {
+                              "title": "missing-workflow-permissions",
+                              "description": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
                                 }
                               ]
                             },
@@ -6957,6 +7029,7 @@
                                     "id",
                                     "glob",
                                     "permissions",
+                                    "missing-workflow-permissions",
                                     "workflow-call",
                                     "expression",
                                     "expression-syntax",
@@ -7583,6 +7656,7 @@
                                                                     "job-needs",
                                                                     "matrix",
                                                                     "missing-local-action",
+                                                                    "missing-workflow-permissions",
                                                                     "mixed-type-comparisons",
                                                                     "mixed-type-matrix-filters",
                                                                     "numeric-values",
@@ -8319,6 +8393,75 @@
                                           {
                                             "type": "null",
                                             "doNotSuggest": true
+                                          }
+                                        ]
+                                      },
+                                      "missing-workflow-permissions": {
+                                        "title": "missing-workflow-permissions",
+                                        "description": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset.",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         ]
                                       },

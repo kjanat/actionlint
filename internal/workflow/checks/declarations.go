@@ -89,6 +89,8 @@ func (check Declaration) Workflow(w declaration.WorkflowView) []Finding {
 		return environment(w.Env())
 	case "permissions":
 		return permissions(w.Permissions())
+	case "missing-workflow-permissions":
+		return MissingWorkflowPermissions(w)
 	case "job-needs":
 		jobs := slices.Collect(func(yield func(declaration.JobView) bool) {
 			for _, job := range w.Jobs() {
