@@ -17,7 +17,7 @@ repository:
 lint:
   message-ignores:
     ".github/workflows/**/*.{yml,yaml}":
-      - "shellcheck reported issue in this script: SC2086:.+"
+      - "SC2086:"
 ```
 
 | Key                                       | Purpose                                                                                                                                                                        |
@@ -28,7 +28,7 @@ lint:
 | `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                                                            |
 | `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                                      |
 | `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                                             |
-| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                                              |
+| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to regular expressions matching messages or `CODE: message`.                                                            |
 
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
@@ -137,10 +137,12 @@ discovery honours Git's ignore rules. Use `files.excludes` for explicit exclusio
 
 Omitted or `null` `includes` selects every input; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
-order. A negative-only include list selects nothing. Excluded input files are
-not read or linted, even when explicitly passed on the command line. Referenced
-actions, reusable workflows, and shell sources can still be read as dependencies
-of included workflows. File selection does not restrict dependency reads.
+order. A negative-only include list selects nothing. Excluded files are skipped,
+including directly named files. Explicitly naming an excluded directory checks
+its workflow and action files; broader scans still honour exclusions inside that
+directory. Referenced actions, reusable workflows, and shell sources can still be
+read as dependencies of included workflows. File selection does not restrict
+dependency reads.
 
 Use `overrides` to change settings for selected files without excluding them:
 
@@ -751,7 +753,18 @@ cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed default-
 ```
 
 Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
-reported line. The ` -- reason` suffix is optional. Comma-separated selectors accept
+reported line. `actionlint-ignore-next-line` and `ignore-next-line` work too. The ` -- reason` suffix is
+optional. These trailing comment spellings are equivalent:
+
+```yaml
+- run: echo ok # actionlint:ignore expression,shellcheck
+- run: echo ok # actionlint-ignore expression shellcheck
+- run: echo ok # ignore expression shellcheck
+- run: echo ok # ignore[expression, shellcheck]
+```
+
+Every spelling accepts commas, spaces, tabs, or a mix between rule IDs. Supply at
+least one rule; an empty list does not ignore everything. Selectors accept
 any diagnostic rule ID listed by `actionlint rules`, including `expression`,
 `syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
 Exceptions apply to the reported physical line. A directive on a YAML block scalar

@@ -51,7 +51,7 @@ var targets = []*target{
 	{
 		path: "docs/usage.md",
 		rules: []rule{
-			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
+			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 2),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
 			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
 		},

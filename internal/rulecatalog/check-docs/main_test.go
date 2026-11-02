@@ -83,7 +83,12 @@ jobs:
     steps:
       - run: echo ${{ unknown }}
 `,
-			want: `test.yaml:6:23: undefined variable "unknown"`,
+			want: `test.yaml:6:23: unknown-variable: undefined variable "unknown"`,
+		},
+		{
+			name: "runner labels",
+			src:  "on: push\njobs: {test: {runs-on: documentation-unknown-runner, steps: [{run: echo ok}]}}\n",
+			want: `label "documentation-unknown-runner" is unknown`,
 		},
 		{
 			name: "local reusable workflow",
@@ -171,6 +176,18 @@ jobs:
       - run: echo hello
 `))
 	testErr(t, err, "missing from PATH: shellcheck", "runner lint-docs")
+}
+
+func TestUpdateSectionsWithoutExamples(t *testing.T) {
+	for _, text := range []string{
+		"<a id=\"one\"></a>\n\n## One\n\nExplanation.\n",
+		"<a id=\"one\"></a>\n\n## One\n\nExplanation.\n\n<a id=\"two\"></a>\n\n## Two\n\nMore explanation.\n",
+	} {
+		got, err := Update([]byte(text))
+		if err != nil || string(got) != text {
+			t.Fatalf("narrative sections changed: %q (%v)", got, err)
+		}
+	}
 }
 
 func TestMainCheckError(t *testing.T) {

@@ -196,7 +196,7 @@ test.yaml:6:18: expecting a single ${{...}} expression or boolean literal "true"
   |
 6 |       fail-fast: off
   |                  ^~~
-test.yaml:8:21: expected scalar node for integer value but found scalar node with "!!float" tag [syntax-check]
+test.yaml:8:21: truncated: "max-parallel" value 1.5 is truncated to 1 [numeric-values]
   |
 8 |       max-parallel: 1.5
   |                     ^~~
@@ -239,19 +239,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression-syntax]
+test.yaml:7:24: invalid-syntax: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression-syntax]
   |
 7 |       - run: echo '${{ "hello" }}'
   |                        ^
-test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]
+test.yaml:9:26: invalid-syntax: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]
   |
 9 |       - run: echo '${{ 1 + 1 }}'
   |                          ^
-test.yaml:11:65: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression-syntax]
+test.yaml:11:65: invalid-syntax: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression-syntax]
    |
 11 |       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
    |                                                                 ^~
-test.yaml:13:38: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression-syntax]
+test.yaml:13:38: invalid-syntax: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression-syntax]
    |
 13 |       - run: echo '${{ github.event. }}'
    |                                      ^~
@@ -285,7 +285,7 @@ Type check by actionlint is stricter than GitHub Actions runtime.
 
 - Only `any` and `number` are allowed to be converted to string implicitly
 - Implicit conversion to `number` is not allowed
-- Object, array, and null are not allowed to be evaluated at `${{ }}`
+- Objects and arrays cannot be interpolated as strings. Null becomes an empty string.
 
 Example input:
 
@@ -301,26 +301,26 @@ jobs:
       - run: echo '${{ job.container.os }}'
       # ERROR: `github.repository` is string. Trying to access .owner property is invalid
       - run: echo '${{ github.repository.owner }}'
-      # ERROR: Objects, arrays and null should not be evaluated at ${{ }} since the outputs are useless
+      # ERROR: Objects and arrays cannot be interpolated as strings
       - run: echo '${{ env }}'
 ```
 
 Output:
 
 ```console
-test.yaml:7:28: property access of object must be type of string but got "number" [expression-type]
+test.yaml:7:28: operand-type: property access of object must be type of string but got "number" [expression-type]
   |
 7 |       - run: echo '${{ env[0] }}'
   |                            ^
-test.yaml:9:24: property "os" is not defined in job.container [expression-reference]
+test.yaml:9:24: unknown-property: property "os" is not defined in job.container [expression-reference]
   |
 9 |       - run: echo '${{ job.container.os }}'
   |                        ^~~~~~~~~~~~~~~~
-test.yaml:11:24: receiver of object dereference "owner" must be type of object but got "string" [expression-type]
+test.yaml:11:24: operand-type: receiver of object dereference "owner" must be type of object but got "string" [expression-type]
    |
 11 |       - run: echo '${{ github.repository.owner }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:13:20: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {string => string} [expression]
+test.yaml:13:20: object and array values should not be evaluated in template with ${{ }} but evaluating the value of type {string => string} [expression]
    |
 13 |       - run: echo '${{ env }}'
    |                    ^~~
@@ -481,23 +481,23 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:24: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
+test.yaml:7:24: unknown-variable: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
   |
 7 |       - run: echo '${{ unknown_context }}'
   |                        ^~~~~~~~~~~~~~~
-test.yaml:9:24: property "events" is not defined in github; did you mean "event"? [expression-reference]
+test.yaml:9:24: unknown-property: property "events" is not defined in github; did you mean "event"? [expression-reference]
   |
 9 |       - run: echo '${{ github.events }}'
   |                        ^~~~~~~~~~~~~
-test.yaml:11:24: undefined function "startWith"; did you mean "startsWith"? [expression-reference]
+test.yaml:11:24: unknown-function: undefined function "startWith"; did you mean "startsWith"? [expression-reference]
    |
 11 |       - run: echo "${{ startWith('hello, world', 'lo,') }}"
    |                        ^~~~~~~~~
-test.yaml:13:24: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression-call]
+test.yaml:13:24: argument-count: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression-call]
    |
 13 |       - run: echo "${{ startsWith('hello, world') }}"
    |                        ^~~~~~~~~~
-test.yaml:15:51: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression-type]
+test.yaml:15:51: argument-type: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression-type]
    |
 15 |       - run: echo "${{ startsWith('hello, world', github.event) }}"
    |                                                   ^~~~~~~~~~~~
@@ -544,19 +544,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:18: property "mac" is not defined in this object [expression-reference]
+test.yaml:6:18: unknown-property: property "mac" is not defined in this object [expression-reference]
   |
 6 |     runs-on: ${{ fromJSON('{"win":"windows-latest","linux":"ubuntul-latest"}')['mac'] }}
   |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:9:24: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression-call]
+test.yaml:9:24: format-placeholder: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression-call]
   |
 9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
   |                        ^~~~~~
-test.yaml:11:24: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression-call]
+test.yaml:11:24: format-placeholder: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression-call]
    |
 11 |       - run: echo "${{ format('{0}{1}{2}', 1, 2) }}"
    |                        ^~~~~~
-test.yaml:14:31: broken JSON string is passed to fromJSON() at offset 23: unexpected end of JSON input [expression-call]
+test.yaml:14:31: invalid-json: broken JSON string is passed to fromJSON() at offset 23: expected ',' or ']' after JSON array value [expression-call]
    |
 14 |         if: contains(fromJson('["main","release","dev"'), github.ref_name)
    |                               ^~~~~~~~~~~~~~~~~~~~~~~~~
@@ -601,15 +601,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:24: property "get_value" is not defined in steps [expression-reference]
+test.yaml:10:24: unknown-property: property "get_value" is not defined in steps [expression-reference]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:15:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:15:24: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 15 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:22:24: property "get_value" is not defined in steps [expression-reference]
+test.yaml:22:24: unknown-property: property "get_value" is not defined in steps [expression-reference]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
@@ -626,6 +626,8 @@ It is a common mistake to access the wrong step outputs since people often forge
 steps. actionlint can catch invalid accesses to step outputs and reports them as errors.
 
 When a metadata provider supplies the selected action's manifest, its declared outputs constrain the outputs object.
+Without that metadata, output names remain dynamic. The example below checks step order and unsafe script interpolation;
+with the manifest available, the misspelled `cache_hit` is also reported as an unknown property.
 
 Example input:
 
@@ -644,24 +646,24 @@ jobs:
         with:
           key: ${{ hashFiles('**/*.lock') }}
           path: ./packages
-      # OK
+      # The output is an unknown string in this script
       - run: echo ${{ steps.cache.outputs.cache-hit }}
-      # ERROR: Typo at output name
+      # A metadata provider can also detect this misspelled output name
       - run: echo ${{ steps.cache.outputs.cache_hit }}
 ```
 
 Output:
 
 ```console
-test.yaml:8:23: property "cache" is not defined in steps [expression-reference]
+test.yaml:8:23: unknown-property: property "cache" is not defined in steps [expression-reference]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
   |                       ^~~~~~~~~~~
-test.yaml:16:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:16:23: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 16 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:18:23: property "cache_hit" is not defined in steps.cache.outputs; did you mean "cache-hit"? [expression-reference]
+test.yaml:18:23: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -777,31 +779,31 @@ jobs:
 Output:
 
 ```console
-test.yaml:19:24: property "platform" is not defined in matrix [expression-reference]
+test.yaml:19:24: unknown-property: property "platform" is not defined in matrix [expression-reference]
    |
 19 |       - run: echo '${{ matrix.platform }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:21:24: property "dev" is not defined in matrix.package [expression-reference]
+test.yaml:21:24: unknown-property: property "dev" is not defined in matrix.package [expression-reference]
    |
 21 |       - run: echo '${{ matrix.package.dev }}'
    |                        ^~~~~~~~~~~~~~~~~~
-test.yaml:24:25: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:24:25: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 24 |           echo 'os: ${{ matrix.os }}'
    |                         ^~~~~~~~~
-test.yaml:25:35: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:25:35: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 25 |           echo 'node version: ${{ matrix.node }}'
    |                                   ^~~~~~~~~~~
-test.yaml:26:30: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:26:30: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'
    |                              ^~~~~~~~~~~~~~~~~~~
-test.yaml:26:67: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:26:67: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'
    |                                                                   ^~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:34:24: property "os" is not defined in matrix [expression-reference]
+test.yaml:34:24: unknown-property: property "os" is not defined in matrix [expression-reference]
    |
 34 |       - run: echo '${{ matrix.os }}'
    |                        ^~~~~~~~~
@@ -965,27 +967,27 @@ jobs:
 Output:
 
 ```console
-test.yaml:16:24: property "prepare" is not defined in needs [expression-reference]
+test.yaml:16:24: unknown-property: property "prepare" is not defined in needs [expression-reference]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
    |                        ^~~~~~~~~~~~~
-test.yaml:24:45: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:24:45: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 24 |       - run: echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'
    |                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:24:88: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:24:88: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 24 |       - run: echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'
    |                                                                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:26:24: property "foo" is not defined in needs.install.outputs [expression-reference]
+test.yaml:26:24: unknown-property: property "foo" is not defined in needs.install.outputs [expression-reference]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:28:24: property "some_job" is not defined in needs [expression-reference]
+test.yaml:28:24: unknown-property: property "some_job" is not defined in needs [expression-reference]
    |
 28 |       - run: echo '${{ needs.some_job }}'
    |                        ^~~~~~~~~~~~~~
-test.yaml:33:24: property "build" is not defined in needs [expression-reference]
+test.yaml:33:24: unknown-property: property "build" is not defined in needs [expression-reference]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
    |                        ^~~~~~~~~~~
@@ -1026,11 +1028,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression-type]
+test.yaml:13:17: operand-type: "object" value cannot be compared to "string" value with "==" operator [expression-type]
    |
 13 |         if: ${{ github.event == 'workflow_call' }}
    |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression-type]
+test.yaml:16:17: operand-type: "bool" value cannot be compared to "number" value with ">" operator [expression-type]
    |
 16 |         if: ${{ inputs.timeout > 60 }}
    |                 ^~~~~~~~~~~~~~~~~~~
@@ -1148,11 +1150,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:6:19: SC2086: Double quote to prevent globbing and word splitting [shellcheck]
   |
 6 |       - run: echo $FOO
   |                   ^~~~
-test.yaml:14:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:14:19: SC2086: Double quote to prevent globbing and word splitting [shellcheck]
    |
 14 |       - run: echo $FOO
    |                   ^~~~
@@ -1265,19 +1267,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:24: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
+test.yaml:10:24: untrusted-interpolation: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 10 |         run: echo '${{ github.event.pull_request.title }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:19:36: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
+test.yaml:19:36: untrusted-interpolation: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 19 |           script: console.log('${{ github.event.head_commit.author.name }}')
    |                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:22:31: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
+test.yaml:22:31: untrusted-interpolation: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 22 |         run: echo '${{ toJSON(github.event.*.body) }}'
    |                               ^~~~~~~~~~~~~~~~~~~
-test.yaml:25:24: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:25:24: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 25 |         run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1665,19 +1667,19 @@ test.yaml:26:18: type of "age" input is "number" but its default value "teen" ca
    |
 26 |         default: teen
    |                  ^~~~
-test.yaml:33:24: property "massage" is not defined in inputs; did you mean "message"? [expression-reference]
+test.yaml:33:24: unknown-property: property "massage" is not defined in inputs; did you mean "message"? [expression-reference]
    |
 33 |       - run: echo "${{ inputs.massage }}"
    |                        ^~~~~~~~~~~~~~
-test.yaml:35:28: property access of object must be type of string but got "bool" [expression-type]
+test.yaml:35:28: operand-type: property access of object must be type of string but got "bool" [expression-type]
    |
 35 |       - run: echo "${{ env[inputs.verbose] }}"
    |                            ^~~~~~~~~~~~~~
-test.yaml:37:28: property access of object must be type of string but got "number" [expression-type]
+test.yaml:37:28: operand-type: property access of object must be type of string but got "number" [expression-type]
    |
 37 |       - run: echo "${{ env[inputs.age] }}"
    |                            ^~~~~~~~~~
-test.yaml:39:24: property "massage" is not defined in github.event.inputs; did you mean "message"? [event-payload]
+test.yaml:39:24: unknown-property: property "massage" is not defined in github.event.inputs; did you mean "message"? [event-payload]
    |
 39 |       - run: echo "${{ github.event.inputs.massage }}"
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1991,19 +1993,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:15: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:7:15: invalid-reference: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 7 |       - uses: actions/checkout
   |               ^~~~~~~~~~~~~~~~
-test.yaml:9:15: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:9:15: invalid-reference: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 9 |       - uses: checkout@v2
   |               ^~~~~~~~~~~
-test.yaml:11:15: tag of Docker action should not be empty: "docker://image" [action]
+test.yaml:11:15: invalid-reference: tag of Docker action should not be empty: "docker://image" [action]
    |
 11 |       - uses: "docker://image:"
    |               ^~~~~~~~~~~~~~~~~
-test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:13:15: invalid-reference: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
    |
 13 |       - uses: .github/my-actions/do-something
    |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2558,15 +2560,15 @@ test.yaml:25:18: input "path" of workflow_call event has the default value "", b
    |
 25 |         default: ""
    |                  ^~
-test.yaml:31:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:31:24: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
    |                        ^~~~~~~~~~~~~
-test.yaml:31:47: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:31:47: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
    |                                               ^~~~~~~~~~~
-test.yaml:31:84: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:31:84: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
    |                                                                                    ^~~~~~~~~~~
@@ -2672,15 +2674,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:20:23: property "uri" is not defined in inputs; did you mean "url"? [expression-reference]
+test.yaml:20:23: unknown-property: property "uri" is not defined in inputs; did you mean "url"? [expression-reference]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                       ^~~~~~~~~~
-test.yaml:20:44: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:20:44: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                                            ^~~~~~~~~~~~~~~~~~~
-test.yaml:23:22: property "credentials" is not defined in secrets; did you mean "credential"? [expression-reference]
+test.yaml:23:22: unknown-property: property "credentials" is not defined in secrets; did you mean "credential"? [expression-reference]
    |
 23 |           TOKEN: ${{ secrets.credentials }}
    |                      ^~~~~~~~~~~~~~~~~~~
@@ -2768,7 +2770,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:20: property "imagetag" is not defined in jobs.gen-image-version.outputs; did you mean "image_tag"? [expression-reference]
+test.yaml:7:20: unknown-property: property "imagetag" is not defined in jobs.gen-image-version.outputs; did you mean "image_tag"? [expression-reference]
   |
 7 |         value: ${{ jobs.gen-image-version.outputs.imagetag }}
   |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3097,23 +3099,23 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:6:16: unavailable-context: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
   |
 6 |     shell: ${{ env.SHELL }}
   |                ^~~
-test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:16:17: unavailable-context: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 16 |           - ${{ runner.temp }}
    |                 ^~~~~~
-test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:24:16: unavailable-context: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 24 |       FOO: ${{ env.BAR }}
    |                ^~~
-test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:30:20: unavailable-context: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 30 |         shell: ${{ env.SHELL}}
    |                    ^~~
-test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:32:33: unavailable-function: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 32 |         run: echo 'Success? ${{ success() }}'
    |                                 ^~~~~~~
@@ -3411,7 +3413,7 @@ The schema-derived data ships with actionlint; linting does not download the sch
 
 ## Deprecated inputs usage
 
-Example input:
+When the host supplies action metadata declaring `fail_on_error` deprecated:
 
 ```yaml
 on: push
@@ -3425,16 +3427,14 @@ jobs:
           fail_on_error: true
 ```
 
-Output:
+Expected diagnostic:
 
 ```console
-test.yaml:9:11: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [action]
+test.yaml:9:11: deprecated-input: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [action]
   |
 9 |           fail_on_error: true
   |           ^~~~~~~~~~~~~~
 ```
-
-[Playground](https://kjanat.github.io/actionlint/#eNo8yksKwkAQhOF9TlEXGMTtrLxJmGhrWobu0I/k+jJGXBXF96tUbOnr9NbF6wQEeYwFLMXL8FxSIktvw77kQZufFVCQTl5htDMdD31d2j1YpZzTWeK2X38xcHCs9f+AZ+M+q8xkplYRlvQJAAD//4fnLew=)
 
 Action inputs can be deprecated by setting [`deprecationMessage`][dep-msg]. When deprecated inputs are used in a
 workflow, actionlint reports the usage as error.

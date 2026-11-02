@@ -26,13 +26,22 @@ actionlint path/to/workflow1.yaml path/to/workflow2.yaml
 
 Directory arguments are traversed recursively. A repository root or `.github`
 selects its workflows and action manifests; other directories select YAML files
-below that directory. File exclusions still apply. Overlapping directories and
+below that directory. File exclusions apply during discovery. Explicitly naming
+an excluded directory selects its YAML files anyway. Overlapping directories and
 explicit files do not repeat discovered inputs. Empty directories report an error.
 
 ```sh
 actionlint .
 actionlint .github/
 actionlint check .github/workflows/ .github/actions/
+```
+
+Use `-C DIR` to run from another directory, including configuration discovery and
+relative input/output paths. Repeated relative `-C` values build on the previous one:
+
+```sh
+actionlint -C path/to/repository .github/
+actionlint -C path/to/repository -C testdata .
 ```
 
 Explicit `action.yml` and `action.yaml` inputs are checked as action metadata,
@@ -50,16 +59,15 @@ caller-specific input errors still point to the workflow's `uses:` step.
 Files directly under `.github/workflows` are parsed as workflows regardless of filename.
 
 Metadata findings point into the action file. Configuration overrides, rule levels
-and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
-`.venv`, `venv`, `.cache`, `.worktrees` and `testdata` directories, nested Git repositories,
-and symlinked action files or directories. Inside a Git repository, discovery
+and ignores apply to that file. Discovery skips nested repositories and symlinks.
+Inside a Git repository, discovery
 asks `git` 2.8 or newer which paths its ignore rules exclude: `.gitignore`,
 `.git/info/exclude` and the global excludes file apply, and tracked manifests in
 ignored directories stay discovered. Discovery fails when `git` is missing or
 reports an incomplete listing.
 Use [file exclusions](config.md) to
-omit fixtures or generated actions. Explicit paths can select actions in skipped
-directories; configured file exclusions still apply.
+omit fixtures or generated actions. Explicit paths can select Git-ignored actions;
+configured file exclusions still apply.
 
 Standalone actions have no known runner, so `executable-bit` is checked only when
 an action is reached through a workflow with a known runner. The Go API's
@@ -177,12 +185,20 @@ actionlint check --json
 actionlint check --output-format=jsonl
 actionlint check --output-format=sarif --output-file=actionlint.sarif
 actionlint check --output-format=github
+actionlint check --output-format=gcc
 actionlint check --template-file=report.tmpl
 actionlint check --help --json
 actionlint version --json
 ```
 
-`--output-format` accepts `text`, `pretty`, `oneline`, `json`, `jsonl`, `sarif` and `github`.
+`--output-format` accepts `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif` and `github`.
+`pretty` is the default. Repeat `--output-format`, `--output` or `-o` to render
+the same analysis in multiple formats, in order. For example,
+`actionlint --output github --output pretty` emits annotations followed by terminal
+diagnostics. Repeated identical formats are emitted once.
+`gcc` emits one uncoloured `file:line:column: severity: message [code]` line per
+finding, using its native diagnostic code or rule name. Information is emitted
+as `note`; multiline messages are flattened without source excerpts.
 `--json` selects JSON. `--template` and its supported `--format` alias render the
 existing Go-template fields and functions. `--template-file` reads the same syntax
 from a file. A template cannot be combined with a built-in output selector.
@@ -195,8 +211,10 @@ wrapped messages:
 actionlint check --output-format=pretty --diagnostic-width=80 --color=auto
 ```
 
-`pretty` includes captured source, range indicators, explanation, help, related
-locations and fix descriptions when supplied by the analyzer. Messages and paths
+`pretty` includes captured source, range indicators, diagnostic-specific advice,
+related locations and fix descriptions. Native diagnostic codes appear beside
+the rule name. General rule descriptions are available through `actionlint rules RULE`.
+Messages and paths
 wrap; long source lines show a window around the diagnostic. Tabs use four-column
 stops. Width defaults to 100 columns; `--diagnostic-width` accepts 40–400 and
 requires `pretty`. Use `--color=always` to force ANSI colours or `--color=never`
@@ -276,13 +294,16 @@ overrides; `--experimental=false` clears only nursery selections. No current rul
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
 
-`--log-level=none|info|debug` controls logging. Checks print workflow and finding
-counts on stderr by default. `--summary=false` disables the summary.
+`--log-level=none|info|debug` controls logging. Checks print file and finding
+counts on stderr by default. When findings exist, the summary also counts them per
+source file and per rule/diagnostic code, sorted by count. `--summary=false` disables the summary.
 `--quiet` suppresses logs and summaries while preserving requested results
 and errors. In JSON modes, check failures on stderr use the same result contract, with
 `completed: false`, `error`, and `exit_code`. Metadata commands keep their own
 error records. Log
 records have `log`, and the summary has `summary.files` and `summary.findings`.
+Nonempty summaries also include `summary.by_file` (`path`, `count`) and
+`summary.by_diagnostic` (`rule`, optional `code`, `count`).
 Check the exit status before interpreting empty stdout as success.
 
 | Exit status | Meaning                                                                       |
@@ -328,8 +349,8 @@ Select an explicit configuration file or use repository discovery in this order:
 `.github/actionlint.toml`. There is no new global
 configuration search or merge policy. `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
-both. `--no-config` skips
-configuration loading. An explicit `check --config` also avoids parsing an
+both. `--no-config`, `--no-rc` and `--norc` skip configuration loading.
+An explicit `check --config` also avoids parsing an
 unselected repository config.
 
 `config path` prints the selected path, or nothing when none is selected. It can
@@ -416,6 +437,17 @@ actionlint completion powershell | Out-String | Invoke-Expression
 Every registered diagnostic rule supports [inline exceptions](config.md#inline-diagnostic-suppressions)
 with a rule name and an optional reason. Place the comment on the reported line, or use
 `actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
+Trailing comments also accept `# actionlint-ignore RULE`, `# ignore RULE` and `# ignore[RULE]`.
+Separate multiple rule IDs with commas, spaces, or both. The preceding-line form
+also accepts `# actionlint-ignore-next-line RULE` and `# ignore-next-line RULE`.
+
+`unused-suppression` reports each inline selector that matches no enabled findings.
+It is informational by default and an error with `--strict`; explicit rule settings
+still take precedence. Script-internal directives such as `# shellcheck disable=...`
+belong to their tool and are not audited by this rule.
+Use `actionlint fix --apply` or the editor quick fix to remove unused selectors.
+Useful selectors, directive spelling, reasons and line endings are preserved;
+comments without useful selectors are removed.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
@@ -432,12 +464,12 @@ to validate the checked-in manifest. For intentional exceptions, use a short com
 [Reusable ignores](config.md#reusable-ignores) let you declare an exception once
 for matching files, jobs, steps or action references.
 
-To ignore some errors, `-ignore` option offers to filter errors by messages
-using regular expression. The option is repeatable. The regular expression
-syntax is the same as [RE2][re2].
+`--ignore-regex` (alias `-ignore`) filters findings by regular expression. It
+matches the message and, when a diagnostic has a code, `CODE: message`. Repeat
+the option to add patterns. The syntax is the same as [RE2][re2].
 
 ```sh
-actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
+actionlint --ignore-regex 'SC2086:' --ignore-regex 'label ".+" is unknown'
 ```
 
 External tools are selected by id. The bundled tools are `shellcheck` and `ruff`;
@@ -576,22 +608,27 @@ Output:
 
 ````sh
 actionlint -format '
-{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```
+{{range $err := .}}::error file={{escapeProperty $err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{escapeData $err.Message}}%0A```%0A{{escapeData $err.Snippet}}%0A```
 {{end}}
 ' -ignore 'SC2016:'
 ````
 
 Output:
 
-<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ga-annotate.png" alt="annotations on GitHub Actions" width="731" height="522"/>
+For a reference to `missing.value` on line 6 of `.github/workflows/ci.yml`, the
+template emits this annotation command:
 
-To include newlines in the annotation body, it prints `%0A`. (ref
-actions/toolkit#193). And it
-suppresses `SC2016` shellcheck rule error since it complains about the template
-argument.
+````text
+::error file=.github/workflows/ci.yml,line=6,col=24::undefined variable "missing". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars"%0A```%0A      - run: echo '${{ missing.value }}'%0A                       ^~~~~~~%0A```
+````
 
-Basically it is more recommended to use [Problem Matchers](#problem-matchers) or
-reviewdog as explained in ['Tools integration' section](#tools-integ) below.
+`escapeData` encodes `%`, carriage returns and newlines in the annotation body.
+`escapeProperty` also encodes `:` and `,` in property values such as the file path.
+Both follow [`@actions/core` workflow-command escaping](https://github.com/actions/toolkit/blob/main/packages/core/src/command.ts).
+The example suppresses ShellCheck's `SC2016` diagnostic about the template argument.
+
+Use `actionlint --output github` for standard annotations. Templates let you
+customize the annotation body.
 
 #### Example: [SARIF format][sarif]
 
@@ -627,6 +664,8 @@ The error object has the following fields.
 | `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}`    |
 | `{{$err.Snippet}}`   | Code snippet to indicate error position               |  <code>          node_version: 16.x\n          ^~~~~~~~~~~~~</code> |
 | `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                        |
+| `{{$err.Code}}`      | Native diagnostic identifier, when supplied           | `SC2086`                                                            |
+| `{{$err.Severity}}`  | Diagnostic level; empty means error                   | `info`                                                              |
 | `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                          |
 | `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                                 |
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                                |
@@ -639,13 +678,15 @@ actions defined by Go standard library. In addition, there are a few custom
 actions defined by actionlint. Most useful action would be `json` as we already
 used it in the above JSON example. List of all custom actions are as follows:
 
-| Action           | Description                                                                      | Example usage                             |
-| ---------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
-| `json x`         | Serialize `x` as JSON string followed by newline character                       | `{{json $err}}`                           |
-| `replace x y z`  | Replace string `y` with `z` in `x`                                               | `{{replace $err.Filepath "\\" "/"}}`      |
-| `toPascalCase x` | Convert `x` into PascalCase (e.g. 'foo-bar' to 'FooBar')                         | `{{toPascalCase $err.Kind}}`              |
-| `allKinds`       | Return an array of kind objects. The kind object is explained in the below table | `{{range $ = allKinds}}{{$.Name}}{{end}}` |
-| `getVersion`     | Return the version of actionlint as string                                       | `{{getVersion}}`                          |
+| Action             | Description                                                                      | Example usage                             |
+| ------------------ | -------------------------------------------------------------------------------- | ----------------------------------------- |
+| `json x`           | Serialize `x` as JSON string followed by newline character                       | `{{json $err}}`                           |
+| `replace x y z`    | Replace string `y` with `z` in `x`                                               | `{{replace $err.Filepath "\\" "/"}}`      |
+| `escapeData x`     | Escape string `x` for a GitHub Actions command body (`%`, CR, LF)                | `{{$err.Snippet \| escapeData}}`          |
+| `escapeProperty x` | Escape string `x` for a GitHub Actions command property (also `:` and `,`)       | `{{$err.Filepath \| escapeProperty}}`     |
+| `toPascalCase x`   | Convert `x` into PascalCase (e.g. 'foo-bar' to 'FooBar')                         | `{{toPascalCase $err.Kind}}`              |
+| `allKinds`         | Return an array of kind objects. The kind object is explained in the below table | `{{range $ = allKinds}}{{$.Name}}{{end}}` |
+| `getVersion`       | Return the version of actionlint as string                                       | `{{getVersion}}`                          |
 
 The kind object returned from `allKinds` action has the following fields.
 
@@ -716,7 +757,7 @@ jobs:
         shell: bash
       - name: Check workflow files
         env: { actionlint: "${{ steps.get_actionlint.outputs.executable }}" }
-        run: "${actionlint}" -color
+        run: '"${actionlint}" --output github'
         shell: bash
 ```
 
@@ -726,7 +767,7 @@ Or simply download the executable and run it in one step:
 - name: Check workflow files
   run: |
     bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
-    ./actionlint -color
+    ./actionlint --output github
   shell: bash
 ```
 
@@ -738,8 +779,7 @@ If you want to enable
 command. Note that shellcheck is
 [pre-installed on Ubuntu worker][preinstall-ubuntu].
 
-If you want to [annotate errors][ga-annotate-error] from actionlint on GitHub,
-consider using [Problem Matchers](#problem-matchers).
+`--output github` emits [GitHub annotations](#problem-matchers) directly.
 
 If you prefer Docker image to running a downloaded executable, using
 [actionlint Docker image](#docker) is another option.
@@ -757,7 +797,7 @@ jobs:
       - name: Check workflow files
         uses: docker://ghcr.io/kjanat/actionlint:latest
         with:
-          args: -color
+          args: --output github
 ```
 
 ## Online playground
@@ -889,34 +929,22 @@ Pass additional actionlint options through `actionlint_flags`. See the
 
 <a id="problem-matchers"></a>
 
-### Problem Matchers
+### GitHub annotations
 
-> [!NOTE]
-> The example below downloads this fork and installs this fork's problem matcher,
-> so annotations include fork-specific checks.
-
-[Problem Matchers][problem-matchers] is a feature to extract GitHub Actions
-annotations from terminal outputs of linters.
-
-Copy [actionlint-matcher.json][actionlint-matcher] to
-`.github/actionlint-matcher.json` in your repository.
-
-Then enable the matcher using `add-matcher` command before running `actionlint`
-in the step of your workflow.
+The [GitHub Action](action.md) emits annotations by default. With an installed
+CLI, select GitHub output:
 
 ```yaml
 - name: Check workflow files
-  run: |
-    echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
-    ./actionlint -color
-  shell: bash
+  run: actionlint --output github
 ```
 
-When you change your workflow and the changed line causes a new error, CI will
-annotate the diff with the extracted error message.
+This writes annotation commands directly to the runner, including findings from
+plugins. No matcher file or registration is required.
 
-<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png" alt="annotation by Problem Matchers" width="715" height="221" />
+For integrations that parse plain-text logs, the optional
+[problem matcher][actionlint-matcher] extracts annotations from that output.
+See GitHub's [problem matcher documentation][problem-matchers].
 
 ### super-linter
 
@@ -1187,6 +1215,12 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 versioned open buffers, ranged changes, diagnostic publication, and versioned
 quick-fix edits. Open document changes invalidate analysis of open dependants.
 The client applies edits; the server never writes editor buffers to disk.
+
+For an allowed diagnostic, choose **Suppress RULE for this declaration** from the
+editor's quick-fix menu. The action adds a suppression comment or extends an
+existing one while retaining its reason. Multiline scripts are suppressed at the
+YAML declaration. The target buffer must be open; edits carry its current version.
+Rules prohibited by `disallow-suppressions` do not offer this action.
 
 `actionlint fix [files...]` previews source edits as JSON. `--apply` writes the
 validated edits and checks the files again. Only fixes marked safe are selected

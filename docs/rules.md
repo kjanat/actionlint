@@ -994,6 +994,20 @@ The middle operand of a && b || c must be truthy to select b; use an explicit co
 
 Configure this rule with `lint.rules.correctness.unsound-ternary`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## unused-suppression
+
+Report each inline suppression selector that matches no enabled findings in the checked YAML declaration. Information by default; errors with --strict. A selector used by any analyzed invocation of the same source is considered used. Incomplete analyses do not establish that a selector is unused.
+
+Run actionlint fix --apply or use the editor quick fix to remove unused selectors, preserving useful selectors and their reason. A comment with no remaining selectors is removed. Configure lint.rules.correctness.unused-suppression to change its level.
+
+- Category: `correctness/suppressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `safe`
+
+Configure this rule with `lint.rules.correctness.unused-suppression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## workflow-call
 
 Validate reusable workflow references and their declared inputs and outputs.

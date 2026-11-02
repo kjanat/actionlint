@@ -346,6 +346,39 @@ Each `--plugin` loads one component or a supported core script engine. Analyzer 
 suppressions and configured ignores apply to them like built-in rules. `--log-level debug` prints the plugin's limits
 when it loads and forwards its log lines, stdout and stderr.
 
+### Suppression ownership
+
+Actionlint interprets its own YAML directives (`actionlint:ignore`,
+`actionlint-ignore`, `ignore[...]` and the next-line forms) and configured
+`ignores`. Plugins return active findings; the host admits their source ranges,
+maps snippet positions to YAML, then applies those host ignores and their policy.
+Plugins must not reinterpret actionlint directives as native linter directives.
+Selectors use the registered host rule ID; upstream check IDs remain diagnostic
+codes. Native per-code suppression stays with the plugin. Rule IDs must not
+contain whitespace, commas or square brackets, so every host spelling can select them.
+
+Native directives inside submitted code remain the plugin or wrapped linter's
+responsibility. The host does not translate `noqa`, `shellcheck disable`, or other
+tool syntax. The source-annotations interface supplies raw YAML comments, not
+effective suppression decisions. Script providers receive prepared source;
+document providers receive captured YAML. Their declared preparation can mask
+expressions or add mapped startup/configuration lines. A preparation profile may
+forward raw declaration comments; their suppression meaning still belongs to
+the linter, and generated rows must retain their source mapping.
+
+`disallow-suppressions` governs actionlint's own inline and configured ignores.
+It does not disable native linter directives or tool-specific filtering options,
+and cannot recover findings a plugin did not return. A plugin may offer a native
+suppression as a suggested source fix; the host validates that edit normally.
+The built-in LSP suppression action always adds an actionlint directive.
+
+The Go and SDK SARIF readers normalize native suppression metadata identically:
+an `inSource` or `external` entry with no review status (including null) or an
+`accepted` status suppresses the result. `underReview` and `rejected` entries do
+not; one applied/accepted entry is sufficient. Invalid kinds/statuses fail decoding
+instead of silently hiding results. This is output normalization, not permission
+to suppress host diagnostics or change repository policy.
+
 Pass the same `--plugin` arguments to `config show`, `config validate` or `doctor` when the configuration names plugin
 rules. These commands validate rule IDs against loaded descriptors without running document analysis. Pass them to
 `config schema` to print a configuration schema that describes the tool providers they install.

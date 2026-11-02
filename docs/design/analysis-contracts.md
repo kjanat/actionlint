@@ -231,7 +231,7 @@ Architecture tests keep the engine free of the runtime and the loader free of th
 
 `wacogo` before https://github.com/partite-ai/wacogo/pull/12 rejected a null pointer from `cabi_realloc` for a
 zero-size request, which the canonical ABI allows and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11).
-`go.mod` pins `github.com/kjanat/wacogo` and the repaired `go-modules.kjanat.dev` loader under their
+`go.mod` pins `github.com/kjanat/wacogo` and the repaired `github.com/kjanat/go-modules` loader under their
 fork module paths. This supports `go install` without module replacements. The runtime includes the fix above
 and upstream's ownership and shutdown fixes in https://github.com/partite-ai/wacogo/pull/13 and https://github.com/partite-ai/wacogo/pull/17,
 plus the pending allocation fixes in https://github.com/partite-ai/wacogo/pull/14, https://github.com/partite-ai/wacogo/pull/15, and https://github.com/partite-ai/wacogo/pull/16.

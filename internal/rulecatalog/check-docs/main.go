@@ -24,6 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/repository"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
@@ -46,7 +47,17 @@ func Actionlint(src []byte) ([]byte, error) {
 		}
 	}
 	root = project.RootDir()
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}})}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
+	// Documentation examples declare a complete empty custom-label inventory.
+	// Ordinary hosts without this evidence must keep custom labels unknown.
+	labels, err := repository.NewNames()
+	if err != nil {
+		return nil, err
+	}
+	result, err := application.Analyze(context.Background(), application.Options{
+		WorkingDir: root,
+		Repository: func(context.Context, string) repository.Snapshot { return repository.Snapshot{RunnerLabels: labels} },
+		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}}),
+	}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +160,7 @@ func (u *Updater) err(err error) {
 
 func (u *Updater) End() ([]byte, error) {
 	u.err(u.lines.Err())
-	if u.cur != stateEnd {
+	if u.cur != stateEnd && u.cur != stateHeading {
 		u.err(fmt.Errorf("unexpected state %q after generating all. this happens when a block is unclosed or some part was missing", u.cur))
 	}
 	log.Printf("Scanned %d lines and %d sections", u.lnum, len(u.headings))
@@ -267,6 +278,9 @@ func (u *Updater) Update() {
 	isSkipOutput := l == "<!-- Skip update output -->"
 	isSkipPlaygroundLink := l == "<!-- Skip playground link -->"
 	isPlaygroundLink := strings.HasPrefix(l, "[Playground](") && strings.HasSuffix(l, ")")
+	if u.cur == stateAnchor && l != "" && !isHeading {
+		u.state(u.prev, "Anchor does not introduce a section")
+	}
 
 	// Validation
 	switch {
@@ -299,8 +313,8 @@ func (u *Updater) Update() {
 	// └────┘                        └───┘
 	//
 	switch u.cur {
-	case stateInit, stateEnd:
-		if u.cur == stateEnd && isInputHeader {
+	case stateInit, stateEnd, stateHeading:
+		if (u.cur == stateEnd || u.cur == stateHeading) && isInputHeader {
 			u.state(stateInputHeader, "Found more example input")
 			break
 		}
@@ -335,10 +349,6 @@ func (u *Updater) Update() {
 			u.state(u.prev, "Back to previous state because the next line to <a> is not a section heading")
 			u.Update()
 			return
-		}
-	case stateHeading:
-		if isInputHeader {
-			u.state(stateInputHeader, "Found example input header")
 		}
 	case stateInputHeader:
 		if l == "```yaml" {

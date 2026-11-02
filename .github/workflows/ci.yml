@@ -436,8 +436,7 @@ jobs:
         with: { version-file: .tool-versions, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint --shellcheck='shellcheck -o all'
-          .github/workflows/*.y*ml **/action.y*ml
+        run: go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'
       - name: Prepare the ordinary binary and release action
         env:
           BINARY_SUFFIX: ${{ runner.os == 'Windows' && '.exe' || '' }}

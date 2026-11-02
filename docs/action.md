@@ -25,6 +25,47 @@ This discovers workflows, reports findings as annotations, and writes a compact
 job summary. Findings fail the step. Pin a **published release commit SHA** or
 normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
 
+## Permissions
+
+The quick start grants `contents: read` for [checkout](https://github.com/actions/checkout#recommended-permissions).
+Once files are available locally, ordinary analysis and reporting need no
+`GITHUB_TOKEN` permissions. Choose permissions for the features you enable:
+
+| Feature or input                                                             | Required access                                                                                                                                              |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Analysis, configuration, `files`, `ignore`, `disable-tools`, `fail-on-error` | Local checkout access; no additional token permissions.                                                                                                      |
+| `version`, `version-file`, `install-only`, `add-actionlint-to-path`          | No token permissions. Published binaries and checksums are downloaded publicly.                                                                              |
+| `annotations`, `format: github`                                              | No token permissions. Annotations use runner commands; `checks: write` is unnecessary.                                                                       |
+| `summary`, `summary-title`                                                   | No token permissions. Summaries are written to the runner's summary file.                                                                                    |
+| `format`, `output-file`, `result-file`, `sarif: true`                        | No token permissions. These produce local reports; `sarif: true` does not upload to code scanning.                                                           |
+| `plugin-cache: true`                                                         | Runner-provided cache credentials; no `actions: write` grant. See [cache access](#cache-access).                                                             |
+| `review: true`                                                               | `pull-requests: write` on the PR's repository, plus read access to the PR head's source content. See [PR reviews](#optional-pr-review).                      |
+| Upload reports with `actions/upload-artifact` in a later step                | Runner-provided artifact credentials; no `actions: write` grant.                                                                                             |
+| Upload SARIF to code scanning in a later step                                | `security-events: write`; GitHub's upload example also requires `actions: read` in private repositories. See [SARIF upload](#upload-sarif-to-code-scanning). |
+
+Set [workflow or job permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions)
+explicitly. Listing permissions sets unlisted scopes to `none`; add only the
+scopes needed by other steps in the same job. If files are provisioned without
+authenticated checkout and reviews are off, actionlint can run with `permissions: {}`.
+
+The `token` input defaults to `${{ github.token }}` and is used only for PR reviews.
+For a custom GitHub App or fine-grained personal access token, grant
+[Pull requests: write](https://docs.github.com/en/rest/pulls/reviews#create-a-review-for-a-pull-request)
+on the PR's repository and
+[Contents: read](https://docs.github.com/en/rest/repos/contents#get-repository-content)
+where access to private PR-head content is needed. The reporter reads that content
+to verify each finding before posting. Job `permissions` controls `GITHUB_TOKEN`;
+it does not change the permissions of a custom token.
+
+### Cache access
+
+`plugin-cache` uses GitHub's cache service through `@actions/cache`, independently
+of the review token. Where supported, [`cache-mode`](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#controlling-cache-access-with-cache-mode)
+controls restore/save access. Read-only cache access still permits restores;
+cache service failures produce warnings and analysis continues. `plugin-cache: false`
+disables the shared cache. Downloading public plugin artifacts does not require a
+`packages: read` grant; private sources need their own supported credentials.
+
 ## Install without running analysis
 
 ```yaml
@@ -244,6 +285,38 @@ may be null. SARIF is exposed only for completed analysis. `fail-on-error: false
 allows a step with findings to pass while preserving the recorded analysis outcome.
 Match findings by path, location and rule; array indexes can change between runs.
 
+### Upload SARIF to code scanning
+
+`sarif: true` creates the file exposed by `report-sarif`. To publish it to GitHub
+code scanning, add a separate uploader and its
+[required permissions](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/integrate-with-existing-tools/upload-sarif-file):
+
+```yaml
+name: Scan workflows
+on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write
+  actions: read # Required by the uploader for private repositories.
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: kjanat/actionlint@v2
+        id: lint
+        with: { sarif: true }
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.lint.outputs.report-sarif != ''
+        with:
+          sarif_file: ${{ steps.lint.outputs.report-sarif }}
+```
+
+Code scanning must be available and enabled for the repository. Its uploader
+handles event-specific restrictions, including pull requests from forks;
+the Action's `token` input is not passed to the uploader.
+
 ### Optional PR review
 
 ```yaml
@@ -262,8 +335,14 @@ jobs:
 
 Reviews group findings on changed lines and add applicable suggestions. Reruns
 deduplicate existing comments. Missing PR context, unchanged lines, mismatched
-source, limits and permission errors produce feedback. Use the ordinary `pull_request` event; fork PR tokens may lack
-write permission. Review failure is advisory and leaves the analysis outcome intact.
+source, limits and permission errors produce feedback. Use the ordinary `pull_request`
+event. Fork and Dependabot PRs normally receive a read-only `GITHUB_TOKEN`, and
+secrets are restricted; writing `pull-requests: write` in the workflow cannot
+override those restrictions. Annotations and summaries still work when review
+posting is unavailable. Review failure is advisory and leaves the analysis outcome intact.
+Keep untrusted PR analysis on `pull_request`; do not switch to `pull_request_target`
+and execute PR-controlled code to obtain a write token. See
+[GitHub's fork permission rules](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#changing-the-permissions-in-a-forked-repository).
 
 ## Plugins and binary installation
 
@@ -316,8 +395,8 @@ All inputs are optional. Booleans accept `true`/`false`.
 | `summary`                        | `true`         | Compact job summary.                                                                                                                  |
 | `summary-title`                  | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
 | `sarif`                          | `false`        | Write additional SARIF file.                                                                                                          |
-| `review`                         | `false`        | Advisory PR review posting.                                                                                                           |
-| `token`                          | `github.token` | Used only by the review reporter.                                                                                                     |
+| `review`                         | `false`        | Advisory PR review posting; requires `pull-requests: write` and PR-head source read access. See [permissions](#permissions).          |
+| `token`                          | `github.token` | Review reporter token; custom tokens need access to the PR repository and its head source. See [permissions](#permissions).           |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |

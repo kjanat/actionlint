@@ -53,19 +53,19 @@ actionlint config show --origin
 
 ## Output and logging
 
-| Variable                   | Equivalent flag                  | Value                                                                                 |
-| -------------------------- | -------------------------------- | ------------------------------------------------------------------------------------- |
-| `ACTIONLINT_OUTPUT_FORMAT` | `--output-format` / `-o`         | `text`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. Checks only; default: text. |
-| `ACTIONLINT_JSON`          | `--json`                         | JSON diagnostics or command metadata. Default: false.                                 |
-| `ACTIONLINT_JSON_PRETTY`   | `--json-pretty`                  | Use installed `jq` for terminal JSON. Default: true.                                  |
-| `ACTIONLINT_TEMPLATE`      | `--template` / `--format` / `-f` | A legacy Go template. Checks only.                                                    |
-| `ACTIONLINT_TEMPLATE_FILE` | `--template-file`                | A file containing a Go template. Checks only.                                         |
-| `ACTIONLINT_OUTPUT_FILE`   | `--output-file`                  | Report destination. Empty or `-` writes to stdout. Checks only.                       |
-| `ACTIONLINT_LOG_LEVEL`     | `--log-level`                    | `none`, `info`, or `debug`. Checks only; default: none.                               |
-| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries. Default: false.                                      |
-| `ACTIONLINT_SUMMARY`       | `--summary`                      | Show analysis summary. Default: true.                                                 |
-| `ACTIONLINT_COLOR`         | Color controls                   | `auto`, `always`, or `never`. Default: auto.                                          |
-| `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`                   | `auto`, `always`, or `never`. Default: auto.                                          |
+| Variable                   | Equivalent flag                  | Value                                                                                                    |
+| -------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `ACTIONLINT_OUTPUT_FORMAT` | `--output-format` / `-o`         | `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif`, or `github`. Checks only; default: pretty. |
+| `ACTIONLINT_JSON`          | `--json`                         | JSON diagnostics or command metadata. Default: false.                                                    |
+| `ACTIONLINT_JSON_PRETTY`   | `--json-pretty`                  | Use installed `jq` for terminal JSON. Default: true.                                                     |
+| `ACTIONLINT_TEMPLATE`      | `--template` / `--format` / `-f` | A legacy Go template. Checks only.                                                                       |
+| `ACTIONLINT_TEMPLATE_FILE` | `--template-file`                | A file containing a Go template. Checks only.                                                            |
+| `ACTIONLINT_OUTPUT_FILE`   | `--output-file`                  | Report destination. Empty or `-` writes to stdout. Checks only.                                          |
+| `ACTIONLINT_LOG_LEVEL`     | `--log-level`                    | `none`, `info`, or `debug`. Checks only; default: none.                                                  |
+| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries. Default: false.                                                         |
+| `ACTIONLINT_SUMMARY`       | `--summary`                      | Show analysis summary. Default: true.                                                                    |
+| `ACTIONLINT_COLOR`         | Color controls                   | `auto`, `always`, or `never`. Default: auto.                                                             |
+| `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`                   | `auto`, `always`, or `never`. Default: auto.                                                             |
 
 An explicit format, JSON, template, template-file or oneline flag replaces the
 environment's whole format selection. Conflicting environment selections are

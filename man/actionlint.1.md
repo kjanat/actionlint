@@ -25,8 +25,8 @@ job dependencies, parallel steps, runner labels, event filters, schedules, and Y
 Security checks report potentially unsafe expression interpolation in scripts and hard-coded
 credentials. Optional ShellCheck integration check scripts in `run:` steps.
 
-Repository policy checks can require immutable action references, job timeouts, and particular
-actions. These checks are enabled explicitly in the configuration file. Cache safety policies
+Repository policy checks can require immutable action references and job timeouts.
+These checks are enabled explicitly in the configuration file. Cache safety policies
 are enabled by default; ordinary workflow checks do not require configuration.
 
 # USAGE
@@ -38,6 +38,9 @@ it exits 3 outside a repository or if no inputs are found.
 Pass explicit files, directories or **-** for stdin. Directories are traversed
 recursively: repository roots and **.github** select workflows and action
 manifests; other directories select YAML files below them.
+Explicitly selecting an excluded directory includes its YAML files.
+**-C** *DIR* runs from another directory; repeat it to resolve each relative
+directory from the previous one. Input, output and configuration paths use that directory.
 
     $ actionlint check
     $ actionlint file1.yaml file2.yaml
@@ -148,9 +151,10 @@ The root accepts single- and double-dash spellings; **check**
 uses long options and short aliases. Run **--help-legacy** for old spellings.
 
 **--output-format**, **--output**, **-o** *MODE*
-: Select `text`, `pretty`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
-`text`. **--output** is a supported alias. `pretty` shows captured source, range
-indicators, explanation, help, related locations and fix descriptions, wrapping
+: Select `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif`, or `github`. The default is
+`pretty`. Repeat the flag to emit multiple formats in order; duplicate formats are
+emitted once. **--output** is a supported alias. `pretty` shows captured source, range
+indicators, diagnostic-specific advice, related locations and fix descriptions, wrapping
 messages and paths. JSON emits a versioned analysis result
 with completion status, diagnostics, and configuration context. JSONL emits one diagnostic
 per line. GitHub annotations are emitted only when explicitly selected.
@@ -223,16 +227,20 @@ disabled. JSON, diagnostics, templates, version output and generated completion
 scripts receive no added hyperlink sequences. Put root flags before **--help**.
 See https://no-hyperlinks.org/spec for the convention.
 
+**-C**, **--directory** *DIR*
+: Run from another directory. Repeat to resolve each relative directory from
+the previous one. Input, output and configuration paths use the selected directory.
+
 **--config**, **--config-file** *PATH*
 : Select the configuration file. This takes precedence over repository discovery. **--config-file**
 is the supported legacy name. Also available on **config** and **doctor**.
 
-**--no-config**
+**--no-config**, **--no-rc**, **--norc**
 : Use defaults without loading a configuration file. Cannot be combined with a
 nonempty explicit config path. Also available on **config** and **doctor**.
 
 **--ignore-regex**, **--ignore** *REGEXP*
-: Suppress findings whose messages match this Go regular expression. Repeat to
+: Suppress findings whose messages or `CODE: message` match this Go regular expression. Repeat to
 add patterns. **--ignore** is the
 supported legacy name.
 
@@ -298,7 +306,8 @@ The snapshot and provider answers must match this scope. Also available on **lsp
   `ACTIONLINT_EXPERIMENTAL`. May be combined with **--strict**.
 
 **--summary**
-: Print selected workflow and finding counts on stderr after checking. In JSON
+: Print selected file and finding counts on stderr after checking. Findings are
+also counted per file and per rule/diagnostic code, highest counts first. In JSON
 modes this is a JSON record with a `summary` field. Default: true.
 Use `--summary=false` or **--quiet** to suppress it.
 
@@ -436,14 +445,18 @@ Set to `false` to disable this check.
 list in a mapping. `report` selects `all` (default), `suppression`, or `violation`. Omission,
 `null`, or `false` permits inline exceptions.
 
-The three cache policies accept line-scoped exceptions with an exact rule name and a reason:
+Registered diagnostic rules accept line-scoped exceptions with exact rule IDs and an optional reason:
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- jobs use reviewed default-branch code only
 ```
 
 Alternatively, place `# actionlint:ignore-next-line RULE -- REASON` immediately before the
-reported declaration. These directives do not suppress other rules. CLI and configured
+reported declaration. The trailing forms `# actionlint-ignore RULE`, `# ignore RULE`
+and `# ignore[RULE]` also work. Before a declaration, `# actionlint-ignore-next-line RULE`
+and `# ignore-next-line RULE` work too. Separate
+multiple rule IDs with commas, spaces, or both; the ` -- REASON` suffix is optional.
+These directives do not suppress other rules. CLI and configured
 ignore patterns still apply afterwards. See the configuration document for the full trigger
 list, cache action modes, nested-call behavior, and suppression controls.
 
@@ -499,7 +512,10 @@ snippet. **--oneline** omits the snippet; **--format** replaces the diagnostic p
 
 The Go template receives a sequence of errors. Each has `Message`, `Snippet`, `Kind`, `Filepath`,
 `Line`, `Column`, and `EndColumn` fields. Line and column numbers start at 1. Custom template
-functions include `json`, `replace`, `toPascalCase`, `allKinds`, and `getVersion`.
+functions include `json`, `replace`, `escapeData`, `escapeProperty`, `toPascalCase`,
+`allKinds`, and `getVersion`. For GitHub Actions workflow commands, `escapeData`
+encodes `%`, CR, and LF in the message body; `escapeProperty` also encodes `:` and
+`,` in property values. Both accept strings and support template pipelines.
 
 JSON:
 

@@ -18,7 +18,7 @@ inputs:
     required: false
     default: "false"
   plugin-cache:
-    description: Restore and save pinned plugin artifacts using GitHub Actions cache. Artifact digests are verified before use.
+    description: Restore and save pinned plugin artifacts using GitHub Actions cache. Uses runner cache credentials; no actions write permission needed. Artifact digests are verified before use.
     required: false
     default: "true"
   files:
@@ -88,11 +88,11 @@ inputs:
     required: false
     default: "true"
   annotations:
-    description: "Emit finding annotations: auto follows format; true enables them; false disables them."
+    description: "Emit finding annotations: auto follows format; true enables them; false disables them. No checks write permission needed."
     required: false
     default: auto
   summary:
-    description: Add a compact analysis summary to the job summary.
+    description: Add a compact analysis summary to the job summary. No token permissions needed.
     required: false
     default: "true"
   summary-title:
@@ -100,15 +100,15 @@ inputs:
     required: false
     default: ""
   sarif:
-    description: Save a SARIF file alongside the always-written JSON result.
+    description: Save a SARIF file alongside the always-written JSON result. No token permissions needed; uploading to code scanning is a separate step requiring security-events write.
     required: false
     default: "false"
   review:
-    description: Post PR review comments and supported fix suggestions on changed lines. Requires pull-requests write permission.
+    description: Post PR review comments and supported fix suggestions on changed lines. Requires pull-requests write permission on the PR repository and read access to PR-head source content.
     required: false
     default: "false"
   token:
-    description: GitHub token used only when review is enabled.
+    description: GitHub token used only when review is enabled. Custom tokens need pull-requests write on the PR repository and contents read for private PR-head source content.
     required: false
     default: ${{ github.token }}
 outputs:
