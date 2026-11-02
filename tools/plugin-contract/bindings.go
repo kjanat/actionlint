@@ -12,7 +12,7 @@ import (
 	"mvdan.cc/gofumpt/format"
 )
 
-// Wacogo v0.1.0 has no filename option. Stage its output so only .gen.go files
+// Stage the WIT generator output so only .gen.go files
 // reach the bindings tree, including after subsequent regeneration.
 func generateBindings() error {
 	temporary, err := os.MkdirTemp("", "actionlint-wit-bindings-")

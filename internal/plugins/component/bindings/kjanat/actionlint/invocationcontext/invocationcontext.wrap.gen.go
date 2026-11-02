@@ -39,30 +39,26 @@ func WrapInstance(caller *host.ComponentInstance, callee *wacogo.ComponentInstan
 
 func (w *invocationContextWrapper) CallByID(ctx context.Context, id string) (ResultOptionCallString, error) {
 	var resVal_ ResultOptionCallString
-	var resErr_ error
 	arg0_ := id
 	{
 		callErr_ := w.fnCallByID.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if err_ := lowerFlatString(ctx, caller, callee, w.callerInst, w.fnCallByID.ParamType(0), stack[0:2], arg0_); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				}
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemResultOptionCallString(ctx, caller, callee, w.callerInst, w.fnCallByID.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil
@@ -70,29 +66,26 @@ func (w *invocationContextWrapper) CallByID(ctx context.Context, id string) (Res
 
 func (w *invocationContextWrapper) Calls(ctx context.Context, offset uint32, limit uint32) (ResultListCallString, error) {
 	var resVal_ ResultListCallString
-	var resErr_ error
 	arg0_ := offset
 	arg1_ := limit
 	{
 		callErr_ := w.fnCalls.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				stack[0] = uint64(arg0_)
 				stack[1] = uint64(arg1_)
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemResultListCallString(ctx, caller, callee, w.callerInst, w.fnCalls.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil
@@ -100,25 +93,22 @@ func (w *invocationContextWrapper) Calls(ctx context.Context, offset uint32, lim
 
 func (w *invocationContextWrapper) Describe(ctx context.Context) (ResultSummaryString, error) {
 	var resVal_ ResultSummaryString
-	var resErr_ error
 	{
 		callErr_ := w.fnDescribe.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemResultSummaryString(ctx, caller, callee, w.callerInst, w.fnDescribe.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil
@@ -126,30 +116,26 @@ func (w *invocationContextWrapper) Describe(ctx context.Context) (ResultSummaryS
 
 func (w *invocationContextWrapper) ScriptByID(ctx context.Context, id string) (ResultOptionScriptOccurrenceString, error) {
 	var resVal_ ResultOptionScriptOccurrenceString
-	var resErr_ error
 	arg0_ := id
 	{
 		callErr_ := w.fnScriptByID.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if err_ := lowerFlatString(ctx, caller, callee, w.callerInst, w.fnScriptByID.ParamType(0), stack[0:2], arg0_); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				}
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemResultOptionScriptOccurrenceString(ctx, caller, callee, w.callerInst, w.fnScriptByID.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil
@@ -157,29 +143,26 @@ func (w *invocationContextWrapper) ScriptByID(ctx context.Context, id string) (R
 
 func (w *invocationContextWrapper) Scripts(ctx context.Context, offset uint32, limit uint32) (ResultListScriptOccurrenceString, error) {
 	var resVal_ ResultListScriptOccurrenceString
-	var resErr_ error
 	arg0_ := offset
 	arg1_ := limit
 	{
 		callErr_ := w.fnScripts.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				stack[0] = uint64(arg0_)
 				stack[1] = uint64(arg1_)
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemResultListScriptOccurrenceString(ctx, caller, callee, w.callerInst, w.fnScripts.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil

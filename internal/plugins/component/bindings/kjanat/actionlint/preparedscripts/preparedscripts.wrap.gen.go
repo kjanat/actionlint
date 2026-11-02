@@ -33,35 +33,30 @@ func WrapInstance(caller *host.ComponentInstance, callee *wacogo.ComponentInstan
 
 func (w *preparedScriptsWrapper) Prepare(ctx context.Context, occurrence string, dialect OptionString) (ResultOptionPreparedString, error) {
 	var resVal_ ResultOptionPreparedString
-	var resErr_ error
 	arg0_ := occurrence
 	arg1_ := dialect
 	{
 		callErr_ := w.fnPrepare.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if err_ := lowerFlatString(ctx, caller, callee, w.callerInst, w.fnPrepare.ParamType(0), stack[0:2], arg0_); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				}
 				if err_ := lowerFlatOptionString(ctx, caller, callee, w.callerInst, w.fnPrepare.ParamType(1), stack[2:5], arg1_); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				}
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemResultOptionPreparedString(ctx, caller, callee, w.callerInst, w.fnPrepare.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil

@@ -11,7 +11,7 @@ require (
 	github.com/invopop/jsonschema v0.14.0
 	github.com/itchyny/gojq v0.12.19
 	github.com/kjanat/go-yaml/v4 v4.0.0-rc.7
-	github.com/kjanat/wacogo v0.1.3
+	github.com/kjanat/wacogo v0.2.0
 	github.com/kjanat/wazero v1.11.1
 	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24

@@ -29,24 +29,21 @@ func WrapInstance(caller *host.ComponentInstance, callee *wacogo.ComponentInstan
 }
 
 func (w *hostWrapper) Log(ctx context.Context, message string) error {
-	var resErr_ error
 	arg0_ := message
 	{
 		callErr_ := w.fnLog.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if err_ := lowerFlatString(ctx, caller, callee, w.callerInst, w.fnLog.ParamType(0), stack[0:2], arg0_); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				}
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return resErr_
 		}
 	}
 	return nil

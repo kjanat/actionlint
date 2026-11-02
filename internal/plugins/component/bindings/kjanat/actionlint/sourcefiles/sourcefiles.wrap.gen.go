@@ -30,25 +30,22 @@ func WrapInstance(caller *host.ComponentInstance, callee *wacogo.ComponentInstan
 
 func (w *sourceFilesWrapper) Roots(ctx context.Context) ([]SourceRoot, error) {
 	var resVal_ []SourceRoot
-	var resErr_ error
 	{
 		callErr_ := w.fnRoots.CallRaw(ctx, w.callerInst,
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
+				return nil
 			},
-			func(caller, callee *host.CallContext, stack []uint64) {
+			func(caller, callee *host.CallContext, stack []uint64) error {
 				if v_, err_ := liftMemListSourceRoot(ctx, caller, callee, w.callerInst, w.fnRoots.ResultType(0), uint32(stack[0])); err_ != nil {
-					resErr_ = err_
-					return
+					return err_
 				} else {
 					resVal_ = v_
 				}
+				return nil
 			},
 		)
 		if callErr_ != nil {
 			return nil, fmt.Errorf("wacogo/witgen: CallRaw failed: %w", callErr_)
-		}
-		if resErr_ != nil {
-			return nil, resErr_
 		}
 	}
 	return resVal_, nil
