@@ -406,8 +406,8 @@ Component results and host-import arguments also have per-call budgets of 262,14
 string and collection storage. Nested values and repeated aliases count toward these budgets; validation runs
 before host allocations and string encoding conversions.
 The maintained wacogo fork adds these allocation checks. See the
-[Go fork inventory](go-forks.md) for its selected tag, recursive dependencies and
-retained changes.
+[Go dependency graph](go-forks.md) for its selected version, upstream origin and
+recursive dependencies.
 
 Stdout, stderr and the direct `host.log` capability share a 1 MiB output budget per call, including when debug logging is disabled. Exceeding it fails
 the analysis even if the plugin handles the write error. Log lines are emitted in chunks of at most 64 KiB, and an

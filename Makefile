@@ -6,6 +6,8 @@ GO_DIRS := $(shell go list -f '{{.Dir}}' ./...)
 GO_FILES := $(patsubst $(CURDIR)/%,%,$(wildcard $(addsuffix /*.go,$(GO_DIRS))))
 SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/webhook/payload/catalogue.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
+ANALYZER_DIRS := $(shell go -C analyzers list -f '{{.Dir}}' ./...)
+ANALYZER_SRCS := $(filter-out %_test.go,$(wildcard $(addsuffix /*.go,$(ANALYZER_DIRS)))) analyzers/go.mod analyzers/go.sum
 TOOL := $(wildcard tools/config/*.go internal/*/generate/*.go internal/*/metadata/*.go tools/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \
@@ -94,9 +96,13 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-.PHONY: lint-build lint-architecture test-analyzers
-lint-build:
+.PHONY: lint lint-build lint-architecture test-analyzers
+lint-build: custom-gcl$(EXE) .bin/actionlintarch$(EXE)
+
+custom-gcl$(EXE): $(ANALYZER_SRCS) .custom-gcl.yml
 	golangci-lint custom
+
+.bin/actionlintarch$(EXE): $(ANALYZER_SRCS)
 	go build -C analyzers -o ../.bin/actionlintarch$(EXE) ./cmd/actionlintarch
 
 test-analyzers:

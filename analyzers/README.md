@@ -132,8 +132,9 @@ The default golangci-lint configuration additionally enables `dupl` for structur
 code duplication, `contextcheck` for propagation and `exhaustive` for enum switches.
 No diagnostics baseline or project-specific suppression is installed.
 
-`make lint-build` builds both runners using golangci-lint 2.15.0 and clears its
-result cache after the plugin build. `make test-analyzers` tests the analyzer.
+`make lint-build` builds missing or outdated runners using golangci-lint 2.15.0.
+The runners rebuild when analyzer sources, module requirements or the custom
+build configuration change. `make test-analyzers` tests the analyzer.
 `make lint-architecture` runs the standalone checker without golangci exclusions;
 `make lint` runs both checks. The Architecture workflow tests the custom binary in
 an unrelated module, including a source-only fix under a warm cache, then runs
