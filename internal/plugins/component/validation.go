@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode"
 
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"github.com/kjanat/wacogo"
@@ -17,8 +18,7 @@ func validateSuppressionRuleName(name string) error {
 	if builtin, ok := rulecatalog.Find(name); ok && builtin.Provider == "actionlint" {
 		return fmt.Errorf("plugin name %q conflicts with a built-in rule", name)
 	}
-	if strings.TrimSpace(name) != name || strings.ContainsAny(name, ",\r\n") ||
-		strings.Contains(name, " -- ") || strings.HasSuffix(name, " --") {
+	if name == "" || strings.ContainsAny(name, ",[]") || strings.ContainsFunc(name, unicode.IsSpace) {
 		return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", name)
 	}
 	return nil

@@ -25,6 +25,7 @@ func (e *Finding) detached() Finding {
 	out.EndPosition = clonePos(e.EndPosition)
 	out.Source = bytes.Clone(e.Source)
 	out.SuppressionOrigin = cloneSuppressionOrigin(e.SuppressionOrigin)
+	out.SuppressionTarget = cloneSuppressionOrigin(e.SuppressionTarget)
 	out.IgnoreOrigin = cloneIgnoreOrigin(e.IgnoreOrigin)
 	out.Owner = cloneOwner(e.Owner)
 	out.MetadataIdentity = cloneMetadataIdentity(e.MetadataIdentity)

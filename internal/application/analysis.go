@@ -411,6 +411,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 					return
 				}
 				documents.add(captured.Revision().Document(), documentparse.ActionOutline(path, meta, parseErr))
+				if parseErr != nil || meta == nil {
+					revision := captured.Revision()
+					session.suppressionUses.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
+				}
 			},
 		})
 		wc.SetSources(lifetime, captures, session.workingDir)
@@ -435,6 +439,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 				file.errors, file.outline, err = session.check(source.Path, source.InputPath, captured, source.Project, source.Config, source.ConfigProvenance, proc, ac, wc, &file.rules)
 			}
 			if err != nil {
+				if revision := file.captured.Revision(); revision.Valid() {
+					session.suppressionUses.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
+				}
 				entryErrors[i] = &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
 			}
 			return nil
@@ -477,6 +484,12 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	if completionErr := documents.complete(captures, readAliases); completionErr != nil {
 		err = errors.Join(err, completionErr)
 	}
+	session.suppressionUses.discardUnproven(result.files)
+	additionalRules := checks.RuleNames(session.analyzers)
+	for _, descriptor := range session.toolDescriptors {
+		additionalRules = append(additionalRules, descriptor.Name)
+	}
+	addUnusedSuppressionFixes(result.files, diagnosticpolicy.SuppressionRules(additionalRules...))
 	err = result.revalidateCaptures(captures, rows, session.workingDir, err)
 	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {

@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/diagnostic"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -26,6 +27,8 @@ type Policy struct {
 	IgnorePatterns                     repoconfig.IgnorePatterns
 	Log                                func(...any)
 	Debug                              func(string, ...any)
+	// UsedSuppression records a matched selector for invocation-wide reconciliation.
+	UsedSuppression func(string, diagnostic.Position, string)
 }
 
 // Apply filters completed findings using each source's resolved policy and normalizes their output order.
@@ -46,7 +49,7 @@ func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]b
 			}
 		}
 	} else {
-		all = FilterInline(content, all, suppressionPolicy, additionalRules...)
+		all = filterInlineSuppressionsAt(content, all, suppressionPolicy, "", p.inlineAudit(configPath, Levels(cfg)), additionalRules...)
 		all = FilterConfigured(configPath, root, content, all, cfg, false, Levels(cfg), additionalRules...)
 	}
 	var projectDir string
@@ -121,7 +124,7 @@ func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]b
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
-			findings = FilterForeignInline(sourcePath, source, findings, policy, additionalRules...)
+			findings = filterForeignInline(sourcePath, source, findings, policy, p.inlineAudit(sourcePath, diagnosticLevel), additionalRules...)
 			findings = FilterConfigured(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
 		}
 		findings = slices.DeleteFunc(findings, func(e *findingmodel.Finding) bool {
@@ -157,6 +160,14 @@ func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]b
 	return all, nil
 }
 
+func (p Policy) inlineAudit(path string, level func(string) repoconfig.Level) *inlineAudit {
+	return &inlineAudit{level: level, used: func(position diagnostic.Position, rule string) {
+		if p.UsedSuppression != nil {
+			p.UsedSuppression(path, position, rule)
+		}
+	}}
+}
+
 func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []repoconfig.PathConfig) []*findingmodel.Finding {
 	if len(p.IgnorePatterns) == 0 && len(cfgs) == 0 {
 		return errs
@@ -165,12 +176,12 @@ func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []repoconfig.Path
 	filtered := make([]*findingmodel.Finding, 0, len(errs))
 Loop:
 	for _, err := range errs {
-		if p.IgnorePatterns.Match(err.Message) {
+		if matchesIgnorePatterns(p.IgnorePatterns, err) {
 			debug(p, "Error %q is ignored due to -ignore command line option", err.Message)
 			continue Loop
 		}
 		for _, c := range cfgs {
-			if c.Ignore.Match(err.Message) {
+			if matchesIgnorePatterns(c.Ignore, err) {
 				debug(p, "Error %q is ignored due to the \"ignore\" config in the config file", err.Message)
 				continue Loop
 			}
@@ -181,6 +192,13 @@ Loop:
 		log(p, "Filtered", len(errs)-len(filtered), "error(s) due to \"-ignore\" command line option and \"ignore\" configuration")
 	}
 	return filtered
+}
+
+// Code-based filters keep working when messages no longer repeat the code.
+// Match the plain message too, preserving existing message-anchored patterns.
+func matchesIgnorePatterns(patterns repoconfig.IgnorePatterns, finding *findingmodel.Finding) bool {
+	return len(patterns) != 0 && (patterns.Match(finding.Message) ||
+		finding.Code != "" && patterns.Match(finding.Code+": "+finding.Message))
 }
 
 func debug(p Policy, format string, args ...any) {

@@ -41,3 +41,24 @@ func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
 		t.Fatal("uncaptured dependency produced a code action")
 	}
 }
+
+func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "workflow.yml")
+	const text = "run: echo ok\n"
+	doc := Document{URI: FileURI(path), Version: 8, Text: text}
+	point := diagnostic.Position{Line: 1, Column: 1}
+	fix := diagnostic.Fix{Description: "Suppress shellcheck for this declaration", Applicability: "suggested", Revisions: map[string]string{path: sourceid.Digest([]byte(text))}, Edits: []diagnostic.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
+	findings := []diagnostic.Diagnostic{
+		{Path: path, Rule: "shellcheck", Code: "SC2086", Start: point, Fixes: []diagnostic.Fix{fix}},
+		{Path: path, Rule: "shellcheck", Code: "SC2154", Start: point, Fixes: []diagnostic.Fix{fix}},
+	}
+	sources, open := map[string]Document{path: doc}, map[string]Document{path: doc}
+	if actions := codeActions(t.Context(), path, sourceRange{}, findings, sources, open); len(actions) != 1 {
+		t.Fatalf("identical suppression edits should appear once: %+v", actions)
+	}
+	doc.Text, doc.Version = "run: echo changed\n", 9
+	open[path] = doc
+	if actions := codeActions(t.Context(), path, sourceRange{}, findings, sources, open); len(actions) != 0 {
+		t.Fatalf("stale suppression authorized an edit: %+v", actions)
+	}
+}

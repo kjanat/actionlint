@@ -2,6 +2,7 @@ package config
 
 import (
 	"slices"
+	"sync"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
@@ -24,8 +25,10 @@ type Rule struct {
 	Group           string
 	SupportsActions bool
 	Scope           Scope
-	Options         func() any
-	Configure       func(*Config, Setting)
+	// DefaultLevel is the recommended severity; omission means on.
+	DefaultLevel Level
+	Options      func() any
+	Configure    func(*Config, Setting)
 }
 
 // Nursery reports whether the rule is excluded from stable presets.
@@ -34,11 +37,32 @@ func (r Rule) Nursery() bool { return r.Maturity == "nursery" }
 // Rules lists the built-in checks in registration order, then the bundled
 // tool providers' rules.
 func Rules() []Rule {
+	rules := slices.Clone(registeredRules())
+	for i := range rules {
+		rules[i].Descriptor = rules[i].Descriptor.Clone()
+	}
+	return rules
+}
+
+// Registration and metadata depend only on embedded build inputs. Cache them
+// privately; public lookups detach descriptors before exposing their slices.
+var cachedRules struct {
+	once  sync.Once
+	rules []Rule
+}
+
+func registeredRules() []Rule {
+	cachedRules.once.Do(func() { cachedRules.rules = buildRegisteredRules() })
+	return cachedRules.rules
+}
+
+func buildRegisteredRules() []Rule {
 	rules := slices.Concat([]Rule{
 		{Name: "workflow-run-names"},
 		{Name: "unsound-ternary"},
 		{Name: "syntax-check", SupportsActions: true},
 		{Name: "inline-suppression", Scope: SourceScope},
+		{Name: "unused-suppression", SupportsActions: true, Scope: SourceScope, DefaultLevel: "info"},
 		{Name: "missing-local-action"},
 		{Name: "string-conditions"},
 		{Name: "mixed-type-comparisons"},
@@ -108,8 +132,9 @@ func providerRules() []Rule {
 
 // FindRule returns the catalogue entry for name.
 func FindRule(name string) (Rule, bool) {
-	for _, rule := range Rules() {
+	for _, rule := range registeredRules() {
 		if rule.Name == name {
+			rule.Descriptor = rule.Descriptor.Clone()
 			return rule, true
 		}
 	}

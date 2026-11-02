@@ -275,7 +275,7 @@ jobs:
 						findings = append(findings, d)
 					}
 				}
-				if len(findings) != 1 || findings[0].Start.Line != 12 || !strings.Contains(findings[0].Message, "SC2086") {
+				if len(findings) != 1 || findings[0].Start.Line != 12 || findings[0].Code != "SC2086" {
 					t.Fatalf("only unsourced variable should warn: %+v", result.Diagnostics)
 				}
 			})

@@ -265,21 +265,34 @@ jobs:
 				project := workspace.Identity(root)
 				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
-				check := func(diagnostics []*findingmodel.Finding, want bool) {
+				check := func(diagnostics []*findingmodel.Finding, entry string) {
 					t.Helper()
-					if !want || suppressed == tc.owner {
-						if len(diagnostics) != 0 {
-							t.Fatalf("unexpected diagnostics outside the owning call: %v", diagnostics)
-						}
-						return
+					wantOperation := (entry == "" || entry == tc.owner) && suppressed != tc.owner
+					wantUnused := suppressed != "" && suppressed != tc.owner && (entry == "" || entry == suppressed)
+					wantCount := 0
+					if wantOperation {
+						wantCount++
+					}
+					if wantUnused {
+						wantCount++
+					}
+					if len(diagnostics) != wantCount {
+						t.Fatalf("want operation=%t unused=%t in %q, got %v", wantOperation, wantUnused, entry, diagnostics)
 					}
 					before, _, found := strings.Cut(files[tc.owner], "    uses:")
 					if !found {
 						t.Fatal("fixture has no workflow call")
 					}
 					line := strings.Count(before, "\n") + 1
-					if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" || filepath.Base(diagnostics[0].Path) != tc.owner || diagnostics[0].Start.Line != line || !strings.Contains(diagnostics[0].Message, `of "$/leaf.yaml"`) {
-						t.Fatalf("want exactly one diagnostic at the owning call in %s: %v", tc.owner, diagnostics)
+					for _, finding := range diagnostics {
+						switch {
+						case wantOperation && finding.Rule == "cache-operation" && filepath.Base(finding.Path) == tc.owner && finding.Start.Line == line && strings.Contains(finding.Message, `of "$/leaf.yaml"`):
+							wantOperation = false
+						case wantUnused && finding.Rule == "unused-suppression" && finding.UnusedSuppressionRule == "cache-operation" && filepath.Base(finding.Path) == suppressed:
+							wantUnused = false
+						default:
+							t.Fatalf("diagnostic outside its owning call: %v", finding)
+						}
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml", "leaf.yaml"}, {"leaf.yaml", "callee.yaml", "caller.yaml"}} {
@@ -290,7 +303,7 @@ jobs:
 							if err != nil {
 								t.Fatal(err)
 							}
-							check(diagnostics, name == tc.owner)
+							check(diagnostics, name)
 						}
 					}
 					paths := make([]string, 0, len(order))
@@ -302,7 +315,7 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					check(diagnostics, true)
+					check(diagnostics, "")
 				}
 			})
 		}
@@ -331,15 +344,21 @@ jobs:
           - uses: ${{ '` + action + `@v5' }}
             with: {key: test, path: cache}
 `
-					want := !suppressed && (mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore")
+					violates := mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore"
+					wantRule := ""
+					if !suppressed && violates {
+						wantRule = "cache-operation"
+					} else if suppressed && !violates {
+						wantRule = "unused-suppression"
+					}
 					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
-						if !want {
+						if wantRule == "" {
 							if len(diagnostics) != 0 {
 								t.Fatal(diagnostics)
 							}
 							return
 						}
-						if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" || filepath.Base(diagnostics[0].Path) != "caller.yaml" || diagnostics[0].Start.Line != 5 || !strings.Contains(diagnostics[0].Message, action) {
+						if len(diagnostics) != 1 || diagnostics[0].Rule != wantRule || filepath.Base(diagnostics[0].Path) != "caller.yaml" || diagnostics[0].Start.Line != 5 || wantRule == "cache-operation" && !strings.Contains(diagnostics[0].Message, action) {
 							t.Fatalf("wanted one call-site cache-operation diagnostic: %v", diagnostics)
 						}
 					})

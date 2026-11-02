@@ -600,6 +600,7 @@ allow     = [
   "contract-leaves",
   "core-helpers",
   "document-contracts",
+  "documents",
   "editing",
   "language",
   "leaves",

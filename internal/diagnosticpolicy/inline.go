@@ -1,6 +1,10 @@
 package diagnosticpolicy
 
 import (
+	"fmt"
+	"slices"
+
+	"actionlint.kjanat.dev/v2/diagnostic"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/suppression"
@@ -18,14 +22,17 @@ func SuppressionRules(additional ...string) []string {
 
 // FilterInline applies inline directives to findings owned by this source.
 func FilterInline(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, additional ...string) []*findingmodel.Finding {
-	return filterInlineSuppressionsAt(source, findings, policy, "", additional...)
+	return filterInlineSuppressionsAt(source, findings, policy, "", nil, additional...)
 }
 
-func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, scope string, additional ...string) []*findingmodel.Finding {
-	directives, invalid := suppression.Parse(source, SuppressionRules(additional...))
-	if len(directives) == 0 && len(invalid) == 0 {
-		return findings
-	}
+type inlineAudit struct {
+	level func(string) repoconfig.Level
+	used  func(diagnostic.Position, string)
+}
+
+func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
+	allowedRules := SuppressionRules(additional...)
+	directives, invalid := suppression.Parse(source, allowedRules)
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
 		mode := policy.ReportFor(name)
 		return suppression.Decision{
@@ -37,10 +44,34 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 		findings = append(findings, findingmodel.FromDiagnostic(d))
 	}
 	filtered := make([]*findingmodel.Finding, 0, len(findings)+len(reports))
+	type selector struct {
+		directive int
+		rule      string
+	}
+	used := make(map[selector]bool)
 	for _, finding := range findings {
 		first, last, applies := finding.Start.Line, finding.Start.Line, finding.Source == nil
+		targetPath := scope
 		if origin := finding.SuppressionOrigin; origin != nil {
 			first, last, applies = origin.First, origin.Last, origin.Path == scope
+			targetPath = origin.Path
+		}
+		if audit != nil && applies && audit.level(finding.Rule) != "off" && finding.Rule != "unused-suppression" {
+			for index, directive := range directives {
+				if first <= directive.Last && last >= directive.First && slices.Contains(directive.Rules, finding.Rule) {
+					used[selector{index, finding.Rule}] = true
+					if audit.used != nil {
+						audit.used(directive.Position, finding.Rule)
+					}
+					break
+				}
+			}
+		}
+		if applies && finding.Rule != "inline-suppression" && finding.Rule != "disallow-suppressions" &&
+			slices.Contains(allowedRules, finding.Rule) && policy.ReportFor(finding.Rule) == repoconfig.SuppressionsAllowed {
+			finding.SuppressionTarget = &findingmodel.SuppressionOrigin{Path: targetPath, First: first, Last: last}
+		} else {
+			finding.SuppressionTarget = nil
 		}
 		if applies && evaluation.Suppresses(finding.Rule, first, last) {
 			continue
@@ -50,11 +81,29 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 	for _, d := range reports {
 		filtered = append(filtered, findingmodel.FromDiagnostic(d))
 	}
+	if audit != nil {
+		for index, directive := range directives {
+			for _, name := range directive.Rules {
+				if !used[selector{index, name}] && !evaluation.Suppresses("unused-suppression", directive.Position.Line, directive.Position.Line) {
+					finding := findingmodel.FromDiagnostic(diagnostic.Diagnostic{
+						Rule: "unused-suppression", Start: directive.Position,
+						Message: fmt.Sprintf("inline suppression of %q did not match any findings", name),
+					})
+					finding.UnusedSuppressionRule = name
+					filtered = append(filtered, finding)
+				}
+			}
+		}
+	}
 	return filtered
 }
 
 // FilterForeignInline applies suppression directives from the declaring YAML.
 func FilterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, additional ...string) []*findingmodel.Finding {
+	return filterForeignInline(path, source, findings, policy, nil, additional...)
+}
+
+func filterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
 	local := make([]*findingmodel.Finding, len(findings))
 	for i, finding := range findings {
 		scoped := *finding
@@ -63,10 +112,13 @@ func FilterForeignInline(path string, source []byte, findings []*findingmodel.Fi
 		}
 		local[i] = &scoped
 	}
-	local = filterInlineSuppressionsAt(source, local, policy, path, additional...)
+	local = filterInlineSuppressionsAt(source, local, policy, path, audit, additional...)
 	for _, finding := range local {
 		if finding.SuppressionOrigin == nil {
 			finding.Source = source
+		}
+		if finding.SuppressionTarget != nil && finding.SuppressionTarget.Path == "" {
+			finding.SuppressionTarget.Path = path
 		}
 		if finding.Path == "" {
 			finding.Path = path

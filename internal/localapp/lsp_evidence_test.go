@@ -77,12 +77,17 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if len(finding.Related) != 1 || finding.Related[0].Path != path || !finding.Related[0].Revision.Valid() || finding.Related[0].Coordinates != source.YAML {
 			t.Fatalf("relative related path escaped captured normalization: %+v", finding.Related)
 		}
-		if len(finding.Fixes) != 1 || len(finding.Fixes[0].Edits) != 1 || finding.Fixes[0].Edits[0].Path != path {
+		if len(finding.Fixes) != 2 || finding.Fixes[0].Applicability != "safe" || finding.Fixes[1].Applicability != "suggested" {
 			t.Fatalf("relative fix path escaped normalization: %+v", finding.Fixes)
 		}
-		for edited := range finding.Fixes[0].Revisions {
-			if !filepath.IsAbs(edited) || edited != path {
-				t.Fatalf("relative revision key escaped normalization: %q", edited)
+		for _, fix := range finding.Fixes {
+			if len(fix.Edits) != 1 || fix.Edits[0].Path != path || len(fix.Revisions) != 1 {
+				t.Fatalf("relative fix path escaped normalization: %+v", fix)
+			}
+			for edited := range fix.Revisions {
+				if !filepath.IsAbs(edited) || edited != path {
+					t.Fatalf("relative revision key escaped normalization: %q", edited)
+				}
 			}
 		}
 	}
@@ -198,7 +203,12 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 		t.Fatal("published alias was not bound to its captured revision")
 	}
 	analysis, err = analyzeDocuments(t.Context(), application.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: editorPathAnalyzer{}}}}, map[string]langserver.Document{path: {URI: langserver.FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
-	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 1 || analysis.Diagnostics[0].Fixes[0].Edits[0].Path != path {
+	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
 		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
+	}
+	for _, fix := range analysis.Diagnostics[0].Fixes {
+		if len(fix.Edits) != 1 || fix.Edits[0].Path != path || len(fix.Revisions) != 1 || fix.Revisions[path] != analysis.Sources[path].Revision.Digest() {
+			t.Fatalf("case alias lost fix ownership: %+v", fix)
+		}
 	}
 }

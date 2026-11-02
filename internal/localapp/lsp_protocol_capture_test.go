@@ -21,8 +21,9 @@ import (
 )
 
 type editorPublication struct {
-	ID     int    `json:"id"`
-	Method string `json:"method"`
+	ID     int             `json:"id"`
+	Method string          `json:"method"`
+	Result json.RawMessage `json:"result"`
 	Params struct {
 		URI         string `json:"uri"`
 		Version     int    `json:"version"`
@@ -35,7 +36,9 @@ type editorPublication struct {
 	} `json:"params"`
 }
 
-func firstEditorPublication(t testing.TB, analyze langserver.Analyze, uri, text string) (editorPublication, []string) {
+type editorExchange func(send func(string, int, any), read func() editorPublication)
+
+func firstEditorPublication(t testing.TB, analyze langserver.Analyze, uri, text string, exchanges ...editorExchange) (editorPublication, []string) {
 	t.Helper()
 	server, client := net.Pipe()
 	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
@@ -100,6 +103,9 @@ func firstEditorPublication(t testing.TB, analyze langserver.Analyze, uri, text 
 		}
 		publication = message
 		break
+	}
+	for _, exchange := range exchanges {
+		exchange(send, read)
 	}
 	send("shutdown", 2, nil)
 	if message := read(); message.ID != 2 {

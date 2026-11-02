@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -36,11 +37,13 @@ import (
 	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // analysisSession holds invocation resources assembled by the application.
 // The workflow engine receives only prepared passes from the composition service.
 type analysisSession struct {
+	suppressionUses      suppressionUses
 	runnerReportsMu      sync.Mutex
 	runnerReports        []runner.Report
 	runners              runner.Options
@@ -129,6 +132,9 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return all, outline, err
 	}
+	if !document.CanAnalyze() || len(document.Findings) != 0 || document.ParseError != nil {
+		s.suppressionUses.markIncomplete(snapshot.Reference())
+	}
 	// The request's display spelling is an authorized entry address. Resolve it
 	// through this capture owner before sealing, so metadata aliases (including
 	// Windows drive spelling) need no post-publication filesystem fallback.
@@ -150,6 +156,13 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		all = append(all, composed.Findings...)
 	}
 	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
+	defer func() {
+		if resultErr != nil {
+			for _, index := range references {
+				s.suppressionUses.markIncomplete(index.Document)
+			}
+		}
+	}()
 	rejected, sourceErr := s.admitSourceDocuments(composed, references)
 	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
@@ -171,6 +184,11 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
 	analysisErr = errors.Join(analysisErr, err)
 	policy := diagnosticpolicy.Policy{RuleDescriptors: s.toolDescriptors, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	policy.UsedSuppression = func(path string, position diagmodel.Position, rule string) {
+		if index, ok := references[path]; ok {
+			s.suppressionUses.observe(index.Document, position, rule)
+		}
+	}
 	all, err = diagnosticpolicy.Apply(policy, all, composed.Sources, composed.Configs)
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
@@ -196,12 +214,23 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
 	process := processes.Fork()
+	var skippedMu sync.Mutex
+	skipped := make(map[string]bool)
 	// Adapter construction can fail before the composition service takes ownership.
 	joined := false
 	join := func() error { joined = true; return process.Finish() }
 	defer func() {
 		if !joined {
 			resultErr = errors.Join(resultErr, process.Finish())
+		}
+		skippedMu.Lock()
+		defer skippedMu.Unlock()
+		for name := range skipped {
+			s.suppressionUses.markUnavailable(snapshot.Reference(), name)
+			for _, document := range result.SourceDocuments {
+				revision := document.Capture().Revision()
+				s.suppressionUses.markUnavailable(source.Reference{Document: revision.Document(), Revision: revision.Digest()}, name)
+			}
 		}
 	}()
 	var mappings map[string]string
@@ -231,7 +260,11 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
-	toolContext := tools.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: projectConfig, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Warn: func(err error) {
+	toolContext := tools.Context{AllowConfigProcesses: s.allowConfigProcesses, Config: cfg, ProjectConfig: projectConfig, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Processes: process, LoadEngine: s.loadScriptEngine, Debug: s.debug, Skipped: func(name string) {
+		skippedMu.Lock()
+		skipped[name] = true
+		skippedMu.Unlock()
+	}, Warn: func(err error) {
 		if s.logOut != nil {
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
 		}

@@ -40,6 +40,9 @@ type Options struct {
 	Probe *VersionProbe
 	Warn  func(error)
 	Debug func(string, ...any)
+	// Skipped records each check omitted after an optional version probe failed.
+	// Unlike Warn, it runs for every consumer of a cached failed probe.
+	Skipped func()
 }
 
 // Backend runs one native process per check as a process manifest describes:
@@ -272,6 +275,9 @@ func (b *Backend) available(ctx context.Context) (bool, error) {
 	case canceled(err) || b.options.Required:
 		return false, err
 	default:
+		if b.options.Skipped != nil {
+			b.options.Skipped()
+		}
 		return false, nil
 	}
 }

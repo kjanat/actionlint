@@ -24,6 +24,9 @@ type Context struct {
 	LoadEngine              func(context.Context, string) (analyzer.ScriptBackend, error)
 	Debug                   func(string, ...any)
 	Warn                    func(error)
+	// Skipped receives the rule name of an enabled check that could not run.
+	// Providers may call it concurrently; disabling a check does not call it.
+	Skipped func(string)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
 	Document             analyzer.Input

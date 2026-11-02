@@ -56,6 +56,9 @@ func TestInvalidDirectiveDoesNotSuppress(t *testing.T) {
 		"run: echo ok # actionlint:ignore unknown -- reviewed",
 		"run: echo ok # actionlint:ignore expression --",
 		"run: echo ok # actionlint:ignore-next-line expression -- reviewed",
+		"# actionlint-ignore expression -- reviewed\nrun: echo ok",
+		"# ignore[expression] -- reviewed\nrun: echo ok",
+		"# ignore expression -- reviewed\nrun: echo ok",
 	} {
 		directives, invalid := Parse([]byte(source), []string{"expression"})
 		if len(directives) != 0 || len(invalid) != 1 || invalid[0].Rule != "inline-suppression" {

@@ -29,6 +29,11 @@ type Finding struct {
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
 	SuppressionOrigin *SuppressionOrigin
+	// SuppressionTarget identifies YAML that an editor may amend to suppress this finding.
+	SuppressionTarget *SuppressionOrigin
+	// UnusedSuppressionRule identifies a candidate whose selector usage must be
+	// reconciled across all invocations of the same captured source before publication.
+	UnusedSuppressionRule string
 	// ignoreOrigin identifies the logical invocation independently of anchor coordinates.
 	IgnoreOrigin *IgnoreOrigin
 	// owner is analysis provenance, populated independently of suppression settings.

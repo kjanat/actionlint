@@ -314,7 +314,11 @@ func (t *transports) build(cfg *config.Config) (string, error) {
 // process builds the runner of a process transport.
 func (t *transports) process(key string, command *analyzerhost.Command, via route, required bool) (string, error) {
 	m := t.provider.Manifest
-	backend, err := process.NewBackend(m, command, process.Options{Programs: t.provider.Programs, Required: required, Probe: t.probes.get(key), Warn: t.context.Warn, Debug: t.context.Debug})
+	backend, err := process.NewBackend(m, command, process.Options{Programs: t.provider.Programs, Required: required, Probe: t.probes.get(key), Warn: t.context.Warn, Debug: t.context.Debug, Skipped: func() {
+		if t.context.Skipped != nil {
+			t.context.Skipped(m.Rule.Name)
+		}
+	}})
 	if err != nil {
 		return "", err
 	}

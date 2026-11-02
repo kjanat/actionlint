@@ -108,20 +108,27 @@ description: test
 runs:
   `+runtime.runs+"\n")
 				result := testutil.Composite(t, root, "- uses: ./inner "+tc.directive, application.Options{})
-				want := make(map[string]string)
+				type report struct{ path, rule string }
+				want := make(map[report]string)
 				if tc.wantCaller != "" {
-					want[filepath.Join(".github", "workflows", "composite.yml")] = tc.wantCaller
+					want[report{filepath.Join(".github", "workflows", "composite.yml"), tc.rule}] = tc.wantCaller
 				}
 				if tc.wantAction != "" {
-					want[filepath.Join("inner", "action.yml")] = tc.wantAction
+					want[report{filepath.Join("inner", "action.yml"), tc.rule}] = tc.wantAction
+				}
+				if tc.rule == "disallow-suppressions" {
+					want[report{filepath.Join(".github", "workflows", "composite.yml"), "unused-suppression"}] = "info"
+					want[report{filepath.Join("inner", "action.yml"), "unused-suppression"}] = "info"
 				}
 				if len(result.Diagnostics) != len(want) {
 					t.Fatalf("want %v, got %+v", want, result.Diagnostics)
 				}
 				for _, diagnostic := range result.Diagnostics {
-					if severity, exists := want[diagnostic.Path]; !exists || diagnostic.Rule != tc.rule || diagnostic.Severity != severity {
+					key := report{diagnostic.Path, diagnostic.Rule}
+					if severity, exists := want[key]; !exists || diagnostic.Severity != severity {
 						t.Fatalf("want %v for %s, got %+v", want, tc.rule, diagnostic)
 					}
+					delete(want, key)
 				}
 			})
 		}
@@ -159,8 +166,20 @@ runs:
 						if len(result.Diagnostics) != 0 {
 							t.Fatalf("disabled caller emitted diagnostics: %+v", result.Diagnostics)
 						}
-					} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.rule || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
-						t.Fatalf("enabled caller lost %s in local action: %+v", tc.rule, result.Diagnostics)
+					} else {
+						want := map[string]bool{tc.rule: true}
+						if tc.name == "prohibited" {
+							want["unused-suppression"] = true
+						}
+						if len(result.Diagnostics) != len(want) {
+							t.Fatalf("enabled caller: want %v in local action, got %+v", want, result.Diagnostics)
+						}
+						for _, diagnostic := range result.Diagnostics {
+							if !want[diagnostic.Rule] || filepath.ToSlash(diagnostic.Path) != "inner/action.yml" {
+								t.Fatalf("enabled caller lost directive origin: %+v", diagnostic)
+							}
+							delete(want, diagnostic.Rule)
+						}
 					}
 				})
 			}
@@ -170,16 +189,17 @@ runs:
 
 func TestCleanCompositeSuppressionDirectives(t *testing.T) {
 	for _, tc := range []struct {
-		name, directive, config, want string
+		name, directive, config string
+		want                    []string
 	}{
-		{"malformed", "# actionlint:ignore shellcheck --", "", "inline-suppression"},
-		{"prohibited", "# actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
-		{"allowed", "# actionlint:ignore shellcheck -- reviewed", "", ""},
+		{"malformed", "# actionlint:ignore shellcheck --", "", []string{"inline-suppression"}},
+		{"prohibited", "# actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", []string{"unused-suppression", "disallow-suppressions"}},
+		{"allowed", "# actionlint:ignore shellcheck -- reviewed", "", []string{"unused-suppression"}},
 		{"override", "# actionlint:ignore shellcheck -- reviewed", `policy: {disallow-suppressions: true}
 overrides:
   - includes: ['inner/action.yml']
     lint: {rules: {policy: {disallow-suppressions: off}}}
-`, ""},
+`, []string{"unused-suppression"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
@@ -200,14 +220,13 @@ runs:
       run: echo ok
 `)
 			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", application.Options{})
-			if tc.want == "" {
-				if len(result.Diagnostics) != 0 {
-					t.Fatal(result.Diagnostics)
-				}
-				return
+			if len(result.Diagnostics) != len(tc.want) {
+				t.Fatalf("want %v in inner/action.yml:1: %+v", tc.want, result.Diagnostics)
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.want || result.Diagnostics[0].Start.Line != 1 || filepath.Join(root, result.Diagnostics[0].Path) != metadata {
-				t.Fatalf("want one %s in inner/action.yml:1: %+v", tc.want, result.Diagnostics)
+			for i, diagnostic := range result.Diagnostics {
+				if diagnostic.Rule != tc.want[i] || diagnostic.Start.Line != 1 || filepath.Join(root, diagnostic.Path) != metadata {
+					t.Fatalf("want %s in inner/action.yml:1: %+v", tc.want[i], diagnostic)
+				}
 			}
 		})
 	}
@@ -216,7 +235,8 @@ runs:
 func TestCompositeBlockSuppression(t *testing.T) {
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	testutil.WriteFixture(t, root, "local/action.yml", `name: local
+	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true, ruff: false}\n")
+	const metadata = `name: local
 description: test
 runs:
   using: composite
@@ -224,10 +244,16 @@ runs:
     - shell: bash
       run: | # actionlint:ignore shellcheck -- reviewed expansion
         echo $VALUE
-`)
+`
+	testutil.WriteFixture(t, root, "local/action.yml", metadata)
 	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatal(result.Diagnostics)
+	}
+	testutil.WriteFixture(t, root, "local/action.yml", strings.Replace(metadata, " # actionlint:ignore shellcheck -- reviewed expansion", "", 1))
+	result = testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || result.Diagnostics[0].Code != "SC2086" {
+		t.Fatalf("unsuppressed control did not run ShellCheck: %+v", result.Diagnostics)
 	}
 }
 
@@ -240,15 +266,18 @@ func TestCleanLocalActionSuppressionDirectives(t *testing.T) {
 			name   string
 			nested bool
 		}{{"direct", false}, {"nested", true}} {
-			for _, tc := range []struct{ name, directive, config, want string }{
-				{"malformed", "# actionlint:ignore action --", "", "inline-suppression"},
-				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions"},
-				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
+			for _, tc := range []struct {
+				name, directive, config string
+				want                    []string
+			}{
+				{"malformed", "# actionlint:ignore action --", "", []string{"inline-suppression"}},
+				{"prohibited", "# actionlint:ignore action -- reviewed", "policy: {disallow-suppressions: true}\n", []string{"unused-suppression", "disallow-suppressions"}},
+				{"allowed", "# actionlint:ignore action -- reviewed", "", []string{"unused-suppression"}},
 				{"override", "# actionlint:ignore action -- reviewed", `policy: {disallow-suppressions: true}
 overrides:
   - includes: ['inner/action.yml']
     lint: {rules: {policy: {disallow-suppressions: off}}}
-`, ""},
+`, []string{"unused-suppression"}},
 			} {
 				t.Run(runtime.name+"/"+invocation.name+"/"+tc.name, func(t *testing.T) {
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
@@ -270,14 +299,13 @@ runs:
 						steps = "- uses: ./outer\n- uses: ./outer"
 					}
 					result := testutil.Composite(t, root, steps, application.Options{})
-					if tc.want == "" {
-						if len(result.Diagnostics) != 0 {
-							t.Fatal(result.Diagnostics)
-						}
-						return
+					if len(result.Diagnostics) != len(tc.want) {
+						t.Fatalf("want %v in inner/action.yml:1: %+v", tc.want, result.Diagnostics)
 					}
-					if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.want || result.Diagnostics[0].Start.Line != 1 || filepath.Join(root, result.Diagnostics[0].Path) != metadata {
-						t.Fatalf("want one %s in inner/action.yml:1: %+v", tc.want, result.Diagnostics)
+					for i, diagnostic := range result.Diagnostics {
+						if diagnostic.Rule != tc.want[i] || diagnostic.Start.Line != 1 || filepath.Join(root, diagnostic.Path) != metadata {
+							t.Fatalf("want %s in inner/action.yml:1: %+v", tc.want[i], diagnostic)
+						}
 					}
 				})
 			}

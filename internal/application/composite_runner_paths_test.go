@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
-	"strings"
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
@@ -62,7 +61,7 @@ jobs:
 					t.Fatal(err)
 				}
 				warned := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
-					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "SC2086")
+					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata && d.Code == "SC2086"
 				})
 				if warned == tc.known {
 					t.Fatalf("context directory resolution known=%v: %+v", tc.known, result.Diagnostics)

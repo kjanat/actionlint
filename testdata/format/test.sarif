@@ -731,6 +731,24 @@
               }
             },
             {
+              "id": "unused-suppression",
+              "name": "UnusedSuppression",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report unused inline suppression selectors",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unused-suppression"
+              },
+              "fullDescription": {
+                "text": "Report each inline suppression selector that matches no enabled findings in the checked YAML declaration. Information by default; errors with --strict. A selector used by any analyzed invocation of the same source is considered used. Incomplete analyses do not establish that a selector is unused."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unused-suppression",
+              "help": {
+                "text": "Run actionlint fix --apply or use the editor quick fix to remove unused selectors, preserving useful selectors and their reason. A comment with no remaining selectors is removed. Configure lint.rules.correctness.unused-suppression to change its level."
+              }
+            },
+            {
               "id": "workflow-call",
               "name": "WorkflowCall",
               "defaultConfiguration": {

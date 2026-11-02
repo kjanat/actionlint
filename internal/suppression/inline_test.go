@@ -1,12 +1,138 @@
 package suppression
 
 import (
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestInlineSuppressionSpellings(t *testing.T) {
+	for _, declaration := range []string{
+		"actionlint:ignore expression,shellcheck",
+		"actionlint:ignore expression shellcheck",
+		"actionlint:ignore\texpression\tshellcheck",
+		"actionlint:ignore expression, shellcheck expression",
+		"actionlint-ignore expression,shellcheck",
+		"actionlint-ignore expression shellcheck",
+		"actionlint-ignore\texpression,\tshellcheck",
+		"ignore expression,shellcheck",
+		"ignore expression shellcheck",
+		"ignore\texpression,\tshellcheck",
+		"ignore[expression,shellcheck]",
+		"ignore[expression shellcheck]",
+		"ignore[ expression,\tshellcheck expression ]",
+	} {
+		for _, next := range []string{"next: value", "next: ["} {
+			for _, ending := range []string{"\n", "\r\n"} {
+				t.Run(declaration+"/"+next+"/"+ending, func(t *testing.T) {
+					source := strings.ReplaceAll("run: | # "+declaration+" -- reviewed -- input\n  echo first\n  echo second\n"+next+"\n", "\n", ending)
+					directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"})
+					want := []Directive{{
+						Position: diagnostic.Position{Line: 1, Column: 8}, First: 1, Last: 3,
+						Rules: []string{"expression", "shellcheck"}, Reason: "reviewed -- input",
+					}}
+					if len(findings) != 0 {
+						t.Fatalf("unexpected grammar diagnostics: %+v", findings)
+					}
+					if diff := cmp.Diff(want, directives); diff != "" {
+						t.Fatal(diff)
+					}
+					result, _ := Evaluate(directives, nil)
+					for _, rule := range []string{"expression", "shellcheck"} {
+						if !result.Suppresses(rule, 2, 2) || result.Suppresses(rule, 4, 4) {
+							t.Fatalf("wrong declaration extent for %s", rule)
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestInlineSuppressionNextLineSpellings(t *testing.T) {
+	for _, command := range []string{"actionlint:ignore-next-line", "actionlint-ignore-next-line", "ignore-next-line"} {
+		for _, selectors := range []string{"expression,shellcheck", "expression shellcheck", "expression,\tshellcheck"} {
+			t.Run(command+"/"+selectors, func(t *testing.T) {
+				source := "# " + command + " " + selectors + "\nrun: |\n  echo ok\nnext: value\n"
+				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"})
+				want := []Directive{{Position: diagnostic.Position{Line: 1, Column: 1}, First: 2, Last: 3, Rules: []string{"expression", "shellcheck"}}}
+				if len(findings) != 0 {
+					t.Fatalf("unexpected grammar diagnostics: %+v", findings)
+				}
+				if diff := cmp.Diff(want, directives); diff != "" {
+					t.Fatal(diff)
+				}
+			})
+		}
+	}
+}
+
+func TestInlineSuppressionSpellingIsolation(t *testing.T) {
+	for _, declaration := range []string{"actionlint:ignore expression", "actionlint-ignore expression", "ignore[expression]", "ignore expression", "ignore-next-line expression"} {
+		for _, next := range []string{"next: value", "next: ["} {
+			source := "name: '# " + declaration + "' # ignored by another tool\nrun: |\n  # " + declaration + "\n  echo ok\n" + next + "\n"
+			directives, findings := Parse([]byte(source), []string{"expression"})
+			if len(directives) != 0 || len(findings) != 0 {
+				t.Fatalf("text became a directive: %q: %+v, %+v", source, directives, findings)
+			}
+		}
+	}
+}
+
+func TestPlainIgnoreNextLineRecovery(t *testing.T) {
+	for _, next := range []string{"next: value", "next: ["} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			source := strings.ReplaceAll("#ignore-next-line\texpression\nrun: |\n  echo ok\n"+next+"\n", "\n", ending)
+			directives, findings := Parse([]byte(source), []string{"expression"})
+			if len(findings) != 0 || len(directives) != 1 {
+				t.Fatalf("plain next-line directive: %+v, %+v", directives, findings)
+			}
+			result, _ := Evaluate(directives, nil)
+			if !result.Suppresses("expression", 2, 3) || result.Suppresses("expression", 4, 4) {
+				t.Fatalf("wrong declaration extent: %+v", directives)
+			}
+		}
+	}
+}
+
+func TestInlineSuppressionMalformedSpellings(t *testing.T) {
+	for _, declaration := range []string{
+		"actionlint:ignore expression,",
+		"actionlint:ignore expression, ,shellcheck",
+		"actionlint-ignore ,expression",
+		"actionlint-ignore expression,,shellcheck",
+		"actionlint-ignore",
+		"actionlint-ignore unknown",
+		"actionlint-ignore-next-line expression",
+		"ignore",
+		"ignore unknown",
+		"ignore expression,,shellcheck",
+		"ignore-next-line expression",
+		"ignore[]",
+		"ignore[ ]",
+		"ignore[expression,]",
+		"ignore[expression, ,shellcheck]",
+		"ignore[unknown]",
+		"ignore[expression",
+		"ignore[expression]]",
+		"ignore[expression][shellcheck]",
+		"ignore[expression] trailing",
+		"ignore[expression] --",
+	} {
+		for _, next := range []string{"next: value", "next: ["} {
+			t.Run(declaration+"/"+next, func(t *testing.T) {
+				source := "run: echo ok # " + declaration + "\n" + next + "\n"
+				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"})
+				if len(directives) != 0 || len(findings) != 1 || findings[0].Rule != "inline-suppression" {
+					t.Fatalf("malformed directive accepted: %+v, %+v", directives, findings)
+				}
+			})
+		}
+	}
+}
 
 func TestInlineSuppressionStages(t *testing.T) {
 	const source = `name: one

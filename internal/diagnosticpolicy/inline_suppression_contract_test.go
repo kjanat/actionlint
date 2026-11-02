@@ -15,6 +15,10 @@ import (
 
 func TestInlineSuppressionBlockBody(t *testing.T) {
 	for _, header := range []string{
+		"run: | # actionlint:ignore expression-reference shellcheck -- reviewed",
+		"run: | # actionlint-ignore expression-reference, shellcheck -- reviewed",
+		"run: | # ignore[expression-reference shellcheck] -- reviewed",
+		"# actionlint-ignore-next-line expression-reference shellcheck -- reviewed\nrun: |",
 		"run: | # actionlint:ignore expression-reference,shellcheck -- reviewed",
 		"run: >- # actionlint:ignore expression-reference,shellcheck -- reviewed",
 		"run: |2+ # actionlint:ignore expression-reference,shellcheck -- reviewed",
@@ -66,6 +70,31 @@ next: value
 	}
 }
 
+func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
+	cfg, err := repoconfig.Parse([]byte("policy: {disallow-suppressions: {rules: [expression-reference], report: all}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, declaration := range []string{
+		"actionlint:ignore expression-reference shellcheck",
+		"actionlint-ignore expression-reference,shellcheck",
+		"ignore[expression-reference shellcheck]",
+	} {
+		t.Run(declaration, func(t *testing.T) {
+			source := []byte("run: | # " + declaration + "\n  echo ok\nnext: value\n")
+			findings := []*findingmodel.Finding{
+				{Start: diagmodel.Position{Line: 2}, Rule: "expression-reference"},
+				{Start: diagmodel.Position{Line: 2}, Rule: "shellcheck"},
+				{Start: diagmodel.Position{Line: 3}, Rule: "expression-reference"},
+			}
+			got := diagnosticpolicy.FilterInline(source, findings, cfg.Policy.DisallowSuppressions)
+			if len(got) != 3 || got[0] != findings[0] || got[1] != findings[2] || got[2].Rule != "disallow-suppressions" || got[2].Start.Line != 1 {
+				t.Fatalf("directive bypassed policy or changed its extent: %+v", got)
+			}
+		})
+	}
+}
+
 func TestInlineSuppressionRegistry(t *testing.T) {
 	for _, name := range diagnosticpolicy.SuppressionRules() {
 		t.Run(name, func(t *testing.T) {
@@ -97,6 +126,40 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
 	got := diagnosticpolicy.FilterInline(source, []*findingmodel.Finding{finding}, nil)
 	if len(got) != 1 || got[0] != finding {
 		t.Fatalf("script text changed findings: %+v", got)
+	}
+}
+
+func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
+	policy, err := repoconfig.DisallowSuppressions("all", "shellcheck")
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := []*findingmodel.Finding{
+		{Rule: "expression-reference", Start: diagmodel.Position{Line: 4}},
+		{Rule: "shellcheck", Start: diagmodel.Position{Line: 7}},
+		{Rule: "plugin-rule", Start: diagmodel.Position{Line: 9}},
+		{Rule: "inline-suppression", Start: diagmodel.Position{Line: 10}},
+		{Rule: "disallow-suppressions", Start: diagmodel.Position{Line: 11}},
+	}
+	got := diagnosticpolicy.FilterInline([]byte("workflow"), findings, policy, "plugin-rule")
+	want := &findingmodel.SuppressionOrigin{First: 4, Last: 4}
+	if len(got) != len(findings) || got[0].SuppressionTarget == nil || *got[0].SuppressionTarget != *want {
+		t.Fatalf("allowed rule target missing: %+v", got)
+	}
+	if got[2].SuppressionTarget == nil || got[2].SuppressionTarget.First != 9 || got[2].SuppressionTarget.Last != 9 {
+		t.Fatalf("plugin rule target missing: %+v", got[2])
+	}
+	for _, index := range []int{1, 3, 4} {
+		if got[index].SuppressionTarget != nil {
+			t.Fatalf("ineligible rule %q got target %+v", got[index].Rule, got[index].SuppressionTarget)
+		}
+	}
+
+	foreign := &findingmodel.Finding{Rule: "shellcheck", Path: "script.sh", Start: diagmodel.Position{Line: 2}, Source: []byte("echo hi")}
+	origin := &findingmodel.Finding{Rule: "shellcheck", Path: "script.sh", Start: diagmodel.Position{Line: 2}, Source: []byte("echo hi"), SuppressionOrigin: &findingmodel.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
+	got = diagnosticpolicy.FilterForeignInline("action.yml", []byte("run: echo hi"), []*findingmodel.Finding{foreign, origin}, nil)
+	if len(got) != 2 || got[0].SuppressionTarget == nil || *got[0].SuppressionTarget != (findingmodel.SuppressionOrigin{Path: "action.yml", First: 2, Last: 2}) || got[1].SuppressionTarget == nil || *got[1].SuppressionTarget != *origin.SuppressionOrigin {
+		t.Fatalf("foreign targets lost declaration scope: %+v", got)
 	}
 }
 

@@ -43,7 +43,7 @@ name: *script`, "", "", false},
 			{"forbidden", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n", "disallow-suppressions", true},
 			{"report-suppression", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: {report: suppression}}\n", "disallow-suppressions", false},
 			{"report-violation", "run: . ./scripts/check.sh # actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: {report: violation}}\n", "", true},
-			{"other-declaration", "run: . ./scripts/check.sh\nenv: {OTHER: value} # actionlint:ignore shellcheck -- reviewed", "", "", true},
+			{"other-declaration", "run: . ./scripts/check.sh\nenv: {OTHER: value} # actionlint:ignore shellcheck -- reviewed", "", "unused-suppression", true},
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				t.Run(fmt.Sprintf("composite=%t/%s/%q", composite, tc.name, ending), func(t *testing.T) {
@@ -176,8 +176,21 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
   working-directory: .
   run: *script`
 	result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
+	if len(result.Diagnostics) != 2 {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
+	}
+	want := map[string]string{"shellcheck": "scripts/check.sh", "unused-suppression": ".github/workflows/composite.yml"}
+	for _, diagnostic := range result.Diagnostics {
+		if path, exists := want[diagnostic.Rule]; !exists || filepath.ToSlash(diagnostic.Path) != path {
+			t.Fatalf("alias origin crossed intervening declarations: %+v", diagnostic)
+		}
+		if diagnostic.Rule == "shellcheck" && diagnostic.Code != "SC2086" {
+			t.Fatalf("sourced diagnostic lost its native code: %+v", diagnostic)
+		}
+		if diagnostic.Rule == "unused-suppression" && (diagnostic.Severity != "info" || len(diagnostic.Fixes) != 1) {
+			t.Fatalf("unused intervening selector is not fixable: %+v", diagnostic)
+		}
+		delete(want, diagnostic.Rule)
 	}
 }
 

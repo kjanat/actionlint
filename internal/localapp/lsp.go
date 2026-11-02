@@ -14,8 +14,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/langserver"
 	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
+	"actionlint.kjanat.dev/v2/internal/suppression"
 	"actionlint.kjanat.dev/v2/internal/workflow/editor"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -144,6 +146,15 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 		}
 		return candidates[0], true
 	}
+	allowed := make([]string, 0, len(result.Rules))
+	for _, descriptor := range repoconfig.Rules() {
+		allowed = append(allowed, descriptor.Name)
+	}
+	for _, descriptor := range result.Rules {
+		if !slices.Contains(allowed, descriptor.Name) {
+			allowed = append(allowed, descriptor.Name)
+		}
+	}
 	diagnostics := make([]diagnostic.Diagnostic, 0, len(result.Diagnostics))
 	for i, original := range result.Diagnostics {
 		d := original
@@ -212,6 +223,20 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 				e.Path = address(e.Path)
 				if e.Path != "" && e.Path == originalPath && revisions[path] == revision.Digest() {
 					e.Path = path
+				}
+			}
+		}
+		if target := evidence.Suppression; target != nil {
+			targetPath := address(target.Path)
+			captured, exists := result.CapturedSources[targetPath]
+			alias, admitted := preferredAlias(captured.Revision, targetPath)
+			if exists && admitted && captured.Coordinates == source.YAML && captured.CoordinatesAvailable {
+				if edit, ok := suppression.Edit(captured.Content, target.First, d.Rule, allowed); ok {
+					edit.Path = alias
+					d.Fixes = append(d.Fixes, diagnostic.Fix{
+						Description: "Suppress " + d.Rule + " for this declaration", Applicability: "suggested",
+						Revisions: map[string]string{alias: captured.Revision.Digest()}, Edits: []diagnostic.Edit{edit},
+					})
 				}
 			}
 		}

@@ -65,7 +65,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 						break
 					}
 				}
-				if strings.HasPrefix(text, "actionlint:") {
+				if isInlineSuppressionComment(text) {
 					comments = append(comments, inlineSuppressionComment{
 						pos: diagnostic.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
 					})

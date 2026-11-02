@@ -18,21 +18,25 @@ func TestCachePolicyInlineSuppression(t *testing.T) {
 		kinds             []string
 	}{
 		{"trailing", "cache-mode: write # actionlint:ignore cache-write-untrusted -- only reviewed code runs\n", nil},
+		{"space selectors", "cache-mode: write # actionlint:ignore cache-operation cache-write-untrusted\n", []string{"unused-suppression"}},
+		{"hyphen spelling", "cache-mode: write # actionlint-ignore cache-operation, cache-write-untrusted\n", []string{"unused-suppression"}},
+		{"bracket spelling", "cache-mode: write # ignore[cache-operation cache-write-untrusted]\n", []string{"unused-suppression"}},
+		{"hyphen preceding", "# actionlint-ignore-next-line cache-operation cache-write-untrusted\ncache-mode: write\n", []string{"unused-suppression"}},
 		{"preceding", `# actionlint:ignore-next-line cache-write-untrusted -- only reviewed code runs
 cache-mode: write
 `, nil},
-		{"unrelated selector", "cache-mode: write # actionlint:ignore cache-operation -- unused test selector\n", []string{"cache-write-untrusted"}},
+		{"unrelated selector", "cache-mode: write # actionlint:ignore cache-operation -- unused test selector\n", []string{"cache-write-untrusted", "unused-suppression"}},
 		{"optional reason", "cache-mode: write # actionlint:ignore cache-write-untrusted\n", nil},
 		{"empty reason", "cache-mode: write # actionlint:ignore cache-write-untrusted -- \n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"misspelled selector", "cache-mode: write # actionlint:ignore cache-write-untrustd -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"wildcard rejected", "cache-mode: write # actionlint:ignore * -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
-		{"unrelated rule does not suppress cache", "cache-mode: write # actionlint:ignore expression -- only reviewed code runs\n", []string{"cache-write-untrusted"}},
+		{"unrelated rule does not suppress cache", "cache-mode: write # actionlint:ignore expression -- only reviewed code runs\n", []string{"cache-write-untrusted", "unused-suppression"}},
 		{"wrong directive", "cache-mode: write # actionlint:disable cache-write-untrusted -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
 		{"standalone ignore", `# actionlint:ignore cache-write-untrusted -- only reviewed code runs
 cache-mode: write
 `, []string{"inline-suppression", "cache-write-untrusted"}},
 		{"trailing next-line", "cache-mode: write # actionlint:ignore-next-line cache-write-untrusted -- only reviewed code runs\n", []string{"cache-write-untrusted", "inline-suppression"}},
-		{"comma selectors", "cache-mode: write # actionlint:ignore cache-operation, cache-write-untrusted -- only reviewed code runs\n", nil},
+		{"comma selectors", "cache-mode: write # actionlint:ignore cache-operation, cache-write-untrusted -- only reviewed code runs\n", []string{"unused-suppression"}},
 		{"quoted text", `name: '# actionlint:ignore-next-line cache-write-untrusted -- not a directive'
 cache-mode: write
 `, []string{"cache-write-untrusted"}},
@@ -50,7 +54,7 @@ cache-mode: write
 `, []string{"cache-write-untrusted"}},
 		{"alias declaration", `env: {MODE: &mode write}
 cache-mode: *mode # actionlint:ignore cache-write-untrusted -- not at the diagnostic location
-`, []string{"cache-write-untrusted"}},
+`, []string{"cache-write-untrusted", "unused-suppression"}},
 		{"anchor declaration", `env:
   MODE: &mode write # actionlint:ignore cache-write-untrusted -- only reviewed code runs
 cache-mode: *mode
@@ -147,28 +151,28 @@ jobs:
     steps: [
       {uses: actions/cache/save@v5, with: {path: .cache, key: test}}] # actionlint:ignore cache-operation -- reviewed
 `, nil},
-		{"flow comments repeated on nested collections", header + "jobs: {test: {\n  cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]} " + ignore + "\n} " + ignore + "\n", nil},
+		{"flow comments repeated on nested collections", header + "jobs: {test: {\n  cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]} " + ignore + "\n} " + ignore + "\n", []string{"unused-suppression"}},
 		{"flow comment before same comment in later document", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
   cache-mode: write}} ` + ignore + "\n---\n{cache-mode: write} " + ignore + "\n", []string{"syntax-check"}},
 		{"flow comment before matching ordinary footer", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
   cache-mode: write}} ` + ignore + "\n# } " + ignore + "\n", nil},
-		{"closing line does not target earlier line", header + "jobs: {test: {cache-mode: write,\n  runs-on: ubuntu-latest, steps: [{run: echo ok}]}} " + ignore + "\n", []string{"cache-write-untrusted"}},
+		{"closing line does not target earlier line", header + "jobs: {test: {cache-mode: write,\n  runs-on: ubuntu-latest, steps: [{run: echo ok}]}} " + ignore + "\n", []string{"cache-write-untrusted", "unused-suppression"}},
 		{"anchor head", header + "env:\n  " + next + `
   MODE: &mode write
 cache-mode: *mode
 ` + body, nil},
 		{"alias head keeps anchor location", header + "env: {MODE: &mode write}\n" + next + `
 cache-mode: *mode
-` + body, []string{"cache-write-untrusted"}},
-		{"key comment does not target value", header + "cache-mode: " + ignore + "\n  write\n" + body, []string{"cache-write-untrusted"}},
+` + body, []string{"cache-write-untrusted", "unused-suppression"}},
+		{"key comment does not target value", header + "cache-mode: " + ignore + "\n  write\n" + body, []string{"unused-suppression", "cache-write-untrusted"}},
 		{"value line comment", header + "cache-mode:\n  write " + ignore + "\n" + body, nil},
 		{"value head comment", header + "cache-mode:\n  " + next + "\n  write\n" + body, nil},
 		{"literal before same detached comment", header + "name: |\n  " + next + `
 cache-mode: write
 
-` + next + "\n" + body, []string{"cache-write-untrusted"}},
+` + next + "\n" + body, []string{"cache-write-untrusted", "unused-suppression"}},
 		{"detached flow prefix comment", header + `jobs: {first: &job
  # actionlint:ignore-next-line expression -- detached
  # context

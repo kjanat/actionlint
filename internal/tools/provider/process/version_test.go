@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 func TestCompareVersions(t *testing.T) {
@@ -98,5 +100,23 @@ func TestProbeRetriesAfterCancellation(t *testing.T) {
 	version, err := p.run(t.Context(), func() (string, error) { return "1.0.0", nil }, nil)
 	if err != nil || version != "1.0.0" {
 		t.Fatalf("probe not retried: %q %v", version, err)
+	}
+}
+
+func TestFailedOptionalProbeReportsEverySkippedConsumer(t *testing.T) {
+	var probe VersionProbe
+	var warnings, skipped atomic.Int32
+	runner := &embedded{version: "unrecognized version\n", output: "[]"}
+	for range 2 {
+		backend := ruffBackend(t, runner, Options{
+			Probe: &probe, Warn: func(error) { warnings.Add(1) }, Skipped: func() { skipped.Add(1) },
+		})
+		findings, err := backend.Check(t.Context(), analyzer.ScriptRequest{Source: "print(1)", Filename: "actionlint.py"})
+		if err != nil || len(findings) != 0 {
+			t.Fatalf("optional probe failure became a fatal check: findings=%v error=%v", findings, err)
+		}
+	}
+	if warnings.Load() != 1 || skipped.Load() != 2 || len(runner.checks()) != 0 {
+		t.Fatalf("cached probe lost skipped checks: warnings=%d skipped=%d checks=%v", warnings.Load(), skipped.Load(), runner.checks())
 	}
 }

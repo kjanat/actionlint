@@ -194,9 +194,9 @@ runs:
 				if diagnostic.Rule != "shellcheck" || filepath.Join(root, diagnostic.Path) != metadata {
 					continue
 				}
-				if strings.Contains(diagnostic.Message, "SC2086") {
+				if diagnostic.Code == "SC2086" {
 					inline = true
-				} else if strings.Contains(diagnostic.Message, "SC1094") {
+				} else if diagnostic.Code == "SC1094" {
 					sourced = true
 				}
 			}

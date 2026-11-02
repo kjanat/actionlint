@@ -38,42 +38,60 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string) 
 		return &diagnostic.Diagnostic{Start: comment.pos, Rule: "inline-suppression", Message: message}
 	}
 	declaration, reason, hasReason := strings.Cut(comment.text, " -- ")
-	command, selectors, _ := strings.Cut(declaration, " ")
-	target := comment.pos.Line
-	switch command {
-	case "actionlint:ignore":
-		if comment.standalone {
-			return Directive{}, invalid("use \"actionlint:ignore-next-line\" in a comment before the declaration")
-		}
-	case "actionlint:ignore-next-line":
-		if !comment.standalone {
-			return Directive{}, invalid("\"actionlint:ignore-next-line\" must be on its own line immediately before the declaration")
-		}
-		target++
-	default:
-		return Directive{}, invalid("unknown inline suppression directive. use \"actionlint:ignore RULE -- reason\" or \"actionlint:ignore-next-line RULE -- reason\"")
-	}
-	if comment.startLine > 0 {
-		target = min(target, comment.startLine)
-	}
 	if !hasReason && strings.HasSuffix(declaration, " --") {
+		declaration = strings.TrimSuffix(declaration, " --")
 		hasReason = true
 	}
 	if hasReason && strings.TrimSpace(reason) == "" {
 		return Directive{}, invalid("inline suppression requires a reason after \" -- \"")
 	}
-	var rules []string
-	for name := range strings.SplitSeq(selectors, ",") {
-		name = strings.TrimSpace(name)
-		if !slices.Contains(allowed, name) {
-			allowed := slices.Clone(allowed)
-			for i, rule := range allowed {
-				allowed[i] = strconv.Quote(rule)
-			}
-			return Directive{}, invalid("unknown inline suppression rule " + strconv.Quote(name) + ". expected " + strings.Join(allowed, ", "))
+	command, selectors := declaration, ""
+	if strings.HasPrefix(declaration, "ignore[") {
+		command = "ignore"
+		var closed bool
+		selectors, closed = strings.CutSuffix(strings.TrimSpace(strings.TrimPrefix(declaration, "ignore[")), "]")
+		if !closed || strings.ContainsAny(selectors, "[]") {
+			return Directive{}, invalid("inline suppression must use \"ignore[RULE ...]\" with a closing bracket and no trailing text")
 		}
-		if !slices.Contains(rules, name) {
-			rules = append(rules, name)
+	} else if boundary := strings.IndexAny(declaration, " \t"); boundary >= 0 {
+		command, selectors = declaration[:boundary], declaration[boundary+1:]
+	}
+	target := comment.pos.Line
+	switch command {
+	case "actionlint:ignore", "actionlint-ignore", "ignore":
+		if comment.standalone {
+			return Directive{}, invalid("use \"ignore-next-line\", \"actionlint-ignore-next-line\" or \"actionlint:ignore-next-line\" in a comment before the declaration")
+		}
+	case "actionlint:ignore-next-line", "actionlint-ignore-next-line", "ignore-next-line":
+		if !comment.standalone {
+			return Directive{}, invalid(strconv.Quote(command) + " must be on its own line immediately before the declaration")
+		}
+		target++
+	default:
+		return Directive{}, invalid("unknown inline suppression directive. use \"ignore RULE\", \"ignore[RULE ...]\" or \"ignore-next-line RULE\" (\"actionlint-ignore\", \"actionlint:ignore\" and their next-line forms also work)")
+	}
+	if comment.startLine > 0 {
+		target = min(target, comment.startLine)
+	}
+	var rules []string
+	for group := range strings.SplitSeq(selectors, ",") {
+		// Commas still require a selector on either side; whitespace can
+		// separate additional selectors without creating empty ones.
+		names := strings.Fields(group)
+		if len(names) == 0 {
+			names = []string{""}
+		}
+		for _, name := range names {
+			if !slices.Contains(allowed, name) {
+				allowed := slices.Clone(allowed)
+				for i, rule := range allowed {
+					allowed[i] = strconv.Quote(rule)
+				}
+				return Directive{}, invalid("unknown inline suppression rule " + strconv.Quote(name) + ". expected " + strings.Join(allowed, ", "))
+			}
+			if !slices.Contains(rules, name) {
+				rules = append(rules, name)
+			}
 		}
 	}
 	return Directive{Position: comment.pos, First: target, Last: max(target, comment.endLine), Rules: rules, Reason: strings.TrimSpace(reason)}, nil

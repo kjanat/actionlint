@@ -24,6 +24,7 @@ func referenceFinding() *Finding {
 		EndPosition:       &workflowlang.Pos{Line: 1, Col: 2},
 		Source:            []byte("source"),
 		SuppressionOrigin: &SuppressionOrigin{Path: "path"},
+		SuppressionTarget: &SuppressionOrigin{Path: "target", First: 1, Last: 2},
 		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &workflowlang.Pos{Line: 3}, Job: "job"},
 		Owner:             &Owner{Job: "job", Step: &workflowlang.Pos{Line: 4}},
 		MetadataIdentity:  &MetadataIdentity{Visit: 5},
@@ -46,6 +47,7 @@ func TestCloneDetachesEveryReference(t *testing.T) {
 	clone.EndPosition.Line = 99
 	clone.Source[0] = 'S'
 	clone.SuppressionOrigin.Path = "changed"
+	clone.SuppressionTarget.Path = "changed"
 	clone.IgnoreOrigin.StepPosition.Line = 99
 	clone.Owner.Step.Line = 99
 	clone.MetadataIdentity.Visit = 99

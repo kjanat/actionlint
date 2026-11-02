@@ -86,7 +86,15 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			}
 			seen[key] = append(seen[key], diagnostic)
 			diagnostics = append(diagnostics, diagnostic)
-			sources = append(sources, report.DiagnosticSource{Content: content, RawScript: finding.RawScriptSource, Unavailable: finding.UnavailableSource.Present()})
+			var target *report.SuppressionTarget
+			if suppression := finding.SuppressionTarget; suppression != nil {
+				path := suppression.Path
+				if path == "" {
+					path = file.InputPath
+				}
+				target = &report.SuppressionTarget{Path: path, First: suppression.First, Last: suppression.Last}
+			}
+			sources = append(sources, report.DiagnosticSource{Content: content, RawScript: finding.RawScriptSource, Unavailable: finding.UnavailableSource.Present(), Suppression: target})
 			unique = append(unique, finding)
 		}
 		clear(file.Findings[len(unique):])

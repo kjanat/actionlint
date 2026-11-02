@@ -22,10 +22,19 @@ type inlineSuppressionComment struct {
 	endLine    int
 }
 
+// Recognize directive prefixes in both parsed and recovered YAML comments.
+func isInlineSuppressionComment(text string) bool {
+	command := text
+	if boundary := strings.IndexAny(command, " \t["); boundary >= 0 {
+		command = command[:boundary]
+	}
+	return strings.HasPrefix(text, "actionlint:") || strings.HasPrefix(text, "actionlint-ignore") || command == "ignore" || command == "ignore-next-line"
+}
+
 // collectInlineSuppressionComments isolates YAML attachment and source recovery
 // from directive grammar and policy. Strings and script bodies are never comments.
 func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment {
-	if !bytes.Contains(source, []byte("actionlint:")) {
+	if !bytes.Contains(source, []byte("actionlint:")) && !bytes.Contains(source, []byte("ignore")) {
 		return nil
 	}
 	// Normalizing line endings keeps YAML comment attachment consistent while
@@ -54,7 +63,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
-		if !strings.HasPrefix(text, "actionlint:") || seen[line] {
+		if !isInlineSuppressionComment(text) || seen[line] {
 			return
 		}
 		col := strings.LastIndex(lines[line-1], comment)

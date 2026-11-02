@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"reflect"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -14,6 +15,7 @@ import (
 
 func codeActions(ctx context.Context, path string, selection sourceRange, findings []diagnostic.Diagnostic, sources, documents map[string]Document) []any {
 	actions := []any{}
+	var offered []diagnostic.Fix
 	for _, d := range findings {
 		doc, captured := sources[path]
 		if !captured {
@@ -27,6 +29,9 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 			continue
 		}
 		for _, f := range d.Fixes {
+			if slices.ContainsFunc(offered, func(previous diagnostic.Fix) bool { return reflect.DeepEqual(previous, f) }) {
+				continue
+			}
 			_, validationErr := fix.Build(ctx, []diagnostic.Diagnostic{{Fixes: []diagnostic.Fix{f}}}, fsread.New(ctx, func(p string) ([]byte, error) {
 				doc, ok := documents[p]
 				if !ok {
@@ -61,6 +66,7 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 				edits = append(edits, map[string]any{"textDocument": map[string]any{"uri": doc.URI, "version": doc.Version}, "edits": changes[target]})
 			}
 			actions = append(actions, map[string]any{"title": f.Description, "kind": "quickfix", "isPreferred": f.Applicability == "safe", "edit": map[string]any{"documentChanges": edits}})
+			offered = append(offered, f)
 		}
 	}
 	return actions

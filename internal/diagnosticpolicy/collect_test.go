@@ -11,6 +11,7 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/report"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -34,6 +35,19 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	diagnostics, _ := Collect(files)
 	if len(diagnostics) != 6 || len(files) != 7 {
 		t.Fatalf("only the identical diagnostic should be removed: %+v", diagnostics)
+	}
+}
+
+func TestCollectProjectsSuppressionTarget(t *testing.T) {
+	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: diagmodel.Position{Line: 2}, SuppressionTarget: &findingmodel.SuppressionOrigin{First: 2, Last: 3}}
+	_, sources := Collect([]File{{InputPath: "workflow.yml", Findings: []*findingmodel.Finding{finding}}})
+	if len(sources) != 1 || sources[0].Suppression == nil || *sources[0].Suppression != (report.SuppressionTarget{Path: "workflow.yml", First: 2, Last: 3}) {
+		t.Fatalf("same-source target not resolved: %+v", sources)
+	}
+	finding.SuppressionTarget.Path = "action.yml"
+	_, sources = Collect([]File{{InputPath: "workflow.yml", Findings: []*findingmodel.Finding{finding}}})
+	if len(sources) != 1 || sources[0].Suppression == nil || *sources[0].Suppression != (report.SuppressionTarget{Path: "action.yml", First: 2, Last: 3}) {
+		t.Fatalf("foreign target not projected: %+v", sources)
 	}
 }
 

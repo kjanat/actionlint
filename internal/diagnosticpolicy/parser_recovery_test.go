@@ -17,6 +17,9 @@ import (
 func TestInlineSuppressionMalformedYAML(t *testing.T) {
 	for _, source := range []string{
 		"jobs: [ # actionlint:ignore syntax-check -- intentional",
+		"jobs: [ # actionlint-ignore syntax-check -- intentional",
+		"jobs: [ # ignore[syntax-check] -- intentional",
+		"# actionlint-ignore-next-line syntax-check -- intentional\njobs: [",
 		"# actionlint:ignore-next-line syntax-check -- intentional\njobs: [",
 		`run: # actionlint:ignore syntax-check -- intentional
   !!str

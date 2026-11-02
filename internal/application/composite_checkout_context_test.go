@@ -3,7 +3,6 @@ package application_test
 import (
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
@@ -115,7 +114,7 @@ jobs:
 						findings = append(findings, d)
 					}
 				}
-				if len(findings) != 1 || findings[0].Start.Line != 11 || !strings.Contains(findings[0].Message, "SC2086") {
+				if len(findings) != 1 || findings[0].Start.Line != 11 || findings[0].Code != "SC2086" {
 					t.Fatalf("only unsourced variable should warn: %+v", result.Diagnostics)
 				}
 			})

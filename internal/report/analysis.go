@@ -43,4 +43,13 @@ type DiagnosticSource struct {
 	Content     []byte
 	RawScript   bool
 	Unavailable bool
+	// Suppression is present only when the resolved policy permits a comment
+	// for this rule. Editors bind its YAML target to a captured revision.
+	Suppression *SuppressionTarget
+}
+
+// SuppressionTarget identifies the YAML declaration that may suppress a finding.
+type SuppressionTarget struct {
+	Path        string
+	First, Last int
 }

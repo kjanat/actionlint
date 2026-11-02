@@ -35,6 +35,9 @@ func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools
 				return selected, err
 			}
 			s.log(fmt.Sprintf("Tool %q was disabled:", registration.Descriptor.Name), err)
+			if toolContext.Skipped != nil {
+				toolContext.Skipped(registration.Descriptor.Name)
+			}
 			continue
 		}
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.Tool{Runner: adapter})

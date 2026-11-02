@@ -117,6 +117,7 @@
                   "unsound-ternary",
                   "syntax-check",
                   "inline-suppression",
+                  "unused-suppression",
                   "missing-local-action",
                   "string-conditions",
                   "mixed-type-comparisons",
@@ -2267,6 +2268,75 @@
                                 }
                               ]
                             },
+                            "unused-suppression": {
+                              "title": "unused-suppression",
+                              "description": "Report unused inline suppression selectors",
+                              "markdownDescription": "Report unused inline suppression selectors",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "workflow-call": {
                               "title": "workflow-call",
                               "description": "Validate reusable workflow references and their declared inputs and outputs",
@@ -2420,6 +2490,7 @@
                           "unsound-ternary",
                           "syntax-check",
                           "inline-suppression",
+                          "unused-suppression",
                           "missing-local-action",
                           "string-conditions",
                           "mixed-type-comparisons",
@@ -3083,6 +3154,7 @@
                                                           "string-conditions",
                                                           "syntax-check",
                                                           "unsound-ternary",
+                                                          "unused-suppression",
                                                           "workflow-call",
                                                           "workflow-run-names"
                                                         ],
@@ -6643,6 +6715,75 @@
                                           }
                                         ]
                                       },
+                                      "unused-suppression": {
+                                        "title": "unused-suppression",
+                                        "description": "Report unused inline suppression selectors",
+                                        "markdownDescription": "Report unused inline suppression selectors",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "workflow-call": {
                                         "title": "workflow-call",
                                         "description": "Validate reusable workflow references and their declared inputs and outputs",
@@ -6796,6 +6937,7 @@
                                     "unsound-ternary",
                                     "syntax-check",
                                     "inline-suppression",
+                                    "unused-suppression",
                                     "missing-local-action",
                                     "string-conditions",
                                     "mixed-type-comparisons",
@@ -7459,6 +7601,7 @@
                                                                     "string-conditions",
                                                                     "syntax-check",
                                                                     "unsound-ternary",
+                                                                    "unused-suppression",
                                                                     "workflow-call",
                                                                     "workflow-run-names"
                                                                   ],

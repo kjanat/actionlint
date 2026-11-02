@@ -25,4 +25,9 @@ func TestValidateSuppressionRuleNameRejectsBuiltin(t *testing.T) {
 			t.Errorf("rule %q rejected: %v", name, err)
 		}
 	}
+	for _, name := range []string{"", "my rule", "my\trule", "my\u00a0rule", "my,rule", "my[rule", "my]rule"} {
+		if err := validateSuppressionRuleName(name); err == nil {
+			t.Errorf("rule %q cannot round-trip through suppression selectors", name)
+		}
+	}
 }

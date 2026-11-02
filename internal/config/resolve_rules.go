@@ -18,7 +18,7 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 		return "off"
 	case "recommended":
 		if d.Recommended {
-			return "on"
+			return defaultLevel(d)
 		}
 		return "off"
 	default:
@@ -26,8 +26,15 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 	}
 }
 
+func defaultLevel(d Rule) Level {
+	if d.DefaultLevel != "" {
+		return d.DefaultLevel
+	}
+	return "on"
+}
+
 func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
-	level := Level("on")
+	level := defaultLevel(d)
 	if !d.Recommended && !selected {
 		level = "off"
 	}
@@ -44,6 +51,9 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	level = presetLevel(rules.Preset, d, level)
 	if p.Strict && !d.Nursery() {
 		level = "on"
+		if d.DefaultLevel != "" {
+			level = "error"
+		}
 	}
 	if p.Experimental != nil && *p.Experimental && d.Nursery() {
 		level = "on"
