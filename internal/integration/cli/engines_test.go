@@ -26,7 +26,7 @@ func writeEngineConfig(t *testing.T, module string) string {
 func runWithDefaultRuff(input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
-	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-color", "check", "--summary=false"}, args...))
+	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-color", "check", "--summary=false", "--output-format=text"}, args...))
 	return commandTranscript{status, out.String(), errout.String()}
 }
 
@@ -45,7 +45,7 @@ func TestCheckRunsConfiguredWasmEngine(t *testing.T) {
 	}
 	config := writeEngineConfig(t, modulePath)
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "--log-level", "debug", "-")
-	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20: Ruff reported issue in this script: F821: Undefined name `missing` [ruff]") {
+	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20: F821: Undefined name `missing` [ruff]") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", got.Status, got.Stdout, got.Stderr)
 	}
 	if !strings.Contains(got.Stderr, `[Linter] Loaded engine "actionlint-engine-echo" (ruff 1.0.0) from `) {

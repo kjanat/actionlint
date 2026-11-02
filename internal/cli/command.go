@@ -28,26 +28,19 @@ func (cmd *Command) Main(args []string) int {
 
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
-func (cmd *Command) MainContext(ctx context.Context, args []string) int {
+func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
 	app := newCommandApp(ctx, cmd)
+	defer func() {
+		if app.directory.original != "" {
+			if err := os.Chdir(app.directory.original); err != nil {
+				status = app.reportError(fmt.Errorf("restore working directory: %w", err))
+			}
+		}
+	}()
 	// Root parsing must select an operation before errors can describe a check.
 	app.inv.Operation = ""
 	if len(args) > 0 {
 		args = args[1:]
-	}
-	if len(args) == 0 {
-		directory, err := os.Getwd()
-		if err != nil {
-			return app.reportError(err)
-		}
-		if projectpath.RepositoryRoot(directory) == "" {
-			app.root.SetContext(ctx)
-			app.streams.Stderr = app.streams.Stdout
-			app.help(app.root, nil)
-			return app.status
-		}
-		// Force the check command even when the repository has a file named check.
-		args = []string{"--command", "check"}
 	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)
@@ -63,6 +56,20 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	}
 	if app.helpShown {
 		return app.status
+	}
+	if len(rest) == 0 && !terminated && (len(app.set) == 0 || len(app.set) == 1 && app.set["directory"]) {
+		directory, err := os.Getwd()
+		if err != nil {
+			return app.reportError(err)
+		}
+		if projectpath.RepositoryRoot(directory) == "" {
+			app.root.SetContext(ctx)
+			app.streams.Stderr = app.streams.Stdout
+			app.help(app.root, nil)
+			return app.status
+		}
+		// Force the check command even when the repository has a file named check.
+		forced = "check"
 	}
 	legacyOperation := app.opts.version || app.opts.initConfig || app.opts.completion != "" || app.opts.helpLegacy
 	modern := forced != "" || (!legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0]) && !commandFileExists(rest[0]))
@@ -124,7 +131,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		}
 		return 0
 	}
-	status, err := executeInvocation(ctx, app.streams, app.inv)
+	status, err = executeInvocation(ctx, app.streams, app.inv)
 	if err != nil {
 		return app.reportError(err)
 	}

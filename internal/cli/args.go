@@ -149,7 +149,7 @@ type requestedJSONOptions struct {
 }
 
 func scanJSONOptions(flags *pflag.FlagSet, args []string, interspersed bool) requestedJSONOptions {
-	jsonMode, output := false, ""
+	jsonMode, jsonOutput := false, false
 	formatSelected := false
 	options := requestedJSONOptions{}
 	scanner := argumentScanner{args: args}
@@ -168,12 +168,12 @@ func scanJSONOptions(flags *pflag.FlagSet, args []string, interspersed bool) req
 				options.Pretty, _ = strconv.ParseBool(option.value)
 			case "output", "output-format":
 				formatSelected = true
-				output = option.value
+				jsonOutput = jsonOutput || option.value == "json" || option.value == "jsonl"
 			case "template", "format", "template-file", "oneline":
 				formatSelected = true
 			}
 		}
 	}
-	options.JSON = jsonMode || output == "json" || output == "jsonl" || options.Pretty && !formatSelected
+	options.JSON = jsonMode || jsonOutput || options.Pretty && !formatSelected
 	return options
 }

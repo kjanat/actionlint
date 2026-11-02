@@ -23,6 +23,13 @@ func (cfg *Config) IncludesFile(path, root string) bool {
 	return cfg.Files.Match(RepositoryRelativePath(path, root))
 }
 
+// IncludesSelectedFile keeps discovery filters unless the caller explicitly
+// selected a directory outside that scope. Descendants of that directory are
+// intentional inputs, including when its exclusion matches the entire subtree.
+func (cfg *Config) IncludesSelectedFile(path, root, directory string) bool {
+	return cfg != nil && directory != "" && cfg.Files.Excludes(RepositoryRelativePath(directory, root)) || cfg.IncludesFile(path, root)
+}
+
 func RepositoryRelativePath(path, root string) string {
 	if !filepath.IsAbs(path) || root == "" {
 		return path

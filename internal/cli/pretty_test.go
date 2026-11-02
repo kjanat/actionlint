@@ -36,6 +36,8 @@ func TestPrettyOptions(t *testing.T) {
 		bad  bool
 	}{
 		{"default width", []string{"--output-format=pretty"}, false},
+		{"default format", nil, false},
+		{"default format custom width", []string{"--diagnostic-width=60"}, false},
 		{"custom width", []string{"--output-format=pretty", "--diagnostic-width=60"}, false},
 		{"too small", []string{"--output-format=pretty", "--diagnostic-width=1"}, true},
 		{"too large", []string{"--output-format=pretty", "--diagnostic-width=401"}, true},
@@ -53,10 +55,10 @@ func TestPrettyOptions(t *testing.T) {
 			if tc.bad {
 				return
 			}
-			if app.inv.Render.Format != render.FormatPretty {
+			if len(app.inv.Render.Formats) != 1 || app.inv.Render.Formats[0] != render.FormatPretty {
 				t.Fatal("format not propagated")
 			}
-			if _, err := newResultRenderer(app.inv.Render); err != nil {
+			if _, err := newResultRenderers(app.inv.Render); err != nil {
 				t.Fatal(err)
 			}
 		})

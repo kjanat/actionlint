@@ -22,6 +22,7 @@ type ExternalToolRequirements map[string]bool
 // Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
 func (a *Session) RequiredTools(ctx context.Context, paths []string, options ToolOptions) (ExternalToolRequirements, error) {
 	needed := ExternalToolRequirements{}
+	var directories map[string]string
 	if len(paths) == 0 {
 		paths = []string{a.WorkingDir()}
 		project, err := a.ProjectAt(a.WorkingDir())
@@ -35,8 +36,15 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 			}
 		}
 	} else {
+		resolved := make([]string, len(paths))
+		for index, path := range paths {
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(a.WorkingDir(), path)
+			}
+			resolved[index] = path
+		}
 		var err error
-		paths, err = a.expandDirectories(paths, &Inputs{})
+		paths, directories, err = a.expandDirectories(resolved, &Inputs{})
 		if err != nil {
 			return needed, err
 		}
@@ -60,7 +68,7 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 		if project != nil {
 			root = project.RootDir()
 		}
-		if !config.IncludesFile(path, root) {
+		if !config.IncludesSelectedFile(path, root, directories[path]) {
 			continue
 		}
 		projectConfig := config

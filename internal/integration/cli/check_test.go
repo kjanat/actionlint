@@ -65,13 +65,12 @@ func TestCommandWorkflowPaths(t *testing.T) {
 	}
 }
 
-func TestLegacyCLITextWriteErrors(t *testing.T) {
-	for _, format := range []render.Format{render.FormatText, render.FormatOneline, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub} {
-		text := format == render.FormatText || format == render.FormatOneline
+func TestCLIWriteErrors(t *testing.T) {
+	for _, format := range []render.Format{render.FormatText, render.FormatPretty, render.FormatOneline, render.FormatGCC, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub} {
 		var stderr strings.Builder
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &stderr}
 		status := cmd.Main([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff", "--output-format=" + string(format), "-"})
-		if text && (status != 1 || stderr.Len() != 0) || !text && (status != 3 || !strings.Contains(stderr.String(), "write failed")) {
+		if status != 3 || !strings.Contains(stderr.String(), "write failed") {
 			t.Fatalf("%s changed CLI streams or status: %d, %s", format, status, &stderr)
 		}
 	}
@@ -89,7 +88,16 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 	}
 	got = testRunCommand("", "check", "--json", "--summary", "--yes", "--output-file", "report.json")
 	data, err = os.ReadFile("report.json")
-	if err != nil || got.Status != 1 || got.Stdout != "" || !json.Valid(data) || got.Stderr != "{\"summary\":{\"files\":1,\"findings\":1}}\n" {
+	var summary struct {
+		Summary render.CheckSummary `json:"summary"`
+	}
+	summaryErr := json.Unmarshal([]byte(got.Stderr), &summary)
+	wantSummary := render.CheckSummary{
+		Files: 1, Findings: 1,
+		ByFile:       []render.FileFindingCount{{Path: filepath.FromSlash(".github/workflows/ci.yml"), Count: 1}},
+		ByDiagnostic: []render.DiagnosticCount{{Rule: "expression-reference", Code: "unknown-variable", Count: 1}},
+	}
+	if err != nil || got.Status != 1 || got.Stdout != "" || !json.Valid(data) || summaryErr != nil || !cmp.Equal(summary.Summary, wantSummary) {
 		t.Fatalf("%+v %s (%v)", got, data, err)
 	}
 	got = testRunCommand("", "check", "--json", "--summary", "--quiet")
@@ -264,15 +272,18 @@ func TestCommandMultiFileJSON(t *testing.T) {
 }
 
 func TestCommandOutputSelection(t *testing.T) {
-	for _, mode := range []string{"text", "oneline"} {
-		args := []string{}
-		if mode == "oneline" {
-			args = append(args, "-oneline")
-		}
-		legacy := testRunCommand(commandBadWorkflow, append(args, "-")...)
-		got := testRunCommand(commandBadWorkflow, "--output", mode, "-")
+	for _, tc := range []struct {
+		mode string
+		args []string
+	}{
+		{"pretty", nil},
+		{"oneline", []string{"-oneline"}},
+		{"text", []string{"check", "--output", "text"}},
+	} {
+		legacy := testRunCommand(commandBadWorkflow, append(tc.args, "-")...)
+		got := testRunCommand(commandBadWorkflow, "--output", tc.mode, "-")
 		if diff := cmp.Diff(legacy, got); diff != "" {
-			t.Fatalf("%s: %s", mode, diff)
+			t.Fatalf("%s: %s", tc.mode, diff)
 		}
 	}
 }

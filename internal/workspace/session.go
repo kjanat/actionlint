@@ -25,6 +25,8 @@ type Source struct {
 	ConfigProvenance repoconfig.Provenance
 	Project          *Project
 	InputPath        string
+	// SelectionRoot is the explicitly selected directory that contained this file.
+	SelectionRoot string
 }
 
 // Selection is a prepared batch. Inputs includes configuration and excluded discovery candidates.
@@ -203,9 +205,10 @@ func (a *Session) filesSelected(paths []string) {
 
 // Files expands directory inputs and analyzes paths in order, discovering each
 // file's project when project is nil. Explicit duplicate file inputs are preserved.
+// Relative paths retain the caller's spelling and resolve from the process directory.
 func (a *Session) Files(paths []string, project *Project) (*Selection, error) {
 	listed := &Inputs{}
-	paths, err := a.expandDirectories(paths, listed)
+	paths, directories, err := a.expandDirectories(paths, listed)
 	if err != nil {
 		return nil, err
 	}
@@ -216,25 +219,24 @@ func (a *Session) Files(paths []string, project *Project) (*Selection, error) {
 	if len(paths) > 1 {
 		a.selectionLog("Linting", len(paths), "files")
 	}
-	result, err := a.ReadFiles(paths, project)
+	result, err := a.readFiles(paths, project, directories)
 	if result != nil {
 		result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, listed.List()...))))
 	}
 	return result, err
 }
 
-func (a *Session) expandDirectories(paths []string, listed *Inputs) ([]string, error) {
+func (a *Session) expandDirectories(paths []string, listed *Inputs) ([]string, map[string]string, error) {
 	directories := make(map[int]string)
 	explicit := make(map[string]bool)
 	for index, path := range paths {
 		if err := a.ctx.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		full := path
-		if !filepath.IsAbs(full) {
-			full = filepath.Join(a.cwd, full)
+		full, err := filepath.Abs(path)
+		if err != nil {
+			return nil, nil, err
 		}
-		full = filepath.Clean(full)
 		if info, err := os.Stat(full); err == nil && info.IsDir() {
 			directories[index] = full
 		} else {
@@ -244,6 +246,7 @@ func (a *Session) expandDirectories(paths []string, listed *Inputs) ([]string, e
 		}
 	}
 	var expanded []string
+	selectionRoots := make(map[string]string)
 	seen := make(map[string]bool)
 	for index, path := range paths {
 		dir, directory := directories[index]
@@ -253,20 +256,23 @@ func (a *Session) expandDirectories(paths []string, listed *Inputs) ([]string, e
 		}
 		files, err := DirectoryPaths(a.ctx, dir, fsread.New(a.ctx, nil, listed.Add))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(files) == 0 {
-			return nil, fmt.Errorf("no workflow or action files were found in %q", path)
+			return nil, nil, fmt.Errorf("no workflow or action files were found in %q", path)
 		}
 		for _, file := range files {
 			listed.Add(file)
+			if len(dir) > len(selectionRoots[file]) {
+				selectionRoots[file] = dir
+			}
 			if !explicit[file] && !seen[file] {
 				seen[file] = true
 				expanded = append(expanded, file)
 			}
 		}
 	}
-	return expanded, nil
+	return expanded, selectionRoots, nil
 }
 
 // Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
@@ -293,13 +299,14 @@ func (a *Session) Empty() (*Selection, error) {
 }
 
 func (a *Session) ReadFiles(paths []string, project *Project) (*Selection, error) {
+	return a.readFiles(paths, project, nil)
+}
+
+func (a *Session) readFiles(paths []string, project *Project, directories map[string]string) (*Selection, error) {
 	sources := make([]Source, 0, len(paths))
 	configProjects := make([]*Project, 0, len(paths))
 	for _, path := range paths {
 		inputPath := path
-		if path != "<stdin>" && !filepath.IsAbs(path) {
-			inputPath = filepath.Join(a.cwd, path)
-		}
 		proj := project
 		if proj == nil {
 			var err error
@@ -318,7 +325,8 @@ func (a *Session) ReadFiles(paths []string, project *Project) (*Selection, error
 			root = absPath(proj.RootDir())
 		}
 		fullPath := absPath(inputPath)
-		if !cfg.IncludesFile(fullPath, root) {
+		directory := directories[fullPath]
+		if !cfg.IncludesSelectedFile(fullPath, root, directory) {
 			continue
 		}
 		content, err := a.readFile(inputPath)
@@ -331,6 +339,7 @@ func (a *Session) ReadFiles(paths []string, project *Project) (*Selection, error
 		}
 		source := a.source(displayPath, content, proj)
 		source.InputPath = fullPath
+		source.SelectionRoot = directory
 		sources = append(sources, source)
 	}
 	return a.prepare(sources, configProjects...)

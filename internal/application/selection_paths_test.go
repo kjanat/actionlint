@@ -82,6 +82,27 @@ func TestCallerRelativeSelection(t *testing.T) {
 	}
 }
 
+func TestCallerRelativeOverlaySelection(t *testing.T) {
+	parent := t.TempDir()
+	t.Chdir(parent)
+	root := filepath.Join(parent, "repo")
+	writeFixture(t, root, ".github/workflows/ci.yml", goodWorkflow)
+	for _, working := range []string{"repo", root} {
+		t.Run(working, func(t *testing.T) {
+			options := application.Options{WorkingDir: working, SkipProjectConfig: true, SourceOverlays: []application.SourceOverlay{{Path: ".github/workflows/ci.yml", Content: []byte(badWorkflow)}}}
+			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}})
+			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) == 0 {
+				t.Fatalf("caller input missed WorkingDir-relative overlay: %+v, %v", result, err)
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if filepath.ToSlash(diagnostic.Path) != ".github/workflows/ci.yml" {
+					t.Fatalf("overlay diagnostic lost display path: %+v", diagnostic)
+				}
+			}
+		})
+	}
+}
+
 func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {

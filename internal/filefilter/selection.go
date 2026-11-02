@@ -97,12 +97,23 @@ func (s Selection) Match(path string) bool {
 	return MatchPatterns(s.includes, s.excludes, path)
 }
 
+// Excludes reports an explicit exclusion, including negated include patterns.
+// A directory outside a positive include glob is not an excluded subtree.
+func (s Selection) Excludes(path string) bool {
+	return !matchPatterns(s.includes, s.excludes, path, true)
+}
+
 // MatchPatterns evaluates a path against include and exclude globs with
 // Selection semantics. Callers validate patterns at their input boundary;
 // a malformed pattern never matches.
 func MatchPatterns(includes, excludes []string, path string) bool {
+	return matchPatterns(includes, excludes, path, includes == nil)
+}
+
+// Starting included evaluates only explicit exclusions. Normal selection starts
+// outside an explicit include scope and requires a matching positive pattern.
+func matchPatterns(includes, excludes []string, path string, match bool) bool {
 	path = strings.TrimPrefix(filepath.ToSlash(filepath.Clean(path)), "./")
-	match := includes == nil
 	for _, pattern := range includes {
 		found, _ := doublestar.Match(normalizePattern(pattern), path)
 		if found && strings.HasPrefix(pattern, "!") {

@@ -12,6 +12,7 @@ import (
 
 func TestDirectoryInputsDiscoverScopedDocuments(t *testing.T) {
 	root := t.TempDir()
+	t.Chdir(root)
 	writeToolRepository(t, root)
 	writeToolFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['.github/workflows/excluded.yml']}\n")
 	writeToolFixture(t, root, ".github/dependabot.yml", "version: 2\n")
@@ -55,6 +56,7 @@ func TestDirectoryInputsDiscoverScopedDocuments(t *testing.T) {
 
 func TestDirectoryInputsDeduplicateDiscoveryAndKeepExplicitDuplicates(t *testing.T) {
 	root := t.TempDir()
+	t.Chdir(root)
 	writeToolFixture(t, root, "workflows/a.yml", toolWorkflow)
 	writeToolFixture(t, root, "workflows/b.yaml", toolWorkflow)
 	var selected []string
@@ -77,13 +79,14 @@ func TestDirectoryInputsDeduplicateDiscoveryAndKeepExplicitDuplicates(t *testing
 	}
 }
 
-func TestDirectoryInputsSkipDependenciesAndNestedRepositories(t *testing.T) {
+func TestDirectoryInputsKeepDirectoryNamesAndSkipNestedRepositories(t *testing.T) {
 	root := t.TempDir()
 	writeToolFixture(t, root, "ci.yml", toolWorkflow)
 	writeToolFixture(t, root, "nested/action.yml", "name: local\n")
-	for _, directory := range []string{"node_modules", "vendor", "testdata", ".cache", "other"} {
-		writeToolFixture(t, root, directory+"/nested/ignored.yaml", "[not read")
+	for _, directory := range []string{"node_modules", "vendor", "testdata", ".cache"} {
+		writeToolFixture(t, root, directory+"/nested/ci.yaml", toolWorkflow)
 	}
+	writeToolFixture(t, root, "other/nested/ignored.yaml", "[not read")
 	if err := os.Mkdir(filepath.Join(root, "other", ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -95,13 +98,14 @@ func TestDirectoryInputsSkipDependenciesAndNestedRepositories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(selection.Sources) != 2 {
-		t.Fatalf("dependency or nested repository selected: %+v", selection.Sources)
+	if len(selection.Sources) != 6 {
+		t.Fatalf("directory name excluded or nested repository selected: %+v", selection.Sources)
 	}
 }
 
 func TestDirectoryInputsReportEmptyDirectory(t *testing.T) {
 	root := t.TempDir()
+	t.Chdir(root)
 	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
@@ -113,6 +117,7 @@ func TestDirectoryInputsReportEmptyDirectory(t *testing.T) {
 
 func TestDirectoryInputsDiscoverGithubWithoutGitRepository(t *testing.T) {
 	root := t.TempDir()
+	t.Chdir(root)
 	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
 	writeToolFixture(t, root, ".github/actionlint.yml", "[not a workflow")
 	writeToolFixture(t, root, ".github/dependabot.yml", "version: 2\n")
@@ -130,6 +135,7 @@ func TestDirectoryInputsSkipDiscoveredWorkflowDirectoryLinks(t *testing.T) {
 	for _, link := range []string{".github", ".github/workflows"} {
 		t.Run(link, func(t *testing.T) {
 			root, outside := t.TempDir(), t.TempDir()
+			t.Chdir(root)
 			writeToolFixture(t, root, "action.yml", "name: local\n")
 			writeToolFixture(t, outside, "ci.yml", toolWorkflow)
 			writeToolFixture(t, outside, "workflows/ci.yml", toolWorkflow)
@@ -151,8 +157,32 @@ func TestDirectoryInputsSkipDiscoveredWorkflowDirectoryLinks(t *testing.T) {
 	}
 }
 
+func TestDirectoryInputsDiscoverWorkflowFileLinks(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	t.Chdir(root)
+	writeToolFixture(t, root, ".github/workflows/regular.yml", toolWorkflow)
+	writeToolFixture(t, outside, "linked.yml", toolWorkflow)
+	link := filepath.Join(root, ".github", "workflows", "linked.yml")
+	if err := os.Symlink(filepath.Join(outside, "linked.yml"), link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	for _, path := range []string{".", ".github", ".github/workflows"} {
+		t.Run(path, func(t *testing.T) {
+			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, SkipProjectConfig: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			selection, err := session.Files([]string{path}, nil)
+			if err != nil || len(selection.Sources) != 2 || !slices.Contains(selection.Inputs, link) {
+				t.Fatalf("workflow file link missing: %+v, %v", selection, err)
+			}
+		})
+	}
+}
+
 func TestDirectoryInputsHonourGitIgnoreForYaml(t *testing.T) {
 	root := t.TempDir()
+	t.Chdir(root)
 	writeToolRepository(t, root)
 	writeToolFixture(t, root, ".gitignore", "workflows/ignored.yml\nworkflows/generated/\n")
 	writeToolFixture(t, root, "workflows/ci.yml", toolWorkflow)

@@ -33,7 +33,7 @@ func TestSummaryTerminalColor(t *testing.T) {
 			args := append([]string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff"}, tc.flags...)
 			status := cmd.Main(append(args, "-"))
 			output := strings.ReplaceAll(finish(), "\r", "")
-			if status != 0 || ansi.MatchString(output) != tc.colored || ansi.ReplaceAllString(output, "") != "✓ Checked 1 workflow. All clear!\n" {
+			if status != 0 || ansi.MatchString(output) != tc.colored || ansi.ReplaceAllString(output, "") != "✓ Checked 1 file. All clear!\n" {
 				t.Fatalf("summary styling: exit=%d stderr=%q, want colored=%v", status, output, tc.colored)
 			}
 		})

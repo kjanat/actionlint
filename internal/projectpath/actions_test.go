@@ -175,7 +175,7 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			names := []string{"ignored/kept/action.yml", "sub/tracked/action.yml", "sub/untracked/action.yaml", "tracked/action.yml", "untracked/action.yaml"}
+			names := []string{"ignored/kept/action.yml", "node_modules/pkg/action.yml", "sub/tracked/action.yml", "sub/untracked/action.yaml", "tracked/action.yml", "untracked/action.yaml"}
 			if filepath.Base(discovery) == "sub" {
 				names = []string{"tracked/action.yml", "untracked/action.yaml"}
 			}
@@ -276,8 +276,27 @@ func TestActionsOutsideRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{filepath.Join(root, "action.yml"), filepath.Join(root, "ignored", "action.yml")}; !slices.Equal(got, want) {
+	if want := []string{filepath.Join(root, "action.yml"), filepath.Join(root, "ignored", "action.yml"), filepath.Join(root, "node_modules", "action.yml")}; !slices.Equal(got, want) {
 		t.Fatalf("Actions = %q, want %q", got, want)
+	}
+}
+
+func TestActionsDirectoryNamesFollowGitIgnoreAndTracking(t *testing.T) {
+	root := t.TempDir()
+	git := gitFixture(t, root)
+	writeFixture(t, root, ".gitignore", "*/\n")
+	var want []string
+	for _, directory := range []string{".cache", ".venv", ".worktrees", "custom", "node_modules", "testdata", "vendor", "venv"} {
+		name := directory + "/action.yml"
+		writeFixture(t, root, name, "name: fixture\n")
+		want = append(want, filepath.Join(root, filepath.FromSlash(name)))
+	}
+	if got, err := actions(t, t.Context(), root); err != nil || len(got) != 0 {
+		t.Fatalf("ignored untracked actions = %q, %v; want none", got, err)
+	}
+	git("add", "--force", "--", ".")
+	if got, err := actions(t, t.Context(), root); err != nil || !slices.Equal(got, want) {
+		t.Fatalf("tracked actions = %q, %v; want %q", got, err, want)
 	}
 }
 
@@ -292,11 +311,11 @@ func TestActionsReportReadDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{filepath.Join(root, "a", "b", "action.yml")}; !slices.Equal(paths, want) {
+	if want := []string{filepath.Join(root, "a", "b", "action.yml"), filepath.Join(root, "node_modules", "x", "action.yml")}; !slices.Equal(paths, want) {
 		t.Fatalf("Actions = %q, want %q", paths, want)
 	}
 	slices.Sort(got)
-	want := []string{root, filepath.Join(root, ".github"), filepath.Join(root, "a"), filepath.Join(root, "a", "b")}
+	want := []string{root, filepath.Join(root, ".github"), filepath.Join(root, "a"), filepath.Join(root, "a", "b"), filepath.Join(root, "node_modules"), filepath.Join(root, "node_modules", "x")}
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Fatalf("reported %q, want %q", got, want)

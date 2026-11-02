@@ -19,6 +19,8 @@ import (
 func DirectoryPaths(ctx context.Context, dir string, reader *fsread.Reader) ([]string, error) {
 	workflows := dir
 	switch {
+	case filepath.Base(dir) == "workflows" && filepath.Base(filepath.Dir(dir)) == ".github":
+		return projectpath.Workflows(ctx, dir, reader)
 	case projectpath.RepositoryRoot(dir) == dir:
 		workflows = filepath.Join(dir, ".github", "workflows")
 	case filepath.Base(dir) == ".github":
@@ -56,7 +58,7 @@ func projectDocumentPaths(ctx context.Context, dir, workflows string, reader *fs
 			return nil, err
 		}
 	}
-	files, err := projectpath.YAML(ctx, workflows, reader)
+	files, err := projectpath.Workflows(ctx, workflows, reader)
 	if err != nil {
 		return nil, err
 	}

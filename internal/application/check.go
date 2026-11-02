@@ -81,8 +81,10 @@ const (
 // Input describes where sources come from. AllowEmptyRepository implements the
 // pre-commit convention; it still validates and records selected configuration.
 type Input struct {
-	sources              []workspace.Source
-	Kind                 InputKind
+	sources []workspace.Source
+	Kind    InputKind
+	// Paths selects files and directories relative to the process directory.
+	// Options.WorkingDir controls configuration and display paths instead.
 	Paths                []string
 	Directory            string
 	Reader               io.Reader
@@ -140,13 +142,15 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 			if address.Remote(path) {
 				return backing.ReadFile(path)
 			}
-			if path != "<stdin>" && !filepath.IsAbs(path) {
-				path = filepath.Join(base, path)
-			}
+			alias := path
 			if path != "<stdin>" {
-				path = filepath.Clean(path)
+				var err error
+				alias, err = filepath.Abs(path)
+				if err != nil {
+					return nil, err
+				}
 			}
-			if index, exists := byAlias[path]; exists {
+			if index, exists := byAlias[alias]; exists {
 				return bytes.Clone(overlays[index].Content), nil
 			}
 			return backing.ReadFile(path)

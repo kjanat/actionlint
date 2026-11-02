@@ -1,5 +1,8 @@
 #:schema ../actionlint.schema.json
 
+[files]
+excludes = ["testdata/**", "internal/**/testdata/**", "tools/**/testdata/**"]
+
 [local-actions]
 "./.published-action-test" = "./tools/action/testdata/published-action"
 

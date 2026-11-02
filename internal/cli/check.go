@@ -75,12 +75,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if c.ExperimentalSet {
 		options.Presets.Experimental = &c.Experimental
 	}
-	var renderer *render.Renderer
-	if inv.Legacy {
-		renderer, err = newResultRenderer(r)
-		if err != nil {
-			return 0, err
-		}
+	renderers, err := newResultRenderers(r)
+	if err != nil {
+		return 0, err
 	}
 	input := application.Input{Kind: application.Files, Paths: c.Paths}
 	if len(c.Paths) == 0 {
@@ -130,6 +127,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			}
 		}
 	}
+	if result.FileCount == 0 && !c.PreCommit {
+		return 0, errors.New("no workflow or action files were selected; check files.includes and files.excludes")
+	}
 	if c.Fix {
 		if input.Kind == application.Stdin {
 			return 0, commandUsageError{errors.New("fix requires files; stdin is read-only")}
@@ -166,7 +166,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 	}
 	result.Inputs = append(result.Inputs, plugins.Inputs...)
-	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, render.Prepare(*result)); err != nil {
+	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, render.Prepare(*result)); err != nil {
 		return 0, err
 	}
 	if inv.Legacy && options.Verbose && result.FileCount > 1 {
@@ -176,7 +176,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		status = render.ExitSuccessProblemFound
 	}
 	if r.Summary && !r.Quiet {
-		summary := render.CheckSummary{Files: result.FileCount, Findings: len(result.Diagnostics)}
+		summary := render.NewCheckSummary(result.FileCount, result.Diagnostics)
 		if inv.JSON {
 			err = writeCommandJSON(streams.Stderr, map[string]render.CheckSummary{"summary": summary})
 		} else {

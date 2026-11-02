@@ -49,11 +49,11 @@ jobs:
 		in   string
 	}{
 		{"stdin-good", []string{"-"}, good},
-		{"stdin-empty", []string{"-"}, ""},
-		{"stdin-pretty", []string{"-"}, bad},
+		{"stdin-empty", []string{"--output-format=text", "-"}, ""},
+		{"stdin-pretty", []string{"--output-format=text", "-"}, bad},
 		{"stdin-oneline", []string{"-oneline", "-"}, bad},
 		{"stdin-long-flags", []string{"--oneline", "--stdin-filename=from-stdin.yml", "-"}, bad},
-		{"stdin-label", []string{"-stdin-filename", "source with spaces.yml", "-"}, bad},
+		{"stdin-label", []string{"--output-format=text", "-stdin-filename", "source with spaces.yml", "-"}, bad},
 		{"json-template", []string{"-format", "{{json .}}", "-"}, bad},
 		{"json-template-empty", []string{"-format", "{{json .}}", "-"}, good},
 		{"jsonl-template", []string{"-format", "{{range .}}{{json .}}{{end}}", "-"}, bad},
@@ -63,13 +63,13 @@ jobs:
 		{"bad-regexp", []string{"-ignore", "[", "-"}, good},
 		{"ignored-diagnostic", []string{"-ignore", "undefined variable", "-"}, bad},
 		{"repeat-ignore", []string{"-ignore", "undefined variable", "-ignore", "other", "-"}, bad},
-		{"ignore-with-comma", []string{"-ignore", "undefined variable,other", "-"}, bad},
-		{"boolean-false", []string{"-oneline=false", "-"}, bad},
-		{"boolean-repeat", []string{"-oneline", "-oneline=false", "-"}, bad},
+		{"ignore-with-comma", []string{"--output-format=text", "-ignore", "undefined variable,other", "-"}, bad},
+		{"boolean-false", []string{"--output-format=text", "-oneline=false", "-"}, bad},
+		{"boolean-repeat", []string{"--output-format=text", "-oneline", "-oneline=false", "-"}, bad},
 		{"boolean-numeric", []string{"-oneline=1", "-"}, bad},
-		{"color", []string{"-color", "-no-color=false", "-"}, bad},
-		{"no-color-wins", []string{"-no-color", "-color", "-"}, bad},
-		{"files", []string{"bad.yml", "good.yml"}, ""},
+		{"color", []string{"--output-format=text", "-color", "-no-color=false", "-"}, bad},
+		{"no-color-wins", []string{"--output-format=text", "-no-color", "-color", "-"}, bad},
+		{"files", []string{"--output-format=text", "bad.yml", "good.yml"}, ""},
 		{"files-json-template", []string{"-format", "{{json .}}", "bad.yml", "good.yml"}, ""},
 		{"repository", nil, ""},
 		{"end-of-flags", []string{"--", "good.yml"}, ""},
@@ -115,6 +115,10 @@ jobs:
 			if !ok {
 				t.Fatalf("missing baseline for %s", tc.name)
 			}
+			// v2 intentionally exposes native codes in text and template JSON.
+			// Retain the captured v1 transcript for every other field and byte.
+			expected.Stdout = strings.Replace(expected.Stdout, ":6:24: undefined variable", ":6:24: unknown-variable: undefined variable", 1)
+			expected.Stdout = strings.Replace(expected.Stdout, `"kind":"expression-reference","snippet"`, `"kind":"expression-reference","code":"unknown-variable","snippet"`, 1)
 			if diff := cmp.Diff(expected, got); diff != "" {
 				t.Fatalf("CLI compatibility changed (-want +have):\n%s", diff)
 			}

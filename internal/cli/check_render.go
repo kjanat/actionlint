@@ -12,23 +12,32 @@ import (
 	"github.com/mattn/go-colorable"
 )
 
-func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, legacy bool, renderer *render.Renderer, result render.Result) error {
-	var err error
+type resultRenderer struct {
+	format   render.Format
+	renderer *render.Renderer
+}
+
+func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, legacy bool, renderers []resultRenderer, result render.Result) error {
+	for _, output := range renderers {
+		if err := renderCheckFormat(ctx, out, r, output.format, legacy, output.renderer, result); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, format render.Format, legacy bool, renderer *render.Renderer, result render.Result) error {
 	jsonColor := r.Color
-	r.resolveGitHubActionsColor(out)
+	r.resolveGitHubActionsColor(out, format)
 	jsonDestination := out
 	_, terminal := terminalFile(out)
-	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (r.Format == render.FormatJSON || r.Format == render.FormatSARIF)
+	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (format == render.FormatJSON || format == render.FormatSARIF)
+	previous := color.NoColor
+	defer func() { color.NoColor = previous }()
 	if legacy {
 		out = legacyColorOutput(out, r.Color)
 	}
 	if !legacy {
-		renderer, err = newResultRenderer(r)
-		if err != nil {
-			return err
-		}
-		previous := color.NoColor
-		defer func() { color.NoColor = previous }()
 		switch r.Color {
 		case render.ColorNever:
 			color.NoColor = true
@@ -41,11 +50,8 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 			out = colorable.NewColorable(file)
 		}
 	}
-	var writes *commandResultWriter
-	if !legacy || r.OutputFile != "" {
-		writes = &commandResultWriter{Writer: out}
-		out = writes
-	}
+	writes := &commandResultWriter{Writer: out}
+	out = writes
 	if prettyJSON {
 		var data bytes.Buffer
 		if err := renderer.Render(&data, result); err != nil {
@@ -57,14 +63,30 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 	} else if err := renderer.Render(out, result); err != nil {
 		return err
 	}
-	if writes != nil && writes.err != nil {
+	if writes.err != nil {
 		return writes.err
 	}
 	return nil
 }
 
-func newResultRenderer(options renderOptions) (*render.Renderer, error) {
-	renderer, err := render.New(options.Format, options.Template, options.Oneline, buildinfo.Version, nil)
+func newResultRenderers(options renderOptions) ([]resultRenderer, error) {
+	formats := options.Formats
+	if len(formats) == 0 {
+		formats = []render.Format{""}
+	}
+	renderers := make([]resultRenderer, 0, len(formats))
+	for _, format := range formats {
+		renderer, err := newResultRenderer(options, format)
+		if err != nil {
+			return nil, err
+		}
+		renderers = append(renderers, resultRenderer{format: format, renderer: renderer})
+	}
+	return renderers, nil
+}
+
+func newResultRenderer(options renderOptions, format render.Format) (*render.Renderer, error) {
+	renderer, err := render.New(format, options.Template, options.Oneline, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err
 	}

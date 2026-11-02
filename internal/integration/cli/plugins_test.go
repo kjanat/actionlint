@@ -56,7 +56,7 @@ func pluginFixture(name string) string {
 }
 
 func TestCheckLoadsComponentPlugins(t *testing.T) {
-	got := testRunCommand(pluginWorkflow, "check", "--no-config", "--plugin", pluginFixture("pipe-to-shell"), "--plugin", pluginFixture("no-sudo"), "--plugin", pluginFixture("insecure-download"), "-")
+	got := testRunCommand(pluginWorkflow, "check", "--no-config", "--output-format=text", "--plugin", pluginFixture("pipe-to-shell"), "--plugin", pluginFixture("no-sudo"), "--plugin", pluginFixture("insecure-download"), "-")
 	if got.Status != 1 || got.Stderr != "" {
 		t.Fatalf("status=%d stderr=%q stdout=%q", got.Status, got.Stderr, got.Stdout)
 	}

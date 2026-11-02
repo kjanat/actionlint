@@ -23,9 +23,12 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 			}
 			writeFixture(t, root, "generated/action.yml", "invalid: [\n")
 			writeFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['generated/**']}\n")
-			for _, directory := range []string{".git-cache/node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata", "tools/action/testdata", "nested"} {
-				writeFixture(t, root, directory+"/action.yml", "invalid: [\n")
+			for _, directory := range []string{".git-cache/node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata", "tools/action/testdata"} {
+				path := directory + "/action.yml"
+				writeFixture(t, root, path, compositeAction)
+				want = append(want, path)
 			}
+			writeFixture(t, root, "nested/action.yml", "invalid: [\n")
 			writeFixture(t, root, "nested/.git", "gitdir: elsewhere\n")
 			if workflows {
 				writeFixture(t, root, ".github/workflows/action.yml", goodWorkflow)

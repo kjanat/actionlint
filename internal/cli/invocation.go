@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/render"
@@ -73,7 +74,7 @@ type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
 	Hyperlinks         hyperlinkMode
-	Format             render.Format
+	Formats            []render.Format
 	Template           string
 	TemplateFile       string
 	OutputFile         string
@@ -145,14 +146,15 @@ func (a *commandApp) prepareInvocation() error {
 		return nil
 	}
 	explicitOutput := a.set["output-format"] || a.set["output"] || a.set["o"]
-	if i.JSON && explicitOutput && o.output != "json" && o.output != "jsonl" {
-		return commandUsageError{errors.New("--json cannot be combined with a different --output-format mode")}
-	}
-	if jsonRequested && explicitOutput && o.output == "jsonl" {
-		return commandUsageError{errors.New("--json cannot be combined with a different --output-format mode")}
+	if jsonRequested && explicitOutput {
+		for _, mode := range o.output {
+			if mode != "json" {
+				return commandUsageError{errors.New("--json cannot be combined with a different --output-format mode")}
+			}
+		}
 	}
 	if i.JSON && !explicitOutput {
-		o.output = "json"
+		o.output = outputModes{"json"}
 	}
 	if i.Render.Template != "" && i.Render.TemplateFile != "" {
 		return commandUsageError{errors.New("--template cannot be combined with --template-file")}
@@ -160,20 +162,26 @@ func (a *commandApp) prepareInvocation() error {
 	if (i.Render.Template != "" || i.Render.TemplateFile != "") && (i.JSON || explicitOutput) {
 		return commandUsageError{errors.New("--template/--format cannot be combined with --json or --output-format")}
 	}
-	if a.set["diagnostic-width"] && o.output != "pretty" {
+	if !explicitOutput && !i.JSON && i.Render.Template == "" && i.Render.TemplateFile == "" && !i.Render.Oneline {
+		o.output = outputModes{"pretty"}
+	}
+	if a.set["diagnostic-width"] && !slices.Contains(o.output, "pretty") {
 		return commandUsageError{errors.New("--diagnostic-width requires --output-format=pretty")}
 	}
 	if i.Render.Width < 40 || i.Render.Width > 400 {
 		return commandUsageError{errors.New("--diagnostic-width must be between 40 and 400")}
 	}
-	switch o.output {
-	case "text", "pretty", "oneline", "json", "jsonl", "sarif", "github":
-		if explicitOutput || i.JSON {
+	for _, mode := range o.output {
+		switch mode {
+		case "text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github":
 			i.Render.Oneline = false
-			i.Render.Format = render.Format(o.output)
+			format := render.Format(mode)
+			if !slices.Contains(i.Render.Formats, format) {
+				i.Render.Formats = append(i.Render.Formats, format)
+			}
+		default:
+			return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, gcc, json, jsonl, sarif or github", mode)}
 		}
-	default:
-		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, json, jsonl, sarif or github", o.output)}
 	}
 	if a.set["log-level"] {
 		switch o.logLevel {

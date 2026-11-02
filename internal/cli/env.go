@@ -68,7 +68,7 @@ func (a *commandApp) applyEnvironment() error {
 	switch i.Operation {
 	case "lsp", operationCheck, operationRules, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate, operationConfigSchema, operationConfigMigrate,
 		operationPluginInstall, operationPluginUpdate, operationPluginRemove, operationPluginList, operationPluginSync:
-		if !a.anySet("config", "config-file", "no-config") {
+		if !a.anySet("config", "config-file", "no-config", "no-rc", "norc") {
 			a.envString("ACTIONLINT_CONFIG", &i.Check.Config.Path)
 			if err := a.envBool("ACTIONLINT_NO_CONFIG", &i.Check.Config.Disabled); err != nil {
 				return err
@@ -141,7 +141,7 @@ func (a *commandApp) checkEnvironment() error {
 	i.Check.ExperimentalSet = a.set["experimental"] || experimentalEnv
 	if !a.formatSelected() && !a.prettyJSONSelected() {
 		if value := os.Getenv("ACTIONLINT_OUTPUT_FORMAT"); value != "" {
-			a.opts.output, a.set["output-format"] = value, true
+			a.opts.output, a.set["output-format"] = outputModes{value}, true
 		}
 		a.envString("ACTIONLINT_TEMPLATE", &i.Render.Template)
 		a.envString("ACTIONLINT_TEMPLATE_FILE", &i.Render.TemplateFile)

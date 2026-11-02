@@ -169,10 +169,10 @@ func TestCommandMain(t *testing.T) {
 
 	// Run the command end-to-end. Note that given args should contain program name
 	workflow := filepath.Join("testdata", "examples", "main.yaml")
-	status := cmd.Main([]string{"actionlint", "-no-color", "-no-tool=shellcheck", "-no-tool=ruff", "-ignore", `label .+ is unknown\.`, workflow})
+	status := cmd.Main([]string{"actionlint", "--no-config", "--output-format=text", "-no-color", "-no-tool=shellcheck", "-no-tool=ruff", "-ignore", `label .+ is unknown\.`, workflow})
 
 	if status != 1 {
-		t.Fatal("exit status should be 1 but got", status)
+		t.Fatalf("exit status should be 1 but got %d: %s", status, &output)
 	}
 
 	out := output.String()

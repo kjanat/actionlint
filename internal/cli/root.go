@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -11,10 +12,29 @@ import (
 )
 
 type commandOptions struct {
-	output, colorMode, logLevel, command            string
+	output                                          outputModes
+	colorMode, logLevel, command                    string
 	color, noColor, initConfig, version, helpLegacy bool
 	completion                                      completionShell
 }
+
+// outputModes is shared by all output aliases and command flag sets so every
+// occurrence appends, including flags on both sides of a subcommand.
+type outputModes []string
+
+func (m *outputModes) Set(value string) error {
+	*m = append(*m, value)
+	return nil
+}
+
+func (m *outputModes) String() string {
+	if len(*m) == 0 {
+		return "pretty"
+	}
+	return strings.Join(*m, ",")
+}
+
+func (*outputModes) Type() string { return "MODE" }
 
 type commandApp struct {
 	// ctx is the invocation context. Cobra leaves Command.Context nil for
@@ -29,6 +49,7 @@ type commandApp struct {
 	errorJSON    bool
 	helpShown    bool
 	prefixIgnore []string
+	directory    directoryOption
 }
 
 type commandUsageError struct{ error }
@@ -64,6 +85,9 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.root.SetErr(a.streams.Stderr)
 	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return commandUsageError{err} })
 	a.root.SetHelpFunc(a.help)
+	a.root.PersistentFlags().VarP(&a.directory, "directory", "C", "Run from `DIR`; repeated relative directories build on the previous one")
+	annotateFlag(a.root.PersistentFlags(), "directory", "Input")
+	a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup("directory"))
 	a.checkFlags(a.root, false)
 	a.root.Flags().SetInterspersed(true)
 	check := &cobra.Command{
@@ -223,10 +247,14 @@ func (a *commandApp) hyperlinkFlag(c *cobra.Command, f *pflag.FlagSet) {
 
 func (a *commandApp) configFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.Config.Path, "config", "", "Read configuration from `PATH`")
-	f.BoolVar(&a.inv.Check.Config.Disabled, "no-config", false, "Use default configuration")
+	f.BoolVar(&a.inv.Check.Config.Disabled, "no-config", false, "Disable configuration loading")
+	for _, name := range []string{"no-rc", "norc"} {
+		f.BoolVar(&a.inv.Check.Config.Disabled, name, false, "Alias for --no-config")
+		_ = f.MarkHidden(name)
+	}
 	f.StringVar(&a.inv.Check.Config.Path, "config-file", "", "Alias for --config")
 	_ = f.MarkHidden("config-file")
-	for _, name := range []string{"config", "config-file", "no-config"} {
+	for _, name := range []string{"config", "config-file", "no-config", "no-rc", "norc"} {
 		annotateFlag(f, name, "Configuration")
 	}
 }
@@ -261,9 +289,9 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
-	f.StringVarP(&a.opts.output, "output-format", "o", "text", "Output mode: text, pretty, oneline, json, jsonl, sarif or github")
+	f.VarP(&a.opts.output, "output-format", "o", "Output mode: text, pretty, oneline, gcc, json, jsonl, sarif or github (repeatable)")
 	f.IntVar(&a.inv.Render.Width, "diagnostic-width", 100, "Pretty diagnostic width in columns (40-400)")
-	f.StringVar(&a.opts.output, "output", "text", "Alias for --output-format")
+	f.Var(&a.opts.output, "output", "Alias for --output-format (repeatable)")
 	f.StringVarP(&a.inv.Render.Template, "template", "f", "", "Render legacy fields with this Go template")
 	f.StringVar(&a.inv.Render.Template, "format", "", "Alias for --template")
 	f.StringVar(&a.inv.Render.TemplateFile, "template-file", "", "Read a Go template from this path")
@@ -316,8 +344,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 			panic(err)
 		}
 	}
-	choices("output-format", []string{"text", "pretty", "oneline", "json", "jsonl", "sarif", "github"})
-	choices("output", []string{"text", "pretty", "oneline", "json", "jsonl", "sarif", "github"})
+	choices("output-format", []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"})
+	choices("output", []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"})
 	choices("log-level", []string{"none", "info", "debug"})
 	if modern {
 		choices("color", []string{"auto", "always", "never"})
@@ -365,7 +393,7 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 }
 
 func (a *commandApp) jsonOutput() bool {
-	return a.inv.JSON || a.opts.output == "json" || a.opts.output == "jsonl" || a.prettyJSONSelected()
+	return a.inv.JSON || slices.Contains(a.opts.output, "json") || slices.Contains(a.opts.output, "jsonl") || a.prettyJSONSelected()
 }
 
 func (a *commandApp) formatSelected() bool {

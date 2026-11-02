@@ -93,7 +93,7 @@ func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
 		{"redundant path ignore", "cache-write-untrusted -- reviewed", "", "poison caches", nil},
 		{"path ignore keeps directive errors", "typo -- reviewed", "", "poison caches", []string{"inline-suppression"}},
 		{"path ignore removes directive errors", "typo -- reviewed", "", "unknown inline suppression rule", []string{"cache-write-untrusted"}},
-		{"all filters overlap", "cache-operation,cache-write-untrusted -- reviewed", "poison caches", "poison caches", nil},
+		{"all filters overlap", "cache-operation,cache-write-untrusted -- reviewed", "poison caches", "poison caches", []string{"unused-suppression"}},
 		{"separate filters remove both errors", "typo -- reviewed", "poison caches", "unknown inline suppression rule", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

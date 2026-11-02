@@ -19,23 +19,39 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
+type discoveryMode uint8
+
+const (
+	discoverActions discoveryMode = iota
+	discoverYAML
+	discoverWorkflows
+)
+
 // Actions discovers manifests without following symlinks or crossing repository
-// boundaries. Skip conventional dependency, cache and test-fixture directories.
+// boundaries. Directory names do not imply exclusions, except for Git metadata.
 // Inside a Git repository, git decides which manifests and directories its
 // ignore rules exclude, and tracked manifests in ignored directories stay discovered.
 func Actions(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
-	return discoverFiles(ctx, root, reader, isManifest, false)
+	return discoverFiles(ctx, root, reader, isManifest, discoverActions)
 }
 
 // YAML discovers YAML inputs within an explicitly selected directory, applying
 // the same repository boundaries, ignore rules and directory skips as Actions.
 func YAML(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
-	return discoverFiles(ctx, root, reader, func(name string) bool {
-		return strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml")
-	}, true)
+	return discoverFiles(ctx, root, reader, isYAML, discoverYAML)
 }
 
-func discoverFiles(ctx context.Context, root string, reader *fsread.Reader, selected func(string) bool, workflows bool) ([]string, error) {
+// Workflows discovers YAML in a workflow directory, including symlinks to regular
+// files. It applies Git ignore rules without following directory symlinks.
+func Workflows(ctx context.Context, root string, reader *fsread.Reader) ([]string, error) {
+	return discoverFiles(ctx, root, reader, isYAML, discoverWorkflows)
+}
+
+func isYAML(name string) bool {
+	return strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml")
+}
+
+func discoverFiles(ctx context.Context, root string, reader *fsread.Reader, selected func(string) bool, mode discoveryMode) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve discovery root %q: %w", root, err)
@@ -53,7 +69,7 @@ func discoverFiles(ctx context.Context, root string, reader *fsread.Reader, sele
 		}
 		return filepath.Join(root, relative)
 	})
-	relatives, err := walkFiles(ctx, physical, logical, filter, selected, workflows)
+	relatives, err := walkFiles(ctx, physical, logical, filter, selected, mode)
 	if err != nil {
 		return nil, fmt.Errorf("could not discover files in %q: %w", root, err)
 	}
@@ -286,7 +302,7 @@ func gitEnvironment() []string {
 	return append(env, "GIT_DISCOVERY_ACROSS_FILESYSTEM=1")
 }
 
-func walkFiles(ctx context.Context, root string, reader *fsread.Reader, filter *gitFilter, selected func(string) bool, workflows bool) ([]string, error) {
+func walkFiles(ctx context.Context, root string, reader *fsread.Reader, filter *gitFilter, selected func(string) bool, mode discoveryMode) ([]string, error) {
 	var relatives []string
 	err := reader.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -303,7 +319,7 @@ func walkFiles(ctx context.Context, root string, reader *fsread.Reader, filter *
 			return err
 		}
 		if entry.IsDir() {
-			if !workflows && path == filepath.Join(root, ".github", "workflows") {
+			if mode == discoverActions && path == filepath.Join(root, ".github", "workflows") {
 				return filepath.SkipDir
 			}
 			skip, err := skipDirectory(path)
@@ -315,13 +331,23 @@ func walkFiles(ctx context.Context, root string, reader *fsread.Reader, filter *
 			}
 			return nil
 		}
+		included := selected(entry.Name()) && (filter == nil || filter.manifests[filter.key(filepath.ToSlash(relative))])
 		if !entry.Type().IsRegular() {
-			return nil
+			if mode != discoverWorkflows || entry.Type()&os.ModeSymlink == 0 || !included {
+				return nil
+			}
+			target, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			if !target.Mode().IsRegular() {
+				return nil
+			}
 		}
 		if filter != nil && entry.Name() == ".gitignore" {
 			reader.Record(path)
 		}
-		if selected(entry.Name()) && (filter == nil || filter.manifests[filter.key(filepath.ToSlash(relative))]) {
+		if included {
 			relatives = append(relatives, relative)
 		}
 		return nil
@@ -330,8 +356,7 @@ func walkFiles(ctx context.Context, root string, reader *fsread.Reader, filter *
 }
 
 func skipDirectory(path string) (bool, error) {
-	switch filepath.Base(path) {
-	case ".git", "node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata":
+	if filepath.Base(path) == ".git" {
 		return true, nil
 	}
 	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {

@@ -52,3 +52,47 @@ func TestFixPreviewAndApplyRechecks(t *testing.T) {
 		t.Fatalf("unexpected edits: %s", written)
 	}
 }
+
+func TestFixUnusedSuppressions(t *testing.T) {
+	got := testRunCommand("", "rules", "unused-suppression", "--json", "--norc")
+	var metadata struct {
+		FixAvailability string `json:"fix_availability"`
+	}
+	if err := json.Unmarshal([]byte(got.Stdout), &metadata); err != nil || got.Status != 0 || metadata.FixAvailability != "safe" {
+		t.Fatalf("rule still advertises no fixes: %+v, %+v, %v", metadata, got, err)
+	}
+	for _, tc := range []struct{ name, before, after string }{
+		{"all unused", "      - run: echo ok # ignore[expression-reference, script-interpolation] -- obsolete\n", "      - run: echo ok\n"},
+		{"partially used", "      - run: echo '::set-output name=x::y' # actionlint:ignore deprecated-commands, script-interpolation -- keep reason\n", "      - run: echo '::set-output name=x::y' # actionlint:ignore deprecated-commands -- keep reason\n"},
+		{"next line", "      # ignore-next-line expression-reference\n      - run: echo ok\n", "      - run: echo ok\n"},
+	} {
+		for _, ending := range []string{"\n", "\r\n"} {
+			t.Run(tc.name+ending, func(t *testing.T) {
+				t.Chdir(t.TempDir())
+				const prefix = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n"
+				before := strings.ReplaceAll(prefix+tc.before, "\n", ending)
+				after := strings.ReplaceAll(prefix+tc.after, "\n", ending)
+				if err := os.WriteFile("ci.yml", []byte(before), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				got := testRunCommand("", "fix", "--norc", "ci.yml")
+				var plan fix.Plan
+				if err := json.Unmarshal([]byte(got.Stdout), &plan); err != nil {
+					t.Fatalf("preview: %+v: %v", got, err)
+				}
+				if got.Status != 0 || len(plan.Changes) != 1 || plan.Skipped != 0 || plan.Changes[0].After != after {
+					t.Fatalf("unsafe or overlapping suppression cleanup: %+v, %+v", got, plan)
+				}
+				data, err := os.ReadFile("ci.yml")
+				if err != nil || string(data) != before {
+					t.Fatalf("preview modified source: %q, %v", data, err)
+				}
+				got = testRunCommand("", "fix", "--apply", "--norc", "ci.yml")
+				data, err = os.ReadFile("ci.yml")
+				if got.Status != 0 || err != nil || string(data) != after {
+					t.Fatalf("cleanup did not apply and recheck cleanly: %+v; bytes=%q, err=%v", got, data, err)
+				}
+			})
+		}
+	}
+}

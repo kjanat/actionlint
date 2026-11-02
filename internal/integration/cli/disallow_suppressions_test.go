@@ -31,8 +31,8 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 		{"violation", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: violation}}}}}", []string{"cache-call-unrestricted"}},
 		{"selected", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [cache-call-unrestricted]}}}}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
 		{"other rule", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [cache-operation]}}}}}", nil},
-		{"disabled underlying", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: on}}}", []string{"disallow-suppressions"}},
-		{"disabled underlying violation only", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: {level: on, options: {report: violation}}}}}", nil},
+		{"disabled underlying", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: on}}}", []string{"disallow-suppressions", "unused-suppression"}},
+		{"disabled underlying violation only", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: {level: on, options: {report: violation}}}}}", []string{"unused-suppression"}},
 	} {
 		for _, preceding := range []bool{false, true} {
 			for _, discovery := range []bool{false, true} {

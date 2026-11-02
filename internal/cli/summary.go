@@ -11,18 +11,22 @@ import (
 )
 
 func writeCheckSummary(out io.Writer, mode render.Color, summary render.CheckSummary) error {
-	workflows := "workflows"
+	files := "files"
 	if summary.Files == 1 {
-		workflows = "workflow"
+		files = "file"
 	}
-	text := fmt.Sprintf("✓ Checked %d %s. All clear!", summary.Files, workflows)
+	text := fmt.Sprintf("✓ Checked %d %s. All clear!", summary.Files, files)
 	attribute := color.FgGreen
+	if summary.Files == 0 && summary.Findings == 0 {
+		text = "No files checked."
+		attribute = color.FgYellow
+	}
 	if summary.Findings > 0 {
 		findings := "findings"
 		if summary.Findings == 1 {
 			findings = "finding"
 		}
-		text = fmt.Sprintf("! Checked %d %s, %d %s.", summary.Files, workflows, summary.Findings, findings)
+		text = fmt.Sprintf("! Checked %d %s, %d %s.", summary.Files, files, summary.Findings, findings)
 		attribute = color.FgYellow
 	}
 	file, terminal := terminalFile(out)
@@ -38,6 +42,8 @@ func writeCheckSummary(out io.Writer, mode render.Color, summary render.CheckSum
 	} else {
 		style.DisableColor()
 	}
-	_, err := fmt.Fprintln(out, style.Sprint(text))
-	return err
+	if _, err := fmt.Fprintln(out, style.Sprint(text)); err != nil {
+		return err
+	}
+	return summary.WriteDetails(out)
 }

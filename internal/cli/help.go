@@ -186,10 +186,11 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 			{"experimental", "Enable nursery rules, respecting configured exceptions"},
 		}},
 		{"Flags", []flagHelp{
+			{"directory", "Run from `DIR` (repeatable, like git -C)"},
 			{"config", "Read configuration from `PATH`"},
 			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
 			{"json", "Write JSON results"},
-			{"output-format", "Output `FMT`: text, pretty, oneline, json, jsonl, sarif, github"},
+			{"output-format", "Output `FMT`: text, pretty, oneline, gcc, json, jsonl, sarif, github (repeatable)"},
 			{"output-file", "Write results to `PATH`"},
 			{"quiet", "Suppress progress and summaries"},
 			{"help", "Show help"},

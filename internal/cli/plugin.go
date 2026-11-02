@@ -182,7 +182,7 @@ func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, e
 		if err != nil {
 			return 0, err
 		}
-	case operationCheck, operationVersion, operationRules, operationPluginInspect, operationPluginSearch, operationPluginVersions,
+	case operationCheck, operationVersion, operationRules, operationPluginInspect, operationPluginSearch, operationPluginVersions, operationPluginValidate, operationPluginTest,
 		operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate, operationConfigSchema, operationConfigMigrate, operationConfigInit, operationCompletion:
 		// Search and versions return before project setup; the rest are not plugin lock operations.
 		fallthrough

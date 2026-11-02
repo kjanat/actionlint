@@ -51,7 +51,7 @@ func githubActionsColor(out io.Writer) bool {
 	return true
 }
 
-func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
+func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format render.Format) {
 	if r.Color != render.ColorAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
 		return
 	}
@@ -59,10 +59,10 @@ func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
 	if r.Template != "" || !githubActionsColor(out) {
 		return
 	}
-	switch r.Format {
+	switch format {
 	case "", render.FormatText, render.FormatPretty, render.FormatOneline:
 		r.Color = render.ColorAlways
-	case render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub:
+	case render.FormatGCC, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub:
 		// Machine-readable formats stay uncolored.
 	}
 }

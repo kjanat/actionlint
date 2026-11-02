@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/spf13/pflag"
@@ -16,6 +17,7 @@ import (
 func (a *commandApp) parseRoot(args []string) (rest []string, forced string, terminated bool, err error) {
 	flags := a.root.Flags()
 	flags.SetOutput(io.Discard)
+	a.errorJSON = requestsJSON(flags, args, true)
 	scanner := argumentScanner{args: args}
 	parsedArgs := make([]string, 0, len(args))
 	hasInput := false
@@ -30,6 +32,15 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 			parsedArgs = append(parsedArgs, arg.tokens...)
 			parsedArgs = append(parsedArgs, args[scanner.index:]...)
 			break
+		}
+		if helpIndex < 0 && len(arg.flags) == 1 && arg.flags[0].flag.Name == "directory" {
+			if len(arg.tokens) == 1 && !strings.Contains(arg.tokens[0], "=") {
+				return nil, "", false, commandUsageError{errors.New("flag needs an argument: -C")}
+			}
+			if err := flags.Set("directory", arg.flags[0].value); err != nil {
+				return nil, "", false, commandUsageError{err}
+			}
+			continue
 		}
 		if arg.positional {
 			name := arg.tokens[0]
