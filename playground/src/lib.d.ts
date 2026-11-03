@@ -1,5 +1,6 @@
 interface ActionlintError {
 	kind: string;
+	code?: string;
 	message: string;
 	line: number;
 	column: number;

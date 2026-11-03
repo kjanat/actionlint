@@ -26,8 +26,11 @@ func fail(err error, when string) {
 
 func encodeErrorAsMap(d diagnostic.Diagnostic, src []byte) map[string]any {
 	f := render.FindingOf(d, src).TemplateFields()
-	obj := make(map[string]any, 5)
+	obj := make(map[string]any, 6)
 	obj["message"] = f.Message
+	if f.Code != "" {
+		obj["code"] = f.Code
+	}
 	obj["line"] = f.Line
 	obj["column"] = f.Column
 	obj["endColumn"] = f.EndColumn

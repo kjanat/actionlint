@@ -271,7 +271,7 @@ jobs:
 			assert.equal(findings.length, 1, JSON.stringify(errors));
 			const finding = findings[0];
 			assert.ok(finding);
-			assert.match(finding.message, /SC2086/);
+			assert.equal(finding.code, 'SC2086');
 			const line = run.split('\n').at(-1);
 			assert.ok(line);
 			assert.equal(finding.line, run.includes('|') ? 7 : 6);
@@ -305,7 +305,7 @@ jobs:
 	it('uses workflow shell defaults for portability diagnostics', async () => {
 		const errors = await checkRun('      - shell: sh\n        run: "[[ -n x ]]"');
 		assert.ok(
-			errors.some(error => error.kind === 'shellcheck' && /SC3010/.test(error.message)),
+			errors.some(error => error.kind === 'shellcheck' && error.code === 'SC3010'),
 			JSON.stringify(errors),
 		);
 	});

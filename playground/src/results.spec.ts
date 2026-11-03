@@ -88,7 +88,7 @@ afterAll(() => {
 
 function populate(): void {
 	window.onCheckCompleted([
-		{ line: 1, column: 1, endColumn: 2, kind: 'shellcheck', message: 'previous finding' },
+		{ line: 1, column: 1, endColumn: 2, kind: 'shellcheck', code: 'SC2086', message: 'previous finding' },
 	], window.getYamlSource());
 	assert.equal(body.children.length, 1, 'fixture must populate a clickable result');
 	assert.equal(diagnosticCount(editor.state), 1, 'fixture must populate editor diagnostics');
@@ -96,6 +96,8 @@ function populate(): void {
 
 it('clears old clickable rows and editor diagnostics when analysis fails', () => {
 	populate();
+	const tags = body.querySelectorAll('.tag');
+	assert.equal(tags.item(tags.length - 1).textContent, 'SC2086');
 	window.showError('worker failed');
 	assert.equal(body.children.length, 0, 'failed analysis must not retain clickable stale locations');
 	assert.equal(diagnosticCount(editor.state), 0);

@@ -292,6 +292,13 @@ jobs:
 			kind.textContent = error.kind;
 			kind.style.marginLeft = '4px';
 			desc.appendChild(kind);
+			if (error.code !== undefined) {
+				const code = document.createElement('span');
+				code.className = 'tag is-dark';
+				code.textContent = error.code;
+				code.style.marginLeft = '4px';
+				desc.appendChild(code);
+			}
 			row.appendChild(desc);
 
 			body.appendChild(row);
