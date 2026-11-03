@@ -91,7 +91,6 @@ async function installManagedShell(environment) {
 		JSON.stringify({ source: 'candidate', artifact, url: 'plugin.wasm' }),
 	);
 	await rm(join(workspace, '.github/actionlint.yaml'));
-	await rm(join(workspace, '.github/actionlint.plugins.lock.json'));
 	const install = spawnSync(candidate, [
 		'plugin',
 		'install',
@@ -113,8 +112,6 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 		const [name, value] of Object.entries({
 			files: 'testdata/ok/minimal.yaml',
 			format: 'json',
-			shellcheck: 'true',
-			pyflakes: 'false',
 			'add-actionlint-to-path': 'false',
 			'working-directory': '.',
 			'fail-on-error': 'true',
@@ -258,8 +255,7 @@ try {
 	assert.match(await readFile(summaryFile, 'utf8'), /Could not start analysis/);
 	assert.match(setupFailure.log, /::error::/);
 	await run({ files: '' }, 3);
-	// Tool booleans enable selected plugins; they do not install native tools.
-	// Select the released plugin explicitly and forbid PATH-based fallbacks.
+	// Install the exact released plugin and forbid PATH-based fallbacks.
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
@@ -272,7 +268,6 @@ try {
 	const shell = await run(
 		{
 			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
-			pyflakes: 'false',
 			'fail-on-error': 'false',
 		},
 		0,
@@ -286,7 +281,6 @@ try {
 	const fixable = await run(
 		{
 			files: 'shell-fix.yaml',
-			pyflakes: 'false',
 			'fail-on-error': 'false',
 			annotations: 'true',
 			sarif: 'true',
@@ -297,7 +291,6 @@ try {
 	const githubFixable = await run(
 		{
 			files: 'shell-fix.yaml',
-			pyflakes: 'false',
 			'fail-on-error': 'false',
 			annotations: 'true',
 			format: 'github',
@@ -328,6 +321,7 @@ try {
 	assert.equal(fixable.analysis.sarif.runs[0].columnKind, 'unicodeCodePoints');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quote.fixes[0].edits.length);
+	// Deprecated tool booleans are ignored; disable-tools is the supported switch.
 	const ignoredLegacyInput = await run(
 		{ files: 'shell-fix.yaml', shellcheck: 'false', pyflakes: 'false', 'fail-on-error': 'false' },
 		0,
@@ -346,7 +340,7 @@ try {
 		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n',
 	);
 	const managedShell = await run(
-		{ files: 'managed-shell.yaml', pyflakes: 'false', 'fail-on-error': 'false' },
+		{ files: 'managed-shell.yaml', 'fail-on-error': 'false' },
 		0,
 		shellEnvironment,
 	);
@@ -361,8 +355,7 @@ try {
 	const noShell = await run(
 		{
 			files: 'managed-shell.yaml',
-			shellcheck: 'false',
-			pyflakes: 'false',
+			'disable-tools': 'shellcheck',
 		},
 		0,
 		shellEnvironment,
@@ -372,14 +365,12 @@ try {
 		{
 			files: 'managed-shell.yaml',
 			config: 'tools: {shellcheck: {enabled: false}}',
-			pyflakes: 'false',
 		},
 		0,
 		shellEnvironment,
 	);
 	assert.equal(configuredNoShell.outputs.get('problem-count'), '0', configuredNoShell.log);
 	await rm(join(workspace, '.github/actionlint.yaml'));
-	await rm(join(workspace, '.github/actionlint.plugins.lock.json'));
 	const saved = await run({
 		files: 'testdata/err/one_error.yaml',
 		format: 'json-lines',
@@ -414,17 +405,21 @@ try {
 		{ config: 'tools: {shellchek: false}' },
 	];
 	for (const inputs of invalidInputs) await run(inputs, 2);
-	await run({ files: 'missing.yml', shellcheck: 'false', pyflakes: 'false' }, 3);
+	await run({ files: 'missing.yml', 'disable-tools': 'shellcheck,ruff' }, 3);
 	await run({ 'config-file': join(shared, 'missing.yaml') }, 3);
 	await writeFile(
 		join(workspace, '.github/workflows/custom-runner.yml'),
 		'name: Custom runner\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04-custom\n    steps:\n      - run: echo hello\n',
 	);
-	const customRunner = { files: '', shellcheck: 'false', pyflakes: 'false' };
+	const customRunner = { files: '', 'disable-tools': 'shellcheck,ruff' };
 	await run({ ...customRunner, config: JSON.stringify({ 'self-hosted-runner': { labels: ['ubuntu-24.04-custom'] } }) });
 	await run({ ...customRunner, config: 'self-hosted-runner: {labels: [ubuntu-24.04-custom]}' });
-	await run({ ...customRunner, ignore: 'label "ubuntu-24\\.04-custom" is unknown\\.' });
-	const quotedIgnore = await run({ ...customRunner, ignore: '\'label "ubuntu-24\\.04-custom" is unknown\\.\'' }, 1);
+	const customRunnerConfig = { ...customRunner, config: 'self-hosted-runner: {labels: []}' };
+	await run({ ...customRunnerConfig, ignore: 'label "ubuntu-24\\.04-custom" is unknown\\.' });
+	const quotedIgnore = await run(
+		{ ...customRunnerConfig, ignore: '\'label "ubuntu-24\\.04-custom" is unknown\\.\'' },
+		1,
+	);
 	assert.match(quotedIgnore.log, /quotes|apostrophes/i);
 	for (const extension of ['yaml', 'yml']) {
 		const configuration = join(workspace, `.github/actionlint.${extension}`);
@@ -447,15 +442,13 @@ try {
 	const realCache = process.env.ACTIONLINT_TEST_GITHUB_CACHE === '1';
 	const pluginInputs = {
 		files: 'plugin.yml',
-		shellcheck: 'false',
-		ruff: 'false',
 		'plugin-cache': String(realCache),
 	};
 	/** @param {string} url */
 	const pluginConfig = (url) =>
 		JSON.stringify({
 			plugins: [`${url}#sha256=${pluginDigest}`],
-			lint: { rules: { plugins: { 'shellcheck-rs': 'error' } } },
+			lint: { rules: { plugins: { shellcheck: 'error' } } },
 		});
 	const cold = await run({ ...pluginInputs, config: pluginConfig(pluginURL) }, 1, pluginEnvironment);
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
@@ -483,20 +476,18 @@ try {
 	});
 	assert.equal(install.status, 0, `${install.error ?? ''}\n${install.stdout}\n${install.stderr}`);
 	const installed = await run(
-		{ ...pluginInputs, shellcheck: 'true', 'fail-on-error': 'false' },
+		{ ...pluginInputs, 'fail-on-error': 'false' },
 		0,
 		pluginEnvironment,
 	);
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const installedDiagnostics = installed.analysis.diagnostics;
 	assert.ok(
-		installedDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck-rs'),
+		installedDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck'),
 		installed.log,
 	);
-	const disabled = await run(pluginInputs, 1, pluginEnvironment);
-	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
-	const disabledDiagnostics = disabled.analysis.diagnostics;
-	assert.deepEqual(disabledDiagnostics, installedDiagnostics.filter(diagnostic => diagnostic.rule === 'shellcheck-rs'));
+	const disabled = await run({ ...pluginInputs, 'disable-tools': 'shellcheck' }, 0, pluginEnvironment);
+	assert.deepEqual(disabled.analysis.diagnostics, []);
 	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.2.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
@@ -509,18 +500,16 @@ try {
 	);
 	const defaultInputs = {
 		files: 'default-plugins.yml',
-		shellcheck: 'true',
-		ruff: 'true',
 		'plugin-cache': 'false',
 		'fail-on-error': 'false',
 	};
-	const lockPath = join(workspace, '.github/actionlint.plugins.lock.json');
-	const lock = await readFile(lockPath, 'utf8');
+	const configPath = join(workspace, '.github/actionlint.yaml');
+	const config = await readFile(configPath, 'utf8');
 	const defaults = await run(defaultInputs, 0, pluginEnvironment);
 	assert.equal(defaults.analysis.completed, true, defaults.log);
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const defaultDiagnostics = defaults.analysis.diagnostics;
-	for (const [rule, code] of [['shellcheck-rs', 'SC2086'], ['ruff', 'F821']]) {
+	for (const [rule, code] of [['shellcheck', 'SC2086'], ['ruff', 'F821']]) {
 		assert.ok(
 			defaultDiagnostics.some((diagnostic) => diagnostic.rule === rule && diagnostic.code === code),
 			`missing ${rule}/${code}: ${defaults.log}`,
@@ -539,7 +528,7 @@ try {
 	});
 	assert.equal(offline.analysis.completed, true, offline.log);
 	assert.deepEqual(offline.analysis.diagnostics, defaultDiagnostics);
-	assert.equal(await readFile(lockPath, 'utf8'), lock);
+	assert.equal(await readFile(configPath, 'utf8'), config);
 	console.log('GitHub Action entrypoint, published default plugins and cache tests passed');
 } finally {
 	if (dirname(workspace) === tempRoot) {
