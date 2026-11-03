@@ -44,6 +44,8 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	typPosition_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
 	_ = typPosition_
 
+	b_.AddType("occurrence-id", host.String)
+
 	typLine_ := b_.AddType("line", host.Variant{Cases: []host.Case{{Name: "script", Payload: host.U32}, {Name: "comment", Payload: typPosition_}, {Name: "startup", Payload: nil}}})
 	_ = typLine_
 
