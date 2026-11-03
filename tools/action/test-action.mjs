@@ -328,17 +328,17 @@ try {
 	assert.equal(fixable.analysis.sarif.runs[0].columnKind, 'unicodeCodePoints');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quote.fixes[0].edits.length);
-	const legacyStandalone = await run(
+	const ignoredLegacyInput = await run(
 		{ files: 'shell-fix.yaml', shellcheck: 'false', pyflakes: 'false', 'fail-on-error': 'false' },
 		0,
 		shellEnvironment,
 	);
 	assert.ok(
-		legacyStandalone.analysis.diagnostics.some(
+		ignoredLegacyInput.analysis.diagnostics.some(
 			/** @param {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic} diagnostic */
-			diagnostic => diagnostic.rule === 'shellcheck-rs',
+			diagnostic => diagnostic.rule === 'shellcheck',
 		),
-		legacyStandalone.log,
+		ignoredLegacyInput.log,
 	);
 	await installManagedShell(shellEnvironment);
 	await writeFile(

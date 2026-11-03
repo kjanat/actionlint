@@ -101,7 +101,7 @@ run = "go run golang.org/x/vuln/cmd/govulncheck@latest ./..."
 description = "Run layer, Go, architecture, vulnerability and playground checks"
 depends     = ["lint-build"]
 run         = [
-  "mise run --continue-on-error layers-check lint:golangci lint:architecture",
+  "mise run --continue-on-error layers-check ::: lint:golangci ::: lint:architecture",
   "mise run lint:vulnerabilities",
   "mise run lint:playground"
 ]
