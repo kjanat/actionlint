@@ -1,0 +1,58 @@
+{
+  "$schema": "https://beepboop.kjanat.dev/schema/v1.json",
+  "managers": [
+    "cargo",
+    "github-release",
+    "go",
+    "goreleaser",
+    "npm",
+    "oci",
+    "workflow"
+  ],
+  "streams": {
+    "main": {
+      "versioning": "independent",
+      "prepare": {
+        "version": "manual"
+      },
+      "workflows": {
+        "changelog-release": {
+          "file": "changelog-release.yml",
+          "mode": "observe"
+        },
+        "npm-release": {
+          "file": "npm-release.yml",
+          "mode": "observe"
+        },
+        "pypi-release": {
+          "file": "pypi-release.yml",
+          "mode": "observe"
+        },
+        "release-notes": {
+          "file": "release-notes.yml",
+          "mode": "observe",
+          "ref": "refs/heads/master"
+        },
+        "release-prepare": {
+          "file": "release-prepare.yml",
+          "mode": "observe"
+        },
+        "release": {
+          "file": "release.yml",
+          "mode": "observe",
+          "ref": "refs/tags/*"
+        },
+        "sdk-publish": {
+          "file": "sdk-publish.yml",
+          "mode": "observe"
+        }
+      },
+      "required": [
+        "cargo:actionlint-extension-api",
+        "npm:@kjanat/actionlint",
+        "npm:@kjlint/changelog-rss",
+        "goreleaser:actionlint"
+      ]
+    }
+  }
+}
