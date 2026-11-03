@@ -1,5 +1,10 @@
 # Plugins
 
+Plugins can ship as WebAssembly components, supported core Wasm script engines, or
+[process-provider manifests](#local-tool-provider-manifests) for external tools.
+The [TypeScript SDK](../packages/plugin-sdk/README.md) supports manifest authoring,
+jq tests and packaging. See [contribution routes](#contribute-a-rule) for their public contracts.
+
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.1.0` interface. The contract is
 [`crates/actionlint-extension-api/wit/analyzer.wit`](../crates/actionlint-extension-api/wit/analyzer.wit). A plugin describes itself once, then receives one document per
 call with the facts it declared and returns diagnostics. Components may instead implement the independent
@@ -906,12 +911,26 @@ for inspection but does not replace that contract.
 
 ## Contribute a rule
 
-Plugins live in their own repositories and ship a component. Open an issue in this repository to list a plugin in the
-documentation.
+Plugins can live in their own repositories. Choose the contract that fits the integration:
+
+| Contribution                             | Public contract                                         | Authoring path                                                                       |
+| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Workflow analyzer or runner provider     | Versioned WIT interfaces                                | [Component examples](#write-a-plugin)                                                |
+| Embedded script engine                   | Versioned WIT or core Wasm JSON ABI                     | [Script engines](#script-engines)                                                    |
+| External executable or container scanner | Version 1 process-provider manifest and diagnostic JSON | [TypeScript SDK](../packages/plugin-sdk/README.md), including jq tests and packaging |
+
+These artifact contracts are independent of the host's implementation language. Target a supported interface version;
+incompatible interfaces need a new version. The Go embedding API and internal packages are separate from these wire
+contracts. The SDK currently provides local tarballs and package previews; follow its README for a matching host CLI.
+
+Publish through the [registry submission workflow](https://github.com/kjanat/actionlint-registry/blob/master/docs/publishing.md).
+Admission checks publisher identity, metadata and artifact digests. It does not certify plugin safety or compatibility
+with every host. Run the candidate fixture against the exact artifact and intended host version. Native process
+providers also require the user's execution opt-in. Open an issue here to add a plugin to the documentation.
 
 Built-in rule metadata lives in `internal/rulecatalog`; configuration projections live in
 `internal/config`. Stateless checks in `internal/semantics` accept explicit inputs and return diagnostics.
-Visitor implementations in `internal/engine` are migration adapters. New document analyzers implement
+Workflow declaration checks live in `internal/workflow/checks`. New document analyzers implement
 `analyzer.Analyzer` as described in the [Go API](api.md#add-an-analyzer). The catalogue generates
 [`docs/rules.md`](rules.md); [`docs/checks.md`](checks.md) provides behavior examples. Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`
 usable and add a new version for incompatible changes.
