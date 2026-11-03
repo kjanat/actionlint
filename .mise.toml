@@ -43,7 +43,7 @@ zizmor                            = "latest"
 "github:microsoft/TypeScript"     = { prefix = "7" }
 "github:tombi-toml/tombi"         = { prefix = "1.9" }
 "github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
-"npm:@kjanat/fmt"                 = { version = "latest", minimum_release_age = "0s", depends = ["node"] }
+"npm:@kjanat/fmt"                 = { version = "latest", minimum_release_age = "0s", allow_low_downloads = true, depends = ["node"] }
 rust                              = {
   version    = "latest",
   components = ["clippy", "rustfmt"],
