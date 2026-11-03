@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 )
 
@@ -65,6 +66,27 @@ func TestEvaluateFixtureUsesRuntimeTransformsAndReviewsOutput(t *testing.T) {
 	diagnostic := got.Result.Diagnostics[0]
 	if diagnostic.Filename != "snippet.py" || diagnostic.Message != "config" || len(diagnostic.Fixes) != 1 || diagnostic.Fixes[0].Replacements[0].Text != "z" {
 		t.Errorf("diagnostic=%+v", diagnostic)
+	}
+}
+
+func TestEvaluateFixtureFixApplicability(t *testing.T) {
+	for _, label := range []string{"safe", "unsafe", "suggested", "automatic"} {
+		manifest := authoringManifest(t, `[{code:"E1", filename:$vars.filename, message:"fix", location:{row:1,column:1}, fixes:[{applicability:"`+label+`",replacements:[{row:1,column:1,end_row:1,end_column:2,text:"z"}]}]}]`)
+		stdout := `{}`
+		got, err := EvaluateFixture(t.Context(), manifest, nil, analyzer.ScriptRequest{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
+		want, parseErr := diagnostic.ParseApplicability(label)
+		if parseErr != nil {
+			if err == nil {
+				t.Fatalf("accepted unknown applicability %q", label)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Result == nil || len(got.Result.Diagnostics) != 1 || len(got.Result.Diagnostics[0].Fixes) != 1 || got.Result.Diagnostics[0].Fixes[0].Applicability != want {
+			t.Fatalf("lost %s applicability in the process protocol: %+v", label, got.Result)
+		}
 	}
 }
 

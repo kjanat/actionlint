@@ -32,8 +32,8 @@ type Diagnostic struct {
 
 // Fix is one complete suggested change. Apply all edits together.
 type Fix struct {
-	// Applicability is safe, unsafe or suggested. Missing values require review.
-	Applicability string `json:"applicability,omitempty"`
+	// Applicability belongs to this alternative, not its rule. Missing values require review.
+	Applicability Applicability `json:"applicability,omitempty"`
 	// Revisions bind edits to the source snapshots the analyzer checked.
 	Revisions map[string]string `json:"revisions,omitempty"`
 

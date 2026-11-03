@@ -54,13 +54,6 @@ func TestFixPreviewAndApplyRechecks(t *testing.T) {
 }
 
 func TestFixUnusedSuppressions(t *testing.T) {
-	got := testRunCommand("", "rules", "unused-suppression", "--json", "--norc")
-	var metadata struct {
-		FixAvailability string `json:"fix_availability"`
-	}
-	if err := json.Unmarshal([]byte(got.Stdout), &metadata); err != nil || got.Status != 0 || metadata.FixAvailability != "safe" {
-		t.Fatalf("rule still advertises no fixes: %+v, %+v, %v", metadata, got, err)
-	}
 	for _, tc := range []struct{ name, before, after string }{
 		{"all unused", "      - run: echo ok # ignore[expression-reference, script-interpolation] -- obsolete\n", "      - run: echo ok\n"},
 		{"partially used", "      - run: echo '::set-output name=x::y' # actionlint:ignore deprecated-commands, script-interpolation -- keep reason\n", "      - run: echo '::set-output name=x::y' # actionlint:ignore deprecated-commands -- keep reason\n"},

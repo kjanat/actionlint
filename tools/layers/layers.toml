@@ -591,6 +591,7 @@ name      = "local-host"
 doc       = "The local application host: plugins, tools and editors around the application. It does not reach terminal adapters."
 packages  = ["internal/localapp"]
 allow     = [
+  "results",
   "acquisition-http",
   "analysis-contracts",
   "analyzer-host",
@@ -748,6 +749,7 @@ allow          = [
   "plugin-artifacts",
   "presentation",
   "process-config",
+  "repository-contracts",
   "tool-backends",
   "tool-profiles",
   "tool-providers",

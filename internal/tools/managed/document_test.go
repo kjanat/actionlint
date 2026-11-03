@@ -177,7 +177,7 @@ func (g *documentGuest) Analyze(_ context.Context, input analyzer.Input) ([]diag
 	result := []diagnostic.Diagnostic{{
 		Reference: &reference, Rule: "shellcheck", Code: "SC2086", Message: "Quote variable", Path: input.Path, Start: start, End: end,
 		Fixes: []diagnostic.Fix{{
-			Description: "Quote", Applicability: "unsafe", Revisions: map[string]string{input.Path: input.Reference.Revision},
+			Description: "Quote", Applicability: diagnostic.FixUnsafe, Revisions: map[string]string{input.Path: input.Reference.Revision},
 			Edits: []diagnostic.Edit{{Path: input.Path, Start: start, End: end, Replacement: `"$VALUE"`}},
 		}},
 	}}

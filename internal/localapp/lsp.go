@@ -234,7 +234,7 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 				if edit, ok := suppression.Edit(captured.Content, target.First, d.Rule, allowed); ok {
 					edit.Path = alias
 					d.Fixes = append(d.Fixes, diagnostic.Fix{
-						Description: "Suppress " + d.Rule + " for this declaration", Applicability: "suggested",
+						Description: "Suppress " + d.Rule + " for this declaration", Applicability: diagnostic.FixSuggested,
 						Revisions: map[string]string{alias: captured.Revision.Digest()}, Edits: []diagnostic.Edit{edit},
 					})
 				}

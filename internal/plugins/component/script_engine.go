@@ -418,7 +418,7 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 	if err != nil {
 		return rule.Descriptor{}, err
 	}
-	d := rule.Descriptor{FixAvailability: "none"}
+	var d rule.Descriptor
 	for name, dest := range map[string]*string{"name": &d.Name, "description": &d.Description, "category": &d.Category, "subcategory": &d.Subcategory, "maturity": &d.Maturity, "provider": &d.Provider, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
 		if *dest, err = liftString(r, name); err != nil {
 			return d, err

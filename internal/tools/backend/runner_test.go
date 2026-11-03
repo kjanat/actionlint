@@ -128,7 +128,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 			fix, ok := scriptFix(script.Source, generated(script.Source.Value()), analyzer.ScriptFix{Description: "Quote variables", Replacements: []analyzer.ScriptReplacement{
 				replacement(4, 10, `"`), replacement(4, 16, `"`), replacement(5, 6, `"`), replacement(5, 12, `"`),
 			}})
-			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != "suggested" {
+			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != diagnostic.FixSuggested {
 				t.Fatalf("mapped fix: %+v", fix)
 			}
 			changed := applyFix(t, input, fix)
@@ -160,6 +160,19 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 				t.Fatalf("decoded YAML changed unexpectedly: %+v", decoded)
 			}
 		})
+	}
+}
+
+func TestScriptFixPreservesApplicability(t *testing.T) {
+	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
+	for _, applicability := range []diagnostic.Applicability{diagnostic.FixSuggested, diagnostic.FixSafe, diagnostic.FixUnsafe} {
+		fix, ok := scriptFix(script.Source, generated(script.Source.Value()), analyzer.ScriptFix{
+			Applicability: applicability,
+			Replacements:  []analyzer.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},
+		})
+		if !ok || fix.Applicability != applicability {
+			t.Fatalf("source mapping changed %s applicability: %+v, %t", applicability, fix, ok)
+		}
 	}
 }
 

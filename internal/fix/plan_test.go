@@ -21,7 +21,7 @@ func TestPlanAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := diagnostic.Diagnostic{Fixes: []diagnostic.Fix{{Applicability: "safe", Revisions: map[string]string{path: sourceid.Digest([]byte(before))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
+	d := diagnostic.Diagnostic{Fixes: []diagnostic.Fix{{Applicability: diagnostic.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(before))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
 	reader := fsread.New(t.Context(), nil, nil)
 	plan, err := Build(t.Context(), []diagnostic.Diagnostic{d}, reader, false)
 	if err != nil {
@@ -61,13 +61,14 @@ func TestRefuseInvalidTransactions(t *testing.T) {
 		name, revision string
 		edits          []diagnostic.Edit
 	}{
+		{"empty alternative", sourceid.Digest(content), nil},
 		{"missing revision", "", []diagnostic.Edit{base}},
 		{"stale revision", "bad", []diagnostic.Edit{base}},
 		{"overlap", sourceid.Digest(content), []diagnostic.Edit{base, {Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}}}},
 		{"outside", sourceid.Digest(content), []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 9, Column: 1}, End: diagnostic.Position{Line: 9, Column: 2}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := Build(t.Context(), []diagnostic.Diagnostic{{Fixes: []diagnostic.Fix{{Applicability: "safe", Revisions: map[string]string{path: tc.revision}, Edits: tc.edits}}}}, fsread.New(t.Context(), nil, nil), false)
+			_, err := Build(t.Context(), []diagnostic.Diagnostic{{Fixes: []diagnostic.Fix{{Applicability: diagnostic.FixSafe, Revisions: map[string]string{path: tc.revision}, Edits: tc.edits}}}}, fsread.New(t.Context(), nil, nil), false)
 			if err == nil {
 				t.Fatal("accepted invalid edits")
 			}

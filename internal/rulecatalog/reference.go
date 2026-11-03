@@ -15,7 +15,7 @@ func Reference() []byte {
 	rules := Rules()
 	slices.SortFunc(rules, func(a, b rule.Descriptor) int { return strings.Compare(a.Name, b.Name) })
 	for _, r := range rules {
-		fmt.Fprintf(&b, "## %s\n\n%s\n\n%s\n\n- Category: `%s/%s`\n- Provider: `%s`\n- Maturity: `%s`\n- Enabled by default: `%t`\n- Fixes: `%s`\n\n", r.Name, r.Explanation, r.Help, r.Category, r.Subcategory, r.Provider, r.Maturity, r.Recommended, r.FixAvailability)
+		fmt.Fprintf(&b, "## %s\n\n%s\n\n%s\n\n- Category: `%s/%s`\n- Provider: `%s`\n- Maturity: `%s`\n- Enabled by default: `%t`\n\n", r.Name, r.Explanation, r.Help, r.Category, r.Subcategory, r.Provider, r.Maturity, r.Recommended)
 		fmt.Fprintf(&b, "Configure this rule with `lint.rules.%s.%s`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.\n\n", ConfigGroup(r.Name), r.Name)
 		for _, e := range r.Examples {
 			fmt.Fprintf(&b, "%s\n\n```yaml\n%s\n```\n\n```yaml\n%s\n```\n\n", e.Description, e.Before, e.After)

@@ -37,7 +37,7 @@ func (editorPathAnalyzer) Descriptor() analyzer.Descriptor {
 
 func (editorPathAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	reference := input.Reference
-	return []diagnostic.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Related: []diagnostic.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}, Fixes: []diagnostic.Fix{{Description: "normalize", Applicability: "safe", Revisions: map[string]string{input.Path: reference.Revision}, Edits: []diagnostic.Edit{{Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
+	return []diagnostic.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Related: []diagnostic.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}, Fixes: []diagnostic.Fix{{Description: "normalize", Applicability: diagnostic.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []diagnostic.Edit{{Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }
 
 func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testing.T) {
@@ -77,7 +77,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if len(finding.Related) != 1 || finding.Related[0].Path != path || !finding.Related[0].Revision.Valid() || finding.Related[0].Coordinates != source.YAML {
 			t.Fatalf("relative related path escaped captured normalization: %+v", finding.Related)
 		}
-		if len(finding.Fixes) != 2 || finding.Fixes[0].Applicability != "safe" || finding.Fixes[1].Applicability != "suggested" {
+		if len(finding.Fixes) != 2 || finding.Fixes[0].Applicability != diagnostic.FixSafe || finding.Fixes[1].Applicability != diagnostic.FixSuggested {
 			t.Fatalf("relative fix path escaped normalization: %+v", finding.Fixes)
 		}
 		for _, fix := range finding.Fixes {

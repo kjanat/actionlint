@@ -19,7 +19,7 @@ func UnusedSuppressionFix(content []byte, path string, ref source.Reference, pos
 	}
 	edit.Path = path
 	return diagnostic.Fix{
-		Description: "Remove unused suppression", Applicability: "safe",
+		Description: "Remove unused suppression", Applicability: diagnostic.FixSafe,
 		Revisions: map[string]string{path: ref.Revision}, Edits: []diagnostic.Edit{edit},
 	}, true
 }

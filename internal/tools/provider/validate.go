@@ -13,6 +13,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // maxManifestBytes bounds a manifest before it is decoded.
@@ -46,10 +47,20 @@ func Parse(data []byte) (Manifest, error) {
 	if err := schema.Validate(document); err != nil {
 		return Manifest{}, fmt.Errorf("invalid tool provider manifest: %w", err)
 	}
-	var manifest Manifest
-	if err := jsonv2.Unmarshal(data, &manifest, jsonv2.RejectUnknownMembers(true)); err != nil {
+	// Accept old rule-level fix labels only at the input boundary. They do not
+	// describe whether any particular finding has an edit.
+	var wire struct {
+		Manifest
+		Rule struct {
+			rule.Descriptor
+			LegacyFixAvailability string `json:"fix_availability,omitempty"`
+		} `json:"rule"`
+	}
+	if err := jsonv2.Unmarshal(data, &wire, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return Manifest{}, fmt.Errorf("invalid tool provider manifest: %w", err)
 	}
+	manifest := wire.Manifest
+	manifest.Rule = wire.Rule.Descriptor
 	if err := validate(manifest); err != nil {
 		return Manifest{}, fmt.Errorf("invalid tool provider manifest %s: %w", manifest.ID, err)
 	}

@@ -59,6 +59,15 @@
         "replacements"
       ],
       "properties": {
+        "applicability": {
+          "description": "Review required for this fix alternative. Omission requires review.",
+          "type": "string",
+          "enum": [
+            "safe",
+            "unsafe",
+            "suggested"
+          ]
+        },
         "description": {
           "type": "string"
         },

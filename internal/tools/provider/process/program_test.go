@@ -30,7 +30,7 @@ func inlineBunManifest(t *testing.T, source string) (provider.Manifest, *analyze
 	manifest := documentManifest(provider.ProcessSpec{Entry: "bun", Args: []string{"{program-file}"}, Program: &provider.InlineProgram{Filename: "actionlint.mjs", Inline: source}, Stdin: provider.StdinRequest, Config: provider.ConfigRendering{Render: provider.RenderNone}, Output: provider.Output{Format: provider.FormatEnvelope}})
 	manifest.Rule.Category, manifest.Rule.Subcategory, manifest.Rule.Maturity, manifest.Rule.Provider = "correctness", "workflow", "stable", "helper"
 	manifest.Rule.Description = "Inline runtime fixture"
-	manifest.Rule.DocumentationURL, manifest.Rule.FixAvailability = "https://example.com/helper", "none"
+	manifest.Rule.DocumentationURL = "https://example.com/helper"
 	data, err := json.Marshal(manifest)
 	if err != nil {
 		t.Fatal(err)

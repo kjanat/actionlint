@@ -28,7 +28,7 @@ func NewAnalyzer(provider resolver.Resolver) *Analyzer {
 }
 
 func (*Analyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "remote-resolution", Description: "Resolve action and workflow references with an explicit provider", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", FixAvailability: "suggested", Help: "Review the provider's resolved commit before pinning this dependency.", Requires: []analyzer.Fact{analyzer.Dependencies}}
+	return analyzer.Descriptor{Name: "remote-resolution", Description: "Resolve action and workflow references with an explicit provider", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", Help: "Review the provider's resolved commit before pinning this dependency.", Requires: []analyzer.Fact{analyzer.Dependencies}}
 }
 
 func (a *Analyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -51,7 +51,7 @@ func (a *Analyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnos
 		reference := dep.Reference
 		d := diagnostic.Diagnostic{Rule: "remote-resolution", Code: "pin-available", Severity: "info", Reference: &reference, Path: input.Path, Start: dep.Start, End: dep.End, Message: fmt.Sprintf("%s resolves to commit %s (repository ID %d, observed %s)", dep.Uses, result.Commit, result.RepositoryID, result.ObservedAt)}
 		if dep.End != dep.Start {
-			d.Fixes = []diagnostic.Fix{{Description: "Pin " + name + " to resolved commit", Applicability: "suggested", Revisions: map[string]string{input.Path: input.Reference.Revision}, Edits: []diagnostic.Edit{{Path: input.Path, Start: dep.Start, End: dep.End, Replacement: strconv.Quote(name + "@" + result.Commit)}}}}
+			d.Fixes = []diagnostic.Fix{{Description: "Pin " + name + " to resolved commit", Applicability: diagnostic.FixSuggested, Revisions: map[string]string{input.Path: input.Reference.Revision}, Edits: []diagnostic.Edit{{Path: input.Path, Start: dep.Start, End: dep.End, Replacement: strconv.Quote(name + "@" + result.Commit)}}}}
 		}
 		findings = append(findings, d)
 	}

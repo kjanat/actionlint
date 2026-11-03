@@ -1,6 +1,7 @@
 package provider_test
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 	"testing"
@@ -37,6 +38,23 @@ func TestParseMinimalManifest(t *testing.T) {
 	}
 	if m.Rule.Name != "lint" || m.Transport != provider.TransportProcess || m.Process == nil || m.Process.Output.Format != provider.FormatJSON {
 		t.Errorf("unexpected manifest %+v", m)
+	}
+}
+
+func TestLegacyFixAvailabilityIsIgnored(t *testing.T) {
+	for _, label := range []string{"none", "safe", "suggested"} {
+		data := strings.Replace(minimal, `"rule": {`, `"rule": {"fix_availability": "`+label+`",`, 1)
+		manifest, err := provider.Parse([]byte(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(encoded), "fix_availability") || manifest.Capabilities.Fixes {
+			t.Fatalf("legacy label affected capabilities or metadata: %s", encoded)
+		}
 	}
 }
 

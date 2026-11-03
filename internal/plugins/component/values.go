@@ -230,7 +230,9 @@ func liftDescriptor(v wacogo.Val) (analyzer.Descriptor, error) {
 		return analyzer.Descriptor{}, err
 	}
 	descriptor := analyzer.Descriptor{Name: name}
-	for key, dest := range map[string]*string{"description": &descriptor.Description, "category": &descriptor.Category, "subcategory": &descriptor.Subcategory, "maturity": &descriptor.Maturity, "provider": &descriptor.Provider, "explanation": &descriptor.Explanation, "help": &descriptor.Help, "documentation-url": &descriptor.DocumentationURL, "fix-availability": &descriptor.FixAvailability} {
+	// The versioned analyzer ABI includes fix-availability. Ignore that legacy
+	// claim: only the fixes on a diagnostic describe edits this host can offer.
+	for key, dest := range map[string]*string{"description": &descriptor.Description, "category": &descriptor.Category, "subcategory": &descriptor.Subcategory, "maturity": &descriptor.Maturity, "provider": &descriptor.Provider, "explanation": &descriptor.Explanation, "help": &descriptor.Help, "documentation-url": &descriptor.DocumentationURL} {
 		value, err := liftString(record, key)
 		if err != nil {
 			return analyzer.Descriptor{}, err
@@ -331,7 +333,11 @@ func liftFixes(v wacogo.Val) ([]diagnostic.Fix, error) {
 			return nil, err
 		}
 		var fix diagnostic.Fix
-		if fix.Applicability, err = liftString(record, "applicability"); err != nil {
+		applicability, err := liftString(record, "applicability")
+		if err != nil {
+			return nil, err
+		}
+		if fix.Applicability, err = diagnostic.ParseApplicability(applicability); err != nil {
 			return nil, err
 		}
 		if fix.Revisions, err = liftRevisions(record.Field("revisions")); err != nil {

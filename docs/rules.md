@@ -14,7 +14,6 @@ Check the action reference, runtime, declared inputs and action metadata at the 
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.action`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -28,7 +27,6 @@ Pass explicit cache limits to reusable workflows on low-trust triggers.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.security.cache-call-unrestricted`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -42,7 +40,6 @@ Align cache actions with the effective cache access limits.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.cache-operation`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -56,7 +53,6 @@ Restrict cache writes for low-trust triggers using explicit cache permissions or
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.security.cache-write-untrusted`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -70,7 +66,6 @@ Expression string comparisons ignore case; avoid using them as case-sensitive id
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.suspicious.case-insensitive-conditions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -84,7 +79,6 @@ Move the expression to a field where its contexts and functions are available, o
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.context-availability`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -98,7 +92,6 @@ Store the credential as a secret and reference it through the secrets context.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.security.credentials`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -142,7 +135,6 @@ Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -156,7 +148,6 @@ Remove the suppression and address its finding, or change the repository suppres
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.policy.disallow-suppressions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -170,7 +161,6 @@ Add the steps the job should run, or remove the job.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.style.empty-job`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -205,7 +195,6 @@ Write the commands the step should run, or remove the step.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.style.empty-run`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -239,7 +228,6 @@ Add the events that should start the workflow, or delete the workflow.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.style.empty-triggers`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -273,7 +261,6 @@ Use valid environment variable names and values in the indicated mapping.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.env-var`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -311,7 +298,6 @@ Use a property supplied by the declared events and activity types. Unknown event
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.event-payload`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -325,7 +311,6 @@ Check the trigger name, activity type and filters at the reported location.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.events`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -339,7 +324,6 @@ Record the executable bit for the referenced script in Git, or invoke it explici
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.executable-bit`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -353,7 +337,6 @@ Use the expression value and interpolation form required by this workflow field.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.expression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -367,7 +350,6 @@ Check parentheses, argument count, format placeholders and literal JSON.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.expression-call`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -381,7 +363,6 @@ Use a declared context, property or function; check the suggested spelling and a
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.expression-reference`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -395,7 +376,6 @@ Correct the indicated expression token, literal or delimiter.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.expression-syntax`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -409,7 +389,6 @@ Supply the expected value type; convert serialized values explicitly when needed
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.expression-type`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -423,7 +402,6 @@ Correct the pattern syntax and check how positive and negative patterns are orde
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.glob`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -437,7 +415,6 @@ Use a unique valid identifier within its job or workflow scope.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.id`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -473,7 +450,6 @@ Remove the constant condition or correct the expression so it tests the intended
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.if-cond`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -508,7 +484,6 @@ Use a known rule name and place the directive on the declaration it is intended 
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.inline-suppression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -522,7 +497,6 @@ Reference an existing job ID and remove dependency cycles.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.job-needs`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -557,7 +531,6 @@ Check axis names and values and ensure include/exclude entries match the intende
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.matrix`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -571,7 +544,6 @@ Check the uses path and ensure the local action metadata or Dockerfile exists in
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.missing-local-action`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -585,7 +557,6 @@ Declare least-privilege permissions at workflow or job scope. An empty mapping, 
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.security.missing-workflow-permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -620,7 +591,6 @@ Compare values of matching types or convert them explicitly before comparison.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.suspicious.mixed-type-comparisons`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -634,7 +604,6 @@ Use the same value types in matrix axes and include/exclude filters.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.suspicious.mixed-type-matrix-filters`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -648,7 +617,6 @@ Write the whole number GitHub will use, greater than zero.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.numeric-values`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -690,7 +658,6 @@ Check background-step names and wait/cancel references in the parallel group.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.parallel-steps`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -704,7 +671,6 @@ Use supported permission scopes and read, write or none access levels.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -742,7 +708,6 @@ Select --action-metadata=online to acquire full SHA-1 manifests, or warm the imm
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.policy.require-action-metadata`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -756,7 +721,6 @@ Pin uses references to a full commit SHA and container images to a digest.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.policy.require-commit-hash`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -770,7 +734,6 @@ Set timeout-minutes on the job within the configured bounds.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.policy.require-job-timeout`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -784,7 +747,6 @@ Declare explicit permissions at the scope required by repository policy.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.policy.require-permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -798,7 +760,6 @@ Correct the reported Python code; select Ruff rules through tools.ruff configura
 - Provider: `ruff`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.external.ruff`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -812,7 +773,6 @@ Correct the runner label or declare repository-specific labels in lint.rules.cor
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.runner-label`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -826,7 +786,6 @@ Pass untrusted values through environment variables or action inputs. For secret
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.security.script-injection`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -892,7 +851,6 @@ Pass dynamic values through environment variables and read them as data in the s
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.script-interpolation`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -947,7 +905,6 @@ Select a supported shell for the runner, or provide an explicit shell command co
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.shell-name`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -983,7 +940,6 @@ Correct the reported shell construct; inspect suggested edits before applying th
 - Provider: `shellcheck`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `suggested`
 
 Configure this rule with `lint.rules.external.shellcheck`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -997,7 +953,6 @@ Use a boolean expression; a nonempty string, including the string false, is trut
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.suspicious.string-conditions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -1011,7 +966,6 @@ Check the indicated YAML field and its expected GitHub Actions value type.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.syntax-check`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -1025,7 +979,6 @@ Use !cancelled() to run after success or failure and stop when cancelled. For co
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `suggested`
 
 Configure this rule with `lint.rules.correctness.uncancellable-condition`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -1061,7 +1014,6 @@ The middle operand of a && b || c must be truthy to select b; use an explicit co
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.unsound-ternary`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -1075,7 +1027,6 @@ Run actionlint fix --apply or use the editor quick fix to remove unused selector
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `safe`
 
 Configure this rule with `lint.rules.correctness.unused-suppression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -1089,7 +1040,6 @@ Match the reusable workflow reference and its declared input/output contract.
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.workflow-call`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
@@ -1103,6 +1053,5 @@ Use the exact name of an existing workflow in workflows; names are matched indep
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
-- Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.workflow-run-names`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.

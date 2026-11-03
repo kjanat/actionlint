@@ -43,9 +43,6 @@ func liftScriptCapabilities(value wacogo.Val, d *analyzer.ScriptEngineDescriptor
 		}
 		d.Resources = append(d.Resources, resource)
 	}
-	if d.Fixes {
-		d.Rule.FixAvailability = "suggested"
-	}
 	return nil
 }
 

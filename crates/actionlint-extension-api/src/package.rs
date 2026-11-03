@@ -121,7 +121,6 @@ impl Package<'_> {
             "explanation": rule.explanation,
             "help": rule.help,
             "documentation_url": rule.documentation_url,
-            "fix_availability": rule.fix_availability,
             "requires": requires,
         });
         if let Some(schema) = options_schema(&rule.options_schema)? {
@@ -254,7 +253,7 @@ mod tests {
             explanation: String::new(),
             help: String::new(),
             documentation_url: String::new(),
-            fix_availability: "none".into(),
+            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: options_schema.into(),
             examples: Vec::new(),
             requires: Vec::new(),
@@ -296,6 +295,7 @@ mod tests {
         assert_eq!(metadata["id"], "example-package");
         assert_eq!(metadata["name"], "Example");
         assert_eq!(metadata["descriptor"]["name"], descriptor.name);
+        assert!(metadata["descriptor"].get("fix_availability").is_none());
         assert_ne!(metadata["id"], metadata["descriptor"]["name"]);
         Ok(())
     }

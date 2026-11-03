@@ -2,7 +2,6 @@ package finding
 
 import (
 	"bytes"
-	"maps"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -45,15 +44,9 @@ func cloneFixes(fixes []diagnostic.Fix) []diagnostic.Fix {
 	}
 	out := make([]diagnostic.Fix, 0, len(fixes))
 	for _, fix := range fixes {
-		out = append(out, detachedFix(fix))
+		out = append(out, fix.Clone())
 	}
 	return out
-}
-
-func detachedFix(fix diagnostic.Fix) diagnostic.Fix {
-	fix.Revisions = maps.Clone(fix.Revisions)
-	fix.Edits = slices.Clone(fix.Edits)
-	return fix
 }
 
 func detachedOwner(owner Owner) Owner {

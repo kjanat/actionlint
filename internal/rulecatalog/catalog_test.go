@@ -30,7 +30,7 @@ func TestProviderRulesComeFromManifests(t *testing.T) {
 	for _, manifest := range manifests {
 		name := manifest.Rule.Name
 		found, ok := Find(name)
-		if !ok || found.Description != manifest.Rule.Description || found.FixAvailability != manifest.Rule.FixAvailability {
+		if !ok || !reflect.DeepEqual(found, manifest.Rule) {
 			t.Fatalf("%s: catalog %+v, manifest %+v", name, found, manifest.Rule)
 		}
 		if !IsProvider(name) || ConfigGroup(name) != "external" {

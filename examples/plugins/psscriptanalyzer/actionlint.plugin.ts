@@ -97,6 +97,5 @@ export default defineProcessProvider({
 		subcategory: 'powershell',
 		maturity: 'stable',
 		provider: 'github.com/kjanat/actionlint/examples/psscriptanalyzer',
-		fix_availability: 'suggested',
 	},
 });

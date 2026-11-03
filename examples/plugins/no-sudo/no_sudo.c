@@ -172,7 +172,7 @@ void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analy
     plugin_string_dup(&ret->provider, "example");
     plugin_string_dup(&ret->explanation, "Self-hosted runners may not provide sudo.");
     plugin_string_dup(&ret->help, "Run without privilege elevation or explicitly prepare the runner.");
-    plugin_string_dup(&ret->fix_availability, "none");
+    plugin_string_dup(&ret->fix_availability, ""); // Legacy ABI field; ignored by the host.
     plugin_string_dup(&ret->options_schema, "{}");
     ret->requires_.ptr = malloc(2 * sizeof(exports_kjanat_actionlint_analyzer_fact_t));
     if (!ret->requires_.ptr) {

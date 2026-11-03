@@ -15,8 +15,7 @@
     "recommended": true,
     "explanation": "Analyze embedded Python scripts with Ruff.",
     "help": "Correct the reported Python code; select Ruff rules through tools.ruff configuration.",
-    "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff",
-    "fix_availability": "none"
+    "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#ruff"
   },
   "preparation": "kjanat:actionlint/python-preparation@0.1.0",
   "deprecated_flags": [{ "name": "pyflakes", "value": "ignored", "arguments": ["--select", "F"] }],

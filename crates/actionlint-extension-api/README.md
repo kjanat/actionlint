@@ -24,7 +24,7 @@ impl Guest for Plugin {
             explanation: "A starting point for an analyzer.".into(),
             help: "Implement analyze to report findings.".into(),
             documentation_url: String::new(),
-            fix_availability: "none".into(),
+            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: Vec::new(),
             requires: Vec::new(),

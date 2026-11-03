@@ -10,6 +10,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
@@ -88,8 +89,9 @@ func directShellScript(arguments []string) bool {
 }
 
 type scriptArgumentProofs struct {
-	scalars   map[int]bool
-	wordLists map[int]bool
+	scalars     map[int]bool
+	wordLists   map[int]bool
+	environment map[int]scriptEnvironmentReplacement
 }
 
 // Scalar exceptions cover echo/printf data arguments. Closed literal word lists
@@ -101,7 +103,10 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 		return scriptArgumentProofs{}
 	}
 	masked := []byte(source)
-	type span struct{ first, last int }
+	type span struct {
+		first, last int
+		environment runner.ContextEnvironment
+	}
 	var expressions []span
 	for offset := 0; offset < len(source); {
 		index := strings.Index(source[offset:], "${{")
@@ -110,11 +115,12 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 		}
 		first := offset + index
 		lexer := exprlang.NewLexer(source[first+3:])
-		if _, err := exprlang.NewParser().Parse(lexer); err != nil {
+		expression, err := exprlang.NewParser().Parse(lexer)
+		if err != nil {
 			return scriptArgumentProofs{}
 		}
 		last := first + 3 + lexer.Offset()
-		expressions = append(expressions, span{first, last})
+		expressions = append(expressions, span{first, last, runner.ContextEnvironmentFor(exprlang.StaticReference(expression))})
 		// Numeric masks preserve IO-number tokens before shell redirections.
 		for i := first; i < last; i++ {
 			if masked[i] != '\n' && masked[i] != '\r' {
@@ -130,7 +136,7 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 	if err != nil {
 		return scriptArgumentProofs{}
 	}
-	proofs := scriptArgumentProofs{scalars: map[int]bool{}, wordLists: map[int]bool{}}
+	proofs := scriptArgumentProofs{scalars: map[int]bool{}, wordLists: map[int]bool{}, environment: map[int]scriptEnvironmentReplacement{}}
 	syntax.Walk(file, func(node syntax.Node) bool {
 		call, ok := node.(*syntax.CallExpr)
 		if !ok || len(call.Args) < 2 {
@@ -139,6 +145,30 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 		command := call.Args[0].Lit()
 		staticCommand := command != "" && !strings.Contains(source[call.Args[0].Pos().Offset():call.Args[0].End().Offset()], "${{")
 		for _, argument := range call.Args[1:] {
+			if staticCommand && !scriptEvaluatesArguments(command, call.Args[1:]) {
+				for _, part := range argument.Parts {
+					quoted, ok := part.(*syntax.DblQuoted)
+					if !ok || quoted.Dollar {
+						continue
+					}
+					for _, part := range quoted.Parts {
+						literal, ok := part.(*syntax.Lit)
+						if !ok {
+							continue
+						}
+						first, last := int(literal.Pos().Offset()), int(literal.End().Offset())
+						start := sort.Search(len(expressions), func(i int) bool { return expressions[i].first >= first })
+						for _, expression := range expressions[start:] {
+							if expression.last > last {
+								break
+							}
+							if expression.environment.Name() != "" && !escapedScriptDollar(source, expression.first) {
+								proofs.environment[expression.first] = scriptEnvironmentReplacement{end: expression.last, environment: expression.environment}
+							}
+						}
+					}
+				}
+			}
 			if !literalScriptWord(argument.Parts) {
 				continue
 			}

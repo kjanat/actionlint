@@ -27,8 +27,7 @@
       "provider": "echo-component",
       "recommended": true,
       "documentation_url": "https://example.com/echo",
-      "options_schema": { "type": "object" },
-      "fix_availability": "none"
+      "options_schema": { "type": "object" }
     }
   ]
 }

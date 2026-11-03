@@ -87,7 +87,7 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared profile.Prepared, 
 	if !fixPreservesIndent(source, edits) {
 		return diagnostic.Fix{}, false
 	}
-	return diagnostic.Fix{Description: fix.Description, Applicability: "suggested", Edits: edits}, true
+	return diagnostic.Fix{Description: fix.Description, Applicability: fix.Applicability, Edits: edits}, true
 }
 
 func fixPreservesIndent(source workflowdecl.ScriptSourceView, edits []diagnostic.Edit) bool {

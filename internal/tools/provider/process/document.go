@@ -200,7 +200,7 @@ func (d *DocumentAnalyzer) finding(input analyzer.Input, entry analyzer.ScriptDi
 	}
 	finding := diagnostic.Diagnostic{Rule: d.descriptor.Name, Code: entry.Code, Severity: string(severity), Message: message, Path: input.Path, Start: start, End: end, DocumentationURL: entry.URL}
 	for _, fix := range entry.Fixes {
-		mapped := diagnostic.Fix{Description: fix.Description, Revisions: map[string]string{input.Path: input.Revision.Digest()}}
+		mapped := diagnostic.Fix{Applicability: fix.Applicability, Description: fix.Description, Revisions: map[string]string{input.Path: input.Revision.Digest()}}
 		for _, replacement := range fix.Replacements {
 			start, err := documentPosition(input, analyzer.ScriptPosition{Row: replacement.Row, Column: replacement.Column})
 			if err != nil {

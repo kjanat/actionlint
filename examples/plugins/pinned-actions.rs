@@ -23,7 +23,7 @@ impl Guest for Plugin {
             explanation: String::new(),
             help: String::new(),
             documentation_url: String::new(),
-            fix_availability: "none".into(),
+            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: Vec::new(),
         }

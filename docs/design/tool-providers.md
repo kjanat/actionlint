@@ -195,7 +195,6 @@ func (s *Store) Materialize(ctx context.Context, digest, filename string) (strin
     "maturity": "stable",
     "provider": "shellcheck",
     "recommended": true,
-    "fix_availability": "suggested",
     "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck"
   },
   "preparation": "kjanat:actionlint/shell-preparation@0.2.0",

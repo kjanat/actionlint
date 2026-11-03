@@ -29,7 +29,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	const metadata = `{"metadata_version":1,"id":"no-sudo","name":"Registry process","description":"Process installation fixture","license":"MIT","repository":"https://github.com/publisher/plugin","plugin_version":"1.0.0","transport":"process"}`
 	manifest := provider.Manifest{
 		SchemaVersion: 1, Metadata: json.RawMessage(metadata), ID: "no-sudo", Version: "1.0.0", Role: provider.RoleScript, Scope: provider.ScopeSource, Transport: provider.TransportProcess,
-		Rule:        rule.Descriptor{Name: "registry-process", Description: "Registry process fixture", Category: "correctness", Subcategory: "shell", Maturity: "stable", Provider: "registry-process", Recommended: true, DocumentationURL: "https://github.com/publisher/plugin", FixAvailability: "none"},
+		Rule:        rule.Descriptor{Name: "registry-process", Description: "Registry process fixture", Category: "correctness", Subcategory: "shell", Maturity: "stable", Provider: "registry-process", Recommended: true, DocumentationURL: "https://github.com/publisher/plugin"},
 		Preparation: "kjanat:actionlint/expression-mask@0.1.0", Selectors: provider.Selectors{Shells: []string{"bash"}, Filename: "actionlint.sh"},
 		Capabilities: provider.Capabilities{MessageTemplate: "{code}: {message}"},
 		Process: &provider.ProcessSpec{

@@ -82,6 +82,9 @@ func (rule *Checker) exprFinding(err *exprlang.Error, lineBase, colBase int, sev
 			r.end, r.hasEnd = *end, true
 		}
 	}
+	if kind == "script-interpolation" || kind == "script-injection" {
+		rule.addScriptEnvironmentFix(&r)
+	}
 	rule.errs = append(rule.errs, r)
 }
 

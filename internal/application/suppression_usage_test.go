@@ -53,7 +53,7 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 		t.Fatalf("lost reconciled cleanup: %+v", files)
 	}
 	fix := files[0].errors[0].Fixes[0]
-	if fix.Applicability != "safe" || len(fix.Edits) != 1 || fix.Edits[0].Replacement != "# ignore shellcheck -- keep reason" || fix.Edits[0].Path != "alias/action.yml" || fix.Revisions["alias/action.yml"] != ref.Revision {
+	if fix.Applicability != diagnostic.FixSafe || len(fix.Edits) != 1 || fix.Edits[0].Replacement != "# ignore shellcheck -- keep reason" || fix.Edits[0].Path != "alias/action.yml" || fix.Revisions["alias/action.yml"] != ref.Revision {
 		t.Fatalf("cleanup removed a selector used by another invocation: %+v", fix)
 	}
 }

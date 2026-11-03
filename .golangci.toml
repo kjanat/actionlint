@@ -3706,7 +3706,7 @@ allow     = [
 
 # Layer local-host: The local application host: plugins, tools and editors around the application.
 # It does not reach terminal adapters.
-# Imports: itself, acquisition-http, analysis-contracts, analyzer-host, application, catalog, config, contract-leaves, core-helpers, document-contracts, documents, editing, language, leaves, plugin-artifacts, plugin-runtime, plugin-transport, process-config, source, tool-backends, tool-contracts, tool-providers, workspace.
+# Imports: itself, results, acquisition-http, analysis-contracts, analyzer-host, application, catalog, config, contract-leaves, core-helpers, document-contracts, documents, editing, language, leaves, plugin-artifacts, plugin-runtime, plugin-transport, process-config, source, tool-backends, tool-contracts, tool-providers, workspace.
 [linters.settings.depguard.rules.layer-local-host]
 files     = [
   "**/internal/localapp/*.go",
@@ -3756,6 +3756,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/processconfig$",
   "actionlint.kjanat.dev/v2/internal/projectpath$",
   "actionlint.kjanat.dev/v2/internal/related$",
+  "actionlint.kjanat.dev/v2/internal/report$",
   "actionlint.kjanat.dev/v2/internal/rulecatalog$",
   "actionlint.kjanat.dev/v2/internal/schemapath$",
   "actionlint.kjanat.dev/v2/internal/scriptcoords$",
@@ -4471,7 +4472,7 @@ allow     = [
 
 # Layer dev-commands: Development commands: documentation checks, catalog and schema generation,
 # conformance downloads, release tooling and this layer table.
-# Imports: itself, application, catalog, config, leaves, plugin-artifacts, presentation, process-config, tool-backends, tool-profiles, tool-providers, tool-support, workspace.
+# Imports: itself, application, catalog, config, leaves, plugin-artifacts, presentation, process-config, repository-contracts, tool-backends, tool-profiles, tool-providers, tool-support, workspace.
 [linters.settings.depguard.rules.layer-dev-commands]
 files     = [
   "**/internal/conformance/fetch/*.go",
@@ -4487,6 +4488,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -4528,6 +4530,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/tools/config$",
   "actionlint.kjanat.dev/v2/tools/layers$",
   "actionlint.kjanat.dev/v2/tools/plugin-fixture-metadata$",
@@ -4556,6 +4559,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -4597,6 +4601,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/tools/config$",
   "actionlint.kjanat.dev/v2/tools/layers$",
   "actionlint.kjanat.dev/v2/tools/plugin-fixture-metadata$",

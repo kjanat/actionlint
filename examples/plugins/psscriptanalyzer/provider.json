@@ -12,8 +12,7 @@
     "subcategory": "powershell",
     "maturity": "stable",
     "provider": "psscriptanalyzer",
-    "recommended": true,
-    "fix_availability": "suggested"
+    "recommended": true
   },
   "preparation": "kjanat:actionlint/expression-mask@0.1.0",
   "selectors": {

@@ -490,7 +490,7 @@ func detached(result Result) Result {
 	for i, d := range result.Diagnostics {
 		fixes := make([]analyzer.ScriptFix, len(d.Fixes))
 		for j, fix := range d.Fixes {
-			fixes[j] = analyzer.ScriptFix{Description: fix.Description, Replacements: slices.Clone(fix.Replacements)}
+			fixes[j] = analyzer.ScriptFix{Applicability: fix.Applicability, Description: fix.Description, Replacements: slices.Clone(fix.Replacements)}
 		}
 		diagnostics[i] = analyzer.ScriptDiagnostic{
 			Filename: d.Filename, Code: d.Code, Name: d.Name, Message: d.Message, Severity: d.Severity,

@@ -137,6 +137,31 @@ func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 	}
 }
 
+func TestDocumentProcessFixApplicability(t *testing.T) {
+	input := documentInput(t, "one\n")
+	for _, label := range []string{"safe", "unsafe", "suggested"} {
+		pool := analyzerhost.NewProcessPool(t.Context(), 1)
+		output := provider.Output{Format: provider.FormatJSON, Transform: &provider.Transform{
+			Language: provider.LanguageJQ,
+			Inline:   `[{filename:$vars.filename,code:"D1",message:"fix",location:{row:1,column:1},fixes:[{applicability:"` + label + `",replacements:[{row:1,column:1,end_row:1,end_column:4,text:"two"}]}]}]`,
+		}}
+		manifest := documentManifest(provider.ProcessSpec{Stdin: provider.StdinSource, Output: output})
+		manifest.Capabilities.Fixes = true
+		command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) { return []byte(`{}`), nil })
+		checker, err := NewDocumentAnalyzer(manifest, command, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings, err := checker.Analyze(t.Context(), input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(findings) != 1 || len(findings[0].Fixes) != 1 || findings[0].Fixes[0].Applicability.String() != label || findings[0].Fixes[0].Revisions[input.Path] != input.Revision.Digest() {
+			t.Fatalf("lost document fix applicability or source binding: %+v", findings)
+		}
+	}
+}
+
 func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
 	input := documentInput(t, "one\n")
 	pool := analyzerhost.NewProcessPool(t.Context(), 1)

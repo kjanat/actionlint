@@ -2,6 +2,8 @@
 export type JSONValue = null | boolean | number | string | JSONValue[] | { [key: string]: JSONValue };
 /** A finding's severity before the repository's rule-level policy is applied. */
 export type Severity = 'error' | 'warning' | 'info';
+/** Review required for one fix: safe preserves intended behavior; unsafe can change it; suggested needs a decision. */
+export type Applicability = 'safe' | 'unsafe' | 'suggested';
 /** One-based position in the request source, counting Unicode characters rather than UTF-16 units. */
 export interface Location {
 	/** LF line number; the first line is 1. */
@@ -9,8 +11,22 @@ export interface Location {
 	/** Unicode character column; an emoji counts as one character. */
 	column: number;
 }
-/** One suggested fix. All replacements belong to the request's captured source. */
+/**
+ * One atomic fix alternative. All replacements belong to the request's captured source.
+ * Return several fixes to offer alternatives; omit fixes when this finding has no correction.
+ *
+ * @example
+ * ```ts
+ * const fix: Fix = {
+ *   description: 'Remove trailing spaces',
+ *   applicability: 'safe',
+ *   replacements: [{ row: 1, column: 8, end_row: 1, end_column: 10, text: '' }],
+ * }
+ * ```
+ */
 export interface Fix {
+	/** Applicability of this concrete alternative. Omit to require review; safe allows automatic application. */
+	applicability?: Applicability;
 	/** Short editor action label, such as "Replace alias with full command". */
 	description?: string;
 	/** Nonempty list of edits applied together; use an empty range for an insertion. */
@@ -144,8 +160,6 @@ export interface RuleDescriptor {
 	help?: string;
 	/** Public documentation URL for this rule. */
 	documentation_url?: string;
-	/** Whether the provider offers no fixes, suggested edits, or safe automatic fixes. */
-	fix_availability?: 'none' | 'suggested' | 'safe';
 }
 /** Metadata and host requirements shared by callback providers and existing executable wrappers. */
 export interface ProviderIdentity {
@@ -644,6 +658,10 @@ export function isDiagnostic(value: unknown): value is Diagnostic {
 }
 function isFix(value: unknown): value is Fix {
 	if (!isRecord(value) || (value.description !== undefined && typeof value.description !== 'string')) return false;
+	if (
+		value.applicability !== undefined && value.applicability !== 'safe'
+		&& value.applicability !== 'unsafe' && value.applicability !== 'suggested'
+	) return false;
 	if (!Array.isArray(value.replacements) || value.replacements.length === 0) return false;
 	return value.replacements.every((replacement: unknown) => {
 		if (!isRecord(replacement)) return false;

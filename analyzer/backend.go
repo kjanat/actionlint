@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -182,10 +183,12 @@ type ScriptDiagnostic struct {
 	Fixes          []ScriptFix          `json:"fixes,omitempty"`
 }
 
-// ScriptFix is one suggested edit made of replacements in snippet coordinates.
+// ScriptFix is one atomic alternative made of replacements in snippet coordinates.
 type ScriptFix struct {
-	Description  string              `json:"description,omitempty"`
-	Replacements []ScriptReplacement `json:"replacements"`
+	// Applicability defaults to review-required when an older engine omits it.
+	Applicability diagnostic.Applicability `json:"applicability,omitempty"`
+	Description   string                   `json:"description,omitempty"`
+	Replacements  []ScriptReplacement      `json:"replacements"`
 }
 
 // ScriptReplacement replaces the text between two snippet positions. Rows and

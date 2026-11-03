@@ -19,7 +19,7 @@ impl Guest for Plugin {
             explanation: "Checks script invocations.".into(),
             help: "Review the indicated command.".into(),
             documentation_url: String::new(),
-            fix_availability: "none".into(),
+            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: vec![Example {
                 description: "Inspect downloads before running them".into(),

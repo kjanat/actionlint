@@ -32,15 +32,21 @@ type edit struct {
 	text       string
 }
 
-// Build chooses the first permitted alternative per finding. Unknown applicability
-// requires explicit inclusion. Missing or inconsistent revisions are errors.
+// Build chooses the first permitted alternative per finding. Review-required fixes
+// need explicit inclusion. Missing or inconsistent revisions are errors.
 func Build(ctx context.Context, findings []diagnostic.Diagnostic, reader *fsread.Reader, includeSuggested bool) (Plan, error) {
 	p := Plan{}
 	edits := map[string][]edit{}
 	sources := map[string][]byte{}
 	for _, finding := range findings {
 		for _, candidate := range finding.Fixes {
-			if candidate.Applicability != "safe" && !includeSuggested {
+			if len(candidate.Edits) == 0 {
+				return Plan{}, errors.New("fix has no edits")
+			}
+			if !candidate.Applicability.Valid() {
+				return Plan{}, errors.New("fix has invalid applicability")
+			}
+			if !candidate.Applicability.Automatic() && !includeSuggested {
 				p.Skipped++
 				continue
 			}

@@ -24,7 +24,7 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []repoconfig.Rule
 				if asJSON {
 					return writeCommandJSON(out, rule)
 				}
-				_, err := fmt.Fprintf(out, "%s (%s/%s)\n\n%s\n\n%s\n\nProvider: %s; Maturity: %s; Fixes: %s\n%s\n", rule.Name, rule.Category, rule.Subcategory, rule.Explanation, rule.Help, rule.Provider, rule.Maturity, rule.FixAvailability, rule.DocumentationURL)
+				_, err := fmt.Fprintf(out, "%s (%s/%s)\n\n%s\n\n%s\n\nProvider: %s; Maturity: %s\n%s\n", rule.Name, rule.Category, rule.Subcategory, rule.Explanation, rule.Help, rule.Provider, rule.Maturity, rule.DocumentationURL)
 				if err != nil {
 					return err
 				}

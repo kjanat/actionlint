@@ -59,14 +59,14 @@ func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
 		t.Fatalf("negotiated %q", current.scriptInterface)
 	}
 	d := current.ScriptDescriptor()
-	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []analyzer.ToolResourceKind{analyzer.ToolDirectory}) || d.Rule.FixAvailability != "suggested" {
+	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []analyzer.ToolResourceKind{analyzer.ToolDirectory}) {
 		t.Fatalf("0.3.0 capabilities = %+v", d)
 	}
 	legacy := loadScriptFixture(t)
 	if legacy.scriptInterface != ScriptEngineInterface {
 		t.Fatalf("negotiated %q", legacy.scriptInterface)
 	}
-	if d := legacy.ScriptDescriptor(); d.Fixes || d.ReportedSources || len(d.Resources) != 0 || d.Rule.FixAvailability != "none" {
+	if d := legacy.ScriptDescriptor(); d.Fixes || d.ReportedSources || len(d.Resources) != 0 {
 		t.Fatalf("0.2.0 capabilities = %+v", d)
 	}
 }

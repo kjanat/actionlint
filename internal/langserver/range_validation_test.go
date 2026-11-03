@@ -30,7 +30,7 @@ func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
 	root := t.TempDir()
 	dependency, target := filepath.Join(root, "dependency.yml"), filepath.Join(root, "workflow.yml")
 	content := "target"
-	finding := diagnostic.Diagnostic{Path: dependency, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Fixes: []diagnostic.Fix{{Description: "update open caller", Applicability: "safe", Revisions: map[string]string{target: sourceid.Digest([]byte(content))}, Edits: []diagnostic.Edit{{Path: target, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
+	finding := diagnostic.Diagnostic{Path: dependency, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Fixes: []diagnostic.Fix{{Description: "update open caller", Applicability: diagnostic.FixSafe, Revisions: map[string]string{target: sourceid.Digest([]byte(content))}, Edits: []diagnostic.Edit{{Path: target, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
 	sources := map[string]Document{dependency: {Text: "😀bad"}}
 	open := map[string]Document{target: {URI: FileURI(target), Version: 3, Text: content}}
 	actions := codeActions(t.Context(), dependency, sourceRange{Start: position{Character: 5}, End: position{Character: 5}}, []diagnostic.Diagnostic{finding}, sources, open)
@@ -47,7 +47,7 @@ func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
 	const text = "run: echo ok\n"
 	doc := Document{URI: FileURI(path), Version: 8, Text: text}
 	point := diagnostic.Position{Line: 1, Column: 1}
-	fix := diagnostic.Fix{Description: "Suppress shellcheck for this declaration", Applicability: "suggested", Revisions: map[string]string{path: sourceid.Digest([]byte(text))}, Edits: []diagnostic.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
+	fix := diagnostic.Fix{Description: "Suppress shellcheck for this declaration", Applicability: diagnostic.FixSuggested, Revisions: map[string]string{path: sourceid.Digest([]byte(text))}, Edits: []diagnostic.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
 	findings := []diagnostic.Diagnostic{
 		{Path: path, Rule: "shellcheck", Code: "SC2086", Start: point, Fixes: []diagnostic.Fix{fix}},
 		{Path: path, Rule: "shellcheck", Code: "SC2154", Start: point, Fixes: []diagnostic.Fix{fix}},
@@ -60,5 +60,42 @@ func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
 	open[path] = doc
 	if actions := codeActions(t.Context(), path, sourceRange{}, findings, sources, open); len(actions) != 0 {
 		t.Fatalf("stale suppression authorized an edit: %+v", actions)
+	}
+}
+
+func TestCodeActionsUseEachFindingsFixes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "workflow.yml")
+	const text = "first\nsecond\nthird\n"
+	doc := Document{URI: FileURI(path), Version: 1, Text: text}
+	documents := map[string]Document{path: doc}
+	var findings []diagnostic.Diagnostic
+	for i, applicability := range []diagnostic.Applicability{diagnostic.FixSuggested, diagnostic.FixSuggested, diagnostic.FixSafe} {
+		point := diagnostic.Position{Line: i + 1, Column: 1}
+		finding := diagnostic.Diagnostic{Path: path, Rule: "same-rule", Start: point}
+		if i != 0 {
+			finding.Fixes = []diagnostic.Fix{{
+				Description: "replace " + applicability.String(), Applicability: applicability,
+				Revisions: map[string]string{path: sourceid.Digest([]byte(text))},
+				Edits:     []diagnostic.Edit{{Path: path, Start: point, End: point, Replacement: "fixed "}},
+			}}
+		}
+		findings = append(findings, finding)
+	}
+	for i := range findings {
+		selection := sourceRange{Start: position{Line: i}, End: position{Line: i}}
+		actions := codeActions(t.Context(), path, selection, findings, documents, documents)
+		if i == 0 {
+			if len(actions) != 0 {
+				t.Fatalf("finding without edits offered a fix: %+v", actions)
+			}
+			continue
+		}
+		if len(actions) != 1 {
+			t.Fatalf("finding %d: got %d actions", i, len(actions))
+		}
+		action, ok := actions[0].(map[string]any)
+		if !ok || action["isPreferred"] != (i == 2) {
+			t.Fatalf("finding %d: incorrect applicability: %+v", i, actions)
+		}
 	}
 }

@@ -432,18 +432,22 @@ func (rule *Checker) checkScriptString(str workflowdecl.StringView, workflowKey 
 	}
 
 	previous, previousLists, previousPosition := rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptPosition
+	previousEnvironment := rule.scriptEnvironment
 	rule.scriptScalarArgs = nil
 	rule.scriptWordLists = nil
+	rule.scriptEnvironment = nil
 	rule.scriptPosition = exprlang.ScriptUnknownPosition
 	if len(shell) > 0 {
 		proofs := proveScriptArguments(str.Value(), shell[0])
 		rule.scriptScalarArgs, rule.scriptWordLists = proofs.scalars, proofs.wordLists
+		rule.scriptEnvironment = proofs.environment
 		if _, ok := scriptShellVariant(shell[0]); ok {
 			rule.scriptPosition = exprlang.ScriptShellWord
 		}
 	}
 	defer func() {
 		rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptPosition = previous, previousLists, previousPosition
+		rule.scriptEnvironment = previousEnvironment
 	}()
 	ts, ok := rule.checkExprsIn(str.Value(), viewPosition(str), str.Quoted(), true, workflowKey)
 	if !ok {

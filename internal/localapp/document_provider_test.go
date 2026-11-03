@@ -53,7 +53,7 @@ func nativeDocumentManifest(t *testing.T) provider.Manifest {
 	t.Setenv("PATH", filepath.Dir(executable)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return provider.Manifest{
 		SchemaVersion: 1, ID: "document-fixture", Version: "1.0.0", Role: provider.RoleDocument, Scope: provider.ScopeSource, Transport: provider.TransportProcess, Preparation: "generic",
-		Rule:         rule.Descriptor{Name: "document-fixture", Description: "Whole document fixture", Category: "correctness", Subcategory: "workflow", Maturity: "stable", Provider: "document-fixture", DocumentationURL: "https://example.com/document-fixture", FixAvailability: "suggested"},
+		Rule:         rule.Descriptor{Name: "document-fixture", Description: "Whole document fixture", Category: "correctness", Subcategory: "workflow", Maturity: "stable", Provider: "document-fixture", DocumentationURL: "https://example.com/document-fixture"},
 		Capabilities: provider.Capabilities{Fixes: true},
 		Selectors:    provider.Selectors{Documents: []string{"workflow"}},
 		Process:      &provider.ProcessSpec{Entry: filepath.Base(executable), Args: []string{"-test.run=^TestDocumentPluginProcessHelper$"}, Stdin: provider.StdinRequest, Env: map[string]string{"ACTIONLINT_DOCUMENT_HELPER": "1"}, Config: provider.ConfigRendering{Render: provider.RenderNone}, Output: provider.Output{Format: provider.FormatEnvelope}},

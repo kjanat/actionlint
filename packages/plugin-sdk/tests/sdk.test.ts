@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 
 import { expect, test } from 'bun:test';
 
-import { type DocumentRequest, executeDocumentCheck, executeScriptCheck, unicodeColumn } from '#index';
+import { type DocumentRequest, executeDocumentCheck, executeScriptCheck, isDiagnostic, unicodeColumn } from '#index';
 
 const sdkRoot = resolve(import.meta.dirname, '..');
 const cli = join(sdkRoot, 'src', 'cli.ts');
@@ -58,6 +58,18 @@ test('rejects invalid fix ranges', async () => {
 		fixes: [{ replacements: [{ row: 2, column: 1, end_row: 1, end_column: 1, text: '' }] }],
 	}], JSON.stringify({ source: 'x', filename: 'x.sh' }));
 	expect(output).toEqual({ ok: false, diagnostics: [], errors: ['checker returned invalid diagnostics'] });
+});
+
+test('validates applicability per fix without requiring every finding to have fixes', () => {
+	const finding = { filename: 'x.sh', code: 'X1', message: 'example', location: { row: 1, column: 1 } };
+	const replacements = [{ row: 1, column: 1, end_row: 1, end_column: 2, text: 'z' }];
+	expect(isDiagnostic(finding)).toBe(true);
+	for (const applicability of [undefined, 'safe', 'unsafe', 'suggested']) {
+		expect(isDiagnostic({ ...finding, fixes: [{ applicability, replacements }] })).toBe(true);
+	}
+	for (const applicability of ['automatic', '', 1, true, null]) {
+		expect(isDiagnostic({ ...finding, fixes: [{ applicability, replacements }] })).toBe(false);
+	}
 });
 
 test('bounds request and response bytes', async () => {

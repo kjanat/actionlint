@@ -650,7 +650,9 @@
           "$ref": "#/$defs/text"
         },
         "fix_availability": {
-          "$ref": "#/$defs/name"
+          "$ref": "#/$defs/name",
+          "description": "Legacy metadata, accepted but ignored. Fixes and their applicability belong to individual diagnostics.",
+          "deprecated": true
         },
         "help": {
           "$ref": "#/$defs/text"

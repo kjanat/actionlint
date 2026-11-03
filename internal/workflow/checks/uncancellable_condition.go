@@ -41,7 +41,7 @@ func uncancellableCondition(value declaration.StringView, subject string) []Find
 		}
 		if startOK && endOK {
 			finding.Fixes = []diagnostic.Fix{{
-				Description: "Respect cancellation (changes cancellation behavior)", Applicability: "suggested",
+				Description: "Respect cancellation (changes cancellation behavior)", Applicability: diagnostic.FixSuggested,
 				Edits: []diagnostic.Edit{{
 					Start: position(&start), End: position(&end), Replacement: replacement,
 				}},

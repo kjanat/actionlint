@@ -78,7 +78,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				if !strings.Contains(doc.Text, "bad") {
 					continue
 				}
-				result = append(result, diagnostic.Diagnostic{Path: path, Rule: "test", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []diagnostic.Fix{{Description: "replace", Applicability: "safe", Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
+				result = append(result, diagnostic.Diagnostic{Path: path, Rule: "test", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []diagnostic.Fix{{Description: "replace", Applicability: diagnostic.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
 			sources := make(map[string]Source, len(docs))
 			for path, doc := range docs {

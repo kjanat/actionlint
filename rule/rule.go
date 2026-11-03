@@ -18,7 +18,6 @@ type Descriptor struct {
 	Explanation      string          `json:"explanation"`
 	Help             string          `json:"help"`
 	DocumentationURL string          `json:"documentation_url"`
-	FixAvailability  string          `json:"fix_availability"`
 	OptionsSchema    json.RawMessage `json:"options_schema,omitempty"`
 	Examples         []Example       `json:"examples,omitempty"`
 }

@@ -16,7 +16,7 @@ impl Guest for Plugin {
             explanation: "Exercises the optional source annotation host import.".into(),
             help: "Inspect the attached comment.".into(),
             documentation_url: String::new(),
-            fix_availability: "none".into(),
+            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: Vec::new(),
             requires: vec![Fact::Scripts, Fact::Invocations],

@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -89,7 +90,7 @@ func TestCommandTemplateGitHubEscaping(t *testing.T) {
 	format := "{{range .}}::error file={{.Filepath | escapeProperty}}::{{.Message | escapeData}}%0A{{.Snippet | escapeData}}{{end}}"
 	input := strings.Replace(commandBadWorkflow, "echo", "echo 100%", 1)
 	for _, command := range [][]string{nil, {"check"}} {
-		args := append(command, "-format", format, "--stdin-filename", "workflow%,x.yml", "-")
+		args := slices.Concat(command, []string{"-format", format, "--stdin-filename", "workflow%,x.yml", "-"})
 		got := testRunCommand(input, args...)
 		if got.Status != 1 || got.Stderr != "" || !strings.HasPrefix(got.Stdout, "::error file=workflow%25%2Cx.yml::") ||
 			!strings.Contains(got.Stdout, "100%25") || !strings.Contains(got.Stdout, "%0A") || strings.ContainsAny(got.Stdout, "\r\n") {

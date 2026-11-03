@@ -91,7 +91,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					t.Fatalf("missing fix: %+v", findings)
 				}
 				fix := findings[0].Fixes[0]
-				if fix.Applicability != "suggested" || len(fix.Edits) != 1 {
+				if fix.Applicability != diagnostic.FixSuggested || len(fix.Edits) != 1 {
 					t.Fatalf("unexpected fix: %+v", fix)
 				}
 				edit := fix.Edits[0]
