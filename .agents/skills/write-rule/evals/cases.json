@@ -1,0 +1,32 @@
+[
+  {
+    "name": "job-name",
+    "prompt": "Read .agents/skills/write-rule/SKILL.md and use it to implement a rule requiring jobs to have display names.",
+    "expected": [
+      "Chooses and justifies category, severity, default selection, maturity, and fix behavior without asking the user to make these decisions.",
+      "Distinguishes absent, empty, whitespace-only, known names, and unknown expressions; includes reusable-workflow caller jobs.",
+      "Exercises configured host output, source locations, explicit levels/off, strict overrides, suppression, and generated schema.",
+      "Runs the selected rule on a relevant existing workflow and explains findings."
+    ]
+  },
+  {
+    "name": "explicit-shell",
+    "prompt": "Read .agents/skills/write-rule/SKILL.md and use it to implement a rule requiring an explicitly configured shell for workflow run steps.",
+    "expected": [
+      "Derives policy choices from the skill and the requested convention.",
+      "Recognizes step, job, and workflow shell declarations, including partial defaults and isolation between sibling jobs.",
+      "Allows unknown explicitly supplied shell expressions and skips action-call steps.",
+      "Verifies public host selection, suppression, source locations, generated schema, and a relevant existing workflow."
+    ]
+  },
+  {
+    "name": "step-name",
+    "prompt": "Read .agents/skills/write-rule/SKILL.md and use it to implement a rule requiring display names for steps in workflows and composite actions.",
+    "expected": [
+      "Derives policy choices without a supplied category, severity, or default.",
+      "Distinguishes absent, empty, whitespace-only, known names, and unknown expressions for run and uses steps.",
+      "Reports through workflow, standalone action, and called-composite entry paths with correct source identity and no duplicate findings.",
+      "Verifies explicit levels/off, strict overrides, suppression, generated schema, and a relevant existing action."
+    ]
+  }
+]

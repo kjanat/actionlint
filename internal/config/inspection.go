@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.
@@ -48,6 +50,22 @@ func Inspect(selection Selection, withOrigin bool, registeredRules ...string) (I
 
 // InspectContext validates settings with cancellable configuration acquisition.
 func InspectContext(ctx context.Context, selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
+	return inspectContext(ctx, selection, withOrigin, nil, registeredRules...)
+}
+
+// InspectContextWithRules binds every source and override to the complete rule
+// metadata, including installed analyzers and tool providers.
+func InspectContextWithRules(ctx context.Context, selection Selection, withOrigin bool, descriptors ...rule.Descriptor) (Inspection, error) {
+	metadata := make([]rule.Descriptor, len(descriptors))
+	copy(metadata, descriptors)
+	names := make([]string, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		names = append(names, descriptor.Name)
+	}
+	return inspectContext(ctx, selection, withOrigin, metadata, names...)
+}
+
+func inspectContext(ctx context.Context, selection Selection, withOrigin bool, descriptors []rule.Descriptor, registeredRules ...string) (Inspection, error) {
 	if err := ctx.Err(); err != nil {
 		return Inspection{}, err
 	}
@@ -68,6 +86,11 @@ func InspectContext(ctx context.Context, selection Selection, withOrigin bool, r
 	}
 	if err != nil {
 		return Inspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
+	}
+	if descriptors != nil {
+		if _, err := ResolveRules(Presets{}, resolved.Config, descriptors...); err != nil {
+			return Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
+		}
 	}
 	result := Inspection{Path: path, Config: resolved.Values, Warnings: resolved.Warnings}
 	if withOrigin {

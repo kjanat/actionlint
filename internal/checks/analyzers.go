@@ -23,7 +23,7 @@ func ConfigureAnalyzers(config *repoconfig.Config, registrations []analyzer.Regi
 			continue
 		}
 		if config != nil && len(registration.Options) == 0 {
-			options, err := config.Lint.Rules.PluginOptions(name)
+			options, err := config.Lint.Rules.RuleOptions(name)
 			if err != nil {
 				return nil, err
 			}

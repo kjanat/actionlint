@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	rulemeta "actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -157,7 +158,9 @@ func suppressionConfigError(n *yaml.Node, message string) error {
 }
 
 func (p *SuppressionsPolicy) ReportFor(rule string) SuppressionReport {
-	if p == nil || (len(p.rules) != 0 && !slices.Contains(p.rules, rule)) {
+	if p == nil || (len(p.rules) != 0 && !slices.ContainsFunc(p.rules, func(name string) bool {
+		return rulemeta.CanonicalName(name) == rulemeta.CanonicalName(rule)
+	})) {
 		return SuppressionsAllowed
 	}
 	return p.report

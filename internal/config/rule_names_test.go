@@ -15,7 +15,11 @@ func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
 		if _, err := Parse([]byte(source), "no-sudo"); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Parse([]byte(source)); err == nil {
+		cfg, err := Parse([]byte(source))
+		if err == nil {
+			_, err = ResolveRules(Presets{}, cfg)
+		}
+		if err == nil {
 			t.Fatalf("additional rule leaked: %s", source)
 		}
 		overlay, err := ParseOverlay("config", []byte(source), "no-sudo")
@@ -25,7 +29,11 @@ func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
 		if _, _, err := Overlaid(nil, nil, []Overlay{overlay}, "no-sudo"); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := Overlaid(nil, nil, []Overlay{overlay}); err == nil {
+		cfg, _, err = Overlaid(nil, nil, []Overlay{overlay})
+		if err == nil {
+			_, err = ResolveRules(Presets{}, cfg)
+		}
+		if err == nil {
 			t.Fatal("overlay skipped rule validation")
 		}
 	}

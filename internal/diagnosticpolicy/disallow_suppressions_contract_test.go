@@ -22,8 +22,8 @@ func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 		t.Fatalf("expected one directive diagnostic, got %v", got)
 	}
 	want := &findingmodel.Finding{
-		Start: diagmodel.Position{Line: 1, Column: 12}, Rule: "disallow-suppressions",
-		Message: "inline suppression of cache-operation is disallowed by policy.disallow-suppressions",
+		Start: diagmodel.Position{Line: 1, Column: 12}, Rule: "forbidden-suppression",
+		Message: "inline suppression of cache-operation is disallowed by policy.forbidden-suppression",
 	}
 	if diff := cmp.Diff(want, got[0], cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
 		t.Fatal(diff)

@@ -12,7 +12,7 @@ func TestRegisteredNurseryPresetSelection(t *testing.T) {
 		root, group repoconfig.Preset
 		want        repoconfig.Level
 	}{
-		{"", "", "on"}, {"all", "", "off"}, {"", "all", "off"}, {"recommended", "", "off"}, {"none", "", "off"},
+		{"", "", "off"}, {"all", "", "off"}, {"", "all", "off"}, {"recommended", "", "off"}, {"none", "", "off"},
 	} {
 		cfg := &repoconfig.Config{}
 		cfg.Lint.Rules.Preset = test.root

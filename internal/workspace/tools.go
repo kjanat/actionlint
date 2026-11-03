@@ -86,7 +86,10 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 		if err != nil {
 			return needed, err
 		}
-		config = repoconfig.ResolveRules(options.Presets, config, options.Descriptors...)
+		config, err = repoconfig.ResolveRules(options.Presets, config, options.Descriptors...)
+		if err != nil {
+			return needed, err
+		}
 		names, err := options.Required(config, projectConfig, project != nil)
 		if err != nil {
 			return needed, err

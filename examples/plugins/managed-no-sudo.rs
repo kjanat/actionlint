@@ -7,7 +7,7 @@ impl Guest for Plugin {
         Descriptor {
             name: "shellcheck".into(),
             description: "Managed integration fixture".into(),
-            category: "correctness".into(),
+            category: "suspicious".into(),
             subcategory: "scripts".into(),
             maturity: "stable".into(),
             provider: "fixture".into(),

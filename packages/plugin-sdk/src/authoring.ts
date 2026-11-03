@@ -6,6 +6,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
 import { build } from 'tsdown';
 
+import { isRuleCategory } from './index.ts';
+
 import type {
 	DocumentKind,
 	DocumentProcessProvider,
@@ -246,7 +248,7 @@ function isOptionalDocumentRequirements(value: unknown): value is DocumentRequir
 }
 
 function isRuleDescriptor(value: unknown): value is RuleDescriptor {
-	return isRecord(value) && typeof value.name === 'string' && typeof value.category === 'string'
+	return isRecord(value) && typeof value.name === 'string' && isRuleCategory(value.category)
 		&& typeof value.subcategory === 'string' && (value.maturity === 'stable' || value.maturity === 'nursery')
 		&& typeof value.description === 'string' && typeof value.provider === 'string';
 }

@@ -138,31 +138,18 @@ Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV
 
 Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
-## disallow-suppressions
-
-Report suppressions forbidden by policy.
-
-Remove the suppression and address its finding, or change the repository suppression policy.
-
-- Category: `policy/suppressions`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-
-Configure this rule with `lint.rules.policy.disallow-suppressions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
-
 ## empty-job
 
 Report jobs that run no steps. GitHub accepts the job, but it does nothing.
 
 Add the steps the job should run, or remove the job.
 
-- Category: `style/jobs`
+- Category: `suspicious/jobs`
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.style.empty-job`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.empty-job`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 Give the job steps to run.
 
@@ -191,12 +178,12 @@ Report run steps whose script is empty. GitHub accepts the step, but it runs not
 
 Write the commands the step should run, or remove the step.
 
-- Category: `style/steps`
+- Category: `suspicious/steps`
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.style.empty-run`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.empty-run`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 Write the commands the step runs.
 
@@ -224,12 +211,12 @@ Report workflows whose on section is empty. GitHub accepts the workflow, but no 
 
 Add the events that should start the workflow, or delete the workflow.
 
-- Category: `style/triggers`
+- Category: `suspicious/triggers`
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.style.empty-triggers`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.empty-triggers`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 Declare the events that start the workflow.
 
@@ -327,6 +314,19 @@ Record the executable bit for the referenced script in Git, or invoke it explici
 
 Configure this rule with `lint.rules.correctness.executable-bit`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## explicit-permissions
+
+Require explicit token permissions at workflow or job scope.
+
+Declare explicit permissions at the scope required by repository policy.
+
+- Category: `security/permissions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.security.explicit-permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## expression
 
 Validate expression values assigned to workflow fields.
@@ -391,6 +391,19 @@ Supply the expected value type; convert serialized values explicitly when needed
 - Enabled by default: `true`
 
 Configure this rule with `lint.rules.correctness.expression-type`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## forbidden-suppression
+
+Report suppressions forbidden by policy.
+
+Remove the suppression and address its finding, or change the repository suppression policy.
+
+- Category: `conventions/suppressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.conventions.forbidden-suppression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## glob
 
@@ -521,6 +534,19 @@ jobs:
       - run: echo ok
 ```
 
+## job-timeout
+
+Require explicit job timeouts within configured bounds.
+
+Set timeout-minutes on the job within the configured bounds.
+
+- Category: `conventions/jobs`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.conventions.job-timeout`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## matrix
 
 Validate matrix definitions, combinations, and filters.
@@ -533,6 +559,19 @@ Check axis names and values and ensure include/exclude entries match the intende
 - Enabled by default: `true`
 
 Configure this rule with `lint.rules.correctness.matrix`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## missing-action-metadata
+
+Require usable metadata for remote action references without enabling network access.
+
+Select --action-metadata=online to acquire full SHA-1 manifests, or warm the immutable cache and select offline. Named refs require an action-profile resolver with selection evidence. Invalid parse/schema metadata retains its diagnostics; this does not prove execution or transitive dependency coverage.
+
+- Category: `conventions/dependencies`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.conventions.missing-action-metadata`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## missing-local-action
 
@@ -698,58 +737,6 @@ jobs:
       - run: echo ok
 ```
 
-## require-action-metadata
-
-Require usable metadata for remote action references without enabling network access.
-
-Select --action-metadata=online to acquire full SHA-1 manifests, or warm the immutable cache and select offline. Named refs require an action-profile resolver with selection evidence. Invalid parse/schema metadata retains its diagnostics; this does not prove execution or transitive dependency coverage.
-
-- Category: `policy/dependencies`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-
-Configure this rule with `lint.rules.policy.require-action-metadata`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
-
-## require-commit-hash
-
-Require full commit SHAs for actions and workflows, and digests for images.
-
-Pin uses references to a full commit SHA and container images to a digest.
-
-- Category: `policy/dependencies`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-
-Configure this rule with `lint.rules.policy.require-commit-hash`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
-
-## require-job-timeout
-
-Require explicit job timeouts within configured bounds.
-
-Set timeout-minutes on the job within the configured bounds.
-
-- Category: `policy/jobs`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-
-Configure this rule with `lint.rules.policy.require-job-timeout`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
-
-## require-permissions
-
-Require explicit token permissions at workflow or job scope.
-
-Declare explicit permissions at the scope required by repository policy.
-
-- Category: `policy/permissions`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-
-Configure this rule with `lint.rules.policy.require-permissions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
-
 ## ruff
 
 Analyze embedded Python scripts with Ruff.
@@ -761,7 +748,7 @@ Correct the reported Python code; select Ruff rules through tools.ruff configura
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.external.ruff`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.ruff`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## runner-label
 
@@ -941,7 +928,7 @@ Correct the reported shell construct; inspect suggested edits before applying th
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.external.shellcheck`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.shellcheck`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## string-conditions
 
@@ -975,12 +962,12 @@ Opt-in policy for job conditions using always() that can evaluate to true during
 
 If cancellation should stop the job, use !cancelled(). Keep always() when cancellation cleanup or reporting must run. A standalone always() offers a behavior-changing fix requiring explicit review; compound conditions have no replacement. See [GitHub's always() guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always) and the [job-versus-step cancellation test](https://github.com/kjanat/actionlint/actions/runs/41520665123).
 
-- Category: `correctness/expressions`
+- Category: `suspicious/expressions`
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `false`
 
-Configure this rule with `lint.rules.correctness.uncancellable-condition`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.suspicious.uncancellable-condition`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 When this job should stop on cancellation, use !cancelled(). Do not make this change for required cancellation cleanup or reporting.
 
@@ -1003,6 +990,19 @@ jobs:
     steps:
       - run: echo ok
 ```
+
+## unpinned-reference
+
+Require full commit SHAs for actions and workflows, and digests for images.
+
+Pin uses references to a full commit SHA and container images to a digest.
+
+- Category: `security/dependencies`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.security.unpinned-reference`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## unsound-ternary
 

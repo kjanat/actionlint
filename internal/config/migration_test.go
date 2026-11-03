@@ -47,7 +47,11 @@ policy:
 	if !cfg.Paths["**"].Ignore.Match("legacy some message") {
 		t.Fatal("message suppression lost")
 	}
-	if ResolveRules(Presets{Strict: true}, cfg).CachePolicyEnabled("cache-operation") {
+	strict, err := ResolveRules(Presets{Strict: true}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strict.CachePolicyEnabled("cache-operation") {
 		t.Fatal("explicit migrated disable must survive strict preset")
 	}
 	second, err := MigrateDocument("actionlint.yaml", result.Content)
@@ -71,7 +75,10 @@ func TestMigrationPolicyNullRemainsReset(t *testing.T) {
 	if cfg.RequiresJobTimeout().Enabled() || DiagnosticLevel(cfg, "require-job-timeout") != "off" {
 		t.Fatal("null did not restore the ordinary disabled default")
 	}
-	strict := ResolveRules(Presets{Strict: true}, cfg)
+	strict, err := ResolveRules(Presets{Strict: true}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !strict.RequiresJobTimeout().Enabled() || DiagnosticLevel(strict, "require-job-timeout") != "on" {
 		t.Fatal("null became an explicit disable instead of inheriting the strict preset")
 	}

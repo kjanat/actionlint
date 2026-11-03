@@ -1,9 +1,13 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/tools/provider/configschema"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -17,7 +21,7 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 		}
 		return "off"
 	case "recommended":
-		if d.Recommended {
+		if d.Recommended && !d.Nursery() {
 			return defaultLevel(d)
 		}
 		return "off"
@@ -35,7 +39,7 @@ func defaultLevel(d Rule) Level {
 
 func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	level := defaultLevel(d)
-	if !d.Recommended && !selected {
+	if d.Nursery() || !d.Recommended && !selected {
 		level = "off"
 	}
 	if enabled, known := policyEnabled(cfg, d.Name); known {
@@ -58,33 +62,67 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	if p.Experimental != nil && *p.Experimental && d.Nursery() {
 		level = "on"
 	}
-	group := rules.Groups()[d.Group]
-	if d.Nursery() && d.Group == "nursery" && group.Preset() == "all" {
-		level = "on"
-	} else {
-		level = presetLevel(group.Preset(), d, level)
+	// Retained legacy controls apply only to their original membership. The
+	// semantic category then supplies the current baseline and exception.
+	groups := []Group{}
+	legacyCategory := LegacyGroup(d.Name)
+	if legacy, removed := rules.LegacyGroups()[legacyCategory]; removed {
+		groups = append(groups, legacy)
+	} else if legacyCategory != d.Category {
+		legacy := rules.Groups()[legacyCategory]
+		if _, explicit := canonicalSetting(legacy, d.Name); explicit {
+			groups = append(groups, legacy)
+		}
 	}
-	if group.Level() != "" && group.Level() != "default" {
-		level = group.Level()
+	if selected {
+		groups = append(groups, rules.Plugins)
 	}
-	// An explicit setting supplies the options and, unless it defers to the
-	// default, the level.
-	explicit, _ := group.Rule(d.Name)
+	if d.Nursery() {
+		// Decode-only nursery controls retain their historical opt-in. A
+		// migration expands that selection into individual category entries.
+		if rules.Nursery.Preset() == "all" {
+			level = "on"
+		}
+		if legacyLevel := rules.Nursery.Level(); legacyLevel != "" && legacyLevel != "default" {
+			level = legacyLevel
+		}
+		groups = append(groups, rules.Nursery)
+	}
+	groups = append(groups, rules.Groups()[d.Category])
+	var explicit Setting
+	for _, group := range groups {
+		// Category baselines select stable checks only. Nursery checks need
+		// an individual enable or the invocation's experimental switch.
+		if !d.Nursery() {
+			level = presetLevel(group.Preset(), d, level)
+		} else if group.Preset() == "none" {
+			level = "off"
+		}
+		if group.Level() != "" && group.Level() != "default" && (!d.Nursery() || level != "off" || group.Level() == "off") {
+			level = group.Level()
+		}
+		// An explicit setting supplies the options and, unless it defers to the
+		// default, the level.
+		if setting, found := canonicalSetting(group, d.Name); found {
+			explicit = setting
+		}
+	}
 	if explicit.Level() != "" && explicit.Level() != "default" {
 		level = explicit.Level()
 	}
 	if d.Nursery() && p.Experimental != nil && !*p.Experimental {
 		level = "off"
 	}
-	if slices.Contains(rules.Disable, d.Name) || cfg != nil && cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
+	if disabled(rules.Disable, d.Name) || cfg != nil && cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
 		level = "off"
 	}
 	return explicit.WithLevel(level)
 }
 
 func DiagnosticLevel(cfg *Config, name string) Level {
+	name = rule.CanonicalName(name)
 	if cfg != nil {
-		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled || slices.Contains(cfg.Lint.Rules.Disable, name) {
+		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled || disabled(cfg.Lint.Rules.Disable, name) {
 			return "off"
 		}
 		if level, ok := cfg.Lint.Rules.ResolvedLevel(name); ok {
@@ -99,9 +137,9 @@ func DiagnosticLevel(cfg *Config, name string) Level {
 
 // ResolveRules projects presets and explicit rule settings into an effective configuration.
 // Registered descriptors participate in selection without loading analyzer implementations.
-func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) *Config {
+func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) (*Config, error) {
 	if config == nil && !p.Strict && p.Experimental == nil && len(registrations) == 0 {
-		return nil
+		return nil, nil
 	}
 	next := Config{}
 	if config != nil {
@@ -109,14 +147,42 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) *
 	}
 	resolved := make(map[string]Level)
 	next.Lint.Rules.SetResolved(resolved)
+	next.Lint.Rules.boundSettings = make(map[string]Setting)
 	descriptors := Rules()
-	replacements := map[string]bool{}
+	seen := map[string]bool{}
+	for i := range descriptors {
+		descriptors[i].Group = descriptors[i].Category
+	}
 	for _, descriptor := range registrations {
+		if descriptor.Name == "" || strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, " \t\r\n") {
+			return nil, fmt.Errorf("invalid rule name %q", descriptor.Name)
+		}
+		if canonical := rule.CanonicalName(descriptor.Name); canonical != descriptor.Name {
+			return nil, fmt.Errorf("registered rule %q conflicts with existing alias for %q", descriptor.Name, canonical)
+		}
+		if seen[descriptor.Name] {
+			return nil, fmt.Errorf("duplicate registered rule %q", descriptor.Name)
+		}
+		seen[descriptor.Name] = true
+		if !rule.ValidCategory(descriptor.Category) {
+			return nil, fmt.Errorf("rule %q has invalid category %q; expected correctness, suspicious, security, or conventions", descriptor.Name, descriptor.Category)
+		}
+		if descriptor.Maturity != "" && descriptor.Maturity != "stable" && descriptor.Maturity != "nursery" {
+			return nil, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
+		}
+		if len(descriptor.OptionsSchema) > 0 {
+			if _, err := configschema.Compile(descriptor.OptionsSchema); err != nil {
+				return nil, fmt.Errorf("options schema for rule %q: %w", descriptor.Name, err)
+			}
+		}
 		replaced := false
 		for i := range descriptors {
-			if descriptors[i].Name == descriptor.Name && descriptors[i].Group == "external" {
+			if descriptors[i].Name == descriptor.Name {
+				_, bundled := toolProviders()[descriptor.Name]
+				if !bundled || descriptor.Provider != descriptors[i].Provider || descriptor.Category != descriptors[i].Category {
+					return nil, fmt.Errorf("registered rule %q conflicts with existing rule from provider %q", descriptor.Name, descriptors[i].Provider)
+				}
 				descriptors[i].Descriptor = descriptor
-				replacements[descriptor.Name] = true
 				replaced = true
 				break
 			}
@@ -124,35 +190,139 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) *
 		if replaced {
 			continue
 		}
-		descriptors = append(descriptors, Rule{Descriptor: descriptor, Group: "plugins"})
+		descriptors = append(descriptors, Rule{Descriptor: descriptor, Group: descriptor.Category})
+	}
+	if err := bindSettings(&next, descriptors, seen); err != nil {
+		return nil, err
 	}
 	for _, d := range descriptors {
-		setting := SettingFor(config, d, p, d.Group == "plugins" || replacements[d.Name])
-		if replacements[d.Name] && config != nil {
-			if explicit, ok := config.Lint.Rules.Plugins.Rule(d.Name); ok && explicit.Level() != "" && explicit.Level() != "default" {
-				setting = setting.WithLevel(explicit.Level())
-			}
-			if slices.Contains(config.Lint.Rules.Disable, d.Name) || config.Lint.Enabled != nil && !*config.Lint.Enabled {
-				setting = setting.WithLevel("off")
-			}
-		}
+		setting := SettingFor(config, d, p, seen[d.Name])
 		resolved[d.Name] = setting.Level()
+		next.Lint.Rules.boundSettings[d.Name] = setting
 		if d.Configure != nil {
 			d.Configure(&next, setting)
 		}
 	}
-	return &next
+	return &next, nil
+}
+
+func bindSettings(config *Config, descriptors []Rule, registered map[string]bool) error {
+	for _, source := range config.Lint.Rules.bindingSources {
+		settings := Config{Lint: LintConfig{Rules: source.rules}}
+		if err := bindSettings(&settings, descriptors, registered); err != nil {
+			return fmt.Errorf("config source %q: %w", source.origin, err)
+		}
+	}
+	index := make(map[string]Rule, len(descriptors))
+	categories := make(map[string]string, len(descriptors))
+	for _, descriptor := range descriptors {
+		index[descriptor.Name] = descriptor
+		categories[descriptor.Name] = descriptor.Category
+	}
+	names := make([]string, 0, len(registered))
+	for name := range registered {
+		names = append(names, name)
+	}
+	if err := ValidateRuleNames(config, names...); err != nil {
+		return err
+	}
+	config.Lint.Rules.boundCategories = categories
+	lints := []*LintConfig{&config.Lint}
+	for _, override := range config.Overrides {
+		if override.Lint != nil {
+			lints = append(lints, override.Lint)
+		}
+	}
+	for _, lint := range lints {
+		if lint.Rules.Preset != "" && !slices.Contains([]Preset{"all", "none", "recommended"}, lint.Rules.Preset) {
+			return fmt.Errorf("invalid rule preset %q", lint.Rules.Preset)
+		}
+		groups := lint.Rules.Groups()
+		for category, group := range lint.Rules.LegacyGroups() {
+			groups[category] = group
+		}
+		for category, group := range groups {
+			if group.Level() != "" && !group.Level().Valid() {
+				return fmt.Errorf("invalid level %q in lint.rules.%s", group.Level(), category)
+			}
+			if group.Preset() != "" && !slices.Contains([]Preset{"all", "none", "recommended"}, group.Preset()) {
+				return fmt.Errorf("invalid preset %q in lint.rules.%s", group.Preset(), category)
+			}
+			names := map[string]string{}
+			for spelling, setting := range group.Rules() {
+				name := rule.CanonicalName(spelling)
+				if previous, duplicate := names[name]; duplicate {
+					return fmt.Errorf("duplicate rule aliases %q and %q in lint.rules.%s", previous, spelling, category)
+				}
+				names[name] = spelling
+				descriptor, known := index[name]
+				if !known {
+					return fmt.Errorf("unknown rule %q in lint.rules.%s", name, category)
+				}
+				valid := category == descriptor.Category || category == LegacyGroup(name)
+				switch category {
+				case "plugins":
+					valid = registered[name]
+				case "external":
+					_, valid = toolProviders()[name]
+				case "nursery":
+					valid = descriptor.Nursery()
+				}
+				if !valid {
+					return fmt.Errorf("rule %q belongs in lint.rules.%s, not lint.rules.%s", name, descriptor.Category, category)
+				}
+				if setting.Level() != "" && !setting.Level().Valid() {
+					return fmt.Errorf("rule %q requires a valid level", name)
+				}
+				_, bundled := toolProviders()[name]
+				if registered[name] || bundled && len(descriptor.OptionsSchema) > 0 {
+					if err := validateRegisteredOptions(descriptor, setting); err != nil {
+						return fmt.Errorf("options for rule %q: %w", name, err)
+					}
+				} else if err := validateOptions(descriptor, setting); err != nil {
+					return fmt.Errorf("options for rule %q: %w", name, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func disabled(names []string, name string) bool {
+	return slices.ContainsFunc(names, func(disabled string) bool { return rule.CanonicalName(disabled) == name })
+}
+
+func validateRegisteredOptions(descriptor Rule, setting Setting) error {
+	if !setting.HasOptions() {
+		return nil
+	}
+	var options map[string]any
+	if _, err := setting.LoadOptions(&options); err != nil {
+		return err
+	}
+	if len(descriptor.OptionsSchema) == 0 {
+		return nil
+	}
+	schema, err := configschema.Compile(descriptor.OptionsSchema)
+	if err != nil {
+		return err
+	}
+	document, err := json.Marshal(options)
+	if err != nil {
+		return err
+	}
+	return schema.Validate(document)
 }
 
 func policyEnabled(cfg *Config, name string) (bool, bool) {
 	switch name {
-	case "disallow-suppressions":
+	case "forbidden-suppression":
 		return cfg != nil && cfg.Policy.DisallowSuppressions.Enabled(), true
-	case "require-commit-hash":
+	case "unpinned-reference":
 		return cfg.RequiresCommitHash(), true
-	case "require-job-timeout":
+	case "job-timeout":
 		return cfg.RequiresJobTimeout().Enabled(), true
-	case "require-permissions":
+	case "explicit-permissions":
 		return cfg.RequiresPermissions().Enabled(), true
 	case "cache-write-untrusted", "cache-call-unrestricted", "cache-operation":
 		return cfg.CachePolicyEnabled(name), true

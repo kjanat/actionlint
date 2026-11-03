@@ -27,19 +27,38 @@ type LintRulesConfig struct {
 	// Concern groups accept a level or a mapping of rule IDs to settings.
 	Correctness Group `yaml:"correctness,omitempty"`
 	Suspicious  Group `yaml:"suspicious,omitempty"`
-	// Style reports workflows GitHub accepts that do nothing, such as jobs without steps.
-	Style    Group `yaml:"style,omitempty"`
-	Security Group `yaml:"security,omitempty"`
-	Policy   Group `yaml:"policy,omitempty"`
-	External Group `yaml:"external,omitempty"`
-	// Plugins selects registered document analyzers by their unique rule names.
-	Plugins Group `yaml:"plugins,omitempty"`
-	// Nursery contains rules under development, excluded from stable presets.
-	Nursery  Group `yaml:"nursery,omitempty"`
-	resolved map[string]Level
+	Security    Group `yaml:"security,omitempty"`
+	Conventions Group `yaml:"conventions,omitempty"`
+	// Legacy groups remain readable until installed metadata permits migration.
+	Style           Group `yaml:"style,omitempty"`
+	Policy          Group `yaml:"policy,omitempty"`
+	External        Group `yaml:"external,omitempty"`
+	Plugins         Group `yaml:"plugins,omitempty"`
+	Nursery         Group `yaml:"nursery,omitempty"`
+	resolved        map[string]Level
+	boundCategories map[string]string
+	boundSettings   map[string]Setting
+	// bindingSources retain settings until descriptors arrive, including
+	// invalid settings hidden by later inheritance or overrides.
+	bindingSources []bindingSource
 	// Disable suppresses named diagnostic rule IDs. Omission or [] disables none.
 	// This applies to every diagnostic severity, including external tool warnings.
 	Disable []string `yaml:"disable" jsonschema:"nullable"`
+}
+
+type bindingSource struct {
+	origin string
+	rules  LintRulesConfig
+}
+
+func ruleBindingSources(origin string, config *Config) []bindingSource {
+	sources := []bindingSource{{origin: origin, rules: config.Lint.Rules}}
+	for i, override := range config.Overrides {
+		if override.Lint != nil {
+			sources = append(sources, bindingSource{origin: fmt.Sprintf("%s override %d", origin, i+1), rules: override.Lint.Rules})
+		}
+	}
+	return sources
 }
 
 // UnmarshalYAML rejects misspelled lint settings.
@@ -78,20 +97,32 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 // plugin options must decode as a mapping. Parsing calls it, and so does
 // ValidateRuleNames, because settings built with NewSetting skip parsing.
 func (c *LintRulesConfig) validateSettings() error {
-	for category, group := range c.Groups() {
+	groups := c.Groups()
+	for category, group := range c.LegacyGroups() {
+		groups[category] = group
+	}
+	for category, group := range groups {
 		for name, setting := range group.Rules() {
-			if category == "plugins" {
-				if _, err := setting.LoadOptions(new(map[string]any)); err != nil {
-					return fmt.Errorf("yaml: options for %q: %w", name, err)
-				}
-				continue
+			if name == "required-actions" {
+				return errors.New("yaml: required-actions was removed; select individual action rules instead")
 			}
 			d, ok := FindRule(name)
-			if !ok || d.Group != category {
-				return fmt.Errorf("yaml: unknown rule %q in lint.rules.%s", name, category)
+			if !ok {
+				// Loading does not yet have installed plugin descriptors. Their
+				// names, categories and schemas bind at analysis composition.
+				continue
+			}
+			legacyPlugin := category == "plugins" && LegacyGroup(name) == "external"
+			legacyNursery := category == "nursery" && d.Nursery()
+			if d.Category != category && LegacyGroup(name) != category && !legacyPlugin && !legacyNursery {
+				return fmt.Errorf("yaml: rule %q belongs in lint.rules.%s, not lint.rules.%s", name, d.Category, category)
 			}
 			if setting.Level() != "" && !setting.Level().Valid() {
 				return fmt.Errorf("yaml: rule %q requires a valid level", name)
+			}
+			if _, provider := toolProviders()[d.Name]; provider {
+				// Installed provider replacements can supply their own schema.
+				continue
 			}
 			if err := validateOptions(d, setting); err != nil {
 				return fmt.Errorf("yaml: options for %q: %w", name, err)

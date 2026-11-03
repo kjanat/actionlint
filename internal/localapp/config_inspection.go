@@ -13,6 +13,7 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
@@ -38,19 +39,22 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		return inspection, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
-	rules := make([]string, 0, len(plugins.plugins)+len(plugins.engines))
+	rules := make([]rule.Descriptor, 0, len(plugins.plugins)+len(plugins.engines)+len(plugins.providers))
 	for _, plugin := range plugins.plugins {
 		if plugin.HasAnalyzer() {
-			rules = append(rules, plugin.Descriptor().Name)
+			rules = append(rules, plugin.Descriptor().Descriptor)
 		}
 	}
 	for _, engine := range plugins.engines {
-		rules = append(rules, engine.descriptor.Rule.Name)
+		rules = append(rules, engine.descriptor.Rule)
+	}
+	for _, provider := range plugins.providers {
+		rules = append(rules, provider.manifest.Rule)
 	}
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	return config.InspectContext(ctx, selection, origins, rules...)
+	return config.InspectContextWithRules(ctx, selection, origins, rules...)
 }
 
 // InstalledProviders returns the tool provider manifests among the plugins

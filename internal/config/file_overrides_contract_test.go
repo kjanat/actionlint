@@ -31,7 +31,7 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		got = repoconfig.ResolveRules(repoconfig.Presets{Strict: true}, got)
+		got = resolveRules(t, repoconfig.Presets{Strict: true}, got)
 		if repoconfig.DiagnosticLevel(got, "if-cond") != "warn" || repoconfig.DiagnosticLevel(got, "expression-reference") != "off" {
 			t.Fatal(got.Lint.Rules)
 		}

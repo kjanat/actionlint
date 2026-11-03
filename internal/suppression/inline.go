@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Directive is a validated inline exception over a physical source range.
@@ -82,7 +83,7 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string) 
 			names = []string{""}
 		}
 		for _, name := range names {
-			if !slices.Contains(allowed, name) {
+			if !slices.ContainsFunc(allowed, func(candidate string) bool { return rule.CanonicalName(candidate) == rule.CanonicalName(name) }) {
 				allowed := slices.Clone(allowed)
 				for i, rule := range allowed {
 					allowed[i] = strconv.Quote(rule)
@@ -121,23 +122,24 @@ func Evaluate(directives []Directive, policy func(string) Decision) (Evaluation,
 		for _, name := range directive.Rules {
 			decision := Decision{Suppress: true}
 			if policy != nil {
-				decision = policy(name)
+				decision = policy(rule.CanonicalName(name))
 			}
 			if decision.Report {
 				prohibited = append(prohibited, name)
 			}
 			if decision.Suppress {
-				result.ranges[name] = append(result.ranges[name], lineRange{directive.First, directive.Last})
+				canonical := rule.CanonicalName(name)
+				result.ranges[canonical] = append(result.ranges[canonical], lineRange{directive.First, directive.Last})
 			}
 		}
 		if len(prohibited) != 0 {
-			reports = append(reports, diagnostic.Diagnostic{Start: directive.Position, Rule: "disallow-suppressions", Message: "inline suppression of " + strings.Join(prohibited, ", ") + " is disallowed by policy.disallow-suppressions"})
+			reports = append(reports, diagnostic.Diagnostic{Start: directive.Position, Rule: "forbidden-suppression", Message: "inline suppression of " + strings.Join(prohibited, ", ") + " is disallowed by policy.forbidden-suppression"})
 		}
 	}
 	return result, reports
 }
 
 // Suppresses reports whether a finding's origin overlaps an allowed exception.
-func (e Evaluation) Suppresses(rule string, first, last int) bool {
-	return slices.ContainsFunc(e.ranges[rule], func(lines lineRange) bool { return first <= lines.last && last >= lines.first })
+func (e Evaluation) Suppresses(ruleName string, first, last int) bool {
+	return slices.ContainsFunc(e.ranges[rule.CanonicalName(ruleName)], func(lines lineRange) bool { return first <= lines.last && last >= lines.first })
 }

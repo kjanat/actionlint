@@ -46,6 +46,41 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 	}
 }
 
+func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
+	for _, tc := range []struct{ legacy, canonical string }{
+		{"require-commit-hash", "unpinned-reference"},
+		{"require-job-timeout", "job-timeout"},
+		{"require-permissions", "explicit-permissions"},
+		{"require-action-metadata", "missing-action-metadata"},
+	} {
+		for _, selector := range []string{tc.legacy, tc.canonical} {
+			t.Run(selector, func(t *testing.T) {
+				source := []byte("run: echo ok # ignore[" + selector + "]\n")
+				findings := filterInlineSuppressionsAt(source, []*findingmodel.Finding{{Rule: tc.canonical, Start: diagnostic.Position{Line: 1}}}, nil, "", &inlineAudit{level: func(string) repoconfig.Level { return "error" }})
+				if len(findings) != 0 {
+					t.Fatalf("selector %q did not suppress canonical finding or was reported unused: %+v", selector, findings)
+				}
+			})
+		}
+	}
+}
+
+func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
+	for _, selector := range []string{"require-job-timeout", "job-timeout"} {
+		t.Run(selector, func(t *testing.T) {
+			cfg, err := repoconfig.Parse([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			finding := &findingmodel.Finding{Rule: "job-timeout", Path: "/repo/ci.yml", Start: diagnostic.Position{Line: 1}}
+			got := FilterConfigured("/repo/ci.yml", "/repo", nil, []*findingmodel.Finding{finding}, cfg, false, func(string) repoconfig.Level { return "error" })
+			if len(got) != 0 {
+				t.Fatalf("configured selector %q did not suppress canonical finding: %+v", selector, got)
+			}
+		})
+	}
+}
+
 func TestUnusedSuppressionLevels(t *testing.T) {
 	for _, tc := range []struct {
 		config string
@@ -62,7 +97,10 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg = repoconfig.ResolveRules(repoconfig.Presets{Strict: tc.strict}, cfg)
+		cfg, err = repoconfig.ResolveRules(repoconfig.Presets{Strict: tc.strict}, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
 		findings, err := Apply(Policy{Path: "ci.yml", ConfigPath: "ci.yml", Config: cfg, Content: []byte("run: echo hi # ignore expression-reference\n")}, nil, map[string][]byte{}, nil)
 		if err != nil {
 			t.Fatal(err)

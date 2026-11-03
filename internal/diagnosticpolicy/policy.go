@@ -119,7 +119,10 @@ func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]b
 			if err != nil {
 				return nil, err
 			}
-			findingConfig = repoconfig.ResolveRules(p.Presets, findingConfig, p.RuleDescriptors...)
+			findingConfig, err = repoconfig.ResolveRules(p.Presets, findingConfig, p.RuleDescriptors...)
+			if err != nil {
+				return nil, err
+			}
 			var policy *repoconfig.SuppressionsPolicy
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions

@@ -249,6 +249,49 @@ func TestRuffEngineIndependentSchema(t *testing.T) {
 	}
 }
 
+func TestLintRuleCategoriesAcceptPluginsAndRejectWrongGroups(t *testing.T) {
+	root := generatedSchema(t)
+	var document any
+	if err := json.Unmarshal(root, &document); err != nil {
+		t.Fatal(err)
+	}
+	const base = "file:///offline/actionlint.schema.json"
+	compiler := validator.NewCompiler()
+	compiler.UseLoader(validator.SchemeURLLoader{})
+	addToolSchemas(t, compiler, base)
+	if err := compiler.AddResource(base, document); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := compiler.Compile(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate := func(input string) error {
+		var value any
+		if err := json.Unmarshal([]byte(input), &value); err != nil {
+			return err
+		}
+		return schema.Validate(value)
+	}
+	for _, input := range []string{
+		`{"lint":{"rules":{"correctness":{"plugin-check":{"level":"warn","options":{"enabled":true}}}}}}`,
+		`{"overrides":[{"includes":["a.yml"],"lint":{"rules":{"security":{"plugin-check":"off"}}}}]}`,
+	} {
+		if err := validate(input); err != nil {
+			t.Errorf("%s rejected: %v", input, err)
+		}
+	}
+	for _, input := range []string{
+		`{"lint":{"rules":{"correctness":{"unpinned-reference":"off"}}}}`,
+		`{"lint":{"rules":{"style":"all"}}}`,
+		`{"overrides":[{"includes":["a.yml"],"lint":{"rules":{"external":"all"}}}]}`,
+	} {
+		if err := validate(input); err == nil {
+			t.Errorf("%s accepted", input)
+		}
+	}
+}
+
 func TestGeneratedSchemaUpToDate(t *testing.T) {
 	got := generatedSchema(t)
 	want, err := os.ReadFile("actionlint.schema.json")
@@ -444,9 +487,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, true, true},
 		{"ruff override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py315}}}]`, true, true},
 		{"ruff unsupported override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py36}}}]`, true, true},
-		{"nursery group", `lint: {rules: {nursery: {preset: all}}}`, true, true},
-		{"nursery level", `lint: {rules: {nursery: warn}}`, true, true},
-		{"nursery null", `lint: {rules: {nursery: null}}`, true, true},
+		{"legacy nursery group accepted by parser but absent from editor schema", `lint: {rules: {nursery: {preset: all}}}`, false, true},
+		{"legacy nursery level accepted by parser but absent from editor schema", `lint: {rules: {nursery: warn}}`, false, true},
+		{"legacy nursery reset accepted by parser but absent from editor schema", `lint: {rules: {nursery: null}}`, false, true},
 		{"stable rule not nursery", `lint: {rules: {nursery: {case-insensitive-conditions: on}}}`, false, false},
 		{"old experimental group", `lint: {rules: {experimental: true}}`, false, false},
 		{"extends file", `extends: [../shared.yml]`, true, false},
@@ -462,20 +505,20 @@ func TestSchemaValidation(t *testing.T) {
 		{"group level", `lint: {rules: {correctness: info}}`, true, true},
 		{"group baseline", `lint: {rules: {correctness: {level: warn, expression: off}}}`, true, true},
 		{"global preset", `lint: {rules: {preset: all}}`, true, true},
-		{"group preset", `lint: {rules: {policy: {preset: all}}}`, true, true},
-		{"group null", `lint: {rules: {policy: null}}`, true, true},
-		{"rule options", `lint: {rules: {policy: {require-job-timeout: {level: error, options: {max-minutes: 30}}}}}`, true, true},
+		{"legacy policy group preset accepted by parser but absent from editor schema", `lint: {rules: {policy: {preset: all}}}`, false, true},
+		{"legacy policy group reset accepted by parser but absent from editor schema", `lint: {rules: {policy: null}}`, false, true},
+		{"rule options", `lint: {rules: {conventions: {job-timeout: {level: error, options: {max-minutes: 30}}}}}`, true, true},
 		{"removed required actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: [actions/checkout]}}}}}`, false, false},
 		{"removed empty required actions", `lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}`, false, false},
-		{"null rule options", `lint: {rules: {policy: {require-job-timeout: {level: on, options: null}}}}`, true, true},
-		{"rule null timeout bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {max-minutes: null}}}}}`, false, false},
-		{"rule null minimum bound", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {min-minutes: null}}}}}`, false, false},
-		{"rule null permissions scope", `lint: {rules: {policy: {require-permissions: {level: on, options: {scope: null}}}}}`, false, false},
-		{"rule null suppression rules", `lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: null}}}}}`, false, false},
-		{"rule null suppression report", `lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: null}}}}}`, false, false},
+		{"null rule options", `lint: {rules: {conventions: {job-timeout: {level: on, options: null}}}}`, true, true},
+		{"rule null timeout bound", `lint: {rules: {conventions: {job-timeout: {level: on, options: {max-minutes: null}}}}}`, false, false},
+		{"rule null minimum bound", `lint: {rules: {conventions: {job-timeout: {level: on, options: {min-minutes: null}}}}}`, false, false},
+		{"rule null permissions scope", `lint: {rules: {security: {explicit-permissions: {level: on, options: {scope: null}}}}}`, false, false},
+		{"rule null suppression rules", `lint: {rules: {conventions: {forbidden-suppression: {level: on, options: {rules: null}}}}}`, false, false},
+		{"rule null suppression report", `lint: {rules: {conventions: {forbidden-suppression: {level: on, options: {report: null}}}}}`, false, false},
 		{"invalid group", `lint: {rules: {securty: {}}}`, false, false},
 		{"invalid rule group", `lint: {rules: {policy: {case-insensitive-conditions: on}}}`, false, false},
-		{"invalid rule name", `lint: {rules: {correctness: {typo: off}}}`, false, false},
+		{"unknown plugin rule ID has shape-valid settings", `lint: {rules: {correctness: {typo: off}}}`, true, true},
 		{"invalid rule level", `lint: {rules: {correctness: {expression: warning}}}`, false, false},
 		{"invalid group level", `lint: {rules: {correctness: {level: warning}}}`, false, false},
 		{"rule default", `lint: {rules: {correctness: {expression: null}}}`, true, true},
@@ -486,10 +529,10 @@ func TestSchemaValidation(t *testing.T) {
 		{"rule disabled alias", `lint: {rules: {correctness: {expression: false}}}`, true, true},
 		{"rule level disabled alias", `lint: {rules: {correctness: {expression: {level: false}}}}`, true, true},
 		{"rule level default", `lint: {rules: {correctness: {expression: {level: null}}}}`, true, true},
-		{"migrated policy reset", `lint: {rules: {policy: {require-job-timeout: {level: null, options: null}}}}`, true, true},
+		{"legacy policy reset accepted by parser but absent from editor schema", `lint: {rules: {policy: {require-job-timeout: {level: null, options: null}}}}`, false, true},
 		{"group enabled alias", `lint: {rules: {security: true}}`, true, true},
 		{"group all alias", `lint: {rules: {security: all}}`, true, true},
-		{"rule enabled alias", `lint: {rules: {policy: {disallow-suppressions: true}}}`, true, true},
+		{"rule enabled alias", `lint: {rules: {conventions: {forbidden-suppression: true}}}`, true, true},
 		{"group disabled alias", `lint: {rules: {correctness: false}}`, true, true},
 		{"group level disabled alias", `lint: {rules: {correctness: {level: false}}}`, true, true},
 		{"group level default", `lint: {rules: {correctness: {level: null}}}`, true, true},
@@ -498,9 +541,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"invalid empty rule level", `lint: {rules: {correctness: {expression: {level: ''}}}}`, false, false},
 		{"invalid empty group level", `lint: {rules: {correctness: {level: ''}}}`, false, false},
 		{"invalid rule options", `lint: {rules: {correctness: {expression: {level: on, options: {}}}}}`, false, false},
-		{"invalid options key", `lint: {rules: {policy: {require-job-timeout: {level: on, options: {minutes: 30}}}}}`, false, false},
-		{"invalid options type", `lint: {rules: {policy: {require-job-timeout: {level: on, options: true}}}}`, false, false},
-		{"missing rule level", `lint: {rules: {policy: {require-job-timeout: {options: {max-minutes: 30}}}}}`, false, false},
+		{"invalid options key", `lint: {rules: {conventions: {job-timeout: {level: on, options: {minutes: 30}}}}}`, false, false},
+		{"invalid options type", `lint: {rules: {conventions: {job-timeout: {level: on, options: true}}}}`, false, false},
+		{"missing rule level", `lint: {rules: {conventions: {job-timeout: {options: {max-minutes: 30}}}}}`, false, false},
 		{"experimental typo", `lint: {rules: {experimental: {enable: [typo]}}}`, false, false},
 		{"experimental unknown option", `lint: {rules: {experimental: {typo: true}}}`, false, false},
 		{"experimental string boolean", `lint: {rules: {experimental: {enabled: 'true'}}}`, false, false},
@@ -509,9 +552,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"lint null suppression", `lint: {rules: {disable: null}}`, true, true},
 		{"lint unknown rule requires registration", `lint: {rules: {disable: [typo]}}`, true, false},
 		{"lint empty rule", `lint: {rules: {disable: ['']}}`, false, false},
-		{"external Ruff config group", `lint: {rules: {external: {ruff: warn}}}`, true, true},
-		{"semantic category is not configuration group", `lint: {rules: {correctness: {ruff: warn}}}`, false, false},
-		{"plugin settings require registration", `lint: {rules: {plugins: {custom: {level: warn, options: {count: 2}}}}}`, true, false},
+		{"legacy external Ruff group accepted by parser but absent from editor schema", `lint: {rules: {external: {ruff: warn}}}`, false, true},
+		{"plugin rule category accepts shape before registration binding", `lint: {rules: {correctness: {ruff: warn}}}`, true, true},
+		{"legacy plugin group is not emitted or accepted", `lint: {rules: {plugins: {custom: {level: warn, options: {count: 2}}}}}`, false, true},
 		{"lint unknown key", `lint: {rules: {typo: true}}`, false, false},
 		{"file override", `overrides: [{includes: ['.github/workflows/**'], lint: {rules: {suspicious: on}}}]`, true, true},
 		{"file override null lint", `overrides: [{includes: ['**'], lint: null}]`, true, true},

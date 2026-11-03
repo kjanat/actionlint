@@ -16,7 +16,7 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, p := range []repoconfig.Presets{{}, {Strict: true, Experimental: new(true)}} {
-				if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(p, cfg), d.Name); got != "off" {
+				if got := repoconfig.DiagnosticLevel(resolveRules(t, p, cfg), d.Name); got != "off" {
 					t.Fatalf("explicit off overridden: %s", got)
 				}
 			}
@@ -67,7 +67,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(repoconfig.Presets{}, cfg), tc.name); got != tc.want {
+				if got := repoconfig.DiagnosticLevel(resolveRules(t, repoconfig.Presets{}, cfg), tc.name); got != tc.want {
 					t.Fatalf("got %s, want %s", got, tc.want)
 				}
 				encoded, err := repoconfig.Marshal(cfg)
@@ -101,7 +101,7 @@ func TestRuleLevelAliasesWithStrict(t *testing.T) {
 		if level == "off" || level == "false" {
 			want = "off"
 		}
-		if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(repoconfig.Presets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
+		if got := repoconfig.DiagnosticLevel(resolveRules(t, repoconfig.Presets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
 			t.Fatalf("%s: got %s, want %s", level, got, want)
 		}
 	}
@@ -133,7 +133,7 @@ func TestRuleLevelPrecedence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(tc.preset, cfg), tc.name); got != tc.want {
+			if got := repoconfig.DiagnosticLevel(resolveRules(t, tc.preset, cfg), tc.name); got != tc.want {
 				t.Fatalf("got %s, want %s", got, tc.want)
 			}
 		})
@@ -153,7 +153,11 @@ func TestRuleSettingsInvalid(t *testing.T) {
 		"policy: {required-actions: on}",
 	} {
 		t.Run(rules, func(t *testing.T) {
-			if _, err := repoconfig.Parse([]byte("lint: {rules: {" + rules + "}}")); err == nil {
+			cfg, err := repoconfig.Parse([]byte("lint: {rules: {" + rules + "}}"))
+			if err == nil {
+				_, err = repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
+			}
+			if err == nil {
 				t.Fatal("invalid settings accepted")
 			}
 		})
@@ -173,7 +177,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		got := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
+		got := resolveRules(t, repoconfig.Presets{}, cfg)
 		if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 {
 			t.Fatal(got.Policy)
 		}

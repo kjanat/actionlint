@@ -88,7 +88,7 @@ func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 				{Start: diagmodel.Position{Line: 3}, Rule: "expression-reference"},
 			}
 			got := diagnosticpolicy.FilterInline(source, findings, cfg.Policy.DisallowSuppressions)
-			if len(got) != 3 || got[0] != findings[0] || got[1] != findings[2] || got[2].Rule != "disallow-suppressions" || got[2].Start.Line != 1 {
+			if len(got) != 3 || got[0] != findings[0] || got[1] != findings[2] || got[2].Rule != "forbidden-suppression" || got[2].Start.Line != 1 {
 				t.Fatalf("directive bypassed policy or changed its extent: %+v", got)
 			}
 		})
@@ -108,7 +108,7 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 				t.Fatalf("registered rule was not suppressed: %v", got)
 			}
 			got := diagnosticpolicy.FilterInline(source, []*findingmodel.Finding{finding}, cfg.Policy.DisallowSuppressions)
-			if len(got) != 2 || got[0] != finding || got[1].Rule != "disallow-suppressions" || got[1].Start.Line != 4 {
+			if len(got) != 2 || got[0] != finding || got[1].Rule != "forbidden-suppression" || got[1].Start.Line != 4 {
 				t.Fatalf("restriction did not retain finding and report comment: %v", got)
 			}
 		})
@@ -139,7 +139,7 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		{Rule: "shellcheck", Start: diagmodel.Position{Line: 7}},
 		{Rule: "plugin-rule", Start: diagmodel.Position{Line: 9}},
 		{Rule: "inline-suppression", Start: diagmodel.Position{Line: 10}},
-		{Rule: "disallow-suppressions", Start: diagmodel.Position{Line: 11}},
+		{Rule: "forbidden-suppression", Start: diagmodel.Position{Line: 11}},
 	}
 	got := diagnosticpolicy.FilterInline([]byte("workflow"), findings, policy, "plugin-rule")
 	want := &findingmodel.SuppressionOrigin{First: 4, Last: 4}

@@ -68,7 +68,7 @@ func buildRegisteredRules() []Rule {
 		{Name: "mixed-type-comparisons"},
 		{Name: "case-insensitive-conditions"},
 		{Name: "mixed-type-matrix-filters"},
-		{Name: "disallow-suppressions", Scope: SourceScope, Options: func() any { return &SuppressionsPolicy{} }, Configure: configureSuppressionsPolicy},
+		{Name: "forbidden-suppression", Scope: SourceScope, Options: func() any { return &SuppressionsPolicy{} }, Configure: configureSuppressionsPolicy},
 		{Name: "matrix"},
 		{Name: "credentials"},
 		{Name: "shell-name"},
@@ -101,10 +101,10 @@ func buildRegisteredRules() []Rule {
 		{Name: "empty-triggers"},
 		{Name: "empty-job"},
 		{Name: "empty-run"},
-		{Name: "require-commit-hash", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
-		{Name: "require-action-metadata", Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata })},
-		{Name: "require-job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
-		{Name: "require-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
+		{Name: "unpinned-reference", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
+		{Name: "missing-action-metadata", Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata })},
+		{Name: "job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
+		{Name: "explicit-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},
 		{Name: "cache-write-untrusted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
 		{Name: "cache-call-unrestricted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
 		{Name: "cache-operation", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
@@ -134,6 +134,7 @@ func providerRules() []Rule {
 
 // FindRule returns the catalogue entry for name.
 func FindRule(name string) (Rule, bool) {
+	name = rule.CanonicalName(name)
 	for _, rule := range registeredRules() {
 		if rule.Name == name {
 			rule.Descriptor = rule.Clone()

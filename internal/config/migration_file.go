@@ -11,6 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/config/address"
 	configsource "actionlint.kjanat.dev/v2/internal/config/source"
+	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -43,7 +44,7 @@ func (remoteConfigSnapshot) configSnapshot() {}
 // PrepareMigration reads the selected file and its inherited inputs, validates
 // the converted graph, and returns a write candidate tied to those inputs.
 // Reads stop when ctx is canceled.
-func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) {
+func PrepareMigration(ctx context.Context, path string, registrations ...rule.Descriptor) (*FileMigration, error) {
 	absolute, err := address.Normalize(path)
 	if err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 	if err != nil {
 		return nil, err
 	}
-	migration, err := MigrateDocument(absolute, snapshots[absolute].bytes())
+	migration, err := MigrateDocument(absolute, snapshots[absolute].bytes(), registrations...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,13 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 		return nil, err
 	}
 	effective := func(node *yaml.Node) (map[string]any, error) {
-		resolved, err := resolveNode(node, nil, false)
+		// Compare the merged graphs in the same vocabulary. Comparing raw
+		// category mappings would reject every intentional category migration.
+		canonical, _, err := migrateRuleCategories(node, registrations)
+		if err != nil {
+			return nil, err
+		}
+		resolved, err := resolveNode(canonical, nil, false)
 		if err != nil {
 			return nil, err
 		}

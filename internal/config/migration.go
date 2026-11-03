@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -37,7 +38,7 @@ type Migration struct {
 
 // MigrateDocument converts legacy syntax without reading or writing files.
 // Explicit migrated policy levels now survive presets and --strict.
-func MigrateDocument(path string, content []byte) (Migration, error) {
+func MigrateDocument(path string, content []byte, registrations ...rule.Descriptor) (Migration, error) {
 	root, err := configtree.Decode(path, content)
 	if err != nil {
 		return Migration{}, err
@@ -55,6 +56,11 @@ func MigrateDocument(path string, content []byte) (Migration, error) {
 	if err != nil {
 		return Migration{}, err
 	}
+	next, categoriesChanged, err := migrateRuleCategories(next, registrations)
+	if err != nil {
+		return Migration{}, err
+	}
+	changed = changed || categoriesChanged
 	result := Migration{Content: bytes.Clone(content), Changed: changed}
 	if !changed {
 		return result, nil
@@ -161,6 +167,15 @@ func cloneMapping(node *yaml.Node) *yaml.Node {
 }
 
 func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
+	next, renamed, err := migrateRuleAliases(root)
+	if err != nil {
+		return nil, false, err
+	}
+	next, changed, err := migrateLegacyNode(next)
+	return next, renamed || changed, err
+}
+
+func migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, error) {
 	if root == nil || root.Kind != yaml.MappingNode {
 		return root, false, nil
 	}
@@ -185,6 +200,7 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 	}
 	install := func(name string, setting *yaml.Node, origin string) error {
 		descriptor, _ := FindRule(name)
+		name = descriptor.Name
 		group := cloneMapping(field(rules, descriptor.Group))
 		if group.Kind != yaml.MappingNode {
 			// Expand a valid group shorthand without dropping its baseline.

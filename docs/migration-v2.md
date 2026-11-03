@@ -49,6 +49,15 @@ For v1, use an exact revision at the old URL.
 The host repository's v2 source no longer contains the hook manifest; updating
 that old URL to a v2 source revision will not install a hook.
 
+## Rule IDs and categories
+
+V2 reports the canonical rule IDs. The five renamed IDs and old-to-new category
+mapping are listed in [configuration migration](config-migration.md#rule-id-migration).
+Old IDs still work in configured and inline suppressions. Current settings use
+the four semantic categories `correctness`, `suspicious`, `security` and
+`conventions`. Category levels follow current rule membership; set a rule
+explicitly when its category changed and its former selection is still wanted.
+
 ## External tool selection
 
 Tools are selected by id: `--tool ID[=COMMAND]`, `--no-tool ID`,

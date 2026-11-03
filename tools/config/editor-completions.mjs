@@ -93,7 +93,7 @@ console.log(
 for (
 	const [text, expected] of [
 		['lint:\n  rules:\n    "s|": on\n', 'security'],
-		['lint:\n  rules:\n    policy:\n      "r|": on\n', 'require-commit-hash'],
+		['lint:\n  rules:\n    conventions:\n      "r|": on\n', 'job-timeout'],
 		['tools:\n  shellcheck:\n    config:\n      enable: "a|"\n', 'all'],
 		['tools:\n  ruff:\n    select: ["|F"]\n', 'F821'],
 	]

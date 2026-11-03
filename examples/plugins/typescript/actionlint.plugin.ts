@@ -42,7 +42,7 @@ export default defineScriptProvider({
 	shells: ['bash'],
 	rule: {
 		name: 'trailing-space',
-		category: 'style',
+		category: 'conventions',
 		subcategory: 'formatting',
 		maturity: 'nursery',
 		description: 'Lines should not end in spaces or tabs.',

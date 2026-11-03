@@ -12,7 +12,7 @@ import (
 // It also checks the rule settings in config.Lint the way parsing does, so a
 // setting built with NewSetting whose options do not decode into the rule's
 // options type is an error here instead of being ignored later. Settings in
-// config.Overrides are checked when ForFile merges them for a matching file.
+// config.Overrides receive complete descriptor validation in ResolveRules.
 func ValidateRuleNames(config *Config, additional ...string) error {
 	if config == nil {
 		return nil
@@ -57,15 +57,12 @@ func ValidateRuleNames(config *Config, additional ...string) error {
 				return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)
 			}
 		}
-		for name := range lint.Rules.Plugins.Rules() {
-			if !slices.Contains(additional, name) {
-				return fmt.Errorf("yaml: unknown registered rule %q in lint.rules.plugins", name)
-			}
+		// Suppression policy options also refer to registered rule names.
+		suppressions, _ := FindRule("forbidden-suppression")
+		setting, found := canonicalSetting(lint.Rules.Groups()[suppressions.Category], suppressions.Name)
+		if !found {
+			setting, _ = canonicalSetting(lint.Rules.Policy, suppressions.Name)
 		}
-		// Parsing only accepts disallow-suppressions in its own group, so that is
-		// the one setting whose options name rules.
-		suppressions, _ := FindRule("disallow-suppressions")
-		setting, _ := lint.Rules.Groups()[suppressions.Group].Rule(suppressions.Name)
 		if policy := new(SuppressionsPolicy); loadOptions(setting, policy) {
 			if err := validate(policy); err != nil {
 				return err

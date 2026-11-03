@@ -3,7 +3,15 @@ package config
 // projectSettings prepares internal policy settings from the selected rules.
 func projectSettings(c *Config) {
 	for _, descriptor := range Rules() {
-		setting, exists := c.Lint.Rules.Groups()[descriptor.Group].Rule(descriptor.Name)
+		setting, exists := canonicalSetting(c.Lint.Rules.Groups()[descriptor.Category], descriptor.Name)
+		if !exists {
+			legacy := LegacyGroup(descriptor.Name)
+			group, removed := c.Lint.Rules.LegacyGroups()[legacy]
+			if !removed {
+				group = c.Lint.Rules.Groups()[legacy]
+			}
+			setting, exists = canonicalSetting(group, descriptor.Name)
+		}
 		if !exists || descriptor.Configure == nil {
 			continue
 		}
@@ -19,11 +27,11 @@ func projectSettings(c *Config) {
 		descriptor.Configure(c, setting)
 		if setting.Level() == "off" {
 			switch descriptor.Name {
-			case "require-job-timeout":
+			case "job-timeout":
 				c.Policy.RequireJobTimeout = &JobTimeoutPolicy{}
-			case "require-permissions":
+			case "explicit-permissions":
 				c.Policy.RequirePermissions = &PermissionsPolicy{}
-			case "disallow-suppressions":
+			case "forbidden-suppression":
 				c.Policy.DisallowSuppressions = &SuppressionsPolicy{}
 			}
 		}

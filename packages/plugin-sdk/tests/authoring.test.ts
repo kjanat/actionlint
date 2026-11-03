@@ -54,6 +54,15 @@ test('source compilation embeds jq without creating author build outputs', async
 	});
 });
 
+test('authoring rejects rule categories outside the SDK union', async () => {
+	await fixture(mapping, async (_directory, definition) => {
+		const path = fileURLToPath(definition);
+		const source = await readFile(path, 'utf8');
+		await writeFile(path, source.replace("category:'correctness'", "category:'style'"));
+		await expect(compileProvider(definition)).rejects.toThrow('manifest must default-export a valid SDK provider');
+	});
+});
+
 test('callback manifests are reproducible without staging paths and retain legal comments', async () => {
 	await fixture(mapping, async (_directory, definition) => {
 		await writeFile(

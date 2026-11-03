@@ -8,6 +8,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/suppression"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // SuppressionRules returns the ordered rule catalogue for inline directives.
@@ -34,7 +35,7 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 	allowedRules := SuppressionRules(additional...)
 	directives, invalid := suppression.Parse(source, allowedRules)
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
-		mode := policy.ReportFor(name)
+		mode := policy.ReportFor(rule.CanonicalName(name))
 		return suppression.Decision{
 			Suppress: mode == repoconfig.SuppressionsAllowed || mode == repoconfig.ReportSuppression,
 			Report:   mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll,
@@ -58,17 +59,20 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 		}
 		if audit != nil && applies && audit.level(finding.Rule) != "off" && finding.Rule != "unused-suppression" {
 			for index, directive := range directives {
-				if first <= directive.Last && last >= directive.First && slices.Contains(directive.Rules, finding.Rule) {
-					used[selector{index, finding.Rule}] = true
+				for _, selected := range directive.Rules {
+					if first > directive.Last || last < directive.First || rule.CanonicalName(selected) != rule.CanonicalName(finding.Rule) {
+						continue
+					}
+					used[selector{index, selected}] = true
 					if audit.used != nil {
-						audit.used(directive.Position, finding.Rule)
+						audit.used(directive.Position, selected)
 					}
 					break
 				}
 			}
 		}
-		if applies && finding.Rule != "inline-suppression" && finding.Rule != "disallow-suppressions" &&
-			slices.Contains(allowedRules, finding.Rule) && policy.ReportFor(finding.Rule) == repoconfig.SuppressionsAllowed {
+		if applies && finding.Rule != "inline-suppression" && rule.CanonicalName(finding.Rule) != "forbidden-suppression" &&
+			slices.ContainsFunc(allowedRules, func(name string) bool { return rule.CanonicalName(name) == rule.CanonicalName(finding.Rule) }) && policy.ReportFor(finding.Rule) == repoconfig.SuppressionsAllowed {
 			finding.SuppressionTarget = &findingmodel.SuppressionOrigin{Path: targetPath, First: first, Last: last}
 		} else {
 			finding.SuppressionTarget = nil

@@ -7,6 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/checks"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // declarationRule is the traversal adapter for stateless declaration checks.
@@ -25,6 +26,7 @@ func newDeclarationRule(name string) *declarationRule {
 func (r *declarationRule) collect(input []checks.Finding, job string) {
 	for _, d := range input {
 		finding := findingmodel.FromDiagnostic(d.Diagnostic)
+		finding.Rule = rule.CanonicalName(finding.Rule)
 		if d.Step.Present() {
 			finding.Owner = &findingmodel.Owner{Job: job, Step: declarationPosition(d.Step)}
 			origin := d.Step.Origin(job)
@@ -91,14 +93,14 @@ func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) workflowvisit
 	if upper, ok := policy.MaxMinutes(); ok {
 		options.Max = new(upper)
 	}
-	r := newDeclarationRule("require-job-timeout")
+	r := newDeclarationRule("job-timeout")
 	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.JobTimeout(j, options) }
 	return r
 }
 
 func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) workflowvisit.Rule {
 	scope := policy.Scope()
-	r := newDeclarationRule("require-permissions")
+	r := newDeclarationRule("explicit-permissions")
 	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding {
 		return checks.RequiredWorkflowPermissions(w, scope)
 	}
@@ -107,7 +109,7 @@ func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) workflowvis
 }
 
 func NewRuleRequireCommitHash(excluded func(string) bool) workflowvisit.Rule {
-	r := newDeclarationRule("require-commit-hash")
+	r := newDeclarationRule("unpinned-reference")
 	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.CommitHashJob(j, excluded) }
 	r.stepCheck = func(s workflowdecl.StepView) []checks.Finding { return checks.CommitHashStep(s, excluded) }
 	return r

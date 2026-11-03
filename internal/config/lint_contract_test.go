@@ -17,7 +17,11 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 		"lint: {rules: {nursery: {case-insensitive-conditions: on}}}",
 	} {
 		t.Run(input, func(t *testing.T) {
-			if _, err := repoconfig.Parse([]byte(input)); err == nil {
+			cfg, err := repoconfig.Parse([]byte(input))
+			if err == nil {
+				_, err = repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
+			}
+			if err == nil {
 				t.Fatal("invalid config accepted")
 			}
 		})
@@ -55,7 +59,7 @@ func TestStableSuspiciousRuleSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(tc.presets, cfg), name); got != tc.want {
+			if got := repoconfig.DiagnosticLevel(resolveRules(t, tc.presets, cfg), name); got != tc.want {
 				t.Fatalf("%s %s: got %s, want %s", name, tc.rules, got, tc.want)
 			}
 		}

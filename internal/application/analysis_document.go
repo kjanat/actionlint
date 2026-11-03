@@ -109,7 +109,10 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err := repoconfig.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
 		return nil, nil, err
 	}
-	cfg = repoconfig.ResolveRules(s.rulePresets, cfg, s.toolDescriptors...)
+	cfg, err = repoconfig.ResolveRules(s.rulePresets, cfg, s.toolDescriptors...)
+	if err != nil {
+		return nil, nil, err
+	}
 	registrations, err := checks.ConfigureAnalyzers(cfg, s.analyzers)
 	if err != nil {
 		return nil, nil, err
@@ -295,7 +298,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			if err != nil {
 				return nil, err
 			}
-			return repoconfig.ResolveRules(s.rulePresets, config, s.toolDescriptors...), nil
+			return repoconfig.ResolveRules(s.rulePresets, config, s.toolDescriptors...)
 		},
 		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),

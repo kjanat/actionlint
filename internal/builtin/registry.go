@@ -54,7 +54,7 @@ type behaviour struct {
 
 func ruleBehaviours() map[string]behaviour {
 	return map[string]behaviour{
-		"require-action-metadata": {Build: func(c Context) workflowvisit.Rule { return newRuleRequireActionMetadata(c.Context, c.RemoteActions) }, Enabled: func(c Context) bool {
+		"missing-action-metadata": {Build: func(c Context) workflowvisit.Rule { return newRuleRequireActionMetadata(c.Context, c.RemoteActions) }, Enabled: func(c Context) bool {
 			return c.Config != nil && c.Config.Policy.RequireActionMetadata != nil && *c.Config.Policy.RequireActionMetadata
 		}},
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {
@@ -95,22 +95,22 @@ func ruleBehaviours() map[string]behaviour {
 		"empty-triggers": {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyTriggers() }},
 		"empty-job":      {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyJob() }},
 		"empty-run":      {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyRun() }},
-		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {
+		"unpinned-reference": {Build: func(c Context) workflowvisit.Rule {
 			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {
 				// Parsing and ValidateRuleNames reject options that do not load
 				// here; without that check they leave no exclusions.
-				setting, _ := c.Config.Lint.Rules.Policy.Rule("require-commit-hash")
+				setting, _ := c.Config.Lint.Rules.Policy.Rule("unpinned-reference")
 				if _, err := setting.LoadOptions(options); err != nil {
 					options = new(lintconfig.CommitHashOptions)
 				}
 			}
 			return NewRuleRequireCommitHash(options.Excludes)
 		}, Enabled: func(c Context) bool { return c.Config.RequiresCommitHash() }},
-		"require-job-timeout": {Build: func(c Context) workflowvisit.Rule {
+		"job-timeout": {Build: func(c Context) workflowvisit.Rule {
 			return NewRuleRequireJobTimeout(c.Config.RequiresJobTimeout())
 		}, Enabled: func(c Context) bool { return c.Config.RequiresJobTimeout().Enabled() }},
-		"require-permissions": {Build: func(c Context) workflowvisit.Rule {
+		"explicit-permissions": {Build: func(c Context) workflowvisit.Rule {
 			return NewRuleRequirePermissions(c.Config.RequiresPermissions())
 		}, Enabled: func(c Context) bool { return c.Config.RequiresPermissions().Enabled() }},
 		"cache-write-untrusted":   {Build: func(c Context) workflowvisit.Rule { return NewRuleCacheWriteUntrusted() }, Enabled: func(c Context) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") }},

@@ -122,7 +122,7 @@ jobs: [`,
 	}
 	source = []byte("jobs: [ # actionlint:ignore syntax-check -- reviewed")
 	_, findings = parseSuppressionSource(source)
-	if got := diagnosticpolicy.FilterInline(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "disallow-suppressions" {
+	if got := diagnosticpolicy.FilterInline(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "forbidden-suppression" {
 		t.Fatalf("malformed YAML bypassed suppression policy: %+v", got)
 	}
 	source = []byte("name: test # actionlint:ignore syntax-check -- reviewed\njobs: [")
@@ -178,7 +178,7 @@ jobs: [`,
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := "disallow-suppressions"
+			want := "forbidden-suppression"
 			if reason == " --" {
 				want = "inline-suppression"
 			}

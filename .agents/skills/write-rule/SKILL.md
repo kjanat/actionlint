@@ -1,115 +1,119 @@
 ---
 name: write-rule
-description: Write, rename, or review actionlint rules, including semantic evidence, rule registration, configuration migration, diagnostics, fixes, and runner comparison tests.
+description: Implement or change actionlint lint rules, including diagnostic fixes, rule renames, and external-linter manifest/jq plugins. Use for rule behavior and its configuration, schema, suppression, and regression tests; not for merely running actionlint or explaining a finding.
 ---
 
-# Writing actionlint rules
+# Write an actionlint rule
 
-Use this workflow for built-in and plugin rules. Read the current implementation;
-file names below are entry points, not a second specification. Work through the
-relevant checks without creating a separate design document for every rule.
+Deliver an executable check with justified behavior and tests through the host.
+Use the repository's current contracts. This skill does not define an alternative
+architecture or authorize a redesign.
 
-## Establish the claim first
+## 1. Establish what deserves a finding
 
-- Describe the exact condition reported, the information required to establish
-  it, and valid situations that resemble it. Separate invalid Actions syntax,
-  surprising but valid behavior, security exposure, and project conventions.
-- Check current GitHub documentation and the relevant implementation in
-  `actions/runner`, language services, or the pinned Runny reference. Record
-  upstream revisions in regression fixtures when behavior depends on them.
-  SchemaStore is useful comparison material, not the execution authority.
-- Reproduce the alleged problem before coding. Keep unknown runtime values
-  unknown: missing evidence is not evidence of an absent value or unsafe path.
-- Check source scope against invocation scope. The same composite declaration
-  can execute with different inputs, permissions, matrices, and ancestry.
-- Search the existing rule catalogue and semantic model before adding a rule.
-  Reuse shared facts and queries rather than repeating AST walks or creating
-  a parallel evaluator. Tool-specific behavior belongs in external manifests,
-  transforms, or existing examples, not new host adapters.
+Start from the reported workflow/action, requested convention, or scanner output.
+Find the existing rule and its tests before adding another. Reduce the case and
+write down the condition being reported, a valid near miss, and any missing
+runtime information. Put useful evidence in the regression test; no separate
+proposal document is required.
 
-## Choose the contract
+For GitHub behavior, check the relevant documentation and runner implementation
+or pinned Runny result. Distinguish server behavior from runner behavior. For a
+project convention, establish the user's intended restriction instead. An unknown
+value is not proof of a violation. Narrow the check if the evidence cannot support
+the requested claim.
 
-- Use a precise diagnostic ID describing the finding. Avoid generic umbrellas
-  such as `action`, implementation names, or names that overstate certainty.
-- Give each rule one primary concern category. Provider, maturity, recommended
-  selection, native severity, and fix availability are independent properties.
-  Category membership alone does not establish exploitability or confidence.
-- Keep category defaults beside their individual rule exceptions in config.
-  Installed plugins must follow the same selection and validation contract.
-- An opinionated rule needs useful legitimate examples and an appropriate
-  default. For example, `always()` may be necessary for cancellation cleanup;
-  replacing it with `!cancelled()` changes behavior.
-- Derive fix capability from real implementations. A rule can fix some
-  findings and not others. Each diagnostic carries only the edits available
-  for that occurrence, with applicability and revision evidence.
-- Treat IDs and category paths as public configuration. Renames need aliases
-  or migration for settings, exclusions, suppressions, LSP, and machine output.
-  Do not silently broaden a selector or reinterpret a legacy group default.
+Inspect the model's value states before writing the predicate. Distinguish absent,
+known, unresolved, and invalid values; expression syntax alone does not establish
+uncertainty. Equivalent known values must receive the same decision whether
+written literally or as constant expressions. Test that equivalence alongside a
+genuinely unresolved value. Use the existing semantic accessor described in
+[implementation.md](references/implementation.md), not the scalar's raw text as
+a substitute for its value.
 
-## Implementation map
+## 2. Choose the implementation path
 
-- `internal/rulecatalog`: public descriptors, examples, and rule documentation.
-- `internal/config`: registration, selection, options, inheritance, migration.
-- `internal/config/rules`: shared setting syntax, independent of execution.
-- `rule`: public rule descriptors; follow the existing registration contract.
-- `internal/workflow`, `internal/action`, `internal/semantics`: established
-  semantic facts and checks. Locate a neighboring rule before choosing a home.
-- `diagnostic`, `source`, `internal/application`: diagnostic admission and source
-  identity. Do not bypass admission or manufacture positions from message text.
-- `tools/config`, `internal/editorschema`: generated and installed-plugin schemas.
-- `internal/integration`, `testdata`: frontend and real workflow regressions.
+Read the matching section of [implementation.md](references/implementation.md):
 
-Keep analysis independent of presentation and configuration parsing. Diagnostic
-messages explain the specific problem; rule descriptions belong in reference
-material. Preserve typed error classification and explicit evidence limits.
+- **Native semantic check:** follow the existing declaration/fact model through
+  registration and diagnostic admission. Keep new reasoning in the shared model
+  when other rules need it.
+- **External linter:** author a plugin using the manifest/SDK contracts. Test its
+  output conversion through actionlint; do not add a tool-specific host adapter.
+- **Rename or configuration change:** trace public selectors and migration as well
+  as the producer. Preserve effective selections, not just equivalent-looking YAML.
 
-For fixes, use captured source revisions and precise source spans. Check quoted,
-folded, multiline, escaped, and aliased YAML scalars. Preserve unrelated bytes.
-Never infer safe shell replacement from text resemblance alone: shell, quoting,
-expansion context, and environment availability affect the result.
+Decide the rule's contract before wiring it in. Use the evidence from step 1:
 
-## Test the claim, not the implementation
+| Decision           | How to decide                                                                                                                                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Category           | `correctness` for violations of language/runtime requirements; `suspicious` for valid behavior with a demonstrated mistake pattern; `security` for an established trust or authority exposure; `conventions` for project preferences. A valid omission is not a runtime defect merely because the request says "require". |
+| Severity           | Match the consequence established by this finding: error for an established failure or exposure warranting failure, warning for actionable risk or an unmet project expectation, info for advisory observations. Category alone does not establish severity.                                                              |
+| Default enablement | Assess legitimate uses and false positives. Checks rejecting common, supported behavior need explicit selection unless the task establishes a repository-wide requirement. Compare neighboring rules' recommended/default settings; do not inherit them merely because their code is convenient.                          |
+| Maturity           | Use stable only when semantics, valid counterexamples, and integration behavior are verified. Use nursery for an experimental heuristic or unresolved semantic coverage; explain what evidence is missing.                                                                                                                |
+| Fix                | Offer an automatic fix only when the source edit preserves intended behavior. Use a reviewable suggestion for a deliberate behavior change. Omit the fix when no justified edit is available. Decide per finding.                                                                                                         |
 
-Build a small table of positive, negative, and unknown cases. Include:
+Choose a specific finding ID and the smallest useful options surface. Check the
+current catalogue/loader for valid metadata and selection behavior, including
+strict/experimental modes. Provider identity is independent of these decisions.
+Record the reasons in the rule explanation and relevant tests. Make the decisions
+from the evidence; ask only when a missing user preference actually determines
+the requested behavior. Do not ask the user to design the rule for you.
 
-- the user's original case and a minimal reproduction;
-- valid counterexamples, including intentional unusual syntax;
-- the same declaration under different invocation inputs;
-- dynamic and missing values, matrices, reusable calls, and composite actions;
-- category default, explicit rule exception, disable, strict/experimental
-  selection, inherited configuration, and file overrides;
-- suppression matching and unused-suppression accounting;
-- exact diagnostic code, source, range, severity, and applicable fixes.
+## 3. Implement and exercise the complete path
 
-Apply a proposed fix and analyze the resulting source again. Assert both that
-the target finding is addressed and that unrelated source and semantics survive.
-Behavior-changing suggestions need explicit applicability, not a safe-fix label.
+First add a regression that exposes the missing or incorrect behavior. Implement
+the check against the narrowest existing semantic input. A declaration and its
+invocations are different: include invocation context when inputs or ancestry can
+change the answer. Avoid rebuilding expression evaluation or traversing raw YAML
+when the model already provides the needed fact.
 
-For renames and category changes, compare effective settings before and after
-migration, including options and overrides. Exercise YAML, JSON, and TOML;
-conflicting aliases, null resets, unknown plugin metadata, and repeated migration.
-Validate both the generated schema and the runtime configuration loader.
+Keep the diagnostic tied to captured source and its actual range. For a fix,
+establish applicability per finding; apply it and analyze the edited source.
+Changing intended behavior requires a reviewable suggestion, not an automatic fix.
 
-## Independent comparisons and final audit
+Read [validation.md](references/validation.md) for the relevant integration checks
+and comparison methods. Exercise both the semantic test and the configured host
+path. A helper returning the right finding does not prove the rule is registered,
+selectable, suppressible, or correctly mapped to source.
 
-- Replay relevant fixtures through the pinned Runny runner implementation or
-  the matching upstream parser/evaluator. Compare behavior, not just whether
-  both tools produce a message. Record disagreements as counterexamples.
-- Use real workflows/actions from the existing corpus, including awkward
-  syntax. Keep private fixtures private. Do not download or execute arbitrary
-  workflow code as part of an ordinary unit test.
-- A live GitHub run is useful for server-side behavior absent from runner code.
-  Use an explicitly authorized disposable test and record run/job evidence;
-  ordinary test authorization does not authorize pushes or dispatches.
-- Check that schema completion, CLI rule explanation, diagnostics, suppressions,
-  plugin contracts, and docs agree. Generate derived files from their source.
-- Run targeted tests through `mise exec -- ...`; use repository formatting tasks.
-  Before a Go commit, run the required official modernizer in affected modules,
-  inspect all edits, and verify final staged content. Avoid concurrent memory-heavy
-  Go analyzers on this development machine.
-- Report separately what source was inspected, what tests actually ran, what
-  external reference was exercised, and what could not be verified. A green
-  fixture does not establish every platform or every invocation is correct.
+For each requested document kind, verify a finding through its public entry path.
+Workflow traversal does not prove standalone-action or called-composite coverage.
+If a supported path produces no finding, trace selection, callback execution,
+collection, and admission before changing the predicate or declaring completion.
+Use positive integration cases for every claimed entry path. A standalone-action
+test cannot substitute for a workflow calling that action through `uses`.
 
-Use the current task's authorization and repository instructions for expensive
-tests and external writes. Do not turn this skill into another approval loop.
+## 4. Audit and finish
+
+Account for defects found along the way. For a defect blocking the requested rule,
+add a reproducer and fix the shared boundary, then test its other callers. Do not
+work around it only for the new rule or silently drop a requested entry path.
+For an unrelated confirmed defect, record the source location, minimal input,
+expected/actual behavior, reproduction command, and disposition. Link an existing
+issue when applicable; publish a new issue only when authorized. Otherwise keep
+the evidence in the task's local notes and link it in the handoff, explicitly
+identifying it as unfiled. An issue is not fixed merely because it was recorded.
+
+Review the resulting diff against the original case and valid counterexample.
+Look specifically for unsupported assumptions, repeated analysis, unexpected
+default changes, overbroad suppressions, and fixes affecting unrelated source.
+Update generated schema/reference output when its inputs changed.
+
+Before calling a new rule complete, verify its chosen severity in emitted output
+when enabled with `on`, with an explicit level, and under the relevant preset.
+Catalogue prose and a `DefaultLevel` setting do not prove what a finding emits.
+Run the generated-schema freshness check after adding its catalogue entry. Treat
+an untested requested entry path or a failing regression as unfinished work to
+resolve, not a limitation to append to an otherwise-complete report.
+
+Run the enabled rule on a relevant existing workflow or action and inspect its
+findings. Record the source and what that comparison established. Synthetic cases
+and a green catalogue/schema check do not replace this comparison.
+
+Report the implemented behavior, tests run, real-world/reference comparisons,
+and any unverified behavior. Follow repository formatting and commit instructions.
+Do not substitute this report for implementation.
+
+When evaluating changes to this skill itself, use [the task cases](evals/cases.json).
+They define observable outcomes, not claims that an evaluation has passed.

@@ -44,7 +44,7 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 			if len(reports) != wantReports {
 				t.Fatalf("policy diagnostics: %+v", reports)
 			}
-			if wantReports != 0 && (reports[0].Rule != "disallow-suppressions" || reports[0].Start.Line != 1 || reports[0].Message != "inline suppression of expression is disallowed by policy.disallow-suppressions") {
+			if wantReports != 0 && (reports[0].Rule != "forbidden-suppression" || reports[0].Start.Line != 1 || reports[0].Message != "inline suppression of expression is disallowed by policy.forbidden-suppression") {
 				t.Fatalf("lost policy diagnostic identity: %+v", reports)
 			}
 		})

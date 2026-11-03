@@ -35,8 +35,8 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 	}{
 		{"false", nil},
 		{"{report: violation}", []string{"expression-reference"}},
-		{"{report: suppression}", []string{"disallow-suppressions"}},
-		{"true", []string{"disallow-suppressions", "expression-reference"}},
+		{"{report: suppression}", []string{"forbidden-suppression"}},
+		{"true", []string{"forbidden-suppression", "expression-reference"}},
 	} {
 		cfg, err := repoconfig.Parse([]byte("ignores: [{rule: expression-reference, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
 		if err != nil {

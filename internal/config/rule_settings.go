@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Level controls the severity of a diagnostic.
@@ -31,20 +32,30 @@ func NewGroup(preset Preset, level Level, rules map[string]Setting) Group {
 }
 
 // loadOptions decodes the options of s into dst and reports whether it did.
-// Parsing and ValidateRuleNames reject options that do not decode into the
-// rule's options type, and document analysis calls ValidateRuleNames before
-// it resolves rules. A caller that resolves rules without validating them
-// gets the rule's default options when decoding fails.
+// ResolveRules validates options before policy projection calls this helper.
 func loadOptions(s Setting, dst any) bool {
 	loaded, err := s.LoadOptions(dst)
 	return loaded && err == nil
 }
 
-// PluginOptions decodes the options set for the registered analyzer name in
-// lint.rules.plugins. It returns nil when the analyzer has no options. Each
-// call returns a new map.
-func (c *LintRulesConfig) PluginOptions(name string) (map[string]any, error) {
-	setting, _ := c.Plugins.Rule(name)
+// RuleOptions decodes options from the rule's semantic category. It returns
+// nil when the rule has no options. Each call returns a new map.
+func (c *LintRulesConfig) RuleOptions(name string) (map[string]any, error) {
+	name = rule.CanonicalName(name)
+	category, bound := c.boundCategories[name]
+	if !bound {
+		if descriptor, known := FindRule(name); known {
+			category = descriptor.Category
+		}
+	}
+	setting, found := canonicalSetting(c.Groups()[category], name)
+	if boundSetting, bound := c.boundSettings[name]; bound {
+		setting, found = boundSetting, true
+	}
+	if !found {
+		// Legacy registrations remain readable until migration has metadata.
+		setting, _ = canonicalSetting(c.Plugins, name)
+	}
 	var options map[string]any
 	if _, err := setting.LoadOptions(&options); err != nil {
 		return nil, fmt.Errorf("options for analyzer %q: %w", name, err)
@@ -52,6 +63,45 @@ func (c *LintRulesConfig) PluginOptions(name string) (map[string]any, error) {
 	return options, nil
 }
 
+func canonicalSetting(group Group, name string) (Setting, bool) {
+	if setting, found := group.Rule(name); found {
+		return setting, true
+	}
+	for alias, setting := range group.Rules() {
+		if rule.CanonicalName(alias) == name {
+			return setting, true
+		}
+	}
+	return Setting{}, false
+}
+
 func (c *LintRulesConfig) Groups() map[string]Group {
-	return map[string]Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "style": c.Style, "security": c.Security, "policy": c.Policy, "external": c.External, "nursery": c.Nursery, "plugins": c.Plugins}
+	return map[string]Group{"correctness": c.Correctness, "suspicious": c.Suspicious, "security": c.Security, "conventions": c.Conventions}
+}
+
+// LegacyGroups exposes decode-only controls needed for metadata-aware migration.
+func (c *LintRulesConfig) LegacyGroups() map[string]Group {
+	return map[string]Group{"style": c.Style, "policy": c.Policy, "external": c.External, "nursery": c.Nursery, "plugins": c.Plugins}
+}
+
+// LegacyGroup identifies a built-in rule's configuration group before semantic
+// categories replaced provider, maturity and policy groups.
+func LegacyGroup(name string) string {
+	name = rule.CanonicalName(name)
+	if _, bundled := toolProviders()[name]; bundled {
+		return "external"
+	}
+	switch name {
+	case "empty-triggers", "empty-job", "empty-run":
+		return "style"
+	case "uncancellable-condition":
+		return "correctness"
+	case "unpinned-reference", "job-timeout", "explicit-permissions", "missing-action-metadata", "forbidden-suppression":
+		return "policy"
+	default:
+		if descriptor, known := FindRule(name); known {
+			return descriptor.Category
+		}
+		return ""
+	}
 }

@@ -44,7 +44,7 @@ export default defineDocumentProvider({
 	env_passthrough: ['PATH', 'SystemRoot', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'HOME', 'USERPROFILE'],
 	rule: {
 		name: 'yamllint',
-		category: 'style',
+		category: 'conventions',
 		subcategory: 'yaml',
 		maturity: 'stable',
 		description: 'Report YAML syntax and style findings from yamllint.',

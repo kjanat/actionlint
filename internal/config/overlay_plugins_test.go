@@ -7,7 +7,11 @@ func TestOverlayBeforePluginsDefersOnlyRuleNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Overlaid(nil, nil, []Overlay{overlay}); err == nil {
+	cfg, _, err := Overlaid(nil, nil, []Overlay{overlay})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ResolveRules(Presets{}, cfg); err == nil {
 		t.Fatal("unregistered rule survived final configuration binding")
 	}
 	if _, _, err := Overlaid(nil, nil, []Overlay{overlay}, "example"); err != nil {

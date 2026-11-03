@@ -40,6 +40,31 @@ migration refuses the rewrite; convert that selected document to YAML or JSON fi
 | `policy.<rule>`              | `lint.rules.<group>.<rule>`                                                                           |
 | `paths.<glob>.ignore`        | `lint.message-ignores.<glob>`                                                                         |
 
+<a id="rule-id-migration"></a>
+
+Rule IDs also changed. Runtime configuration and both suppression forms accept
+the old IDs as aliases; diagnostics report the current IDs. Explicit migration
+rewrites rule settings and suppression selectors to the current names.
+
+| Previous ID               | Current ID                |
+| ------------------------- | ------------------------- |
+| `require-commit-hash`     | `unpinned-reference`      |
+| `require-job-timeout`     | `job-timeout`             |
+| `require-permissions`     | `explicit-permissions`    |
+| `require-action-metadata` | `missing-action-metadata` |
+| `disallow-suppressions`   | `forbidden-suppression`   |
+
+Current categories are `correctness`, `suspicious`, `security` and
+`conventions`. The former `style` group maps to `conventions`; former `policy`
+rules move to the category of each rule; former `external` rules follow their
+registered descriptors. Category scalar settings apply to current category
+membership. For example, `uncancellable-condition` is now `suspicious`, so an
+old `correctness` scalar no longer selects it; set the rule explicitly if needed.
+Migration expands legacy group levels using registered rule metadata. If a
+legacy `plugins` group-level selection needs dynamic plugin metadata that is not
+available, explicit migration fails with an error. Ordinary config loading binds
+those rules after plugin registration.
+
 The `required-actions` rule has been removed. Delete its configuration entries
 before migrating; migration rejects remaining entries.
 

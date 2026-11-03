@@ -24,13 +24,13 @@ type commitHashCheck struct {
 }
 
 func CommitHashStep(step declaration.StepView, excluded func(string) bool) []Finding {
-	rule := &commitHashCheck{name: "require-commit-hash", excluded: excluded}
+	rule := &commitHashCheck{name: "unpinned-reference", excluded: excluded}
 	rule.checkStep(step)
 	return rule.out
 }
 
 func CommitHashJob(job declaration.JobView, excluded func(string) bool) []Finding {
-	rule := &commitHashCheck{name: "require-commit-hash", excluded: excluded}
+	rule := &commitHashCheck{name: "unpinned-reference", excluded: excluded}
 	rule.checkJob(job)
 	return rule.out
 }
@@ -53,7 +53,7 @@ func (rule *commitHashCheck) checkStep(n declaration.StepView) {
 
 	rule.Errorf(
 		viewPosition(e.Uses().Pos()),
-		"the ref %q of action %q is not a commit SHA. actions must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because \"require-commit-hash\" is enabled in the \"policy\" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
+		"the ref %q of action %q is not a commit SHA. actions must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because \"unpinned-reference\" is enabled in the \"policy\" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
 		ref,
 		e.Uses().Value(),
 	)
@@ -71,7 +71,7 @@ func (rule *commitHashCheck) checkImageDigest(image string, uses declaration.Str
 
 	rule.Errorf(
 		viewPosition(uses.Pos()),
-		"the Docker image %q is not pinned to an image digest. images must be specified in \"docker://{image}@{algorithm}:{hex}\" form because \"require-commit-hash\" is enabled in the \"policy\" configuration",
+		"the Docker image %q is not pinned to an image digest. images must be specified in \"docker://{image}@{algorithm}:{hex}\" form because \"unpinned-reference\" is enabled in the \"policy\" configuration",
 		uses.Value(),
 	)
 }
@@ -93,7 +93,7 @@ func (rule *commitHashCheck) checkJob(n declaration.JobView) {
 
 	rule.Errorf(
 		viewPosition(u.Pos()),
-		"the ref %q of reusable workflow %q is not a commit SHA. reusable workflow calls must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because \"require-commit-hash\" is enabled in the \"policy\" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
+		"the ref %q of reusable workflow %q is not a commit SHA. reusable workflow calls must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because \"unpinned-reference\" is enabled in the \"policy\" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
 		ref,
 		u.Value(),
 	)

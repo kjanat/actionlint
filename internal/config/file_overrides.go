@@ -250,6 +250,7 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 	if err := yaml.Unmarshal(content, &next.Lint); err != nil {
 		return nil, err
 	}
+	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
 	next.Paths = nil
 	next.Policy = Policy{}
 	projectSettings(&next)

@@ -32,7 +32,7 @@ export default defineDocumentProvider({
 	resources: ['directory'],
 	rule: {
 		name: 'syft',
-		category: 'inventory',
+		category: 'security',
 		subcategory: 'container',
 		maturity: 'stable',
 		description: 'Generate SBOM artifacts for container images declared in the captured document.',

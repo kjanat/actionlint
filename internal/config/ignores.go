@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/filefilter"
+	"actionlint.kjanat.dev/v2/rule"
 
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -77,8 +78,8 @@ func (c IgnoreConfig) Validate(additional ...string) error {
 }
 
 func (c IgnoreConfig) validateStructure() error {
-	if c.Rule == "disallow-suppressions" {
-		return errors.New("ignores: disallow-suppressions cannot be suppressed")
+	if rule.CanonicalName(c.Rule) == "forbidden-suppression" {
+		return errors.New("ignores: forbidden-suppression cannot be suppressed")
 	}
 	if strings.TrimSpace(c.Rule) == "" {
 		return errors.New("ignores: rule must not be empty")

@@ -8,8 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/rule"
 )
 
-// Bundled provider rules come from their manifests and are configured in the
-// external group; built-in rules never are.
+// Bundled provider rules use the semantic categories declared by their manifests.
 func TestProviderRulesComeFromManifests(t *testing.T) {
 	manifests, err := provider.Bundled()
 	if err != nil {
@@ -33,12 +32,12 @@ func TestProviderRulesComeFromManifests(t *testing.T) {
 		if !ok || !reflect.DeepEqual(found, manifest.Rule) {
 			t.Fatalf("%s: catalog %+v, manifest %+v", name, found, manifest.Rule)
 		}
-		if !IsProvider(name) || ConfigGroup(name) != "external" {
+		if !IsProvider(name) || ConfigGroup(name) != manifest.Rule.Category {
 			t.Fatalf("%s: provider=%v group=%q", name, IsProvider(name), ConfigGroup(name))
 		}
 	}
 	for _, descriptor := range builtins {
-		if IsProvider(descriptor.Name) || ConfigGroup(descriptor.Name) == "external" {
+		if IsProvider(descriptor.Name) || ConfigGroup(descriptor.Name) != descriptor.Category || !rule.ValidCategory(descriptor.Category) {
 			t.Fatalf("built-in %s configured as a tool provider", descriptor.Name)
 		}
 	}

@@ -31,7 +31,10 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 		t.Fatal(err)
 	}
 	cfg := loaded.Config
-	resolved := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
+	resolved, err := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
 	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(repoconfig.VariableNames(cfg.Facts()), []string{"second"}) {

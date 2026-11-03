@@ -19,7 +19,7 @@ type ruleRequireActionMetadata struct {
 }
 
 func newRuleRequireActionMetadata(ctx context.Context, remote *actionremote.Service) *ruleRequireActionMetadata {
-	return &ruleRequireActionMetadata{Base: builtinRuleBase("require-action-metadata"), remote: remote, ctx: ctx}
+	return &ruleRequireActionMetadata{Base: builtinRuleBase("missing-action-metadata"), remote: remote, ctx: ctx}
 }
 
 func (r *ruleRequireActionMetadata) VisitStep(step workflowdecl.StepView) error {
@@ -43,6 +43,6 @@ func (r *ruleRequireActionMetadata) VisitStep(step workflowdecl.StepView) error 
 	if availability.State() == actions.MetadataInvalid {
 		reason = "invalid parse/schema metadata"
 	}
-	r.Report(findingmodel.At(declarationPosition(action.Uses()), "require-action-metadata", "remote action metadata for "+spec+" is unavailable ("+reason+"); use --action-metadata=online with a full SHA-1, or provide the required action-profile selection and warm the offline cache"))
+	r.Report(findingmodel.At(declarationPosition(action.Uses()), "missing-action-metadata", "remote action metadata for "+spec+" is unavailable ("+reason+"); use --action-metadata=online with a full SHA-1, or provide the required action-profile selection and warm the offline cache"))
 	return nil
 }

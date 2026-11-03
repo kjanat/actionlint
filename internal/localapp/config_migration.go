@@ -16,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // DefaultPluginOptions preserves invocation-level native selections during migration.
@@ -27,6 +28,9 @@ type DefaultPluginOptions struct {
 	Tools    []string
 	Warning  func(string)
 	Overlays []config.Overlay
+	// Rules supplies already inspected plugin descriptors. Missing descriptors
+	// are read from local or cached provider manifests, never by executing guests.
+	Rules []rule.Descriptor
 }
 
 // DefaultPluginReferences supplies the v2 defaults only when plugins was omitted.
@@ -84,7 +88,14 @@ type ConfigMigration struct {
 }
 
 func PrepareConfigMigration(ctx context.Context, path string, options DefaultPluginOptions) (*ConfigMigration, error) {
-	migration, err := config.PrepareMigration(ctx, path)
+	migration, err := config.PrepareMigration(ctx, path, options.Rules...)
+	if errors.Is(err, config.ErrRuleMetadataRequired) {
+		descriptors, metadataErr := cachedMigrationRules(ctx, path)
+		if metadataErr != nil {
+			return nil, fmt.Errorf("%w; inspect or install plugin metadata before migrating: %w", err, metadataErr)
+		}
+		migration, err = config.PrepareMigration(ctx, path, descriptors...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +260,12 @@ func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, op
 		// Skip symlinked configs to avoid writing outside the selected project.
 		return nil, nil
 	}
-	migration, err := config.PrepareMigration(ctx, path)
+	migration, err := config.PrepareMigration(ctx, path, options.Rules...)
+	if errors.Is(err, config.ErrRuleMetadataRequired) {
+		// Checking can bind legacy selections after plugin registration. Do
+		// not force an implicit rewrite to inspect or execute plugin code.
+		return nil, nil
+	}
 	if err != nil || !migration.Changed {
 		return nil, err
 	}

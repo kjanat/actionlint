@@ -9,6 +9,7 @@ package editorschema
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // RootFile is the name of the generated configuration schema that Document
@@ -56,12 +58,154 @@ func Document(read ReadFunc, manifests []provider.Manifest) ([]byte, error) {
 			return nil, err
 		}
 	}
+	if err := addPluginRules(root, manifests); err != nil {
+		return nil, err
+	}
 	root["$comment"] = "Printed by actionlint config schema from " + RootFile + " and the tool providers that plugins install."
 	data, err := json.MarshalIndent(root, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 	return append(data, '\n'), nil
+}
+
+// addPluginRules specializes the shape-valid unknown rule entries generated
+// for each semantic category with every installed manifest's option schema.
+func addPluginRules(root object, manifests []provider.Manifest) error {
+	categories := ruleCategoryMaps(root)
+	if len(categories) == 0 {
+		return errors.New("configuration schema describes no lint.rules category mappings")
+	}
+	definitions, _ := root["$defs"].(object)
+	if definitions == nil {
+		definitions = object{}
+		root["$defs"] = definitions
+	}
+	seen := make(map[string]string, len(manifests))
+	for _, manifest := range manifests {
+		category, name := manifest.Rule.Category, manifest.Rule.Name
+		if !rule.ValidCategory(category) {
+			return fmt.Errorf("rule %s: unsupported category %q", name, category)
+		}
+		if previous, exists := seen[name]; exists {
+			return fmt.Errorf("duplicate plugin rule %s in categories %s and %s", name, previous, category)
+		}
+		seen[name] = category
+		for otherCategory, mappings := range categories {
+			for _, categorySchema := range mappings {
+				properties, _ := categorySchema["properties"].(object)
+				if _, exists := properties[name]; exists && otherCategory != category {
+					return fmt.Errorf("rule %s declares category %s but is already declared under %s", name, category, otherCategory)
+				}
+			}
+		}
+		setting := object{
+			"type":     "object",
+			"required": []any{"level"},
+			"properties": object{
+				"level": object{"type": "string", "enum": []any{"default", "off", "on", "info", "warn", "error"}},
+			},
+		}
+		props := setting["properties"].(object)
+		if len(manifest.Rule.OptionsSchema) != 0 {
+			options, err := decodeObject(manifest.Rule.OptionsSchema, "options_schema")
+			if err != nil {
+				return fmt.Errorf("rule %s: %w", name, err)
+			}
+			definition := "plugin-rule-options-" + base64.RawURLEncoding.EncodeToString([]byte(name))
+			if _, exists := definitions[definition]; exists {
+				return fmt.Errorf("multiple plugin rules map to schema definition %q", definition)
+			}
+			definitions[definition] = options
+			if _, hasID := options["$id"]; !hasID {
+				options["$id"] = "urn:actionlint:plugin-rule-options:" + base64.RawURLEncoding.EncodeToString([]byte(name))
+			}
+			props["options"] = object{"anyOf": []any{object{"type": "null"}, object{"$ref": "#/$defs/" + definition}}}
+		} else {
+			props["options"] = object{"type": "null"}
+		}
+		for _, categorySchema := range categories[category] {
+			properties, _ := categorySchema["properties"].(object)
+			if _, exists := properties[name]; exists {
+				continue
+			}
+			properties[name] = object{"oneOf": []any{
+				object{"type": "string", "enum": []any{"default", "off", "on", "info", "warn", "error"}},
+				object{"type": "boolean"},
+				object{"type": "null"},
+				setting,
+			}}
+		}
+		for otherCategory, mappings := range categories {
+			if otherCategory == category {
+				continue
+			}
+			for _, categorySchema := range mappings {
+				propertyNames, _ := categorySchema["propertyNames"].(object)
+				if propertyNames == nil {
+					propertyNames = object{}
+				}
+				not, _ := propertyNames["not"].(object)
+				names, _ := not["enum"].([]any)
+				propertyNames["not"] = object{"enum": append(names, name)}
+				categorySchema["propertyNames"] = propertyNames
+			}
+		}
+	}
+	return nil
+}
+
+// ruleCategoryMaps returns each category's object mapping under lint.rules,
+// including the corresponding mapping under overrides.
+func ruleCategoryMaps(value any) map[string][]object {
+	result := map[string][]object{"correctness": {}, "suspicious": {}, "security": {}, "conventions": {}}
+	var walk func(any)
+	walk = func(value any) {
+		switch node := value.(type) {
+		case object:
+			if properties, ok := node["properties"].(object); ok {
+				if _, ok := properties["correctness"]; ok {
+					for category := range result {
+						if mapping := objectMapping(properties[category]); mapping != nil {
+							result[category] = append(result[category], mapping)
+						}
+					}
+				}
+			}
+			for _, child := range node {
+				walk(child)
+			}
+		case []any:
+			for _, child := range node {
+				walk(child)
+			}
+		}
+	}
+	walk(value)
+	for _, mappings := range result {
+		if len(mappings) == 0 {
+			return nil
+		}
+	}
+	return result
+}
+
+func objectMapping(value any) object {
+	property, ok := value.(object)
+	if !ok {
+		return nil
+	}
+	alternatives, _ := property["oneOf"].([]any)
+	for _, alternative := range alternatives {
+		mapping, ok := alternative.(object)
+		if !ok || mapping["type"] != "object" {
+			continue
+		}
+		if _, ok := mapping["properties"].(object); ok {
+			return mapping
+		}
+	}
+	return nil
 }
 
 // readObject decodes the JSON object in file name. Numbers keep their text.

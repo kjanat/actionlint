@@ -20,7 +20,7 @@ func moduleRoot(name string) ([]byte, error) { return fs.ReadFile(os.DirFS("../.
 // level: low or high.
 func installed(configFiles bool) provider.Manifest {
 	manifest := provider.Manifest{
-		Rule:         rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry"},
+		Rule:         rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry", Category: "conventions"},
 		ConfigSchema: json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"level":{"enum":["low","high"]}},"additionalProperties":false}`),
 		Process:      &provider.ProcessSpec{},
 	}
@@ -90,9 +90,42 @@ func TestDocumentAddsInstalledProviders(t *testing.T) {
 // Configuration validates a bundled tool's settings against the bundled
 // manifest, so an installed provider with that rule name keeps the bundled
 // entry.
+func TestDocumentAddsPluginRuleSettingsToSemanticCategory(t *testing.T) {
+	manifest := installed(false)
+	manifest.Rule.Name = "custom-check"
+	manifest.Rule.Category = "security"
+	manifest.Rule.OptionsSchema = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","$id":"https://example.com/custom-check-options.schema.json","$defs":{"positive":{"type":"integer","minimum":1}},"properties":{"threshold":{"$ref":"#/$defs/positive"}},"required":["threshold"],"additionalProperties":false}`)
+	schema := compile(t, manifest)
+	for _, valid := range []string{
+		`{"lint":{"rules":{"security":{"custom-check":{"level":"warn","options":{"threshold":2}}}}}}`,
+		`{"overrides":[{"includes":["a.yml"],"lint":{"rules":{"security":{"custom-check":{"level":"error","options":{"threshold":3}}}}}}]}`,
+	} {
+		if err := schema.Validate([]byte(valid)); err != nil {
+			t.Errorf("%s rejected: %v", valid, err)
+		}
+	}
+	for _, invalid := range []string{
+		`{"lint":{"rules":{"security":{"custom-check":{"level":"warn","options":{"threshold":0}}}}}}`,
+		`{"lint":{"rules":{"correctness":{"custom-check":"off"}}}}`,
+	} {
+		if err := schema.Validate([]byte(invalid)); err == nil {
+			t.Errorf("%s accepted", invalid)
+		}
+	}
+}
+
+func TestDocumentRejectsUnsupportedRuleCategory(t *testing.T) {
+	manifest := installed(false)
+	manifest.Rule.Category = "external"
+	if _, err := Document(moduleRoot, []provider.Manifest{manifest}); err == nil || !strings.Contains(err.Error(), `unsupported category "external"`) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestDocumentKeepsBundledEntries(t *testing.T) {
 	manifest := installed(false)
 	manifest.Rule.Name = "shellcheck"
+	manifest.Rule.Category = "correctness"
 	if err := compile(t, manifest).Validate([]byte(`{"tools":{"shellcheck":{"config":{"shell":"bash"}}}}`)); err != nil {
 		t.Fatalf("bundled ShellCheck entry replaced: %v", err)
 	}

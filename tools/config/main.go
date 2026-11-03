@@ -128,14 +128,21 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
-		for _, category := range []string{"correctness", "suspicious", "style", "security", "policy", "external", "nursery", "plugins"} {
+		categories := []string{"correctness", "suspicious", "security", "conventions"}
+		knownByCategory := make(map[string][]string, len(categories))
+		knownNames := make([]string, 0)
+		for _, rule := range actionlint.Rules() {
+			knownNames = append(knownNames, rule.Name)
+			knownByCategory[rule.Category] = append(knownByCategory[rule.Category], rule.Name)
+		}
+		for _, category := range categories {
 			group := reflectMapping(struct {
 				Preset actionlint.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
 				Level  actionlint.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
 			}{})
 			group.Version, group.ID = "", ""
 			for _, rule := range actionlint.Rules() {
-				if rule.Group != category {
+				if rule.Category != category {
 					continue
 				}
 				setting := reflectMapping(struct {
@@ -158,27 +165,26 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				level.Description = ""
 				group.Properties.Set(rule.Name, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{level, setting}})
 			}
-			if category == "plugins" {
-				setting := reflectMapping(struct {
-					Level   actionlint.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for the registered analyzer."`
-					Options map[string]any   `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the registered analyzer schema."`
-				}{})
-				setting.Version, setting.ID = "", ""
-				group.AdditionalProperties = &jsonschema.Schema{OneOf: []*jsonschema.Schema{reflectMapping(actionlint.Level("")), setting}}
+			pluginSetting := reflectMapping(struct {
+				Level   actionlint.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for the registered analyzer."`
+				Options map[string]any   `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the registered analyzer schema."`
+			}{})
+			pluginSetting.Version, pluginSetting.ID = "", ""
+			otherCategoryNames := make([]any, 0, len(knownNames))
+			for _, name := range knownNames {
+				if !slices.Contains(knownByCategory[category], name) {
+					otherCategoryNames = append(otherCategoryNames, name)
+				}
 			}
+			unknown := &jsonschema.Schema{OneOf: []*jsonschema.Schema{reflectMapping(actionlint.Level("")), pluginSetting}}
+			if len(otherCategoryNames) != 0 {
+				group.PropertyNames = &jsonschema.Schema{Not: &jsonschema.Schema{Enum: otherCategoryNames}}
+			}
+			group.AdditionalProperties = unknown
 			level := reflectMapping(actionlint.Level(""))
 			level.Description = ""
 			level.AnyOf[0].Enum = append(level.AnyOf[0].Enum, "all")
 			description := "Rules concerning " + category + ". Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group."
-			if category == "nursery" {
-				count := 0
-				for _, rule := range actionlint.Rules() {
-					if rule.Group == category {
-						count++
-					}
-				}
-				description = fmt.Sprintf("Experimental rules excluded from root presets. Currently contains %d rules. Select all to enable the nursery group explicitly.", count)
-			}
 			mapping.Properties.Set(category, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{level, group}})
 		}
 		mapping.Version, mapping.ID = "", ""

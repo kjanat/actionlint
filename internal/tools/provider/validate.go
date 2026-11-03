@@ -69,6 +69,9 @@ func Parse(data []byte) (Manifest, error) {
 
 // validate checks what the schema cannot express.
 func validate(m Manifest) error {
+	if !rule.ValidCategory(m.Rule.Category) {
+		return fmt.Errorf("rule %q has invalid category %q; expected correctness, suspicious, security, or conventions", m.Rule.Name, m.Rule.Category)
+	}
 	seenFacts := map[analyzer.Fact]bool{}
 	for _, fact := range m.Requires {
 		if fact != analyzer.Source && fact != analyzer.Dependencies || seenFacts[fact] {

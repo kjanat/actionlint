@@ -148,7 +148,7 @@ func (r documentRoute) negotiationKey(cfg *config.Config, enabled bool) (string,
 	}
 	var pluginOptions map[string]any
 	if cfg != nil {
-		if pluginOptions, err = cfg.Lint.Rules.PluginOptions(r.name); err != nil {
+		if pluginOptions, err = cfg.Lint.Rules.RuleOptions(r.name); err != nil {
 			return "", err
 		}
 	}
@@ -219,7 +219,7 @@ func (r documentRoute) negotiate(ctx context.Context, guest analyzer.ToolIntegra
 	}
 	var pluginOptions json.RawMessage
 	if cfg != nil {
-		value, err := cfg.Lint.Rules.PluginOptions(guest.ToolIntegration().Tool)
+		value, err := cfg.Lint.Rules.RuleOptions(guest.ToolIntegration().Tool)
 		if err != nil {
 			return nil, err
 		}

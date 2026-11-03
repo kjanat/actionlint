@@ -525,10 +525,19 @@ func Read(path string, readFile func(string) ([]byte, error), additional ...stri
 func ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
 	reader := configsource.New(ctx, readFile)
 	warningsByFile := map[string][]Warning{}
+	var bindingSources []bindingSource
 	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
 		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin, additional...)
 		warningsByFile[origin] = warnings
-		return normalized, err
+		if err != nil {
+			return nil, err
+		}
+		var settings Config
+		if err := DecodeNode(normalized, &settings); err != nil {
+			return nil, err
+		}
+		bindingSources = append(bindingSources, ruleBindingSources(origin, &settings)...)
+		return normalized, nil
 	})
 	if err != nil {
 		if _, ok := errors.AsType[*os.PathError](err); ok {
@@ -547,6 +556,7 @@ func ReadContext(ctx context.Context, path string, readFile func(string) ([]byte
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
+	resolved.Config.Lint.Rules.bindingSources = bindingSources
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])

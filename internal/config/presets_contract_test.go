@@ -49,7 +49,7 @@ lint: {rules: {disable: [require-commit-hash], suspicious: {case-insensitive-con
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := repoconfig.ResolveRules(repoconfig.Presets{Strict: true, Experimental: new(true)}, cfg)
+	got := resolveRules(t, repoconfig.Presets{Strict: true, Experimental: new(true)}, cfg)
 	// Each resolution decodes its own copy of the options, so compare values.
 	if !reflect.DeepEqual(got.Policy.RequireJobTimeout, cfg.Policy.RequireJobTimeout) || !reflect.DeepEqual(got.Policy.RequirePermissions, cfg.Policy.RequirePermissions) || !reflect.DeepEqual(got.Policy.DisallowSuppressions, cfg.Policy.DisallowSuppressions) {
 		t.Fatal("preset replaced configured options")

@@ -609,7 +609,13 @@
       ],
       "properties": {
         "category": {
-          "$ref": "#/$defs/name"
+          "type": "string",
+          "enum": [
+            "correctness",
+            "suspicious",
+            "security",
+            "conventions"
+          ]
         },
         "description": {
           "$ref": "#/$defs/text",

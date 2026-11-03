@@ -92,8 +92,14 @@ func (wire configWire) MarshalYAML() (any, error) {
 		return nil
 	}
 	hasRule := func(name string) bool {
-		rule, _ := FindRule(name)
-		_, ok := cfg.Lint.Rules.Groups()[rule.Group].Rule(name)
+		descriptor, known := FindRule(name)
+		if !known {
+			return false
+		}
+		if _, ok := canonicalSetting(cfg.Lint.Rules.Groups()[descriptor.Category], descriptor.Name); ok {
+			return true
+		}
+		_, ok := canonicalSetting(cfg.Lint.Rules.LegacyGroups()[LegacyGroup(descriptor.Name)], descriptor.Name)
 		return ok
 	}
 	if cfg.Lint.MessageIgnores == nil && cfg.Paths != nil {

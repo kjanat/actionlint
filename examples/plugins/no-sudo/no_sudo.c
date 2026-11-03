@@ -166,7 +166,7 @@ void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analy
     memset(ret, 0, sizeof(*ret));
     plugin_string_dup(&ret->name, "no-sudo");
     plugin_string_dup(&ret->description, "Check runner privilege assumptions");
-    plugin_string_dup(&ret->category, "portability");
+    plugin_string_dup(&ret->category, "suspicious");
     plugin_string_dup(&ret->subcategory, "scripts");
     plugin_string_dup(&ret->maturity, "stable");
     plugin_string_dup(&ret->provider, "example");

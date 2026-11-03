@@ -31,22 +31,22 @@ func MissingWorkflowPermissions(w declaration.WorkflowView) []Finding {
 
 // RequiredWorkflowPermissions checks the workflow declaration when workflow scope is enabled.
 func RequiredWorkflowPermissions(n declaration.WorkflowView, scope string) []Finding {
-	rule := findingCollector{name: "require-permissions"}
+	rule := findingCollector{name: "explicit-permissions"}
 	if scope == "workflow" && !n.Permissions().Present() {
 		pos := viewPosition(n.Pos())
 		if pos == nil {
 			pos = &workflowlang.Pos{Line: 1, Col: 1}
 		}
-		rule.Errorf(pos, "workflow-level \"permissions\" is required by the \"require-permissions\" policy. set \"permissions: {}\" and grant the scopes your jobs need")
+		rule.Errorf(pos, "workflow-level \"permissions\" is required by the \"explicit-permissions\" policy. set \"permissions: {}\" and grant the scopes your jobs need")
 	}
 	return rule.out
 }
 
 // RequiredJobPermissions checks each job declaration when job scope is enabled.
 func RequiredJobPermissions(n declaration.JobView, scope string) []Finding {
-	rule := findingCollector{name: "require-permissions"}
+	rule := findingCollector{name: "explicit-permissions"}
 	if scope == "job" && !n.Permissions().Present() {
-		rule.Errorf(viewPosition(n.Pos()), "\"permissions\" is required in job %q by the \"require-permissions\" policy with \"scope: job\". set \"permissions: {}\" or grant the scopes this job needs", n.ID().Value())
+		rule.Errorf(viewPosition(n.Pos()), "\"permissions\" is required in job %q by the \"explicit-permissions\" policy with \"scope: job\". set \"permissions: {}\" or grant the scopes this job needs", n.ID().Value())
 	}
 	return rule.out
 }

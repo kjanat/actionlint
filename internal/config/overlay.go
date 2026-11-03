@@ -7,6 +7,7 @@ import (
 	"io"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 
 	configreport "actionlint.kjanat.dev/v2/config/report"
@@ -158,6 +159,10 @@ func (o Overlay) BindPaths(directory string) (Overlay, error) {
 func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...string) (*Config, Resolved, error) {
 	var node *yaml.Node
 	var resolved Resolved
+	var bindingSources []bindingSource
+	if cfg != nil {
+		bindingSources = slices.Clone(cfg.Lint.Rules.bindingSources)
+	}
 	if source != nil {
 		node, resolved = source.Node, source.Resolved
 	}
@@ -167,6 +172,11 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...str
 	}
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
+		var settings Config
+		if err := DecodeNode(overlay.node, &settings); err != nil {
+			return nil, Resolved{}, err
+		}
+		bindingSources = append(bindingSources, ruleBindingSources(overlay.name, &settings)...)
 		MarkInput(overlay.node, overlay.name, inputs)
 		node = MergeDocuments(node, overlay.node, inputs)
 		names = append(names, overlay.name)
@@ -178,6 +188,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...str
 			return nil, Resolved{}, configreport.NewOverlayError(names, err)
 		}
 		cfg = resolved.Config
+		cfg.Lint.Rules.bindingSources = bindingSources
 		if source != nil {
 			resolved.Provenance = source.Provenance
 			for i := range resolved.Warnings {

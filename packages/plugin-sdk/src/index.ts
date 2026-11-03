@@ -2,6 +2,14 @@
 export type JSONValue = null | boolean | number | string | JSONValue[] | { [key: string]: JSONValue };
 /** A finding's severity before the repository's rule-level policy is applied. */
 export type Severity = 'error' | 'warning' | 'info';
+/** Semantic concern categories accepted in rule metadata. */
+export const RULE_CATEGORIES = ['correctness', 'suspicious', 'security', 'conventions'] as const;
+/** Semantic concern assigned to a rule descriptor. */
+export type RuleCategory = (typeof RULE_CATEGORIES)[number];
+/** Check untrusted metadata against the SDK's supported rule categories. */
+export function isRuleCategory(value: unknown): value is RuleCategory {
+	return RULE_CATEGORIES.some((category) => category === value);
+}
 /** Review required for one fix: safe preserves intended behavior; unsafe can change it; suggested needs a decision. */
 export type Applicability = 'safe' | 'unsafe' | 'suggested';
 /** One-based position in the request source, counting Unicode characters rather than UTF-16 units. */
@@ -142,8 +150,8 @@ export type DocumentCheck = (request: DocumentRequest) => DocumentDiagnostic[] |
 export interface RuleDescriptor {
 	/** Stable rule/config key used by host ignores, such as "yamllint". Native check identifiers belong in Diagnostic.code. */
 	name: string;
-	/** Catalogue concern, for example "correctness", "style", or "security". */
-	category: string;
+	/** Catalogue concern: correctness, suspicious, security, or conventions. */
+	category: RuleCategory;
 	/** More specific catalogue grouping, for example "yaml" or "powershell". */
 	subcategory: string;
 	/** "nursery" marks an experimental rule; use "stable" after its behavior is established. */
@@ -356,7 +364,7 @@ export interface JQFile {
  *   description: 'Find tab characters in shell snippets.', license: 'MIT',
  *   repository: 'https://github.com/example/actionlint-plugin-no-tabs',
  *   shells: ['bash', 'sh'],
- *   rule: { name: 'no-tabs', category: 'style', subcategory: 'shell', maturity: 'stable',
+ *   rule: { name: 'no-tabs', category: 'conventions', subcategory: 'shell', maturity: 'stable',
  *     description: 'Reject tabs', provider: 'example/no-tabs' },
  *   check: ({ source, filename }) => source.startsWith('\\t') ? [{
  *     filename, code: 'no-tabs', message: 'Replace the tab with spaces',
@@ -433,7 +441,7 @@ export function defineProcessProvider(
  *   description: 'Example whole-document check.', license: 'MIT',
  *   repository: 'https://github.com/example/actionlint-plugin-document-note',
  *   documentKinds: ['workflow'], requires: ['source'],
- *   rule: { name: 'document-note', category: 'style', subcategory: 'workflow', maturity: 'nursery',
+ *   rule: { name: 'document-note', category: 'conventions', subcategory: 'workflow', maturity: 'nursery',
  *     description: 'Example workflow check', provider: 'example/document-note' },
  *   check: ({ source, filename }) => source.startsWith('TODO') ? [{
  *     filename, code: 'document-note', message: 'Resolve the TODO in this workflow',

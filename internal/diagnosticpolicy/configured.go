@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/filefilter"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/suppression"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // FilterConfigured applies resolved ignore selectors to the same logical invocation.
@@ -34,9 +35,9 @@ func FilterConfigured(path, root string, source []byte, findings []*findingmodel
 			column = 0
 		}
 		ignored := false
-		if applies && finding.Rule != "disallow-suppressions" {
+		if applies && finding.Rule != "forbidden-suppression" {
 			for _, ignore := range cfg.Ignores {
-				if finding.Rule != ignore.Rule || ignore.Validate(additional...) != nil {
+				if rule.CanonicalName(finding.Rule) != rule.CanonicalName(ignore.Rule) || ignore.Validate(additional...) != nil {
 					continue
 				}
 				if ignore.File != "" && !filefilter.MatchPatterns([]string{ignore.File}, nil, file) {
@@ -52,11 +53,11 @@ func FilterConfigured(path, root string, source []byte, findings []*findingmodel
 				if !matches {
 					continue
 				}
-				mode := cfg.Policy.DisallowSuppressions.ReportFor(ignore.Rule)
+				mode := cfg.Policy.DisallowSuppressions.ReportFor(rule.CanonicalName(ignore.Rule))
 				if mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll {
 					policyError := *finding
-					policyError.Rule = "disallow-suppressions"
-					policyError.Message = fmt.Sprintf("configured suppression of %s is disallowed by policy.disallow-suppressions", ignore.Rule)
+					policyError.Rule = "forbidden-suppression"
+					policyError.Message = fmt.Sprintf("configured suppression of %s is disallowed by policy.forbidden-suppression", ignore.Rule)
 					policyError.Code, policyError.Severity, policyError.Fixes = "", "", nil
 					filtered = append(filtered, &policyError)
 				}

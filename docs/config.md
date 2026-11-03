@@ -152,8 +152,8 @@ overrides:
     excludes: [".github/workflows/release-preview.yml"]
     lint:
       rules:
-        policy:
-          require-commit-hash: error
+        security:
+          unpinned-reference: error
   - includes: [".github/workflows/legacy*.yml"]
     tools:
       shellcheck:
@@ -169,10 +169,11 @@ External tool provisioning uses each selected file's effective settings.
 
 ## Lint rules
 
-The `lint` section owns analysis settings. Rules are grouped by concern:
-`correctness`, `suspicious`, `style`, `security`, `policy`, and `external`. The separate
-`nursery` group is reserved for rules under development. Optional stable rules
-belong to their concern groups. The shared
+The `lint` section owns analysis settings. Rule categories are `correctness`,
+`suspicious`, `security`, and `conventions`. Optional stable rules belong to
+their semantic concern group. Stable explicitly registered plugins are selected
+by default; recommended presets select rules marked recommended. Nursery is
+maturity metadata for rules under development. The shared
 configuration resolver is used by analysis frontends. Top-level `overrides` provide
 file scopes that can also host future formatter settings. Formatting and LSP
 options are not implemented yet; do not add placeholder keys for them.
@@ -186,8 +187,8 @@ lint:
       deprecated-commands: warn
     suspicious:
       case-insensitive-conditions: off
-    policy:
-      require-job-timeout:
+    conventions:
+      job-timeout:
         level: error
         options: { max-minutes: 30 }
 ```
@@ -196,7 +197,7 @@ Every catalog rule accepts `off`, `on` (use its native severity), `info`, `warn`
 or `error`. Use `default` to reset a rule or group override to the applicable
 preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule's options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
 the rule supports them. Unknown groups, rules, levels and option keys are rejected.
-For example, `require-permissions` accepts `{scope: job}`; `require-job-timeout`
+For example, `explicit-permissions` accepts `{scope: job}`; `job-timeout`
 accepts timeout bounds. The generated schema describes each rule's own options.
 `actionlint rules --json` exposes each rule's concern, recommended status and
 maturity (`stable` or `nursery`) from the same catalog.
@@ -204,14 +205,15 @@ maturity (`stable` or `nursery`) from the same catalog.
 Global and group `preset` values are `recommended`, `all` (all stable rules), and
 `none`. A group also accepts a level shorthand, e.g. `correctness: warn`, or
 `{level: warn, if-cond: error}`. Stable non-recommended rules are included
-by `all` or their group level, but not by `recommended`. Nursery rules need
-an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
+by `all` or their group level, but not by `recommended`. Nursery rules need an
+explicit rule enable or `--experimental`; group and broad presets do not select
+them. `lint.enabled: false`
 suppresses all lint diagnostics. Operational errors fail the analysis independently of rule levels.
 
 Resolution order is: rule defaults, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
 lists. File overrides are merged before that resolution. `--experimental=false`
-is an explicit exclusion of nursery rules only. `--strict` selects all stable
+is a hard exclusion of nursery rules. `--strict` selects all stable
 rules but respects group and individual exceptions. Legacy `policy` settings
 are migrated to explicit levels, so explicit disables now survive presets and
 `--strict`. Conflicting old and current values in one document are errors.
@@ -252,9 +254,9 @@ Unknown dynamic axes with boolean/numeric filters are also examined. Dynamic
 filter entries and wholly dynamic matrices cannot be checked statically.
 See [expression behavior](expression-behavior.md) for evidence and limitations.
 
-### Style rules
+### Conventions rules
 
-`lint.rules.style` holds recommended rules for declarations GitHub accepts that
+`lint.rules.conventions` holds recommended rules for declarations GitHub accepts that
 do nothing. They report at warning severity. They used to be syntax errors;
 GitHub's own parser accepts each of these documents.
 
@@ -270,10 +272,9 @@ and a `max-parallel` that is not greater than zero.
 
 ### Nursery
 
-`lint.rules.nursery` is reserved for rules under development. It uses the same
-levels, presets and individual settings as other groups. Global `preset: all`
-and `--strict` exclude it; `nursery: {preset: all}` or `--experimental`
-selects it. `--experimental=false` disables only nursery rules, never stable
+Nursery is rule maturity metadata, not a semantic category. Global and category
+presets and `--strict` exclude nursery rules. Select one with an explicit rule
+level or use `--experimental`; `--experimental=false` hard-disables nursery
 rules. There are currently no nursery rules, so the flag currently adds none.
 The former unreleased `lint.rules.experimental` section is rejected; configure
 the four stable checks under `suspicious` instead.
@@ -457,8 +458,8 @@ The pinning rule supports scoped exceptions without suppressing other action che
 ```yaml
 lint:
   rules:
-    policy:
-      require-commit-hash:
+    security:
+      unpinned-reference:
         level: true
         options:
           exclude: ["my-org/*"]
@@ -650,7 +651,7 @@ defaults. Relative composite working directories start at the workspace root;
 
 The three cache checks below default to enabled. Cache safety checks belong to
 `lint.rules.security`; `cache-operation` belongs to `lint.rules.correctness`.
-Other policies are opt-in under `lint.rules.policy`. Omitted rules and `level: default`
+Other policy checks use their semantic category. Omitted rules and `level: default`
 keep defaults; `level: off` explicitly disables a rule, including under `--strict`.
 Policy names also identify their diagnostics.
 
@@ -743,8 +744,8 @@ still matches the reported file. Ignoring one job does not hide findings from
 another job that calls the same action.
 
 With `extends`, an omitted `ignores` keeps inherited entries. A supplied list
-replaces them; `ignores: []` clears them. The `disallow-suppressions` policy also
-applies to these entries. An ignore targeting `disallow-suppressions` is rejected.
+replaces them; `ignores: []` clears them. The `forbidden-suppression` policy also
+applies to these entries. An ignore targeting `forbidden-suppression` is rejected.
 
 ### Inline diagnostic suppressions
 
@@ -767,6 +768,10 @@ Every spelling accepts commas, spaces, tabs, or a mix between rule IDs. Supply a
 least one rule; an empty list does not ignore everything. Selectors accept
 any diagnostic rule ID listed by `actionlint rules`, including `expression`,
 `syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
+The previous IDs `require-commit-hash`, `require-job-timeout`,
+`require-permissions`, `require-action-metadata` and `disallow-suppressions`
+are accepted as aliases in configured and inline suppressions. Findings use
+the current IDs shown by `actionlint rules`.
 Exceptions apply to the reported physical line. A directive on a YAML block scalar
 header (`run: |` or `run: >`) covers its body as well. A preceding
 `actionlint:ignore-next-line` directive can also target that header. Blank lines or
@@ -793,16 +798,16 @@ file, use `lint.rules.disable` in an [override](#per-file-overrides). This also 
 for malformed YAML where parsing cannot attach inline comments. Configuration,
 I/O and tool-launch failures cannot be suppressed.
 
-### disallow-suppressions
+### forbidden-suppression
 
-`lint.rules.policy.disallow-suppressions: on` prohibits inline and configured exceptions.
+`lint.rules.conventions.forbidden-suppression: on` prohibits inline and configured exceptions.
 To select rules and output:
 
 ```yaml
 lint:
   rules:
-    policy:
-      disallow-suppressions:
+    conventions:
+      forbidden-suppression:
         level: on
         options:
           rules: [cache-call-unrestricted, cache-write-untrusted]
@@ -821,22 +826,22 @@ enable a disabled rule or override CLI/path ignores. `all` and `suppression` rep
 prohibited inline directives even when no underlying finding exists. Configured
 exceptions are reported when they match a finding.
 
-### require-commit-hash
+### unpinned-reference
 
-`lint.rules.policy.require-commit-hash: on` requires 40- or 64-digit hexadecimal refs for
+`lint.rules.security.unpinned-reference: on` requires 40- or 64-digit hexadecimal refs for
 actions/reusable workflows and digests for `docker://` images. Local `./` and `$/`
 references and unresolved expressions are skipped.
 
-### require-job-timeout
+### job-timeout
 
-`lint.rules.policy.require-job-timeout: on` requires `timeout-minutes` on jobs running
+`lint.rules.conventions.job-timeout: on` requires `timeout-minutes` on jobs running
 steps. Reusable-call jobs are excluded. Optional inclusive bounds:
 
 ```yaml
 lint:
   rules:
-    policy:
-      require-job-timeout:
+    conventions:
+      job-timeout:
         level: on
         options: { min-minutes: 5, max-minutes: 60 }
 ```
@@ -844,9 +849,9 @@ lint:
 Either bound may be omitted; both must be finite and positive, with minimum no
 greater than maximum. Omitted options require the key only. Expression values are not compared.
 
-### require-permissions
+### explicit-permissions
 
-`lint.rules.policy.require-permissions: on` requires workflow-level `permissions`.
+`lint.rules.security.explicit-permissions: on` requires workflow-level `permissions`.
 Use `{level: on, options: {scope: job}}` to require it on every job,
 including reusable calls. Empty mappings, named scopes, `read-all` and `write-all`
 all satisfy the check. This policy only requires a declaration; it does not assess
