@@ -193,12 +193,12 @@ run     = "node ./tools/matcher/main.mjs .github/actionlint-matcher.json"
 ["matcher:escape"]
 extends = "matcher"
 alias   = ["tools/matcher/testdata/escape.txt"]
-vars    = { flags = "-color", output = "escape.txt" }
+vars    = { flags = "--output-format text -color", output = "escape.txt" }
 
 ["matcher:no-escape"]
 extends = "matcher"
 alias   = ["tools/matcher/testdata/no_escape.txt"]
-vars    = { flags = "-no-color", output = "no_escape.txt" }
+vars    = { flags = "--output-format text -no-color", output = "no_escape.txt" }
 
 ["matcher:json"]
 extends = "matcher"
@@ -258,7 +258,7 @@ run = "run -p //.github/ci:test //.github/actions/comment-cop:test //.github/act
 run = "bun run --filter '*' --if-present test"
 
 ["typecheck"]
-run = "run -s @kjanat-actionlint/plugin-sdk:build typecheck:root typecheck:workspaces"
+run = ["bun run --filter '@kjanat-actionlint/plugin-sdk' build", { task = "typecheck:root" }, { task = "typecheck:workspaces" }]
 
 ["typecheck:root"]
 run = ["bun x --no-install --package @typescript/native tsc --noEmit", { task = "//.github/ci:typecheck" }]

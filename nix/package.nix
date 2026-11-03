@@ -3,6 +3,7 @@
   buildGoModule,
   installShellFiles,
   makeWrapper,
+  mise,
   gitMinimal,
   bash,
   pandoc,
@@ -32,6 +33,7 @@ buildGoModule {
   nativeBuildInputs = [
     installShellFiles
     makeWrapper
+    mise
     pandoc
   ];
   nativeCheckInputs = [
@@ -49,6 +51,11 @@ buildGoModule {
   '';
 
   postInstall = ''
+    export MISE_CONFIG_DIR="$TMPDIR/mise-config"
+    export MISE_DATA_DIR="$TMPDIR/mise-data"
+    export MISE_CACHE_DIR="$TMPDIR/mise-cache"
+    export MISE_STATE_DIR="$TMPDIR/mise-state"
+    mkdir -p "$MISE_CONFIG_DIR" "$MISE_DATA_DIR" "$MISE_CACHE_DIR" "$MISE_STATE_DIR"
     make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart ${
       if lib.versionOlder pandoc.version "3.8" then "--no-highlight" else "--syntax-highlighting=none"
     }'

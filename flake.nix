@@ -64,6 +64,7 @@
             git
             bash
             bash-completion
+            mise
             zsh
             fish
             gnumake

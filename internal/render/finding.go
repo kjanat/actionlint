@@ -113,9 +113,10 @@ func (f Finding) PrettyPrint(w io.Writer) {
 	_, _ = fmt.Fprint(w, d.Start.Column)
 	_, _ = gray.Fprint(w, ": ")
 	if d.Code != "" && d.Code != d.Rule {
-		_, _ = bold.Fprintf(w, "%s: ", d.Code)
+		_, _ = bold.Fprintf(w, "%s: %s", d.Code, d.Message)
+	} else {
+		_, _ = bold.Fprint(w, d.Message)
 	}
-	_, _ = bold.Fprint(w, d.Message)
 	_, _ = gray.Fprintf(w, " [%s]\n", d.Rule)
 
 	if (len(f.Source) == 0 && f.canonicalSnippet == "") || d.Start.Line <= 0 {
