@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools"
@@ -488,6 +489,7 @@ func TestProviderParityCases(t *testing.T) {
 			run := func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
 				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
+				root = fsread.PhysicalPath(root)
 				config := "tools: {shellcheck: true, ruff: true}\n"
 				if tc.config != "" {
 					config = tc.config

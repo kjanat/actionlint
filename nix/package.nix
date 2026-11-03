@@ -55,6 +55,7 @@ buildGoModule {
     export MISE_DATA_DIR="$TMPDIR/mise-data"
     export MISE_CACHE_DIR="$TMPDIR/mise-cache"
     export MISE_STATE_DIR="$TMPDIR/mise-state"
+    export MISE_ENABLE_TOOLS=""
     mkdir -p "$MISE_CONFIG_DIR" "$MISE_DATA_DIR" "$MISE_CACHE_DIR" "$MISE_STATE_DIR"
     make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart ${
       if lib.versionOlder pandoc.version "3.8" then "--no-highlight" else "--syntax-highlighting=none"

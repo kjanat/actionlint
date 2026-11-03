@@ -8,11 +8,12 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 )
 
 func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 	registry := testutil.NewPluginRegistry(t)
-	path := filepath.Join(t.TempDir(), "actionlint.yaml")
+	path := filepath.Join(tempdir.Physical(t), "actionlint.yaml")
 	remote := testutil.FixtureRegistryURL + "base.yaml"
 	original := "extends: [" + remote + "]\nconfig-variables: [LOCAL]\n"
 	if err := os.WriteFile(path, []byte(original), 0600); err != nil {

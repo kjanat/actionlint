@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 )
 
 func TestPluginManifestRemoteDependencySnapshot(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "actionlint.yaml")
+	path := filepath.Join(tempdir.Physical(t), "actionlint.yaml")
 	remote := "https://example.test/presets/base.toml?version=1"
 	shared := "https://example.test/shared.yaml"
 	contents := map[string]string{

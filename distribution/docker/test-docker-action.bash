@@ -93,7 +93,7 @@ cp nix/integration.yml "${temporary}/workspace/python.yml"
 expect_status 1 python.yml json '' '' false false . '' true
 expect_output problem-count 1
 output output | jq -e 'any(.diagnostics[]; .rule == "ruff" and .code == "F821")' >/dev/null
-tool_environment=(-e INPUT_DISABLE-TOOLS=shellcheck,ruff)
+tool_environment=(-e 'INPUT_DISABLE-TOOLS=shellcheck,ruff')
 expect_status 0 python.yml json '' '' false false . '' true
 expect_output problem-count 0
 tool_environment=()
