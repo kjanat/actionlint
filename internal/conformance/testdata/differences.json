@@ -521,7 +521,7 @@
       "<stdin>:28:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]"
     ],
     "languageservices/workflow-parser/testdata/reader/job-with-outputs-context.yml": [
-      "<stdin>:6:20: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {conclusion: string; outcome: string; outputs: {string => string}} [expression]"
+      "<stdin>:6:20: object and array values should not be evaluated in template with ${{ }} but evaluating the value of type {conclusion: string; outcome: string; outputs: {string => string}} [expression]"
     ],
     "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": [
       "<stdin>:3:3: job \"build\" has no steps, so it does nothing [empty-job]",

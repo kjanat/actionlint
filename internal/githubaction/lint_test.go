@@ -188,16 +188,22 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 
 func TestRunLinterCountsIncludedFiles(t *testing.T) {
 	for _, tc := range []struct {
+		name     string
 		excluded string
+		files    []string
 		count    int
-	}{{"skip.yaml", 1}, {"*.yaml", 0}} {
-		t.Run(tc.excluded, func(t *testing.T) {
+	}{
+		{"discovered subset", ".github/workflows/skip.yaml", []string{".github/workflows/*.yaml"}, 1},
+		{"all discovered files excluded", ".github/workflows/*.yaml", []string{".github/workflows/*.yaml"}, 0},
+		{"literal files override exclusions", ".github/workflows/*.yaml", []string{".github/workflows/skip.yaml", ".github/workflows/keep.yaml"}, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			dir := workspaceWith(t, map[string]string{
-				"skip.yaml":  brokenWorkflow,
-				"keep.yaml":  cleanWorkflow,
-				"config.yml": "files: {excludes: ['" + tc.excluded + "']}\n",
+				".github/workflows/skip.yaml": brokenWorkflow,
+				".github/workflows/keep.yaml": cleanWorkflow,
+				"config.yml":                  "files: {excludes: ['" + tc.excluded + "']}\n",
 			})
-			got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"skip.yaml", "keep.yaml"}, configFile: filepath.Join(dir, "config.yml")})
+			got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: tc.files, configFile: filepath.Join(dir, "config.yml")})
 			if got.code != render.ExitSuccessNoProblem || !got.fileCountKnown || got.fileCount != tc.count || len(got.diagnostics) != 0 {
 				t.Fatalf("included-file count=%d known=%v exit=%d diagnostics=%+v stderr=%s", got.fileCount, got.fileCountKnown, got.code, got.diagnostics, got.stderr)
 			}

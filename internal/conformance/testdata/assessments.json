@@ -398,7 +398,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-with-outputs-context.yml": "e060c53d1e900b65f8fbfd02e8983742aea9b0d0a531523c9ebcc586741b44c1"
+      "languageservices/workflow-parser/testdata/reader/job-with-outputs-context.yml": "4059407cc804d1bab270924b6cc2f056c9a905fa95c6ae233b26d63ff412e15f"
     },
     "findings": [
       {
