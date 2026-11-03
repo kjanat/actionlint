@@ -177,7 +177,7 @@ func (r *fromJSONReader) literal(word string, value any) (any, error) {
 	if r.pos < len(r.source) {
 		c, _ := utf8.DecodeRuneInString(r.source[r.pos:])
 		comment := strings.HasPrefix(r.source[r.pos:], "/*") || strings.HasPrefix(r.source[r.pos:], "//")
-		if c != 0 && !unicode.IsSpace(c) && !strings.ContainsRune("}],", c) && !comment && !(c == ')' && r.constructors > 0) {
+		if c != 0 && !unicode.IsSpace(c) && !strings.ContainsRune("}],", c) && !comment && (c != ')' || r.constructors == 0) {
 			return nil, r.fail("invalid character after JSON literal")
 		}
 	}
@@ -391,14 +391,14 @@ func (r *fromJSONReader) constructor(depth int) (any, error) {
 	return nil, err
 }
 
-func (r *fromJSONReader) array(depth int, close byte) (any, error) {
+func (r *fromJSONReader) array(depth int, closeChar byte) (any, error) {
 	r.pos++
 	array := []any{}
 	for {
 		if err := r.trivia(); err != nil {
 			return nil, err
 		}
-		if r.char() == close {
+		if r.char() == closeChar {
 			r.pos++
 			return array, nil
 		}
@@ -410,7 +410,7 @@ func (r *fromJSONReader) array(depth int, close byte) (any, error) {
 		if err := r.trivia(); err != nil {
 			return nil, err
 		}
-		if r.char() == close {
+		if r.char() == closeChar {
 			r.pos++
 			return array, nil
 		}

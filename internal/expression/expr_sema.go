@@ -1,6 +1,7 @@
 package expression
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -1093,8 +1094,8 @@ func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) T
 			return sig.Ret
 		}
 		value, collisions, err := readFromJSON(lit.Value)
-		if err != nil && err != errFromJSONUnsupported {
-			if syntax, ok := err.(*fromJSONError); ok {
+		if err != nil && !errors.Is(err, errFromJSONUnsupported) {
+			if syntax, ok := errors.AsType[*fromJSONError](err); ok {
 				sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON() at offset %d: %s", syntax.Offset, syntax)
 			} else {
 				sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON(): %s", err)

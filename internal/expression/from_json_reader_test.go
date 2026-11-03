@@ -121,8 +121,8 @@ func TestFromJSONErrorOffsets(t *testing.T) {
 		{`[1 x]`, 4},
 	} {
 		_, err := FromJSONValue(tc.source)
-		syntax, ok := err.(*fromJSONError)
-		if !ok || syntax.Offset != tc.offset {
+		var syntax *fromJSONError
+		if !errors.As(err, &syntax) || syntax.Offset != tc.offset {
 			t.Fatalf("%q: got %v; want offset %d", tc.source, err, tc.offset)
 		}
 	}

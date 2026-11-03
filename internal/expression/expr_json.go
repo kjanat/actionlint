@@ -2,6 +2,7 @@ package expression
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"unicode"
 )
@@ -20,7 +21,7 @@ func PermissiveJSONCalls(expr Node) []*Error {
 		if !known || !isString || json.Valid([]byte(text)) {
 			return
 		}
-		if _, _, err := readFromJSON(text); err == nil || err == errFromJSONUnsupported {
+		if _, _, err := readFromJSON(text); err == nil || errors.Is(err, errFromJSONUnsupported) {
 			findings = append(findings, errorAtExpr(permissiveJSON, call.Args[0], "you naughty boy, I see you"))
 		}
 	})
@@ -48,7 +49,7 @@ func ordinalIgnoreCaseKey(s string) string {
 // read by fromJSON. Invalid input is diagnosed by the shared reader instead.
 func JSONMemberCollisions(source string) []jsonMemberCollision {
 	_, collisions, err := readFromJSON(source)
-	if err != nil && err != errFromJSONUnsupported {
+	if err != nil && !errors.Is(err, errFromJSONUnsupported) {
 		return nil
 	}
 	return collisions

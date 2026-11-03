@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -165,7 +166,7 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 		}
 	}
 	if len(paths) != 0 && len(files) == 0 {
-		return FileSelection{}, fmt.Errorf("no workflow or action files were found in the selected paths")
+		return FileSelection{}, errors.New("no workflow or action files were found in the selected paths")
 	}
 	return FileSelection{Files: files, Inputs: listed.List()}, nil
 }

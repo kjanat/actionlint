@@ -322,16 +322,16 @@ func Cached(ctx context.Context, ref artifact.OCIReference, options artifact.Opt
 	return pull.resolve(ctx)
 }
 
-func (pull *puller) resolve(ctx context.Context) (*artifact.Artifact, error) {
-	platform, manifest, err := pull.hostManifest(ctx)
+func (p *puller) resolve(ctx context.Context) (*artifact.Artifact, error) {
+	platform, manifest, err := p.hostManifest(ctx)
 	if err != nil {
 		return nil, err
 	}
-	layers, primary, err := pull.layers(ctx, manifest)
+	layers, primary, err := p.layers(ctx, manifest)
 	if err != nil {
 		return nil, err
 	}
-	info := artifact.Info{Source: pull.ref.String(), SHA256: pull.ref.Digest(), Manifest: manifest, Platform: platform}
+	info := artifact.Info{Source: p.ref.String(), SHA256: p.ref.Digest(), Manifest: manifest, Platform: platform}
 	for _, layer := range layers {
 		digest, err := descriptorDigest(layer)
 		if err != nil {
@@ -339,7 +339,7 @@ func (pull *puller) resolve(ctx context.Context) (*artifact.Artifact, error) {
 		}
 		info.Blobs = append(info.Blobs, digest)
 	}
-	data, err := pull.blob(ctx, layers[primary])
+	data, err := p.blob(ctx, layers[primary])
 	if err != nil {
 		return nil, err
 	}

@@ -194,9 +194,10 @@ runs:
 				if diagnostic.Rule != "shellcheck" || filepath.Join(root, diagnostic.Path) != metadata {
 					continue
 				}
-				if diagnostic.Code == "SC2086" {
+				switch diagnostic.Code {
+				case "SC2086":
 					inline = true
-				} else if diagnostic.Code == "SC1094" {
+				case "SC1094":
 					sourced = true
 				}
 			}
