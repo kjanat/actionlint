@@ -2203,8 +2203,8 @@
                             },
                             "uncancellable-condition": {
                               "title": "uncancellable-condition",
-                              "description": "Report always() conditions that prevent cancellation",
-                              "markdownDescription": "Report always() conditions that prevent cancellation",
+                              "description": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "anyOf": [
@@ -6792,8 +6792,8 @@
                                       },
                                       "uncancellable-condition": {
                                         "title": "uncancellable-condition",
-                                        "description": "Report always() conditions that prevent cancellation",
-                                        "markdownDescription": "Report always() conditions that prevent cancellation",
+                                        "description": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "anyOf": [

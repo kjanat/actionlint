@@ -15,12 +15,13 @@ func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
 		name, config, comment, severity string
 		strict                          bool
 	}{
-		{"default", "", "", "warning", false},
+		{"default", "", "", "", false},
+		{"enabled", "lint: {rules: {correctness: {uncancellable-condition: on}}}", "", "warning", false},
 		{"strict", "lint: {rules: {policy: off}}", "", "error", true},
 		{"disabled", "lint: {rules: {correctness: {uncancellable-condition: off}}}", "", "", false},
 		{"strict disabled", "lint: {rules: {policy: off, correctness: {uncancellable-condition: off}}}", "", "", true},
 		{"configured info", "lint: {rules: {correctness: {uncancellable-condition: info}}}", "", "info", false},
-		{"suppressed", "", " # ignore[uncancellable-condition]", "", false},
+		{"suppressed", "lint: {rules: {correctness: {uncancellable-condition: on}}}", " # ignore[uncancellable-condition]", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, fmt.Sprintf(workflow, tc.comment), tc.config, application.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
@@ -40,29 +41,22 @@ func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
 	}
 }
 
-func TestBoundedCheckoutCancellationSeverity(t *testing.T) {
+func TestCancellationPolicyDoesNotClassifyCheckoutSteps(t *testing.T) {
 	const workflow = "on: push\npermissions: {}\njobs:\n  build:\n    cancel-timeout-minutes: 1\n    timeout-minutes: 5\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        if: always()\n"
 	for _, tc := range []struct {
-		name, config, severity string
-		strict                 bool
+		name, config string
+		strict       bool
 	}{
-		{"default", "", "info", false},
-		{"explicit warning", "lint: {rules: {correctness: {uncancellable-condition: warn}}}", "warning", false},
-		{"strict", "lint: {rules: {policy: off}}", "error", true},
+		{"default", "", false},
+		{"explicit warning", "lint: {rules: {correctness: {uncancellable-condition: warn}}}", false},
+		{"strict", "lint: {rules: {policy: off}}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, workflow, tc.config, application.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
-			found := false
 			for _, finding := range findings {
 				if finding.Rule == "uncancellable-condition" {
-					found = true
-					if finding.Severity != tc.severity {
-						t.Fatalf("want %s: %+v", tc.severity, finding)
-					}
+					t.Fatalf("checkout step was classified by action name: %+v", finding)
 				}
-			}
-			if !found {
-				t.Fatalf("missing diagnostic: %+v", findings)
 			}
 		})
 	}

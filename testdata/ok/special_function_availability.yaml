@@ -7,7 +7,7 @@ jobs:
   # jobs.<job_id>.if
   if-always:
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
+    if: always()
     steps:
       - run: echo ...
   if-cancelled:

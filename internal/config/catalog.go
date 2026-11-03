@@ -96,7 +96,7 @@ func buildRegisteredRules() []Rule {
 
 		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
 		{Name: "if-cond"},
-		{Name: "uncancellable-condition", SupportsActions: true, DefaultLevel: "on"},
+		{Name: "uncancellable-condition", DefaultLevel: "on"},
 		{Name: "numeric-values"},
 		{Name: "empty-triggers"},
 		{Name: "empty-job"},

@@ -17,11 +17,13 @@ func TestUncancellableCondition(t *testing.T) {
 		{"job", "${{ always() }}", "", "", 1, 0},
 		{"bare job", "always()", "", "", 1, 0},
 		{"guarded job", "${{ always() && !cancelled() }}", "", "", 0, 0},
-		{"checkout", "", "${{ always() }}", "actions/checkout@v6", 0, 1},
-		{"checkout casing", "", "always()", "Actions/Checkout@v6", 0, 1},
-		{"checkout SHA", "", "always()", "actions/checkout@" + strings.Repeat("a", 40), 0, 1},
+		{"cancellation reporting", "${{ always() && cancelled() }}", "", "", 1, 0},
+		{"job OR guard", "${{ always() || !cancelled() }}", "", "", 1, 0},
+		{"checkout", "", "${{ always() }}", "actions/checkout@v6", 0, 0},
+		{"checkout casing", "", "always()", "Actions/Checkout@v6", 0, 0},
+		{"checkout SHA", "", "always()", "actions/checkout@" + strings.Repeat("a", 40), 0, 0},
 		{"guarded checkout", "", "always() && !cancelled()", "actions/checkout@v6", 0, 0},
-		{"ineffective OR guard", "", "always() || !cancelled()", "actions/checkout@v6", 0, 1},
+		{"step OR guard", "", "always() || !cancelled()", "actions/checkout@v6", 0, 0},
 		{"log upload", "", "always()", "actions/upload-artifact@v4", 0, 0},
 		{"run cleanup", "", "always()", "", 0, 0},
 		{"other checkout", "", "always()", "example/checkout@v1", 0, 0},
@@ -47,18 +49,19 @@ func TestUncancellableCondition(t *testing.T) {
 			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
 			check := Declaration("uncancellable-condition")
 			for _, job := range view.Jobs() {
-				if got := check.Job(job); len(got) != tc.jobs {
+				got := check.Job(job)
+				if len(got) != tc.jobs {
 					t.Fatalf("job findings: %+v", got)
+				}
+				if strings.ContainsAny(tc.jobIf, "&|") && len(got) != 0 {
+					if len(got[0].Fixes) != 0 || strings.Contains(got[0].Message, "!cancelled()") {
+						t.Fatalf("compound condition received a substitution: %+v", got)
+					}
 				}
 				for step := range job.Steps() {
 					got := check.Step(step)
 					if len(got) != tc.steps {
 						t.Fatalf("step findings: %+v", got)
-					}
-					for _, finding := range got {
-						if finding.Severity != "warning" || !finding.Step.Present() {
-							t.Fatalf("unexpected diagnostic: %+v", finding)
-						}
 					}
 				}
 			}
@@ -91,7 +94,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					t.Fatalf("missing fix: %+v", findings)
 				}
 				fix := findings[0].Fixes[0]
-				if fix.Applicability != diagnostic.FixSuggested || len(fix.Edits) != 1 {
+				if fix.Applicability != diagnostic.FixUnsafe || fix.Applicability.Automatic() || len(fix.Edits) != 1 {
 					t.Fatalf("unexpected fix: %+v", fix)
 				}
 				edit := fix.Edits[0]
@@ -125,21 +128,19 @@ func TestUncancellableConditionFix(t *testing.T) {
 	}
 }
 
-func TestCheckoutCancellationTimeoutSeverity(t *testing.T) {
+func TestCleanupStepCancellationTimeouts(t *testing.T) {
 	for _, tc := range []struct {
-		name, timeout, jobIf, severity string
+		name, timeout, jobIf string
 	}{
-		{"no limit", "", "", "warning"},
-		{"one minute", "1", "", "info"},
-		{"fraction", "2.5", "", "info"},
-		{"constant expression", "${{ 1 }}", "", "info"},
-		{"unknown expression", "${{ inputs.minutes }}", "", "warning"},
-		{"zero", "0", "", "warning"},
-		{"negative", "-1", "", "warning"},
-		{"job always", "1", "always()", "warning"},
-		{"job cancellation only", "1", "cancelled()", "warning"},
-		{"job guarded", "1", "${{ always() && !cancelled() }}", "info"},
-		{"job data predicate", "1", "github.ref == 'refs/heads/master'", "info"},
+		{"no limit", "", ""},
+		{"one minute", "1", ""},
+		{"fraction", "2.5", ""},
+		{"constant expression", "${{ 1 }}", ""},
+		{"unknown expression", "${{ inputs.minutes }}", ""},
+		{"job always", "1", "always()"},
+		{"job cancellation only", "1", "cancelled()"},
+		{"job guarded", "1", "${{ always() && !cancelled() }}"},
+		{"job data predicate", "1", "github.ref == 'refs/heads/master'"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			content := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
@@ -158,8 +159,8 @@ func TestCheckoutCancellationTimeoutSeverity(t *testing.T) {
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
 					findings := Declaration("uncancellable-condition").Step(step)
-					if len(findings) != 1 || findings[0].Severity != tc.severity {
-						t.Fatalf("want %s: %+v", tc.severity, findings)
+					if len(findings) != 0 {
+						t.Fatalf("checkout needed for cleanup was classified by action name: %+v", findings)
 					}
 				}
 			}

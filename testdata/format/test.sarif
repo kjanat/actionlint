@@ -515,6 +515,24 @@
               }
             },
             {
+              "id": "missing-workflow-permissions",
+              "name": "MissingWorkflowPermissions",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report jobs that inherit repository token permissions",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-workflow-permissions"
+              },
+              "fullDescription": {
+                "text": "Report each job without explicit workflow-level or job-level token permissions when the workflow has a trigger other than workflow_call. Mirrors CodeQL's actions/missing-workflow-permissions check. Workflows triggered only by workflow_call inherit the caller's token ceiling; callers must declare permissions. This check does not infer the token scopes required by arbitrary actions. Warning when enabled; error with --strict."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-workflow-permissions",
+              "help": {
+                "text": "Declare least-privilege permissions at workflow or job scope. An empty mapping, read-all, write-all or a scope mapping counts as an explicit declaration; this check does not certify that the declared permissions are minimal. See [CodeQL's query](https://github.com/github/codeql/blob/main/actions/ql/src/Security/CWE-275/MissingActionsPermissions.ql)."
+              }
+            },
+            {
               "id": "mixed-type-comparisons",
               "name": "MixedTypeComparisons",
               "defaultConfiguration": {
@@ -713,21 +731,39 @@
               }
             },
             {
+              "id": "uncancellable-condition",
+              "name": "UncancellableCondition",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Review jobs that can continue after cancellation",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#uncancellable-condition"
+              },
+              "fullDescription": {
+                "text": "Opt-in policy for job conditions using always() that can evaluate to true during cancellation. Cleanup and cancellation notifications can require this behavior; the condition alone does not prove a mistake. Step conditions are not reported because action names do not establish whether their work is needed for cleanup. cancel-timeout-minutes does not force cancellation of a job whose condition keeps it running. Warning when enabled; --strict enables this policy as an error, including intentional uses."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#uncancellable-condition",
+              "help": {
+                "text": "If cancellation should stop the job, use !cancelled(). Keep always() when cancellation cleanup or reporting must run. A standalone always() offers a behavior-changing fix requiring explicit review; compound conditions have no replacement. See [GitHub's always() guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always) and the [job-versus-step cancellation test](https://github.com/kjanat/actionlint/actions/runs/41520665123)."
+              }
+            },
+            {
               "id": "unsound-ternary",
               "name": "UnsoundTernary",
               "defaultConfiguration": {
                 "level": "error"
               },
               "properties": {
-                "description": "Report a && b || c expressions where b is always falsy",
+                "description": "Report a \u0026\u0026 b || c expressions where b is always falsy",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unsound-ternary"
               },
               "fullDescription": {
-                "text": "Report a && b || c expressions where b is always falsy."
+                "text": "Report a \u0026\u0026 b || c expressions where b is always falsy."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unsound-ternary",
               "help": {
-                "text": "The middle operand of a && b || c must be truthy to select b; use an explicit conditional or a truthy representation."
+                "text": "The middle operand of a \u0026\u0026 b || c must be truthy to select b; use an explicit conditional or a truthy representation."
               }
             },
             {

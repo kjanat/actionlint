@@ -971,18 +971,18 @@ Configure this rule with `lint.rules.correctness.syntax-check`. Use `off`, `on`,
 
 ## uncancellable-condition
 
-Warn when a job or actions/checkout step uses always() without checking for cancellation. Cancelling the workflow might not stop the job, and checkout can hang until its timeout. Other steps are not reported: cleanup and log uploads may need to run after cancellation. Checkout findings use info when their job can be cancelled and has a known, positive cancel-timeout-minutes. That setting does not reduce job-level findings. Unknown timeout values do not reduce severity. Error with --strict.
+Opt-in policy for job conditions using always() that can evaluate to true during cancellation. Cleanup and cancellation notifications can require this behavior; the condition alone does not prove a mistake. Step conditions are not reported because action names do not establish whether their work is needed for cleanup. cancel-timeout-minutes does not force cancellation of a job whose condition keeps it running. Warning when enabled; --strict enables this policy as an error, including intentional uses.
 
-Use !cancelled() to run after success or failure and stop when cancelled. For conditions with several branches, check cancellation in every branch that could run. Review suggested fixes because they change what happens on cancellation. See [GitHub's always() warning](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always) and the [job-versus-step cancellation test](https://github.com/kjanat/actionlint/actions/runs/41520665123).
+If cancellation should stop the job, use !cancelled(). Keep always() when cancellation cleanup or reporting must run. A standalone always() offers a behavior-changing fix requiring explicit review; compound conditions have no replacement. See [GitHub's always() guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always) and the [job-versus-step cancellation test](https://github.com/kjanat/actionlint/actions/runs/41520665123).
 
 - Category: `correctness/expressions`
 - Provider: `actionlint`
 - Maturity: `stable`
-- Enabled by default: `true`
+- Enabled by default: `false`
 
 Configure this rule with `lint.rules.correctness.uncancellable-condition`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
-Keep the job runnable after failure while allowing workflow cancellation.
+When this job should stop on cancellation, use !cancelled(). Do not make this change for required cancellation cleanup or reporting.
 
 ```yaml
 on: push
