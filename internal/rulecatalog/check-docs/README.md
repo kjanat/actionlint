@@ -1,6 +1,6 @@
-# check-checks
+# Documentation checker
 
-This is a script to maintain [the 'Checks' document](../../docs/checks.md).
+This tool maintains [the Checks document](../../../docs/checks.md).
 
 This script does:
 
@@ -8,12 +8,12 @@ This script does:
 - update the links to the [playground](https://kjanat.github.io/actionlint/) for the example inputs
 - check the document is up-to-date
 
-For making the implementation simple, this script does not support Windows.
+Generated examples use a fixed repository path and consistent missing-file error
+messages on Windows, Linux, and macOS.
 
 ## Prerequisites
 
 - Go
-- Linux or macOS
 - `shellcheck` command
 
 ## Usage
@@ -34,7 +34,7 @@ Update the document. This command directly modifies the file.
 go run ./internal/rulecatalog/check-docs -fix ./docs/checks.md
 ```
 
-The check is run on the [CI workflow](../../.github/workflows/ci.yml).
+The check is run on the [CI workflow](../../../.github/workflows/ci.yml).
 
 ## Format
 

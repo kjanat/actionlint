@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -28,6 +29,26 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
+
+// Missing-file examples use the same wording on every OS. Unwrap preserves
+// the filesystem error for analysis code that checks its type or category.
+type missingDocumentationFile struct {
+	cause *os.PathError
+}
+
+func (e missingDocumentationFile) Error() string {
+	return fmt.Sprintf("%s %s: no such file or directory", e.cause.Op, filepath.ToSlash(e.cause.Path))
+}
+
+func (e missingDocumentationFile) Unwrap() error { return e.cause }
+
+func readDocumentationFile(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if cause, ok := errors.AsType[*os.PathError](err); ok && errors.Is(err, os.ErrNotExist) {
+		return data, missingDocumentationFile{cause: cause}
+	}
+	return data, err
+}
 
 func Actionlint(src []byte) ([]byte, error) {
 	var out bytes.Buffer
@@ -55,6 +76,7 @@ func Actionlint(src []byte) ([]byte, error) {
 	}
 	result, err := application.Analyze(context.Background(), application.Options{
 		WorkingDir: root,
+		ReadFile:   readDocumentationFile,
 		Repository: func(context.Context, string) repository.Snapshot { return repository.Snapshot{RunnerLabels: labels} },
 		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}}),
 	}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
@@ -85,8 +107,12 @@ func Actionlint(src []byte) ([]byte, error) {
 	// Replace checkout-specific paths in diagnostics with a stable example path.
 	// Read errors name the physical file, which differs from root when the
 	// checkout is reached through a symlink or a Windows short name.
-	rendered := bytes.ReplaceAll(out.Bytes(), []byte(fsread.PhysicalPath(root)), []byte("/path/to/repo"))
-	return bytes.ReplaceAll(rendered, []byte(root), []byte("/path/to/repo")), nil
+	rendered := out.Bytes()
+	for _, path := range []string{fsread.PhysicalPath(root), root} {
+		rendered = bytes.ReplaceAll(rendered, []byte(path), []byte("/path/to/repo"))
+		rendered = bytes.ReplaceAll(rendered, []byte(filepath.ToSlash(path)), []byte("/path/to/repo"))
+	}
+	return rendered, nil
 }
 
 type state int
@@ -462,7 +488,7 @@ func Main(args []string) error {
 	}
 
 	if !fix {
-		return fmt.Errorf("checks document has some update. run `go run ./internal/rulecatalog/check-docs -fix %s` and commit the changes on Linux or macOS. the diff:\n\n%s", path, cmp.Diff(in, out))
+		return fmt.Errorf("checks document is outdated. Run `go run ./internal/rulecatalog/check-docs -fix %s` to update it. Diff:\n\n%s", path, cmp.Diff(in, out))
 	}
 
 	log.Printf("Overwrite the file with the updated content (%d bytes) at %q", len(out), path)

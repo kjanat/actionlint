@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
+	"errors"
 	"io"
 	"log"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -67,6 +67,33 @@ func testErr(t *testing.T, err error, want ...string) {
 	}
 }
 
+func TestReadDocumentationFile(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "workflow.yml")
+	want := []byte("run: echo C:\\tools\\bin\n")
+	if err := os.WriteFile(path, want, 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readDocumentationFile(path)
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("read changed file contents: %q, %v", got, err)
+	}
+	for _, missing := range []string{"missing.yml", filepath.Join("missing", "workflow.yml")} {
+		path := filepath.Join(root, missing)
+		_, err := readDocumentationFile(path)
+		if !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("missing-file classification lost: %v", err)
+		}
+		cause, ok := errors.AsType[*os.PathError](err)
+		if !ok || cause.Path != path || cause.Op != "open" {
+			t.Fatalf("original path error lost: %v", err)
+		}
+		if want := "open " + filepath.ToSlash(path) + ": no such file or directory"; err.Error() != want {
+			t.Fatalf("want %q, got %q", want, err)
+		}
+	}
+}
+
 func TestActionlintOutsideRepository(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, tc := range []struct {
@@ -97,7 +124,7 @@ jobs:
   test:
     uses: ./.github/workflows/not-existing-workflow.yml
 `,
-			want: `could not read reusable workflow file for "./.github/workflows/not-existing-workflow.yml": open /path/to/repo`,
+			want: `could not read reusable workflow file for "./.github/workflows/not-existing-workflow.yml": open /path/to/repo/.github/workflows/not-existing-workflow.yml: no such file or directory`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -113,9 +140,6 @@ jobs:
 }
 
 func TestMainGenerateOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
 	root := t.TempDir()
 
 	in := must(os.Open(filepath.FromSlash("testdata/ok/minimal.in")))
@@ -140,10 +164,26 @@ func TestMainGenerateOK(t *testing.T) {
 	}
 }
 
-func TestMainCheckOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
+func TestMainGenerateMissingWorkflow(t *testing.T) {
+	input := must(os.ReadFile("testdata/ok/replace_absolute_path.in"))
+	want := must(os.ReadFile("testdata/ok/replace_absolute_path.out"))
+	path := filepath.Join(t.TempDir(), "checks.md")
+	if err := os.WriteFile(path, input, 0600); err != nil {
+		t.Fatal(err)
 	}
+	if err := Main([]string{"exe", "-fix", path}); err != nil {
+		t.Fatal(err)
+	}
+	got := must(os.ReadFile(path))
+	if diff := cmp.Diff(decodePlaygroundLinks(t, want), decodePlaygroundLinks(t, got)); diff != "" {
+		t.Fatal(diff)
+	}
+	if err := Main([]string{"exe", path}); err != nil {
+		t.Fatalf("generated documentation did not pass its own check: %v", err)
+	}
+}
+
+func TestMainCheckOK(t *testing.T) {
 	path := filepath.FromSlash("testdata/ok/minimal.out")
 	if err := Main([]string{"exe", path}); err != nil {
 		t.Fatal(err)
@@ -151,9 +191,6 @@ func TestMainCheckOK(t *testing.T) {
 }
 
 func TestMainCheckQuietOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
 	path := filepath.FromSlash("testdata/ok/minimal.out")
 	if err := Main([]string{"exe", "-quiet", path}); err != nil {
 		t.Fatal(err)
@@ -191,11 +228,8 @@ func TestUpdateSectionsWithoutExamples(t *testing.T) {
 }
 
 func TestMainCheckError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
 	path := filepath.FromSlash("testdata/ok/minimal.in")
-	testErr(t, Main([]string{"exe", path}), "checks document has some update")
+	testErr(t, Main([]string{"exe", path}), "checks document is outdated")
 }
 
 func TestMainFileNotFound(t *testing.T) {
@@ -218,10 +252,6 @@ func TestMainUpdateError(t *testing.T) {
 }
 
 func TestUpdateOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
-
 	dir := filepath.FromSlash("testdata/ok")
 
 	tests := []string{}
