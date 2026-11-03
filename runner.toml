@@ -1,10 +1,8 @@
 #:schema https://kjanat.github.io/runner/schemas/runner.toml.schema.json
 
-[tasks]
-prefer = ["mise"]
-
 [tasks.build]
-env = { SKIP_GO_GENERATE = "1" }
+source = "mise"
+env    = { SKIP_GO_GENERATE = "1" }
 
 [tasks.actionlint]
 source = "go"
