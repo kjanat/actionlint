@@ -146,5 +146,5 @@ func TestScalarSourceReferenceLive(t *testing.T) {
 			}
 		})
 	}
-	t.Logf("verified %d live reference responses", len(cases))
+	t.Logf("compared %d live reference responses", len(cases))
 }

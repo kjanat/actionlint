@@ -26,6 +26,11 @@ run = [
   "go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance"
 ]
 
+["scalar-source-reference"]
+description = "Replay scalar source reference cases against pinned Runny"
+env         = { ACTIONLINT_REFERENCE_IMAGE = "ghcr.io/kjanat/runny-mc-fuzzface@sha256:05ac3c0842628d383cc1cea6f5f2b6710ceb9356cbc53540c45fb2bb1a9acc03" }
+run         = "go test ./internal/workflow/parser -run '^TestScalarSourceReference(Recorded|Live)$' -count=1 -timeout 10m"
+
 ["coverage"]
 extends = "go-test"
 alias   = ["coverage.out"]
