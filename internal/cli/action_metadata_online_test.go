@@ -19,6 +19,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 	cache := t.TempDir()
 	t.Setenv("LOCALAPPDATA", cache)
 	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("HOME", cache)
 	t.Setenv("GH_TOKEN", "fixture-secret")
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
