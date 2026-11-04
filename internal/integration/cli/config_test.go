@@ -64,7 +64,17 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testutil.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
+	registry := testutil.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
+	// Config inspection loads both installed plugins. Give them distinct rule
+	// descriptors rather than registering no-sudo twice under different aliases.
+	other, err := os.ReadFile("internal/plugins/component/testdata/plugins/insecure-download.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const base = "https://plugins.actionlint.kjanat.dev/"
+	catalog := registry.File(base + "index.json")
+	registry.AddPlugin(t, testutil.PluginPublisher{PluginID: "ruff", BaseURL: base, Name: "github.com/kjanat/actionlint-plugin-ruff", Aliases: []string{"ruff"}, RepositoryID: 11}, "v1.0.0", other)
+	registry.SetFile(base+"index.json", catalog)
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
@@ -128,7 +138,7 @@ lint:
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	for key, state := range map[string]string{"/repository/variables": "value", "/repository/secrets": "null", "/lint/rules/policy/require-commit-hash": "value", "/lint/rules/policy/require-job-timeout/options/min-minutes": "value"} {
+	for key, state := range map[string]string{"/repository/variables": "value", "/repository/secrets": "null", "/lint/rules/policy/unpinned-reference": "value", "/lint/rules/policy/job-timeout/options/min-minutes": "value"} {
 		origin := inspection.Origins[key]
 		if origin.Source != "config" || origin.State != state || origin.Line == 0 {
 			t.Errorf("%s: %+v", key, origin)

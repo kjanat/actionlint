@@ -35,7 +35,7 @@ func TestPluginSuppressionsUseInvocationRegistry(t *testing.T) {
 		if got.Status != tc.want || strings.Contains(got.Stdout, "unknown inline suppression") {
 			t.Fatalf("config %s: %+v", tc.config, got)
 		}
-		if tc.want == 1 && !strings.Contains(got.Stdout, "[disallow-suppressions]") {
+		if tc.want == 1 && !strings.Contains(got.Stdout, "[forbidden-suppression]") {
 			t.Fatalf("policy ignored: %+v", got)
 		}
 	}

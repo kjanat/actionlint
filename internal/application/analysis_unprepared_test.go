@@ -16,7 +16,7 @@ import (
 type sourceOnlyProbe struct{ content string }
 
 func (sourceOnlyProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "source-probe", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "source-probe", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (p sourceOnlyProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

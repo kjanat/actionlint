@@ -20,7 +20,7 @@ import (
 type unrelatedPathAnalyzer struct{ path string }
 
 func (unrelatedPathAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "unrelated-path-probe", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "unrelated-path-probe", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (a unrelatedPathAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {

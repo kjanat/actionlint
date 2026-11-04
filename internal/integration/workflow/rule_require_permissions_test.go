@@ -62,7 +62,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 					}
 					return
 				}
-				if len(errs) != 1 || errs[0].Rule != "require-permissions" || errs[0].Start.Line != tc.wantLine || !strings.Contains(errs[0].Message, "permissions: {}") {
+				if len(errs) != 1 || errs[0].Rule != "explicit-permissions" || errs[0].Start.Line != tc.wantLine || !strings.Contains(errs[0].Message, "permissions: {}") {
 					t.Fatalf("expected one permissions error at line %d, got %v", tc.wantLine, errs)
 				}
 			})
@@ -98,10 +98,10 @@ func TestWorkflowPermissionsSuppressionBoundaries(t *testing.T) {
 		header, declaration, policy string
 		want                        []string
 	}{
-		{"# actionlint:ignore require-permissions -- detached\n# license\n", "on: push", "require-permissions: true", []string{"require-permissions"}},
+		{"# actionlint:ignore require-permissions -- detached\n# license\n", "on: push", "require-permissions: true", []string{"explicit-permissions"}},
 		{"# license\n", "on: push # actionlint:ignore require-permissions", "require-permissions: true", nil},
-		{"# license\n", "on: push # actionlint:ignore require-permissions -- reviewed", "require-permissions: true, disallow-suppressions: true", []string{"require-permissions", "disallow-suppressions"}},
-		{"# license\n", "on: push # actionlint:ignore require-permissions -- workflow only", "require-permissions: {scope: job}", []string{"unused-suppression", "require-permissions"}},
+		{"# license\n", "on: push # actionlint:ignore require-permissions -- reviewed", "require-permissions: true, disallow-suppressions: true", []string{"explicit-permissions", "forbidden-suppression"}},
+		{"# license\n", "on: push # actionlint:ignore require-permissions -- workflow only", "require-permissions: {scope: job}", []string{"unused-suppression", "explicit-permissions"}},
 	} {
 		source := tc.header + tc.declaration + `
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}

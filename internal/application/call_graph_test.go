@@ -16,7 +16,7 @@ type callGraphCollector struct {
 }
 
 func (*callGraphCollector) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "call-graph", Requires: []analyzer.Fact{analyzer.Invocations, analyzer.Scripts}}
+	return analyzer.Descriptor{Name: "call-graph", Category: "correctness", Requires: []analyzer.Fact{analyzer.Invocations, analyzer.Scripts}}
 }
 
 func (collector *callGraphCollector) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

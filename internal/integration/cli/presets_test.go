@@ -40,7 +40,7 @@ jobs:
 			if got.Status != wantStatus {
 				t.Fatalf("%v: %+v", args, got)
 			}
-			for _, rule := range []string{"require-commit-hash", "require-job-timeout", "require-permissions"} {
+			for _, rule := range []string{"unpinned-reference", "job-timeout", "explicit-permissions"} {
 				if strings.Contains(got.Stdout, "["+rule+"]") != tc.strict {
 					t.Fatalf("%v: %+v", args, got)
 				}

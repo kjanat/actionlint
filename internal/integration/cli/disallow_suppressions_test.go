@@ -24,14 +24,14 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 		{"null policy", "lint: {rules: {policy: null}}", nil},
 		{"null", "lint: {rules: {policy: {disallow-suppressions: null}}}", nil},
 		{"off", "lint: {rules: {policy: {disallow-suppressions: off}}}", nil},
-		{"on", "lint: {rules: {policy: {disallow-suppressions: on}}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
-		{"mapping", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {}}}}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
-		{"all", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: all}}}}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
-		{"suppression", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: suppression}}}}}", []string{"disallow-suppressions"}},
+		{"on", "lint: {rules: {policy: {disallow-suppressions: on}}}", []string{"cache-call-unrestricted", "forbidden-suppression"}},
+		{"mapping", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {}}}}}", []string{"cache-call-unrestricted", "forbidden-suppression"}},
+		{"all", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: all}}}}}", []string{"cache-call-unrestricted", "forbidden-suppression"}},
+		{"suppression", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: suppression}}}}}", []string{"forbidden-suppression"}},
 		{"violation", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: violation}}}}}", []string{"cache-call-unrestricted"}},
-		{"selected", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [cache-call-unrestricted]}}}}}", []string{"cache-call-unrestricted", "disallow-suppressions"}},
+		{"selected", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [cache-call-unrestricted]}}}}}", []string{"cache-call-unrestricted", "forbidden-suppression"}},
 		{"other rule", "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [cache-operation]}}}}}", nil},
-		{"disabled underlying", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: on}}}", []string{"disallow-suppressions", "unused-suppression"}},
+		{"disabled underlying", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: on}}}", []string{"forbidden-suppression", "unused-suppression"}},
 		{"disabled underlying violation only", "lint: {rules: {security: {cache-call-unrestricted: off}, policy: {disallow-suppressions: {level: on, options: {report: violation}}}}}", []string{"unused-suppression"}},
 	} {
 		for _, preceding := range []bool{false, true} {
@@ -121,11 +121,11 @@ jobs:
 		name, cliIgnore, configIgnore, format string
 		want                                  []string
 	}{
-		{"SARIF", "", "", "sarif", []string{"cache-write-untrusted", "disallow-suppressions"}},
+		{"SARIF", "", "", "sarif", []string{"cache-write-untrusted", "forbidden-suppression"}},
 		{"CLI removes directive", forbidden, "", "{{json .}}", []string{"cache-write-untrusted"}},
-		{"CLI removes violation", violation, "", "{{json .}}", []string{"disallow-suppressions"}},
+		{"CLI removes violation", violation, "", "{{json .}}", []string{"forbidden-suppression"}},
 		{"path removes directive", "", "  message-ignores: {'test.yaml': ['" + forbidden + "']}\n", "{{json .}}", []string{"cache-write-untrusted"}},
-		{"all paths remove violation", "", "  message-ignores: {'**': ['" + violation + "']}\n", "{{json .}}", []string{"disallow-suppressions"}},
+		{"all paths remove violation", "", "  message-ignores: {'**': ['" + violation + "']}\n", "{{json .}}", []string{"forbidden-suppression"}},
 		{"overlapping filters", forbidden, "  message-ignores: {'test.yaml': ['" + violation + "']}\n", "{{json .}}", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

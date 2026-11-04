@@ -54,16 +54,15 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 		}
 		byName[rule.Name] = rule
 	}
-	if metadata, ok := byName["require-action-metadata"]; !ok || metadata.Category != "policy" {
-		t.Fatalf("missing policy metadata rule: %+v", metadata)
+	if metadata, ok := byName["missing-action-metadata"]; !ok || metadata.Category != "conventions" {
+		t.Fatalf("missing metadata rule: %+v", metadata)
 	}
 	got := testRunCommand("", "rules", "--no-config")
 	if got.Status != 0 || got.Stderr != "" {
 		t.Fatal(got)
 	}
 	categoryByHeading := map[string]string{
-		"Correctness:": "correctness", "Security:": "security", "Suspicious:": "suspicious", "Style:": "style",
-		"Policy:": "policy", "External linters:": "external",
+		"Correctness:": "correctness", "Security:": "security", "Suspicious:": "suspicious", "Conventions:": "conventions",
 	}
 	var headings []string
 	category, previous := "", ""
@@ -85,7 +84,7 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 		previous = name
 		delete(byName, name)
 	}
-	wantHeadings := []string{"Correctness:", "Security:", "Suspicious:", "Style:", "Policy:"}
+	wantHeadings := []string{"Correctness:", "Security:", "Suspicious:", "Conventions:"}
 	if !slices.Equal(headings, wantHeadings) || len(byName) != 0 {
 		t.Fatalf("headings=%v, missing rules=%v", headings, byName)
 	}
@@ -98,7 +97,7 @@ func TestRulesIncludesSelectedPluginMetadata(t *testing.T) {
 	if err := json.Unmarshal([]byte(got.Stdout), &descriptor); err != nil || got.Status != 0 {
 		t.Fatalf("%+v %v", got, err)
 	}
-	if descriptor.Provider != "example" || descriptor.Category != "portability" || descriptor.Help == "" {
+	if descriptor.Provider != "example" || descriptor.Category != "suspicious" || descriptor.Help == "" {
 		t.Fatal(descriptor)
 	}
 	got = testRunCommand("", "rules", "--plugin", path, "--plugin", path)

@@ -21,7 +21,7 @@ type failedActionFactProbe struct {
 }
 
 func (probe failedActionFactProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: probe.name, Requires: []analyzer.Fact{probe.fact}}
+	return analyzer.Descriptor{Name: probe.name, Category: "correctness", Requires: []analyzer.Fact{probe.fact}}
 }
 
 func (probe failedActionFactProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

@@ -33,7 +33,7 @@ func TestRequiredActionMetadataAndCoverage(t *testing.T) {
 		}
 		count := 0
 		for _, d := range result.Diagnostics {
-			if d.Rule == "require-action-metadata" {
+			if d.Rule == "missing-action-metadata" {
 				count++
 				if !strings.Contains(d.Message, "offline") {
 					t.Fatalf("missing reason: %s", d.Message)

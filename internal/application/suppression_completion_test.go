@@ -18,7 +18,7 @@ import (
 type suppressionCompletionProbe struct{ failure error }
 
 func (suppressionCompletionProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "completion-probe", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "completion-probe", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (probe suppressionCompletionProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

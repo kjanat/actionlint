@@ -109,7 +109,7 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 type relatedAdmissionProbe struct{}
 
 func (relatedAdmissionProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "related-admission-probe", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "related-admission-probe", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (relatedAdmissionProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

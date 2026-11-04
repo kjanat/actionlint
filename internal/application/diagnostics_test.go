@@ -15,7 +15,7 @@ import (
 type detailedAnalyzer struct{ findings []diagnostic.Diagnostic }
 
 func (a detailedAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "detailed-check", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "detailed-check", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (a detailedAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {

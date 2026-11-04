@@ -176,7 +176,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 	if err := json.Unmarshal([]byte(metadata.Stdout), &rules); err != nil || metadata.Status != 0 {
 		t.Fatalf("rule metadata: %+v, %v", metadata, err)
 	}
-	for _, name := range []string{"syntax-check", "expression-reference", "shellcheck", "require-commit-hash"} {
+	for _, name := range []string{"syntax-check", "expression-reference", "shellcheck", "unpinned-reference"} {
 		if !slices.ContainsFunc(rules, func(r rule.Descriptor) bool { return r.Name == name && r.Description != "" }) {
 			t.Errorf("missing rule %q", name)
 		}

@@ -18,7 +18,7 @@ import (
 type suppressionAnalyzer struct{ name string }
 
 func (a suppressionAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: a.name, Requires: []analyzer.Fact{analyzer.Scripts}}
+	return analyzer.Descriptor{Name: a.name, Category: "security", Requires: []analyzer.Fact{analyzer.Scripts}}
 }
 
 func (a suppressionAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -41,9 +41,9 @@ func TestRegisteredAnalyzerSuppressions(t *testing.T) {
 		{name: "disabled", config: "lint: {rules: {disable: [no-sudo]}}\n"},
 		{name: "lint disabled", config: "lint: {enabled: false}\n"},
 		{name: "override disabled", config: "overrides: [{includes: ['**'], lint: {rules: {disable: [no-sudo]}}}]\n"},
-		{name: "inline prohibited", directive: " # actionlint:ignore no-sudo -- reviewed", config: "policy: {disallow-suppressions: {rules: [no-sudo], report: all}}\n", want: []string{"disallow-suppressions", "no-sudo"}},
-		{name: "configured prohibited", config: "ignores: [{rule: no-sudo, job: check}]\npolicy: {disallow-suppressions: {rules: [no-sudo], report: all}}\n", want: []string{"disallow-suppressions", "no-sudo"}},
-		{name: "rule options prohibited", directive: " # actionlint:ignore no-sudo -- reviewed", config: "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [no-sudo], report: all}}}}}\n", want: []string{"disallow-suppressions", "no-sudo"}},
+		{name: "inline prohibited", directive: " # actionlint:ignore no-sudo -- reviewed", config: "policy: {disallow-suppressions: {rules: [no-sudo], report: all}}\n", want: []string{"forbidden-suppression", "no-sudo"}},
+		{name: "configured prohibited", config: "ignores: [{rule: no-sudo, job: check}]\npolicy: {disallow-suppressions: {rules: [no-sudo], report: all}}\n", want: []string{"forbidden-suppression", "no-sudo"}},
+		{name: "rule options prohibited", directive: " # actionlint:ignore no-sudo -- reviewed", config: "lint: {rules: {policy: {disallow-suppressions: {level: on, options: {rules: [no-sudo], report: all}}}}}\n", want: []string{"forbidden-suppression", "no-sudo"}},
 		{name: "misspelled inline", directive: " # actionlint:ignore no-sudoo -- reviewed", want: []string{"inline-suppression", "no-sudo"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

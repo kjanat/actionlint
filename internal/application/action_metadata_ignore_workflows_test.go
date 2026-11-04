@@ -105,7 +105,7 @@ func TestMetadataDedupKeepsDistinctSuppressionViolations(t *testing.T) {
 	}
 	for i, finding := range result.Diagnostics {
 		path := []string{".github/workflows/a.yml", ".github/workflows/b.yml"}[i]
-		if finding.Rule != "disallow-suppressions" || filepath.ToSlash(finding.Path) != path {
+		if finding.Rule != "forbidden-suppression" || filepath.ToSlash(finding.Path) != path {
 			t.Fatalf("expected suppression policy finding at %s, got %+v", path, finding)
 		}
 	}

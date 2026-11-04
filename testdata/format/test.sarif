@@ -101,6 +101,42 @@
               }
             },
             {
+              "id": "coercion",
+              "name": "Coercion",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Warn about surprising string and comparison coercions",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#coercion"
+              },
+              "fullDescription": {
+                "text": "Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with another type, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#coercion",
+              "help": {
+                "text": "Check the intended argument or operand type. Use a string literal when text is intended, or compare values of the intended types. This rule offers no automatic edit because the intended value is unknown."
+              }
+            },
+            {
+              "id": "container-runner",
+              "name": "ContainerRunner",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report Docker container requirements for selected runners",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#container-runner"
+              },
+              "fullDescription": {
+                "text": "GitHub-managed job containers, service containers and Docker actions require Linux and a Docker daemon. Report an error for known Windows or macOS selections. Warn for GitHub-hosted ubuntu-slim: it includes Docker client tools but no local daemon; a compatible remote daemon may satisfy the requirement. Inspect available action metadata and expanded local composites, with matrix rows and conditions determining which selections can reach the container. Unknown runner facts and unavailable action bodies do not establish a violation. Docker commands in scripts can use remote daemons and are not classified by this rule."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#container-runner",
+              "help": {
+                "text": "Select a Linux runner with Docker, such as ubuntu-latest, or guard the container action so incompatible matrix rows do not execute it. For ubuntu-slim, verify any remote daemon configuration before suppressing the warning. Self-hosted Linux runners need an accessible Docker daemon. No automatic fix is offered because changing the runner can change job behavior."
+              }
+            },
+            {
               "id": "context-availability",
               "name": "ContextAvailability",
               "defaultConfiguration": {
@@ -152,24 +188,6 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#deprecated-commands",
               "help": {
                 "text": "Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV or GITHUB_PATH file."
-              }
-            },
-            {
-              "id": "disallow-suppressions",
-              "name": "DisallowSuppressions",
-              "defaultConfiguration": {
-                "level": "error"
-              },
-              "properties": {
-                "description": "Report suppressions forbidden by policy",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#disallow-suppressions"
-              },
-              "fullDescription": {
-                "text": "Report suppressions forbidden by policy."
-              },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#disallow-suppressions",
-              "help": {
-                "text": "Remove the suppression and address its finding, or change the repository suppression policy."
               }
             },
             {
@@ -386,6 +404,24 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-type",
               "help": {
                 "text": "Supply the expected value type; convert serialized values explicitly when needed."
+              }
+            },
+            {
+              "id": "forbidden-suppression",
+              "name": "ForbiddenSuppression",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report suppressions forbidden by policy",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#forbidden-suppression"
+              },
+              "fullDescription": {
+                "text": "Report suppressions forbidden by policy."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#forbidden-suppression",
+              "help": {
+                "text": "Remove the suppression and address its finding, or change the repository suppression policy."
               }
             },
             {
@@ -781,7 +817,25 @@
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unused-suppression",
               "help": {
-                "text": "Run actionlint fix --apply or use the editor quick fix to remove unused selectors, preserving useful selectors and their reason. A comment with no remaining selectors is removed. Configure lint.rules.correctness.unused-suppression to change its level."
+                "text": "Run actionlint fix --apply or use the editor quick fix to remove unused selectors. Selectors that suppress findings and the comment's reason are preserved. A suppression comment is removed when all its selectors are unused. Configure lint.rules.correctness.unused-suppression to change its level."
+              }
+            },
+            {
+              "id": "vendor-lock-in",
+              "name": "VendorLockIn",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report repository URL references unsupported by GitHub",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#vendor-lock-in"
+              },
+              "fullDescription": {
+                "text": "GitHub Actions accepts repository shorthand in uses, not full repository URLs. On the github execution target, report URL references in action steps and reusable-workflow calls. An HTTPS github.com URL offers a safe fix that removes its prefix while preserving the repository, action path and ref. Other hosts have no automatic substitution: the same owner/repository name on GitHub does not establish the same action. Docker registry URLs, local actions and dynamic references are excluded. Other execution targets are not restricted by this rule."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#vendor-lock-in",
+              "help": {
+                "text": "Use owner/repo[/path]@ref for an action hosted in the current GitHub instance. To use an externally hosted action, choose and verify a GitHub mirror, or check out the external source and invoke its local action. The prefix fix is unavailable for URLs with credentials, ports, URL encoding, queries, fragments or invalid shorthand."
               }
             },
             {

@@ -129,7 +129,7 @@ func TestEnvironmentConfigSelection(t *testing.T) {
 	t.Setenv("ACTIONLINT_CONFIG", "env.yaml")
 	for _, args := range [][]string{{"-"}, {"check", "-"}} {
 		got := testRunCommand(commandGoodWorkflow, args...)
-		if got.Status != 1 || !strings.Contains(got.Stdout, "require-job-timeout") {
+		if got.Status != 1 || !strings.Contains(got.Stdout, "job-timeout") {
 			t.Fatalf("selected config not applied: %v: %+v", args, got)
 		}
 	}
