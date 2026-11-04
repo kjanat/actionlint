@@ -53,6 +53,12 @@ Fix defects directly when feasible, addressing the shared cause and verifying af
 
 If a substantial defect cannot be resolved directly, create a GitHub issue using `gh`, or add the evidence to an existing issue covering it. Include the affected revision, source location, minimal input, expected and actual behavior, and reproduction command. In the handoff, identify the fix and its verification or link the issue for work that is still open.
 
+## Review artifacts
+
+Reviewer instructions must require preservation of diagnostic programs, Go comparisons, probes, fixtures, reference outputs, and reproduction commands. Store exploratory artifacts under `.review-artifacts/` with their original language and enough context to reproduce the observation. Do not delete or replace an artifact merely because its finding was reported or a similar test exists.
+
+After review, dispatch a sweeper agent to inventory these artifacts and promote their useful cases into permanent regression tests, fixtures, examples, or reference comparisons. Replace logging-only observations with assertions when promoting a regression. Record which permanent test or example covers each artifact and identify any coverage gaps. Preserve the original artifacts after promotion; remove them only when the user explicitly requests cleanup.
+
 ## Commits and pull requests
 
 Use concise subjects such as `docs: clarify setup` or `test(cli): cover invalid arguments`. Before committing, format, run `run go-modernize` in each affected Go module, and check the final staged content.

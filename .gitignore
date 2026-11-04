@@ -48,3 +48,5 @@ docs/superpowers
 # Temporary local fixtures from private repositories.
 runny-*
 commitish
+*.log
+/.review-artifacts/
