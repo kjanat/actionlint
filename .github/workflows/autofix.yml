@@ -76,7 +76,7 @@ jobs:
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Set up mise for the affected generators
         if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
-        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
           install: ${{ steps.inputs.outputs.tables == 'true' }}
           env: ${{ steps.inputs.outputs.tables == 'true' }}

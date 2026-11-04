@@ -72,7 +72,7 @@ jobs:
         run: mise_dir="${HOME//\\//}/.local/share/actionlint-mise";
           if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi;
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
           cache: true
           auto_update: true
@@ -136,7 +136,7 @@ jobs:
       - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # 31.11.3
       - uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
