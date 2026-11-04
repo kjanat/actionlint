@@ -1,7 +1,6 @@
 # Implementation routes
 
-Paths below are relative to the actionlint checkout root. They identify current
-code to inspect, not a proposed package layout. Confirm signatures and callers
+Paths below are relative to the actionlint checkout root. Confirm signatures and callers
 before editing; search by the named symbol if a file has moved.
 
 ## Native checks
@@ -19,31 +18,28 @@ For a declaration check, trace `missing-workflow-permissions` as a worked exampl
 | Configured host and suppression cases                    | `internal/integration/workflow/rule_missing_permissions_test.go`                               |
 
 This example separates absent permissions from explicit `{}` and distinguishes a
-reusable-only workflow from one with another trigger. Learn the separation of
-concerns; do not copy its severity or compatibility settings to a new rule.
+reusable-only workflow from one with another trigger. Follow its registration,
+configuration, and diagnostic flow. Choose severity and compatibility behavior
+for the new rule based on the problem it detects.
 
 Use declaration views for source-local checks. For reasoning across calls, inspect
 `internal/workflow/facts` and `internal/workflow/execution` and an existing consumer.
 Shared semantic predicates live under `internal/semantics`. Adapters supply facts
 and attach findings; they should not each reconstruct the same analysis.
 
-For scalar values, inspect `StringView.Semantic()` in
-`internal/workflow/declaration/views.go` and the value states and
-`StringAlternatives()` in `internal/workflow/value/value.go`. `ContainsExpression()`
-describes syntax, not whether a value is known: constant expressions can have
-known results. Distinguish known alternatives from unresolved values using the
-shared model; do not exempt every interpolation or implement another evaluator.
+Other parts of the model and host are relevant depending on the rule:
 
-For action metadata or composite steps, also trace `internal/checks/registry.go`
-(`Build`), `internal/builtin/composite_contract.go`, and
-`internal/workflow/composition/analysis_action.go` and `composite_scripts.go`.
-`SupportsActions` controls selection; it does not arrange callbacks.
-`MetadataParticipant` and `InvocationParticipant` have different responsibilities.
-Inspect their callers and a working participant before choosing one. Standalone
-actions and actions reached through `uses` enter different lifecycles; both must
-reach the check when the requested rule covers both. Check collection and source
-admission as well as callback dispatch. Integration examples live in
-`internal/integration/actions` and `internal/application/composite_analysis_test.go`.
+| Responsibility                        | Entry point                                                |
+| ------------------------------------- | ---------------------------------------------------------- |
+| Declaration views and semantic values | `internal/workflow/declaration`, `internal/workflow/value` |
+| Configured check selection            | `internal/checks/registry.go`                              |
+| Action participation contracts        | `internal/builtin/composite_contract.go`                   |
+| Workflow and action execution         | `internal/workflow/composition`                            |
+| Configured action integration tests   | `internal/integration/actions`                             |
+
+For each fact the rule uses, read where it is produced and how existing checks
+interpret it. Check which inputs produce a known value, an unknown value, or an
+error before deciding when to report a finding.
 
 `internal/finding`, `diagnostic`, and `source` carry findings, fixes, and source
 identity. Trace the adapter through `internal/application/source_admission.go`
@@ -54,7 +50,7 @@ Inspect `rule/rule.go`, `rule/names.go`, and `internal/config/resolve_rules.go` 
 descriptor, category, and selection contracts. Read current configuration examples
 in `docs/config.md`. Public rule settings belong under
 `lint.rules.<category>.<rule-id>`, beside that category's defaults. Legacy internal
-fields and decode-only groups are not new public configuration surfaces.
+fields and groups accepted only for migration must not be used as settings for new rules.
 
 ## External linters and plugin checks
 
@@ -71,13 +67,14 @@ Choose an existing example matching the input and delivery contract:
 Read `packages/plugin-sdk/README.md` for authoring and packaging. Use the public
 `@kjanat-actionlint/plugin-sdk` exports; workspace consumers declare `workspace:*`.
 Test manifest schemas and jq using `createPluginTester` from the `/testing` export.
-Its recorded-output cases exercise the host decoder without running the scanner.
+Its recorded-output cases pass saved scanner output to actionlint's decoder without running the scanner.
 Pass the intended actionlint executable explicitly when another version is on PATH.
 
-Declare the scanner's actual input, accepted exit codes, coordinates, settings,
-and capabilities. Preserve external diagnostic codes as codes rather than burying
+Declare the scanner's input format, accepted exit codes, line and column conventions,
+settings, and capabilities. Preserve external diagnostic codes as codes rather than burying
 them in message prefixes. Distinguish process failure from valid findings.
-Recorded conversion tests do not prove installation or actual scanner execution.
+To verify installation and execution, install the plugin and run its scanner
+through actionlint; recorded-output tests do not perform those operations.
 
 ## Renames and settings changes
 

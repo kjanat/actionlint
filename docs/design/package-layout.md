@@ -47,7 +47,8 @@ The production graph below deliberately excludes tests, but the move cannot defe
 the test variant finds multiple private symbols used across proposed package boundaries. `error_test.go` tests both the
 diagnostic value and the root formatter and must split. The parsing cases in `rule_required_actions_test.go` must become
 external `package rule_test` tests: leaving them white-box and importing the root for `Parse` creates
-`rule -> root -> rule`. Its helper-only cases move to `internal` or stay as white-box `rule` tests as appropriate. The
+`rule -> root -> rule`. Place tests that call unexported helpers in the same package as those helpers: `internal` if the
+helper moves there, or `rule` if it is implemented there. The
 other cross-boundary cases must be rewritten against the public APIs in the same phase as their production files.
 
 ### Measured dependency graph

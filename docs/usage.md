@@ -455,8 +455,9 @@ It is informational by default and an error with `--strict`; explicit rule setti
 still take precedence. Script-internal directives such as `# shellcheck disable=...`
 belong to their tool and are not audited by this rule.
 Use `actionlint fix --apply` or the editor quick fix to remove unused selectors.
-Useful selectors, directive spelling, reasons and line endings are preserved;
-comments without useful selectors are removed.
+Selectors that suppress findings are preserved, along with the directive spelling,
+reason and line endings. A suppression comment is removed when all its selectors
+are unused.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only

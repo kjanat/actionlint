@@ -1021,7 +1021,7 @@ Configure this rule with `lint.rules.correctness.unsound-ternary`. Use `off`, `o
 
 Report each inline suppression selector that matches no enabled findings in the checked YAML declaration. Information by default; errors with --strict. A selector used by any analyzed invocation of the same source is considered used. Incomplete analyses do not establish that a selector is unused.
 
-Run actionlint fix --apply or use the editor quick fix to remove unused selectors, preserving useful selectors and their reason. A comment with no remaining selectors is removed. Configure lint.rules.correctness.unused-suppression to change its level.
+Run actionlint fix --apply or use the editor quick fix to remove unused selectors. Selectors that suppress findings and the comment's reason are preserved. A suppression comment is removed when all its selectors are unused. Configure lint.rules.correctness.unused-suppression to change its level.
 
 - Category: `correctness/suppressions`
 - Provider: `actionlint`

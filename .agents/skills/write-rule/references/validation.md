@@ -1,14 +1,21 @@
 # Validate the rule
 
 Run commands from the checkout root through `mise exec -- ...`. Select tests for
-the changed behavior; the examples below are starting points, not a mandatory
-full-suite invocation. Use repository instructions for expensive/external runs.
+the changed behavior. Use repository instructions for expensive or external runs.
+
+Read `tasks.toml`, `.mise.toml`, and the configuration for the tools you will run before choosing
+commands. The `format` task runs `kfmt`, which reads `dprint.toml`; its configured
+plugins include Go formatting through `gofumpt`. Use that repository pipeline,
+selecting the changed files when formatting a limited change. A language formatter invoked
+on its own does not replace the configured pipeline. Discover checks and generators
+from the maintained tasks and source directives rather than inventing alternatives.
 
 ## Before implementation
 
-Turn the original case into a focused regression. Pair it with a valid near miss
-that prevents an overbroad implementation. For runtime-dependent claims, add an
-unknown case and state what evidence would be needed to decide it.
+Turn the original case into a regression test. Pair it with a similar input that
+should not produce the finding. When the answer depends on a runtime value,
+test an unknown value too and identify the information needed to decide whether
+that input violates the rule.
 
 For example, a cancellation check must distinguish job and step conditions and
 intentional cleanup. See `internal/workflow/checks/uncancellable_condition_test.go`:
@@ -27,19 +34,10 @@ The existence of that test is not independent proof of GitHub's behavior.
 | Rename/migration              | Old selector compatibility; canonical output; effective levels/options unchanged across YAML/JSON/TOML; conflicts and repeated migration   |
 | Plugin transform              | Recorded real stdout, empty output, failure exit, malformed output, Unicode coordinates, codes, settings and edits through host validation |
 
-Run the semantic test, then the frontend test proving the real host path. Examples:
-
-For an action-capable rule, exercise a workflow step, a standalone action file,
-and a workflow invoking a composite action. Assert the target finding, its level,
-and its source file in each positive case. A zero-finding result is not evidence
-that a registered participant ran. Check suppressions and duplicate emission
-where the same action is called more than once.
-
-```sh
-mise exec -- go test ./internal/workflow/checks -run '^TestMissingWorkflowPermissions$' -count=1
-mise exec -- go test ./internal/integration/workflow -run '^TestMissingPermissionsSelectionAndSuppression$' -count=1
-mise exec -- go test ./internal/config -run '^TestCategoryMigration' -count=1
-```
+Choose test inputs from the behavior the rule promises to detect, the contexts
+where it runs, and the interfaces changed by the implementation. Test through
+actionlint as well as calling the check directly. Describe what each test verifies;
+do not report untested behavior as verified.
 
 For SDK authoring, the existing runner builds this checkout's host in a temporary
 directory, runs TypeScript-source tests, and cleans up. Leave `ACTIONLINT` unset
@@ -51,9 +49,11 @@ mise exec -- bun packages/plugin-sdk/scripts/test.ts tests/authoring.test.ts
 
 ## Independent and real-world checks
 
-Choose the reference for the claim: GitHub docs/server observations for hosted
-behavior, pinned runner/Runny for runner parsing or evaluation, and the scanner's
-own output for a provider transform. Another linter or SchemaStore can reveal a
+Use GitHub documentation or observed server responses for behavior controlled by
+GitHub's server. For runner parsing or evaluation, inspect the runner implementation
+or execute Runny at a recorded revision. For a plugin's output conversion, compare
+against output from the scanner version it supports. Record the documentation URL
+or implementation revision and what it confirms. Another linter or SchemaStore can reveal a
 disagreement but cannot alone establish execution semantics.
 
 For source-mapping comparisons, inspect
@@ -62,33 +62,31 @@ For source-mapping comparisons, inspect
 the `scalar-source-reference` task in `tasks.toml` also includes live Runny replay.
 Do not present recorded replay as a fresh live comparison.
 
-Take a relevant workflow/action from `internal/integration` or `testdata`. Inspect
-its provenance and expected findings, then run the changed rule through the host.
+For the real-world comparison, choose a fixture copied from an existing workflow
+or action that uses the syntax or behavior being checked. Record its original
+repository and revision, review its expected findings, and run it through actionlint
+with the changed rule. Synthetic integration fixtures test implementation behavior
+but do not substitute for this comparison.
 Explicitly select an opt-in rule for this comparison; a default run with that rule
 disabled says nothing about its behavior.
 Compare against the previous behavior and explain each new or removed finding.
-If no useful case exists, obtain a public, revision-pinned example. Keep private
-fixtures private. Parsing a workflow does not require executing its commands.
+If no real-world fixture covers that syntax or behavior, obtain an example from a
+public repository and record its revision. Do not commit fixtures copied from a
+private repository to this public repository or disclose their contents in public
+reports. Parsing a workflow does not require executing its commands.
 
 Save a minimal counterexample when a reference disagrees. Resolve whether the
-difference is a bug, version mismatch, or unsupported evidence before broadening
-the rule. Report an unavailable reference honestly instead of inventing certainty.
+difference is a bug, a version mismatch, or behavior the reference does not cover
+before expanding what the rule reports. If the reference cannot be accessed or
+run, state which behavior could not be verified.
 
 ## Final audit
 
-When catalogue/schema inputs changed, regenerate and inspect:
-
-```sh
-mise exec -- go run ./internal/rulecatalog/generate
-mise exec -- go run ./tools/config
-mise exec -- go test ./internal/rulecatalog ./tools/config ./internal/editorschema
-```
-
-`TestGeneratedSchemaUpToDate` in `tools/config` checks the generated configuration
-schema; generating only `docs/rules.md` does not update it.
+Find and regenerate the derived files affected by the change. Inspect the result
+and use the repository's checks for those artifacts.
 
 Check generated completion and rule descriptions against the loader and emitted
 diagnostic. For installed plugins, test the runtime schema as well as the static
-one. Review the actual CLI/LSP or provider route affected by the change, not only
-the internal helper. Separate test results, source inspection, captured reference
+one. Invoke the changed behavior through the CLI, LSP, or plugin interface that
+users access. Separate test results, source inspection, captured reference
 results, and live comparisons in the completion report.

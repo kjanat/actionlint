@@ -4,6 +4,8 @@
 
 All prose MUST follow [ISO 24495-1:2023](https://www.iso.org/standard/78907.html). Write for the reader's task. Make information easy to find, understand, and use. Use clear sentences and preserve technical meaning.
 
+Before saving prose, check whether it tells the reader what happens or what to do. For instructions, state when to act and how to decide between any alternatives. Name the deciding condition instead of relying on words such as "appropriate" or "useful". Replace abstract phrases with the operation or behavior they describe, and remove sentences that add no information. Read each passage in context: do not replace words mechanically. When the intended behavior is unclear, inspect its implementation or specification before rewriting it; a wording change must not invent a new requirement.
+
 ## Project structure
 
 Actionlint checks GitHub Actions workflows. The CLI lives in `cmd/actionlint/`. Public Go packages include `analysis/`, `analyzer/`, `source/`, and `diagnostic/`. Implementation code lives in `internal/`.
@@ -20,7 +22,7 @@ Activate mise and run commands from the repository root. Tools are configured in
 - `run generate`: regenerate sources; network access may be required.
 - `run fmt`: format with `kprint fmt` / `kfmt`, which uses the owner's kprint fork of dprint.
 - `run lint`: run architecture, Go, vulnerability, and platform-dependent WebAssembly checks.
-- `run lint-docs`: validate documentation examples with ShellCheck.
+- `run lint-docs`: run actionlint on documentation examples and compare the diagnostics with their documented output. ShellCheck analyzes shell scripts when available.
 - `run -s [TASK...]`: runs multiple tasks sequentially.
 - `run -p [TASK...]`: runs multiple tasks in parallel.
 - Use `runner --help`, and `run --help` for more options.
@@ -44,6 +46,12 @@ go test ./internal/filefilter -run TestValidPatternPortablePaths
 Run `run test` for the Go suite and `run test-analyzers` for the analyzer module. Windows tests omit `-race` by default. Applicable tests require Git, Bash, and ShellCheck.
 
 Use `run test:js` for root JavaScript/TypeScript checks. The playground uses Node's test runner and Vitest through `run actionlint-playground:test`. Generate coverage with `run cov`. Codecov reports are informational and enforce no minimum.
+
+## Defects found during development
+
+Fix defects directly when feasible, addressing the shared cause and verifying affected callers. A defect too small to warrant an issue must be fixed rather than deferred.
+
+If a substantial defect cannot be resolved directly, create a GitHub issue using `gh`, or add the evidence to an existing issue covering it. Include the affected revision, source location, minimal input, expected and actual behavior, and reproduction command. In the handoff, identify the fix and its verification or link the issue for work that is still open.
 
 ## Commits and pull requests
 
