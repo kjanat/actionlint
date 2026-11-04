@@ -3,8 +3,8 @@
 ## Decision
 
 Production providers own their dependencies, builds and releases. The Commitish
-resolver lives in the separate `actionlint-plugin-commitish` project, alongside
-`actionlint-plugin-ruff` and `actionlint-plugin-shellcheck`. Actionlint owns the
+resolver lives in the `actionlint-plugin-commitish` crate in the commitish workspace.
+The Ruff and ShellCheck providers have separate projects. Actionlint owns the
 host interfaces and their compatibility tests. Commitish uses the native JSON
 resolver protocol; the script engines and component analyzers use their respective
 WASM interfaces. Repository separation does not change those protocols.

@@ -3,12 +3,15 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/network"
 )
 
 type actionMetadataTransport func(*http.Request) (*http.Response, error)
@@ -32,6 +35,8 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		}
 		body := ""
 		switch r.URL.Path {
+		case "/rate_limit":
+			body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
 		case "/repos/example/action":
 			body = `{"id":42,"full_name":"example/action"}`
 		case "/repos/example/action/git/commits/" + sha:
@@ -47,7 +52,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 	for _, mode := range []string{"online", "offline"} {
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + sha + ", with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log}
-		code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=" + mode, "--output-format=json", "--summary=false", "-"})
+		code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=" + mode, "--output-format=json", "--summary=false", "--network-stats", "-"})
 		if code != 1 {
 			t.Fatalf("%s status=%d stderr=%s output=%s", mode, code, log.String(), out.String())
 		}
@@ -70,8 +75,28 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		if strings.Contains(out.String()+log.String(), "fixture-secret") {
 			t.Fatal("credential leaked to diagnostics")
 		}
+		var statistics struct {
+			Network network.Report `json:"network"`
+		}
+		if err := json.Unmarshal(log.Bytes(), &statistics); err != nil {
+			t.Fatal(err)
+		}
+		var attempts uint64
+		for _, group := range statistics.Network.Groups {
+			attempts += group.Attempts
+			if group.Host != "api.github.com" || group.Authentication != network.Credentialed || group.Kind != network.REST {
+				t.Fatalf("wrong accounting: %+v", group)
+			}
+		}
+		want := uint64(0)
+		if mode == "online" {
+			want = 5
+		}
+		if attempts != want {
+			t.Fatalf("%s attempts=%d, want %d", mode, attempts, want)
+		}
 	}
-	if requests != 4 {
+	if requests != 5 {
 		t.Fatalf("warm offline used network: requests=%d", requests)
 	}
 }

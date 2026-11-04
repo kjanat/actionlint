@@ -42,6 +42,13 @@ isolated = true
 deny-std = ["os/exec"]
 
 [[layer]]
+name     = "network"
+doc      = "Invocation-owned network accounting and observed quota admission. Reports exclude credentials and request URLs."
+packages = ["network"]
+allow    = ["contract-leaves"]
+deny-std = ["os/exec"]
+
+[[layer]]
 name     = "analysis-contracts"
 doc      = "The public diagnostic and analyzer contracts. They never import internal packages."
 packages = ["diagnostic", "analyzer"]
@@ -116,6 +123,7 @@ tests    = ["tool-providers"]
 name      = "acquisition-http"
 doc       = "Host HTTP acquisition policy: public address screening and invocation-owned endpoint grants."
 packages  = ["internal/acquisitionhttp"]
+allow     = ["network"]
 externals = ["golang.org/x/net"]
 deny-std  = ["os/exec"]
 
@@ -130,7 +138,16 @@ packages  = [
   "internal/config/tree",
   "internal/filefilter",
 ]
-allow     = ["contract-leaves", "repository-contracts", "leaves", "action-reference", "provider-data", "catalog", "acquisition-http"]
+allow     = [
+  "contract-leaves",
+  "repository-contracts",
+  "leaves",
+  "action-reference",
+  "provider-data",
+  "catalog",
+  "acquisition-http",
+  "network"
+]
 externals = ["github.com/bmatcuk/doublestar/v4", "github.com/kjanat/go-yaml/v4", "github.com/pelletier/go-toml/v2"]
 deny-std  = ["os/exec"]
 tests     = ["tool-providers", "yaml-codec", "test-harness"]
@@ -408,6 +425,7 @@ allow    = [
   "language",
   "leaves",
   "repository-contracts",
+  "source",
   "workflow-base",
   "workflow-model",
 ]
@@ -475,14 +493,14 @@ tests     = ["catalog", "workflow-model", "public-config"]
 name     = "resolution"
 doc      = "Injected dependency resolvers and their analyzer adapters."
 packages = ["internal/resolution"]
-allow    = ["contract-leaves", "analysis-contracts", "document-contracts"]
+allow    = ["contract-leaves", "analysis-contracts", "document-contracts", "network"]
 tests    = ["source"]
 
 [[layer]]
 name     = "action-acquisition"
 doc      = "Explicit host acquisition of remote action manifests. Network access and the immutable source cache stay outside semantic analysis."
 packages = ["internal/actionhost"]
-allow    = ["repository-contracts", "contract-leaves", "leaves"]
+allow    = ["repository-contracts", "contract-leaves", "leaves", "network"]
 deny-std = ["os/exec"]
 
 [[layer]]
@@ -496,7 +514,7 @@ deny-std = ["os/exec"]
 name      = "plugin-artifacts"
 doc       = "Plugin artifacts and the plugin registry."
 packages  = ["internal/pluginregistry", "internal/plugins/artifact"]
-allow     = ["leaves", "acquisition-http"]
+allow     = ["leaves", "acquisition-http", "network"]
 externals = ["golang.org/x/mod", "golang.org/x/net", "golang.org/x/sys"]
 deny-std  = ["os/exec"]
 tests     = ["fixtures", "test-harness"]
@@ -505,7 +523,7 @@ tests     = ["fixtures", "test-harness"]
 name           = "plugin-transport"
 doc            = "The OCI transport for plugin artifacts. Registry credential helpers run as processes, so this layer may reach os/exec."
 packages       = ["internal/plugins/artifact/oci"]
-allow          = ["plugin-artifacts", "acquisition-http"]
+allow          = ["plugin-artifacts", "acquisition-http", "network"]
 externals      = ["github.com/opencontainers/image-spec", "github.com/oras-project/oras-go/v3"]
 tests          = ["fixtures"]
 test-externals = ["github.com/opencontainers/go-digest"]
@@ -550,6 +568,7 @@ name           = "application"
 doc            = "The application boundary. It does not reach terminal adapters, presentation, plugin runtimes, tool backends or providers."
 packages       = ["internal/application"]
 allow          = [
+  "network",
   "analysis-contracts",
   "analyzer-host",
   "builtins",
@@ -667,6 +686,7 @@ name      = "adapters"
 doc       = "Terminal, GitHub Action and browser adapters. They consume the application and presentation and do not construct the engine or plugin runtimes."
 packages  = ["internal/cli", "internal/githubaction", "playground"]
 allow     = [
+  "network",
   "acquisition-http",
   "action-acquisition",
   "analysis-contracts",

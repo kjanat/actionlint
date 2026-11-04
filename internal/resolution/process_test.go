@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/network"
 	"actionlint.kjanat.dev/v2/resolver"
 )
 
@@ -61,10 +62,57 @@ func TestResolverProcessHelper(t *testing.T) {
 	if mode == "tree-and-commit" {
 		result.Tree = strings.Repeat("b", 40)
 	}
+	if mode == "network" {
+		result.Network = &resolver.NetworkReport{Complete: true, Queries: []resolver.NetworkQuery{{Host: "github.com", Kind: "git", Authenticated: "unknown", Count: 2}}}
+	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(6)
 	}
 	os.Exit(0)
+}
+
+func TestProcessNetworkReceiptIsNotRecountedFromCache(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, session := network.Ensure(t.Context())
+	p := NewProcess(executable, []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", "network"}, 10*time.Second)
+	request := resolver.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
+	first, err := p.Resolve(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Network.Queries[0].Count = 999
+	second, err := p.Resolve(ctx, request)
+	if err != nil || second.Network.Queries[0].Count != 2 {
+		t.Fatalf("cached receipt aliased caller: %+v %v", second, err)
+	}
+	var attempts, cached uint64
+	for _, group := range session.Snapshot().Groups {
+		attempts += group.Attempts
+		cached += group.CacheHits
+	}
+	if attempts != 2 || cached != 1 {
+		t.Fatalf("attempts=%d cache=%d", attempts, cached)
+	}
+}
+
+func TestCommitishResolverEmitsAnEmptyReceiptBeforeTransport(t *testing.T) {
+	executable := os.Getenv("ACTIONLINT_TEST_COMMITISH_RESOLVER")
+	if executable == "" {
+		t.Skip("set ACTIONLINT_TEST_COMMITISH_RESOLVER to the built commitish resolver")
+	}
+	ctx, session := network.Ensure(t.Context())
+	provider := NewProcess(executable, nil, 10*time.Second)
+	result, err := provider.Resolve(ctx, resolver.Request{Version: 1, Repository: "../invalid", Ref: "master", Kind: "action"})
+	if err == nil || result.Network == nil || !result.Network.Complete || len(result.Network.Queries) != 0 {
+		t.Fatalf("invalid repository did not produce a complete zero-attempt receipt: result=%+v error=%v", result, err)
+	}
+	report := session.Snapshot()
+	if len(report.Groups) != 1 || report.Groups[0].Lookups != 1 || report.Groups[0].OpaqueLookups != 0 || report.Groups[0].Attempts != 0 {
+		t.Fatalf("host did not consume the resolver receipt: %+v", report)
+	}
 }
 
 func TestProcessCoalescesConcurrentRequests(t *testing.T) {

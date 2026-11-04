@@ -2,12 +2,14 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/network"
 
 	"github.com/spf13/cobra"
 )
@@ -29,7 +31,18 @@ func (cmd *Command) Main(args []string) int {
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
+	ctx, accounting := network.Ensure(ctx)
 	app := newCommandApp(ctx, cmd)
+	defer func() {
+		if app.opts.networkStats {
+			entry := struct {
+				Network network.Report `json:"network"`
+			}{accounting.Snapshot()}
+			if err := json.NewEncoder(app.streams.Stderr).Encode(entry); err != nil {
+				status = 3
+			}
+		}
+	}()
 	defer func() {
 		if app.directory.original != "" {
 			if err := os.Chdir(app.directory.original); err != nil {

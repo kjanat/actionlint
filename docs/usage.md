@@ -341,6 +341,95 @@ CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
 take precedence, including empty strings and `false`.
 
+### Network accounting
+
+Use `--network-stats` to write grouped network statistics as a final JSON record
+on stderr. Diagnostic JSON on stdout is unchanged:
+
+```sh
+actionlint check --action-metadata=online --network-stats --output=json .github
+```
+
+Each group identifies the host, protocol, purpose and priority. The `authenticated`
+field is `yes` when credentials were supplied, `no` when none were supplied, or
+`unknown` when an external process did not report them. It does not prove that
+the credentials were accepted. Reports exclude credentials, request paths and
+query strings.
+
+`attempts` counts HTTP transport attempts or provider-reported Git operations.
+Retries and redirects are separate attempts at the instrumented transport.
+`failures` counts transport errors and HTTP error responses. `blocked` counts
+rejected requests or batch admission checks, before transport, because of observed
+limits or reservations. A rejected batch counts once, regardless of its size.
+`cache_hits` records cached or coalesced external resolver calls.
+`lookups` counts resolver calls independently of their network attempts.
+`opaque_lookups` counts delegated lookups whose internal network activity is not
+fully reported; these are not presented as HTTP request counts.
+`provider_reported` identifies attempts supplied by an external resolver.
+
+GitHub metadata acquisition checks `/rate_limit` once per credential scope before
+its request batch and updates estimates from subsequent response headers.
+REST and GraphQL quotas are separate. Primary exhaustion and `Retry-After` stop
+further applicable requests without sleeping through the reset window. A plain
+permission-denied response does not imply rate-limit exhaustion. These controls
+follow [GitHub's rate-limit guidance](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
+
+Dependency reservations protect declared future work from optional enrichment.
+The quota check is not a guarantee: other processes can consume the same server
+quota after it is observed. Unknown quota information is not treated as zero.
+This accounting is invocation-owned and does not add lint configuration settings.
+
+Go hosts can share a session across their acquisition clients and inspect a
+detached report:
+
+```go
+ctx, requests := network.Ensure(ctx)
+result, err := analysis.Files(ctx, paths, options)
+statistics := requests.Snapshot()
+```
+
+Import `actionlint.kjanat.dev/v2/network`. Custom HTTP clients use
+`network.Transport` below their retry and authentication adapters. Label requests
+with `network.WithOperation`. For known future dependency work, call
+`Session.Reserve`, use the reservation's `Context` for those requests, and defer
+`Close` to release unused units. GraphQL callers should supply an upper-bound
+point cost when a reservation must be protected; a request with unknown cost
+cannot spend reserved quota.
+
+External resolvers can add a `network` receipt to their protocol-v1 response:
+
+```json
+{
+  "network": {
+    "complete": true,
+    "queries": [
+      {
+        "host": "github.com",
+        "kind": "git",
+        "authenticated": "unknown",
+        "count": 1,
+        "failures": 0
+      },
+      {
+        "host": "api.github.com",
+        "kind": "rest",
+        "authenticated": "yes",
+        "count": 2,
+        "failures": 0
+      }
+    ]
+  }
+}
+```
+
+This is an additional field in the existing resolution response, not a complete
+response on its own. Set `complete` only when every remote attempt is included,
+including failures. Supported kinds are `http`, `rest`, `graphql`, `git` and `oci`.
+The host is an authority without userinfo, a path or a query. Old resolvers work
+without this field, but their activity is marked opaque. In-process providers can
+use the shared HTTP transport instead. Arbitrary subprocesses and WebAssembly
+guests do not become observable merely because they run under actionlint.
+
 ### Configuration inspection
 
 ```sh
@@ -1254,12 +1343,15 @@ diagnostics back to YAML positions. A `.json` path loads a
 
 Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
 provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The
-commitish provider is maintained separately as `actionlint-plugin-commitish`. Build it
-from that project with `cargo build --locked --release`. Its executable accepts `--token-env NAME` only when
+commitish provider is the `actionlint-plugin-commitish` crate in the
+[commitish workspace](https://github.com/kjanat/commitish). Build it there with
+`cargo build --locked --release -p actionlint-plugin-commitish`. Its executable accepts `--token-env NAME` only when
 you explicitly choose a credential variable. It resolves action and reusable
 workflow references using their respective commitish semantics, and proposes
 reviewable commit pins. Provider errors fail analysis instead of implying absence.
-The default local analysis makes no resolution requests.
+The default local analysis makes no resolution requests. The provider emits
+network receipts on success and lookup failure, so `--network-stats` includes
+its actual REST attempts. Its Git object lookups use REST rather than Git fetches.
 
 The language server provides expression property completions, including
 `github.event` payload fields selected by the workflow's triggers and activity

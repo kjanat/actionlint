@@ -17,6 +17,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/network"
 	"golang.org/x/mod/semver"
 )
 
@@ -85,7 +86,7 @@ func newClient(u *url.URL, grant acquisitionhttp.Grant) (*Client, error) {
 		}
 		transport = checked
 	}
-	c.http = &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	c.http = &http.Client{Transport: network.Transport(transport), Timeout: 30 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || !c.contains(req.URL) {
 			return errors.New("registry redirect leaves catalogue or exceeds limit")
 		}
@@ -120,6 +121,7 @@ func get[T *Catalog | *manifest | *record | *StatusSnapshot](ctx context.Context
 	if !c.contains(u) {
 		return errors.New("registry link leaves catalogue")
 	}
+	ctx = network.WithOperation(ctx, network.Operation{Purpose: "plugin-registry", Priority: network.Required})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return err

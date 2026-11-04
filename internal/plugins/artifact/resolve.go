@@ -19,6 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/network"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.
@@ -322,6 +323,7 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 		}
 		return nil
 	}}
+	ctx = network.WithOperation(ctx, network.Operation{Purpose: "plugin-artifact", Priority: network.Required})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, errors.New("invalid plugin request")

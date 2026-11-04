@@ -4,6 +4,7 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"slices"
 )
 
 // Request preserves consumer semantics: actions and workflows may resolve the
@@ -30,8 +31,36 @@ type Result struct {
 	// SelectedObject and SelectedRef retain an action profile's original object
 	// and exact lookup key. Optional for existing providers; metadata acquisition
 	// cannot infer a named route when this evidence is omitted.
-	SelectedObject string `json:"selected_object,omitempty"`
-	SelectedRef    string `json:"selected_ref,omitempty"`
+	SelectedObject string         `json:"selected_object,omitempty"`
+	SelectedRef    string         `json:"selected_ref,omitempty"`
+	Network        *NetworkReport `json:"network,omitempty"`
+}
+
+// NetworkQuery reports actual attempts made by an external resolver. Host is an
+// authority without credentials, paths or queries. Kind is http, rest, graphql,
+// git or oci. Authenticated is yes, no or unknown and describes supplied credentials.
+type NetworkQuery struct {
+	Host          string `json:"host"`
+	Kind          string `json:"kind"`
+	Authenticated string `json:"authenticated"`
+	Count         uint64 `json:"count"`
+	Failures      uint64 `json:"failures"`
+}
+
+// NetworkReport is additive to protocol version 1. Complete means every remote
+// attempt is included, including failed attempts. Omission does not mean zero.
+type NetworkReport struct {
+	Complete bool           `json:"complete"`
+	Queries  []NetworkQuery `json:"queries"`
+}
+
+// Clone detaches every mutable field, including optional network receipts.
+func (r Result) Clone() Result {
+	r.Evidence = slices.Clone(r.Evidence)
+	if r.Network != nil {
+		r.Network = &NetworkReport{Complete: r.Network.Complete, Queries: slices.Clone(r.Network.Queries)}
+	}
+	return r
 }
 
 type Resolver interface {

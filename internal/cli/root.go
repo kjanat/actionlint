@@ -16,6 +16,7 @@ type commandOptions struct {
 	colorMode, logLevel, command                    string
 	color, noColor, initConfig, version, helpLegacy bool
 	completion                                      completionShell
+	networkStats                                    bool
 }
 
 // outputModes is shared by all output aliases and command flag sets so every
@@ -85,6 +86,9 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.root.SetErr(a.streams.Stderr)
 	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return commandUsageError{err} })
 	a.root.SetHelpFunc(a.help)
+	a.root.PersistentFlags().BoolVar(&a.opts.networkStats, "network-stats", false, "Write grouped network accounting as JSON to stderr")
+	annotateFlag(a.root.PersistentFlags(), "network-stats", "Output")
+	a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup("network-stats"))
 	a.root.PersistentFlags().VarP(&a.directory, "directory", "C", "Run from `DIR`; repeated relative directories build on the previous one")
 	annotateFlag(a.root.PersistentFlags(), "directory", "Input")
 	a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup("directory"))

@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/config/address"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/network"
 )
 
 // MaxBytes bounds each remote configuration document independently of its format.
@@ -66,7 +67,7 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 	case !address.Remote(name):
 		content, err = fsread.New(r.ctx, nil, nil).ReadFile(name)
 	default:
-		content, err = r.readHTTPS(name)
+		content, err = r.readHTTPS(r.ctx, name)
 	}
 	if err != nil {
 		return nil, detachedReadError(err)
@@ -110,8 +111,9 @@ func readErrorOf(err error) readError {
 	}
 }
 
-func (r *Reader) readHTTPS(name string) ([]byte, error) {
-	request, err := http.NewRequestWithContext(r.ctx, http.MethodGet, name, nil)
+func (r *Reader) readHTTPS(ctx context.Context, name string) ([]byte, error) {
+	ctx = network.WithOperation(ctx, network.Operation{Purpose: "remote-config", Priority: network.Required})
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, name, nil)
 	if err != nil {
 		return nil, err
 	}

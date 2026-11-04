@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/network"
 	"actionlint.kjanat.dev/v2/resolver"
 )
 
@@ -69,8 +70,8 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 	cached, exists := p.cache[request]
 	if exists {
 		p.mu.Unlock()
-		cached.Evidence = slices.Clone(cached.Evidence)
-		return cached, nil
+		network.ResolverLookup(ctx, nil, true)
+		return cached.Clone(), nil
 	}
 	if call, exists := p.pending[request]; exists {
 		p.mu.Unlock()
@@ -81,9 +82,8 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 			if err := ctx.Err(); err != nil {
 				return resolver.Result{}, err
 			}
-			result := call.result
-			result.Evidence = slices.Clone(result.Evidence)
-			return result, call.err
+			network.ResolverLookup(ctx, nil, true)
+			return call.result.Clone(), call.err
 		}
 	}
 	if p.pending == nil {
@@ -95,8 +95,7 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 
 	result, err := p.resolve(ctx, request)
 	p.mu.Lock()
-	call.result, call.err = result, err
-	call.result.Evidence = slices.Clone(result.Evidence)
+	call.result, call.err = result.Clone(), err
 	if err == nil {
 		if p.cache == nil {
 			p.cache = make(map[resolver.Request]resolver.Result)
@@ -110,6 +109,8 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 }
 
 func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolver.Result, error) {
+	var receipt *resolver.NetworkReport
+	defer func() { network.ResolverLookup(ctx, receipt, false) }()
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {
 		return resolver.Result{}, errors.New("unsupported resolution request")
 	}
@@ -133,6 +134,7 @@ func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolv
 	if err := jsonv2.Unmarshal(output.data, &result); err != nil {
 		return result, fmt.Errorf("invalid resolver response: %w", err)
 	}
+	receipt = result.Network
 	if err := validateResult(request, result); err != nil {
 		return result, err
 	}

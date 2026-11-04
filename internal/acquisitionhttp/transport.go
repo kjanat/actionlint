@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/network"
+
 	"golang.org/x/net/idna"
 )
 
@@ -99,6 +101,10 @@ func newTransport(initial *url.URL, grant Grant, base http.RoundTripper, lookup 
 }
 
 func (t *transport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return network.ObserveHTTP(request, t.roundTrip)
+}
+
+func (t *transport) roundTrip(request *http.Request) (*http.Response, error) {
 	if request == nil {
 		return nil, ErrInvalidEndpoint
 	}

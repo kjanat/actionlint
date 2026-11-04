@@ -319,6 +319,13 @@ Use `--summary=false` or **--quiet** to suppress it.
 **--verbose**, **-v**
 : Enable progress logging. Prefer **--log-level**=info on **check**.
 
+**--network-stats**
+: Write a final JSON record with a `network` field to stderr. Group transport
+attempts by host, supplied credentials, protocol, purpose and priority. Include
+failures, blocked requests, observed quotas and opaque delegated lookups.
+Diagnostic output on stdout does not change. Credentials, paths and query strings
+are excluded. See the network accounting section in `docs/usage.md`.
+
 **--debug**
 : Enable debug logging. On the legacy route, **--verbose** wins when both
 flags are true. An explicit **--log-level** selects the requested new log level.

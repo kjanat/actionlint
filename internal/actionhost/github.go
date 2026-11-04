@@ -20,6 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/actions"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/knowledge"
+	"actionlint.kjanat.dev/v2/network"
 	"actionlint.kjanat.dev/v2/resolver"
 )
 
@@ -64,7 +65,7 @@ func New(options Options) (*GitHub, error) {
 		return nil, errors.New("invalid GitHub credential header")
 	}
 	return &GitHub{mode: options.Mode, cacheDir: options.CacheDir, token: options.Token, resolver: options.Resolver, client: &http.Client{
-		Transport: options.Transport, Timeout: 15 * time.Second,
+		Transport: network.Transport(options.Transport), Timeout: 15 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}}, nil
 }
@@ -108,6 +109,19 @@ func (g *GitHub) Lookup(ctx context.Context, ref actions.Reference) (actions.Man
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	ctx = network.WithOperation(ctx, network.Operation{Purpose: "action-metadata", Priority: network.Enrichment, Kind: network.REST, Resource: "core"})
+	if session := network.FromContext(ctx); session != nil {
+		request, err := g.request(ctx, repositoryURL(ref), false)
+		if err != nil {
+			return actions.Manifest{}, err
+		}
+		if err := session.PreflightGitHub(ctx, g.client, request); err != nil {
+			return actions.Manifest{}, err
+		}
+		if err := session.CheckBudget(request, 1); err != nil {
+			return actions.UnavailableManifest(knowledge.Limit()), nil
+		}
+	}
 	repo, missing, err := g.repository(ctx, ref)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
@@ -140,6 +154,15 @@ func (g *GitHub) Lookup(ctx context.Context, ref actions.Reference) (actions.Man
 	}
 	if cached, exists, cacheErr := g.cached(ctx, ref, repo.ID, commit); cacheErr == nil && exists {
 		return actions.NewManifestFile(selection, cached.Filename, []byte(cached.Content))
+	}
+	if session := network.FromContext(ctx); session != nil {
+		request, err := g.request(ctx, repositoryURL(ref), false)
+		if err != nil {
+			return actions.Manifest{}, err
+		}
+		if err := session.CheckBudget(request, 3); err != nil {
+			return actions.UnavailableManifest(knowledge.Limit()), nil
+		}
 	}
 	var objectResponse struct {
 		SHA string `json:"sha"`
@@ -220,10 +243,10 @@ func manifestURL(ref actions.Reference, commit, filename string) string {
 	return repositoryURL(ref) + "/contents/" + strings.Join(parts, "/") + "?ref=" + url.QueryEscape(commit)
 }
 
-func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *knowledge.Unavailability, error) {
+func (g *GitHub) request(ctx context.Context, address string, raw bool) (*http.Request, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 	if err != nil {
-		return nil, nil, errors.New("invalid GitHub metadata request")
+		return nil, errors.New("invalid GitHub metadata request")
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	if raw {
@@ -234,12 +257,23 @@ func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *kn
 	if g.token != "" {
 		request.Header.Set("Authorization", "Bearer "+g.token)
 	}
+	return request, nil
+}
+
+func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *knowledge.Unavailability, error) {
+	request, err := g.request(ctx, address, raw)
+	if err != nil {
+		return nil, nil, err
+	}
 	response, err := g.client.Do(request)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, ctx.Err()
 		}
 		reason := knowledge.Failed()
+		if errors.Is(err, network.ErrRateLimited) || errors.Is(err, network.ErrBudget) {
+			reason = knowledge.Limit()
+		}
 		return nil, &reason, nil
 	}
 	defer response.Body.Close()
@@ -248,10 +282,13 @@ func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *kn
 		switch response.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden:
 			reason = knowledge.Denied()
+			if response.StatusCode == http.StatusForbidden && (response.Header.Get("X-RateLimit-Remaining") == "0" || response.Header.Get("Retry-After") != "") {
+				reason = knowledge.Limit()
+			}
 		case http.StatusNotFound:
 			reason = knowledge.Inaccessible()
 		case http.StatusTooManyRequests:
-			reason = knowledge.Denied()
+			reason = knowledge.Limit()
 		}
 		return nil, &reason, nil
 	}

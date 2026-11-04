@@ -26,6 +26,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/resolution"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/network"
 	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/resolver"
 	"actionlint.kjanat.dev/v2/runner"
@@ -114,6 +115,7 @@ type Result = report.Analysis
 
 // Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input Input) (result *Result, err error) {
+	ctx, _ = network.Ensure(ctx)
 	options, err = ConfigureToolIntegrations(options)
 	if err != nil {
 		return nil, err
@@ -299,6 +301,7 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 // Analyze checks supplied snapshots through the same runtime ownership path as Check.
 // It does not discover configuration or read the supplied source paths.
 func Analyze(ctx context.Context, options Options, sources []workspace.Source) (*Result, error) {
+	ctx, _ = network.Ensure(ctx)
 	return Check(ctx, options, Input{Kind: prepared, sources: sources})
 }
 
