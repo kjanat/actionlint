@@ -16,7 +16,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-var errGitHubReferenceUnavailable = errors.New("Runny reference unavailable")
+var errGitHubReferenceUnavailable = errors.New("runny reference unavailable")
 
 // Check access once per test process, before starting any reference containers.
 // A cached image needs no registry credentials. Otherwise Docker's credentials,
@@ -39,13 +39,13 @@ var githubReferenceImage = sync.OnceValues(func() (string, error) {
 		return nil
 	}
 	if err := run("info", "--format", "{{.ServerVersion}}"); err != nil {
-		return "", fmt.Errorf("%w: Docker is not available: %v", errGitHubReferenceUnavailable, err)
+		return "", fmt.Errorf("%w: Docker is not available: %w", errGitHubReferenceUnavailable, err)
 	}
 	if err := run("image", "inspect", image); err == nil {
 		return image, nil
 	}
 	if err := run("manifest", "inspect", image); err != nil {
-		return "", fmt.Errorf("%w: image is not cached and Docker cannot access it; authenticate to its registry with an account that has access: %v", errGitHubReferenceUnavailable, err)
+		return "", fmt.Errorf("%w: image is not cached and Docker cannot access it; authenticate to its registry with an account that has access: %w", errGitHubReferenceUnavailable, err)
 	}
 	if err := run("pull", image); err != nil {
 		return "", fmt.Errorf("pulling accessible reference image: %w", err)

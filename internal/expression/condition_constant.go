@@ -378,10 +378,6 @@ func compareConditionNumbers(kind CompareOpNodeKind, a, b float64) bool {
 	}
 }
 
-func constantConditionFormat(format string, args []any) (any, bool) {
-	return constantPlannedFormat(planFormat(format, len(args)), args)
-}
-
 func constantPlannedFormat(plan formatPlan, args []any) (any, bool) {
 	if !plan.valid {
 		return nil, false

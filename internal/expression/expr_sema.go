@@ -1048,6 +1048,8 @@ func matchParameter(parameter Type, arg callArgument, compositeFallback bool) pa
 	}
 	if parameter.Kind() == KindString {
 		switch actual.Kind() {
+		case KindAny, KindString:
+			return m
 		case KindBool, KindNull, KindNumber, KindArray, KindObject:
 			if compositeFallback && (actual.Kind() == KindArray || actual.Kind() == KindObject) {
 				m.conversion = ConversionUnavailable

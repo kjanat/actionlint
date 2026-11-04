@@ -44,8 +44,10 @@ func TestCallEvaluationDemand(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			got := checkCallDemandResult(t, tc.input)
-			wantPhase := FailureNone
+			var wantPhase FailurePhase
 			switch tc.failure {
+			case githubReferenceSuccess:
+				wantPhase = FailureNone
 			case githubReferenceParseFailure:
 				wantPhase = FailureStaticValidation
 			case githubReferenceRuntimeFailure:
@@ -164,8 +166,10 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 			if tc.state == EvaluationUnknown {
 				return
 			}
-			want := githubReferenceExpectation{value: tc.value}
+			var want githubReferenceExpectation
 			switch tc.phase {
+			case FailureNone:
+				want = githubReferenceExpectation{value: tc.value}
 			case FailureStaticValidation:
 				want = githubReferenceExpectation{failure: githubReferenceParseFailure, exceptionType: "GitHub.Actions.Expressions.ParseException"}
 			case FailureEvaluation:

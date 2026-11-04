@@ -99,14 +99,14 @@ func addPluginRules(root object, manifests []provider.Manifest) error {
 				}
 			}
 		}
-		setting := object{
-			"type":     "object",
-			"required": []any{"level"},
-			"properties": object{
-				"level": object{"type": "string", "enum": []any{"default", "off", "on", "info", "warn", "error"}},
-			},
+		props := object{
+			"level": object{"type": "string", "enum": []any{"default", "off", "on", "info", "warn", "error"}},
 		}
-		props := setting["properties"].(object)
+		setting := object{
+			"type":       "object",
+			"required":   []any{"level"},
+			"properties": props,
+		}
 		if len(manifest.Rule.OptionsSchema) != 0 {
 			options, err := decodeObject(manifest.Rule.OptionsSchema, "options_schema")
 			if err != nil {

@@ -348,8 +348,8 @@ tests     = ["process-config"]
 name     = "editor-schema"
 doc      = "The configuration JSON schema for editors, built from provider manifests."
 packages = ["internal/editorschema"]
-allow    = ["tool-providers"]
-tests    = ["contract-leaves", "provider-data"]
+allow    = ["contract-leaves", "tool-providers"]
+tests    = ["provider-data"]
 
 [[layer]]
 name     = "tool-contracts"

@@ -32,20 +32,20 @@ import (
 
 // Missing-file examples use the same wording on every OS. Unwrap preserves
 // the filesystem error for analysis code that checks its type or category.
-type missingDocumentationFile struct {
+type missingDocumentationFileError struct {
 	cause *os.PathError
 }
 
-func (e missingDocumentationFile) Error() string {
+func (e missingDocumentationFileError) Error() string {
 	return fmt.Sprintf("%s %s: no such file or directory", e.cause.Op, filepath.ToSlash(e.cause.Path))
 }
 
-func (e missingDocumentationFile) Unwrap() error { return e.cause }
+func (e missingDocumentationFileError) Unwrap() error { return e.cause }
 
 func readDocumentationFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if cause, ok := errors.AsType[*os.PathError](err); ok && errors.Is(err, os.ErrNotExist) {
-		return data, missingDocumentationFile{cause: cause}
+		return data, missingDocumentationFileError{cause: cause}
 	}
 	return data, err
 }

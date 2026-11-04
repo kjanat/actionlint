@@ -2009,7 +2009,7 @@ allow     = [
 ]
 
 # Layer editor-schema: The configuration JSON schema for editors, built from provider manifests.
-# Imports: itself, tool-providers.
+# Imports: itself, contract-leaves, tool-providers.
 [linters.settings.depguard.rules.layer-editor-schema]
 files     = [
   "**/internal/editorschema/*.go",
@@ -2018,9 +2018,13 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/editorschema$",
   "actionlint.kjanat.dev/v2/internal/tools/provider$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/process$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
 ]
 
 [linters.settings.depguard.rules.layer-editor-schema-tests]

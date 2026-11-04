@@ -188,9 +188,10 @@ func migrateRuleCategories(root *yaml.Node, registrations []rule.Descriptor) (*y
 		if legacy && (group.Level() != "" || group.Preset() != "" || node.ShortTag() == "!!null") {
 			for _, descriptor := range descriptors {
 				member := LegacyGroup(descriptor.Name) == category
-				if category == "plugins" {
+				switch category {
+				case "plugins":
 					member = registered[descriptor.Name]
-				} else if category == "nursery" {
+				case "nursery":
 					member = descriptor.Nursery()
 				}
 				if !member {

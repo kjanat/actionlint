@@ -75,6 +75,8 @@ func argumentDemand(policy FunctionEvaluationPolicy, index, count int, args []ca
 	if first.state != argumentKnown {
 		if policy == EvaluateStringPredicate || policy == EvaluateContains {
 			switch first.source.Kind() {
+			case KindAny:
+				return DemandConditional
 			case KindBool, KindNull, KindNumber, KindString:
 				return DemandRequired
 			case KindObject:
@@ -88,6 +90,8 @@ func argumentDemand(policy FunctionEvaluationPolicy, index, count int, args []ca
 		return DemandConditional
 	}
 	switch policy {
+	case EvaluateAllArguments, EvaluateCase:
+		return DemandRequired
 	case EvaluateStringPredicate, EvaluateContains:
 		switch value := first.value.(type) {
 		case map[string]any:
@@ -232,15 +236,17 @@ func planFormat(format string, count int) formatPlan {
 		if format[end] == ':' {
 			var spec strings.Builder
 			end++
+		scanSpecifier:
 			for end < len(format) {
-				if format[end] != '}' {
+				switch {
+				case format[end] != '}':
 					spec.WriteByte(format[end])
 					end++
-				} else if end+1 < len(format) && format[end+1] == '}' {
+				case end+1 < len(format) && format[end+1] == '}':
 					spec.WriteByte('}')
 					end += 2
-				} else {
-					break
+				default:
+					break scanSpecifier
 				}
 			}
 			if end == len(format) {
