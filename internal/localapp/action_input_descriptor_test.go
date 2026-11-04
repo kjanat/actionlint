@@ -145,7 +145,7 @@ func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
 			engine := &inputReplacementBackend{}
-			registration, err := backend.RegisterEngine(analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent"}, ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
+			registration, err := backend.RegisterEngine(analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent", Category: "correctness"}, ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
 			if err != nil {
 				t.Fatal(err)
 			}
