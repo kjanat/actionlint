@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         if: ${{ env.CODEQL_LANGUAGE == 'go' }}
         with: { go-version-file: go.mod }
-      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           config-file: ./.github/codeql/codeql-config.yaml
           languages: "${{ env.CODEQL_LANGUAGE }}"
@@ -41,12 +41,12 @@ jobs:
         if: ${{ env.CODEQL_LANGUAGE == 'go' }}
         shell: bash -ex {0}
         run: go build -v ./...
-      - name: Build Go playground
+      - name: Build browser language server
         if: ${{ env.CODEQL_LANGUAGE == 'go' }}
         shell: bash -ex {0}
         env: { GOOS: js, GOARCH: wasm }
-        run: go build -v -o ./playground/main.wasm ./playground
-      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        run: go build -v -o ./actionlint-lsp.wasm ./cmd/actionlint-lsp-wasm
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with: { category: "/language:${{ env.CODEQL_LANGUAGE }}" }
   analyze-javascript-typescript:
     name: Analyze javascript-typescript

@@ -10,13 +10,6 @@
     "directory": "playground"
   },
   "license": "MIT",
-  "author": "rhysd <lin90162@yahoo.co.jp> (https://rhysd.github.io/)",
-  "maintainers": [
-    {
-      "name": "Kaj Kowalski",
-      "url": "https://github.com/kjanat"
-    }
-  ],
   "type": "module",
   "imports": {
     "#pkg": "./package.json"
@@ -29,6 +22,7 @@
     "lint:eslint": "eslint .",
     "preview": "vite preview --port 1234",
     "test": "run -s test:version test:vitest",
+    "test:browser": "playwright test",
     "test:version": "node --test src/*.test.ts",
     "test:vitest": "vitest run",
     "typecheck": "tsc-rs --noEmit"
@@ -44,30 +38,32 @@
     "serialize-javascript": "^7.0.5"
   },
   "dependencies": {
-    "@codemirror/commands": "^6.11.0",
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-yaml": "^6.1.3",
     "@codemirror/lint": "^6.9.7",
-    "@codemirror/state": "^6.7.1",
+    "@codemirror/state": "^6.7.6",
     "@codemirror/theme-one-dark": "^6.1.3",
-    "@codemirror/view": "^6.43.9",
-    "@kjlint/changelog-rss": "^0.0.3",
+    "@codemirror/view": "^6.43.15",
+    "@kjanat-actionlint/language-server": "workspace:*",
+    "@kjlint/changelog-rss": "workspace:*",
     "bulma": "^1.0.4",
     "codemirror": "^6.0.2",
-    "devicon": "^2.17.0",
+    "devicon": "^2.18.0",
     "ismobilejs": "^1.1.1",
-    "pako": "^3.0.1"
+    "pako": "^3.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@kjanat/rshellcheck-wasm": "1.0.0",
-    "@types/node": "^26.4.0",
-    "dreamcli": "npm:@kjanat/dreamcli@^4",
-    "eslint": "^10.9.1",
-    "jsdom": "^30.0.1",
+    "@types/node": "^26.6.6",
+    "dreamcli": "npm:@kjanat/dreamcli@^5",
+    "eslint": "^10.14.0",
+    "jsdom": "^30.1.3",
     "runner-run": "latest",
     "typescript": "^7",
-    "typescript-eslint": "^8.68.0",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.3"
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

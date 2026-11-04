@@ -4230,9 +4230,9 @@ allow     = [
 # Imports: itself, network, acquisition-http, action-acquisition, analysis-contracts, analyzer-host, application, catalog, config, contract-leaves, document-contracts, editing, editor-schema, leaves, local-host, plugin-artifacts, presentation, process-config, provider-data, public-analysis, repository-contracts, resolution, tool-backends, tool-providers, workspace.
 [linters.settings.depguard.rules.layer-adapters]
 files     = [
+  "**/cmd/actionlint-lsp-wasm/*.go",
   "**/internal/cli/*.go",
   "**/internal/githubaction/*.go",
-  "**/playground/*.go",
   "!$test",
 ]
 list-mode = "strict"
@@ -4242,6 +4242,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/cmd/actionlint-lsp-wasm$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
@@ -4290,7 +4291,6 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/network$",
-  "actionlint.kjanat.dev/v2/playground$",
   "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -4325,6 +4325,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/cmd/actionlint-lsp-wasm$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
@@ -4378,7 +4379,6 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/network$",
-  "actionlint.kjanat.dev/v2/playground$",
   "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -4417,9 +4417,9 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/cmd/actionlint$",
+  "actionlint.kjanat.dev/v2/cmd/actionlint-lsp-wasm$",
   "actionlint.kjanat.dev/v2/internal/cli$",
   "actionlint.kjanat.dev/v2/internal/githubaction$",
-  "actionlint.kjanat.dev/v2/playground$",
 ]
 
 # Layer examples: Example analyzers written against the public contracts only.
@@ -4811,6 +4811,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/cmd/actionlint-lsp-wasm$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
@@ -4905,7 +4906,6 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
   "actionlint.kjanat.dev/v2/knowledge$",
-  "actionlint.kjanat.dev/v2/playground$",
   "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -4945,6 +4945,7 @@ files = [
   "!**/analysis/*.go",
   "!**/analyzer/*.go",
   "!**/cmd/actionlint/*.go",
+  "!**/cmd/actionlint-lsp-wasm/*.go",
   "!**/config/*.go",
   "!**/config/report/*.go",
   "!**/diagnostic/*.go",
@@ -5090,7 +5091,6 @@ files = [
   "!**/internal/yaml/syntax/*.go",
   "!**/knowledge/*.go",
   "!**/network/*.go",
-  "!**/playground/*.go",
   "!**/plugin/*.go",
   "!**/repository/*.go",
   "!**/resolver/*.go",

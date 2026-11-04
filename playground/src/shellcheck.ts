@@ -9,8 +9,8 @@ export const shellcheckAssets = {
 };
 
 export interface ShellcheckClient {
-	check: Window['runShellcheck'];
-	cancel(): void;
+	check: (args: string[], script: string) => Promise<string>;
+	cancel: () => void;
 }
 
 // Bound untrusted analysis in a worker. A timeout/trap discards the instance;

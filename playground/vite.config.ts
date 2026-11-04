@@ -18,26 +18,19 @@ const manualStyle = resolve(oneUp, 'man/manual.css');
 
 const version = buildVersion(oneUp, process.env.ACTIONLINT_LATEST_RELEASE);
 
-const goWasm = resolve(execFileSync('go', ['env', 'GOROOT'], { encoding: 'utf8' }).trim(), 'lib/wasm');
-
-function buildWasm(): void {
-	execFileSync('go', [
-		'build',
-		'-o',
-		resolve(here, 'public/main.wasm'),
-		'.',
-	], {
-		cwd: here,
-		env: { ...process.env, GOOS: 'js', GOARCH: 'wasm' },
+function buildLanguageServer(): void {
+	execFileSync('bun', ['run', '--cwd', resolve(oneUp, 'packages/language-server'), 'build'], {
+		cwd: oneUp,
 		stdio: 'inherit',
 	});
 }
 
-function goWasmBinary(): import('vite').Plugin {
+function browserLanguageServer(): import('vite').Plugin {
 	return {
-		name: 'actionlint:go-wasm',
+		name: 'actionlint:browser-language-server',
+		apply: (_config, environment) => environment.mode !== 'test',
 		buildStart() {
-			buildWasm();
+			buildLanguageServer();
 		},
 	};
 }
@@ -64,7 +57,7 @@ function sitePages(): import('vite').Plugin {
 export default defineConfig({
 	base: './',
 	plugins: [
-		goWasmBinary(),
+		browserLanguageServer(),
 		{
 			name: 'actionlint:workspace-reader',
 			apply: 'build',
@@ -86,9 +79,8 @@ export default defineConfig({
 	],
 	resolve: {
 		conditions: ['source', ...defaultClientConditions],
-		alias: [{ find: /^wasm_exec\.js$/, replacement: resolve(goWasm, 'wasm_exec.js') }],
 	},
-	server: { fs: { allow: [searchForWorkspaceRoot(here), goWasm] } },
+	server: { fs: { allow: [searchForWorkspaceRoot(here)] } },
 	build: {
 		outDir,
 		emptyOutDir: true,

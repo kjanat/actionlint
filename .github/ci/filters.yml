@@ -40,8 +40,9 @@ workflows:
         - ".github/workflows/nix.yml"
       wasm:
         - *go
-        - "{playground,man,packages/changelog-feed}/**"
+        - "{playground,man,packages/changelog-feed,packages/language-server}/**"
         - "!{cmd,internal/cli,internal/githubaction}/**"
+        - "cmd/actionlint-lsp-wasm/**"
         - "!**/*_test.go"
         - *node
         - Makefile

@@ -33,7 +33,7 @@ func NewWorkspaceURIs(rootURI, directory string) (WorkspaceURIs, error) {
 }
 
 // Path resolves a document URI within this workspace to its virtual host path.
-func (w WorkspaceURIs) Path(uri string) (string, error) {
+func (w *WorkspaceURIs) Path(uri string) (string, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return "", err
@@ -58,7 +58,7 @@ func (w WorkspaceURIs) Path(uri string) (string, error) {
 
 // URI returns the client's URI for a virtual host path, or an empty string for
 // a path outside the workspace. Hosts must not request files outside that root.
-func (w WorkspaceURIs) URI(file string) string {
+func (w *WorkspaceURIs) URI(file string) string {
 	relative, err := filepath.Rel(w.directory, file)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return ""

@@ -684,7 +684,7 @@ tests    = ["documents", "fixtures", "public-plugin"]
 [[layer]]
 name      = "adapters"
 doc       = "Terminal, GitHub Action and browser adapters. They consume the application and presentation and do not construct the engine or plugin runtimes."
-packages  = ["internal/cli", "internal/githubaction", "playground"]
+packages  = ["internal/cli", "internal/githubaction", "cmd/actionlint-lsp-wasm"]
 allow     = [
   "network",
   "acquisition-http",

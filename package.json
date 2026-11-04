@@ -44,7 +44,7 @@
     "biome": "npm:@biomejs/biome@^2.5",
     "pkg-pr-new": "0.0.93",
     "runner-run": "^0.28",
-    "tsc-rs": "^0.7",
+    "tsc-rs": "^0.8",
     "typescript": "npm:@typescript/typescript6@^6",
     "vscode-languageserver-textdocument": "^1",
     "yaml-language-server": "^2"
@@ -65,8 +65,9 @@
     ]
   },
   "allowScripts": {
+    "@actions/github-script": false,
     "core-js": false,
-    "tsc-rs@0.7.0": true
+    "tsc-rs@0.8.0": true
   },
   "catalog": {
     "@kjanat/dreamcli": "^5.0.0"

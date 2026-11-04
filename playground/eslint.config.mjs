@@ -5,12 +5,12 @@ import { defineConfig } from 'eslint/config';
 import ts from 'typescript-eslint';
 
 export default defineConfig(
-	// dist is build output and public holds the Go toolchain's wasm runtime glue.
+	// Generated bundles and static assets are not editor source files.
 	{ ignores: ['dist/**', 'github-changelog/*.js', 'public/**'] },
 	eslint.configs.recommended,
 	ts.configs.strictTypeChecked,
 	{
-		files: ['src/**/*.ts', 'vite.config.ts'],
+		files: ['src/**/*.ts', 'tests/**/*.ts', 'playwright.config.ts', 'vite.config.ts'],
 		languageOptions: {
 			parserOptions: {
 				projectService: true,
@@ -19,7 +19,7 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['src/**/*.ts', 'vite.config.ts', 'eslint.config.mjs'],
+		files: ['src/**/*.ts', 'tests/**/*.ts', 'playwright.config.ts', 'vite.config.ts', 'eslint.config.mjs'],
 		rules: {
 			eqeqeq: ['error', 'always'],
 			'@typescript-eslint/no-unnecessary-condition': ['error', { allowConstantLoopConditions: true }],
@@ -27,12 +27,6 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-assignment': 'off',
 			'@typescript-eslint/restrict-template-expressions': 'off',
-		},
-	},
-	{
-		files: ['src/test.ts'],
-		rules: {
-			'@typescript-eslint/unbound-method': 'off', // For checking `window.runActionlint`
 		},
 	},
 	{

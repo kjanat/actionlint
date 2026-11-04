@@ -46,7 +46,7 @@ jobs:
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Install Node.js, npm and Bun
         if: env.CI_UNIT == 'true'
-        uses: &SetupMise jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        uses: &SetupMise jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with: &NodeTools
           cache: true
           auto_update: true
@@ -132,10 +132,15 @@ jobs:
         run: runner install --pm bun --no-tools --frozen
       - name: Build command manual
         run: run man
+      - name: Install browser test runtime
+        working-directory: packages/language-server
+        run: bunx playwright install --with-deps chromium
       - name: Build and test playground
         run: run -sk
           actionlint-playground:build
           actionlint-playground:test
+          @kjanat-actionlint/language-server:test
+          actionlint-playground:test:browser
       - name: Lint playground
         run: run actionlint-playground:lint
   javascript:

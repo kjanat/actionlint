@@ -5,35 +5,38 @@ on:
     branches: [master]
     paths:
       - "*.go"
+      - ".github/workflows/pages.yml"
+      - ".mise.toml"
+      - ".node-version"
+      - ".tool-versions"
+      - "Makefile"
       - "analysis/**"
       - "analyzer/**"
+      - "bun.lock"
+      - "cmd/**"
       - "config/**"
       - "diagnostic/**"
       - "document/**"
-      - "runner/**"
-      - "syntax/**"
       - "go.mod"
       - "go.sum"
-      - "internal/config/config_default.yaml"
-      - "cmd/**"
       - "internal/**"
-      - "playground/**"
+      - "internal/config/config_default.yaml"
       - "man/**"
+      - "package.json"
       - "packages/changelog-feed/**"
+      - "packages/language-server/**"
+      - "playground/**"
+      - "runner/**"
+      - "syntax/**"
+      - "tasks.toml"
+      - "tools/toolchain/update-go-toolchain.mjs"
+      - "tsconfig.json"
+      # Later patterns exclude files, then include the browser command and manual source.
       - "!cmd/**"
+      - "cmd/actionlint-lsp-wasm/**"
       - "!internal/cli/**"
       - "!internal/githubaction/**"
       - "!**/*_test.go"
-      - "package.json"
-      - "bun.lock"
-      - ".node-version"
-      - ".tool-versions"
-      - ".mise.toml"
-      - "tasks.toml"
-      - "tsconfig.json"
-      - "Makefile"
-      - ".github/workflows/pages.yml"
-      - "tools/toolchain/update-go-toolchain.mjs"
       - "!**/*.md"
       - "man/actionlint.1.md"
   workflow_run: { workflows: [Release], types: [completed] }
@@ -59,7 +62,7 @@ jobs:
           fetch-depth: 0
           ref: "${{ github.event_name == 'workflow_run' && github.event.repository.default_branch || github.sha }}"
       - name: Install project tools
-        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
           cache: true
           auto_update: true
@@ -73,6 +76,9 @@ jobs:
             run: runner install --pm bun --no-tools --frozen
           - name: Build command manual
             run: run make:man
+      - name: Install browser test runtime
+        working-directory: packages/language-server
+        run: bunx playwright install --with-deps chromium
       - name: Build and test playground
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
@@ -80,6 +86,7 @@ jobs:
             export ACTIONLINT_LATEST_RELEASE="${latest_release}"
           fi
           run -s actionlint-playground:build actionlint-playground:test
+          run -s @kjanat-actionlint/language-server:test actionlint-playground:test:browser
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with: { path: playground/dist }
 

@@ -6,6 +6,8 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync,
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
+import { YAML } from 'bun';
+
 import { changedInputs, ciTrailers, matchesPaths, plan, readFilters, selectJobs } from './plan.mjs';
 
 /** @param {import('node:test').TestContext} t */
@@ -409,6 +411,42 @@ test('workflow changes select installer tests', () => {
 		/MISE_DISABLE_TOOLS: "shellcheck,github:koalaman\/shellcheck,rshellcheck,github:kjanat\/shellcheck-rs"/,
 	);
 	assert.doesNotMatch(upkeep, /install_args:.*koalaman\/shellcheck/);
+});
+
+test('browser server changes select browser tests and Pages preserves ordered exclusions', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of [
+			'packages/language-server/src/worker.ts',
+			'cmd/actionlint-lsp-wasm/main.go',
+			'playground/src/client.ts',
+		]
+	) {
+		assert.equal(selectJobs(ci, [path]).wasm, true, path);
+	}
+	const pages = YAML.parse(readFileSync(new URL('../workflows/pages.yml', import.meta.url), 'utf8'));
+	assert.ok(typeof pages === 'object' && pages !== null && 'on' in pages);
+	const triggers = pages.on;
+	assert.ok(typeof triggers === 'object' && triggers !== null && 'push' in triggers);
+	const push = triggers.push;
+	assert.ok(typeof push === 'object' && push !== null && 'paths' in push);
+	const paths = push.paths;
+	assert.ok(Array.isArray(paths) && paths.every((path) => typeof path === 'string'));
+	for (
+		const path of ['packages/language-server/src/worker.ts', 'cmd/actionlint-lsp-wasm/main.go', 'man/actionlint.1.md']
+	) {
+		assert.equal(matchesPaths(path, paths), true, path);
+	}
+	for (
+		const path of [
+			'cmd/actionlint/main.go',
+			'internal/cli/app.go',
+			'internal/localapp/lsp_test.go',
+			'playground/README.md',
+		]
+	) {
+		assert.equal(matchesPaths(path, paths), false, path);
+	}
 });
 
 test('autofix bootstraps mise for README and installs Node.js only for tables', () => {

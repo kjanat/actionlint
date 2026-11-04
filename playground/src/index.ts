@@ -1,8 +1,8 @@
-import 'wasm_exec.js';
 import 'bulma/css/bulma.min.css';
 import 'devicon/devicon.min.css';
 import './style.css';
 
+import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import type { Diagnostic } from '@codemirror/lint';
@@ -11,11 +11,16 @@ import type { Extension } from '@codemirror/state';
 import { Compartment } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap } from '@codemirror/view';
+import type {
+	CodeAction,
+	Diagnostic as LSPDiagnostic,
+	PublishDiagnosticsParams,
+} from '@kjanat-actionlint/language-server';
 import { basicSetup } from 'codemirror';
-import isMobile from 'ismobilejs';
 
-import { errorRange } from './range';
-import { loadShellcheck, type ShellcheckClient, shellcheckAssets } from './shellcheck';
+import { documentURI, type PlaygroundClient, startPlaygroundClient } from './client';
+import { editorRange, workspaceChanges } from './editor-lsp';
+import { shellcheckAssets } from './shellcheck';
 import { querySource, readSource, sharedSource, shareURL } from './source';
 
 const editorTheme = new Compartment();
@@ -38,7 +43,8 @@ function themeFor(isDark: boolean): Extension {
 	const successMessage = getElementById('success-msg');
 	const nowLoading = getElementById('loading');
 	const checkUrlButton = getElementById('check-url-btn');
-	const checkUrlInput = getElementById('check-url-input') as HTMLInputElement;
+	const checkUrlInput = getElementById('check-url-input');
+	if (!(checkUrlInput instanceof HTMLInputElement)) throw new Error('The source URL field must be an input');
 	const permalinkButton = getElementById('permalink-btn');
 	const invalidInputMessage = getElementById('invalid-input');
 	const preferDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -123,10 +129,10 @@ jobs:
 		return src;
 	}
 
-	const debounceInterval = isMobile().phone ? 1000 : 300;
-	let debounceId: number | null = null;
 	let contentChanged = false;
-	let shellcheck: ShellcheckClient | null = null;
+	const session: { client?: PlaygroundClient } = {};
+	let version = 1;
+	let failedVersion: number | undefined;
 
 	function clearResults(): void {
 		body.textContent = '';
@@ -135,37 +141,13 @@ jobs:
 		editor.dispatch(setDiagnostics(editor.state, []));
 	}
 
-	function startActionlint(): void {
-		debounceId = null;
+	function onDocChanged(): void {
+		contentChanged = true;
+		version++;
+		failedVersion = undefined;
 		clearResults();
 		invalidInputMessage.style.display = 'none';
-		window.runActionlint?.(getSource());
-	}
-
-	function onDocChanged(pasted: boolean): void {
-		contentChanged = true;
-		// Invalidate before rejecting worker promises, including during debounce.
-		window.invalidateActionlint?.();
-		shellcheck?.cancel();
-		clearResults();
-
-		if (typeof window.runActionlint !== 'function') {
-			showError('Preparing Wasm file is not completed yet. Please wait for a while and try again.');
-			return;
-		}
-
-		if (debounceId !== null) {
-			window.clearTimeout(debounceId);
-		}
-
-		if (pasted) {
-			startActionlint(); // When pasting some code, apply actionlint instantly
-			return;
-		}
-
-		debounceId = window.setTimeout(() => {
-			startActionlint();
-		}, debounceInterval);
+		if (session.client) void session.client.change(documentURI, getSource(), version).catch(showFailure);
 	}
 
 	const editor = new EditorView({
@@ -177,12 +159,13 @@ jobs:
 			EditorView.lineWrapping,
 			keymap.of([indentWithTab]),
 			lintGutter(),
+			autocompletion({ override: [complete] }),
 			editorTheme.of(themeFor(preferDark.matches)),
 			EditorView.updateListener.of(update => {
 				if (!update.docChanged) {
 					return;
 				}
-				onDocChanged(update.transactions.some(tr => tr.isUserEvent('input.paste')));
+				onDocChanged();
 			}),
 		],
 	});
@@ -193,6 +176,7 @@ jobs:
 	}
 
 	function showError(message: string): void {
+		failedVersion = version;
 		clearResults();
 		errorMessage.textContent = message;
 		errorMessage.style.display = 'block';
@@ -254,79 +238,148 @@ jobs:
 		}
 	}
 
-	function onCheckCompleted(errors: ActionlintError[], source: string): void {
-		// Edits can precede the debounced next request while the worker is busy.
-		if (source !== getSource()) return;
-		body.textContent = '';
+	function showFailure(error: unknown): void {
+		showError(error instanceof Error ? error.message : String(error));
+	}
 
-		if (errors.length === 0) {
-			successMessage.style.display = 'block';
+	function sameFinding(left: LSPDiagnostic, right: LSPDiagnostic): boolean {
+		return left.code === right.code && JSON.stringify(left.range) === JSON.stringify(right.range);
+	}
+
+	function applyAction(action: CodeAction, expectedVersion: number): void {
+		if (version !== expectedVersion || !action.edit) return;
+		const changes = workspaceChanges(editor.state.doc, action.edit, documentURI, version);
+		if (!changes) {
+			showError('This fix requires another document or a different document version.');
 			return;
 		}
+		editor.dispatch({ changes });
+	}
 
+	async function onDiagnostics(params: PublishDiagnosticsParams): Promise<void> {
+		if (params.uri !== documentURI || params.version !== version) return;
+		const failure = failedVersion === version ? errorMessage.textContent : null;
+		clearResults();
+		if (failure) {
+			errorMessage.style.display = 'block';
+			errorMessage.textContent = failure;
+		}
+		if (params.diagnostics.length === 0) {
+			if (!failure) successMessage.style.display = 'block';
+			return;
+		}
+		const snapshot = version;
+		const last = editor.state.doc.line(editor.state.doc.lines);
+		const actions = await session.client?.codeActions({
+			textDocument: { uri: documentURI },
+			range: { start: { line: 0, character: 0 }, end: { line: editor.state.doc.lines - 1, character: last.length } },
+			context: { diagnostics: params.diagnostics, only: ['quickfix'] },
+		}).catch((error: unknown) => {
+			if (version === snapshot) throw error;
+			return [];
+		});
+		if (version !== snapshot) return;
 		const diagnostics: Diagnostic[] = [];
-
-		for (const error of errors) {
+		for (const finding of params.diagnostics) {
+			const message = typeof finding.message === 'string' ? finding.message : finding.message.value;
+			const fixes = (actions ?? []).filter((action): action is CodeAction =>
+				'edit' in action && action.edit !== undefined
+				&& (action.diagnostics?.some(d => sameFinding(d, finding)) ?? false)
+			);
+			const { from, to } = editorRange(editor.state.doc, finding.range);
+			const severity = finding.severity === 2
+				? 'warning'
+				: finding.severity === 3
+				? 'info'
+				: finding.severity === 4
+				? 'hint'
+				: 'error';
 			const row = document.createElement('tr');
+			row.dataset.severity = severity;
 			row.addEventListener('click', () => {
-				editor.dispatch({
-					selection: { anchor: errorRange(editor.state.doc, error).from },
-					scrollIntoView: true,
-				});
+				editor.dispatch({ selection: { anchor: from }, scrollIntoView: true });
 				editor.focus();
 			});
-
 			const pos = document.createElement('td');
 			const tag = document.createElement('span');
-			tag.className = 'tag is-dark is-medium';
-			tag.textContent = `line:${error.line}, col:${error.column}`;
-			pos.appendChild(tag);
-			row.appendChild(pos);
-
+			tag.className = `tag is-medium ${
+				severity === 'error' ? 'is-danger' : severity === 'warning' ? 'is-warning' : 'is-info'
+			}`;
+			tag.textContent = `${severity} · ${finding.range.start.line + 1}:${finding.range.start.character + 1}`;
+			pos.append(tag);
 			const desc = document.createElement('td');
-			for (const elem of linkifyMessage(error.message)) {
-				desc.appendChild(elem);
+			desc.append(...linkifyMessage(message));
+			const code = document.createElement('span');
+			code.className = 'tag is-dark';
+			code.textContent = String(finding.code ?? finding.source ?? 'actionlint');
+			desc.append(code);
+			if (finding.codeDescription) {
+				const docs = document.createElement('a');
+				docs.href = finding.codeDescription.href;
+				docs.textContent = 'Documentation';
+				docs.target = '_blank';
+				docs.rel = 'noopener noreferrer';
+				desc.append(docs);
 			}
-			const kind = document.createElement('span');
-			kind.className = 'tag is-dark';
-			kind.textContent = error.kind;
-			kind.style.marginLeft = '4px';
-			desc.appendChild(kind);
-			if (error.code !== undefined) {
-				const code = document.createElement('span');
-				code.className = 'tag is-dark';
-				code.textContent = error.code;
-				code.style.marginLeft = '4px';
-				desc.appendChild(code);
+			for (const related of finding.relatedInformation ?? []) {
+				const item = document.createElement('div');
+				item.textContent = `${related.message} (${related.location.uri}:${related.location.range.start.line + 1})`;
+				desc.append(item);
 			}
-			row.appendChild(desc);
-
-			body.appendChild(row);
-
-			const { from, to } = errorRange(editor.state.doc, error);
+			for (const fix of fixes) {
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'button is-small';
+				button.textContent = fix.title;
+				button.addEventListener('click', event => {
+					event.stopPropagation();
+					applyAction(fix, snapshot);
+				});
+				desc.append(button);
+			}
+			row.append(pos, desc);
+			body.append(row);
 			diagnostics.push({
 				from,
 				to,
-				severity: 'error',
-				source: error.kind,
-				message: error.message,
-				renderMessage: () => {
-					const wrapper = document.createElement('div');
-					for (const elem of linkifyMessage(error.message)) {
-						wrapper.appendChild(elem);
-					}
-					return wrapper;
-				},
+				severity,
+				source: String(finding.code ?? finding.source ?? 'actionlint'),
+				message,
+				actions: fixes.map(fix => ({
+					name: fix.title,
+					apply: () => {
+						applyAction(fix, snapshot);
+					},
+				})),
 			});
 		}
-
 		editor.dispatch(setDiagnostics(editor.state, diagnostics));
 	}
 
-	window.getYamlSource = getSource;
-	window.showError = showError;
-	window.onCheckCompleted = onCheckCompleted;
-	window.dismissLoading = dismissLoading;
+	async function complete(context: CompletionContext): Promise<CompletionResult | null> {
+		if (!session.client) return null;
+		const snapshot = version;
+		const line = context.state.doc.lineAt(context.pos);
+		const result = await session.client.complete({
+			textDocument: { uri: documentURI },
+			position: { line: line.number - 1, character: context.pos - line.from },
+		});
+		if (!result || snapshot !== version || context.aborted) return null;
+		const items = Array.isArray(result) ? result : result.items;
+		return {
+			from: context.matchBefore(/[\w-]*$/)?.from ?? context.pos,
+			options: items.map(item => ({
+				label: item.label,
+				detail: item.detail,
+				apply(view, _completion, from, to) {
+					if (version !== snapshot) return;
+					const edit = item.textEdit;
+					const range = edit ? editorRange(view.state.doc, 'range' in edit ? edit.range : edit.replace) : { from, to };
+					view.dispatch({ changes: { ...range, insert: edit?.newText ?? item.insertText ?? item.label } });
+				},
+			})),
+		};
+	}
 
 	window.addEventListener('beforeunload', e => {
 		if (contentChanged) {
@@ -344,22 +397,23 @@ jobs:
 		}
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-misused-promises
-	checkUrlButton.addEventListener('click', async e => {
-		e.preventDefault();
-		const input = checkUrlInput.value;
-		let src: string;
-		try {
-			src = await getRemoteSource(input);
-		} catch (err) {
-			if (!(err instanceof Error)) {
-				throw err;
+	checkUrlButton.addEventListener('click', e => {
+		void (async () => {
+			e.preventDefault();
+			const input = checkUrlInput.value;
+			let src: string;
+			try {
+				src = await getRemoteSource(input);
+			} catch (err) {
+				if (!(err instanceof Error)) {
+					throw err;
+				}
+				showInvalidInputMessage(`Incorrect input "${input}": ${err.message}`);
+				return;
 			}
-			showInvalidInputMessage(`Incorrect input "${input}": ${err.message}`);
-			return;
-		}
-		clearInvalidInputMessage();
-		editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: src } });
+			clearInvalidInputMessage();
+			editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: src } });
+		})().catch(showFailure);
 	});
 
 	permalinkButton.addEventListener('click', () => {
@@ -390,24 +444,23 @@ jobs:
 		editor.dispatch({ effects: editorTheme.reconfigure(themeFor(event.matches)) });
 	});
 
-	const go = new Go();
-
-	let result: WebAssembly.WebAssemblyInstantiatedSource;
-	// Note: WebAssembly.instantiateStreaming is not implemented on Safari yet
-	if (typeof WebAssembly.instantiateStreaming === 'function') {
-		result = await WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject);
-	} else {
-		const response = await fetch('main.wasm');
-		const mod = await response.arrayBuffer();
-		result = await WebAssembly.instantiate(mod, go.importObject);
-	}
-
 	getElementById('shellcheck-license').setAttribute('href', shellcheckAssets.license);
-	shellcheck = await loadShellcheck();
-	window.runShellcheck = shellcheck.check;
-	await go.run(result.instance);
+	session.client = await startPlaygroundClient({
+		onDiagnostics: params => {
+			void onDiagnostics(params).catch(showFailure);
+		},
+		onError: showError,
+	});
+	await session.client.open(documentURI, getSource(), version);
+	dismissLoading();
 })().catch((err: unknown) => {
 	console.error('ERROR!:', err);
-	const msg = err instanceof Error ? `${err.name}: ${err.message}\n\n${err.stack}` : `Error: ${err}`;
-	alert(msg);
+	const msg = err instanceof Error ? err.message : String(err);
+	const loading = document.getElementById('loading');
+	if (loading) loading.style.display = 'none';
+	const error = document.getElementById('error-msg');
+	if (error) {
+		error.textContent = msg;
+		error.style.display = 'block';
+	}
 });

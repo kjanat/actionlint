@@ -94,10 +94,9 @@ depends = ["layers-check"]
 run     = [{ task = "lint:architecture" }]
 
 ["lint:playground"]
-depends     = ["lint:build:golangci"]
-run         = "./custom-gcl{{ vars.exe }} run ./playground"
-run_windows = []
-env         = { GOOS = "js", GOARCH = "wasm" }
+depends = ["lint:build:golangci"]
+run     = "./custom-gcl{{ vars.exe }} run ./cmd/actionlint-lsp-wasm"
+env     = { GOOS = "js", GOARCH = "wasm" }
 
 ["lint:vulnerabilities"]
 run = "go run golang.org/x/vuln/cmd/govulncheck@latest ./..."

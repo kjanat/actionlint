@@ -3,36 +3,53 @@
 This is a development directory for [actionlint playground](https://kjanat.github.io/actionlint/).
 
 The playground is built with HTML/CSS/TypeScript/Wasm and bundled by [Vite](https://vite.dev/). All dependencies are
-defined in `package.json` and managed by `npm`, which also defines the development tasks.
+defined in the repository's Bun workspace. The editor connects to the actual Go language
+server through standard LSP messages in a browser worker.
 
 ## Layout
 
-| Path             | Contents                                             |
-| ---------------- | ---------------------------------------------------- |
-| `index.html`     | Vite entry point                                     |
-| `src/`           | TypeScript sources, ambient types and the stylesheet |
-| `public/`        | `main.wasm`, built by Vite from `main.go`            |
-| `dist/`          | Bundle produced by `vite build`                      |
-| `vite.config.ts` | Build and test configuration                         |
+| Path             | Contents                                            |
+| ---------------- | --------------------------------------------------- |
+| `index.html`     | Vite entry point                                    |
+| `src/`           | TypeScript sources and the stylesheet               |
+| `public/`        | Static site assets                                  |
+| `dist/`          | Bundle produced by `vite build`                     |
+| `vite.config.ts` | Build and test configuration                        |
+| `tests/`         | Chromium tests of the built editor and real workers |
+
+The server package lives in [`packages/language-server`](../packages/language-server/).
+Its build compiles `cmd/actionlint-lsp-wasm` and copies the matching Go runtime.
+Vite bundles that worker and its Wasm into the site. The package also exposes the
+worker for a future VS Code web extension.
 
 ## Tasks
 
 ```sh
 # Build the wasm binary and the bundle
-npm run build
+bun run build
 
 # Serve the built bundle at localhost:1234
-npm run preview
+bun run preview
 
-# Build the wasm binary, then run tests
-npm test
+# Run editor and source-sharing unit tests
+bun run test
+
+# Install Chromium once, then test the built site
+bunx playwright install chromium
+bun run test:browser
 ```
 
-`npm run dev` builds `public/main.wasm` and starts the Vite dev server with hot reloading.
+`bun run dev` builds the server package and starts Vite with hot reloading.
 
-The playground runs without a bundled action catalogue or remote metadata provider.
-Remote references receive syntax checks; input and output metadata remains unavailable.
-Local action metadata and the runner-derived runtime tables are independent of this.
+The playground supplies one YAML buffer to the server. It does not load repository
+configuration or fetch remote action metadata. Remote references receive syntax checks;
+input and output validation needs metadata that this single-buffer host cannot supply.
+Other browser hosts can provide closed local files through the package's file-read request.
+
+The server publishes versioned diagnostics with UTF-16 ranges, severity, diagnostic
+codes and related locations. CodeMirror displays them and requests completions and
+quick fixes through LSP. The editor applies a fix only when it changes the current
+buffer at its current version. Multi-file and stale fixes are rejected.
 
 Shell scripts are checked locally with `@kjanat/rshellcheck-wasm` 1.0.0. The browser loads its
 worker, JavaScript wrapper and WASM from version-pinned jsDelivr URLs. A same-origin module-worker
@@ -46,7 +63,7 @@ Python and PowerShell scripts are not sent to ShellCheck; Ruff is not included i
 
 ShellCheck runs in a dedicated worker with a ten-second deadline. Worker failures and incomplete
 analysis produce error messages. Every edit immediately invalidates the previous analysis, clears
-its results and cancels busy worker requests before the debounce timer starts. The next analysis
+its results and notifies the language server, which cancels the previous analysis. The next analysis
 can restart the worker with a fresh deadline. The separate ShellCheck
 module is GPL-3.0-or-later; the footer links its corresponding source at the npm provenance commit.
 
@@ -62,10 +79,10 @@ Sources are linted with [eslint](https://eslint.org/) with [typescript-eslint](h
 and type-checked separately:
 
 ```sh
-npm run lint
+bun run lint
 ```
 
-Formatting is handled from the repository root by [dprint](https://dprint.dev/). See [`dprint.toml`](../dprint.toml).
+Formatting is handled from the repository root by kprint. See [`dprint.toml`](../dprint.toml).
 
 ## Deployment
 
