@@ -116,7 +116,7 @@ interface invocation-context {
 
 /// A plugin analyzes one document at a time.
 ///
-/// The host hands over the document and the facts the plugin declared in its
+/// The host hands over the document and the inputs the plugin declared in its
 /// descriptor, and takes back diagnostics.
 interface analyzer {
     use invocation-context.{source-reference, position, occurrence-id};
@@ -160,7 +160,7 @@ interface analyzer {
     /// `start` points to the run value in the document at `path`;
     /// an empty `path` means the analyzed document.
     /// `occurrence` identifies this execution when invocation facts are available.
-    /// `runtime` is set when the `execution` fact was requested.
+    /// `runtime` is set when the `execution` input kind was requested.
     record script {
         reference: source-reference,
         job-id: string,
@@ -209,8 +209,8 @@ interface analyzer {
         entries: list<entry>,
     }
 
-    /// Shared information a plugin can request.
-    enum fact {
+    /// Kinds of input a plugin can request.
+    enum input-kind {
         source,
         scripts,
         mappings,
@@ -227,7 +227,7 @@ interface analyzer {
         end: position,
     }
 
-    /// One document and its facts. `options` holds the JSON the host registered for this plugin,
+    /// One document and its requested inputs. `options` holds the JSON the host registered for this plugin,
     /// or an empty string.
     ///
     /// `scripts` are declared by the document itself.
@@ -238,7 +238,7 @@ interface analyzer {
         content: string,
         kind: string,
         parse-status: string,
-        available: list<fact>,
+        available-inputs: list<input-kind>,
         options: string,
         scripts: list<script>,
         invoked: list<script>,
@@ -297,7 +297,7 @@ interface analyzer {
         after: string,
     }
 
-    /// Plugin identity and the facts it needs before any document is analyzed.
+    /// Plugin identity and the inputs it needs before any document is analyzed.
     record descriptor {
         description: string,
         category: string,
@@ -312,7 +312,7 @@ interface analyzer {
         options-schema: string,
         examples: list<example>,
         name: string,
-        requires: list<fact>,
+        required-inputs: list<input-kind>,
     }
 
     describe: func() -> descriptor;

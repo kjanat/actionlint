@@ -93,7 +93,7 @@ export interface ScriptOutput {
 export type ScriptCheck = (request: ScriptRequest) => Diagnostic[] | Promise<Diagnostic[]>;
 /** Document types a document provider can select: workflow YAML or action metadata YAML. */
 export type DocumentKind = 'workflow' | 'action';
-/** Captured input facts to request; dependencies adds statically known uses references. */
+/** Input kinds to request; dependencies adds statically known uses references. */
 export type DocumentRequirement = 'source' | 'dependencies';
 /** Host-supplied identity for an existing declaration; preserve it instead of inventing one. */
 export interface DocumentReference {
@@ -138,7 +138,7 @@ export interface DocumentRequest {
 	config?: JSONValue;
 	/** Analysis-root path, supplied when directory/workspace resources were requested. */
 	directory?: string;
-	/** Captured uses declarations; supplied only when requires includes "dependencies". */
+	/** Captured uses declarations; supplied only when requiredInputs includes "dependencies". */
 	dependencies?: DocumentDependency[];
 }
 /** A finding whose positions refer to the complete captured document rather than a run snippet. */
@@ -329,8 +329,8 @@ export interface DocumentProvider extends ProviderIdentity {
 	bundle?: CallbackBundleOptions;
 	/** Document types to analyze. Defaults to both workflow and action; restrict unsupported formats. */
 	documentKinds?: DocumentKind[];
-	/** Input facts needed by check. Defaults to ['source']; add 'dependencies' for captured uses declarations. */
-	requires?: DocumentRequirement[];
+	/** Input kinds needed by check. Defaults to ['source']; add 'dependencies' for captured uses declarations. */
+	requiredInputs?: DocumentRequirement[];
 	/** Analyze captured YAML. pack embeds the callback and its declared runtime dependencies. */
 	check: DocumentCheck;
 }
@@ -340,8 +340,8 @@ export interface DocumentProcessProvider extends ProcessOptions {
 	role: 'document';
 	/** Supported document types. Defaults to both workflow and action. */
 	documentKinds?: DocumentKind[];
-	/** Requested facts. Defaults to ['source']; dependencies are included only when explicitly requested. */
-	requires?: DocumentRequirement[];
+	/** Required inputs. Defaults to ['source']; dependencies are included only when explicitly requested. */
+	requiredInputs?: DocumentRequirement[];
 }
 /** Supported author definitions; the pack CLI chooses transport and preparation from their discriminator. */
 export type PluginProvider = ScriptProvider | ProcessProvider | DocumentProvider | DocumentProcessProvider;
@@ -389,7 +389,7 @@ export function defineScriptProvider<const T extends Omit<ScriptProvider, 'kind'
  *   id: 'example/workflow-checker', version: '0.1.0', name: 'Workflow checker',
  *   description: 'Wrap a tool that accepts complete workflow YAML.', license: 'MIT',
  *   repository: 'https://github.com/example/actionlint-plugin-workflow-checker',
- *   role: 'document', documentKinds: ['workflow'], requires: ['source'],
+ *   role: 'document', documentKinds: ['workflow'], requiredInputs: ['source'],
  *   entry: 'workflow-checker', args: ['--sarif'], stdin: 'request',
  *   config: { render: 'none' }, output: { format: 'sarif@2.1.0' },
  *   env_passthrough: ['PATH'],
@@ -440,7 +440,7 @@ export function defineProcessProvider(
  *   id: 'example/document-note', version: '0.1.0', name: 'Document note',
  *   description: 'Example whole-document check.', license: 'MIT',
  *   repository: 'https://github.com/example/actionlint-plugin-document-note',
- *   documentKinds: ['workflow'], requires: ['source'],
+ *   documentKinds: ['workflow'], requiredInputs: ['source'],
  *   rule: { name: 'document-note', category: 'conventions', subcategory: 'workflow', maturity: 'nursery',
  *     description: 'Example workflow check', provider: 'example/document-note' },
  *   check: ({ source, filename }) => source.startsWith('TODO') ? [{
@@ -452,12 +452,12 @@ export function defineProcessProvider(
  */
 export function defineDocumentProvider<const T extends Omit<DocumentProvider, 'kind'>>(
 	provider: T & Omit<DocumentProvider, 'kind'>,
-): T & DocumentProvider & { documentKinds: DocumentKind[]; requires: DocumentRequirement[] } {
+): T & DocumentProvider & { documentKinds: DocumentKind[]; requiredInputs: DocumentRequirement[] } {
 	return {
 		...provider,
 		kind: 'document',
 		documentKinds: provider.documentKinds ?? ['workflow', 'action'],
-		requires: provider.requires ?? ['source'],
+		requiredInputs: provider.requiredInputs ?? ['source'],
 	};
 }
 /**

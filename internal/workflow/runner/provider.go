@@ -32,7 +32,7 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		answer := runnerapi.Answer{Evidence: runnerapi.Evidence{Dataset: builtinDataset, Scope: request.Scope, Freshness: runnerapi.Fresh, Complete: true}}
+		answer := runnerapi.Answer{DatasetStatus: runnerapi.DatasetStatus{DatasetID: builtinDataset, Scope: request.Scope, Freshness: runnerapi.Fresh, Complete: true}}
 		if request.Target != "github" {
 			answer.Resolution = runnerapi.NotApplicable{}
 			answers = append(answers, answer)

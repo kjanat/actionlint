@@ -46,8 +46,8 @@ func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Re
 			return nil, err
 		}
 	}
-	evidence := runnerapi.Evidence{
-		Dataset: "snapshot:" + request.Snapshot.Identity(), Scope: request.Snapshot.Scope,
+	evidence := runnerapi.DatasetStatus{
+		DatasetID: "snapshot:" + request.Snapshot.Digest(), Scope: request.Snapshot.Scope,
 		ObtainedAt: request.Snapshot.ObtainedAt, Freshness: request.Snapshot.Freshness, Complete: request.Snapshot.Complete,
 	}
 	// An absent snapshot gives unknown results in the requested scope.
@@ -72,7 +72,7 @@ func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Re
 		default:
 			resolution = inventory.resolve(selector)
 		}
-		answers = append(answers, runnerapi.Answer{Resolution: resolution, Evidence: evidence})
+		answers = append(answers, runnerapi.Answer{Resolution: resolution, DatasetStatus: evidence})
 	}
 	return answers, nil
 }

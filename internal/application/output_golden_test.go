@@ -60,7 +60,7 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := renderer.Render(&b, render.Prepare(*result)); err != nil {
+			if err := renderer.Render(&b, render.FromAnalysis(*result)); err != nil {
 				t.Fatal(err)
 			}
 			buf, err := os.ReadFile(filepath.Join(root, dir, tc.file))
@@ -111,7 +111,7 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := renderer.Render(&b, render.Prepare(*result)); err != nil {
+	if err := renderer.Render(&b, render.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()

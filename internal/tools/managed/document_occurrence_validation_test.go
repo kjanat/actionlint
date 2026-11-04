@@ -63,7 +63,7 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 
 func TestDocumentBatchHeaderRequiredForSkippedInputs(t *testing.T) {
 	batch := documentBatchFixture(t, 1)
-	records := batch.CallGraph.Snapshot()
+	records := batch.CallGraph.Export()
 	records.Scripts[0].Kind = analyzer.ActionInputScript
 	records.Scripts[0].Input = "script"
 	graph, err := analyzer.NewCallGraph(records)

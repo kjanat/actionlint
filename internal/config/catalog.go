@@ -137,7 +137,7 @@ func providerRules() []Rule {
 
 // FindRule returns the catalogue entry for name.
 func FindRule(name string) (Rule, bool) {
-	name = rule.CanonicalName(name)
+	name = rulecatalog.ResolveAlias(name)
 	for _, rule := range registeredRules() {
 		if rule.Name == name {
 			rule.Descriptor = rule.Clone()

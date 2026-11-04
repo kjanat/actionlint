@@ -161,7 +161,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, err
 		}
 	}
-	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, render.Prepare(*result)); err != nil {
+	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, render.FromAnalysis(*result)); err != nil {
 		return 0, err
 	}
 	if inv.Legacy && options.Verbose && result.FileCount > 1 {

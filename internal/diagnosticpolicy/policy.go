@@ -8,7 +8,6 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Policy is the resolved input record for one document's diagnostic policy:
@@ -23,7 +22,7 @@ type Policy struct {
 	Metadata                           *actionmeta.Metadata
 	Presets                            repoconfig.Presets
 	AdditionalRules                    []string
-	RuleDescriptors                    []rule.Descriptor
+	RuleRegistrations                  []repoconfig.RuleRegistration
 	IgnorePatterns                     repoconfig.IgnorePatterns
 	Log                                func(...any)
 	Debug                              func(string, ...any)
@@ -119,7 +118,7 @@ func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]b
 			if err != nil {
 				return nil, err
 			}
-			findingConfig, err = repoconfig.ResolveRules(p.Presets, findingConfig, p.RuleDescriptors...)
+			findingConfig, err = repoconfig.ResolveRegisteredRules(p.Presets, findingConfig, p.RuleRegistrations...)
 			if err != nil {
 				return nil, err
 			}

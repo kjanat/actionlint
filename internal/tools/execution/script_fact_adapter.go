@@ -21,7 +21,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if !batch.Valid() {
 		return nil, ErrInvalidBatch
 	}
-	available := []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}
+	available := []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}
 	prepared, err := analyzerhost.Prepare(analyzer.Registration{Analyzer: adapter.Analyzer, Options: adapter.Options}, available)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		input := analyzer.Input{
 			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
-			Available:       available,
+			AvailableInputs: available,
 			SelectedScripts: []analyzer.OccurrenceID{script.Occurrence.ID},
 		}
 		if script.Occurrence.Owner == graph.Entry().ID {

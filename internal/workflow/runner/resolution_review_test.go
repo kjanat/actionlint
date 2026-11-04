@@ -27,7 +27,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 			workflow := runnerWorkflow(t, "queue")
 			prepare := func(resolution runnerapi.Resolution) *Knowledge {
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
-					return []runnerapi.Answer{{Resolution: resolution, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
+					return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 				}}
 				k, err := Prepare(t.Context(), workflow.Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
 				if err != nil {
@@ -46,7 +46,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 func TestProviderPointerResolutionValidation(t *testing.T) {
 	for _, resolution := range []runnerapi.Resolution{(*runnerapi.Resolved)(nil), (*runnerapi.NoMatch)(nil), (*runnerapi.Unknown)(nil), (*runnerapi.NotApplicable)(nil), &runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "wrong source", Position: diagnostic.Position{Line: 99, Column: 1}}}}} {
 		p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
-			return []runnerapi.Answer{{Resolution: resolution, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
+			return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 		}}
 		if _, err := Prepare(t.Context(), runnerWorkflow(t, "queue").Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope"); err == nil {
 			t.Fatalf("accepted invalid pointer resolution: %#v", resolution)
@@ -59,7 +59,7 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 	p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 		answers := make([]runnerapi.Answer, len(r.Selectors))
 		for i := range answers {
-			answers[i] = runnerapi.Answer{Resolution: &runnerapi.Resolved{Candidates: []runnerapi.Candidate{{OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}
+			answers[i] = runnerapi.Answer{Resolution: &runnerapi.Resolved{Candidates: []runnerapi.Candidate{{OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}
 		}
 		return answers, nil
 	}}

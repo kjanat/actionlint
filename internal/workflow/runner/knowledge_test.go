@@ -173,9 +173,9 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 				tc.snapshot.Scope = "scope"
 			}
 			p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
-				return []runnerapi.Answer{{Resolution: tc.resolution, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: tc.fresh, Complete: tc.complete}}}, tc.failure
+				return []runnerapi.Answer{{Resolution: tc.resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: tc.fresh, Complete: tc.complete}}}, tc.failure
 			}}
-			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, Identity: "artifact"}}}, "scope")
+			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: "artifact"}}}, "scope")
 			if (err != nil) != (tc.failure != nil) {
 				t.Fatal(err)
 			}
@@ -209,7 +209,7 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 				if r.Snapshot.Freshness != tc.fresh {
 					t.Errorf("request freshness = %q, want %q", r.Snapshot.Freshness, tc.fresh)
 				}
-				return []runnerapi.Answer{{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "bundled", OS: runnerapi.Windows, DefaultShell: "pwsh", CaseSensitivity: runnerapi.CaseInsensitive}}}, Evidence: runnerapi.Evidence{Dataset: "bundled", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
+				return []runnerapi.Answer{{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "bundled", OS: runnerapi.Windows, DefaultShell: "pwsh", CaseSensitivity: runnerapi.CaseInsensitive}}}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "bundled", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 			}}
 			options := runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p}}}
 			k, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
@@ -219,13 +219,13 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 			if got := k.Job(w.Views["test"]); got.PathsKnown != tc.known || (got.Shell == "pwsh") != tc.known {
 				t.Fatalf("snapshot knowledge = %#v, want known=%t", got, tc.known)
 			}
-			if k.Report().Snapshot != p.request.Snapshot.Identity() {
+			if k.Report().SnapshotDigest != p.request.Snapshot.Digest() {
 				t.Fatal("report does not identify the snapshot supplied to the provider")
 			}
 			if tc.snapshot != (runnerapi.Snapshot{}) {
 				options.Snapshot.Freshness = tc.fresh
 				normalized, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-				if err != nil || normalized.Report().Identity != k.Report().Identity {
+				if err != nil || normalized.Report().CacheKey != k.Report().CacheKey {
 					t.Fatalf("equivalent snapshot freshness changed cache identity: %v", err)
 				}
 			}
@@ -240,7 +240,7 @@ func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := k.Job(w.Views["test"])
-	if !job.PathsKnown || job.Platform != MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].Evidence.Freshness != runnerapi.Fresh {
+	if !job.PathsKnown || job.Platform != MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].DatasetStatus.Freshness != runnerapi.Fresh {
 		t.Fatalf("absent host snapshot weakened bundled catalogue: %#v", job)
 	}
 }
@@ -271,7 +271,7 @@ func TestProviderEmptyNoMatch(t *testing.T) {
 			t.Run(string(freshness)+"/complete="+strconv.FormatBool(complete), func(t *testing.T) {
 				w := runnerWorkflow(t, "queue")
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
-					return []runnerapi.Answer{{Resolution: runnerapi.NoMatch{}, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: freshness, Complete: complete}}}, nil
+					return []runnerapi.Answer{{Resolution: runnerapi.NoMatch{}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: freshness, Complete: complete}}}, nil
 				}}
 				k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
 				if freshness == runnerapi.Fresh {
@@ -290,9 +290,9 @@ func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
 	w := runnerWorkflow(t, "ubuntu-latest")
 	dataset := "v1"
 	p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
-		return []runnerapi.Answer{{Resolution: runnerapi.Unknown{Reason: "unknown"}, Evidence: runnerapi.Evidence{Dataset: dataset, Scope: r.Scope, Freshness: runnerapi.Fresh}}}, nil
+		return []runnerapi.Answer{{Resolution: runnerapi.Unknown{Reason: "unknown"}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: dataset, Scope: r.Scope, Freshness: runnerapi.Fresh}}}, nil
 	}}
-	options := runnerapi.Options{Providers: []runnerapi.Registration{{Provider: p, Identity: "first"}}}
+	options := runnerapi.Options{Providers: []runnerapi.Registration{{Provider: p, ImplementationID: "first"}}}
 	k, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 	if err != nil || k.Report().Provider.Name != "github" || p.request.Target != "" {
 		t.Fatalf("loading a provider changed authority: %v %#v", err, k.Report())
@@ -302,20 +302,20 @@ func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options.Providers[0].Identity = "second"
+	options.Providers[0].ImplementationID = "second"
 	second, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || first.Report().Identity == second.Report().Identity {
+	if err != nil || first.Report().CacheKey == second.Report().CacheKey {
 		t.Fatal("artifact identity not tracked", err)
 	}
 	options.Snapshot.Content = "updated"
 	options.Snapshot.Scope = "scope"
 	third, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || second.Report().Identity == third.Report().Identity {
+	if err != nil || second.Report().CacheKey == third.Report().CacheKey {
 		t.Fatal("snapshot identity not tracked", err)
 	}
 	dataset = "v2"
 	fourth, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
-	if err != nil || third.Report().Identity == fourth.Report().Identity {
+	if err != nil || third.Report().CacheKey == fourth.Report().CacheKey {
 		t.Fatal("dataset identity not tracked", err)
 	}
 	options.Providers = append(options.Providers, options.Providers[0])

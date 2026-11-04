@@ -83,7 +83,7 @@ func TestProjectionRepeatedDeclarationsKeepOccurrenceAncestry(t *testing.T) {
 		t.Fatal(err)
 	}
 	portable := graph.Graph()
-	snapshot := portable.Snapshot()
+	snapshot := portable.Export()
 	if portable.CallCount() != 4 || portable.ScriptCount() != 2 {
 		t.Fatalf("graph=%+v", snapshot)
 	}
@@ -226,7 +226,7 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 				t.Fatal(err)
 			}
 			portable := view.Graph()
-			snapshot := portable.Snapshot()
+			snapshot := portable.Export()
 			calls := snapshot.Calls
 			if len(calls) != 1 && tt.name != "depth-limited" {
 				t.Fatalf("calls=%d", len(calls))
@@ -383,7 +383,7 @@ func TestProjectionSnapshotsAndScriptAccessorsAreDetached(t *testing.T) {
 		t.Fatal(err)
 	}
 	portable := view.Graph()
-	first := portable.Snapshot()
+	first := portable.Export()
 	first.Calls[0].Ancestry[0] = "corrupt-call"
 	first.Scripts[0].Ancestry[0] = "corrupt-script"
 	first.Scripts = append(first.Scripts, analyzer.ScriptOccurrence{ID: "extra"})
@@ -393,7 +393,7 @@ func TestProjectionSnapshotsAndScriptAccessorsAreDetached(t *testing.T) {
 	}
 	accessor.Ancestry[0] = "corrupt-accessor"
 	accessor.Ancestry = append(accessor.Ancestry, "extra")
-	second := portable.Snapshot()
+	second := portable.Export()
 	if len(second.Scripts) != 1 || second.Calls[0].Ancestry[0] != second.Entry.ID || second.Scripts[0].Ancestry[0] != second.Entry.ID {
 		t.Fatalf("projection changed through returned values: %+v", second)
 	}
@@ -457,7 +457,7 @@ func TestProjectionOwnerEnumParity(t *testing.T) {
 				t.Fatal(err)
 			}
 			portable := view.Graph()
-			graph := portable.Snapshot()
+			graph := portable.Export()
 			if portable.Entry().Kind != analyzer.InvocationEntryKind(entryKind) {
 				t.Fatalf("entry kind=%q want %q", portable.Entry().Kind, entryKind)
 			}
@@ -649,7 +649,7 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := tt.inspect(view.Graph().Snapshot().Calls[0].Outcome.Value()); got != tt.want {
+			if got := tt.inspect(view.Graph().Export().Calls[0].Outcome.Value()); got != tt.want {
 				t.Fatalf("reason=%q want %q", got, tt.want)
 			}
 		})

@@ -418,7 +418,7 @@ func TestErrorPrintAllKinds(t *testing.T) {
 	for _, want := range []string{
 		"syntax-check: Validate GitHub Actions workflow syntax\n",
 		"inline-suppression: Validate inline suppression directives\n",
-		"disallow-suppressions: Report suppressions forbidden by policy\n",
+		"forbidden-suppression: Report suppressions forbidden by policy\n",
 		"rule1: description for rule1\n",
 		"rule2: description for rule2\n",
 	} {

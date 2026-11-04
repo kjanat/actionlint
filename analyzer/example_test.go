@@ -13,7 +13,7 @@ import (
 type sudoAnalyzer struct{}
 
 func (sudoAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "no-sudo", Requires: []analyzer.Fact{analyzer.Scripts}}
+	return analyzer.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}
 }
 
 func (sudoAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

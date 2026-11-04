@@ -6,8 +6,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
 import { build } from 'tsdown';
 
-import { isRuleCategory } from './index.ts';
-
 import type {
 	DocumentKind,
 	DocumentProcessProvider,
@@ -18,6 +16,7 @@ import type {
 	ProcessProvider,
 	RuleDescriptor,
 } from './index.ts';
+import { isRuleCategory } from './index.ts';
 
 /**
  * Compile an authored TypeScript definition into its distributable JSON manifest.
@@ -79,7 +78,7 @@ export async function compileProvider(definition: string | URL): Promise<Record<
 				...(provider.severities ? { severities: { ...provider.severities } } : {}),
 			},
 			...(provider.configSchema ? { config_schema: { ...provider.configSchema } } : {}),
-			...(documentProvider ? { requires: documentProvider.requires ?? ['source'] } : {}),
+			...(documentProvider ? { required_inputs: documentProvider.requiredInputs ?? ['source'] } : {}),
 			process: processSpec,
 		};
 
@@ -217,7 +216,7 @@ function isPluginProvider(value: unknown): value is PluginProvider {
 	) return false;
 	if (value.kind === 'document') {
 		return typeof value.check === 'function' && isOptionalDocumentKinds(value.documentKinds)
-			&& isOptionalDocumentRequirements(value.requires);
+			&& isOptionalDocumentRequirements(value.requiredInputs);
 	}
 	if (value.kind === 'script') {
 		return typeof value.check === 'function' && isStringArray(value.shells);
@@ -227,7 +226,7 @@ function isPluginProvider(value: unknown): value is PluginProvider {
 		&& typeof value.config.render === 'string' && isRecord(value.output) && typeof value.output.format === 'string';
 	if (!process) return false;
 	if (value.role === 'document') {
-		return isOptionalDocumentKinds(value.documentKinds) && isOptionalDocumentRequirements(value.requires);
+		return isOptionalDocumentKinds(value.documentKinds) && isOptionalDocumentRequirements(value.requiredInputs);
 	}
 	return (value.role === undefined || value.role === 'script') && isStringArray(value.shells);
 }

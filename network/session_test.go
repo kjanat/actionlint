@@ -42,19 +42,19 @@ func quota(remaining int, reset time.Time, resource string) http.Header {
 }
 
 func TestTransportCountsNestedRequestsOnceAndRedacts(t *testing.T) {
-	ctx, s := Ensure(t.Context())
+	ctx, s := TrackRequests(t.Context())
 	base := roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return response(200, quota(8, time.Now().Add(time.Hour), "core"), ""), nil
 	})
-	transport := Transport(Transport(base))
+	transport := TrackHTTPRequests(TrackHTTPRequests(base))
 	r := request(t, ctx, "/repos/private-secret?token=query-secret", "credential-secret")
 	got, err := transport.RoundTrip(r)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got.Body.Close()
-	report := s.Snapshot()
-	if len(report.Groups) != 1 || report.Groups[0].Attempts != 1 || report.Groups[0].Authentication != Credentialed || report.Groups[0].Kind != REST {
+	report := s.Statistics()
+	if len(report.Requests) != 1 || report.Requests[0].Attempts != 1 || report.Requests[0].Credentials != CredentialsProvided || report.Requests[0].RequestKind != REST {
 		t.Fatalf("%+v", report)
 	}
 	encoded, err := json.Marshal(report)
@@ -62,17 +62,17 @@ func TestTransportCountsNestedRequestsOnceAndRedacts(t *testing.T) {
 		t.Fatalf("unsafe report: %s %v", encoded, err)
 	}
 	*report.Quotas[0].Remaining = 999
-	report.Groups[0].Attempts = 999
-	if fresh := s.Snapshot(); *fresh.Quotas[0].Remaining != 8 || fresh.Groups[0].Attempts != 1 {
+	report.Requests[0].Attempts = 999
+	if fresh := s.Statistics(); *fresh.Quotas[0].Remaining != 8 || fresh.Requests[0].Attempts != 1 {
 		t.Fatal("snapshot aliases session storage")
 	}
 }
 
 func TestReservationsProtectDependenciesAtomically(t *testing.T) {
-	ctx, s := Ensure(t.Context())
+	ctx, s := TrackRequests(t.Context())
 	reset := time.Now().Add(time.Hour)
 	calls := 0
-	transport := Transport(roundTripFunc(func(*http.Request) (*http.Response, error) {
+	transport := TrackHTTPRequests(roundTripFunc(func(*http.Request) (*http.Response, error) {
 		calls++
 		if calls == 1 {
 			return response(200, quota(3, reset, "core"), ""), nil
@@ -85,18 +85,18 @@ func TestReservationsProtectDependenciesAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	got.Body.Close()
-	reservation, err := s.Reserve(r, 2)
+	reservation, err := s.ReserveQuota(r, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reservation.Close()
-	if err := s.CheckBudget(request(t, reservation.Context(ctx), "/repos/required/action", "token"), 2); err != nil {
+	if err := s.CheckBatchQuota(request(t, reservation.Context(ctx), "/repos/required/action", "token"), 2); err != nil {
 		t.Fatalf("reservation owner could not plan its batch: %v", err)
 	}
-	if err := s.CheckBudget(r, 2); !errors.Is(err, ErrBudget) {
+	if err := s.CheckBatchQuota(r, 2); !errors.Is(err, ErrBudget) {
 		t.Fatalf("unreserved batch could spend protected quota: %v", err)
 	}
-	optional := request(t, WithOperation(ctx, Operation{Purpose: "metadata", Priority: Enrichment, Cost: 2}), "/repos/example/action", "token")
+	optional := request(t, WithRequestOptions(ctx, RequestOptions{Purpose: "metadata", Priority: Enrichment, QuotaCost: 2}), "/repos/example/action", "token")
 	got, err = transport.RoundTrip(optional)
 	if got != nil {
 		got.Body.Close()
@@ -104,7 +104,7 @@ func TestReservationsProtectDependenciesAtomically(t *testing.T) {
 	if !errors.Is(err, ErrBudget) {
 		t.Fatalf("optional spent reserved quota: %v", err)
 	}
-	optional = request(t, WithOperation(ctx, Operation{Purpose: "metadata", Priority: Enrichment}), "/repos/example/action", "token")
+	optional = request(t, WithRequestOptions(ctx, RequestOptions{Purpose: "metadata", Priority: Enrichment}), "/repos/example/action", "token")
 	got, err = transport.RoundTrip(optional)
 	if err != nil {
 		t.Fatal(err)
@@ -118,15 +118,15 @@ func TestReservationsProtectDependenciesAtomically(t *testing.T) {
 		got.Body.Close()
 	}
 	reservation.Close()
-	if calls != 4 || *s.Snapshot().Quotas[0].Remaining != 0 || s.Snapshot().Quotas[0].Reserved != 0 {
-		t.Fatalf("calls=%d report=%+v", calls, s.Snapshot())
+	if calls != 4 || *s.Statistics().Quotas[0].Remaining != 0 || s.Statistics().Quotas[0].Reserved != 0 {
+		t.Fatalf("calls=%d report=%+v", calls, s.Statistics())
 	}
 }
 
 func TestQuotaPoolsAndSecondaryBackoff(t *testing.T) {
-	ctx, _ := Ensure(t.Context())
+	ctx, _ := TrackRequests(t.Context())
 	reset := time.Now().Add(time.Hour)
-	transport := Transport(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+	transport := TrackHTTPRequests(roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/graphql":
 			return response(200, quota(0, reset, "graphql"), "{}"), nil
@@ -173,12 +173,12 @@ func TestQuotaPoolsAndSecondaryBackoff(t *testing.T) {
 }
 
 func TestConcurrentAdmissionDoesNotOverspend(t *testing.T) {
-	ctx, s := Ensure(t.Context())
+	ctx, s := TrackRequests(t.Context())
 	r := request(t, ctx, "/repos/example/action", "")
 	_, key, _ := requestKeys(r)
 	s.budgets[key] = budget{remaining: 1, known: true, reset: time.Now().Add(time.Hour)}
 	var calls atomic.Int32
-	transport := Transport(roundTripFunc(func(*http.Request) (*http.Response, error) {
+	transport := TrackHTTPRequests(roundTripFunc(func(*http.Request) (*http.Response, error) {
 		calls.Add(1)
 		return response(200, http.Header{}, ""), nil
 	}))
@@ -200,11 +200,11 @@ func TestConcurrentAdmissionDoesNotOverspend(t *testing.T) {
 }
 
 func TestPreflightCoalescesAndRefreshesAfterReset(t *testing.T) {
-	ctx, s := Ensure(t.Context())
+	ctx, s := TrackRequests(t.Context())
 	now := time.Now()
 	s.now = func() time.Time { return now }
 	calls := 0
-	client := &http.Client{Transport: Transport(roundTripFunc(func(r *http.Request) (*http.Response, error) {
+	client := &http.Client{Transport: TrackHTTPRequests(roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		calls++
 		if r.URL.Path != "/rate_limit" {
 			t.Fatal("wrong probe endpoint")
@@ -213,28 +213,28 @@ func TestPreflightCoalescesAndRefreshesAfterReset(t *testing.T) {
 	}))}
 	r := request(t, ctx, "/repos/example/action", "a")
 	for range 2 {
-		if err := s.PreflightGitHub(ctx, client, r); err != nil {
+		if err := s.LoadGitHubRateLimits(ctx, client, r); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if calls != 1 || len(s.Snapshot().Quotas) != 2 {
-		t.Fatalf("calls=%d report=%+v", calls, s.Snapshot())
+	if calls != 1 || len(s.Statistics().Quotas) != 2 {
+		t.Fatalf("calls=%d report=%+v", calls, s.Statistics())
 	}
-	if err := s.CheckBudget(r, 8); !errors.Is(err, ErrBudget) {
+	if err := s.CheckBatchQuota(r, 8); !errors.Is(err, ErrBudget) {
 		t.Fatalf("oversized batch: %v", err)
 	}
 	now = now.Add(2 * time.Hour)
-	if err := s.PreflightGitHub(ctx, client, r); err != nil || calls != 2 {
+	if err := s.LoadGitHubRateLimits(ctx, client, r); err != nil || calls != 2 {
 		t.Fatalf("probe did not refresh: %v calls=%d", err, calls)
 	}
 }
 
 func TestConcurrentPreflightSharesOneRequest(t *testing.T) {
-	ctx, s := Ensure(t.Context())
+	ctx, s := TrackRequests(t.Context())
 	started, release := make(chan struct{}), make(chan struct{})
 	var calls atomic.Int32
 	reset := time.Now().Add(time.Hour)
-	client := &http.Client{Transport: Transport(roundTripFunc(func(*http.Request) (*http.Response, error) {
+	client := &http.Client{Transport: TrackHTTPRequests(roundTripFunc(func(*http.Request) (*http.Response, error) {
 		if calls.Add(1) == 1 {
 			close(started)
 		}
@@ -244,7 +244,7 @@ func TestConcurrentPreflightSharesOneRequest(t *testing.T) {
 	r := request(t, ctx, "/repos/example/action", "token")
 	var workers sync.WaitGroup
 	run := func() {
-		if err := s.PreflightGitHub(ctx, client, r); err != nil {
+		if err := s.LoadGitHubRateLimits(ctx, client, r); err != nil {
 			t.Error(err)
 		}
 	}
@@ -261,12 +261,12 @@ func TestConcurrentPreflightSharesOneRequest(t *testing.T) {
 }
 
 func TestOlderQuotaResponsesCannotRestoreSpentUnits(t *testing.T) {
-	ctx, s := Ensure(t.Context())
+	ctx, s := TrackRequests(t.Context())
 	now := time.Now().Truncate(time.Second)
 	s.now = func() time.Time { return now }
 	reset := now.Add(time.Hour)
 	remaining := 3
-	transport := Transport(roundTripFunc(func(*http.Request) (*http.Response, error) {
+	transport := TrackHTTPRequests(roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return response(http.StatusOK, quota(remaining, reset, "core"), ""), nil
 	}))
 	r := request(t, ctx, "/repos/example/action", "token")
@@ -278,7 +278,7 @@ func TestOlderQuotaResponsesCannotRestoreSpentUnits(t *testing.T) {
 		}
 		got.Body.Close()
 	}
-	if got := *s.Snapshot().Quotas[0].Remaining; got != 0 {
+	if got := *s.Statistics().Quotas[0].Remaining; got != 0 {
 		t.Fatalf("stale response restored quota: %d", got)
 	}
 	now = reset.Add(time.Second)
@@ -289,23 +289,23 @@ func TestOlderQuotaResponsesCannotRestoreSpentUnits(t *testing.T) {
 		t.Fatal(err)
 	}
 	got.Body.Close()
-	if current := *s.Snapshot().Quotas[0].Remaining; current != 10 {
+	if current := *s.Statistics().Quotas[0].Remaining; current != 10 {
 		t.Fatalf("new quota window was not accepted: %d", current)
 	}
 }
 
 func TestResolverCoverageIsNotInvented(t *testing.T) {
-	ctx, s := Ensure(t.Context())
-	ResolverLookup(ctx, nil, false)
-	ResolverLookup(ctx, nil, true)
-	ResolverLookup(ctx, &resolver.NetworkReport{Complete: true, Queries: []resolver.NetworkQuery{{Host: "github.com", Kind: "git", Authenticated: "unknown", Count: 2}}}, false)
-	ResolverLookup(ctx, &resolver.NetworkReport{Complete: true, Queries: []resolver.NetworkQuery{{Host: "https://token@host/private?secret", Kind: "rest", Authenticated: "yes", Count: 2}}}, false)
+	ctx, s := TrackRequests(t.Context())
+	RecordResolverCall(ctx, nil, false)
+	RecordResolverCall(ctx, nil, true)
+	RecordResolverCall(ctx, &resolver.RequestReport{AllRequestsReported: true, Requests: []resolver.RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}, false)
+	RecordResolverCall(ctx, &resolver.RequestReport{AllRequestsReported: true, Requests: []resolver.RequestCounts{{Host: "https://token@host/private?secret", RequestKind: "rest", Credentials: "provided", Attempts: 2}}}, false)
 	var attempts, opaque, cached, lookups uint64
-	for _, group := range s.Snapshot().Groups {
+	for _, group := range s.Statistics().Requests {
 		attempts += group.Attempts
-		opaque += group.OpaqueLookups
+		opaque += group.UnreportedResolverCalls
 		cached += group.CacheHits
-		lookups += group.Lookups
+		lookups += group.ResolverCalls
 	}
 	if attempts != 2 || opaque != 2 || cached != 1 || lookups != 4 {
 		t.Fatalf("attempts=%d opaque=%d cache=%d lookups=%d", attempts, opaque, cached, lookups)

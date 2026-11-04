@@ -45,16 +45,16 @@ func TestScopeJoinsAllResourcesOnce(t *testing.T) {
 
 func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 	failure := errors.New("incomplete")
-	input := analyzer.Input{Path: "workflow.yml", Available: []analyzer.Fact{analyzer.Source, analyzer.Mappings}, Mappings: []analyzer.Mapping{{Entries: []analyzer.Entry{{Name: "original"}}}}}
+	input := analyzer.Input{Path: "workflow.yml", AvailableInputs: []analyzer.InputKind{analyzer.Source, analyzer.Mappings}, Mappings: []analyzer.Mapping{{Entries: []analyzer.Entry{{Name: "original"}}}}}
 	changed := make(chan struct{})
 	input.SourceRoots = []analyzer.SourceRoot{{Host: "/source", Guest: "/workspace"}}
-	first := testAnalyzer{analyzer.Descriptor{Name: "first", Requires: []analyzer.Fact{analyzer.Mappings}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	first := testAnalyzer{analyzer.Descriptor{Name: "first", RequiredInputs: []analyzer.InputKind{analyzer.Mappings}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		in.Mappings[0].Entries[0].Name = "changed"
 		in.SourceRoots[0].Guest = "/changed"
 		close(changed)
 		return []diagnostic.Diagnostic{{Message: "partial"}}, failure
 	}}
-	second := testAnalyzer{analyzer.Descriptor{Name: "second", Requires: []analyzer.Fact{analyzer.Mappings}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	second := testAnalyzer{analyzer.Descriptor{Name: "second", RequiredInputs: []analyzer.InputKind{analyzer.Mappings}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		<-changed
 		if in.Mappings[0].Entries[0].Name != "original" {
 			t.Error("shared mutable facts")
@@ -77,8 +77,8 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 }
 
 func TestRunRequirementsAndCancellation(t *testing.T) {
-	for _, requirement := range []analyzer.Fact{analyzer.Scripts, analyzer.Invocations, analyzer.Execution, "future"} {
-		a := testAnalyzer{analyzer.Descriptor{Name: "requires", Requires: []analyzer.Fact{requirement}}, func(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	for _, requirement := range []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution, "future"} {
+		a := testAnalyzer{analyzer.Descriptor{Name: "requires", RequiredInputs: []analyzer.InputKind{requirement}}, func(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 			t.Error("ran without required facts")
 			return nil, nil
 		}}
@@ -115,20 +115,20 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 	if !exists {
 		t.Fatal("action input occurrence missing")
 	}
-	input := analyzer.Input{Reference: graph.Entry().Reference, Available: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}, CallGraph: graph, ActionInputs: []analyzer.ActionInput{{
+	input := analyzer.Input{Reference: graph.Entry().Reference, AvailableInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}, CallGraph: graph, ActionInputs: []analyzer.ActionInput{{
 		Reference: declaration, Occurrence: occurrence,
 		Spans: []analyzer.Span{{Line: 1, Start: 1, End: 8}},
 		Site:  analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
 	}}}
 	changed := make(chan struct{})
-	first := testAnalyzer{analyzer.Descriptor{Name: "first", Requires: []analyzer.Fact{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	first := testAnalyzer{analyzer.Descriptor{Name: "first", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		in.ActionInputs[0].Site.Language = "python"
 		in.ActionInputs[0].Spans[0].End = 99
 		in.ActionInputs[0].Occurrence.Ancestry[0] = "changed"
 		close(changed)
 		return nil, nil
 	}}
-	second := testAnalyzer{analyzer.Descriptor{Name: "second", Requires: []analyzer.Fact{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	second := testAnalyzer{analyzer.Descriptor{Name: "second", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		<-changed
 		got := in.ActionInputs[0]
 		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence.Ancestry[0] != root {

@@ -33,7 +33,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sarif bytes.Buffer
-	if err := renderer.Render(&sarif, render.Prepare(*workspaceReportAnalysis(analysis, workspace, workspace))); err != nil {
+	if err := renderer.Render(&sarif, render.FromAnalysis(*workspaceReportAnalysis(analysis, workspace, workspace))); err != nil {
 		t.Fatal(err)
 	}
 	if got := sarif.String(); strings.Count(got, "file:///D:/shared/workflow.yml") != 2 || strings.Contains(got, "uriBaseId") {

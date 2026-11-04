@@ -17,9 +17,10 @@ type Analyzer struct{}
 
 func (Analyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{
-		Name:        "pinned-actions",
-		Description: "Pin remote dependencies to full commit hashes",
-		Requires:    []analyzer.Fact{analyzer.Dependencies},
+		Name:           "pinned-actions",
+		Description:    "Pin remote dependencies to full commit hashes",
+		Category:       "security",
+		RequiredInputs: []analyzer.InputKind{analyzer.Dependencies},
 	}
 }
 

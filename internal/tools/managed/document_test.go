@@ -143,7 +143,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 }
 
 func (*documentGuest) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "shellcheck", Recommended: true, Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Execution}}
+	return analyzer.Descriptor{Name: "shellcheck", Category: "correctness", Recommended: true, RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Execution}}
 }
 
 func (*documentGuest) ToolIntegration() *analyzer.ToolIntegration {

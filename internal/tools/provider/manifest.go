@@ -64,11 +64,11 @@ type Manifest struct {
 	ID       string          `json:"id"`
 	Version  string          `json:"version"`
 	Role     Role            `json:"role"`
-	// Requires requests shared facts for document providers. Source is implicit.
-	Requires  []analyzer.Fact `json:"requires,omitempty"`
-	Rule      rule.Descriptor `json:"rule"`
-	Scope     Scope           `json:"scope"`
-	Transport Transport       `json:"transport"`
+	// RequiredInputs lists input sections requested by document providers. Source is implicit.
+	RequiredInputs []analyzer.InputKind `json:"required_inputs,omitempty"`
+	Rule           rule.Descriptor      `json:"rule"`
+	Scope          Scope                `json:"scope"`
+	Transport      Transport            `json:"transport"`
 	// Artifacts lists per-platform executables or modules; empty means the
 	// process entry is discovered on PATH.
 	Artifacts []Artifact `json:"artifacts,omitempty"`

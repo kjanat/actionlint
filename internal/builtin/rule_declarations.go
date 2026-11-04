@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 // declarationRule is the traversal adapter for stateless declaration checks.
@@ -62,7 +61,9 @@ func newDeclarationRule(name string) *declarationRule {
 func (r *declarationRule) collect(input []checks.Finding, job string) {
 	for _, d := range input {
 		finding := findingmodel.FromDiagnostic(d.Diagnostic)
-		finding.Rule = rule.CanonicalName(finding.Rule)
+		if descriptor, known := repoconfig.FindRule(finding.Rule); known {
+			finding.Rule = descriptor.Name
+		}
 		if d.Step.Present() {
 			finding.Owner = &findingmodel.Owner{Job: job, Step: declarationPosition(d.Step)}
 			origin := d.Step.Origin(job)

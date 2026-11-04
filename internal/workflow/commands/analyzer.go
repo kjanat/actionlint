@@ -17,7 +17,7 @@ type Analyzer struct{}
 
 // Descriptor names the rule and the facts it consumes.
 func (Analyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "deprecated-commands", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}}
+	return analyzer.Descriptor{Name: "deprecated-commands", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}}
 }
 
 // Analyze maps each command to its declaring document. A command whose text

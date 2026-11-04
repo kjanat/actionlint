@@ -3,19 +3,19 @@
 The Go library has one module, `actionlint.kjanat.dev/v2`, with packages for distinct responsibilities. The v2 API
 intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
 
-| Package                                  | Responsibility                                                        |
-| ---------------------------------------- | --------------------------------------------------------------------- |
-| `actionlint.kjanat.dev/v2`               | Convenience `Analyze` entry point                                     |
-| `actionlint.kjanat.dev/v2/analysis`      | Source requests, file/repository discovery and results                |
-| `actionlint.kjanat.dev/v2/analyzer`      | Analyzer input, required facts, registration and returned diagnostics |
-| `actionlint.kjanat.dev/v2/document`      | Workflow/action outlines and structured action references             |
-| `actionlint.kjanat.dev/v2/diagnostic`    | Diagnostics, source positions and suggested edits                     |
-| `actionlint.kjanat.dev/v2/config`        | Configuration values, loading, composition and inspection             |
-| `actionlint.kjanat.dev/v2/config/report` | Value-only configuration reports and inspection provenance            |
-| `actionlint.kjanat.dev/v2/rule`          | Shared rule metadata, categories, examples and capabilities           |
-| `actionlint.kjanat.dev/v2/source`        | Document revision, node identity and structural address               |
-| `actionlint.kjanat.dev/v2/resolver`      | Optional dependency resolver contract and provenance                  |
-| `actionlint.kjanat.dev/v2/syntax`        | Workflow syntax model and parser                                      |
+| Package                                  | Responsibility                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| `actionlint.kjanat.dev/v2`               | Convenience `Analyze` entry point                                           |
+| `actionlint.kjanat.dev/v2/analysis`      | Source requests, file/repository discovery and results                      |
+| `actionlint.kjanat.dev/v2/analyzer`      | Analyzer input, required input kinds, registration and returned diagnostics |
+| `actionlint.kjanat.dev/v2/document`      | Workflow/action outlines and structured action references                   |
+| `actionlint.kjanat.dev/v2/diagnostic`    | Diagnostics, source positions and suggested edits                           |
+| `actionlint.kjanat.dev/v2/config`        | Configuration values, loading, composition and inspection                   |
+| `actionlint.kjanat.dev/v2/config/report` | Value-only configuration reports and inspection provenance                  |
+| `actionlint.kjanat.dev/v2/rule`          | Shared rule metadata, categories, examples and capabilities                 |
+| `actionlint.kjanat.dev/v2/source`        | Document revision, node identity and structural address                     |
+| `actionlint.kjanat.dev/v2/resolver`      | Optional dependency resolver contract and provenance                        |
+| `actionlint.kjanat.dev/v2/syntax`        | Workflow syntax model and parser                                            |
 
 `config/report` defines `Report`, `Inspection`, `Origin` and `Warning`. The existing names in `config` alias those exact
 types.
@@ -86,20 +86,20 @@ type Analyzer interface {
 }
 ```
 
-A descriptor names the analyzer and declares required facts: source content, declared run scripts, resolved mapping
-names, scripts invoked through composite action calls, or runtime execution facts. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
+A descriptor names the analyzer and declares `RequiredInputs`: source content, declared run scripts, resolved mapping
+names, scripts invoked through composite action calls, runtime execution details, or dependencies. Each registration can supply JSON options. The host rejects unsupported or unavailable input kinds before invocation.
 Scripts expose the declared shell, or an empty value when omitted. Mapping entries classify keys as known, unknown or
 invalid and associate them with source text and evaluation status. `Complete` indicates whether all mapping names are
 statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
 
 `Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path`;
-findings for such a script name that path. With the `invocations` fact, `Script.Occurrence` identifies the execution
+findings for such a script name that path. With the `invocations` input, `Script.Occurrence` identifies the execution
 and its complete ancestry in `Input.CallGraph`. Declare `invocations` when requesting call-site data. Resolve the
 occurrence's `Owner` through `CallGraph.Call` for the calling step, `uses` reference and depth. Entry-owned scripts
 and action inputs have `Owner == CallGraph.Entry().ID`; `Call` reports not-found for that entry ID. Repeated calls
 share a declaration reference while retaining distinct occurrence IDs.
 `Script.Spans` map script text back to the declaring document and `Script.Position` resolves a line and column,
-reporting false for text without a source. With the `execution` fact, `Script.Runtime` carries the effective shell and
+reporting false for text without a source. With the `execution` input, `Script.Runtime` carries the effective shell and
 working directory, each with an explicit known flag. The host collects these facts only when a registered analyzer
 requires them.
 
@@ -155,7 +155,7 @@ those references inlined and the tool providers of the selected plugins added.
 | `Error`, diagnostic output fields                          | `diagnostic.Diagnostic`                                                         |
 | `Config`, `ParseConfig`, `ReadConfigFile`, `InspectConfig` | `config.Config`, `Parse`, `Load`, `Inspect`                                     |
 | `Workflow`, `Job`, `Step`, `Parse`                         | `syntax.Workflow`, `Job`, `Step`, `Parse`                                       |
-| `Rule`, `RuleBase`, `Visitor`, `OnRulesCreated`            | `analyzer.Analyzer` in `Options.Analyzers`, limited to declared facts           |
+| `Rule`, `RuleBase`, `Visitor`, `OnRulesCreated`            | `analyzer.Analyzer` in `Options.Analyzers`, limited to declared inputs          |
 | `Linter`, `AnalysisRenderer`, CLI output selection         | Run the CLI for its presentation contract; consume library diagnostics directly |
 | Expression checker internals, process and cache types      | Internal implementation; no compatibility re-export                             |
 
@@ -242,7 +242,7 @@ offering edits.
 
 Set `analysis.Options.Resolver` to an implementation of `resolver.Resolver` to opt into
 network-backed reference resolution. The provider returns immutable repository/ref
-identity and evidence and must honor cancellation. An optional `resolver.SessionFactory`
+identity and a fetch log and must honor cancellation. An optional `resolver.SessionFactory`
 creates an analysis-scoped cache, including a fresh cache after an editor invalidation.
 
 Webhook payload types are generated from a pinned OpenAPI-derived catalogue and

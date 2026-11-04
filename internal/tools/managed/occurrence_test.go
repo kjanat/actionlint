@@ -29,7 +29,7 @@ func (g *occurrenceGuest) Analyze(_ context.Context, input analyzer.Input) ([]di
 type occurrenceObserver struct{ input analyzer.Input }
 
 func (*occurrenceObserver) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "occurrence-observer", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
+	return analyzer.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
 func (observer *occurrenceObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -137,7 +137,7 @@ func TestDocumentPluginSkipsOtherToolInputsAndUnsupportedShells(t *testing.T) {
 		t.Fatal(err)
 	}
 	route := tools.Registration{
-		Descriptor:   rule.Descriptor{Name: "input-observer", Recommended: true},
+		Descriptor:   rule.Descriptor{Name: "input-observer", Category: "correctness", Recommended: true},
 		ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "javascript"}},
 		Build:        func(tools.Context) (tools.Runner, error) { return observer, nil },
 	}

@@ -27,7 +27,7 @@ impl Guest for Plugin {
             fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: Vec::new(),
-            requires: Vec::new(),
+            required_inputs: Vec::new(),
         }
     }
 

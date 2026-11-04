@@ -18,19 +18,19 @@ type Selection struct {
 	ScriptInfo []rule.Descriptor
 }
 
-func Build(context builtin.Context, action bool) Selection {
+func CreateRules(inputs builtin.RuleInputs, action bool) Selection {
 	var selected Selection
 	for _, descriptor := range builtin.Descriptors() {
 		if descriptor.Build == nil && descriptor.Script == nil || action && !descriptor.SupportsActions {
 			continue
 		}
-		if descriptor.Enabled != nil && !descriptor.Enabled(context) {
+		if descriptor.Enabled != nil && !descriptor.Enabled(inputs) {
 			continue
 		}
 		if descriptor.Build != nil {
-			r := descriptor.Build(context)
+			r := descriptor.Build(inputs)
 			if consumer, ok := r.(interface{ SetRepository(repository.Snapshot) }); ok {
-				consumer.SetRepository(context.Repository)
+				consumer.SetRepository(inputs.Repository)
 			}
 			selected.Rules = append(selected.Rules, r)
 		}
@@ -42,8 +42,8 @@ func Build(context builtin.Context, action bool) Selection {
 	return selected
 }
 
-// Prepare binds invocation configuration and debug output after rule interception.
-func Prepare(rules []workflowvisit.Rule, config *repoconfig.Config, debug io.Writer) {
+// ConfigureRules binds invocation configuration and debug output after rule interception.
+func ConfigureRules(rules []workflowvisit.Rule, config *repoconfig.Config, debug io.Writer) {
 	for _, r := range rules {
 		if configured, ok := r.(interface{ SetConfig(*repoconfig.Config) }); ok && config != nil {
 			configured.SetConfig(config)

@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use wasm_encoder::{Component, CustomSection, RawSection};
 use wasmparser::{Encoding, Parser, Payload, Validator};
 
-use crate::{ANALYZER_CONTRACT_SHA256, ANALYZER_INTERFACE, Descriptor, Fact};
+use crate::{ANALYZER_CONTRACT_SHA256, ANALYZER_INTERFACE, Descriptor, InputKind};
 
 /// Discovery section read by actionlint without starting a guest.
 pub const METADATA_SECTION: &str = "actionlint.plugin";
@@ -87,16 +87,16 @@ impl Package<'_> {
             );
         }
         let rule = self.descriptor;
-        let requires: Vec<_> = rule
-            .requires
+        let required_inputs: Vec<_> = rule
+            .required_inputs
             .iter()
-            .map(|fact| match fact {
-                Fact::Source => "source",
-                Fact::Scripts => "scripts",
-                Fact::Mappings => "mappings",
-                Fact::Invocations => "invocations",
-                Fact::Execution => "execution",
-                Fact::Dependencies => "dependencies",
+            .map(|input_kind| match input_kind {
+                InputKind::Source => "source",
+                InputKind::Scripts => "scripts",
+                InputKind::Mappings => "mappings",
+                InputKind::Invocations => "invocations",
+                InputKind::Execution => "execution",
+                InputKind::Dependencies => "dependencies",
             })
             .collect();
         let examples: Vec<_> = rule
@@ -121,7 +121,7 @@ impl Package<'_> {
             "explanation": rule.explanation,
             "help": rule.help,
             "documentation_url": rule.documentation_url,
-            "requires": requires,
+            "required_inputs": required_inputs,
         });
         if let Some(schema) = options_schema(&rule.options_schema)? {
             descriptor["options_schema"] = schema;
@@ -256,7 +256,7 @@ mod tests {
             fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: options_schema.into(),
             examples: Vec::new(),
-            requires: Vec::new(),
+            required_inputs: Vec::new(),
         }
     }
 
@@ -289,9 +289,15 @@ mod tests {
 
     #[test]
     fn package_identity_is_independent_of_rule_and_display_names() -> Result<()> {
-        let descriptor = descriptor("");
+        let mut descriptor = descriptor("");
+        descriptor.required_inputs = vec![InputKind::Source, InputKind::Dependencies];
         let metadata: serde_json::Value =
             serde_json::from_slice(&package(&descriptor).metadata()?)?;
+        assert_eq!(
+            metadata["descriptor"]["required_inputs"],
+            serde_json::json!(["source", "dependencies"])
+        );
+        assert!(metadata["descriptor"].get("requires").is_none());
         assert_eq!(metadata["id"], "example-package");
         assert_eq!(metadata["name"], "Example");
         assert_eq!(metadata["descriptor"]["name"], descriptor.name);

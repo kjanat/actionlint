@@ -9,6 +9,7 @@ import (
 // Descriptor describes a check independently of its execution backend.
 type Descriptor struct {
 	Name             string          `json:"name"`
+	Aliases          []Alias         `json:"aliases,omitempty"`
 	Description      string          `json:"description"`
 	Category         string          `json:"category"`
 	Subcategory      string          `json:"subcategory"`
@@ -32,5 +33,6 @@ type Example struct {
 func (d Descriptor) Clone() Descriptor {
 	d.OptionsSchema = slices.Clone(d.OptionsSchema)
 	d.Examples = slices.Clone(d.Examples)
+	d.Aliases = slices.Clone(d.Aliases)
 	return d
 }

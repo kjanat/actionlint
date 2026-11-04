@@ -92,8 +92,8 @@ func TestFactAnalyzerEnforcesRegistrationRequirements(t *testing.T) {
 		descriptor analyzer.Descriptor
 		want       string
 	}{
-		{"missing source", analyzer.Descriptor{Name: "source", Requires: []analyzer.Fact{analyzer.Source}}, `requires unavailable fact "source"`},
-		{"unsupported fact", analyzer.Descriptor{Name: "future", Requires: []analyzer.Fact{"future"}}, `requires unsupported fact "future"`},
+		{"missing source", analyzer.Descriptor{Name: "source", RequiredInputs: []analyzer.InputKind{analyzer.Source}}, `requires unavailable fact "source"`},
+		{"unsupported fact", analyzer.Descriptor{Name: "future", RequiredInputs: []analyzer.InputKind{"future"}}, `requires unsupported fact "future"`},
 		{"missing name", analyzer.Descriptor{}, "analyzer name must not be empty"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -156,7 +156,7 @@ func TestFactAnalyzerPreparesRegistrationOnceIncludingNoEligibleUnits(t *testing
 				t.Fatal(err)
 			}
 			for _, valid := range []bool{false, true} {
-				a := &factDescriptorCounter{descriptor: analyzer.Descriptor{Name: "prepared", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}, OptionsSchema: json.RawMessage(`{"required":["mode"]}`)}}
+				a := &factDescriptorCounter{descriptor: analyzer.Descriptor{Name: "prepared", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}, OptionsSchema: json.RawMessage(`{"required":["mode"]}`)}}
 				options := json.RawMessage(`{}`)
 				if valid {
 					options = json.RawMessage(`{"mode":"safe"}`)
@@ -256,14 +256,14 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 			units := batch.Scripts()
 			calls := 0
 			adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{
-				descriptor: analyzer.Descriptor{Name: "selected", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}},
+				descriptor: analyzer.Descriptor{Name: "selected", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}},
 				run: func(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 					unit := units[calls]
 					calls++
 					if err := input.ValidateInvocations(); err != nil {
 						t.Fatal(err)
 					}
-					if input.Reference != batch.CallGraph().Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.Available, []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}) {
+					if input.Reference != batch.CallGraph().Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}) {
 						t.Fatalf("script call invented a source/header or lost unit path: %+v", input)
 					}
 					scripts := slices.Concat(input.Scripts, input.Invoked)
@@ -291,22 +291,22 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 
 func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	batch := twoRunFactBatch(t)
-	want := batch.CallGraph().Snapshot()
+	want := batch.CallGraph().Export()
 	options := json.RawMessage(`{"mode":"safe"}`)
 	calls := 0
 	adapter := FactAnalyzer{Options: options, Analyzer: factAdapterAnalyzer{
 		descriptor: analyzer.Descriptor{Name: "mutating", OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`)},
 		run: func(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
-			if string(input.Options) != `{"mode":"safe"}` || input.Available[0] != analyzer.Scripts || !reflect.DeepEqual(input.CallGraph.Snapshot(), want) {
+			if string(input.Options) != `{"mode":"safe"}` || input.AvailableInputs[0] != analyzer.Scripts || !reflect.DeepEqual(input.CallGraph.Export(), want) {
 				t.Fatalf("earlier analyzer call corrupted current input: %+v", input)
 			}
 			calls++
 			input.Options[0] = '!'
-			input.Available[0] = analyzer.Source
+			input.AvailableInputs[0] = analyzer.Source
 			input.SelectedScripts[0] = "forged"
 			input.Scripts[0].Occurrence.Ancestry[0] = "forged"
 			input.Scripts[0].Spans[0].End = 999
-			snapshot := input.CallGraph.Snapshot()
+			snapshot := input.CallGraph.Export()
 			snapshot.Scripts[0].Ancestry[0] = "forged"
 			return nil, nil
 		},
@@ -314,7 +314,7 @@ func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != 2 {
 		t.Fatalf("mutation interrupted later unit: calls=%d error=%v", calls, err)
 	}
-	if string(options) != `{"mode":"safe"}` || !reflect.DeepEqual(batch.CallGraph().Snapshot(), want) {
+	if string(options) != `{"mode":"safe"}` || !reflect.DeepEqual(batch.CallGraph().Export(), want) {
 		t.Fatal("analyzer mutated parent registration or batch graph")
 	}
 	for index := range batch.Scripts() {
@@ -332,7 +332,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := batch.CallGraph().Snapshot()
+	want := batch.CallGraph().Export()
 	calls := 0
 	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: analyzer.Descriptor{Name: "invoked-mutator"}, run: func(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		calls++
@@ -343,13 +343,13 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 		input.Invoked[0].Occurrence.Ancestry[0] = "changed"
 		input.Invoked[0].Spans[0].End = 999
 		input.SelectedScripts[0] = "changed"
-		input.Available[0] = analyzer.Source
+		input.AvailableInputs[0] = analyzer.Source
 		return nil, nil
 	}}}
 	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts()) {
 		t.Fatalf("invoked analysis failed: calls=%d error=%v", calls, err)
 	}
-	if !reflect.DeepEqual(batch.CallGraph().Snapshot(), want) {
+	if !reflect.DeepEqual(batch.CallGraph().Export(), want) {
 		t.Fatal("invoked analyzer mutated batch graph")
 	}
 	for index := range batch.Scripts() {

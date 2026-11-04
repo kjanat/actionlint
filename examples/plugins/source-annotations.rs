@@ -1,5 +1,7 @@
 use actionlint_extension_api::kjanat::actionlint::source_annotations as annotations;
-use actionlint_extension_api::{Descriptor, Diagnostic, Fact, Guest, Input, Outcome, Position};
+use actionlint_extension_api::{
+    Descriptor, Diagnostic, Guest, Input, InputKind, Outcome, Position,
+};
 
 pub struct Plugin;
 
@@ -10,7 +12,7 @@ impl Guest for Plugin {
             description: "Reports comments attached to supplied scripts".into(),
             category: "correctness".into(),
             subcategory: "scripts".into(),
-            maturity: "experimental".into(),
+            maturity: String::new(),
             provider: "example".into(),
             recommended: false,
             explanation: "Exercises the optional source annotation host import.".into(),
@@ -19,7 +21,7 @@ impl Guest for Plugin {
             fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: Vec::new(),
-            requires: vec![Fact::Scripts, Fact::Invocations],
+            required_inputs: vec![InputKind::Scripts, InputKind::Invocations],
         }
     }
 

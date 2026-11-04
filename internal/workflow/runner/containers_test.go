@@ -26,11 +26,11 @@ func TestContainerTargetsUseProviderEvidence(t *testing.T) {
 			provider := &testProvider{resolve: func(request runnerapi.Request) ([]runnerapi.Answer, error) {
 				answers := make([]runnerapi.Answer, len(request.Selectors))
 				for i := range answers {
-					answers[i] = runnerapi.Answer{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "configured", OS: tc.os}}}, Evidence: runnerapi.Evidence{Dataset: "custom", Scope: request.Scope, Freshness: tc.freshness, Complete: tc.complete}}
+					answers[i] = runnerapi.Answer{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "configured", OS: tc.os}}}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "custom", Scope: request.Scope, Freshness: tc.freshness, Complete: tc.complete}}
 				}
 				return answers, nil
 			}}
-			knowledge, err := Prepare(t.Context(), fixture.Snapshot, nil, runnerapi.Options{Provider: "queues", Providers: []runnerapi.Registration{{Provider: provider, Identity: "test"}}}, "scope")
+			knowledge, err := Prepare(t.Context(), fixture.Snapshot, nil, runnerapi.Options{Provider: "queues", Providers: []runnerapi.Registration{{Provider: provider, ImplementationID: "test"}}}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}

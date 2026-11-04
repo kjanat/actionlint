@@ -48,7 +48,7 @@ func (k *Knowledge) ContainerLimitations(job workflowdecl.JobView) []ContainerTa
 	var targets []ContainerTarget
 	for _, alternative := range alternatives {
 		answer := answers[alternative.AnswerIndex]
-		if alternative.Selector.Incomplete || !answer.Evidence.Complete || answer.Evidence.Freshness != runnerapi.Fresh {
+		if alternative.Selector.Incomplete || !answer.DatasetStatus.Complete || answer.DatasetStatus.Freshness != runnerapi.Fresh {
 			continue
 		}
 		resolved, ok := answer.Resolution.(runnerapi.Resolved)
@@ -63,7 +63,7 @@ func (k *Knowledge) ContainerLimitations(job workflowdecl.JobView) []ContainerTa
 				slim = slim || strings.EqualFold(string(label), "ubuntu-slim")
 			}
 		}
-		slim = slim && answer.Evidence.Dataset == builtinDataset
+		slim = slim && answer.DatasetStatus.DatasetID == builtinDataset
 		unsupported := true
 		for _, candidate := range resolved.Candidates {
 			unsupported = unsupported && (candidate.OS == runnerapi.Windows || candidate.OS == runnerapi.MacOS || slim)

@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-func TestValidFactDiscriminant(t *testing.T) {
-	if !validFactDiscriminant(uint32(len(factNames) - 1)) {
-		t.Fatal("last known fact discriminant rejected")
+func TestValidInputKindDiscriminant(t *testing.T) {
+	if !validInputKindDiscriminant(uint32(len(inputKinds) - 1)) {
+		t.Fatal("last known input kind discriminant rejected")
 	}
-	for _, discriminant := range []uint32{uint32(len(factNames)), math.MaxUint32} {
-		if validFactDiscriminant(discriminant) {
-			t.Fatalf("unknown fact discriminant %d accepted", discriminant)
+	for _, discriminant := range []uint32{uint32(len(inputKinds)), math.MaxUint32} {
+		if validInputKindDiscriminant(discriminant) {
+			t.Fatalf("unknown input kind discriminant %d accepted", discriminant)
 		}
 	}
 }

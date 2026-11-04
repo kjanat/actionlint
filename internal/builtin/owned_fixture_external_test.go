@@ -12,9 +12,9 @@ import (
 )
 
 // configureRule hands cfg to rule the way analysis does, through
-// checks.Prepare. A nil cfg leaves the rule on its defaults.
+// checks.ConfigureRules. A nil cfg leaves the rule on its defaults.
 func configureRule(rule workflowvisit.Rule, cfg *repoconfig.Config) {
-	checks.Prepare([]workflowvisit.Rule{rule}, cfg, nil)
+	checks.ConfigureRules([]workflowvisit.Rule{rule}, cfg, nil)
 }
 
 func ownedWorkflowFixture(workflow *workflowlang.Workflow) workflowdecl.WorkflowView {

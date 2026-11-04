@@ -29,7 +29,7 @@ import (
 type metadataAdmissionAnalyzer struct{ inspect func() error }
 
 func (metadataAdmissionAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "metadata-admission-probe", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (a metadataAdmissionAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {

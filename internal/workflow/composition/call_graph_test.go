@@ -27,10 +27,10 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !slices.Contains(input.Available, analyzer.Invocations) || slices.Contains(input.Available, analyzer.Scripts) != collect || !input.CallGraph.Valid() {
-			t.Fatalf("fact availability disagrees with collection: %+v", input.Available)
+		if !slices.Contains(input.AvailableInputs, analyzer.Invocations) || slices.Contains(input.AvailableInputs, analyzer.Scripts) != collect || !input.CallGraph.Valid() {
+			t.Fatalf("fact availability disagrees with collection: %+v", input.AvailableInputs)
 		}
-		graph := input.CallGraph.Snapshot()
+		graph := input.CallGraph.Export()
 		if input.CallGraph.CallCount() != 1 || input.CallGraph.ScriptCount() != 2 || !input.CallGraph.Complete() {
 			t.Fatalf("uncollected text removed graph facts: %+v", graph)
 		}
@@ -69,7 +69,7 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 					t.Fatalf("mismatched identity accepted: %v", err)
 				}
-				if input.Content != string(content) || input.Path != "ci.yml" || input.Reference != test.reference || len(input.Available) != 1 || input.Available[0] != analyzer.Source || input.CallGraph.Valid() {
+				if input.Content != string(content) || input.Path != "ci.yml" || input.Reference != test.reference || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != analyzer.Source || input.CallGraph.Valid() {
 					t.Fatalf("invalid graph did not retain source-only input: %+v", input)
 				}
 				return
@@ -95,11 +95,11 @@ func TestAnalyzerEmptyCollectedGraphAndUnavailableGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(input.Available, analyzer.Scripts) || !slices.Contains(input.Available, analyzer.Invocations) || !input.CallGraph.Valid() || input.CallGraph.ScriptCount() != 0 {
+	if !slices.Contains(input.AvailableInputs, analyzer.Scripts) || !slices.Contains(input.AvailableInputs, analyzer.Invocations) || !input.CallGraph.Valid() || input.CallGraph.ScriptCount() != 0 {
 		t.Fatal("empty collected graph was treated as unavailable")
 	}
 	input, err = AnalyzerInput(Result{}, "bad.yml", "bad.yml", nil, documentparse.Document{}, nil)
-	if err != nil || input.CallGraph.Valid() || slices.Contains(input.Available, analyzer.Invocations) {
+	if err != nil || input.CallGraph.Valid() || slices.Contains(input.AvailableInputs, analyzer.Invocations) {
 		t.Fatalf("unavailable graph: %+v %v", input, err)
 	}
 }

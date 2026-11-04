@@ -21,7 +21,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 	failure := errors.New("incomplete")
 	options := json.RawMessage(`{"mode":"safe"}`)
 	input := analyzer.Input{
-		Path: "unit.yml", Options: json.RawMessage(`{"unregistered":true}`), Available: []analyzer.Fact{analyzer.Scripts},
+		Path: "unit.yml", Options: json.RawMessage(`{"unregistered":true}`), AvailableInputs: []analyzer.InputKind{analyzer.Scripts},
 		Mappings:     []analyzer.Mapping{{Scope: "original", Entries: []analyzer.Entry{{Name: "original"}}}},
 		Dependencies: []analyzer.Dependency{{Uses: "original"}}, Files: []analyzer.FileSystem{{Path: "/original", FS: fstest.MapFS{}}},
 		SourceRoots: []analyzer.SourceRoot{{Host: "/host", Guest: "/original"}},
@@ -34,7 +34,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 				t.Fatalf("input options replaced registered options: %s", supplied.Options)
 			}
 			supplied.Options[0] = '!'
-			supplied.Available[0] = analyzer.Source
+			supplied.AvailableInputs[0] = analyzer.Source
 			supplied.Scripts[0].Spans[0].End = 99
 			supplied.Scripts[0].Comments[0].Text = "changed"
 			supplied.Scripts[0].Runtime.Shell = "changed"
@@ -47,7 +47,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 			return []diagnostic.Diagnostic{{Message: "partial"}, {Rule: "explicit", Path: "foreign.sh", Explanation: "own", Help: "own", DocumentationURL: "https://example.invalid/own"}}, failure
 		},
 	}}
-	findings, err := RunOne(t.Context(), input, prepareOne(t, registration, input.Available))
+	findings, err := RunOne(t.Context(), input, prepareOne(t, registration, input.AvailableInputs))
 	if !errors.Is(err, failure) || !strings.Contains(err.Error(), `analyzer "single"`) || len(findings) != 2 {
 		t.Fatalf("partial result changed: %v %v", findings, err)
 	}
@@ -57,7 +57,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 	if got := findings[1]; got.Path != "foreign.sh" || got.Rule != "explicit" || got.Explanation != "own" || got.Help != "own" || got.DocumentationURL != "https://example.invalid/own" {
 		t.Fatalf("explicit diagnostic values overwritten: %+v", got)
 	}
-	if string(options) != `{"mode":"safe"}` || string(input.Options) != `{"unregistered":true}` || input.Available[0] != analyzer.Scripts || input.Scripts[0].Spans[0].End != 8 || input.Scripts[0].Comments[0].Text != "# original" || input.Scripts[0].Runtime.Shell != "bash" {
+	if string(options) != `{"mode":"safe"}` || string(input.Options) != `{"unregistered":true}` || input.AvailableInputs[0] != analyzer.Scripts || input.Scripts[0].Spans[0].End != 8 || input.Scripts[0].Comments[0].Text != "# original" || input.Scripts[0].Runtime.Shell != "bash" {
 		t.Fatal("RunOne mutated parent input or registration")
 	}
 	if input.Scripts[0].Text != "echo ok" || input.Mappings[0].Scope != "original" || input.Mappings[0].Entries[0].Name != "original" || input.Dependencies[0].Uses != "original" || input.Files[0].Path != "/original" || input.Files[0].FS == nil || input.SourceRoots[0].Guest != "/original" {
@@ -67,16 +67,16 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 
 func TestForwardedAnalyzerUsesSharedAdmission(t *testing.T) {
 	failure := errors.New("runtime failure")
-	input := analyzer.Input{Path: "workflow.yml", Available: []analyzer.Fact{analyzer.Scripts}, Scripts: []analyzer.Script{{Text: "original"}}}
+	input := analyzer.Input{Path: "workflow.yml", AvailableInputs: []analyzer.InputKind{analyzer.Scripts}, Scripts: []analyzer.Script{{Text: "original"}}}
 	calls := 0
 	prepared, err := PrepareForwarding(analyzer.Registration{Analyzer: testAnalyzer{
-		descriptor: analyzer.Descriptor{Name: "forwarded", Requires: []analyzer.Fact{analyzer.Scripts}},
+		descriptor: analyzer.Descriptor{Name: "forwarded", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}},
 		run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {
 			calls++
 			supplied.Scripts[0].Text = "changed"
 			return []diagnostic.Diagnostic{{Message: "partial"}}, failure
 		},
-	}}, input.Available)
+	}}, input.AvailableInputs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,14 +84,14 @@ func TestForwardedAnalyzerUsesSharedAdmission(t *testing.T) {
 	if !errors.Is(err, failure) || err.Error() != failure.Error() || len(findings) != 1 || findings[0].Rule != "forwarded" || input.Scripts[0].Text != "original" {
 		t.Fatalf("forwarding lost error text, metadata or isolation: %v %v", findings, err)
 	}
-	input.Available = append(input.Available, analyzer.Invocations)
+	input.AvailableInputs = append(input.AvailableInputs, analyzer.Invocations)
 	if _, err := RunOne(t.Context(), input, prepared); !errors.Is(err, analyzer.ErrInvalidCallGraph) || calls != 1 {
 		t.Fatalf("forwarding bypassed graph admission: calls=%d error=%v", calls, err)
 	}
 }
 
 func TestRunInputValidationSurvivesNoRegistrations(t *testing.T) {
-	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Invocations}}
+	input := analyzer.Input{AvailableInputs: []analyzer.InputKind{analyzer.Invocations}}
 	if _, err := Run(t.Context(), input, nil); !errors.Is(err, analyzer.ErrInvalidCallGraph) {
 		t.Fatalf("empty registration list skipped input validation: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestRunInputValidationSurvivesNoRegistrations(t *testing.T) {
 		calls++
 		return nil, nil
 	}}}
-	if _, err := RunOne(t.Context(), input, prepareOne(t, registration, input.Available)); !errors.Is(err, analyzer.ErrInvalidCallGraph) || calls != 0 {
+	if _, err := RunOne(t.Context(), input, prepareOne(t, registration, input.AvailableInputs)); !errors.Is(err, analyzer.ErrInvalidCallGraph) || calls != 0 {
 		t.Fatalf("RunOne skipped input validation: calls=%d error=%v", calls, err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
@@ -135,7 +135,7 @@ func TestRunOneDoesNotStartAnalysisAfterPreparationCancellation(t *testing.T) {
 	}
 }
 
-func prepareOne(t *testing.T, registration analyzer.Registration, available []analyzer.Fact) PreparedRegistration {
+func prepareOne(t *testing.T, registration analyzer.Registration, available []analyzer.InputKind) PreparedRegistration {
 	t.Helper()
 	prepared, err := Prepare(registration, available)
 	if err != nil {
@@ -148,19 +148,19 @@ func TestPrepareValidatesRegistration(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		registration analyzer.Registration
-		available    []analyzer.Fact
+		available    []analyzer.InputKind
 		want         string
 	}{
 		{name: "nil analyzer", want: "nil analyzer registration"},
 		{name: "typed nil analyzer", registration: analyzer.Registration{Analyzer: (*testAnalyzer)(nil)}, want: "nil analyzer registration"},
 		{name: "empty name", registration: analyzer.Registration{Analyzer: testAnalyzer{}}, want: "name must not be empty"},
-		{name: "unsupported requirement", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "future", Requires: []analyzer.Fact{"future"}}}}, want: `requires unsupported fact "future"`},
-		{name: "unavailable requirement", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "source", Requires: []analyzer.Fact{analyzer.Source}}}}, want: `requires unavailable fact "source"`},
+		{name: "unsupported requirement", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "future", RequiredInputs: []analyzer.InputKind{"future"}}}}, want: `requires unsupported input kind "future"`},
+		{name: "unavailable requirement", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "source", RequiredInputs: []analyzer.InputKind{analyzer.Source}}}}, want: `requires unavailable input kind "source"`},
 		{name: "invalid options", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "options"}}, Options: json.RawMessage("{")}, want: `analyzer "options" options:`},
 		{name: "schema mismatch", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "options", OptionsSchema: json.RawMessage(`{"required":["mode"]}`)}}, Options: json.RawMessage(`{}`)}, want: `analyzer "options" options:`},
 		{name: "invalid schema", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "options", OptionsSchema: json.RawMessage("{")}}}, want: `analyzer "options" options:`},
-		{name: "unsupported available", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "facts"}}}, available: []analyzer.Fact{"future"}, want: "unsupported available fact"},
-		{name: "duplicate available", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "facts"}}}, available: []analyzer.Fact{analyzer.Source, analyzer.Source}, want: "duplicate available fact"},
+		{name: "unsupported available", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "facts"}}}, available: []analyzer.InputKind{"future"}, want: "unsupported available input kind"},
+		{name: "duplicate available", registration: analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "facts"}}}, available: []analyzer.InputKind{analyzer.Source, analyzer.Source}, want: "duplicate available input kind"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := Prepare(tc.registration, tc.available); err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -173,11 +173,11 @@ func TestPrepareValidatesRegistration(t *testing.T) {
 func TestRunRejectsUnsupportedAndDuplicateAvailableFactsPerRegistration(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
-		available []analyzer.Fact
+		available []analyzer.InputKind
 		want      string
 	}{
-		{name: "unsupported", available: []analyzer.Fact{"future"}, want: `unsupported available fact "future"`},
-		{name: "duplicate", available: []analyzer.Fact{analyzer.Source, analyzer.Source}, want: `duplicate available fact "source"`},
+		{name: "unsupported", available: []analyzer.InputKind{"future"}, want: `unsupported available input kind "future"`},
+		{name: "duplicate", available: []analyzer.InputKind{analyzer.Source, analyzer.Source}, want: `duplicate available input kind "source"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var calls atomic.Int32
@@ -185,9 +185,9 @@ func TestRunRejectsUnsupportedAndDuplicateAvailableFactsPerRegistration(t *testi
 				calls.Add(1)
 				return nil, nil
 			}}}
-			findings, err := Run(t.Context(), analyzer.Input{Available: tc.available}, []analyzer.Registration{registration, registration})
+			findings, err := Run(t.Context(), analyzer.Input{AvailableInputs: tc.available}, []analyzer.Registration{registration, registration})
 			if len(findings) != 0 || calls.Load() != 0 || err == nil || strings.Count(err.Error(), tc.want) != 2 {
-				t.Fatalf("invalid facts did not surface per registration: calls=%d findings=%v error=%v", calls.Load(), findings, err)
+				t.Fatalf("invalid input kinds did not surface per registration: calls=%d findings=%v error=%v", calls.Load(), findings, err)
 			}
 		})
 	}
@@ -210,9 +210,9 @@ func (a *descriptorCountingAnalyzer) Analyze(ctx context.Context, input analyzer
 
 func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 	options := json.RawMessage(`{"mode":"safe"}`)
-	available := []analyzer.Fact{analyzer.Source, analyzer.Mappings}
+	available := []analyzer.InputKind{analyzer.Source, analyzer.Mappings}
 	calls := 0
-	a := &descriptorCountingAnalyzer{descriptor: analyzer.Descriptor{Name: "original", Requires: []analyzer.Fact{analyzer.Source}, OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`)}, run: func(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	a := &descriptorCountingAnalyzer{descriptor: analyzer.Descriptor{Name: "original", RequiredInputs: []analyzer.InputKind{analyzer.Source}, OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`)}, run: func(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		calls++
 		if string(input.Options) != `{"mode":"safe"}` {
 			t.Fatalf("prepared options changed: %s", input.Options)
@@ -224,10 +224,10 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 	options[0] = '!'
 	available[0] = analyzer.Execution
 	a.descriptor.Name = "changed"
-	a.descriptor.Requires[0] = "future"
+	a.descriptor.RequiredInputs[0] = "future"
 	a.descriptor.OptionsSchema[0] = '!'
 	for range 2 {
-		findings, err := RunOne(t.Context(), analyzer.Input{Available: []analyzer.Fact{analyzer.Mappings, analyzer.Source}}, prepared)
+		findings, err := RunOne(t.Context(), analyzer.Input{AvailableInputs: []analyzer.InputKind{analyzer.Mappings, analyzer.Source}}, prepared)
 		if err != nil || len(findings) != 1 || findings[0].Rule != "original" {
 			t.Fatalf("prepared metadata changed: %v %v", findings, err)
 		}
@@ -235,9 +235,9 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 	if a.calls != 1 || calls != 2 {
 		t.Fatalf("descriptor validated repeatedly: descriptor=%d analyze=%d", a.calls, calls)
 	}
-	for _, facts := range [][]analyzer.Fact{nil, {analyzer.Source}, {analyzer.Source, analyzer.Mappings, analyzer.Dependencies}, {analyzer.Source, analyzer.Source, analyzer.Mappings}} {
-		if _, err := RunOne(t.Context(), analyzer.Input{Available: facts}, prepared); err == nil {
-			t.Fatalf("prepared registration accepted mismatched facts: %v", facts)
+	for _, facts := range [][]analyzer.InputKind{nil, {analyzer.Source}, {analyzer.Source, analyzer.Mappings, analyzer.Dependencies}, {analyzer.Source, analyzer.Source, analyzer.Mappings}} {
+		if _, err := RunOne(t.Context(), analyzer.Input{AvailableInputs: facts}, prepared); err == nil {
+			t.Fatalf("prepared registration accepted mismatched input kinds: %v", facts)
 		}
 	}
 	if _, err := RunOne(t.Context(), analyzer.Input{}, PreparedRegistration{}); err == nil || !strings.Contains(err.Error(), "unprepared") {
@@ -270,11 +270,11 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := analyzer.Input{
-		Reference: entry, CallGraph: graph, Available: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}, SelectedScripts: []analyzer.OccurrenceID{runID, inputID},
+		Reference: entry, CallGraph: graph, AvailableInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}, SelectedScripts: []analyzer.OccurrenceID{runID, inputID},
 		Invoked:      []analyzer.Script{{Reference: occurrences[0].Declaration, Occurrence: occurrences[0], Text: "original", Spans: []analyzer.Span{{End: 8}}, Comments: []analyzer.SourceComment{{Text: "original"}}, Runtime: &analyzer.Runtime{Shell: "bash"}}},
 		ActionInputs: []analyzer.ActionInput{{Reference: occurrences[1].Declaration, Occurrence: occurrences[1], Text: "original", Spans: []analyzer.Span{{End: 8}}, Comments: []analyzer.SourceComment{{Text: "original"}}, Site: analyzer.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 	}
-	want := graph.Snapshot()
+	want := graph.Export()
 	prepared := prepareOne(t, analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "mutator"}, run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		supplied.SelectedScripts[0] = "changed"
 		supplied.Invoked[0].Text = "changed"
@@ -288,14 +288,14 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 		supplied.ActionInputs[0].Comments[0].Text = "changed"
 		supplied.ActionInputs[0].Site.Language = "changed"
 		return nil, nil
-	}}}, input.Available)
+	}}}, input.AvailableInputs)
 	if _, err := RunOne(t.Context(), input, prepared); err != nil {
 		t.Fatal(err)
 	}
 	if input.SelectedScripts[0] != runID || input.Invoked[0].Text != "original" || input.Invoked[0].Occurrence.Ancestry[0] != root || input.Invoked[0].Spans[0].End != 8 || input.Invoked[0].Comments[0].Text != "original" || input.Invoked[0].Runtime.Shell != "bash" {
 		t.Fatal("RunOne mutated invoked script or selection")
 	}
-	if input.ActionInputs[0].Text != "original" || input.ActionInputs[0].Occurrence.Ancestry[0] != root || input.ActionInputs[0].Spans[0].End != 8 || input.ActionInputs[0].Comments[0].Text != "original" || input.ActionInputs[0].Site.Language != "javascript" || !reflect.DeepEqual(graph.Snapshot(), want) {
+	if input.ActionInputs[0].Text != "original" || input.ActionInputs[0].Occurrence.Ancestry[0] != root || input.ActionInputs[0].Spans[0].End != 8 || input.ActionInputs[0].Comments[0].Text != "original" || input.ActionInputs[0].Site.Language != "javascript" || !reflect.DeepEqual(graph.Export(), want) {
 		t.Fatal("RunOne mutated action input or graph")
 	}
 }

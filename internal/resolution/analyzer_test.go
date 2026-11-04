@@ -24,7 +24,7 @@ type fakeResolver struct {
 
 func (f *fakeResolver) Resolve(_ context.Context, r resolver.Request) (resolver.Result, error) {
 	f.requests = append(f.requests, r)
-	result := resolver.Result{Version: 1, Repository: r.Repository, Evidence: json.RawMessage(`{}`), RepositoryID: 42, ObservedAt: "2026-10-16T00:00:00Z"}
+	result := resolver.Result{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: 42, ObservedAt: "2026-10-16T00:00:00Z"}
 	if len(f.ids) >= len(f.requests) {
 		result.RepositoryID = f.ids[len(f.requests)-1]
 	}
@@ -103,7 +103,7 @@ func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request resolv
 	r.started <- struct{}{}
 	select {
 	case <-r.release:
-		return resolver.Result{Version: 1, Repository: request.Repository, RepositoryID: id, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", Evidence: json.RawMessage(`{}`)}, nil
+		return resolver.Result{Version: 1, Repository: request.Repository, RepositoryID: id, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 	case <-ctx.Done():
 		return resolver.Result{}, ctx.Err()
 	}

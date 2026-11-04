@@ -103,10 +103,10 @@ func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
 	records.Budget = InvocationBudget{MaxDepth: 2, MaxCalls: 2, MaxScripts: 2}
 	records.Calls[0].Ancestry = records.Scripts[0].Ancestry[:1]
 	graph := retainGraph(t, records)
-	want := graph.Snapshot()
+	want := graph.Export()
 	records.Calls[0].Ancestry[0] = "changed"
 	records.Scripts[0].Declaration.Node = "changed"
-	snapshot := graph.Snapshot()
+	snapshot := graph.Export()
 	snapshot.Calls[0].Ancestry[0] = "changed"
 	if snapshot.Scripts[0].Ancestry[0] != want.Entry.ID {
 		t.Fatal("snapshot records overlap")
@@ -147,12 +147,12 @@ func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
 	if !reflect.DeepEqual(scripts[1], want.Scripts[1]) {
 		t.Fatal("script page append overwrote neighbor")
 	}
-	if !reflect.DeepEqual(graph.Snapshot(), want) {
+	if !reflect.DeepEqual(graph.Export(), want) {
 		t.Fatal("mutable records changed published graph")
 	}
 	copyHandle := graph
 	graph = CallGraph{}
-	if graph.Valid() || !reflect.DeepEqual(copyHandle.Snapshot(), want) {
+	if graph.Valid() || !reflect.DeepEqual(copyHandle.Export(), want) {
 		t.Fatal("handle assignment mutated shared graph")
 	}
 }
@@ -213,7 +213,7 @@ func TestZeroCallGraph(t *testing.T) {
 	if _, found := graph.Script("unknown"); found {
 		t.Fatal("zero graph has script")
 	}
-	if !reflect.DeepEqual(graph.Snapshot(), CallGraphData{}) {
+	if !reflect.DeepEqual(graph.Export(), CallGraphData{}) {
 		t.Fatal("zero snapshot changed nil slices")
 	}
 	if _, err := graph.CallsPage(0, 1); !errors.Is(err, ErrInvalidCallGraph) {

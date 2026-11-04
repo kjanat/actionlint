@@ -18,7 +18,7 @@ import (
 type suppressionAnalyzer struct{ name string }
 
 func (a suppressionAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: a.name, Category: "security", Requires: []analyzer.Fact{analyzer.Scripts}}
+	return analyzer.Descriptor{Name: a.name, Category: "security", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}
 }
 
 func (a suppressionAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

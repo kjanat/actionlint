@@ -23,7 +23,7 @@ func (p expressionShellProvider) ResolveRunners(_ context.Context, request runne
 		if p.shell != "" {
 			resolution = runner.Resolved{Candidates: []runner.Candidate{{Name: "test", OS: runner.Linux, DefaultShell: p.shell}}}
 		}
-		answers[i] = runner.Answer{Resolution: resolution, Evidence: runner.Evidence{Dataset: "test", Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}
+		answers[i] = runner.Answer{Resolution: resolution, DatasetStatus: runner.DatasetStatus{DatasetID: "test", Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}
 	}
 	return answers, nil
 }
@@ -61,7 +61,7 @@ func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
 			options := application.Options{Runners: runner.Options{
 				Target: "github", Provider: "expression-shell", Scope: "test",
 				Snapshot:  runner.Snapshot{Scope: "test", Freshness: runner.Fresh, Complete: true},
-				Providers: []runner.Registration{{Identity: "test", Provider: expressionShellProvider{shell: tc.providerShell}}},
+				Providers: []runner.Registration{{ImplementationID: "test", Provider: expressionShellProvider{shell: tc.providerShell}}},
 			}}
 			result, err := application.Analyze(t.Context(), options, []workspace.Source{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
 			if err != nil {

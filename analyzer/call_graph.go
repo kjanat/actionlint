@@ -263,7 +263,7 @@ func (graph CallGraph) ValidateOccurrence(actual ScriptOccurrence) error {
 	return nil
 }
 
-func (graph CallGraph) Snapshot() CallGraphData {
+func (graph CallGraph) Export() CallGraphData {
 	if !graph.Valid() {
 		return CallGraphData{}
 	}

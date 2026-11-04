@@ -176,7 +176,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				if err := renderer.Render(io.Discard, render.Prepare(*result)); err != nil {
+				if err := renderer.Render(io.Discard, render.FromAnalysis(*result)); err != nil {
 					b.Fatal(err)
 				}
 				if len(result.Diagnostics) > 0 {
@@ -229,7 +229,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if err := renderer.Render(io.Discard, render.Prepare(*result)); err != nil {
+		if err := renderer.Render(io.Discard, render.FromAnalysis(*result)); err != nil {
 			b.Fatal(err)
 		}
 		if len(result.Diagnostics) == 0 {

@@ -91,7 +91,7 @@ import {spawnSync} from 'node:child_process';
 export default defineDocumentProvider({
  id:'author/callback',version:'1.0.0',name:'Callback',description:'Standalone callback fixture',license:'MIT',repository:'https://github.com/publisher/plugin',
  rule:{name:'callback-fixture',description:'Callback fixture',category:'correctness',subcategory:'workflow',maturity:'stable',provider:'callback-fixture'},
- documentKinds:['workflow'],requires:['source','dependencies'],env_passthrough:['PATH'],
+ documentKinds:['workflow'],requiredInputs:['source','dependencies'],env_passthrough:['PATH'],
  check(request){const child=spawnSync('node',['--version'],{encoding:'utf8'});if(child.error||child.status!==0)throw new Error('child interpreter unavailable');return [{filename:request.filename,code:'SDKCB',message:JSON.stringify({source:request.source,kind:request.kind,config:request.config,dependencies:request.dependencies,path:process.env.PATH,childVersion:child.stdout.trim()}),location:{row:1,column:1}}];}
 });`, module)
 	for name, content := range map[string]string{"package.json": `{"name":"actionlint-callback-example","version":"1.0.0","type":"module"}`, "actionlint.plugin.ts": definition} {
@@ -138,7 +138,7 @@ export default defineDocumentProvider({
 		t.Fatal(err)
 	}
 	dependency := analyzer.Dependency{Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: diagnostic.Position{Line: 6, Column: 15}, End: diagnostic.Position{Line: 6, Column: 30}}
-	input := analyzer.Input{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: source.YAML, Available: []analyzer.Fact{analyzer.Source, analyzer.Dependencies}, Dependencies: []analyzer.Dependency{dependency}}
+	input := analyzer.Input{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: source.YAML, AvailableInputs: []analyzer.InputKind{analyzer.Source, analyzer.Dependencies}, Dependencies: []analyzer.Dependency{dependency}}
 	findings, err := checker.Analyze(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)

@@ -12,7 +12,7 @@ func TestAnalysisEmptyDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, result := range []render.CheckResult{render.Prepare(result.Analysis).CheckResult(), render.Prepare((&analysisResult{}).Analysis).CheckResult(), render.NewCheckResult(3)} {
+	for _, result := range []render.CheckResult{render.FromAnalysis(result.Analysis).CheckResult(), render.FromAnalysis((&analysisResult{}).Analysis).CheckResult(), render.NewCheckResult(3)} {
 		data, err := json.Marshal(result)
 		if err != nil {
 			t.Fatal(err)

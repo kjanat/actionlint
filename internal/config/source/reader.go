@@ -112,7 +112,7 @@ func readErrorOf(err error) readError {
 }
 
 func (r *Reader) readHTTPS(ctx context.Context, name string) ([]byte, error) {
-	ctx = network.WithOperation(ctx, network.Operation{Purpose: "remote-config", Priority: network.Required})
+	ctx = network.WithRequestOptions(ctx, network.RequestOptions{Purpose: "remote-config", Priority: network.Required})
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, name, nil)
 	if err != nil {
 		return nil, err

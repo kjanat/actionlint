@@ -19,19 +19,19 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 	return executor.Run(ctx, input, registrations)
 }
 
-// Prepare validates a registration once for an exact set of available facts.
-func Prepare(registration analyzer.Registration, available []analyzer.Fact) (PreparedRegistration, error) {
+// Prepare validates a registration once for an exact set of available input kinds.
+func Prepare(registration analyzer.Registration, available []analyzer.InputKind) (PreparedRegistration, error) {
 	return executor.Prepare(registration, available)
 }
 
 // PrepareForwarding admits a transparent adapter's implementation through the
 // same executor while retaining its runtime error text.
-func PrepareForwarding(registration analyzer.Registration, available []analyzer.Fact) (PreparedRegistration, error) {
+func PrepareForwarding(registration analyzer.Registration, available []analyzer.InputKind) (PreparedRegistration, error) {
 	return executor.PrepareForwarding(registration, available)
 }
 
 // RunOne isolates one invocation of a prepared registration, retaining partial
-// findings and cancellation. Input facts must match the set validated by Prepare.
+// findings and cancellation. Input kinds must match the set validated by Prepare.
 func RunOne(ctx context.Context, input analyzer.Input, registration PreparedRegistration) ([]diagnostic.Diagnostic, error) {
 	return executor.RunOne(ctx, input, registration)
 }

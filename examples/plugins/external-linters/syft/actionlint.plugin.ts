@@ -27,7 +27,7 @@ export default defineDocumentProvider({
 	license: 'Apache-2.0',
 	repository: 'https://github.com/kjanat/actionlint',
 	documentKinds: ['workflow', 'action'],
-	requires: ['source'],
+	requiredInputs: ['source'],
 	env_passthrough: ['PATH', 'SystemRoot', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'HOME', 'USERPROFILE'],
 	resources: ['directory'],
 	rule: {

@@ -4,7 +4,7 @@ wit_bindgen::generate!({
 });
 
 use exports::kjanat::actionlint::analyzer::{
-    Descriptor, Diagnostic, Fact, Guest, Input, Outcome, Position,
+    Descriptor, Diagnostic, Guest, Input, InputKind, Outcome, Position,
 };
 use kjanat::actionlint::host::log;
 
@@ -12,7 +12,10 @@ struct Plugin;
 
 impl Guest for Plugin {
     fn describe() -> Descriptor {
-        assert!(kjanat::actionlint::invocation_context::describe().is_err(), "graph leaked into describe");
+        assert!(
+            kjanat::actionlint::invocation_context::describe().is_err(),
+            "graph leaked into describe"
+        );
         Descriptor {
             description: "Component analyzer".into(),
             category: "security".into(),
@@ -27,7 +30,7 @@ impl Guest for Plugin {
             options_schema: "{}".into(),
             examples: vec![],
             name: descriptor_name(),
-            requires: descriptor_facts(),
+            required_inputs: descriptor_required_inputs(),
         }
     }
 
@@ -57,11 +60,11 @@ fn descriptor_name() -> String {
     }
 }
 
-fn descriptor_facts() -> Vec<Fact> {
+fn descriptor_required_inputs() -> Vec<InputKind> {
     if cfg!(feature = "oversized-descriptor-values") {
-        (0..262_145).map(|_| Fact::Scripts).collect()
+        (0..262_145).map(|_| InputKind::Scripts).collect()
     } else {
-        vec![Fact::Scripts]
+        vec![InputKind::Scripts]
     }
 }
 
@@ -216,22 +219,36 @@ fn inspect_graph(input: &Input) -> Result<Vec<Diagnostic>, String> {
             log(&format!("script:{}:{}", script.id, script.owner));
         }
     }
-    if !graph::calls(summary.calls, 1)?.is_empty() || !graph::scripts(summary.scripts, 1)?.is_empty()
-        || graph::calls(0, 0).is_ok() || graph::scripts(0, 257).is_ok()
-        || graph::call_by_id("unknown")?.is_some() || graph::script_by_id(&summary.entry.id)?.is_some() {
+    if !graph::calls(summary.calls, 1)?.is_empty()
+        || !graph::scripts(summary.scripts, 1)?.is_empty()
+        || graph::calls(0, 0).is_ok()
+        || graph::scripts(0, 257).is_ok()
+        || graph::call_by_id("unknown")?.is_some()
+        || graph::script_by_id(&summary.entry.id)?.is_some()
+    {
         return Err("graph boundary violation".into());
     }
     let supplied = input.scripts.len() + input.invoked.len() + input.action_inputs.len();
     if let Some(selected) = &input.selected_scripts {
-        if selected.len() != supplied { return Err("text selection changed".into()); }
+        if selected.len() != supplied {
+            return Err("text selection changed".into());
+        }
     }
     for script in input.scripts.iter().chain(&input.invoked) {
-        let id = script.occurrence.as_ref().ok_or("script occurrence missing")?;
+        let id = script
+            .occurrence
+            .as_ref()
+            .ok_or("script occurrence missing")?;
         let occurrence = graph::script_by_id(id)?.ok_or("supplied occurrence missing")?;
-        if occurrence.declaration.document != script.reference.document || occurrence.declaration.node != script.reference.node {
+        if occurrence.declaration.document != script.reference.document
+            || occurrence.declaration.node != script.reference.node
+        {
             return Err("declaration changed across boundary".into());
         }
     }
-    log(&format!("graph:{}:{}:{}:{}", summary.entry.id, summary.calls, summary.scripts, supplied));
+    log(&format!(
+        "graph:{}:{}:{}:{}",
+        summary.entry.id, summary.calls, summary.scripts, supplied
+    ));
     Ok(Vec::new())
 }

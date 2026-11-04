@@ -17,10 +17,10 @@ func (exampleTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return &http.Response{StatusCode: http.StatusNoContent, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(""))}, nil
 }
 
-func ExampleSession() {
-	ctx, requests := network.Ensure(context.Background())
-	ctx = network.WithOperation(ctx, network.Operation{Purpose: "dependency", Priority: network.Required})
-	client := &http.Client{Transport: network.Transport(exampleTransport{})}
+func ExampleRequestTracker() {
+	ctx, requests := network.TrackRequests(context.Background())
+	ctx = network.WithRequestOptions(ctx, network.RequestOptions{Purpose: "dependency", Priority: network.Required})
+	client := &http.Client{Transport: network.TrackHTTPRequests(exampleTransport{})}
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.org/artifact", nil)
 	if err != nil {
 		panic(err)
@@ -30,8 +30,8 @@ func ExampleSession() {
 		panic(err)
 	}
 	response.Body.Close()
-	for _, group := range requests.Snapshot().Groups {
-		fmt.Println(group.Host, group.Authentication, group.Kind, group.Attempts)
+	for _, group := range requests.Statistics().Requests {
+		fmt.Println(group.Host, group.Credentials, group.RequestKind, group.Attempts)
 	}
-	// Output: example.org no http 1
+	// Output: example.org absent http 1
 }

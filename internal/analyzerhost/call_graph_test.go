@@ -30,13 +30,13 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := analyzer.Input{Reference: ref, CallGraph: graph, Available: []analyzer.Fact{analyzer.Invocations, analyzer.Scripts}, Invoked: []analyzer.Script{{Reference: records.Scripts[0].Declaration, Occurrence: records.Scripts[0]}}}
+	input := analyzer.Input{Reference: ref, CallGraph: graph, AvailableInputs: []analyzer.InputKind{analyzer.Invocations, analyzer.Scripts}, Invoked: []analyzer.Script{{Reference: records.Scripts[0].Declaration, Occurrence: records.Scripts[0]}}}
 	input.SelectedScripts = []analyzer.OccurrenceID{script}
-	want := graph.Snapshot()
+	want := graph.Export()
 	changed := make(chan struct{})
 	first := testAnalyzer{analyzer.Descriptor{Name: "mutator"}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		in.SelectedScripts[0] = "changed"
-		snapshot := in.CallGraph.Snapshot()
+		snapshot := in.CallGraph.Export()
 		snapshot.Calls[0].Ancestry[0] = "changed"
 		if snapshot.Scripts[0].Ancestry[0] != root {
 			t.Error("record ancestry storage overlaps")
@@ -60,7 +60,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 		if len(in.SelectedScripts) != 1 || in.SelectedScripts[0] != script {
 			t.Error("analyzer mutation reached sibling selection")
 		}
-		if !reflect.DeepEqual(in.CallGraph.Snapshot(), want) || !reflect.DeepEqual(in.Invoked[0].Occurrence, want.Scripts[0]) {
+		if !reflect.DeepEqual(in.CallGraph.Export(), want) || !reflect.DeepEqual(in.Invoked[0].Occurrence, want.Scripts[0]) {
 			t.Error("analyzer mutation reached sibling input")
 		}
 		return nil, nil
@@ -68,7 +68,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	if _, err := Run(t.Context(), input, []analyzer.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(graph.Snapshot(), want) || input.SelectedScripts[0] != script {
+	if !reflect.DeepEqual(graph.Export(), want) || input.SelectedScripts[0] != script {
 		t.Fatal("analyzer mutation changed published graph")
 	}
 }

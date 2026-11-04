@@ -13,7 +13,7 @@ import (
 type actionSourceReferenceProbe struct{ path string }
 
 func (actionSourceReferenceProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "action-source-reference", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (p actionSourceReferenceProbe) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {

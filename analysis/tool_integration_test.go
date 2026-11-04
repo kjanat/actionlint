@@ -49,7 +49,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 }
 
 func (a *integratedAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: a.tool, Provider: "arbitrary-fork", OptionsSchema: a.schema, Requires: []analyzer.Fact{analyzer.Scripts}}
+	return analyzer.Descriptor{Name: a.tool, Category: "correctness", Provider: "arbitrary-fork", OptionsSchema: a.schema, RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}
 }
 
 func (a *integratedAnalyzer) ToolIntegration() *analyzer.ToolIntegration {

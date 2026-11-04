@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
 	"actionlint.kjanat.dev/v2/internal/tools/provider/configschema"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -91,6 +93,7 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	}
 	groups = append(groups, rules.Groups()[d.Category])
 	var explicit Setting
+	var explicitLevel Level
 	for _, group := range groups {
 		// Category baselines select stable checks only. Nursery checks need
 		// an individual enable or the invocation's experimental switch.
@@ -106,10 +109,13 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 		// default, the level.
 		if setting, found := canonicalSetting(group, d.Name); found {
 			explicit = setting
+			if setting.Level() != "" && setting.Level() != "default" {
+				explicitLevel = setting.Level()
+			}
 		}
 	}
-	if explicit.Level() != "" && explicit.Level() != "default" {
-		level = explicit.Level()
+	if explicitLevel != "" {
+		level = explicitLevel
 	}
 	if d.Nursery() && p.Experimental != nil && !*p.Experimental {
 		level = "off"
@@ -121,7 +127,7 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 }
 
 func DiagnosticLevel(cfg *Config, name string) Level {
-	name = rule.CanonicalName(name)
+	name = rulecatalog.ResolveAlias(name)
 	if cfg != nil {
 		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled || disabled(cfg.Lint.Rules.Disable, name) {
 			return "off"
@@ -138,7 +144,23 @@ func DiagnosticLevel(cfg *Config, name string) Level {
 
 // ResolveRules projects presets and explicit rule settings into an effective configuration.
 // Registered descriptors participate in selection without loading analyzer implementations.
-func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) (*Config, error) {
+func ResolveRules(p Presets, config *Config, descriptors ...rule.Descriptor) (*Config, error) {
+	registrations := make([]RuleRegistration, len(descriptors))
+	for i, descriptor := range descriptors {
+		registrations[i] = RuleRegistration{Descriptor: descriptor}
+	}
+	return ResolveRegisteredRules(p, config, registrations...)
+}
+
+// RuleRegistration identifies a rule and, for a selected tool integration, the
+// bundled tool whose descriptor it replaces. Ordinary analyzers leave ReplacesTool empty.
+type RuleRegistration struct {
+	Descriptor   rule.Descriptor
+	ReplacesTool string
+}
+
+// ResolveRegisteredRules binds descriptors with their validated tool roles.
+func ResolveRegisteredRules(p Presets, config *Config, registrations ...RuleRegistration) (*Config, error) {
 	if config == nil && !p.Strict && p.Experimental == nil && len(registrations) == 0 {
 		return nil, nil
 	}
@@ -154,11 +176,12 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) (
 	for i := range descriptors {
 		descriptors[i].Group = descriptors[i].Category
 	}
-	for _, descriptor := range registrations {
+	for _, registration := range registrations {
+		descriptor := registration.Descriptor
 		if descriptor.Name == "" || strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, " \t\r\n") {
 			return nil, fmt.Errorf("invalid rule name %q", descriptor.Name)
 		}
-		if canonical := rule.CanonicalName(descriptor.Name); canonical != descriptor.Name {
+		if canonical := rulecatalog.ResolveAlias(descriptor.Name); canonical != descriptor.Name {
 			return nil, fmt.Errorf("registered rule %q conflicts with existing alias for %q", descriptor.Name, canonical)
 		}
 		if seen[descriptor.Name] {
@@ -166,7 +189,7 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) (
 		}
 		seen[descriptor.Name] = true
 		if !rule.ValidCategory(descriptor.Category) {
-			return nil, fmt.Errorf("rule %q has invalid category %q; expected correctness, suspicious, security, or conventions", descriptor.Name, descriptor.Category)
+			return nil, fmt.Errorf("rule %q has invalid category %q; expected one of %s", descriptor.Name, descriptor.Category, strings.Join(rule.Categories(), ", "))
 		}
 		if descriptor.Maturity != "" && descriptor.Maturity != "stable" && descriptor.Maturity != "nursery" {
 			return nil, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
@@ -180,10 +203,11 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) (
 		for i := range descriptors {
 			if descriptors[i].Name == descriptor.Name {
 				_, bundled := toolProviders()[descriptor.Name]
-				if !bundled || descriptor.Provider != descriptors[i].Provider || descriptor.Category != descriptors[i].Category {
+				if !bundled || registration.ReplacesTool == "" || registration.ReplacesTool != descriptor.Name {
 					return nil, fmt.Errorf("registered rule %q conflicts with existing rule from provider %q", descriptor.Name, descriptors[i].Provider)
 				}
 				descriptors[i].Descriptor = descriptor
+				descriptors[i].Group = descriptor.Category
 				replaced = true
 				break
 			}
@@ -235,7 +259,7 @@ func bindSettings(config *Config, descriptors []Rule, registered map[string]bool
 		}
 	}
 	for _, lint := range lints {
-		if lint.Rules.Preset != "" && !slices.Contains([]Preset{"all", "none", "recommended"}, lint.Rules.Preset) {
+		if lint.Rules.Preset != "" && !lint.Rules.Preset.Valid() {
 			return fmt.Errorf("invalid rule preset %q", lint.Rules.Preset)
 		}
 		groups := lint.Rules.Groups()
@@ -244,12 +268,12 @@ func bindSettings(config *Config, descriptors []Rule, registered map[string]bool
 			if group.Level() != "" && !group.Level().Valid() {
 				return fmt.Errorf("invalid level %q in lint.rules.%s", group.Level(), category)
 			}
-			if group.Preset() != "" && !slices.Contains([]Preset{"all", "none", "recommended"}, group.Preset()) {
+			if group.Preset() != "" && !group.Preset().Valid() {
 				return fmt.Errorf("invalid preset %q in lint.rules.%s", group.Preset(), category)
 			}
 			names := map[string]string{}
 			for spelling, setting := range group.Rules() {
-				name := rule.CanonicalName(spelling)
+				name := rulecatalog.ResolveAlias(spelling)
 				if previous, duplicate := names[name]; duplicate {
 					return fmt.Errorf("duplicate rule aliases %q and %q in lint.rules.%s", previous, spelling, category)
 				}
@@ -288,7 +312,7 @@ func bindSettings(config *Config, descriptors []Rule, registered map[string]bool
 }
 
 func disabled(names []string, name string) bool {
-	return slices.ContainsFunc(names, func(disabled string) bool { return rule.CanonicalName(disabled) == name })
+	return slices.ContainsFunc(names, func(disabled string) bool { return rulecatalog.ResolveAlias(disabled) == name })
 }
 
 func validateRegisteredOptions(descriptor Rule, setting Setting) error {

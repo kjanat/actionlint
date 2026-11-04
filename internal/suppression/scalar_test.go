@@ -3,17 +3,19 @@ package suppression
 import (
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
 	for _, value := range []string{"\"first\n    body_marker\"", "'first\n    body_marker'", "first\n    body_marker"} {
 		t.Run(value, func(t *testing.T) {
 			source := "# actionlint:ignore-next-line expression\n- {run: " + value + ", shell: bash}\n- run: sibling\n"
-			directives, invalid := Parse([]byte(source), []string{"expression"})
+			directives, invalid := Parse([]byte(source), []string{"expression"}, rule.Names{})
 			if len(invalid) != 0 {
 				t.Fatal(invalid)
 			}
-			result, _ := Evaluate(directives, nil)
+			result, _ := Evaluate(directives, nil, rule.Names{})
 			if !result.Suppresses("expression", 3, 3) || result.Suppresses("expression", 4, 4) {
 				t.Fatalf("flow scalar suppression must end before sibling: %+v", directives)
 			}
@@ -46,11 +48,11 @@ func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
 					}
 				}
 				input = strings.ReplaceAll(input, "\n", ending)
-				directives, invalid := Parse([]byte(input), []string{"expression"})
+				directives, invalid := Parse([]byte(input), []string{"expression"}, rule.Names{})
 				if len(invalid) != 0 {
 					t.Fatal(invalid)
 				}
-				result, _ := Evaluate(directives, nil)
+				result, _ := Evaluate(directives, nil, rule.Names{})
 				if !result.Suppresses("expression", body, body) || result.Suppresses("expression", sibling, sibling) {
 					t.Fatalf("scalar body should be ignored without swallowing sibling: %+v", directives)
 				}

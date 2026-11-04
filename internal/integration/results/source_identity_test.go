@@ -14,7 +14,7 @@ import (
 type identityCapture struct{ input analyzer.Input }
 
 func (*identityCapture) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "identity-capture", Requires: []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Dependencies}}
+	return analyzer.Descriptor{Name: "identity-capture", RequiredInputs: []analyzer.InputKind{analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Dependencies}}
 }
 
 func (c *identityCapture) Analyze(_ context.Context, input analyzer.Input) ([]diagmodel.Diagnostic, error) {

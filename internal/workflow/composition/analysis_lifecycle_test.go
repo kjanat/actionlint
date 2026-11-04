@@ -67,10 +67,10 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 		parsed := documentparse.Workflow("ci.yml", []byte(content))
 		input, err := AnalyzerInput(Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 		if parsed.Facts != nil {
-			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.Available) != 1 || input.Content != content {
+			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)
 			}
-		} else if err != nil || len(input.Available) != 1 || input.Content != content {
+		} else if err != nil || len(input.AvailableInputs) != 1 || input.Content != content {
 			t.Fatalf("failed parse lost source-only analysis: %+v %v", input, err)
 		}
 	}

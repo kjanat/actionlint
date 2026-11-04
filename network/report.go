@@ -4,26 +4,26 @@ package network
 
 import "time"
 
-// Kind separates HTTP API requests, artifact traffic and Git operations.
-type Kind string
+// RequestKind separates HTTP API requests, artifact traffic and Git operations.
+type RequestKind string
 
 const (
-	HTTP      Kind = "http"
-	REST      Kind = "rest"
-	GraphQL   Kind = "graphql"
-	Git       Kind = "git"
-	OCI       Kind = "oci"
-	Delegated Kind = "delegated"
+	HTTP      RequestKind = "http"
+	REST      RequestKind = "rest"
+	GraphQL   RequestKind = "graphql"
+	Git       RequestKind = "git"
+	OCI       RequestKind = "oci"
+	Delegated RequestKind = "delegated"
 )
 
-// Authentication describes credentials supplied, not proof of an authenticated
-// identity. External processes have unknown authentication without a receipt.
-type Authentication string
+// CredentialStatus describes credentials supplied, not proof of an authenticated
+// identity. External processes have unknown credential status without a request report.
+type CredentialStatus string
 
 const (
-	Anonymous             Authentication = "no"
-	Credentialed          Authentication = "yes"
-	UnknownAuthentication Authentication = "unknown"
+	NoCredentials       CredentialStatus = "absent"
+	CredentialsProvided CredentialStatus = "provided"
+	CredentialsUnknown  CredentialStatus = "unknown"
 )
 
 // Priority distinguishes dependency acquisition, optional enrichment and quota
@@ -36,50 +36,50 @@ const (
 	Control    Priority = "control"
 )
 
-// Operation identifies why a request is needed. Cost is an upper bound in the
+// RequestOptions identifies why a request is needed. QuotaCost is an upper bound in the
 // server's quota units; zero means unknown. REST requests default to one unit.
-type Operation struct {
+type RequestOptions struct {
 	// Purpose is a fixed label such as plugin-registry, never a URL or ref value.
-	Purpose  string
-	Priority Priority
-	Kind     Kind
-	Resource string
-	Cost     uint64
+	Purpose     string
+	Priority    Priority
+	RequestKind RequestKind
+	QuotaPool   string
+	QuotaCost   uint64
 }
 
-// Group combines operations with the same host, credential status, protocol and purpose.
+// RequestCounts combines operations with the same host, credential status, protocol and purpose.
 // Attempts counts transport calls, including failures before a response arrives.
-// Blocked counts rejected requests or batch checks, never transport attempts.
-// Opaque lookups are not HTTP counts.
-type Group struct {
-	Lookups          uint64         `json:"lookups"`
-	Host             string         `json:"host"`
-	Authentication   Authentication `json:"authenticated"`
-	Kind             Kind           `json:"kind"`
-	Purpose          string         `json:"purpose"`
-	Priority         Priority       `json:"priority"`
-	Attempts         uint64         `json:"attempts"`
-	Failures         uint64         `json:"failures"`
-	Blocked          uint64         `json:"blocked"`
-	CacheHits        uint64         `json:"cache_hits"`
-	OpaqueLookups    uint64         `json:"opaque_lookups"`
-	ProviderReported uint64         `json:"provider_reported"`
+// QuotaRejections counts rejected requests or batch checks, never transport attempts.
+// UnreportedResolverCalls counts resolver calls without a complete request report.
+type RequestCounts struct {
+	ResolverCalls            uint64           `json:"resolver_calls"`
+	Host                     string           `json:"host"`
+	Credentials              CredentialStatus `json:"credentials"`
+	RequestKind              RequestKind      `json:"request_kind"`
+	Purpose                  string           `json:"purpose"`
+	Priority                 Priority         `json:"priority"`
+	Attempts                 uint64           `json:"attempts"`
+	Failures                 uint64           `json:"failures"`
+	QuotaRejections          uint64           `json:"quota_rejections"`
+	CacheHits                uint64           `json:"cache_hits"`
+	UnreportedResolverCalls  uint64           `json:"unreported_resolver_calls"`
+	ResolverReportedAttempts uint64           `json:"resolver_reported_attempts"`
 }
 
-// Quota is the latest conservative observation for a host and credential scope.
+// QuotaStatus is the latest conservative observation for a host and credential scope.
 // Independent credentials can produce separate rows with identical public labels.
 // No credential fingerprint is published.
-type Quota struct {
-	Host           string         `json:"host"`
-	Authentication Authentication `json:"authenticated"`
-	Resource       string         `json:"resource"`
-	Remaining      *uint64        `json:"remaining"`
-	Reserved       uint64         `json:"reserved"`
-	Reset          *time.Time     `json:"reset"`
-	RetryAfter     *time.Time     `json:"retry_after,omitempty"`
+type QuotaStatus struct {
+	Host        string           `json:"host"`
+	Credentials CredentialStatus `json:"credentials"`
+	Pool        string           `json:"pool"`
+	Remaining   *uint64          `json:"remaining"`
+	Reserved    uint64           `json:"reserved"`
+	Reset       *time.Time       `json:"reset"`
+	RetryAfter  *time.Time       `json:"retry_after,omitempty"`
 }
 
-type Report struct {
-	Groups []Group `json:"groups"`
-	Quotas []Quota `json:"quotas"`
+type Statistics struct {
+	Requests []RequestCounts `json:"requests"`
+	Quotas   []QuotaStatus   `json:"quotas"`
 }

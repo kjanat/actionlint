@@ -1,5 +1,5 @@
 use actionlint_extension_api::{
-    Descriptor, Diagnostic, Example, Fact, Guest, Input, Outcome, Position, Script,
+    Descriptor, Diagnostic, Example, Guest, Input, InputKind, Outcome, Position, Script,
 };
 
 const DOWNLOADERS: &[&str] = &["curl", "wget"];
@@ -27,7 +27,7 @@ impl Guest for Plugin {
                 after: "run: ./reviewed-install.sh".into(),
             }],
             name: "pipe-to-shell".to_string(),
-            requires: vec![Fact::Scripts, Fact::Invocations],
+            required_inputs: vec![InputKind::Scripts, InputKind::Invocations],
         }
     }
 

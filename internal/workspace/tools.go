@@ -7,14 +7,13 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 // ToolOptions asks providers which tools are possible for a resolved configuration.
 type ToolOptions struct {
-	Presets     repoconfig.Presets
-	Descriptors []rule.Descriptor
-	Required    func(*repoconfig.Config, *repoconfig.Config, bool) ([]string, error)
+	Presets       repoconfig.Presets
+	Registrations []repoconfig.RuleRegistration
+	Required      func(*repoconfig.Config, *repoconfig.Config, bool) ([]string, error)
 }
 type ExternalToolRequirements map[string]bool
 
@@ -86,7 +85,7 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 		if err != nil {
 			return needed, err
 		}
-		config, err = repoconfig.ResolveRules(options.Presets, config, options.Descriptors...)
+		config, err = repoconfig.ResolveRegisteredRules(options.Presets, config, options.Registrations...)
 		if err != nil {
 			return needed, err
 		}

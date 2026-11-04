@@ -454,7 +454,7 @@ providers require `--runner-provider`. Configuration labels stay configuration, 
 
 Results distinguish resolved candidates, no match, unknown and not applicable. An operational error fails analysis;
 independent checks still run, while runner-dependent inference stays unknown. No match produces a `runner-label`
-finding only with fresh, complete evidence. Stale, missing or incomplete evidence cannot prove an invalid label or a default shell.
+finding only with a fresh, complete dataset. A stale, missing or incomplete dataset cannot prove an invalid label or a default shell.
 Explicit shells and container defaults take precedence over provider defaults.
 
 Configured self-hosted labels form an allowlist. A literal label matching that list with `windows` as a complete,
@@ -466,7 +466,7 @@ For custom environments that do not follow that convention, select a runner prov
 The provider returns each candidate's explicit `os` and `default-shell`; these shared facts drive shell validation,
 script analysis and path interpretation. The snapshot format belongs to that provider, as the queue example below
 illustrates. The built-in GitHub provider does not interpret another provider's snapshot. A runner's OS does not
-select a script linter: script engines declare the shells they analyze. Missing or stale provider evidence leaves
+select a script linter: script engines declare the shells they analyze. Missing or stale runner data leaves
 the default shell unknown; an explicit workflow shell still takes precedence.
 
 ### Custom GitHub runner inventory
@@ -509,7 +509,7 @@ Optional facts are `os` (`linux`, `macos`, `windows`, `unknown`), `architecture`
 `case_sensitivity` (`sensitive`, `insensitive`, `unknown`), `sh_is_dash` and `ephemeral`.
 Declare each fact explicitly; Windows alone does not establish that PowerShell is installed.
 Unknown JSON fields and invalid enum values are errors. An empty `runners` array asserts no eligible runners
-only when the snapshot is fresh and complete. Missing, stale or incomplete evidence cannot establish a default shell
+only when the snapshot is fresh and complete. Missing, stale or incomplete runner data cannot establish a default shell
 or reject a selector. Freshness and completeness are assertions supplied by whoever maintains the inventory.
 
 Selection is explicit: supplying a snapshot alone does not replace the default `github` provider. The `snapshot`
@@ -567,16 +567,16 @@ and completeness cannot be upgraded by a provider.
 
 The public `runner` package exposes the provider contract and `analysis.Options.Runners` selects it. Loaded components
 expose `HasAnalyzer`, `HasRunnerProvider`, `RunnerDescriptor` and `ArtifactDigest`. Register providers in
-`runner.Options.Providers`. `analysis.Result.RunnerEvidence` records provider/artifact identity, target, scope,
-snapshot digest and answers. Its dependency identity includes the request, implementation, configuration and returned
-evidence; consumers caching findings must include it. Changing a catalogue or artifact invalidates that identity.
+`runner.Options.Providers`. `analysis.Result.RunnerResults` records the implementation ID, target, scope,
+snapshot digest and answers. Each report's `CacheKey` covers the request, implementation, configuration and returned
+answers; consumers caching findings must include it. Changing a catalogue or artifact invalidates that key.
 Provider trust is selected by the host; the Wasm sandbox does not prove answers true.
 
 ### Cross-runtime verification
 
 [`tools/runner-host`](../tools/runner-host) is a finite Wasmtime parity probe scoped to the runner-provider interface.
 It uses the unchanged WIT and the exact same component bytes as the Go host. Build and compare normalized answers,
-source positions, candidate guarantees, evidence and artifact digest:
+source positions, candidate guarantees, dataset status and artifact digest:
 
 ```sh
 cargo build --locked --manifest-path tools/runner-host/Cargo.toml --target-dir target/runner-host

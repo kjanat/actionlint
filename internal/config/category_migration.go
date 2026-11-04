@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -37,7 +40,7 @@ func migrateRuleAliases(root *yaml.Node) (*yaml.Node, bool, error) {
 		group := cloneMapping(original)
 		for j := 0; j+1 < len(original.Content); j += 2 {
 			name, setting := original.Content[j].Value, original.Content[j+1]
-			canonical := rule.CanonicalName(name)
+			canonical := rulecatalog.ResolveAlias(name)
 			if canonical == "forbidden-suppression" {
 				if options := field(setting, "options"); options != nil && options.Kind == yaml.MappingNode {
 					if list := field(options, "rules"); list != nil {
@@ -77,9 +80,9 @@ func migrateRuleAliases(root *yaml.Node) (*yaml.Node, bool, error) {
 		entries := *ignores
 		entries.Content = slices.Clone(ignores.Content)
 		for i, entry := range entries.Content {
-			if name := field(entry, "rule"); name != nil && name.Tag == "!!str" && rule.CanonicalName(name.Value) != name.Value {
+			if name := field(entry, "rule"); name != nil && name.Tag == "!!str" && rulecatalog.ResolveAlias(name.Value) != name.Value {
 				updated := *name
-				updated.Value = rule.CanonicalName(name.Value)
+				updated.Value = rulecatalog.ResolveAlias(name.Value)
 				entry = cloneMapping(entry)
 				setField(entry, "rule", &updated)
 				entries.Content[i] = entry
@@ -101,6 +104,11 @@ func migrateRuleAliases(root *yaml.Node) (*yaml.Node, bool, error) {
 		}
 		setField(next, "overrides", &entries)
 	}
+	if !changed {
+		// Origins are keyed by node identity. A no-op migration must not
+		// replace nodes carrying overlay or reset origins.
+		return root, false, nil
+	}
 	return next, changed, nil
 }
 
@@ -112,9 +120,9 @@ func renameSelectorList(node *yaml.Node) (*yaml.Node, bool) {
 	next.Content = slices.Clone(node.Content)
 	changed := false
 	for i, name := range node.Content {
-		if name.Tag == "!!str" && rule.CanonicalName(name.Value) != name.Value {
+		if name.Tag == "!!str" && rulecatalog.ResolveAlias(name.Value) != name.Value {
 			updated := *name
-			updated.Value = rule.CanonicalName(name.Value)
+			updated.Value = rulecatalog.ResolveAlias(name.Value)
 			next.Content[i] = &updated
 			changed = true
 		}
@@ -171,7 +179,7 @@ func migrateRuleCategories(root *yaml.Node, registrations []rule.Descriptor) (*y
 		setField(rules, category, group)
 		return nil
 	}
-	for _, category := range []string{"style", "policy", "external", "nursery", "plugins", "correctness", "suspicious", "security", "conventions"} {
+	for _, category := range append([]string{"style", "policy", "external", "nursery", "plugins"}, lintconfig.Categories()...) {
 		node := field(rules, category)
 		if node == nil {
 			continue

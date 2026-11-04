@@ -16,17 +16,17 @@ import (
 
 type failedActionFactProbe struct {
 	name  string
-	fact  analyzer.Fact
+	fact  analyzer.InputKind
 	calls *atomic.Int32
 }
 
 func (probe failedActionFactProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: probe.name, Category: "correctness", Requires: []analyzer.Fact{probe.fact}}
+	return analyzer.Descriptor{Name: probe.name, Category: "correctness", RequiredInputs: []analyzer.InputKind{probe.fact}}
 }
 
 func (probe failedActionFactProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	probe.calls.Add(1)
-	if len(input.Scripts)+len(input.ActionInputs)+len(input.Invoked) != 0 || len(input.Available) != 1 || input.Available[0] != analyzer.Source {
+	if len(input.Scripts)+len(input.ActionInputs)+len(input.Invoked) != 0 || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != analyzer.Source {
 		return nil, errors.New("failed action leaked executable analyzer facts")
 	}
 	return nil, nil
@@ -47,8 +47,8 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 			return []byte(`{"comments":[]}`), nil
 		}}}),
 	}, []workspace.Source{{Path: "action.yml", Content: source}})
-	if result == nil || err == nil || err.Error() != `analyzer "failed-action-scripts" requires unavailable fact "scripts"` {
-		t.Fatal("failed action lost its result or explicit unavailable-fact error", err)
+	if result == nil || err == nil || err.Error() != `analyzer "failed-action-scripts" requires unavailable input kind "scripts"` {
+		t.Fatal("failed action lost its result or explicit unavailable input error", err)
 	}
 	if calls.Load() != 0 || scriptCalls.Load() != 0 || sourceCalls.Load() != 1 {
 		t.Fatal("recovered source declarations reached script analysis")

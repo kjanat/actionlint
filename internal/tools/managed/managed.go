@@ -64,6 +64,8 @@ func withAnalyzer(base tools.Registration, p backend.Provider, guest analyzer.An
 	route := documentRoute{name: name, capabilities: m.Capabilities}
 	next := base
 	next.Descriptor = guest.Descriptor().Descriptor
+	integration := *integrator.ToolIntegration()
+	next.ToolIntegration = &integration
 	next.NeedsProcess = func(ctx context.Context, cfg, project *config.Config, composite bool) (bool, error) {
 		if !base.Enabled(tools.Context{Config: cfg}) {
 			return false, nil
@@ -389,7 +391,7 @@ func (r documentRunner) validateDocumentBatch(batch tools.Batch) error {
 
 func (r documentRunner) input(script tools.Script, graph analyzer.CallGraph) analyzer.Input {
 	input := r.context.Document
-	input.Available = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution}
+	input.AvailableInputs = []analyzer.InputKind{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution}
 	input.CallGraph = graph
 	input.SelectedScripts = []analyzer.OccurrenceID{script.Fact.Occurrence.ID}
 	if graph.Valid() && script.Fact.Occurrence.Owner == graph.Entry().ID {

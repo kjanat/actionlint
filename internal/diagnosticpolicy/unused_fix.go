@@ -2,6 +2,7 @@ package diagnosticpolicy
 
 import (
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	"actionlint.kjanat.dev/v2/internal/suppression"
 	"actionlint.kjanat.dev/v2/source"
@@ -13,7 +14,7 @@ func UnusedSuppressionFix(content []byte, path string, ref source.Reference, pos
 	if path == "" || ref.Document == "" || ref.Revision != sourceid.Digest(content) {
 		return diagnostic.Fix{}, false
 	}
-	edit, ok := suppression.Remove(content, position, rules, allowed)
+	edit, ok := suppression.Remove(content, position, rules, allowed, rulecatalog.Names())
 	if !ok {
 		return diagnostic.Fix{}, false
 	}

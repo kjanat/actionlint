@@ -31,13 +31,13 @@ func (cmd *Command) Main(args []string) int {
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
-	ctx, accounting := network.Ensure(ctx)
+	ctx, accounting := network.TrackRequests(ctx)
 	app := newCommandApp(ctx, cmd)
 	defer func() {
 		if app.opts.networkStats {
 			entry := struct {
-				Network network.Report `json:"network"`
-			}{accounting.Snapshot()}
+				Network network.Statistics `json:"network"`
+			}{accounting.Statistics()}
 			if err := json.NewEncoder(app.streams.Stderr).Encode(entry); err != nil {
 				status = 3
 			}

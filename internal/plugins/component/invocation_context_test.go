@@ -247,7 +247,7 @@ func TestInvocationContextPageBoundsAndNilEndPages(t *testing.T) {
 
 func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 	t.Run("stop", func(t *testing.T) {
-		base := invocationContextGraph(t).Snapshot()
+		base := invocationContextGraph(t).Export()
 		callID := analyzer.OccurrenceID(strings.Repeat("b", 64))
 		callSite := source.Reference{Document: base.Entry.Reference.Document, Revision: base.Entry.Reference.Revision, Node: "call"}
 		outcome, err := analyzer.NewCallOutcome(analyzer.ExpandedCall{Target: source.Reference{Document: callSite.Document, Revision: callSite.Revision, Node: "body"}})
@@ -267,7 +267,7 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 		}
 	})
 	t.Run("entry interruption", func(t *testing.T) {
-		base := invocationContextGraph(t).Snapshot()
+		base := invocationContextGraph(t).Export()
 		base.EntryInterruption = analyzer.Present(analyzer.Interruption{Reason: analyzer.OperationalFailure, Detail: "entry expansion failed"})
 		base.Complete = false
 		graph, err := analyzer.NewCallGraph(base)
@@ -292,7 +292,7 @@ func TestInvocationContextRejectsBudgetOverflow(t *testing.T) {
 		"scripts": func(data *analyzer.CallGraphData) { data.Budget.MaxScripts = int(beyondU32) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			data := invocationContextGraph(t).Snapshot()
+			data := invocationContextGraph(t).Export()
 			set(&data)
 			graph, err := analyzer.NewCallGraph(data)
 			if err != nil {

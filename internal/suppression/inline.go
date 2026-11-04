@@ -20,11 +20,11 @@ type Directive struct {
 
 // Parse reads real YAML comments, recovers comments in malformed documents, and
 // validates directives against the caller's ordered rule catalogue.
-func Parse(source []byte, rules []string) ([]Directive, []diagnostic.Diagnostic) {
+func Parse(source []byte, rules []string, names rule.Names) ([]Directive, []diagnostic.Diagnostic) {
 	var directives []Directive
 	var findings []diagnostic.Diagnostic
 	for _, comment := range collectInlineSuppressionComments(source) {
-		directive, err := parseInlineSuppression(comment, rules)
+		directive, err := parseInlineSuppression(comment, rules, names)
 		if err != nil {
 			findings = append(findings, *err)
 		} else {
@@ -34,7 +34,7 @@ func Parse(source []byte, rules []string) ([]Directive, []diagnostic.Diagnostic)
 	return directives, findings
 }
 
-func parseInlineSuppression(comment inlineSuppressionComment, allowed []string) (Directive, *diagnostic.Diagnostic) {
+func parseInlineSuppression(comment inlineSuppressionComment, allowed []string, index rule.Names) (Directive, *diagnostic.Diagnostic) {
 	invalid := func(message string) *diagnostic.Diagnostic {
 		return &diagnostic.Diagnostic{Start: comment.pos, Rule: "inline-suppression", Message: message}
 	}
@@ -83,7 +83,7 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string) 
 			names = []string{""}
 		}
 		for _, name := range names {
-			if !slices.ContainsFunc(allowed, func(candidate string) bool { return rule.CanonicalName(candidate) == rule.CanonicalName(name) }) {
+			if !slices.ContainsFunc(allowed, func(candidate string) bool { return index.ResolveAlias(candidate) == index.ResolveAlias(name) }) {
 				allowed := slices.Clone(allowed)
 				for i, rule := range allowed {
 					allowed[i] = strconv.Quote(rule)
@@ -108,28 +108,29 @@ type lineRange struct{ first, last int }
 // Invocation/source ownership is supplied by the host before calling Suppresses.
 type Evaluation struct {
 	ranges map[string][]lineRange
+	names  rule.Names
 }
 
 // Evaluate applies restrictions to already validated directives. A nil policy
 // permits every exception. It returns the permitted exceptions and the policy
 // diagnostics for prohibited ones. Grammar diagnostics are evaluated by the same
 // ranges as analyzer diagnostics; policy diagnostics are emitted after filtering.
-func Evaluate(directives []Directive, policy func(string) Decision) (Evaluation, []diagnostic.Diagnostic) {
-	result := Evaluation{ranges: make(map[string][]lineRange)}
+func Evaluate(directives []Directive, policy func(string) Decision, names rule.Names) (Evaluation, []diagnostic.Diagnostic) {
+	result := Evaluation{ranges: make(map[string][]lineRange), names: names}
 	var reports []diagnostic.Diagnostic
 	for _, directive := range directives {
 		var prohibited []string
 		for _, name := range directive.Rules {
 			decision := Decision{Suppress: true}
 			if policy != nil {
-				decision = policy(rule.CanonicalName(name))
+				decision = policy(names.ResolveAlias(name))
 			}
 			if decision.Report {
 				prohibited = append(prohibited, name)
 			}
 			if decision.Suppress {
-				canonical := rule.CanonicalName(name)
-				result.ranges[canonical] = append(result.ranges[canonical], lineRange{directive.First, directive.Last})
+				current := names.ResolveAlias(name)
+				result.ranges[current] = append(result.ranges[current], lineRange{directive.First, directive.Last})
 			}
 		}
 		if len(prohibited) != 0 {
@@ -141,5 +142,5 @@ func Evaluate(directives []Directive, policy func(string) Decision) (Evaluation,
 
 // Suppresses reports whether a finding's origin overlaps an allowed exception.
 func (e Evaluation) Suppresses(ruleName string, first, last int) bool {
-	return slices.ContainsFunc(e.ranges[rule.CanonicalName(ruleName)], func(lines lineRange) bool { return first <= lines.last && last >= lines.first })
+	return slices.ContainsFunc(e.ranges[e.names.ResolveAlias(ruleName)], func(lines lineRange) bool { return first <= lines.last && last >= lines.first })
 }

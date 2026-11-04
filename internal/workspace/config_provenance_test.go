@@ -126,7 +126,7 @@ config-secrets: [SECRET]
 }
 
 func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
-	const pointer = "/lint/rules/policy/require-commit-hash/level"
+	const pointer = "/lint/rules/security/unpinned-reference/level"
 	for _, value := range []string{"true", "false", "null"} {
 		t.Run(value, func(t *testing.T) {
 			root := t.TempDir()

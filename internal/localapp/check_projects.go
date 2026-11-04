@@ -107,7 +107,7 @@ func combineProjectResult(combined, result *application.Result) error {
 	combined.Diagnostics = append(combined.Diagnostics, result.Diagnostics...)
 	combined.Sources = append(combined.Sources, result.Sources...)
 	combined.ActionMetadata = append(combined.ActionMetadata, result.ActionMetadata...)
-	combined.RunnerEvidence = append(combined.RunnerEvidence, result.RunnerEvidence...)
+	combined.RunnerResults = append(combined.RunnerResults, result.RunnerResults...)
 	combined.Documents = append(combined.Documents, result.Documents...)
 	combined.Configurations = append(combined.Configurations, result.Configurations...)
 	combined.Inputs = append(combined.Inputs, result.Inputs...)

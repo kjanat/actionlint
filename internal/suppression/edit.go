@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
+	rulemodel "actionlint.kjanat.dev/v2/rule"
 	sourcemodel "actionlint.kjanat.dev/v2/source"
 )
 
@@ -18,7 +19,7 @@ import (
 // policy and bind the returned edit to the captured source revision and path.
 // Existing directives retain their selectors and reason; scalar content is
 // targeted through its YAML declaration, never by inserting script comments.
-func Edit(content []byte, line int, rule string, allowed []string) (diagnostic.Edit, bool) {
+func Edit(content []byte, line int, rule string, allowed []string, names rulemodel.Names) (diagnostic.Edit, bool) {
 	if !slices.Contains(allowed, rule) {
 		return diagnostic.Edit{}, false
 	}
@@ -26,7 +27,7 @@ func Edit(content []byte, line int, rule string, allowed []string) (diagnostic.E
 	if line < 1 || line > document.LineCount() {
 		return diagnostic.Edit{}, false
 	}
-	directives, invalid := Parse(content, allowed)
+	directives, invalid := Parse(content, allowed, names)
 	for _, directive := range directives {
 		if line < directive.First || line > directive.Last {
 			continue
@@ -44,7 +45,7 @@ func Edit(content []byte, line int, rule string, allowed []string) (diagnostic.E
 			replacement += " -- " + directive.Reason
 		}
 		edit := diagnostic.Edit{Start: directive.Position, End: diagnostic.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
-		return validateEdit(content, edit, line, rule, allowed, invalid, 0)
+		return validateEdit(content, edit, line, rule, allowed, invalid, 0, names)
 	}
 	target := line
 	if root, err := codec.Parse(content); err == nil {
@@ -73,18 +74,18 @@ func Edit(content []byte, line int, rule string, allowed []string) (diagnostic.E
 	indent := text[:len(text)-len(strings.TrimLeft(text, " \t"))]
 	point := diagnostic.Position{Line: target, Column: 1}
 	edit := diagnostic.Edit{Start: point, End: point, Replacement: indent + "# actionlint-ignore-next-line " + rule + ending}
-	return validateEdit(content, edit, line, rule, allowed, invalid, 1)
+	return validateEdit(content, edit, line, rule, allowed, invalid, 1, names)
 }
 
 // Validate through the suppression parser itself, including malformed YAML
 // recovery. An edit must suppress its target without hiding grammar errors.
-func validateEdit(content []byte, edit diagnostic.Edit, line int, rule string, allowed []string, previous []diagnostic.Diagnostic, shift int) (diagnostic.Edit, bool) {
+func validateEdit(content []byte, edit diagnostic.Edit, line int, rule string, allowed []string, previous []diagnostic.Diagnostic, shift int, names rulemodel.Names) (diagnostic.Edit, bool) {
 	first, last, err := sourceposition.Range(content, sourcemodel.YAML, edit.Start, edit.End)
 	if err != nil {
 		return diagnostic.Edit{}, false
 	}
 	updated := string(content[:first]) + edit.Replacement + string(content[last:])
-	directives, invalid := Parse([]byte(updated), allowed)
+	directives, invalid := Parse([]byte(updated), allowed, names)
 	if len(invalid) != len(previous) {
 		return diagnostic.Edit{}, false
 	}
@@ -93,6 +94,6 @@ func validateEdit(content []byte, edit diagnostic.Edit, line int, rule string, a
 			return diagnostic.Edit{}, false
 		}
 	}
-	evaluation, _ := Evaluate(directives, nil)
+	evaluation, _ := Evaluate(directives, nil, names)
 	return edit, evaluation.Suppresses(rule, line+shift, line+shift)
 }

@@ -15,7 +15,7 @@ import (
 type namedFindingAnalyzer string
 
 func (a namedFindingAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: string(a)}
+	return analyzer.Descriptor{Name: string(a), Category: "correctness"}
 }
 
 func (namedFindingAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {

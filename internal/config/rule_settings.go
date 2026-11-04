@@ -3,8 +3,9 @@ package config
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Level controls the severity of a diagnostic.
@@ -41,7 +42,7 @@ func loadOptions(s Setting, dst any) bool {
 // RuleOptions decodes options from the rule's semantic category. It returns
 // nil when the rule has no options. Each call returns a new map.
 func (c *LintRulesConfig) RuleOptions(name string) (map[string]any, error) {
-	name = rule.CanonicalName(name)
+	name = rulecatalog.ResolveAlias(name)
 	category, bound := c.boundCategories[name]
 	if !bound {
 		if descriptor, known := FindRule(name); known {
@@ -68,7 +69,7 @@ func canonicalSetting(group Group, name string) (Setting, bool) {
 		return setting, true
 	}
 	for alias, setting := range group.Rules() {
-		if rule.CanonicalName(alias) == name {
+		if rulecatalog.ResolveAlias(alias) == name {
 			return setting, true
 		}
 	}
@@ -87,7 +88,7 @@ func (c *LintRulesConfig) LegacyGroups() map[string]Group {
 // LegacyGroup identifies a built-in rule's configuration group before semantic
 // categories replaced provider, maturity and policy groups.
 func LegacyGroup(name string) string {
-	name = rule.CanonicalName(name)
+	name = rulecatalog.ResolveAlias(name)
 	if _, bundled := toolProviders()[name]; bundled {
 		return "external"
 	}

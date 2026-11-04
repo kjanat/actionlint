@@ -278,7 +278,7 @@ versioning their implementation types would introduce a compatibility boundary w
 
 `report.Analysis` carries diagnostics, aligned source snapshots, document outlines,
 configuration provenance, consumed paths and rule descriptors. It has no renderer,
-parser-node or process fields. `render.Prepare` constructs presentation values at
+parser-node or process fields. `render.FromAnalysis` constructs presentation values at
 an output boundary. In-memory library calls, file calls, the GitHub Action and the
 Playground all enter through `application`; none constructs a legacy linter.
 

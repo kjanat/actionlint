@@ -57,7 +57,7 @@ jobs:
 		t.Fatal(err)
 	}
 	var out strings.Builder
-	if err := renderer.Render(&out, render.Prepare(*result)); err != nil {
+	if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
 	var findings []render.TemplateFields

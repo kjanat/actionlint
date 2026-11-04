@@ -179,7 +179,7 @@ func (l *loadedPlugins) runnerProviders() []runner.Registration {
 	var registrations []runner.Registration
 	for _, plugin := range l.plugins {
 		if plugin.HasRunnerProvider() {
-			registrations = append(registrations, runner.Registration{Provider: plugin, Identity: plugin.ArtifactDigest()})
+			registrations = append(registrations, runner.Registration{Provider: plugin, ImplementationID: plugin.ArtifactDigest()})
 		}
 	}
 	return registrations

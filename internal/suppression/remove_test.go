@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/rule"
+
 	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	sourcemodel "actionlint.kjanat.dev/v2/source"
 )
@@ -32,11 +34,11 @@ func TestRemoveSuppressionSelectors(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
 				content := []byte(strings.ReplaceAll(tc.source, "\n", ending))
-				directives, invalid := Parse(content, allowed)
+				directives, invalid := Parse(content, allowed, rule.Names{})
 				if len(invalid) != 0 || len(directives) != 1 {
 					t.Fatalf("invalid fixture: %+v %+v", directives, invalid)
 				}
-				edit, ok := Remove(content, directives[0].Position, tc.remove, allowed)
+				edit, ok := Remove(content, directives[0].Position, tc.remove, allowed, rule.Names{})
 				if !ok {
 					t.Fatal("no removal edit")
 				}

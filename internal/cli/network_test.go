@@ -17,12 +17,12 @@ func TestNetworkStatisticsDoNotPolluteDiagnosticJSON(t *testing.T) {
 		t.Fatalf("status=%d stdout=%s stderr=%s", status, &out, &log)
 	}
 	var statistics struct {
-		Network network.Report `json:"network"`
+		Network network.Statistics `json:"network"`
 	}
 	if err := json.Unmarshal(log.Bytes(), &statistics); err != nil {
 		t.Fatal(err)
 	}
-	if statistics.Network.Groups == nil || len(statistics.Network.Groups) != 0 {
+	if statistics.Network.Requests == nil || len(statistics.Network.Requests) != 0 {
 		t.Fatalf("unexpected queries: %+v", statistics)
 	}
 }
@@ -34,7 +34,7 @@ func TestNetworkStatisticsAvailableAcrossCommands(t *testing.T) {
 			command := Command{Stdout: &out, Stderr: &log}
 			status := command.Main([]string{"actionlint", commandName, "--help", "--network-stats"})
 			var statistics struct {
-				Network *network.Report `json:"network"`
+				Network *network.Statistics `json:"network"`
 			}
 			lines := bytes.Split(bytes.TrimSpace(log.Bytes()), []byte("\n"))
 			if err := json.Unmarshal(lines[len(lines)-1], &statistics); err != nil || status != 0 || statistics.Network == nil {

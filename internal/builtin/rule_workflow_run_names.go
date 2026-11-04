@@ -10,7 +10,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-func workflowRunNamesAvailable(c Context) bool {
+func workflowRunNamesAvailable(c RuleInputs) bool {
 	if c.ProjectRoot == "" || c.WorkflowNames == nil {
 		return false
 	}

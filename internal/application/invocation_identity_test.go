@@ -23,7 +23,7 @@ type invocationObservation struct {
 }
 
 func (*invocationCollector) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "invocation-identity", Category: "correctness", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
+	return analyzer.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
 func (c *invocationCollector) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

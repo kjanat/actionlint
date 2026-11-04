@@ -9,14 +9,14 @@ import (
 )
 
 func TestDocumentManifestFactsAndSelectors(t *testing.T) {
-	document := strings.Replace(minimal, `"role": "script"`, `"role": "document", "requires":["source","dependencies"]`, 1)
+	document := strings.Replace(minimal, `"role": "script"`, `"role": "document", "required_inputs":["source","dependencies"]`, 1)
 	document = strings.Replace(document, `"selectors": {"filename": "actionlint.sh"}`, `"selectors":{"documents":["workflow","action"]}`, 1)
 	document = strings.Replace(document, `"preparation": "kjanat:actionlint/shell-preparation@0.2.0"`, `"preparation":"generic"`, 1)
 	manifest, err := provider.Parse([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Role != provider.RoleDocument || len(manifest.Requires) != 2 || manifest.Requires[1] != analyzer.Dependencies || len(manifest.Selectors.Documents) != 2 {
+	if manifest.Role != provider.RoleDocument || len(manifest.RequiredInputs) != 2 || manifest.RequiredInputs[1] != analyzer.Dependencies || len(manifest.Selectors.Documents) != 2 {
 		t.Fatal("document facts or selectors lost", manifest)
 	}
 	for name, invalid := range map[string]string{

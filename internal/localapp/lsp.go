@@ -12,6 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
@@ -231,7 +233,7 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 			captured, exists := result.CapturedSources[targetPath]
 			alias, admitted := preferredAlias(captured.Revision, targetPath)
 			if exists && admitted && captured.Coordinates == source.YAML && captured.CoordinatesAvailable {
-				if edit, ok := suppression.Edit(captured.Content, target.First, d.Rule, allowed); ok {
+				if edit, ok := suppression.Edit(captured.Content, target.First, d.Rule, allowed, rulecatalog.Names()); ok {
 					edit.Path = alias
 					d.Fixes = append(d.Fixes, diagnostic.Fix{
 						Description: "Suppress " + d.Rule + " for this declaration", Applicability: diagnostic.FixSuggested,

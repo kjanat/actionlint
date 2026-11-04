@@ -32,7 +32,7 @@ func (p *orderedEvidenceProvider) ResolveRunners(ctx context.Context, request ru
 			return nil, ctx.Err()
 		}
 	}
-	return []runner.Answer{{Resolution: runner.Unknown{Reason: label}, Evidence: runner.Evidence{Dataset: label, Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}}, nil
+	return []runner.Answer{{Resolution: runner.Unknown{Reason: label}, DatasetStatus: runner.DatasetStatus{DatasetID: label, Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}}, nil
 }
 
 type evidenceCompletionObserver struct {
@@ -42,7 +42,7 @@ type evidenceCompletionObserver struct {
 }
 
 func (*evidenceCompletionObserver) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "evidence-completion", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (o *evidenceCompletionObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -67,7 +67,7 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 		observer := &evidenceCompletionObserver{label: fast, release: release}
 		settings := analysis.Options{
 			WorkingDir: root,
-			Runners:    runner.Options{Target: "order", Providers: []runner.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, Identity: "same-provider"}}},
+			Runners:    runner.Options{Target: "order", Providers: []runner.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
 			Analyzers:  []analyzer.Registration{{Analyzer: observer}},
 		}
 		// a.yml waits until b.yml has been analyzed.
@@ -76,7 +76,7 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 			t.Fatal(err)
 		}
 		var got []string
-		for _, report := range result.RunnerEvidence {
+		for _, report := range result.RunnerResults {
 			got = append(got, report.Path)
 		}
 		if !slices.Equal(got, want) {

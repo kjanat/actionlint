@@ -32,15 +32,15 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name      string
-		available []analyzer.Fact
+		available []analyzer.InputKind
 		selection []analyzer.OccurrenceID
 		wantNil   bool
 	}{
-		{name: "nil", available: []analyzer.Fact{analyzer.Invocations}, wantNil: true},
-		{name: "empty nonnil", available: []analyzer.Fact{analyzer.Invocations, analyzer.Scripts}, selection: []analyzer.OccurrenceID{}},
+		{name: "nil", available: []analyzer.InputKind{analyzer.Invocations}, wantNil: true},
+		{name: "empty nonnil", available: []analyzer.InputKind{analyzer.Invocations, analyzer.Scripts}, selection: []analyzer.OccurrenceID{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			input := analyzer.Input{Reference: entry, Available: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
+			input := analyzer.Input{Reference: entry, AvailableInputs: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
 			registration := analyzer.Registration{Analyzer: testAnalyzer{
 				descriptor: analyzer.Descriptor{Descriptor: rule.Descriptor{Name: "selection-clone"}},
 				run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {

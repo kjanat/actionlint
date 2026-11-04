@@ -1,5 +1,7 @@
 use actionlint_extension_api::exports::kjanat::actionlint::tool_integration;
-use actionlint_extension_api::{Descriptor, Diagnostic, Fact, Guest, Input, Outcome, Position};
+use actionlint_extension_api::{
+    Descriptor, Diagnostic, Guest, Input, InputKind, Outcome, Position,
+};
 
 struct Plugin;
 impl Guest for Plugin {
@@ -18,7 +20,7 @@ impl Guest for Plugin {
             fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),
             examples: Vec::new(),
-            requires: vec![Fact::Scripts],
+            required_inputs: vec![InputKind::Scripts],
         }
     }
     fn analyze(input: Input) -> Outcome {

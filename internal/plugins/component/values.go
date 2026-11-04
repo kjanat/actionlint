@@ -13,24 +13,24 @@ import (
 )
 
 // WIT enum order comes from the generated canonical contract, not a second table.
-var factNames = func() []analyzer.Fact {
-	facts := make([]analyzer.Fact, len(canonical_fact))
-	for i, name := range canonical_fact {
-		facts[i] = analyzer.Fact(name)
+var inputKinds = func() []analyzer.InputKind {
+	facts := make([]analyzer.InputKind, len(canonical_input_kind))
+	for i, name := range canonical_input_kind {
+		facts[i] = analyzer.InputKind(name)
 	}
 	return facts
 }()
 
-var factDiscriminants = func() map[analyzer.Fact]uint32 {
-	values := make(map[analyzer.Fact]uint32, len(factNames))
-	for i, fact := range factNames {
+var inputKindDiscriminants = func() map[analyzer.InputKind]uint32 {
+	values := make(map[analyzer.InputKind]uint32, len(inputKinds))
+	for i, fact := range inputKinds {
 		values[fact] = uint32(i)
 	}
 	return values
 }()
 
-func validFactDiscriminant(discriminant uint32) bool {
-	return uint64(discriminant) < uint64(len(factNames))
+func validInputKindDiscriminant(discriminant uint32) bool {
+	return uint64(discriminant) < uint64(len(inputKinds))
 }
 
 var keyStateDiscriminants = func() map[analyzer.KeyState]uint32 {
@@ -59,10 +59,10 @@ func lowerPosition(p diagnostic.Position) *wacogo.ValRecord {
 	return wacogo.NewValRecord(field("line", lowerU32(p.Line)), field("column", lowerU32(p.Column)))
 }
 
-func lowerFacts(facts []analyzer.Fact) *wacogo.ValList {
+func lowerInputKinds(facts []analyzer.InputKind) *wacogo.ValList {
 	values := make([]wacogo.Val, 0, len(facts))
 	for _, fact := range facts {
-		if discriminant, ok := factDiscriminants[fact]; ok {
+		if discriminant, ok := inputKindDiscriminants[fact]; ok {
 			values = append(values, wacogo.NewValEnum(discriminant))
 		}
 	}
@@ -149,7 +149,7 @@ func lowerInput(input analyzer.Input) *wacogo.ValRecord {
 	return wacogo.NewValRecord(
 		field("reference", lowerReference(input.Reference)), field("path", wacogo.ValString(input.Path)), field("content", wacogo.ValString(input.Content)),
 		field("kind", wacogo.ValString(input.Kind)), field("parse-status", wacogo.ValString(input.ParseStatus)),
-		field("available", lowerFacts(input.Available)), field("options", wacogo.ValString(string(input.Options))),
+		field("available-inputs", lowerInputKinds(input.AvailableInputs)), field("options", wacogo.ValString(string(input.Options))),
 		field("scripts", lowerScripts(input.Scripts)), field("invoked", lowerScripts(input.Invoked)),
 		field("mappings", lowerMappings(input.Mappings)), field("dependencies", lowerDependencies(input.Dependencies)),
 		field("selected-scripts", selected), field("action-inputs", wacogo.NewValListOf(inputs...)),
@@ -225,7 +225,7 @@ func liftDescriptor(v wacogo.Val) (analyzer.Descriptor, error) {
 	if err != nil {
 		return analyzer.Descriptor{}, err
 	}
-	requires, err := liftList(record.Field("requires"), "descriptor requires")
+	requiredInputs, err := liftList(record.Field("required-inputs"), "descriptor required inputs")
 	if err != nil {
 		return analyzer.Descriptor{}, err
 	}
@@ -273,15 +273,15 @@ func liftDescriptor(v wacogo.Val) (analyzer.Descriptor, error) {
 		descriptor.Examples = append(descriptor.Examples, example)
 	}
 
-	for i := range requires.Len() {
-		fact, ok := requires.Get(i).(*wacogo.ValEnum)
+	for i := range requiredInputs.Len() {
+		inputKind, ok := requiredInputs.Get(i).(*wacogo.ValEnum)
 		if !ok {
-			return analyzer.Descriptor{}, liftError{"fact", requires.Get(i)}
+			return analyzer.Descriptor{}, liftError{"input kind", requiredInputs.Get(i)}
 		}
-		if !validFactDiscriminant(fact.Discriminant()) {
-			return analyzer.Descriptor{}, fmt.Errorf("plugin requires unknown fact %d", fact.Discriminant())
+		if !validInputKindDiscriminant(inputKind.Discriminant()) {
+			return analyzer.Descriptor{}, fmt.Errorf("plugin requires unknown input kind %d", inputKind.Discriminant())
 		}
-		descriptor.Requires = append(descriptor.Requires, factNames[fact.Discriminant()])
+		descriptor.RequiredInputs = append(descriptor.RequiredInputs, inputKinds[inputKind.Discriminant()])
 	}
 	return descriptor, nil
 }

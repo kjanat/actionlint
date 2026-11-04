@@ -70,17 +70,17 @@ func Parse(data []byte) (Manifest, error) {
 // validate checks what the schema cannot express.
 func validate(m Manifest) error {
 	if !rule.ValidCategory(m.Rule.Category) {
-		return fmt.Errorf("rule %q has invalid category %q; expected correctness, suspicious, security, or conventions", m.Rule.Name, m.Rule.Category)
+		return fmt.Errorf("rule %q has invalid category %q; expected one of %s", m.Rule.Name, m.Rule.Category, strings.Join(rule.Categories(), ", "))
 	}
-	seenFacts := map[analyzer.Fact]bool{}
-	for _, fact := range m.Requires {
+	seenFacts := map[analyzer.InputKind]bool{}
+	for _, fact := range m.RequiredInputs {
 		if fact != analyzer.Source && fact != analyzer.Dependencies || seenFacts[fact] {
-			return fmt.Errorf("unsupported or duplicate document fact %q", fact)
+			return fmt.Errorf("unsupported or duplicate document input kind %q", fact)
 		}
 		seenFacts[fact] = true
 	}
-	if m.Role != RoleDocument && (len(m.Requires) != 0 || len(m.Selectors.Documents) != 0) {
-		return errors.New("document facts and selectors require the document role")
+	if m.Role != RoleDocument && (len(m.RequiredInputs) != 0 || len(m.Selectors.Documents) != 0) {
+		return errors.New("document input kinds and selectors require the document role")
 	}
 	if m.Role == RoleDocument && (len(m.Selectors.Inputs) != 0 || len(m.Selectors.Shells) != 0) {
 		return errors.New("document providers cannot select script inputs or shells")

@@ -25,7 +25,7 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			prepared, err := Prepare(registration, input.Available)
+			prepared, err := Prepare(registration, input.AvailableInputs)
 			if err != nil {
 				return nil, err
 			}
@@ -35,55 +35,55 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 	return RunTasks(ctx, tasks)
 }
 
-// PreparedRegistration retains private copies of validated registration metadata.
-// Its zero value cannot execute. Analyzer implementations remain responsible for
+// PreparedRegistration stores private copies of validated registration metadata.
+// Its zero value cannot execute. Analyzer implementations are responsible for
 // their own panics and concurrent access to their internal state.
 type PreparedRegistration struct {
 	data *preparedRegistration
 }
 
 type preparedRegistration struct {
-	analyzer   analyzer.Analyzer
-	descriptor analyzer.Descriptor
-	options    []byte
-	available  []analyzer.Fact
-	rawErrors  bool
+	analyzer        analyzer.Analyzer
+	descriptor      analyzer.Descriptor
+	options         []byte
+	availableInputs []analyzer.InputKind
+	rawErrors       bool
 }
 
-// Prepare validates a registration once for an exact set of available facts.
-func Prepare(registration analyzer.Registration, available []analyzer.Fact) (PreparedRegistration, error) {
+// Prepare validates a registration once for an exact set of available input kinds.
+func Prepare(registration analyzer.Registration, available []analyzer.InputKind) (PreparedRegistration, error) {
 	if analyzerref.IsNil(registration.Analyzer) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
 	descriptor := registration.Analyzer.Descriptor()
-	descriptor.Requires = slices.Clone(descriptor.Requires)
+	descriptor.RequiredInputs = slices.Clone(descriptor.RequiredInputs)
 	descriptor.Descriptor = descriptor.Clone()
 	options := slices.Clone(registration.Options)
 	if descriptor.Name == "" {
 		return PreparedRegistration{}, errors.New("analyzer name must not be empty")
 	}
-	facts, err := availableFacts(available)
+	inputKinds, err := validateAvailableInputs(available)
 	if err != nil {
 		return PreparedRegistration{}, err
 	}
 	if err := ValidateOptions(descriptor.OptionsSchema, options); err != nil {
 		return PreparedRegistration{}, fmt.Errorf("analyzer %q options: %w", descriptor.Name, err)
 	}
-	for _, requirement := range descriptor.Requires {
-		if !supportedFact(requirement) {
-			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unsupported fact %q", descriptor.Name, requirement)
+	for _, requirement := range descriptor.RequiredInputs {
+		if !supportedInputKind(requirement) {
+			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unsupported input kind %q", descriptor.Name, requirement)
 		}
-		if !slices.Contains(facts, requirement) {
-			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unavailable fact %q", descriptor.Name, requirement)
+		if !slices.Contains(inputKinds, requirement) {
+			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unavailable input kind %q", descriptor.Name, requirement)
 		}
 	}
-	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Analyzer, descriptor: descriptor, options: options, available: facts}}, nil
+	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Analyzer, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
 }
 
 // PrepareForwarding admits a transparent adapter's implementation through the
-// same executor. Runtime errors retain their existing text so an enclosing
+// same executor. Runtime errors use their existing text so an enclosing
 // invocation can add its own analyzer context exactly once.
-func PrepareForwarding(registration analyzer.Registration, available []analyzer.Fact) (PreparedRegistration, error) {
+func PrepareForwarding(registration analyzer.Registration, available []analyzer.InputKind) (PreparedRegistration, error) {
 	prepared, err := Prepare(registration, available)
 	if err != nil {
 		return PreparedRegistration{}, err
@@ -92,8 +92,8 @@ func PrepareForwarding(registration analyzer.Registration, available []analyzer.
 	return prepared, nil
 }
 
-func supportedFact(fact analyzer.Fact) bool {
-	switch fact {
+func supportedInputKind(kind analyzer.InputKind) bool {
+	switch kind {
 	case analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution, analyzer.Dependencies:
 		return true
 	default:
@@ -101,22 +101,22 @@ func supportedFact(fact analyzer.Fact) bool {
 	}
 }
 
-func availableFacts(available []analyzer.Fact) ([]analyzer.Fact, error) {
-	facts := slices.Clone(available)
-	slices.Sort(facts)
-	for i, fact := range facts {
-		if !supportedFact(fact) {
-			return nil, fmt.Errorf("unsupported available fact %q", fact)
+func validateAvailableInputs(available []analyzer.InputKind) ([]analyzer.InputKind, error) {
+	inputKinds := slices.Clone(available)
+	slices.Sort(inputKinds)
+	for i, kind := range inputKinds {
+		if !supportedInputKind(kind) {
+			return nil, fmt.Errorf("unsupported available input kind %q", kind)
 		}
-		if i > 0 && facts[i-1] == fact {
-			return nil, fmt.Errorf("duplicate available fact %q", fact)
+		if i > 0 && inputKinds[i-1] == kind {
+			return nil, fmt.Errorf("duplicate available input kind %q", kind)
 		}
 	}
-	return facts, nil
+	return inputKinds, nil
 }
 
-// RunOne isolates one invocation of a prepared registration, retaining partial
-// findings and cancellation. Input facts must match the set validated by Prepare.
+// RunOne isolates one invocation of a prepared registration, preserving partial
+// findings and cancellation. Input kinds must match the set validated by Prepare.
 func RunOne(ctx context.Context, input analyzer.Input, registration PreparedRegistration) ([]diagnostic.Diagnostic, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -127,16 +127,16 @@ func RunOne(ctx context.Context, input analyzer.Input, registration PreparedRegi
 	if registration.data == nil {
 		return nil, errors.New("unprepared analyzer registration")
 	}
-	facts, err := availableFacts(input.Available)
+	inputKinds, err := validateAvailableInputs(input.AvailableInputs)
 	if err != nil {
 		return nil, err
 	}
-	if !slices.Equal(facts, registration.data.available) {
-		return nil, errors.New("input available facts differ from prepared registration")
+	if !slices.Equal(inputKinds, registration.data.availableInputs) {
+		return nil, errors.New("input available input kinds differ from prepared registration")
 	}
 	descriptor := registration.data.descriptor
 	supplied := input
-	supplied.Available = slices.Clone(input.Available)
+	supplied.AvailableInputs = slices.Clone(input.AvailableInputs)
 	supplied.SelectedScripts = slices.Clone(input.SelectedScripts)
 	supplied.Options = slices.Clone(registration.data.options)
 	supplied.Scripts = cloneScripts(input.Scripts)

@@ -20,7 +20,7 @@ type invocationAnalyzer struct {
 }
 
 func (*invocationAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "composite-scripts", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
+	return analyzer.Descriptor{Name: "composite-scripts", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
 func (a *invocationAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

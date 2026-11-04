@@ -5,7 +5,9 @@ wit_bindgen::generate!({
     world: "plugin",
 });
 
-use exports::kjanat::actionlint::analyzer::{Descriptor, Diagnostic, Fact, Guest, Input, Outcome};
+use exports::kjanat::actionlint::analyzer::{
+    Descriptor, Diagnostic, Guest, Input, InputKind, Outcome,
+};
 
 struct Plugin;
 
@@ -14,10 +16,10 @@ impl Guest for Plugin {
         Descriptor {
             name: "pinned-actions".into(),
             description: "Pin remote dependencies to full commit hashes".into(),
-            requires: vec![Fact::Dependencies],
+            required_inputs: vec![InputKind::Dependencies],
             category: "security".into(),
             subcategory: "dependencies".into(),
-            maturity: "experimental".into(),
+            maturity: String::new(),
             provider: "example".into(),
             recommended: false,
             explanation: String::new(),

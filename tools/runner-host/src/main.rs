@@ -38,10 +38,10 @@ fn normalize(answer: Answer) -> Value {
         Resolution::Unknown(reason) => ("unknown", Vec::new(), Vec::new(), reason),
         Resolution::NotApplicable => ("not-applicable", Vec::new(), Vec::new(), String::new()),
     };
-    let e = answer.evidence;
+    let status = answer.dataset_status;
     json!({ "Kind": kind, "Candidates": candidates, "Rejections": rejections, "Reason": reason,
-        "Evidence": { "Dataset": e.dataset, "Scope": e.scope, "ObtainedAt": e.obtained_at,
-            "Freshness": match e.freshness { Freshness::Fresh => "fresh", Freshness::Stale => "stale", Freshness::Missing => "missing" }, "Complete": e.complete } })
+        "DatasetStatus": { "DatasetID": status.dataset_id, "Scope": status.scope, "ObtainedAt": status.obtained_at,
+            "Freshness": match status.freshness { Freshness::Fresh => "fresh", Freshness::Stale => "stale", Freshness::Missing => "missing" }, "Complete": status.complete } })
 }
 
 fn main() -> wasmtime::Result<()> {

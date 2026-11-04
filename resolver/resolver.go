@@ -17,8 +17,8 @@ type Request struct {
 	ExpectedRepositoryID uint64 `json:"expected_repository_id,omitempty"`
 }
 
-// Result binds a resolution to immutable content and records the provider's
-// evidence. Tree identities must never be presented as commit identities.
+// Result binds a resolution to immutable content and records the resolver's
+// fetch log. Tree identities must never be presented as commit identities.
 type Result struct {
 	Version      int             `json:"version"`
 	RepositoryID uint64          `json:"repository_id"`
@@ -26,39 +26,40 @@ type Result struct {
 	Commit       string          `json:"commit,omitempty"`
 	Tree         string          `json:"tree,omitempty"`
 	ObservedAt   string          `json:"observed_at"`
-	Evidence     json.RawMessage `json:"evidence"`
+	FetchLog     json.RawMessage `json:"fetch_log"`
 	Error        string          `json:"error,omitempty"`
-	// SelectedObject and SelectedRef retain an action profile's original object
+	// SelectedObject and SelectedRef record an action profile's original object
 	// and exact lookup key. Optional for existing providers; metadata acquisition
-	// cannot infer a named route when this evidence is omitted.
+	// cannot infer a named route when these fields are omitted.
 	SelectedObject string         `json:"selected_object,omitempty"`
 	SelectedRef    string         `json:"selected_ref,omitempty"`
-	Network        *NetworkReport `json:"network,omitempty"`
+	Network        *RequestReport `json:"network,omitempty"`
 }
 
-// NetworkQuery reports actual attempts made by an external resolver. Host is an
-// authority without credentials, paths or queries. Kind is http, rest, graphql,
-// git or oci. Authenticated is yes, no or unknown and describes supplied credentials.
-type NetworkQuery struct {
-	Host          string `json:"host"`
-	Kind          string `json:"kind"`
-	Authenticated string `json:"authenticated"`
-	Count         uint64 `json:"count"`
-	Failures      uint64 `json:"failures"`
+// RequestCounts reports actual attempts made by an external resolver. Host is an
+// authority without credentials, paths or queries. RequestKind is http, rest,
+// graphql, git or oci. Credentials is provided, absent or unknown and describes
+// supplied credentials rather than successful authentication.
+type RequestCounts struct {
+	Host        string `json:"host"`
+	RequestKind string `json:"request_kind"`
+	Credentials string `json:"credentials"`
+	Attempts    uint64 `json:"attempts"`
+	Failures    uint64 `json:"failures"`
 }
 
-// NetworkReport is additive to protocol version 1. Complete means every remote
+// RequestReport reports a resolver's network activity. AllRequestsReported means every remote
 // attempt is included, including failed attempts. Omission does not mean zero.
-type NetworkReport struct {
-	Complete bool           `json:"complete"`
-	Queries  []NetworkQuery `json:"queries"`
+type RequestReport struct {
+	AllRequestsReported bool            `json:"all_requests_reported"`
+	Requests            []RequestCounts `json:"requests"`
 }
 
 // Clone detaches every mutable field, including optional network receipts.
 func (r Result) Clone() Result {
-	r.Evidence = slices.Clone(r.Evidence)
+	r.FetchLog = slices.Clone(r.FetchLog)
 	if r.Network != nil {
-		r.Network = &NetworkReport{Complete: r.Network.Complete, Queries: slices.Clone(r.Network.Queries)}
+		r.Network = &RequestReport{AllRequestsReported: r.Network.AllRequestsReported, Requests: slices.Clone(r.Network.Requests)}
 	}
 	return r
 }

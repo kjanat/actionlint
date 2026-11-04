@@ -85,7 +85,7 @@ jobs:
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := renderer.Render(&output, render.Prepare(*analysis)); err != nil {
+	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
 		t.Fatal(err)
 	}
 	var report render.CheckResult
@@ -149,7 +149,7 @@ jobs:
 	if !ok || broken.ParseStatus() != "failed" {
 		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
 	}
-	data, err := json.Marshal(render.Prepare(*analysis).CheckResult())
+	data, err := json.Marshal(render.FromAnalysis(*analysis).CheckResult())
 	if err != nil {
 		t.Fatal(err)
 	}

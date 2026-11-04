@@ -19,7 +19,7 @@ func TestRendererRetainsRulesAcrossCalls(t *testing.T) {
 	for i := 1; i <= 2; i++ {
 		var out strings.Builder
 		result := report.Analysis{Rules: []rule.Descriptor{{Name: fmt.Sprintf("custom-%d", i), Description: "custom description"}}}
-		if err := renderer.Render(&out, Prepare(result)); err != nil {
+		if err := renderer.Render(&out, FromAnalysis(result)); err != nil {
 			t.Fatal(err)
 		}
 		for n := 1; n <= i; n++ {
@@ -41,7 +41,7 @@ func TestRendererWriteErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = renderer.Render(failingRenderWriter{}, Prepare(analysis))
+			err = renderer.Render(failingRenderWriter{}, FromAnalysis(analysis))
 			text := format == FormatText || format == FormatOneline
 			if (err == nil) != text {
 				t.Fatalf("write error contract changed: %v", err)

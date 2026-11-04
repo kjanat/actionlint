@@ -10,22 +10,22 @@ import (
 
 func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 	for name, change := range map[string]func(*Input){
-		"graph absent":       func(input *Input) { input.CallGraph = CallGraph{} },
-		"fact absent":        func(input *Input) { input.Available = []Fact{Scripts} },
-		"text fact absent":   func(input *Input) { input.Available = []Fact{Invocations} },
-		"entry reference":    func(input *Input) { input.Reference.Node = "another" },
-		"unknown occurrence": func(input *Input) { input.Invoked[0].Occurrence.ID = "unknown" },
-		"reference":          func(input *Input) { input.Invoked[0].Reference.Revision = "stale" },
-		"ancestry":           func(input *Input) { input.Invoked[0].Occurrence.Ancestry[0] = "unknown" },
-		"owner":              func(input *Input) { input.Invoked[0].Occurrence.Owner = input.CallGraph.Entry().ID },
-		"duplicate":          func(input *Input) { input.Invoked = append(input.Invoked, input.Invoked[0]) },
-		"root collection":    func(input *Input) { input.Scripts, input.Invoked = input.Invoked, nil },
-		"missing text":       func(input *Input) { input.Invoked = nil },
+		"graph absent":             func(input *Input) { input.CallGraph = CallGraph{} },
+		"invocations input absent": func(input *Input) { input.AvailableInputs = []InputKind{Scripts} },
+		"scripts input absent":     func(input *Input) { input.AvailableInputs = []InputKind{Invocations} },
+		"entry reference":          func(input *Input) { input.Reference.Node = "another" },
+		"unknown occurrence":       func(input *Input) { input.Invoked[0].Occurrence.ID = "unknown" },
+		"reference":                func(input *Input) { input.Invoked[0].Reference.Revision = "stale" },
+		"ancestry":                 func(input *Input) { input.Invoked[0].Occurrence.Ancestry[0] = "unknown" },
+		"owner":                    func(input *Input) { input.Invoked[0].Occurrence.Owner = input.CallGraph.Entry().ID },
+		"duplicate":                func(input *Input) { input.Invoked = append(input.Invoked, input.Invoked[0]) },
+		"root collection":          func(input *Input) { input.Scripts, input.Invoked = input.Invoked, nil },
+		"missing text":             func(input *Input) { input.Invoked = nil },
 	} {
 		t.Run(name, func(t *testing.T) {
 			graph := graphFixture(t)
 			occurrence := graph.clone().Scripts[0]
-			input := Input{Reference: graph.Entry.Reference, Available: []Fact{Scripts, Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
+			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Scripts, Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
 			if err := input.ValidateInvocations(); err != nil {
 				t.Fatal(err)
 			}
@@ -61,19 +61,19 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 		{"unknown selection", []OccurrenceID{"unknown"}, nil, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			input := Input{Reference: graph.Entry.Reference, Available: []Fact{Invocations, Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
+			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
 			if err := input.ValidateInvocations(); (err == nil) != test.valid {
 				t.Fatalf("valid=%v: %v", test.valid, err)
 			}
 		})
 	}
-	input := Input{Reference: graph.Entry.Reference, Available: []Fact{Invocations}, CallGraph: retainGraph(t, graph)}
+	input := Input{Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations}, CallGraph: retainGraph(t, graph)}
 	if err := input.ValidateInvocations(); err != nil {
 		t.Fatalf("graph without collected text: %v", err)
 	}
 	input.SelectedScripts = []OccurrenceID{}
 	if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
-		t.Fatalf("selection without text fact accepted: %v", err)
+		t.Fatalf("selection without the scripts input accepted: %v", err)
 	}
 }
 
@@ -85,9 +85,9 @@ func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, input := range []Input{
-				{Available: []Fact{Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
-				{Available: []Fact{Scripts}, Invoked: []Script{{Occurrence: occurrence}}},
-				{Available: []Fact{Scripts}, ActionInputs: []ActionInput{{Occurrence: occurrence}}},
+				{AvailableInputs: []InputKind{Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
+				{AvailableInputs: []InputKind{Scripts}, Invoked: []Script{{Occurrence: occurrence}}},
+				{AvailableInputs: []InputKind{Scripts}, ActionInputs: []ActionInput{{Occurrence: occurrence}}},
 			} {
 				if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 					t.Fatalf("orphan occurrence accepted: %v", err)

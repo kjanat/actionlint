@@ -67,9 +67,6 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 			if err != nil {
 				return options, err
 			}
-			declared := *descriptor
-			replacement.ToolIntegration = &declared
-			replacement.Descriptor = registration.Analyzer.Descriptor().Descriptor
 			options.Tools[i] = replacement
 			found = true
 			break

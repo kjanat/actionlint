@@ -69,7 +69,7 @@ with terminal concerns would move the coupling into the library API.
 
 The application returns `report.Analysis`, a value model of diagnostics, source
 snapshots, document outlines, configuration provenance and rule descriptors.
-`render.Prepare` derives presentation values at the output boundary. The public
+`render.FromAnalysis` derives presentation values at the output boundary. The public
 library selects its public result view without constructing a renderer.
 
 Legacy linter/session and rendering compatibility adapters are test-only. Production

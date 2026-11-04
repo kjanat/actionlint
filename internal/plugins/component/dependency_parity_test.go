@@ -15,7 +15,7 @@ import (
 
 func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 	plugin := loadPlugin(t, "pinned-actions", component.Options{})
-	if got := plugin.Descriptor().Requires; len(got) != 1 || got[0] != analyzer.Dependencies {
+	if got := plugin.Descriptor().RequiredInputs; len(got) != 1 || got[0] != analyzer.Dependencies {
 		t.Fatalf("requires=%v", got)
 	}
 	native := pinnedactions.Analyzer{}
@@ -38,7 +38,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 		{"unknown kind", "future", "owner/repo@v1", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			input := analyzer.Input{Path: "workflow.yml", Available: []analyzer.Fact{analyzer.Dependencies}, Dependencies: []analyzer.Dependency{{
+			input := analyzer.Input{Path: "workflow.yml", AvailableInputs: []analyzer.InputKind{analyzer.Dependencies}, Dependencies: []analyzer.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
 				Start: diagnostic.Position{Line: 6, Column: 15}, End: diagnostic.Position{Line: 7, Column: 24},
 			}}}

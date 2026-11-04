@@ -765,6 +765,8 @@ allow          = [
   "application",
   "catalog",
   "config",
+  "contract-leaves",
+  "editor-schema",
   "leaves",
   "plugin-artifacts",
   "presentation",

@@ -9,23 +9,23 @@ import (
 	"actionlint.kjanat.dev/v2/resolver"
 )
 
-// ResolverLookup distinguishes host cache hits and opaque delegated lookups from
+// RecordResolverCall distinguishes host cache hits and opaque delegated lookups from
 // actual provider-reported attempts. Invalid auxiliary receipts are treated as
 // opaque rather than changing an otherwise valid dependency resolution.
-func ResolverLookup(ctx context.Context, receipt *resolver.NetworkReport, cached bool) {
-	session := FromContext(ctx)
+func RecordResolverCall(ctx context.Context, receipt *resolver.RequestReport, cached bool) {
+	session := RequestTrackerFromContext(ctx)
 	if session == nil {
 		return
 	}
-	op, _ := ctx.Value(operationKey{}).(Operation)
+	op, _ := ctx.Value(requestOptionsKey{}).(RequestOptions)
 	if op.Priority == "" {
 		op.Priority = Required
 	}
-	opaque := groupKey{"unknown", UnknownAuthentication, Delegated, "resolver", op.Priority}
+	opaque := groupKey{"unknown", CredentialsUnknown, Delegated, "resolver", op.Priority}
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	lookup := session.groups[opaque]
-	lookup.Lookups++
+	lookup.ResolverCalls++
 	session.groups[opaque] = lookup
 	if cached {
 		stats := session.groups[opaque]
@@ -34,14 +34,14 @@ func ResolverLookup(ctx context.Context, receipt *resolver.NetworkReport, cached
 		return
 	}
 	valid := receipt != nil
-	deltas := map[groupKey]Group{}
+	deltas := map[groupKey]RequestCounts{}
 	if valid {
-		for _, query := range receipt.Queries {
-			if validRequest(&http.Request{URL: &url.URL{Host: query.Host}}) != nil || query.Failures > query.Count {
+		for _, query := range receipt.Requests {
+			if validRequest(&http.Request{URL: &url.URL{Host: query.Host}}) != nil || query.Failures > query.Attempts {
 				valid = false
 				break
 			}
-			kind, auth := Kind(query.Kind), Authentication(query.Authenticated)
+			kind, auth := RequestKind(query.RequestKind), CredentialStatus(query.Credentials)
 			switch kind {
 			case HTTP, REST, GraphQL, Git, OCI:
 			case Delegated:
@@ -50,7 +50,7 @@ func ResolverLookup(ctx context.Context, receipt *resolver.NetworkReport, cached
 				valid = false
 			}
 			switch auth {
-			case Anonymous, Credentialed, UnknownAuthentication:
+			case NoCredentials, CredentialsProvided, CredentialsUnknown:
 			default:
 				valid = false
 			}
@@ -59,11 +59,11 @@ func ResolverLookup(ctx context.Context, receipt *resolver.NetworkReport, cached
 			}
 			key := groupKey{strings.ToLower(query.Host), auth, kind, "resolver", op.Priority}
 			delta := deltas[key]
-			if query.Count > ^uint64(0)-delta.Attempts || query.Count+delta.Attempts > ^uint64(0)-session.groups[key].Attempts {
+			if query.Attempts > ^uint64(0)-delta.Attempts || query.Attempts+delta.Attempts > ^uint64(0)-session.groups[key].Attempts {
 				valid = false
 				break
 			}
-			delta.Attempts += query.Count
+			delta.Attempts += query.Attempts
 			delta.Failures += query.Failures
 			deltas[key] = delta
 		}
@@ -73,13 +73,13 @@ func ResolverLookup(ctx context.Context, receipt *resolver.NetworkReport, cached
 			stats := session.groups[key]
 			stats.Attempts += delta.Attempts
 			stats.Failures += delta.Failures
-			stats.ProviderReported += delta.Attempts
+			stats.ResolverReportedAttempts += delta.Attempts
 			session.groups[key] = stats
 		}
 	}
-	if !valid || !receipt.Complete {
+	if !valid || !receipt.AllRequestsReported {
 		stats := session.groups[opaque]
-		stats.OpaqueLookups++
+		stats.UnreportedResolverCalls++
 		session.groups[opaque] = stats
 	}
 }

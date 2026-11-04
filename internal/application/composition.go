@@ -20,8 +20,8 @@ type documentChecks struct {
 	registeredTools  []tools.Registration
 }
 
-func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools.Context, action bool) (documentChecks, error) {
-	selected := documentChecks{Selection: checks.Build(context, action)}
+func (s *analysisSession) buildChecks(context builtin.RuleInputs, toolContext tools.Context, action bool) (documentChecks, error) {
+	selected := documentChecks{Selection: checks.CreateRules(context, action)}
 	for _, a := range selected.Scripts {
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a})
 	}
@@ -48,7 +48,7 @@ func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools
 	if s.onRulesCreated != nil && !action {
 		selected.Rules = s.onRulesCreated(selected.Rules)
 	}
-	checks.Prepare(selected.Rules, context.Config, s.debugWriter())
+	checks.ConfigureRules(selected.Rules, context.Config, s.debugWriter())
 	return selected, nil
 }
 

@@ -12,22 +12,22 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-// Fact identifies shared information requested by an analyzer.
-type Fact string
+// InputKind identifies shared information requested by an analyzer.
+type InputKind string
 
 const (
-	Source       Fact = "source"
-	Scripts      Fact = "scripts"
-	Mappings     Fact = "mappings"
-	Invocations  Fact = "invocations"
-	Execution    Fact = "execution"
-	Dependencies Fact = "dependencies"
+	Source       InputKind = "source"
+	Scripts      InputKind = "scripts"
+	Mappings     InputKind = "mappings"
+	Invocations  InputKind = "invocations"
+	Execution    InputKind = "execution"
+	Dependencies InputKind = "dependencies"
 )
 
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
 	rule.Descriptor
-	Requires []Fact
+	RequiredInputs []InputKind
 }
 
 // Analyzer completes all work before returning. The host may call Analyze
@@ -58,16 +58,16 @@ type Input struct {
 	Reference   source.Reference
 	Path        string
 	// Directory is the analysis root, not a filesystem grant.
-	Directory    string
-	Content      string
-	Kind         string
-	ParseStatus  string
-	Available    []Fact
-	Options      json.RawMessage
-	Scripts      []Script
-	Invoked      []Script
-	ActionInputs []ActionInput
-	CallGraph    CallGraph
+	Directory       string
+	Content         string
+	Kind            string
+	ParseStatus     string
+	AvailableInputs []InputKind
+	Options         json.RawMessage
+	Scripts         []Script
+	Invoked         []Script
+	ActionInputs    []ActionInput
+	CallGraph       CallGraph
 	// SelectedScripts limits materialized text to these occurrences. Nil selects
 	// every graph script; an empty non-nil slice selects none.
 	SelectedScripts []OccurrenceID
@@ -99,8 +99,8 @@ type ActionInput struct {
 // Script is a declared run script. Shell contains the declared shell, without
 // resolving runner defaults. Start points to the original run value in the
 // document at Path; an empty Path means Input.Path. Spans map text positions
-// back to that document. With the Invocations fact, Occurrence identifies the
-// execution in Input.CallGraph. Runtime is set with the Execution fact.
+// back to that document. With the Invocations input, Occurrence identifies the
+// execution in Input.CallGraph. Runtime is set with the Execution input.
 type Script struct {
 	Reference  source.Reference
 	Occurrence ScriptOccurrence

@@ -15,13 +15,13 @@ func RuleNames(registrations []analyzer.Registration) []string {
 	return names
 }
 
-func RequiredFacts(registrations []analyzer.Registration) map[analyzer.Fact]bool {
-	facts := map[analyzer.Fact]bool{}
+func RequiredFacts(registrations []analyzer.Registration) map[analyzer.InputKind]bool {
+	facts := map[analyzer.InputKind]bool{}
 	for _, registration := range registrations {
 		if analyzerref.IsNil(registration.Analyzer) {
 			continue
 		}
-		for _, fact := range registration.Analyzer.Descriptor().Requires {
+		for _, fact := range registration.Analyzer.Descriptor().RequiredInputs {
 			facts[fact] = true
 		}
 	}

@@ -155,6 +155,7 @@ deny      = [
 [linters.settings.depguard.rules.layer-contract-leaves-tests]
 files     = [
   "**/knowledge/*_test.go",
+  "**/rule/*_test.go",
 ]
 list-mode = "strict"
 allow     = [
@@ -4533,7 +4534,7 @@ allow     = [
 
 # Layer dev-commands: Development commands: documentation checks, catalog and schema generation,
 # conformance downloads, release tooling and this layer table.
-# Imports: itself, application, catalog, config, leaves, plugin-artifacts, presentation, process-config, repository-contracts, tool-backends, tool-profiles, tool-providers, tool-support, workspace.
+# Imports: itself, application, catalog, config, contract-leaves, editor-schema, leaves, plugin-artifacts, presentation, process-config, repository-contracts, tool-backends, tool-profiles, tool-providers, tool-support, workspace.
 [linters.settings.depguard.rules.layer-dev-commands]
 files     = [
   "**/internal/conformance/fetch/*.go",
@@ -4550,6 +4551,7 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -4561,6 +4563,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/conformance$",
   "actionlint.kjanat.dev/v2/internal/conformance/fetch$",
   "actionlint.kjanat.dev/v2/internal/documentation/check-readme$",
+  "actionlint.kjanat.dev/v2/internal/editorschema$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/fsread$",
@@ -4591,7 +4594,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/tools/config$",
   "actionlint.kjanat.dev/v2/tools/layers$",
   "actionlint.kjanat.dev/v2/tools/plugin-fixture-metadata$",
@@ -4621,6 +4627,7 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/application$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -4632,6 +4639,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/conformance$",
   "actionlint.kjanat.dev/v2/internal/conformance/fetch$",
   "actionlint.kjanat.dev/v2/internal/documentation/check-readme$",
+  "actionlint.kjanat.dev/v2/internal/editorschema$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/fsread$",
@@ -4662,7 +4670,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/tools/config$",
   "actionlint.kjanat.dev/v2/tools/layers$",
   "actionlint.kjanat.dev/v2/tools/plugin-fixture-metadata$",

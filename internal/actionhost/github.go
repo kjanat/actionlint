@@ -65,7 +65,7 @@ func New(options Options) (*GitHub, error) {
 		return nil, errors.New("invalid GitHub credential header")
 	}
 	return &GitHub{mode: options.Mode, cacheDir: options.CacheDir, token: options.Token, resolver: options.Resolver, client: &http.Client{
-		Transport: network.Transport(options.Transport), Timeout: 15 * time.Second,
+		Transport: network.TrackHTTPRequests(options.Transport), Timeout: 15 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}}, nil
 }
@@ -109,16 +109,16 @@ func (g *GitHub) Lookup(ctx context.Context, ref actions.Reference) (actions.Man
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	ctx = network.WithOperation(ctx, network.Operation{Purpose: "action-metadata", Priority: network.Enrichment, Kind: network.REST, Resource: "core"})
-	if session := network.FromContext(ctx); session != nil {
+	ctx = network.WithRequestOptions(ctx, network.RequestOptions{Purpose: "action-metadata", Priority: network.Enrichment, RequestKind: network.REST, QuotaPool: "core"})
+	if session := network.RequestTrackerFromContext(ctx); session != nil {
 		request, err := g.request(ctx, repositoryURL(ref), false)
 		if err != nil {
 			return actions.Manifest{}, err
 		}
-		if err := session.PreflightGitHub(ctx, g.client, request); err != nil {
+		if err := session.LoadGitHubRateLimits(ctx, g.client, request); err != nil {
 			return actions.Manifest{}, err
 		}
-		if err := session.CheckBudget(request, 1); err != nil {
+		if err := session.CheckBatchQuota(request, 1); err != nil {
 			return actions.UnavailableManifest(knowledge.Limit()), nil
 		}
 	}
@@ -135,7 +135,7 @@ func (g *GitHub) Lookup(ctx context.Context, ref actions.Reference) (actions.Man
 		if resolveErr != nil {
 			return unavailableError(resolveErr)
 		}
-		if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID != repo.ID || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.Evidence) == 0 || !fullSHA1(resolved.SelectedObject) {
+		if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID != repo.ID || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.FetchLog) == 0 || !fullSHA1(resolved.SelectedObject) {
 			return actions.UnavailableManifest(knowledge.Unsupported()), nil
 		}
 		route, err = actions.RefRoute(resolved.SelectedRef)
@@ -155,12 +155,12 @@ func (g *GitHub) Lookup(ctx context.Context, ref actions.Reference) (actions.Man
 	if cached, exists, cacheErr := g.cached(ctx, ref, repo.ID, commit); cacheErr == nil && exists {
 		return actions.NewManifestFile(selection, cached.Filename, []byte(cached.Content))
 	}
-	if session := network.FromContext(ctx); session != nil {
+	if session := network.RequestTrackerFromContext(ctx); session != nil {
 		request, err := g.request(ctx, repositoryURL(ref), false)
 		if err != nil {
 			return actions.Manifest{}, err
 		}
-		if err := session.CheckBudget(request, 3); err != nil {
+		if err := session.CheckBatchQuota(request, 3); err != nil {
 			return actions.UnavailableManifest(knowledge.Limit()), nil
 		}
 	}

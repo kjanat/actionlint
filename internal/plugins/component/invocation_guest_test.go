@@ -30,7 +30,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	})
 	occurrence, _ := graph.Script(scripts[0])
 	input := analyzer.Input{
-		Reference: graph.Entry().Reference, Available: []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations},
+		Reference: graph.Entry().Reference, AvailableInputs: []analyzer.InputKind{analyzer.Source, analyzer.Scripts, analyzer.Invocations},
 		CallGraph: graph, SelectedScripts: []analyzer.OccurrenceID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
 		Invoked: []analyzer.Script{{Reference: occurrence.Declaration, Occurrence: occurrence, Text: "echo chosen", Start: diagnostic.Position{Line: 1, Column: 1}}},
 	}

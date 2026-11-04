@@ -13,7 +13,7 @@ import { defineDocumentProvider, defineScriptProvider, defineProcessProvider, ty
 const identity: ProviderIdentity = {
   id: 'example', version: '1.0.0', name: 'Example', description: 'Example', license: 'MIT',
   repository: 'https://github.com/example/plugin',
-  rule: { name: 'example', category: 'style', subcategory: 'yaml', maturity: 'stable', description: 'Example', provider: 'example' }
+  rule: { name: 'example', category: 'conventions', subcategory: 'yaml', maturity: 'stable', description: 'Example', provider: 'example' }
 };
 const document = defineDocumentProvider({ ...identity, env_passthrough: ['PATH'], check: () => [] });
 const script = defineScriptProvider({ ...identity, env_passthrough: ['PATH'], shells: ['bash'], check: () => [] });

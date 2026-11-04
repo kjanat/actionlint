@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/rule"
 	sourcemodel "actionlint.kjanat.dev/v2/source"
 )
 
@@ -16,11 +17,11 @@ import (
 // preserves the directive's spelling, remaining separators and reason. Removing
 // the last selector removes the comment, never YAML or embedded script content.
 // The caller binds the returned edit to its captured source path and revision.
-func Remove(content []byte, position diagnostic.Position, rules, allowed []string) (diagnostic.Edit, bool) {
+func Remove(content []byte, position diagnostic.Position, rules, allowed []string, names rule.Names) (diagnostic.Edit, bool) {
 	if len(rules) == 0 {
 		return diagnostic.Edit{}, false
 	}
-	directives, _ := Parse(content, allowed)
+	directives, _ := Parse(content, allowed, names)
 	var declaration *Directive
 	for i := range directives {
 		if directives[i].Position == position {

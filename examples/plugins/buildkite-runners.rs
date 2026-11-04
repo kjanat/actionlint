@@ -3,7 +3,7 @@
 wit_bindgen::generate!({ path: "crates/actionlint-extension-api/wit", world: "runner-plugin" });
 
 use exports::kjanat::actionlint::runner_provider::{
-    Answer, Candidate, CaseSensitivity, Descriptor, Evidence, Freshness, Guest, Os, Outcome,
+    Answer, Candidate, CaseSensitivity, DatasetStatus, Descriptor, Freshness, Guest, Os, Outcome,
     Position, Rejection, Request, Resolution, Selector, Term,
 };
 use serde::Deserialize;
@@ -68,8 +68,8 @@ impl Guest for Plugin {
             .iter()
             .map(|selector| Answer {
                 resolution: resolve_selector(&request, selector, catalogue.as_ref()),
-                evidence: Evidence {
-                    dataset: dataset.clone(),
+                dataset_status: DatasetStatus {
+                    dataset_id: dataset.clone(),
                     scope: request.scope.clone(),
                     obtained_at: request.snapshot.obtained_at.clone(),
                     freshness: if catalogue.is_some() {

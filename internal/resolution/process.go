@@ -70,7 +70,7 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 	cached, exists := p.cache[request]
 	if exists {
 		p.mu.Unlock()
-		network.ResolverLookup(ctx, nil, true)
+		network.RecordResolverCall(ctx, nil, true)
 		return cached.Clone(), nil
 	}
 	if call, exists := p.pending[request]; exists {
@@ -82,7 +82,7 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 			if err := ctx.Err(); err != nil {
 				return resolver.Result{}, err
 			}
-			network.ResolverLookup(ctx, nil, true)
+			network.RecordResolverCall(ctx, nil, true)
 			return call.result.Clone(), call.err
 		}
 	}
@@ -109,8 +109,8 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 }
 
 func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolver.Result, error) {
-	var receipt *resolver.NetworkReport
-	defer func() { network.ResolverLookup(ctx, receipt, false) }()
+	var receipt *resolver.RequestReport
+	defer func() { network.RecordResolverCall(ctx, receipt, false) }()
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {
 		return resolver.Result{}, errors.New("unsupported resolution request")
 	}
@@ -153,7 +153,7 @@ func validateResult(request resolver.Request, result resolver.Result) error {
 	if result.Error != "" {
 		return fmt.Errorf("resolution failed: %s", result.Error)
 	}
-	if result.RepositoryID == 0 || !strings.EqualFold(result.Repository, request.Repository) || request.ExpectedRepositoryID != 0 && result.RepositoryID != request.ExpectedRepositoryID || (result.Commit == "") == (result.Tree == "") || result.ObservedAt == "" || len(result.Evidence) == 0 {
+	if result.RepositoryID == 0 || !strings.EqualFold(result.Repository, request.Repository) || request.ExpectedRepositoryID != 0 && result.RepositoryID != request.ExpectedRepositoryID || (result.Commit == "") == (result.Tree == "") || result.ObservedAt == "" || len(result.FetchLog) == 0 {
 		return errors.New("resolver returned incomplete or inconsistent provenance")
 	}
 	object := result.Commit
@@ -171,8 +171,8 @@ func validateResult(request resolver.Request, result resolver.Result) error {
 	if _, err := time.Parse(time.RFC3339Nano, result.ObservedAt); err != nil {
 		return errors.New("resolver returned invalid observation time")
 	}
-	if bytes.Equal(bytes.TrimSpace(result.Evidence), []byte("null")) {
-		return errors.New("resolver returned no evidence")
+	if bytes.Equal(bytes.TrimSpace(result.FetchLog), []byte("null")) {
+		return errors.New("resolver returned no fetch log")
 	}
 	return nil
 }

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/rule"
+
 	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	sourcemodel "actionlint.kjanat.dev/v2/source"
 )
@@ -27,7 +29,7 @@ func TestSuppressionEdit(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+"/"+ending, func(t *testing.T) {
 				content := []byte(strings.ReplaceAll(tc.source, "\n", ending))
-				edit, ok := Edit(content, tc.line, "expression", []string{"expression", "shellcheck"})
+				edit, ok := Edit(content, tc.line, "expression", []string{"expression", "shellcheck"}, rule.Names{})
 				if !ok {
 					t.Fatal("no suppression edit")
 				}
@@ -51,7 +53,7 @@ func TestSuppressionEdit(t *testing.T) {
 		"run: echo ok # ignore[expression]",
 		"# actionlint-ignore-next-line unknown\nrun: echo ok",
 	} {
-		if edit, ok := Edit([]byte(content), strings.Count(content, "\n")+1, "expression", []string{"expression", "shellcheck"}); ok {
+		if edit, ok := Edit([]byte(content), strings.Count(content, "\n")+1, "expression", []string{"expression", "shellcheck"}, rule.Names{}); ok {
 			t.Fatalf("edit hides an existing directive: %+v", edit)
 		}
 	}

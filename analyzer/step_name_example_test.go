@@ -14,7 +14,7 @@ import (
 type stepNameAnalyzer struct{}
 
 func (stepNameAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "step-name", Description: "Checks every step has a name", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (stepNameAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

@@ -169,7 +169,7 @@ func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
 type cancellingEditorAnalyzer struct{ started chan struct{} }
 
 func (*cancellingEditorAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "editor-cancellation", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (a *cancellingEditorAnalyzer) Analyze(ctx context.Context, _ analyzer.Input) ([]diagnostic.Diagnostic, error) {

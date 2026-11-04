@@ -104,7 +104,7 @@ type Request struct {
 // error when analysis completed only partially. FileCount includes clean sources.
 type Result struct {
 	ActionMetadata []actions.MetadataReport `json:"action_metadata"`
-	RunnerEvidence []runner.Report          `json:"runner_evidence"`
+	RunnerResults  []runner.Report          `json:"runner_results"`
 	Diagnostics    []diagnostic.Diagnostic  `json:"diagnostics"`
 	Documents      document.Outlines        `json:"documents"`
 	Inputs         []string                 `json:"inputs"`
@@ -237,7 +237,7 @@ func applicationResultView(result *application.Result) *Result {
 	for _, coverage := range result.ActionMetadata {
 		metadata = append(metadata, coverage.Report())
 	}
-	return &Result{ActionMetadata: metadata, RunnerEvidence: result.RunnerEvidence, Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
+	return &Result{ActionMetadata: metadata, RunnerResults: result.RunnerResults, Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
 }
 
 func backendProcessOptions(tool Tool, configured bool) *processconfig.Options {

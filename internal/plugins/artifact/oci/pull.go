@@ -300,7 +300,7 @@ func (p *puller) hostLayers(ctx context.Context) ([]ocispec.Descriptor, error) {
 // the provider is about to run, or by an explicit install, sync or cache
 // fill. It implements artifact.PullOCI.
 func Pull(ctx context.Context, ref artifact.OCIReference, options artifact.Options) (*artifact.Artifact, error) {
-	ctx = network.WithOperation(ctx, network.Operation{Purpose: "plugin-oci", Priority: network.Required, Kind: network.OCI})
+	ctx = network.WithRequestOptions(ctx, network.RequestOptions{Purpose: "plugin-oci", Priority: network.Required, RequestKind: network.OCI})
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
 	pull, err := newPuller(ref, options)
@@ -389,7 +389,7 @@ func Layer(ctx context.Context, source, digest string, options artifact.Options)
 // PullLayers pulls every layer of the image manifest the oci:// source
 // serves this host into the store, so the source can run offline later.
 func PullLayers(ctx context.Context, source string, options artifact.Options) error {
-	ctx = network.WithOperation(ctx, network.Operation{Purpose: "plugin-oci", Priority: network.Required, Kind: network.OCI})
+	ctx = network.WithRequestOptions(ctx, network.RequestOptions{Purpose: "plugin-oci", Priority: network.Required, RequestKind: network.OCI})
 	ctx, cancel := withTimeout(ctx, options)
 	defer cancel()
 	ref, err := artifact.ParseOCI(source)

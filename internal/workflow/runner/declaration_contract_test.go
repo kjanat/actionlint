@@ -56,7 +56,7 @@ func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
 			provider := &testProvider{resolve: func(request runnerapi.Request) ([]runnerapi.Answer, error) {
 				answers := make([]runnerapi.Answer, len(request.Selectors))
 				for i := range answers {
-					answers[i] = runnerapi.Answer{Resolution: tc.resolution, Evidence: runnerapi.Evidence{Dataset: "external", Scope: request.Scope, Freshness: runnerapi.Fresh, Complete: true}}
+					answers[i] = runnerapi.Answer{Resolution: tc.resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "external", Scope: request.Scope, Freshness: runnerapi.Fresh, Complete: true}}
 				}
 				return answers, tc.failure
 			}}

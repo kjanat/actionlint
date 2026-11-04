@@ -77,7 +77,7 @@ func (p *Component) Descriptor() analyzer.Descriptor { return p.implementation()
 
 // Analyze checks one document using the analyzer role.
 func (p *Component) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
-	registration, err := executor.PrepareForwarding(analyzer.Registration{Analyzer: p.implementation(), Options: input.Options}, input.Available)
+	registration, err := executor.PrepareForwarding(analyzer.Registration{Analyzer: p.implementation(), Options: input.Options}, input.AvailableInputs)
 	if err != nil {
 		return nil, snapshotRuntimeFailure(err)
 	}

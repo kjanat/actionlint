@@ -16,13 +16,13 @@ func TestAnalysisSharesNetworkSession(t *testing.T) {
 		for _, supplied := range []bool{false, true} {
 			t.Run(entry+map[bool]string{false: "/created", true: "/supplied"}[supplied], func(t *testing.T) {
 				ctx := t.Context()
-				var expected *network.Session
+				var expected *network.RequestTracker
 				if supplied {
-					ctx, expected = network.Ensure(ctx)
+					ctx, expected = network.TrackRequests(ctx)
 				}
-				var observed *network.Session
+				var observed *network.RequestTracker
 				options := Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, RemoteActions: metadataProvider(func(ctx context.Context, _ actions.Reference) (actions.Manifest, error) {
-					observed = network.FromContext(ctx)
+					observed = network.RequestTrackerFromContext(ctx)
 					return actions.UnavailableManifest(knowledge.Offline()), nil
 				})}
 				var err error

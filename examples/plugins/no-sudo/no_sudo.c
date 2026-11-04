@@ -174,13 +174,13 @@ void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analy
     plugin_string_dup(&ret->help, "Run without privilege elevation or explicitly prepare the runner.");
     plugin_string_dup(&ret->fix_availability, ""); // Legacy ABI field; ignored by the host.
     plugin_string_dup(&ret->options_schema, "{}");
-    ret->requires_.ptr = malloc(2 * sizeof(exports_kjanat_actionlint_analyzer_fact_t));
-    if (!ret->requires_.ptr) {
+    ret->required_inputs.ptr = malloc(2 * sizeof(exports_kjanat_actionlint_analyzer_input_kind_t));
+    if (!ret->required_inputs.ptr) {
         abort();
     }
-    ret->requires_.ptr[0] = EXPORTS_KJANAT_ACTIONLINT_ANALYZER_FACT_SCRIPTS;
-    ret->requires_.ptr[1] = EXPORTS_KJANAT_ACTIONLINT_ANALYZER_FACT_INVOCATIONS;
-    ret->requires_.len = 2;
+    ret->required_inputs.ptr[0] = EXPORTS_KJANAT_ACTIONLINT_ANALYZER_INPUT_KIND_SCRIPTS;
+    ret->required_inputs.ptr[1] = EXPORTS_KJANAT_ACTIONLINT_ANALYZER_INPUT_KIND_INVOCATIONS;
+    ret->required_inputs.len = 2;
 }
 
 void exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyzer_input_t *input,

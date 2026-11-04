@@ -88,7 +88,7 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := renderer.Render(&out, render.Prepare(*result)); err != nil {
+	if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
 		return nil, err
 	}
 	if len(result.Diagnostics) == 0 {

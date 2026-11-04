@@ -97,14 +97,14 @@ func TestSnapshotSelectionAndIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity := knowledge.Report().Identity
+	identity := knowledge.Report().CacheKey
 	options.Snapshot.Content = `{"runners":[{"name":"desktop","labels":["desktop-pool"]}]}`
 	knowledge, err = Prepare(t.Context(), workflow.Snapshot, nil, options, "repo")
 	if err != nil {
 		t.Fatal(err)
 	}
 	job := knowledge.Job(workflow.Views["test"])
-	if knowledge.Report().Identity == identity || job.Platform != Any || job.Shell != "" || job.PathsKnown {
+	if knowledge.Report().CacheKey == identity || job.Platform != Any || job.Shell != "" || job.PathsKnown {
 		t.Fatalf("missing facts or changed identity mishandled: %+v", knowledge)
 	}
 	options.Snapshot = runnerapi.Snapshot{}

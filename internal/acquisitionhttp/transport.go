@@ -101,7 +101,7 @@ func newTransport(initial *url.URL, grant Grant, base http.RoundTripper, lookup 
 }
 
 func (t *transport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return network.ObserveHTTP(request, t.roundTrip)
+	return network.TrackHTTPAttempt(request, t.roundTrip)
 }
 
 func (t *transport) roundTrip(request *http.Request) (*http.Response, error) {

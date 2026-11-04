@@ -39,10 +39,10 @@ func NewDocumentAnalyzer(manifest provider.Manifest, command *analyzerhost.Comma
 	if err != nil {
 		return nil, err
 	}
-	requires := []analyzer.Fact{analyzer.Source}
-	for _, fact := range manifest.Requires {
+	requires := []analyzer.InputKind{analyzer.Source}
+	for _, fact := range manifest.RequiredInputs {
 		if fact != analyzer.Source && fact != analyzer.Dependencies {
-			return nil, fmt.Errorf("unsupported document fact %q", fact)
+			return nil, fmt.Errorf("unsupported document input kind %q", fact)
 		}
 		if !slices.Contains(requires, fact) {
 			requires = append(requires, fact)
@@ -53,11 +53,11 @@ func NewDocumentAnalyzer(manifest provider.Manifest, command *analyzerhost.Comma
 			return nil, fmt.Errorf("unsupported document selector %q", kind)
 		}
 	}
-	return &DocumentAnalyzer{backend: backend, descriptor: analyzer.Descriptor{Descriptor: manifest.Rule.Clone(), Requires: requires}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, provider.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, provider.ResourceWorkspace)}, nil
+	return &DocumentAnalyzer{backend: backend, descriptor: analyzer.Descriptor{Descriptor: manifest.Rule.Clone(), RequiredInputs: requires}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, provider.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, provider.ResourceWorkspace)}, nil
 }
 
 func (d *DocumentAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: d.descriptor.Clone(), Requires: slices.Clone(d.descriptor.Requires)}
+	return analyzer.Descriptor{Descriptor: d.descriptor.Clone(), RequiredInputs: slices.Clone(d.descriptor.RequiredInputs)}
 }
 
 func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -83,7 +83,7 @@ func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([
 			return nil, err
 		}
 	}
-	if slices.Contains(d.descriptor.Requires, analyzer.Dependencies) {
+	if slices.Contains(d.descriptor.RequiredInputs, analyzer.Dependencies) {
 		request.Dependencies = make([]analyzer.DocumentDependency, 0, len(input.Dependencies))
 		for _, dependency := range input.Dependencies {
 			if dependency.Reference.Document != input.Revision.Document() || dependency.Reference.Revision != input.Revision.Digest() {

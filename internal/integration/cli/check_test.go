@@ -299,7 +299,7 @@ func TestApplicationBuiltInOutput(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := renderer.Render(&out, render.Prepare(*result)); err != nil {
+		if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
 			t.Fatal(err)
 		}
 		cli := testRunCommand(commandBadWorkflow, "--output", string(format), "-")

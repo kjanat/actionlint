@@ -29,9 +29,9 @@ func AnalyzerInput(result Result, path, pathAbs string, content []byte, document
 	} else if input.Reference != input.CallGraph.Entry().Reference {
 		return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
-	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
+	input.AvailableInputs = append(input.AvailableInputs, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
 	if result.Batch.CollectedScripts() {
-		input.Available = append(input.Available, analyzer.Scripts)
+		input.AvailableInputs = append(input.AvailableInputs, analyzer.Scripts)
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)
 			if !exists {
@@ -49,7 +49,7 @@ func AnalyzerInput(result Result, path, pathAbs string, content []byte, document
 		}
 	}
 	if result.ResolveExecution {
-		input.Available = append(input.Available, analyzer.Execution)
+		input.AvailableInputs = append(input.AvailableInputs, analyzer.Execution)
 	}
 	input.Mappings, input.Dependencies = result.EntrySnapshot.Declarations()
 	return input, nil

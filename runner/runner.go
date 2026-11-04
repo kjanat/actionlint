@@ -62,7 +62,7 @@ const (
 	Missing Freshness = "missing"
 )
 
-// Snapshot is immutable evidence supplied explicitly by the host. Content is
+// Snapshot contains runner data supplied explicitly by the host. Content is
 // provider-specific data, never a capability to access files or the network.
 type Snapshot struct {
 	Content    string    `json:"content"`
@@ -72,7 +72,7 @@ type Snapshot struct {
 	Complete   bool      `json:"complete"`
 }
 
-func (s Snapshot) Identity() string {
+func (s Snapshot) Digest() string {
 	data, _ := json.Marshal(s)
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
@@ -129,16 +129,16 @@ func (NoMatch) runnerResolution()       {}
 func (Unknown) runnerResolution()       {}
 func (NotApplicable) runnerResolution() {}
 
-type Evidence struct {
-	Dataset    string
+type DatasetStatus struct {
+	DatasetID  string
 	Scope      string
 	ObtainedAt string
 	Freshness  Freshness
 	Complete   bool
 }
 type Answer struct {
-	Resolution Resolution
-	Evidence   Evidence
+	Resolution    Resolution
+	DatasetStatus DatasetStatus
 }
 type Descriptor struct {
 	Name    string
@@ -155,8 +155,8 @@ type Provider interface {
 
 type Registration struct {
 	Provider Provider
-	// Identity binds results to the implementation. Wasm loaders set its digest.
-	Identity string
+	// ImplementationID binds results to the implementation. Wasm loaders set its digest.
+	ImplementationID string
 }
 
 // Options selects authority explicitly. Empty target/provider selects the
@@ -170,11 +170,11 @@ type Options struct {
 }
 
 // Report binds answers to the selected implementation, configuration and snapshot.
-// Consumers caching dependent findings must include Identity in their cache key.
+// Consumers caching dependent findings must include CacheKey in their cache key.
 type Report struct {
-	Path                              string
-	Identity                          string
-	Provider                          Descriptor
-	Artifact, Target, Scope, Snapshot string
-	Answers                           []Answer
+	Path                                            string
+	CacheKey                                        string
+	Provider                                        Descriptor
+	ImplementationID, Target, Scope, SnapshotDigest string
+	Answers                                         []Answer
 }

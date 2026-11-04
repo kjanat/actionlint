@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
 	"actionlint.kjanat.dev/v2/internal/filefilter"
-	"actionlint.kjanat.dev/v2/rule"
 
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -78,7 +79,7 @@ func (c IgnoreConfig) Validate(additional ...string) error {
 }
 
 func (c IgnoreConfig) validateStructure() error {
-	if rule.CanonicalName(c.Rule) == "forbidden-suppression" {
+	if rulecatalog.ResolveAlias(c.Rule) == "forbidden-suppression" {
 		return errors.New("ignores: forbidden-suppression cannot be suppressed")
 	}
 	if strings.TrimSpace(c.Rule) == "" {

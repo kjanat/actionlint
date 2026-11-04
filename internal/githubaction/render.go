@@ -60,7 +60,7 @@ func renderAnalysis(format outputFormat, analysis *application.Result, workingDi
 		return "", err
 	}
 	var output bytes.Buffer
-	if err := renderer.Render(&output, render.Prepare(*analysis)); err != nil {
+	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
 		return "", err
 	}
 	return output.String(), nil

@@ -76,15 +76,15 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 			t.Fatal("credential leaked to diagnostics")
 		}
 		var statistics struct {
-			Network network.Report `json:"network"`
+			Network network.Statistics `json:"network"`
 		}
 		if err := json.Unmarshal(log.Bytes(), &statistics); err != nil {
 			t.Fatal(err)
 		}
 		var attempts uint64
-		for _, group := range statistics.Network.Groups {
+		for _, group := range statistics.Network.Requests {
 			attempts += group.Attempts
-			if group.Host != "api.github.com" || group.Authentication != network.Credentialed || group.Kind != network.REST {
+			if group.Host != "api.github.com" || group.Credentials != network.CredentialsProvided || group.RequestKind != network.REST {
 				t.Fatalf("wrong accounting: %+v", group)
 			}
 		}

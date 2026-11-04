@@ -2,11 +2,13 @@ package suppression
 
 import (
 	"testing"
+
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 	const source = "run: | # actionlint:ignore expression,shellcheck -- reviewed\n  echo first\n  echo second\nnext: value\n"
-	directives, invalid := Parse([]byte(source), []string{"expression", "shellcheck"})
+	directives, invalid := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 	if len(invalid) != 0 || len(directives) != 1 {
 		t.Fatalf("invalid block directive: %+v, %+v", directives, invalid)
 	}
@@ -25,7 +27,7 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 					return tc.decision
 				}
 				return Decision{Suppress: true}
-			})
+			}, rule.Names{})
 			for _, extent := range [][2]int{{1, 1}, {2, 2}, {3, 3}, {2, 4}} {
 				if got := result.Suppresses("expression", extent[0], extent[1]); got != tc.decision.Suppress {
 					t.Fatalf("origin %v: suppressed=%v, want %v", extent, got, tc.decision.Suppress)
@@ -60,11 +62,11 @@ func TestInvalidDirectiveDoesNotSuppress(t *testing.T) {
 		"# ignore[expression] -- reviewed\nrun: echo ok",
 		"# ignore expression -- reviewed\nrun: echo ok",
 	} {
-		directives, invalid := Parse([]byte(source), []string{"expression"})
+		directives, invalid := Parse([]byte(source), []string{"expression"}, rule.Names{})
 		if len(directives) != 0 || len(invalid) != 1 || invalid[0].Rule != "inline-suppression" {
 			t.Fatalf("invalid directive accepted: %q: %+v, %+v", source, directives, invalid)
 		}
-		if evaluation, _ := Evaluate(directives, nil); evaluation.Suppresses("expression", 1, 1) {
+		if evaluation, _ := Evaluate(directives, nil, rule.Names{}); evaluation.Suppresses("expression", 1, 1) {
 			t.Fatalf("invalid directive hid a finding: %q", source)
 		}
 	}

@@ -32,7 +32,7 @@ func (p *Plugin) Descriptor() analyzer.Descriptor {
 	if p.analyzerDescriptor == nil {
 		return analyzer.Descriptor{}
 	}
-	return analyzer.Descriptor{Descriptor: p.analyzerDescriptor.Clone(), Requires: append([]analyzer.Fact(nil), p.analyzerDescriptor.Requires...)}
+	return analyzer.Descriptor{Descriptor: p.analyzerDescriptor.Clone(), RequiredInputs: append([]analyzer.InputKind(nil), p.analyzerDescriptor.RequiredInputs...)}
 }
 
 // Analyze runs the plugin on one document in a fresh instance. A trap, an

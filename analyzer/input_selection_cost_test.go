@@ -25,7 +25,7 @@ func selectedGraphInput(t testing.TB, count int) Input {
 	}
 	selected := records.Scripts[0]
 	return Input{
-		Reference: entry.Reference, Available: []Fact{Invocations, Scripts}, CallGraph: graph,
+		Reference: entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: graph,
 		SelectedScripts: []OccurrenceID{selected.ID}, Scripts: []Script{{Reference: selected.Declaration, Occurrence: selected}},
 	}
 }

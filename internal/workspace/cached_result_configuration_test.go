@@ -35,7 +35,7 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := render.Prepare(report.Analysis{Configurations: analysis.Configurations, Inputs: analysis.Inputs}).CheckResult()
+		result := render.FromAnalysis(report.Analysis{Configurations: analysis.Configurations, Inputs: analysis.Inputs}).CheckResult()
 		if len(result.Configs) != 1 || result.Configs[0].File != config || len(result.Configs[0].Origins) == 0 {
 			t.Fatalf("configuration provenance lost: %+v", result.Configs)
 		}

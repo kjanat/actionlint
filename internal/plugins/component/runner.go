@@ -191,11 +191,11 @@ func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
 		return runner.Answer{}, err
 	}
 	var answer runner.Answer
-	e, err := liftRecord(r.Field("evidence"), "runner evidence")
+	e, err := liftRecord(r.Field("dataset-status"), "runner dataset status")
 	if err != nil {
 		return answer, err
 	}
-	for name, dest := range map[string]*string{"dataset": &answer.Evidence.Dataset, "scope": &answer.Evidence.Scope, "obtained-at": &answer.Evidence.ObtainedAt} {
+	for name, dest := range map[string]*string{"dataset-id": &answer.DatasetStatus.DatasetID, "scope": &answer.DatasetStatus.Scope, "obtained-at": &answer.DatasetStatus.ObtainedAt} {
 		if *dest, err = liftString(e, name); err != nil {
 			return answer, err
 		}
@@ -204,8 +204,8 @@ func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
 	if err != nil {
 		return answer, err
 	}
-	answer.Evidence.Freshness = runner.Freshness(fresh)
-	if answer.Evidence.Complete, err = liftBool(e, "complete"); err != nil {
+	answer.DatasetStatus.Freshness = runner.Freshness(fresh)
+	if answer.DatasetStatus.Complete, err = liftBool(e, "complete"); err != nil {
 		return answer, err
 	}
 	resolution, ok := r.Field("resolution").(*wacogo.ValVariant)

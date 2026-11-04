@@ -43,11 +43,12 @@ import (
 // analysisSession holds invocation resources assembled by the application.
 // The workflow engine receives only prepared passes from the composition service.
 type analysisSession struct {
-	suppressionUses      suppressionUses
-	runnerReportsMu      sync.Mutex
-	runnerReports        []runner.Report
-	runners              runner.Options
-	toolDescriptors      []rule.Descriptor
+	suppressionUses suppressionUses
+	runnerReportsMu sync.Mutex
+	runnerReports   []runner.Report
+	runners         runner.Options
+
+	ruleRegistrations    []repoconfig.RuleRegistration
 	tools                []tools.Registration
 	analyzers            []analyzer.Registration
 	loadScriptEngine     func(context.Context, string) (analyzer.ScriptBackend, error)
@@ -100,8 +101,8 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		return nil, outline, err
 	}
 	names := checks.RuleNames(s.analyzers)
-	for _, d := range s.toolDescriptors {
-		names = append(names, d.Name)
+	for _, registration := range s.ruleRegistrations {
+		names = append(names, registration.Descriptor.Name)
 	}
 	if err := repoconfig.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, err
@@ -109,7 +110,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err := repoconfig.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
 		return nil, nil, err
 	}
-	cfg, err = repoconfig.ResolveRules(s.rulePresets, cfg, s.toolDescriptors...)
+	cfg, err = repoconfig.ResolveRegisteredRules(s.rulePresets, cfg, s.ruleRegistrations...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +187,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	diagnosticpolicy.InferReferences(all, sourcePath, references, entryAliases...)
 	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
 	analysisErr = errors.Join(analysisErr, err)
-	policy := diagnosticpolicy.Policy{RuleDescriptors: s.toolDescriptors, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	policy := diagnosticpolicy.Policy{RuleRegistrations: s.ruleRegistrations, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
 	policy.UsedSuppression = func(path string, position diagmodel.Position, rule string) {
 		if index, ok := references[path]; ok {
 			s.suppressionUses.observe(index.Document, position, rule)
@@ -248,7 +249,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		customLabels = runnerlang.KnownLabels(known.Values())
 	}
 	runners, runnerErr := runnerlang.PrepareWithLabels(s.ctx, snapshot, customLabels, s.runners, root)
-	if report := runners.Report(); report.Identity != "" {
+	if report := runners.Report(); report.CacheKey != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
 		s.runnerReports = append(s.runnerReports, report)
@@ -256,7 +257,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
 	resolvedActions.SetRunners(runners)
-	context := builtin.Context{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	context := builtin.RuleInputs{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
 	context.Repository = host
 	context.RemoteActions = s.remoteActions
@@ -298,7 +299,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			if err != nil {
 				return nil, err
 			}
-			return repoconfig.ResolveRules(s.rulePresets, config, s.toolDescriptors...)
+			return repoconfig.ResolveRegisteredRules(s.rulePresets, config, s.ruleRegistrations...)
 		},
 		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),

@@ -49,14 +49,14 @@ interface runner-provider {
     }
     /// Complete means the candidate set is exhaustive within the requested scope,
     /// as well as permitting absence claims. Dataset identifies the data revision.
-    record evidence {
-        dataset: string,
+    record dataset-status {
+        dataset-id: string,
         scope: string,
         obtained-at: string,
         freshness: freshness,
         complete: bool,
     }
-    record answer { resolution: resolution, evidence: evidence }
+    record answer { resolution: resolution, dataset-status: dataset-status }
     record descriptor { name: string, version: string, targets: list<string> }
     record outcome { answers: list<answer>, error: option<string> }
 

@@ -95,7 +95,7 @@ func detachAnswers(answers []runnerapi.Answer) []runnerapi.Answer {
 	}
 	detached := make([]runnerapi.Answer, len(answers))
 	for i, answer := range answers {
-		detached[i] = runnerapi.Answer{Resolution: detachResolution(answer.Resolution), Evidence: answer.Evidence}
+		detached[i] = runnerapi.Answer{Resolution: detachResolution(answer.Resolution), DatasetStatus: answer.DatasetStatus}
 	}
 	return detached
 }
@@ -175,7 +175,7 @@ func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapsho
 			return k, fmt.Errorf("conflicting runner providers for target %q; select one explicitly", options.Target)
 		}
 		selected = registration.Provider
-		identity = registration.Identity
+		identity = registration.ImplementationID
 	}
 	var selectors []runnerapi.Selector
 	type jobRange struct {
@@ -211,7 +211,7 @@ func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapsho
 	if err != nil {
 		return k, err
 	}
-	k.report = runnerapi.Report{Identity: fmt.Sprintf("%x", sha256.Sum256(dependency)), Provider: descriptor, Artifact: identity, Target: options.Target, Scope: scope, Snapshot: options.Snapshot.Identity()}
+	k.report = runnerapi.Report{CacheKey: fmt.Sprintf("%x", sha256.Sum256(dependency)), Provider: descriptor, ImplementationID: identity, Target: options.Target, Scope: scope, SnapshotDigest: options.Snapshot.Digest()}
 	answers, err := selected.ResolveRunners(ctx, request)
 	if err != nil {
 		return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
@@ -226,18 +226,18 @@ func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapsho
 			return k, err
 		}
 		a.Resolution = resolution
-		if a.Evidence.Scope != scope {
+		if a.DatasetStatus.Scope != scope {
 			return k, errors.New("runner answer scope does not match requested scope")
 		}
-		if a.Evidence.Dataset == "" {
+		if a.DatasetStatus.DatasetID == "" {
 			return k, errors.New("runner answer has no dataset identity")
 		}
 		if hasSnapshot {
 			freshness := options.Snapshot.Freshness
 			if freshness != runnerapi.Fresh {
-				a.Evidence.Freshness = freshness
+				a.DatasetStatus.Freshness = freshness
 			}
-			a.Evidence.Complete = a.Evidence.Complete && options.Snapshot.Complete
+			a.DatasetStatus.Complete = a.DatasetStatus.Complete && options.Snapshot.Complete
 		}
 		if selectors[i].Incomplete {
 			if _, resolved := a.Resolution.(runnerapi.Resolved); resolved {
@@ -264,7 +264,7 @@ func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapsho
 	if err != nil {
 		return k, err
 	}
-	k.report.Identity = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
+	k.report.CacheKey = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
 	jobs := make(map[workflowdecl.JobView]jobRecord, len(ranges))
 	for _, span := range ranges {
 		record, err := joinAnswers(span.job, answers[span.start:span.end])
@@ -315,7 +315,7 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecor
 	var candidates []runnerapi.Candidate
 	uncertain := false
 	for _, answer := range answers {
-		if answer.Evidence.Freshness != runnerapi.Fresh {
+		if answer.DatasetStatus.Freshness != runnerapi.Fresh {
 			uncertain = true
 			continue
 		}
@@ -324,7 +324,7 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecor
 			if len(result.Candidates) == 0 {
 				return jobRecord{}, errors.New("resolved runner answer has no candidates")
 			}
-			if !answer.Evidence.Complete {
+			if !answer.DatasetStatus.Complete {
 				uncertain = true
 				continue
 			}
@@ -333,7 +333,7 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecor
 			if len(result.Rejections) == 0 {
 				return jobRecord{}, errors.New("no-match runner answer has no rejections")
 			}
-			if !answer.Evidence.Complete {
+			if !answer.DatasetStatus.Complete {
 				uncertain = true
 				continue
 			}

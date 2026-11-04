@@ -27,7 +27,7 @@ func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
 				if r.Kind != "action" || r.ExpectedRepositoryID != 42 {
 					t.Fatalf("wrong profile or guard: %+v", r)
 				}
-				return resolver.Result{Version: 1, Repository: "example/action", RepositoryID: 42, Commit: sha, SelectedObject: sha, SelectedRef: selectedRef, ObservedAt: "2026-10-31T00:00:00Z", Evidence: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
+				return resolver.Result{Version: 1, Repository: "example/action", RepositoryID: 42, Commit: sha, SelectedObject: sha, SelectedRef: selectedRef, ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
 			})
 		}, Transport: transport(func(r *http.Request) (*http.Response, error) {
 			body := actionSource

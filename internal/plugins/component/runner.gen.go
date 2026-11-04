@@ -5,7 +5,7 @@ import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
 	RunnerInterface      = "kjanat:actionlint/runner-provider@0.2.0"
-	runnerContractDigest = "e878dabfe378501abbeb932235e183ebfcfbd3b4446b5a67a39e07698d5c6953"
+	runnerContractDigest = "2a995ebe267d4d5df5664c0f6f48b40cc770116ef9375935f26f3a648652df9f"
 )
 
 func expectedRunnerContract() *wp.ComponentType {
@@ -27,8 +27,8 @@ func expectedRunnerContract() *wp.ComponentType {
 	t14 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindList, List: t13})}
 	t15 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindList, List: t3})}
 	t16 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindVariant, Variant: &wp.VariantTypeDesc{Cases: []wp.VariantCaseDesc{{Name: "resolved", Type: wp.Some(t14)}, {Name: "no-match", Type: wp.Some(t15)}, {Name: "unknown", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}, {Name: "not-applicable", Type: wp.None[wp.ValTypeDesc]()}}}})}
-	t17 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "dataset", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "scope", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "obtained-at", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "freshness", Type: t7}, {Name: "complete", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimBool}}}}})}
-	t18 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "resolution", Type: t16}, {Name: "evidence", Type: t17}}}})}
+	t17 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "dataset-id", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "scope", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "obtained-at", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "freshness", Type: t7}, {Name: "complete", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimBool}}}}})}
+	t18 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "resolution", Type: t16}, {Name: "dataset-status", Type: t17}}}})}
 	t19 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindList, List: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}})}
 	t20 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "name", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "version", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "targets", Type: t19}}}})}
 	t21 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindList, List: t18})}
@@ -47,7 +47,7 @@ func expectedRunnerContract() *wp.ComponentType {
 		"case-sensitivity": {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t12.TypeID)}},
 		"candidate":        {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t13.TypeID)}},
 		"resolution":       {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t16.TypeID)}},
-		"evidence":         {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t17.TypeID)}},
+		"dataset-status":   {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t17.TypeID)}},
 		"answer":           {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t18.TypeID)}},
 		"descriptor":       {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t20.TypeID)}},
 		"outcome":          {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t23.TypeID)}},

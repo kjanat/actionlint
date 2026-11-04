@@ -35,7 +35,7 @@ type ruleContainerRunner struct {
 	conditions map[source.Reference]string
 }
 
-func newRuleContainerRunner(c Context) *ruleContainerRunner {
+func newRuleContainerRunner(c RuleInputs) *ruleContainerRunner {
 	ctx := c.Context
 	if ctx == nil {
 		ctx = context.Background()

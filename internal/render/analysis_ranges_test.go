@@ -32,7 +32,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 				t.Fatal(err)
 			}
 			var legacyOut bytes.Buffer
-			if err := legacy.Render(&legacyOut, Prepare(result)); err != nil {
+			if err := legacy.Render(&legacyOut, FromAnalysis(result)); err != nil {
 				t.Fatal(err)
 			}
 			if legacyOut.String() != tc.legacySpan {
@@ -45,7 +45,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 						t.Fatal(err)
 					}
 					var out bytes.Buffer
-					if err := renderer.Render(&out, Prepare(result)); err != nil {
+					if err := renderer.Render(&out, FromAnalysis(result)); err != nil {
 						t.Fatal(err)
 					}
 					if format == FormatGitHub {
@@ -82,7 +82,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: diagmodel.Position{Line: 1, Column: 6}, End: diagmodel.Position{Line: 1, Column: 6}}
 	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []report.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: true}}}
-	result := Prepare(analysis)
+	result := FromAnalysis(analysis)
 	fields := result.Findings[0].TemplateFields()
 	if fields.EndColumn != diagnostic.Start.Column || fields.Snippet != "echo long_unverified_token\n     ^" {
 		t.Fatalf("template inferred an unverified token extent: %+v", fields)
@@ -104,7 +104,7 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 		}
 	}
 	analysis.Diagnostics[0].End.Column = 10
-	fields = Prepare(analysis).Findings[0].TemplateFields()
+	fields = FromAnalysis(analysis).Findings[0].TemplateFields()
 	if fields.EndColumn != 9 || !strings.HasSuffix(fields.Snippet, "     ^~~~") {
 		t.Fatalf("reported extent was lost: %+v", fields)
 	}
@@ -120,7 +120,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 		t.Fatal(err)
 	}
 	var text bytes.Buffer
-	if err := textRenderer.Render(&text, Prepare(result)); err != nil {
+	if err := textRenderer.Render(&text, FromAnalysis(result)); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Contains(text.Bytes(), []byte("1 | on: push")) {
@@ -132,7 +132,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 		t.Fatal(err)
 	}
 	var oneline bytes.Buffer
-	if err := onelineRenderer.Render(&oneline, Prepare(result)); err != nil {
+	if err := onelineRenderer.Render(&oneline, FromAnalysis(result)); err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Contains(oneline.Bytes(), []byte("1 | on: push")) {
@@ -145,7 +145,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 		Path: "input.yml", Rule: "expression", Message: "bad text",
 		Start: diagmodel.Position{Line: 1, Column: 1}, Snippet: "on: push",
 	}
-	result := Prepare(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
+	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
 	for _, format := range []Format{"", FormatOneline} {
 		t.Run(string(format), func(t *testing.T) {
 			renderer, err := New(format, "", true, testVersion, nil)

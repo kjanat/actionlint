@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 type ToolRequirements = workspace.ExternalToolRequirements
@@ -34,17 +33,21 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 		return ToolRequirements{}, err
 	}
 	var names []string
-	var descriptors []rule.Descriptor
+	var registrations []repoconfig.RuleRegistration
 	for _, registration := range options.Analyzers {
 		if !analyzerref.IsNil(registration.Analyzer) {
 			names = append(names, registration.Analyzer.Descriptor().Name)
-			descriptors = append(descriptors, registration.Analyzer.Descriptor().Descriptor)
+			registrations = append(registrations, repoconfig.RuleRegistration{Descriptor: registration.Analyzer.Descriptor().Descriptor})
 		}
 	}
 	for _, registration := range options.Tools {
 		names = append(names, registration.Descriptor.Name)
 		if _, builtin := rulecatalog.Find(registration.Descriptor.Name); !builtin || registration.ToolIntegration != nil {
-			descriptors = append(descriptors, registration.Descriptor)
+			registered := repoconfig.RuleRegistration{Descriptor: registration.Descriptor}
+			if registration.ToolIntegration != nil && registration.ToolIntegration.Tool == registration.Descriptor.Name {
+				registered.ReplacesTool = registration.ToolIntegration.Tool
+			}
+			registrations = append(registrations, registered)
 		}
 	}
 	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, RuleNames: names})
@@ -52,7 +55,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 		return ToolRequirements{}, err
 	}
 	providers := toolNames(options.Tools)
-	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Descriptors: descriptors, Required: func(cfg, project *repoconfig.Config, inside bool) ([]string, error) {
+	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Registrations: registrations, Required: func(cfg, project *repoconfig.Config, inside bool) ([]string, error) {
 		if err := repoconfig.ValidateToolNames(project, providers...); err != nil {
 			return nil, err
 		}

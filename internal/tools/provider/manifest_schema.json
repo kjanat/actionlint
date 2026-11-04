@@ -932,7 +932,7 @@
     "process": {
       "$ref": "#/$defs/process"
     },
-    "requires": {
+    "required_inputs": {
       "type": "array",
       "maxItems": 2,
       "uniqueItems": true,

@@ -20,8 +20,8 @@ func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
 			occurrence := records.Scripts[0]
 			input := Input{
 				Reference: records.Entry.Reference, CallGraph: retainGraph(t, records),
-				Available: []Fact{Invocations, Scripts},
-				Invoked:   []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}},
+				AvailableInputs: []InputKind{Invocations, Scripts},
+				Invoked:         []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}},
 			}
 			if err := input.ValidateInvocations(); err != nil {
 				t.Fatalf("unmodified input is invalid: %v", err)

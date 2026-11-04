@@ -87,7 +87,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pointer := "/lint/rules/policy/require-commit-hash/level"
+			pointer := "/lint/rules/security/unpinned-reference/level"
 			if tc.input == "config" {
 				if _, exists := report.Inspection.Origins[pointer]; exists {
 					t.Fatal("whole-config reset left a removed rule origin")
@@ -129,7 +129,7 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pointer := "/lint/rules/policy/require-commit-hash/level"
+			pointer := "/lint/rules/security/unpinned-reference/level"
 			if reset == "null" {
 				if _, exists := report.Inspection.Origins[pointer]; exists {
 					t.Fatal("partial overlay fabricated a removed rule origin")

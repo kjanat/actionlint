@@ -26,7 +26,7 @@ func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
 			t.Fatalf("independent label recognition weakened conjunction/group: %#v", answer)
 		}
 	}
-	originalDataset := answers[2].Evidence.Dataset
+	originalDataset := answers[2].DatasetStatus.DatasetID
 	request.Snapshot.Content = strings.ReplaceAll(request.Snapshot.Content, "buildkite-windows", "new-label")
 	answers, err = p.ResolveRunners(t.Context(), request)
 	if err != nil {
@@ -35,7 +35,7 @@ func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
 	if _, ok := answers[2].Resolution.(runner.Resolved); !ok {
 		t.Fatal("snapshot update required rebuilding provider or host")
 	}
-	if answers[2].Evidence.Dataset == originalDataset {
+	if answers[2].DatasetStatus.DatasetID == originalDataset {
 		t.Fatal("updated catalogue reused the old dataset identity")
 	}
 }
@@ -49,7 +49,7 @@ func TestRunnerProviderMissingAndEmptyCatalogue(t *testing.T) {
 	if err != nil || len(answers) != 1 {
 		t.Fatalf("missing catalogue: %v %#v", err, answers)
 	}
-	if _, unknown := answers[0].Resolution.(runner.Unknown); !unknown || answers[0].Evidence.Freshness != runner.Missing || answers[0].Evidence.Complete {
+	if _, unknown := answers[0].Resolution.(runner.Unknown); !unknown || answers[0].DatasetStatus.Freshness != runner.Missing || answers[0].DatasetStatus.Complete {
 		t.Fatalf("missing catalogue claimed knowledge: %#v", answers[0])
 	}
 	request.Snapshot.Content = `{"queues":[]}`
@@ -57,7 +57,7 @@ func TestRunnerProviderMissingAndEmptyCatalogue(t *testing.T) {
 	if err != nil || len(answers) != 1 {
 		t.Fatalf("empty catalogue: %v %#v", err, answers)
 	}
-	if _, absent := answers[0].Resolution.(runner.NoMatch); !absent || !answers[0].Evidence.Complete {
+	if _, absent := answers[0].Resolution.(runner.NoMatch); !absent || !answers[0].DatasetStatus.Complete {
 		t.Fatalf("exhaustive empty catalogue did not establish absence: %#v", answers[0])
 	}
 }
@@ -68,7 +68,7 @@ func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
 	snapshot.Content = "{"
 	observer := &runtimeObserver{}
 	result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    needs: missing\n    runs-on: buildkite-windows\n    steps: [{run: echo hello}]\n")}}, Options: analysis.Options{
-		Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: snapshot, Providers: []runner.Registration{{Provider: p, Identity: p.ArtifactDigest()}}},
+		Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 		Analyzers: []analyzer.Registration{{Analyzer: observer}},
 	}})
 	if err == nil || !strings.Contains(err.Error(), "invalid queue snapshot") {
@@ -96,7 +96,7 @@ func TestRunnerProviderShellValidation(t *testing.T) {
 		want  bool
 	}{{"buildkite-windows", false}, {"buildkite-linux", true}} {
 		result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + tc.label + "\n    steps: [{run: echo hello, shell: cmd}]\n")}}, Options: analysis.Options{
-			Runners: runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: runnerFixtureRequest(t).Snapshot, Providers: []runner.Registration{{Provider: p, Identity: p.ArtifactDigest()}}},
+			Runners: runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: runnerFixtureRequest(t).Snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 		}})
 		if err != nil {
 			t.Fatal(err)

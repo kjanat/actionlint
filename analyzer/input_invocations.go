@@ -8,13 +8,13 @@ import (
 
 // ValidateInvocations checks supplied facts against the captured occurrence graph.
 func (input Input) ValidateInvocations() error {
-	available := slices.Contains(input.Available, Invocations)
+	available := slices.Contains(input.AvailableInputs, Invocations)
 	if available != input.CallGraph.Valid() {
 		return invalidGraph("invocations availability disagrees with graph presence")
 	}
-	textsAvailable := slices.Contains(input.Available, Scripts)
+	textsAvailable := slices.Contains(input.AvailableInputs, Scripts)
 	if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) > 0 && !textsAvailable {
-		return invalidGraph("script text supplied without scripts fact")
+		return invalidGraph("script text supplied without the scripts input")
 	}
 	for _, actionInput := range input.ActionInputs {
 		if actionInput.Shell != "" || actionInput.Runtime != nil {
@@ -49,7 +49,7 @@ func (input Input) ValidateInvocations() error {
 	expected := input.CallGraph.ScriptCount()
 	if input.SelectedScripts != nil {
 		if !textsAvailable {
-			return invalidGraph("script selection supplied without scripts fact")
+			return invalidGraph("script selection supplied without the scripts input")
 		}
 		expected = len(input.SelectedScripts)
 		for _, id := range input.SelectedScripts {

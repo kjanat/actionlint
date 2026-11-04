@@ -15,7 +15,7 @@ import (
 type actionInputObserver struct{ input analyzer.Input }
 
 func (*actionInputObserver) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "action-input-observer", Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
+	return analyzer.Descriptor{Name: "action-input-observer", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
 func (o *actionInputObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

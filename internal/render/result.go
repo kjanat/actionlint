@@ -27,9 +27,9 @@ type Result struct {
 	Rules          []Rule
 }
 
-// Prepare adapts an analysis snapshot for display, converting half-open spans
+// FromAnalysis adapts an analysis snapshot for display, converting half-open spans
 // to inclusive columns.
-func Prepare(analysis report.Analysis) Result {
+func FromAnalysis(analysis report.Analysis) Result {
 	r := Result{
 		ActionMetadata: analysis.ActionMetadata,
 		FileCount:      analysis.FileCount, Diagnostics: analysis.Diagnostics,

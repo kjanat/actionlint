@@ -182,7 +182,7 @@ func runLinter(req *lintRequest) *lintResult {
 		var sarif bytes.Buffer
 		sarifRenderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
 		if err == nil {
-			err = sarifRenderer.Render(&sarif, render.Prepare(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
+			err = sarifRenderer.Render(&sarif, render.FromAnalysis(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
 		}
 		if err != nil {
 			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", render.ExitFailure}

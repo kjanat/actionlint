@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -106,7 +108,7 @@ jobs: [`,
 # another comment
   value`,
 	} {
-		if got, invalid := suppression.Parse([]byte(source), diagnosticpolicy.SuppressionRules()); len(got) != 0 || len(invalid) != 0 {
+		if got, invalid := suppression.Parse([]byte(source), diagnosticpolicy.SuppressionRules(), rulecatalog.Names()); len(got) != 0 || len(invalid) != 0 {
 			t.Fatalf("scalar content became a directive in %q: %+v", source, got)
 		}
 	}

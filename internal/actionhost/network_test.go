@@ -12,13 +12,13 @@ import (
 )
 
 func TestMetadataProtectsReservedPipelineFetches(t *testing.T) {
-	ctx, session := network.Ensure(t.Context())
+	ctx, session := network.TrackRequests(t.Context())
 	prototype, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/example/action", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	prototype.Header.Set("Authorization", "Bearer fixture-token")
-	reservation, err := session.Reserve(prototype, 4)
+	reservation, err := session.ReserveQuota(prototype, 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestMetadataProtectsReservedPipelineFetches(t *testing.T) {
 }
 
 func TestMetadataStopsBeforeAnExhaustedBatch(t *testing.T) {
-	ctx, _ := network.Ensure(t.Context())
+	ctx, _ := network.TrackRequests(t.Context())
 	calls := 0
 	client, err := New(Options{Mode: Online, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		calls++

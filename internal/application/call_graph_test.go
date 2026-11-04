@@ -16,7 +16,7 @@ type callGraphCollector struct {
 }
 
 func (*callGraphCollector) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "call-graph", Category: "correctness", Requires: []analyzer.Fact{analyzer.Invocations, analyzer.Scripts}}
+	return analyzer.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Invocations, analyzer.Scripts}}
 }
 
 func (collector *callGraphCollector) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -49,7 +49,7 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		graph := input.CallGraph.Snapshot()
+		graph := input.CallGraph.Export()
 		if len(input.Invoked) != 2 || input.CallGraph.CallCount() != 6 {
 			t.Fatalf("incomplete nested input: %+v", graph)
 		}

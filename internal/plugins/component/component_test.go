@@ -78,7 +78,7 @@ func TestRustPluginReportsPipeToShell(t *testing.T) {
 		t.Fatal("descriptor aliases plugin metadata")
 	}
 
-	if len(descriptor.Examples) != 1 || descriptor.Category != "security" || descriptor.Provider != "example" || descriptor.Help == "" || len(descriptor.OptionsSchema) == 0 || descriptor.Name != "pipe-to-shell" || strings.Join(factNames(descriptor.Requires), ",") != "scripts,invocations" {
+	if len(descriptor.Examples) != 1 || descriptor.Category != "security" || descriptor.Provider != "example" || descriptor.Help == "" || len(descriptor.OptionsSchema) == 0 || descriptor.Name != "pipe-to-shell" || strings.Join(inputKindNames(descriptor.RequiredInputs), ",") != "scripts,invocations" {
 		t.Fatalf("descriptor=%+v", descriptor)
 	}
 	if plugin.Limits() != (component.Limits{Timeout: component.DefaultTimeout, MemoryPages: component.DefaultMemoryPages}) {
@@ -126,7 +126,7 @@ func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
 	}
 }
 
-func factNames(facts []analyzer.Fact) []string {
+func inputKindNames(facts []analyzer.InputKind) []string {
 	names := make([]string, len(facts))
 	for i, fact := range facts {
 		names[i] = string(fact)

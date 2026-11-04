@@ -32,7 +32,7 @@ func capturedEditorSource(t testing.TB, path string, content []byte, model sourc
 type editorPathAnalyzer struct{}
 
 func (editorPathAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "editor-paths", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (editorPathAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

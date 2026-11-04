@@ -197,6 +197,16 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 
+	ruleRegistrations := make([]repoconfig.RuleRegistration, 0, len(extensions))
+	for _, descriptor := range extensions {
+		registration := repoconfig.RuleRegistration{Descriptor: descriptor}
+		for _, tool := range request.Tools {
+			if tool.ToolIntegration != nil && tool.ToolIntegration.Tool == descriptor.Name && tool.Descriptor.Name == descriptor.Name {
+				registration.ReplacesTool = tool.ToolIntegration.Tool
+			}
+		}
+		ruleRegistrations = append(ruleRegistrations, registration)
+	}
 	for _, registration := range request.Tools {
 		if registration.Build == nil {
 			return nil, fmt.Errorf("tool %q has no adapter", registration.Descriptor.Name)
@@ -342,7 +352,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	session := &analysisSession{
 		remoteActions: actionremote.New(request.RemoteActions),
 		runners:       request.Runners,
-		analyzers:     request.Analyzers, ctx: lifetime, toolDescriptors: extensions,
+		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations,
 		captures: captures, snapshots: snapshots, reader: reader,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
@@ -486,8 +496,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	session.suppressionUses.discardUnproven(result.files)
 	additionalRules := checks.RuleNames(session.analyzers)
-	for _, descriptor := range session.toolDescriptors {
-		additionalRules = append(additionalRules, descriptor.Name)
+	for _, registration := range session.ruleRegistrations {
+		additionalRules = append(additionalRules, registration.Descriptor.Name)
 	}
 	addUnusedSuppressionFixes(result.files, diagnosticpolicy.SuppressionRules(additionalRules...))
 	err = result.revalidateCaptures(captures, rows, session.workingDir, err)
@@ -495,9 +505,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
 			return order
 		}
-		return strings.Compare(a.Identity, b.Identity)
+		return strings.Compare(a.CacheKey, b.CacheKey)
 	})
-	result.RunnerEvidence = session.runnerReports
+	result.RunnerResults = session.runnerReports
 	result.collectDiagnostics()
 	result.Rules = checks.Templates()
 	for _, file := range result.files {

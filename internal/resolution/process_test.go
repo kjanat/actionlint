@@ -55,7 +55,7 @@ func TestResolverProcessHelper(t *testing.T) {
 	if json.Unmarshal(data, &request) != nil {
 		os.Exit(5)
 	}
-	result := resolver.Result{Version: 1, Repository: request.Repository, RepositoryID: 42, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", Evidence: json.RawMessage(`{}`)}
+	result := resolver.Result{Version: 1, Repository: request.Repository, RepositoryID: 42, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
 	if mode == "wrong-repository" {
 		result.Repository = "other/repository"
 	}
@@ -63,7 +63,7 @@ func TestResolverProcessHelper(t *testing.T) {
 		result.Tree = strings.Repeat("b", 40)
 	}
 	if mode == "network" {
-		result.Network = &resolver.NetworkReport{Complete: true, Queries: []resolver.NetworkQuery{{Host: "github.com", Kind: "git", Authenticated: "unknown", Count: 2}}}
+		result.Network = &resolver.RequestReport{AllRequestsReported: true, Requests: []resolver.RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		os.Exit(6)
@@ -76,20 +76,20 @@ func TestProcessNetworkReceiptIsNotRecountedFromCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, session := network.Ensure(t.Context())
+	ctx, session := network.TrackRequests(t.Context())
 	p := NewProcess(executable, []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", "network"}, 10*time.Second)
 	request := resolver.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
 	first, err := p.Resolve(ctx, request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first.Network.Queries[0].Count = 999
+	first.Network.Requests[0].Attempts = 999
 	second, err := p.Resolve(ctx, request)
-	if err != nil || second.Network.Queries[0].Count != 2 {
+	if err != nil || second.Network.Requests[0].Attempts != 2 {
 		t.Fatalf("cached receipt aliased caller: %+v %v", second, err)
 	}
 	var attempts, cached uint64
-	for _, group := range session.Snapshot().Groups {
+	for _, group := range session.Statistics().Requests {
 		attempts += group.Attempts
 		cached += group.CacheHits
 	}
@@ -103,14 +103,14 @@ func TestCommitishResolverEmitsAnEmptyReceiptBeforeTransport(t *testing.T) {
 	if executable == "" {
 		t.Skip("set ACTIONLINT_TEST_COMMITISH_RESOLVER to the built commitish resolver")
 	}
-	ctx, session := network.Ensure(t.Context())
+	ctx, session := network.TrackRequests(t.Context())
 	provider := NewProcess(executable, nil, 10*time.Second)
 	result, err := provider.Resolve(ctx, resolver.Request{Version: 1, Repository: "../invalid", Ref: "master", Kind: "action"})
-	if err == nil || result.Network == nil || !result.Network.Complete || len(result.Network.Queries) != 0 {
+	if err == nil || result.Network == nil || !result.Network.AllRequestsReported || len(result.Network.Requests) != 0 {
 		t.Fatalf("invalid repository did not produce a complete zero-attempt receipt: result=%+v error=%v", result, err)
 	}
-	report := session.Snapshot()
-	if len(report.Groups) != 1 || report.Groups[0].Lookups != 1 || report.Groups[0].OpaqueLookups != 0 || report.Groups[0].Attempts != 0 {
+	report := session.Statistics()
+	if len(report.Requests) != 1 || report.Requests[0].ResolverCalls != 1 || report.Requests[0].UnreportedResolverCalls != 0 || report.Requests[0].Attempts != 0 {
 		t.Fatalf("host did not consume the resolver receipt: %+v", report)
 	}
 }
@@ -172,15 +172,15 @@ func TestProcessCoalescesConcurrentRequests(t *testing.T) {
 		if result.Commit != strings.Repeat("a", 40) {
 			t.Fatalf("result=%+v", result)
 		}
-		result.Evidence[0] = '['
+		result.FetchLog[0] = '['
 	}
 	entries, err := os.ReadDir(directory)
 	if err != nil || len(entries) != 2 {
 		t.Fatalf("provider invocations=%d, want 1; error=%v", len(entries)-1, err)
 	}
 	result, err := p.Resolve(t.Context(), request)
-	if err != nil || string(result.Evidence) != "{}" {
-		t.Fatalf("caller mutated shared evidence: result=%+v error=%v", result, err)
+	if err != nil || string(result.FetchLog) != "{}" {
+		t.Fatalf("caller mutated the cached fetch log: result=%+v error=%v", result, err)
 	}
 	if _, err := p.NewSession().Resolve(t.Context(), request); err != nil {
 		t.Fatal(err)

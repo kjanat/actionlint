@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// PreflightGitHub obtains quota information once per credential scope before a
+// LoadGitHubRateLimits obtains quota information once per credential scope before a
 // batch. It does not discover credentials or grant permission to use the network.
 // The caller must already have selected online access and supplied its client.
 // An unavailable quota endpoint leaves the quota unknown; it does not invent a
 // zero allowance. Response headers on subsequent requests refine the estimate.
-func (s *Session) PreflightGitHub(ctx context.Context, client *http.Client, request *http.Request) error {
+func (s *RequestTracker) LoadGitHubRateLimits(ctx context.Context, client *http.Client, request *http.Request) error {
 	if err := validRequest(request); err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func (s *Session) PreflightGitHub(ctx context.Context, client *http.Client, requ
 	}
 	_, key, _ := requestKeys(request)
 	s.mu.Lock()
-	prior := s.probes[key.credentialKey]
+	prior := s.rateLimitLoads[key.credentialKey]
 	if prior != nil {
 		select {
 		case <-prior.done:
@@ -42,11 +42,11 @@ func (s *Session) PreflightGitHub(ctx context.Context, client *http.Client, requ
 			}
 		}
 	}
-	current := &probe{done: make(chan struct{})}
-	s.probes[key.credentialKey] = current
+	current := &rateLimitLoad{done: make(chan struct{})}
+	s.rateLimitLoads[key.credentialKey] = current
 	s.mu.Unlock()
 	defer close(current.done)
-	probeContext := WithOperation(ctx, Operation{Purpose: "quota-preflight", Priority: Control, Kind: REST, Resource: "core"})
+	probeContext := WithRequestOptions(ctx, RequestOptions{Purpose: "quota-preflight", Priority: Control, RequestKind: REST, QuotaPool: "core"})
 	probeRequest, err := http.NewRequestWithContext(probeContext, http.MethodGet, "https://api.github.com/rate_limit", nil)
 	if err != nil {
 		return err
@@ -92,9 +92,9 @@ func (s *Session) PreflightGitHub(ctx context.Context, client *http.Client, requ
 	return ctx.Err()
 }
 
-// CheckBudget tests a batch's planned cost without spending quota. Individual
+// CheckBatchQuota tests a batch's planned cost without spending quota. Individual
 // requests still pass admission, because another operation can spend it first.
-func (s *Session) CheckBudget(request *http.Request, cost uint64) error {
+func (s *RequestTracker) CheckBatchQuota(request *http.Request, cost uint64) error {
 	if err := validRequest(request); err != nil {
 		return err
 	}
@@ -103,13 +103,13 @@ func (s *Session) CheckBudget(request *http.Request, cost uint64) error {
 	defer s.mu.Unlock()
 	b := s.budgets[key]
 	protected := b.reserved
-	if reservation, _ := request.Context().Value(reservationKey{}).(*Reservation); reservation != nil && reservation.session == s && reservation.key == key && !reservation.closed {
+	if reservation, _ := request.Context().Value(quotaReservationKey{}).(*QuotaReservation); reservation != nil && reservation.session == s && reservation.key == key && !reservation.closed {
 		protected -= reservation.remaining
 	}
 	err := s.checkBudget(group, key, b, cost, protected, s.now())
 	if err != nil {
 		stats := s.groups[group]
-		stats.Blocked++
+		stats.QuotaRejections++
 		s.groups[group] = stats
 	}
 	return err

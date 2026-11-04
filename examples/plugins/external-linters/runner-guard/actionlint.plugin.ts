@@ -27,7 +27,7 @@ export default defineDocumentProvider({
 	license: 'MIT',
 	repository: 'https://github.com/kjanat/actionlint',
 	documentKinds: ['workflow'],
-	requires: ['source'],
+	requiredInputs: ['source'],
 	env_passthrough: ['PATH', 'SystemRoot', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'HOME', 'USERPROFILE'],
 	rule: {
 		name: 'runner-guard',

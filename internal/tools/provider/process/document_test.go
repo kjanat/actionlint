@@ -31,7 +31,7 @@ func documentInput(t *testing.T, content string) analyzer.Input {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return analyzer.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, Available: []analyzer.Fact{analyzer.Source, analyzer.Dependencies}}
+	return analyzer.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []analyzer.InputKind{analyzer.Source, analyzer.Dependencies}}
 }
 
 func documentManifest(spec provider.ProcessSpec) provider.Manifest {
@@ -48,7 +48,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
 			input.Dependencies = []analyzer.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: diagnostic.Position{Line: 2, Column: 1}, End: diagnostic.Position{Line: 2, Column: 5}}, {Reference: source.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
 			manifest := documentManifest(provider.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: provider.ConfigRendering{Render: provider.RenderNone}})
-			manifest.Requires = []analyzer.Fact{analyzer.Dependencies}
+			manifest.RequiredInputs = []analyzer.InputKind{analyzer.Dependencies}
 			manifest.Capabilities.Resources = []provider.Resource{provider.ResourceDirectory}
 			checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
 			if err != nil {

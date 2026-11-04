@@ -16,7 +16,7 @@ import (
 // Sources aligns with Diagnostics and contains the analyzed text for each finding.
 type Analysis struct {
 	ActionMetadata []actions.Coverage
-	RunnerEvidence []runner.Report
+	RunnerResults  []runner.Report
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic
 	Sources        []DiagnosticSource

@@ -23,7 +23,7 @@ func TestConfigurationReportPublicAliasesAndJSON(t *testing.T) {
 			Warnings: []configreport.Warning{{File: "base.yml", Message: "ignored setting", Line: 4, Column: 5}},
 		},
 	}
-	result := render.Prepare(report.Analysis{Configurations: []configreport.Report{selected}}).CheckResult()
+	result := render.FromAnalysis(report.Analysis{Configurations: []configreport.Report{selected}}).CheckResult()
 	got, err := json.Marshal(result.Configs)
 	if err != nil {
 		t.Fatal(err)

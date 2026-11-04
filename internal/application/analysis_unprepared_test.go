@@ -16,11 +16,11 @@ import (
 type sourceOnlyProbe struct{ content string }
 
 func (sourceOnlyProbe) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "source-probe", Category: "correctness", Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
 func (p sourceOnlyProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
-	if input.Content != p.content || len(input.Available) != 1 {
+	if input.Content != p.content || len(input.AvailableInputs) != 1 {
 		return nil, errors.New("source-only input changed")
 	}
 	return []diagnostic.Diagnostic{{Message: "reported source finding"}}, nil

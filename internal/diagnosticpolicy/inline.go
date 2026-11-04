@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+
 	"actionlint.kjanat.dev/v2/diagnostic"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/suppression"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 // SuppressionRules returns the ordered rule catalogue for inline directives.
@@ -33,14 +34,14 @@ type inlineAudit struct {
 
 func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
 	allowedRules := SuppressionRules(additional...)
-	directives, invalid := suppression.Parse(source, allowedRules)
+	directives, invalid := suppression.Parse(source, allowedRules, rulecatalog.Names())
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
-		mode := policy.ReportFor(rule.CanonicalName(name))
+		mode := policy.ReportFor(rulecatalog.ResolveAlias(name))
 		return suppression.Decision{
 			Suppress: mode == repoconfig.SuppressionsAllowed || mode == repoconfig.ReportSuppression,
 			Report:   mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll,
 		}
-	})
+	}, rulecatalog.Names())
 	for _, d := range invalid {
 		findings = append(findings, findingmodel.FromDiagnostic(d))
 	}
@@ -60,7 +61,7 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 		if audit != nil && applies && audit.level(finding.Rule) != "off" && finding.Rule != "unused-suppression" {
 			for index, directive := range directives {
 				for _, selected := range directive.Rules {
-					if first > directive.Last || last < directive.First || rule.CanonicalName(selected) != rule.CanonicalName(finding.Rule) {
+					if first > directive.Last || last < directive.First || rulecatalog.ResolveAlias(selected) != rulecatalog.ResolveAlias(finding.Rule) {
 						continue
 					}
 					used[selector{index, selected}] = true
@@ -71,8 +72,10 @@ func filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding,
 				}
 			}
 		}
-		if applies && finding.Rule != "inline-suppression" && rule.CanonicalName(finding.Rule) != "forbidden-suppression" &&
-			slices.ContainsFunc(allowedRules, func(name string) bool { return rule.CanonicalName(name) == rule.CanonicalName(finding.Rule) }) && policy.ReportFor(finding.Rule) == repoconfig.SuppressionsAllowed {
+		if applies && finding.Rule != "inline-suppression" && rulecatalog.ResolveAlias(finding.Rule) != "forbidden-suppression" &&
+			slices.ContainsFunc(allowedRules, func(name string) bool {
+				return rulecatalog.ResolveAlias(name) == rulecatalog.ResolveAlias(finding.Rule)
+			}) && policy.ReportFor(finding.Rule) == repoconfig.SuppressionsAllowed {
 			finding.SuppressionTarget = &findingmodel.SuppressionOrigin{Path: targetPath, First: first, Last: last}
 		} else {
 			finding.SuppressionTarget = nil

@@ -27,7 +27,7 @@ jobs:
 type scriptAnalyzer struct{ failure error }
 
 func (scriptAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "custom-script", Requires: []analyzer.Fact{analyzer.Scripts}}
+	return analyzer.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}
 }
 
 func (a scriptAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

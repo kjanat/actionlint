@@ -45,7 +45,7 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		if err := renderer.Render(&out, render.Prepare(*result)); err != nil {
+		if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), "echo $VALUE") || strings.Contains(out.String(), "still-first") {

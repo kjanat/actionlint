@@ -350,22 +350,22 @@ on stderr. Diagnostic JSON on stdout is unchanged:
 actionlint check --action-metadata=online --network-stats --output=json .github
 ```
 
-Each group identifies the host, protocol, purpose and priority. The `authenticated`
-field is `yes` when credentials were supplied, `no` when none were supplied, or
-`unknown` when an external process did not report them. It does not prove that
-the credentials were accepted. Reports exclude credentials, request paths and
+Each group identifies the host, request kind, purpose and priority. The `credentials`
+field is `provided` when credentials were supplied, `absent` when none were supplied,
+or `unknown` when an external process did not report them. It does not prove that
+the credentials were accepted. Reports exclude credential values, request paths and
 query strings.
 
 `attempts` counts HTTP transport attempts or provider-reported Git operations.
 Retries and redirects are separate attempts at the instrumented transport.
-`failures` counts transport errors and HTTP error responses. `blocked` counts
+`failures` counts transport errors and HTTP error responses. `quota_rejections` counts
 rejected requests or batch admission checks, before transport, because of observed
 limits or reservations. A rejected batch counts once, regardless of its size.
 `cache_hits` records cached or coalesced external resolver calls.
-`lookups` counts resolver calls independently of their network attempts.
-`opaque_lookups` counts delegated lookups whose internal network activity is not
+`resolver_calls` counts resolver calls independently of their network attempts.
+`unreported_resolver_calls` counts calls whose internal network activity is not
 fully reported; these are not presented as HTTP request counts.
-`provider_reported` identifies attempts supplied by an external resolver.
+`resolver_reported_attempts` identifies attempts reported by an external resolver.
 
 GitHub metadata acquisition checks `/rate_limit` once per credential scope before
 its request batch and updates estimates from subsequent response headers.
@@ -379,42 +379,42 @@ The quota check is not a guarantee: other processes can consume the same server
 quota after it is observed. Unknown quota information is not treated as zero.
 This accounting is invocation-owned and does not add lint configuration settings.
 
-Go hosts can share a session across their acquisition clients and inspect a
-detached report:
+Go hosts can share a request tracker across their acquisition clients and read
+its statistics:
 
 ```go
-ctx, requests := network.Ensure(ctx)
+ctx, requests := network.TrackRequests(ctx)
 result, err := analysis.Files(ctx, paths, options)
-statistics := requests.Snapshot()
+statistics := requests.Statistics()
 ```
 
 Import `actionlint.kjanat.dev/v2/network`. Custom HTTP clients use
-`network.Transport` below their retry and authentication adapters. Label requests
-with `network.WithOperation`. For known future dependency work, call
-`Session.Reserve`, use the reservation's `Context` for those requests, and defer
+`network.TrackHTTPRequests` below their retry and authentication adapters. Label requests
+with `network.WithRequestOptions`. For known future dependency work, call
+`RequestTracker.ReserveQuota`, use the reservation's `Context` for those requests, and defer
 `Close` to release unused units. GraphQL callers should supply an upper-bound
 point cost when a reservation must be protected; a request with unknown cost
 cannot spend reserved quota.
 
-External resolvers can add a `network` receipt to their protocol-v1 response:
+External resolvers can add a `network` request report to their response:
 
 ```json
 {
   "network": {
-    "complete": true,
-    "queries": [
+    "all_requests_reported": true,
+    "requests": [
       {
         "host": "github.com",
-        "kind": "git",
-        "authenticated": "unknown",
-        "count": 1,
+        "request_kind": "git",
+        "credentials": "unknown",
+        "attempts": 1,
         "failures": 0
       },
       {
         "host": "api.github.com",
-        "kind": "rest",
-        "authenticated": "yes",
-        "count": 2,
+        "request_kind": "rest",
+        "credentials": "provided",
+        "attempts": 2,
         "failures": 0
       }
     ]
@@ -423,10 +423,10 @@ External resolvers can add a `network` receipt to their protocol-v1 response:
 ```
 
 This is an additional field in the existing resolution response, not a complete
-response on its own. Set `complete` only when every remote attempt is included,
+response on its own. Set `all_requests_reported` only when every remote attempt is included,
 including failures. Supported kinds are `http`, `rest`, `graphql`, `git` and `oci`.
 The host is an authority without userinfo, a path or a query. Old resolvers work
-without this field, but their activity is marked opaque. In-process providers can
+without this field, but their calls are counted under `unreported_resolver_calls`. In-process providers can
 use the shared HTTP transport instead. Arbitrary subprocesses and WebAssembly
 guests do not become observable merely because they run under actionlint.
 

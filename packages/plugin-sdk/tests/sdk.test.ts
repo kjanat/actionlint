@@ -240,13 +240,13 @@ export default defineScriptProvider({${identity},shells:['bash'],fixes:true,env_
 test('raw document recipes preserve selectors and requirements', async () => {
 	await withProvider(
 		`import {defineProcessProvider} from ${sdkSource};
-export default defineProcessProvider({${identity},role:'document',documentKinds:['action'],requires:['source','dependencies'],entry:'linter',stdin:'request',config:{render:'json-stdin'},output:{format:'script-diagnostics@1'}});`,
+export default defineProcessProvider({${identity},role:'document',documentKinds:['action'],requiredInputs:['source','dependencies'],entry:'linter',stdin:'request',config:{render:'json-stdin'},output:{format:'script-diagnostics@1'}});`,
 		async (root) => {
 			expect(await pack(root)).toMatchObject({
 				role: 'document',
 				preparation: 'generic',
 				selectors: { documents: ['action'] },
-				requires: ['source', 'dependencies'],
+				required_inputs: ['source', 'dependencies'],
 				process: { entry: 'linter' },
 			});
 			expect(await Bun.file(join(root, 'actionlint.js')).exists()).toBe(false);
@@ -257,7 +257,7 @@ export default defineProcessProvider({${identity},role:'document',documentKinds:
 test('packed document callback receives config/dependencies outside the author project', async () => {
 	await withProvider(
 		`import {defineDocumentProvider} from ${sdkSource};
-export default defineDocumentProvider({${identity},requires:['dependencies'],resources:['directory'],check:(request)=>{
+export default defineDocumentProvider({${identity},requiredInputs:['dependencies'],resources:['directory'],check:(request)=>{
  const config=request.config;if(typeof config==='object'&&config!==null&&!Array.isArray(config)&&config.fail===true)throw new Error('document failed');
  const dependency=request.dependencies?.[0];return dependency?[{filename:request.filename,code:'DOC',message:request.kind+'/'+request.directory+'/'+dependency.reference.address+'/'+dependency.start.line,location:{row:1,column:1}}]:[];}});`,
 		async (root) => {

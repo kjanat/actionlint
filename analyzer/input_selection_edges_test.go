@@ -27,7 +27,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	inputText := Script{Reference: actionInput.Declaration, Occurrence: actionInput, Text: "input"}
 	valid := func() Input {
 		return Input{
-			Reference: graph.Entry.Reference, Available: []Fact{Invocations, Scripts}, CallGraph: retainGraph(t, graph),
+			Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: retainGraph(t, graph),
 			Scripts: []Script{rootText}, Invoked: []Script{invokedText},
 			ActionInputs: []ActionInput{{Script: inputText, Site: ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 		}
@@ -74,7 +74,7 @@ func TestCollectedInvocationGraphCanHaveZeroScripts(t *testing.T) {
 	graph := graphFixture(t)
 	graph.Scripts = nil
 	input := Input{
-		Reference: graph.Entry.Reference, Available: []Fact{Invocations, Scripts}, CallGraph: retainGraph(t, graph),
+		Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: retainGraph(t, graph),
 		SelectedScripts: []OccurrenceID{},
 	}
 	if err := input.ValidateInvocations(); err != nil {

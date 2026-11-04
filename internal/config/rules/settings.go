@@ -8,13 +8,33 @@ import (
 	"iter"
 	"maps"
 	"slices"
+	"strings"
 
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/go-yaml/v4"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.
 type Level string
+
+// Levels lists the named diagnostic levels in editor completion order.
+// The returned slice belongs to the caller.
+func Levels() []Level {
+	return []Level{"default", "off", "on", "info", "warn", "error"}
+}
+
+// Categories uses the public rule contract's semantic category names.
+// The returned slice belongs to the caller.
+func Categories() []string { return rule.Categories() }
+
+func choices[T ~string](values []T) string {
+	names := make([]string, len(values))
+	for i, value := range values {
+		names[i] = string(value)
+	}
+	return strings.Join(names[:len(names)-1], ", ") + ", or " + names[len(names)-1]
+}
 
 // UnmarshalYAML normalizes booleans to on/off and null to the default level.
 // The zero value represents an omitted/null level, never an empty string input.
@@ -40,7 +60,7 @@ func (l *Level) UnmarshalYAML(n *yaml.Node) error {
 			return nil
 		}
 	}
-	return errors.New("yaml: rule level must be default, off, on, info, warn, or error; empty strings are not allowed")
+	return fmt.Errorf("yaml: rule level must be %s; empty strings are not allowed", choices(Levels()))
 }
 
 // MarshalYAML uses the canonical named level.
@@ -52,16 +72,23 @@ func (l Level) MarshalYAML() (any, error) {
 }
 
 func (l Level) Valid() bool {
-	return slices.Contains([]Level{"default", "off", "on", "info", "warn", "error"}, l)
+	return slices.Contains(Levels(), l)
 }
 
 // Preset selects a baseline. All intentionally excludes nursery rules.
 type Preset string
 
+// Presets lists the accepted baseline selections in editor completion order.
+// The returned slice belongs to the caller.
+func Presets() []Preset { return []Preset{"recommended", "all", "none"} }
+
+// Valid reports whether the preset is a named baseline selection.
+func (p Preset) Valid() bool { return slices.Contains(Presets(), p) }
+
 // UnmarshalYAML rejects unknown preset names.
 func (p *Preset) UnmarshalYAML(n *yaml.Node) error {
-	if n.ShortTag() != "!!str" || !slices.Contains([]string{"recommended", "all", "none"}, n.Value) {
-		return errors.New("yaml: rule preset must be recommended, all, or none")
+	if n.ShortTag() != "!!str" || !Preset(n.Value).Valid() {
+		return fmt.Errorf("yaml: rule preset must be %s", choices(Presets()))
 	}
 	*p = Preset(n.Value)
 	return nil
@@ -227,7 +254,7 @@ func parseSetting(n *yaml.Node) (Setting, error) {
 		return Setting{}, errors.New("yaml: rule setting must be a level or level/options mapping")
 	}
 	if next.level != "" && !next.level.Valid() {
-		return Setting{}, errors.New("yaml: rule level must be default, off, on, info, warn, or error")
+		return Setting{}, fmt.Errorf("yaml: rule level must be %s", choices(Levels()))
 	}
 	return next, nil
 }

@@ -18,7 +18,7 @@ import (
 type fallbackGuest struct{ inputs []analyzer.Input }
 
 func (*fallbackGuest) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "shellcheck"}
+	return analyzer.Descriptor{Name: "shellcheck", Category: "correctness"}
 }
 
 func (*fallbackGuest) ToolIntegration() *analyzer.ToolIntegration {
@@ -100,7 +100,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		if len(input.SelectedScripts) != 1 || input.SelectedScripts[0] != graph.Snapshot().Scripts[want].ID || findings[index].Script != want {
+		if len(input.SelectedScripts) != 1 || input.SelectedScripts[0] != graph.Export().Scripts[want].ID || findings[index].Script != want {
 			t.Fatal("plugin selection or finding index changed")
 		}
 	}

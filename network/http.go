@@ -16,10 +16,10 @@ type (
 	transport  struct{ base http.RoundTripper }
 )
 
-// Transport wraps an HTTP transport. Place it below retry and authentication
+// TrackHTTPRequests wraps an HTTP transport. Place it below retry and authentication
 // adapters to observe their individual attempts. Redirects made by http.Client
 // invoke it separately. Nested wrappers count the same attempt only once.
-func Transport(base http.RoundTripper) http.RoundTripper {
+func TrackHTTPRequests(base http.RoundTripper) http.RoundTripper {
 	if base == nil {
 		base = http.DefaultTransport
 	}
@@ -27,7 +27,7 @@ func Transport(base http.RoundTripper) http.RoundTripper {
 }
 
 func (t *transport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return ObserveHTTP(request, t.base.RoundTrip)
+	return TrackHTTPAttempt(request, t.base.RoundTrip)
 }
 
 var ErrInvalidRequest = errors.New("invalid network accounting request")
@@ -43,13 +43,13 @@ func validRequest(request *http.Request) error {
 	return request.Context().Err()
 }
 
-// ObserveHTTP accounts for one transport attempt against its original authority,
+// TrackHTTPAttempt accounts for one transport attempt against its original authority,
 // before a security transport rewrites the connection address to a pinned IP.
-func ObserveHTTP(request *http.Request, send func(*http.Request) (*http.Response, error)) (*http.Response, error) {
+func TrackHTTPAttempt(request *http.Request, send func(*http.Request) (*http.Response, error)) (*http.Response, error) {
 	if err := validRequest(request); err != nil {
 		return nil, err
 	}
-	session := FromContext(request.Context())
+	session := RequestTrackerFromContext(request.Context())
 	if session == nil {
 		return send(request)
 	}
@@ -91,7 +91,7 @@ func quotaResource(text string) bool {
 
 // observe runs under the session lock. Decreasing observations in one reset
 // window cannot be undone by a response that arrives out of order.
-func (s *Session) observe(key quotaKey, response *http.Response) {
+func (s *RequestTracker) observe(key quotaKey, response *http.Response) {
 	now := s.now()
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusForbidden && response.Header.Get("Retry-After") != "" {
 		until := now.Add(time.Minute)
@@ -122,7 +122,7 @@ func (s *Session) observe(key quotaKey, response *http.Response) {
 	s.updateBudget(key, remaining, resetAt)
 }
 
-func (s *Session) updateBudget(key quotaKey, remaining uint64, reset time.Time) {
+func (s *RequestTracker) updateBudget(key quotaKey, remaining uint64, reset time.Time) {
 	b := s.budgets[key]
 	if b.known && b.reset.Equal(reset) {
 		remaining = min(remaining, b.remaining)

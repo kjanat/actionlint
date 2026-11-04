@@ -96,7 +96,7 @@ func TestRunnerProviderComponent(t *testing.T) {
 type runtimeObserver struct{ scripts []analyzer.Script }
 
 func (*runtimeObserver) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "runtime-observer", Requires: []analyzer.Fact{analyzer.Execution}}
+	return analyzer.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Execution}}
 }
 
 func (o *runtimeObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -118,7 +118,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			observer := &runtimeObserver{}
 			result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}}, Options: analysis.Options{
-				Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, Identity: p.ArtifactDigest()}}},
+				Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 				Analyzers: []analyzer.Registration{{Analyzer: observer}},
 			}})
 			if err != nil {
@@ -136,7 +136,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 			if runtime.Shell != tc.wantShell || runtime.ShellKnown != (tc.wantShell != "") {
 				t.Fatalf("runtime = %#v", runtime)
 			}
-			if len(result.RunnerEvidence) != 1 || result.RunnerEvidence[0].Artifact != p.ArtifactDigest() {
+			if len(result.RunnerResults) != 1 || result.RunnerResults[0].ImplementationID != p.ArtifactDigest() {
 				t.Fatal("missing provider provenance")
 			}
 		})
@@ -196,11 +196,11 @@ func TestRunnerContractShapeAndDigest(t *testing.T) {
 }
 
 type parityAnswer struct {
-	Kind       string
-	Candidates []runner.Candidate
-	Rejections []runner.Rejection
-	Reason     string
-	Evidence   runner.Evidence
+	Kind          string
+	Candidates    []runner.Candidate
+	Rejections    []runner.Rejection
+	Reason        string
+	DatasetStatus runner.DatasetStatus
 }
 type parityOutput struct {
 	Digest, Name, Version string
@@ -222,7 +222,7 @@ func TestRunnerProviderWasmtimeParity(t *testing.T) {
 	d := p.RunnerDescriptor()
 	want := parityOutput{Digest: p.ArtifactDigest(), Name: d.Name, Version: d.Version, Targets: d.Targets}
 	for _, a := range answers {
-		v := parityAnswer{Evidence: a.Evidence}
+		v := parityAnswer{DatasetStatus: a.DatasetStatus}
 		switch r := a.Resolution.(type) {
 		case runner.Resolved:
 			v.Kind, v.Candidates = "resolved", r.Candidates

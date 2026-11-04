@@ -35,6 +35,16 @@ Activate mise and run commands from the repository root. Tools are configured in
 
 Follow `dprint.toml`: gofumpt for Go, tabs and single quotes for TypeScript, and rustfmt for Rust. Biome handles linting. Use existing `package.json#imports` aliases. Public API signatures must not expose `internal` types.
 
+## Naming
+
+Name an operation after what it does and a value after what it contains. A reader should understand a name at its call site without tracing the implementation or learning a project-specific umbrella term. Prefer resource-specific operations such as `get_repository_metadata`, `get_ref` and `get_object` to a generic name that hides which information is requested.
+
+Read the implementation before choosing a replacement. Distinguish requests, responses, stored state, source locations and execution history by their actual roles. Rename an unclear abstraction rather than adding prose to explain a name that could state its purpose directly. Judge names in context; do not replace every occurrence of a word mechanically.
+
+For wide Go symbol renames, use the Go language server (`gopls`) when available so references are updated semantically. Update wire fields, WIT interfaces, generated bindings, configuration, tests, examples and documentation as part of the same change. Regenerate files from their authoritative definitions.
+
+Public API or wire-format compatibility must not block an authorized naming cleanup. Update affected consumers and validate the complete path. Do not add aliases whose only purpose is to preserve a rejected name.
+
 ## Testing
 
 Use Go's `testing` package, `*_test.go` filenames, and `TestXxx` functions. Start with a focused regression:
