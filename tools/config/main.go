@@ -30,7 +30,9 @@ func reflector() *jsonschema.Reflector {
 	r := &jsonschema.Reflector{
 		FieldNameTag:               "yaml",
 		RequiredFromJSONSchemaTags: true,
-		DoNotReference:             true,
+		// Shared wire shapes use explicit, stable $defs through mapYAMLType.
+		// Other reflected wrappers do not need generated Go type definitions.
+		DoNotReference: true,
 	}
 	r.Mapper = func(t reflect.Type) *jsonschema.Schema {
 		return mapYAMLType(t, r.LookupComment)
@@ -81,13 +83,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Reason string `yaml:"reason,omitempty" jsonschema:"minLength=1,description=Optional explanation for this exception."`
 		}{})
 		rule, _ := mapping.Properties.Get("rule")
-		for _, name := range ruleNames() {
-			if name == "disallow-suppressions" {
-				continue
-			}
-			rule.Examples = append(rule.Examples, name)
-		}
-		rule.Description = "Built-in rule ID or registered analyzer name. actionlint validates names against the loaded analyzers."
+		rule.Ref = "#/$defs/rule-name"
+		rule.Type, rule.MinLength = "", nil
 		rule.Not = &jsonschema.Schema{Enum: []any{"disallow-suppressions"}}
 		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
 			property, _ := mapping.Properties.Get(name)
@@ -106,34 +103,28 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version, mapping.ID = "", ""
 		return mapping
 	case reflect.TypeFor[actionlint.Level]():
-		return &jsonschema.Schema{
-			Description: "Diagnostic level: default, off, on, info, warn, or error. Booleans enable or disable the rule.",
-			AnyOf: []*jsonschema.Schema{
-				{Type: "string", Enum: []any{"default", "off", "on", "info", "warn", "error"}},
-				{Type: "boolean"},
-				{Type: "null", Extras: map[string]any{"doNotSuggest": true}},
-			},
-		}
+		return definitionRef("level")
 	case reflect.TypeFor[actionlint.Preset]():
-		return &jsonschema.Schema{Description: "Baseline rule selection: recommended, all stable rules, or none.", Type: "string", Enum: []any{"recommended", "all", "none"}}
+		return definitionRef("preset")
 	case reflect.TypeFor[actionlint.LintRulesConfig]():
 		mapping := reflectMapping(struct {
 			Preset  actionlint.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
 			Disable []string          `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
-		disable.Items.MinLength = new(uint64(1))
-		for _, name := range ruleNames() {
-			disable.Items.Examples = append(disable.Items.Examples, name)
-		}
+		disable.Items = definitionRef("rule-name")
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
-		categories := []string{"correctness", "suspicious", "security", "conventions"}
+		categories := lintconfig.Categories()
 		knownByCategory := make(map[string][]string, len(categories))
 		knownNames := make([]string, 0)
 		for _, rule := range actionlint.Rules() {
 			knownNames = append(knownNames, rule.Name)
 			knownByCategory[rule.Category] = append(knownByCategory[rule.Category], rule.Name)
+			for _, alias := range rule.Aliases {
+				knownNames = append(knownNames, alias.Name)
+				knownByCategory[rule.Category] = append(knownByCategory[rule.Category], alias.Name)
+			}
 		}
 		for _, category := range categories {
 			group := reflectMapping(struct {
@@ -145,14 +136,12 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				if rule.Category != category {
 					continue
 				}
-				setting := reflectMapping(struct {
-					Level actionlint.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule: default, off, on, info, warn, or error."`
-				}{})
-				setting.Version, setting.ID = "", ""
-				setting.Properties.Set("options", &jsonschema.Schema{Type: "null", Description: "Reset rule options to their defaults."})
+				setting := definitionRef("rule-setting")
 				if options := ruleOptions(rule.Name); options != nil {
 					optionsSchema := reflectMapping(options)
 					optionsSchema.Version, optionsSchema.ID = "", ""
+					setting = definitionRef("plugin-setting")
+					setting.Properties = jsonschema.NewProperties()
 					setting.Properties.Set("options", &jsonschema.Schema{Description: "Options specific to this rule; null resets to defaults.", AnyOf: []*jsonschema.Schema{{Type: "null"}, {AllOf: []*jsonschema.Schema{{Type: "object"}, optionsSchema}}}})
 				}
 				description := rule.Description
@@ -161,29 +150,30 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				} else if !rule.Recommended {
 					description += ". Stable; not enabled by the recommended preset."
 				}
-				level := reflectMapping(actionlint.Level(""))
-				level.Description = ""
-				group.Properties.Set(rule.Name, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{level, setting}})
+				setting.Description = description
+				group.Properties.Set(rule.Name, setting)
+				for _, alias := range rule.Aliases {
+					aliasSetting := *setting
+					aliasSetting.Deprecated = alias.Deprecated
+					aliasSetting.Description = "Alias for " + rule.Name + "."
+					if alias.Deprecated {
+						aliasSetting.Description = "Deprecated alias. Use " + rule.Name + " instead."
+					}
+					group.Properties.Set(alias.Name, &aliasSetting)
+				}
 			}
-			pluginSetting := reflectMapping(struct {
-				Level   actionlint.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for the registered analyzer."`
-				Options map[string]any   `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the registered analyzer schema."`
-			}{})
-			pluginSetting.Version, pluginSetting.ID = "", ""
 			otherCategoryNames := make([]any, 0, len(knownNames))
 			for _, name := range knownNames {
 				if !slices.Contains(knownByCategory[category], name) {
 					otherCategoryNames = append(otherCategoryNames, name)
 				}
 			}
-			unknown := &jsonschema.Schema{OneOf: []*jsonschema.Schema{reflectMapping(actionlint.Level("")), pluginSetting}}
+			unknown := definitionRef("plugin-setting")
 			if len(otherCategoryNames) != 0 {
 				group.PropertyNames = &jsonschema.Schema{Not: &jsonschema.Schema{Enum: otherCategoryNames}}
 			}
 			group.AdditionalProperties = unknown
-			level := reflectMapping(actionlint.Level(""))
-			level.Description = ""
-			level.AnyOf[0].Enum = append(level.AnyOf[0].Enum, "all")
+			level := definitionRef("group-level")
 			description := "Rules concerning " + category + ". Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group."
 			mapping.Properties.Set(category, &jsonschema.Schema{Description: description, OneOf: []*jsonschema.Schema{level, group}})
 		}
@@ -238,24 +228,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.ID = ""
 		return mapping
 	case reflect.TypeFor[toolconfig.Backend]():
-		// The runtime type keeps its validated transport private. Keep this in
-		// sync with Backend.UnmarshalYAML.
-		mapping := reflectMapping(struct {
-			Process *struct {
-				Executable string            `yaml:"executable,omitempty" jsonschema:"description=A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory."`
-				Args       []string          `yaml:"args,omitempty" jsonschema:"nullable,description=Literal arguments prepended to actionlint's analysis arguments."`
-				Env        map[string]string `yaml:"env,omitempty" jsonschema:"nullable,description=Overrides named variables in the child process only."`
-			} `yaml:"process,omitempty" jsonschema:"description=Configures native executable invocation."`
-			Wasm *struct {
-				Path string `yaml:"path" jsonschema:"required,minLength=1"`
-			} `yaml:"wasm,omitempty" jsonschema:"description=Selects a core WebAssembly engine using the versioned core JSON ABI."`
-		}{})
-		wasm, _ := mapping.Properties.Get("wasm")
-		path, _ := wasm.Properties.Get("path")
-		path.Description = "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory."
-		mapping.Version = ""
-		mapping.ID = ""
-		return mapping
+		return definitionRef("backend")
 	case reflect.TypeFor[actionlint.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
@@ -269,19 +242,35 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Select suppression comments, original violations, or both for reporting."`
 		}{})
 		rules, _ := mapping.Properties.Get("rules")
-		rules.Items.Description = "Built-in rule ID or registered analyzer name."
-		rules.Items.MinLength = new(uint64(1))
-		names := ruleNames()
-		slices.Sort(names)
-		for _, name := range names {
-			rules.Items.Examples = append(rules.Items.Examples, name)
-		}
+		rules.Items = definitionRef("rule-name")
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
 	default:
 		return nil
 	}
+}
+
+func backendSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema {
+	// Backend stores its transport privately. Update this wire schema when
+	// Backend.UnmarshalYAML changes its accepted fields.
+	mapping := reflectMapping(struct {
+		Process *struct {
+			Executable string            `yaml:"executable,omitempty" jsonschema:"description=A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory."`
+			Args       []string          `yaml:"args,omitempty" jsonschema:"nullable,description=Literal arguments prepended to actionlint's analysis arguments."`
+			Env        map[string]string `yaml:"env,omitempty" jsonschema:"nullable,description=Overrides named variables in the child process only."`
+		} `yaml:"process,omitempty" jsonschema:"description=Configures native executable invocation."`
+		Wasm *struct {
+			Path string `yaml:"path" jsonschema:"required,minLength=1"`
+		} `yaml:"wasm,omitempty" jsonschema:"description=Selects a core WebAssembly engine using the versioned core JSON ABI."`
+	}{})
+	wasm, _ := mapping.Properties.Get("wasm")
+	path, _ := wasm.Properties.Get("path")
+	path.Description = "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory."
+	mapping.Version = ""
+	mapping.ID = ""
+	mapping.OneOf = []*jsonschema.Schema{{Required: []string{"process"}}, {Required: []string{"wasm"}}}
+	return mapping
 }
 
 // documentFields keeps property documentation visible regardless of which
@@ -328,11 +317,6 @@ func documentFields(s *jsonschema.Schema) {
 	for _, definition := range s.Definitions {
 		documentFields(definition)
 	}
-}
-
-func requireOneBackend(mapping *jsonschema.Schema) {
-	backend, _ := mapping.Properties.Get("backend")
-	backend.OneOf = []*jsonschema.Schema{{Required: []string{"process"}}, {Required: []string{"wasm"}}}
 }
 
 func documentedReflector() (*jsonschema.Reflector, error) {
@@ -384,8 +368,13 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
-	if s.Definitions == nil {
-		s.Definitions = jsonschema.Definitions{}
+	s.Definitions, err = sharedDefinitions(func(value any) *jsonschema.Schema {
+		schema := r.Reflect(value)
+		schema.Version, schema.ID = "", ""
+		return schema
+	})
+	if err != nil {
+		return nil, err
 	}
 	s.Definitions["non-blank-string"] = &jsonschema.Schema{
 		Type: "string", MinLength: new(uint64(1)),

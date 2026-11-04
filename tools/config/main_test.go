@@ -14,7 +14,10 @@ import (
 	"time"
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/editorschema"
 	"actionlint.kjanat.dev/v2/internal/genfile"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/rule"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
@@ -33,17 +36,20 @@ func generatedSchema(t *testing.T) []byte {
 }
 
 func TestRuleLevelSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.Level](), nil)
-	if len(schema.AnyOf) != 3 {
+	if schema := mapYAMLType(reflect.TypeFor[actionlint.Level](), nil); schema.Ref != "#/$defs/level" {
+		t.Fatalf("level property does not reference its shared definition: %+v", schema)
+	}
+	schema := levelSchema()
+	if len(schema.OneOf) != 3 {
 		t.Fatal("expected named levels, booleans, and null")
 	}
-	if diff := cmp.Diff([]any{"default", "off", "on", "info", "warn", "error"}, schema.AnyOf[0].Enum); diff != "" {
+	if diff := cmp.Diff([]any{"default", "off", "on", "info", "warn", "error"}, schema.OneOf[0].Enum); diff != "" {
 		t.Fatal(diff)
 	}
-	if schema.AnyOf[1].Type != "boolean" || schema.AnyOf[1].Not != nil {
+	if schema.OneOf[1].Type != "boolean" || schema.OneOf[1].Not != nil {
 		t.Fatal("both boolean switches must be supported")
 	}
-	if schema.AnyOf[2].Extras["doNotSuggest"] != true {
+	if schema.OneOf[2].Extras["doNotSuggest"] != true {
 		t.Fatal("reset branch should not obscure level suggestions")
 	}
 }
@@ -74,8 +80,8 @@ func TestPluginRuleSelectors(t *testing.T) {
 	policy := mapYAMLType(reflect.TypeFor[actionlint.SuppressionsPolicy](), nil)
 	prohibited, _ := policy.OneOf[1].Properties.Get("rules")
 	for _, selector := range []*jsonschema.Schema{rule, disabled.Items, prohibited.Items} {
-		if selector.Type != "string" || selector.MinLength == nil || *selector.MinLength != 1 || len(selector.Enum) != 0 || len(selector.Examples) == 0 {
-			t.Fatalf("plugin rule selectors require nonempty strings and built-in examples: %+v", selector)
+		if selector.Ref != "#/$defs/rule-name" || len(selector.Examples) != 0 || len(selector.Enum) != 0 {
+			t.Fatalf("rule selectors must reference shared names without copied catalogues: %+v", selector)
 		}
 	}
 }
@@ -168,13 +174,26 @@ func TestRuffEditorCompletions(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, node, "editor-completions.mjs")
-	command.WaitDelay = time.Second
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("YAML language service regression: %v\n%s", err, output)
+	read := func(name string) ([]byte, error) {
+		return os.ReadFile(filepath.Join("../..", filepath.FromSlash(name)))
 	}
-	t.Log(string(output))
+	installed, err := editorschema.Document(read, []provider.Manifest{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "installed.schema.json")
+	if err := os.WriteFile(path, installed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, arguments := range [][]string{{"editor-completions.mjs"}, {"editor-completions.mjs", path, "custom-check"}} {
+		command := exec.CommandContext(ctx, node, arguments...)
+		command.WaitDelay = time.Second
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("YAML language service regression: %v\n%s", err, output)
+		}
+		t.Log(string(output))
+	}
 }
 
 func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {

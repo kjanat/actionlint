@@ -81,6 +81,36 @@ func addPluginRules(root object, manifests []provider.Manifest) error {
 		definitions = object{}
 		root["$defs"] = definitions
 	}
+	knownNames, ok := definitions["known-rule-name"].(object)
+	if !ok {
+		return errors.New("configuration schema describes no known-rule-name definition")
+	}
+	values, ok := knownNames["anyOf"].([]any)
+	if !ok {
+		return errors.New("configuration schema describes no known rule names")
+	}
+	choices := make(map[string]object, len(values)+len(manifests))
+	for _, value := range values {
+		choice, ok := value.(object)
+		name, named := choice["const"].(string)
+		if !ok || !named {
+			return errors.New("configuration schema contains a non-string rule name")
+		}
+		choices[name] = choice
+	}
+	for _, manifest := range manifests {
+		for _, choice := range RuleNameChoices([]rule.Descriptor{manifest.Rule}) {
+			name, _ := choice["const"].(string)
+			if _, exists := choices[name]; !exists {
+				choices[name] = choice
+			}
+		}
+	}
+	values = nil
+	for _, name := range slices.Sorted(maps.Keys(choices)) {
+		values = append(values, choices[name])
+	}
+	knownNames["anyOf"] = values
 	seen := make(map[string]string, len(manifests))
 	for _, manifest := range manifests {
 		category, name := manifest.Rule.Category, manifest.Rule.Name
@@ -99,14 +129,7 @@ func addPluginRules(root object, manifests []provider.Manifest) error {
 				}
 			}
 		}
-		props := object{
-			"level": object{"type": "string", "enum": []any{"default", "off", "on", "info", "warn", "error"}},
-		}
-		setting := object{
-			"type":       "object",
-			"required":   []any{"level"},
-			"properties": props,
-		}
+		setting := object{"$ref": "#/$defs/rule-setting", "title": name, "description": manifest.Rule.Description, "markdownDescription": manifest.Rule.Description}
 		if len(manifest.Rule.OptionsSchema) != 0 {
 			options, err := decodeObject(manifest.Rule.OptionsSchema, "options_schema")
 			if err != nil {
@@ -120,21 +143,15 @@ func addPluginRules(root object, manifests []provider.Manifest) error {
 			if _, hasID := options["$id"]; !hasID {
 				options["$id"] = "urn:actionlint:plugin-rule-options:" + base64.RawURLEncoding.EncodeToString([]byte(name))
 			}
-			props["options"] = object{"anyOf": []any{object{"type": "null"}, object{"$ref": "#/$defs/" + definition}}}
-		} else {
-			props["options"] = object{"type": "null"}
+			setting["$ref"] = "#/$defs/plugin-setting"
+			setting["properties"] = object{"options": object{"anyOf": []any{object{"type": "null"}, object{"$ref": "#/$defs/" + definition}}}}
 		}
 		for _, categorySchema := range categories[category] {
 			properties, _ := categorySchema["properties"].(object)
 			if _, exists := properties[name]; exists {
 				continue
 			}
-			properties[name] = object{"oneOf": []any{
-				object{"type": "string", "enum": []any{"default", "off", "on", "info", "warn", "error"}},
-				object{"type": "boolean"},
-				object{"type": "null"},
-				setting,
-			}}
+			properties[name] = setting
 		}
 		for otherCategory, mappings := range categories {
 			if otherCategory == category {
@@ -158,13 +175,23 @@ func addPluginRules(root object, manifests []provider.Manifest) error {
 // ruleCategoryMaps returns each category's object mapping under lint.rules,
 // including the corresponding mapping under overrides.
 func ruleCategoryMaps(value any) map[string][]object {
-	result := map[string][]object{"correctness": {}, "suspicious": {}, "security": {}, "conventions": {}}
+	result := make(map[string][]object)
+	for _, category := range rule.Categories() {
+		result[category] = nil
+	}
 	var walk func(any)
 	walk = func(value any) {
 		switch node := value.(type) {
 		case object:
 			if properties, ok := node["properties"].(object); ok {
-				if _, ok := properties["correctness"]; ok {
+				allCategories := true
+				for category := range result {
+					if _, exists := properties[category]; !exists {
+						allCategories = false
+						break
+					}
+				}
+				if allCategories {
 					for category := range result {
 						if mapping := objectMapping(properties[category]); mapping != nil {
 							result[category] = append(result[category], mapping)

@@ -15,6 +15,8 @@ const schemas = new Map(
 		import.meta.resolve('#schemas/shellcheck/0.11.0.schema.json'),
 	].map(async (href) => /** @type {const} */ ([schemaKey(href), await readFile(new URL(href), 'utf8')]))),
 );
+// An optional snapshot lets the same editor checks compare generated revisions.
+if (process.argv[2]) schemas.set(schemaKey(schemaURI), await readFile(process.argv[2], 'utf8'));
 const service = getLanguageService({
 	workspaceContext: {
 		/** @param {string} relative @param {string} resource */
@@ -29,6 +31,7 @@ const service = getLanguageService({
 });
 service.configure({
 	completion: true,
+	hover: true,
 	validate: true,
 	yamlVersion: '1.2',
 	schemas: [{ uri: schemaURI, fileMatch: ['*'] }],
@@ -36,6 +39,77 @@ service.configure({
 let serial = 0;
 /** @param {string} text */
 const document = (text) => TextDocument.create(`file:///review/ruff-${serial++}.yaml`, 'yaml', 1, text);
+
+const nameChoices = JSON.parse(schemas.get(schemaKey(schemaURI))).$defs['known-rule-name'].anyOf;
+const knownRules = nameChoices.map(choice => choice.const);
+const oldTimeout = nameChoices.find(choice => choice.const === 'require-job-timeout');
+assert.equal(oldTimeout?.deprecated, true, 'Historical rule alias must be deprecated');
+assert.ok(oldTimeout.description.includes('job-timeout'), 'Deprecated alias must name its replacement');
+assert.ok(
+	!nameChoices.find(choice => choice.const === 'job-timeout')?.deprecated,
+	'Current rule must not be deprecated',
+);
+const deprecatedSelector = document('lint:\n  rules:\n    disable: [require-job-timeout]\n');
+const deprecatedHover = await service.doHover(deprecatedSelector, { line: 2, character: 19 });
+assert.ok(
+	JSON.stringify(deprecatedHover).includes('Deprecated alias. Use job-timeout instead.'),
+	'Alias hover lost its deprecation and replacement',
+);
+for (const name of ['job-timeout', 'unpublished-custom-check']) {
+	const current = document(`lint:\n  rules:\n    disable: [${name}]\n`);
+	const hover = await service.doHover(current, { line: 2, character: 19 });
+	assert.ok(!JSON.stringify(hover).includes('Deprecated alias.'), `Deprecation leaked into ${name}`);
+}
+function aliasSettings(node) {
+	if (Array.isArray(node)) return node.flatMap(aliasSettings);
+	if (!node || typeof node !== 'object') return [];
+	return Object.entries(node).flatMap(([key, value]) => key === 'require-job-timeout' ? [value] : aliasSettings(value));
+}
+const deprecatedKeys = aliasSettings(JSON.parse(schemas.get(schemaKey(schemaURI))));
+assert.equal(deprecatedKeys.length, 2, 'Alias keys must exist at root and override scope');
+assert.ok(
+	deprecatedKeys.every(key => key.deprecated === true),
+	'Alias keys must carry their own deprecation annotation',
+);
+console.log('Deprecated alias values and keys identify their replacement; current and custom names are not deprecated');
+assert.equal(new Set(knownRules).size, knownRules.length, 'Known rule names must be unique');
+if (process.argv[3]) assert.ok(knownRules.includes(process.argv[3]), 'Installed rule missing from suggestions');
+for (const override of [false, true]) {
+	for (const selector of ['ignore', 'disable', 'rule-options']) {
+		if (override && selector === 'ignore') continue; // Ignores are declared at the root.
+		const entry = {
+			ignore: 'ignores:\n  - file: "**"\n    rule: ',
+			disable: 'lint:\n  rules:\n    disable:\n      - ',
+			'rule-options':
+				'lint:\n  rules:\n    conventions:\n      forbidden-suppression:\n        level: on\n        options:\n          rules:\n            - ',
+		}[selector];
+		const text = override
+			? 'overrides:\n  - includes: ["**"]\n' + entry.split('\n').map(line => '    ' + line).join('\n')
+			: entry;
+		const doc = document(text);
+		const result = await service.doComplete(doc, doc.positionAt(text.length), false);
+		const labels = result?.items.map(item => item.label.replaceAll('"', '')) ?? [];
+		for (const name of knownRules) {
+			assert.equal(
+				labels.filter(label => label === name).length,
+				1,
+				`${selector}, override=${override}: missing or duplicate ${name}`,
+			);
+		}
+		for (const name of ['expression', 'unpublished-custom-check']) {
+			assert.deepEqual(await service.doValidation(document(text + name), false), [], `${selector}: rejected ${name}`);
+		}
+		for (const value of ['""', '42']) {
+			assert.ok(
+				(await service.doValidation(document(text + value), false)).length > 0,
+				`${selector}: accepted ${value}`,
+			);
+		}
+		console.log(
+			`Rule selector ${selector}, override=${override}: ${knownRules.length} completions; custom names accepted`,
+		);
+	}
+}
 /** @param {string} key @param {string[] | null} value @param {boolean} override */
 const config = (key, value, override) => {
 	const entry = { tools: { ruff: { [key]: value } } };
@@ -118,6 +192,30 @@ assert.ok(
 	'Dotted YAML keys must not advertise unsupported nested paths',
 );
 console.log(`Completion after lint.rules.: ${JSON.stringify(dottedResult?.items.map((item) => item.label) ?? [])}`);
+
+for (const override of [false, true]) {
+	for (const groupValue of [false, true]) {
+		const prefix = override
+			? 'overrides:\n  - includes: ["**"]\n    lint:\n      rules:\n        '
+			: 'lint:\n  rules:\n    ';
+		const text = prefix
+			+ (groupValue ? 'conventions: ' : `conventions:\n${override ? '          ' : '      '}job-timeout: `);
+		const doc = document(text);
+		const result = await service.doComplete(doc, doc.positionAt(text.length), false);
+		assert.ok(result);
+		const labels = result.items.map(item => item.label.replaceAll('"', ''));
+		for (const level of ['default', 'off', 'on', 'info', 'warn', 'error', 'true', 'false']) {
+			assert.ok(labels.includes(level), `${text}: missing ${level}: ${JSON.stringify(labels)}`);
+		}
+		assert.equal(labels.includes('all'), groupValue, `${text}: incorrect group-only preset suggestion`);
+		console.log(`Rule completions: ${JSON.stringify({ override, groupValue, labels: labels.sort() })}`);
+	}
+}
+const namedRule = document('lint:\n  rules:\n    conventions:\n      job-timeout: on\n');
+const hover = await service.doHover(namedRule, { line: 3, character: 10 });
+console.log(`Rule hover: ${JSON.stringify(hover)}`);
+assert.ok(JSON.stringify(hover).includes('Require explicit job timeouts'), 'Shared refs lost the rule-specific hover');
+console.log('Rule levels, group-only all and rule-specific hover passed at root and override scope');
 const dotted = document('lint.rules.security: on\n');
 assert.ok(
 	(await service.doValidation(dotted, false)).length > 0,

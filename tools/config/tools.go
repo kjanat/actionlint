@@ -46,7 +46,6 @@ func toolSchema(manifest provider.Manifest, reflectMapping func(any) *jsonschema
 	mapping.Description = manifest.Rule.Description + "."
 	mapping.Type = ""
 	mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
-	requireOneBackend(mapping)
 	var document map[string]any
 	if len(manifest.ConfigSchema) != 0 {
 		if err := json.Unmarshal(manifest.ConfigSchema, &document); err != nil {
