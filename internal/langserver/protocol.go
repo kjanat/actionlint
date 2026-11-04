@@ -38,6 +38,18 @@ type message struct {
 }
 
 func readMessage(r *bufio.Reader) (message, error) {
+	data, err := ReadMessage(r)
+	if err != nil {
+		return message{}, err
+	}
+	var m message
+	err = jsonv2.Unmarshal(data, &m)
+	return m, err
+}
+
+// ReadMessage reads one Content-Length-framed JSON-RPC payload. Browser hosts
+// use it to carry unchanged server responses over a worker message channel.
+func ReadMessage(r *bufio.Reader) (json.RawMessage, error) {
 	length := -1
 	headers := 0
 	for {
@@ -45,13 +57,13 @@ func readMessage(r *bufio.Reader) (message, error) {
 		line := string(raw)
 		if err != nil {
 			if errors.Is(err, bufio.ErrBufferFull) {
-				return message{}, errors.New("LSP header line exceeds limit")
+				return nil, errors.New("LSP header line exceeds limit")
 			}
-			return message{}, err
+			return nil, err
 		}
 		headers += len(line)
 		if headers > 8192 {
-			return message{}, errors.New("LSP headers exceed limit")
+			return nil, errors.New("LSP headers exceed limit")
 		}
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -60,24 +72,22 @@ func readMessage(r *bufio.Reader) (message, error) {
 		key, value, ok := strings.Cut(line, ":")
 		if ok && strings.EqualFold(key, "Content-Length") {
 			if length != -1 {
-				return message{}, errors.New("duplicate Content-Length")
+				return nil, errors.New("duplicate Content-Length")
 			}
 			length, err = strconv.Atoi(strings.TrimSpace(value))
 			if err != nil {
-				return message{}, err
+				return nil, err
 			}
 		}
 	}
 	if length < 0 || length > 16<<20 {
-		return message{}, fmt.Errorf("invalid LSP message length %d", length)
+		return nil, fmt.Errorf("invalid LSP message length %d", length)
 	}
 	data := make([]byte, length)
 	if _, err := io.ReadFull(r, data); err != nil {
-		return message{}, err
+		return nil, err
 	}
-	var m message
-	err := jsonv2.Unmarshal(data, &m)
-	return m, err
+	return data, nil
 }
 
 func writeMessage(w io.Writer, value any) error {

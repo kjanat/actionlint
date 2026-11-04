@@ -65,7 +65,7 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 				doc := documents[target]
 				edits = append(edits, map[string]any{"textDocument": map[string]any{"uri": doc.URI, "version": doc.Version}, "edits": changes[target]})
 			}
-			actions = append(actions, map[string]any{"title": f.Description, "kind": "quickfix", "isPreferred": f.Applicability.Automatic(), "edit": map[string]any{"documentChanges": edits}})
+			actions = append(actions, map[string]any{"title": f.Description, "kind": "quickfix", "isPreferred": f.Applicability.Automatic(), "diagnostics": diagnosticItems(doc, []diagnostic.Diagnostic{d}, sources), "edit": map[string]any{"documentChanges": edits}})
 			offered = append(offered, f)
 		}
 	}

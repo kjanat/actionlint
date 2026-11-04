@@ -77,6 +77,38 @@ func currentAnalysis(result analysisResult, generation int, shutdown bool) (Anal
 // republishes all open dependants after changes. Analyze must honor cancellation.
 // When input is closable, Serve closes it on exit to interrupt a pending read.
 func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, completions ...Complete) error {
+	options := Options{Analyze: analyze}
+	if len(completions) > 0 {
+		options.Complete = completions[0]
+	}
+	return ServeWithOptions(ctx, in, out, options)
+}
+
+// Options supplies analysis and document addressing for a language-server host.
+// Nil URI converters use local file URIs. Initialize runs before any document
+// request, so a host can configure its virtual workspace from client parameters.
+type Options struct {
+	Analyze     Analyze
+	Complete    Complete
+	Initialize  func(json.RawMessage) error
+	PathFromURI func(string) (string, error)
+	URIFromPath func(string) string
+}
+
+// ServeWithOptions runs the same protocol handlers for local and virtual workspaces.
+func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options Options) error {
+	analyze := options.Analyze
+	if analyze == nil {
+		return errors.New("language server requires an analysis function")
+	}
+	pathFromURI := options.PathFromURI
+	if pathFromURI == nil {
+		pathFromURI = filePath
+	}
+	uriFromPath := options.URIFromPath
+	if uriFromPath == nil {
+		uriFromPath = FileURI
+	}
 	ctx, cancel := context.WithCancel(ctx)
 
 	input := make(chan incoming, 1)
@@ -155,7 +187,7 @@ serve:
 				}
 				doc, open := documents[path]
 				if !open {
-					doc.URI = FileURI(path)
+					doc.URI = uriFromPath(path)
 				}
 				doc.Text = captured.Text
 				sources[path] = doc
@@ -209,7 +241,7 @@ serve:
 			for path := range latest {
 				doc, ok := sources[path]
 				if !ok {
-					doc = Document{URI: FileURI(path)}
+					doc = Document{URI: uriFromPath(path)}
 				}
 				current[path] = doc
 			}
@@ -250,9 +282,17 @@ serve:
 				return nil
 			}
 			if m.Method == "initialize" && !initialized {
+				if options.Initialize != nil {
+					if err := options.Initialize(m.Params); err != nil {
+						if err := reject(err); err != nil {
+							return err
+						}
+						continue serve
+					}
+				}
 				initialized = true
 				capabilities := map[string]any{"positionEncoding": "utf-16", "textDocumentSync": map[string]any{"openClose": true, "change": 2}, "codeActionProvider": true}
-				if len(completions) > 0 {
+				if options.Complete != nil {
 					capabilities["completionProvider"] = map[string]any{"triggerCharacters": []string{".", "[", "'"}}
 				}
 				if err := respond(m.ID, map[string]any{"capabilities": capabilities, "serverInfo": map[string]string{"name": "actionlint"}}, nil); err != nil {
@@ -286,7 +326,7 @@ serve:
 					}
 					continue serve
 				}
-				path, err := filePath(p.TextDocument.URI)
+				path, err := pathFromURI(p.TextDocument.URI)
 				if err != nil {
 					if err := reject(err); err != nil {
 						return err
@@ -309,7 +349,7 @@ serve:
 					}
 					continue serve
 				}
-				path, err := filePath(p.TextDocument.URI)
+				path, err := pathFromURI(p.TextDocument.URI)
 				if err != nil {
 					if err := reject(err); err != nil {
 						return err
@@ -355,7 +395,7 @@ serve:
 					}
 					continue serve
 				}
-				path, err := filePath(p.TextDocument.URI)
+				path, err := pathFromURI(p.TextDocument.URI)
 				if err != nil {
 					if err := reject(err); err != nil {
 						return err
@@ -380,7 +420,7 @@ serve:
 					}
 					continue serve
 				}
-				path, err := filePath(p.TextDocument.URI)
+				path, err := pathFromURI(p.TextDocument.URI)
 				if err != nil {
 					if err := reject(err); err != nil {
 						return err
@@ -388,7 +428,7 @@ serve:
 					continue serve
 				}
 				items := []completionItem{}
-				if doc, ok := documents[path]; ok && len(completions) > 0 {
+				if doc, ok := documents[path]; ok && options.Complete != nil {
 					offset, err := byteOffset(doc.Text, p.Position)
 					if err != nil {
 						if err := reject(err); err != nil {
@@ -396,7 +436,7 @@ serve:
 						}
 						continue serve
 					}
-					for _, item := range completions[0](ctx, doc, offset) {
+					for _, item := range options.Complete(ctx, doc, offset) {
 						items = append(items, completionItemFor(doc.Text, item))
 					}
 				}
@@ -414,7 +454,7 @@ serve:
 					}
 					continue serve
 				}
-				path, err := filePath(p.TextDocument.URI)
+				path, err := pathFromURI(p.TextDocument.URI)
 				if err != nil {
 					if err := reject(err); err != nil {
 						return err

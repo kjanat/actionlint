@@ -21,6 +21,7 @@ import (
 	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	"actionlint.kjanat.dev/v2/internal/suppression"
 	"actionlint.kjanat.dev/v2/internal/workflow/editor"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -37,17 +38,20 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ap
 		return err
 	}
 	defer func() { err = errors.Join(err, session.close(context.WithoutCancel(ctx))) }()
-	return langserver.Serve(ctx, in, out, session.analyze, func(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
-		if ctx.Err() != nil {
-			return nil
-		}
-		items := editor.Complete(doc.Text, offset)
-		result := make([]langserver.Completion, 0, len(items))
-		for _, item := range items {
-			result = append(result, langserver.Completion{Label: item.Label, Detail: item.Detail, Start: item.Start, End: item.End})
-		}
-		return result
-	})
+	return langserver.Serve(ctx, in, out, session.analyze, CompleteDocument)
+}
+
+// CompleteDocument adapts shared editor completions to the language server.
+func CompleteDocument(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
+	if ctx.Err() != nil {
+		return nil
+	}
+	items := editor.Complete(doc.Text, offset)
+	result := make([]langserver.Completion, 0, len(items))
+	for _, item := range items {
+		result = append(result, langserver.Completion{Label: item.Label, Detail: item.Detail, Start: item.Start, End: item.End})
+	}
+	return result
 }
 
 func (s *editorSession) analyze(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
@@ -63,6 +67,23 @@ func (s *editorSession) analyze(ctx context.Context, documents map[string]langse
 }
 
 func analyzeDocuments(ctx context.Context, options application.Options, documents map[string]langserver.Document) (langserver.Analysis, error) {
+	return analyzeEditorDocuments(ctx, options, documents, func(ctx context.Context, options application.Options, sources []workspace.Source) (*application.Result, error) {
+		paths := make([]string, 0, len(sources))
+		for _, source := range sources {
+			paths = append(paths, source.Path)
+		}
+		return application.Check(ctx, options, application.Input{Kind: application.Files, Paths: paths})
+	})
+}
+
+// AnalyzeEditorDocuments checks supplied editor buffers without filesystem
+// discovery. ReadFile supplies closed dependencies; open buffers override it.
+// Diagnostics and fixes use the same captured-source admission as the native LSP.
+func AnalyzeEditorDocuments(ctx context.Context, options application.Options, documents map[string]langserver.Document) (langserver.Analysis, error) {
+	return analyzeEditorDocuments(ctx, options, documents, application.Analyze)
+}
+
+func analyzeEditorDocuments(ctx context.Context, options application.Options, documents map[string]langserver.Document, check func(context.Context, application.Options, []workspace.Source) (*application.Result, error)) (langserver.Analysis, error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
 		return langserver.Analysis{}, err
@@ -73,16 +94,17 @@ func analyzeDocuments(ctx context.Context, options application.Options, document
 	opts := options
 	opts.WorkingDir = directory
 	opts.SourceOverlays = slices.Clone(options.SourceOverlays)
-	paths := make([]string, 0, len(documents))
+	sources := make([]workspace.Source, 0, len(documents))
+	project := workspace.Identity(directory)
 	for _, path := range slices.Sorted(maps.Keys(documents)) {
 		address := path
 		if !filepath.IsAbs(address) {
 			address = filepath.Join(directory, address)
 		}
-		paths = append(paths, address)
+		sources = append(sources, workspace.Source{Path: address, Content: []byte(documents[path].Text), Project: project})
 		opts.SourceOverlays = append(opts.SourceOverlays, application.SourceOverlay{Path: address, Content: []byte(documents[path].Text)})
 	}
-	result, err := application.Check(ctx, opts, application.Input{Kind: application.Files, Paths: paths})
+	result, err := check(ctx, opts, sources)
 	if ctx.Err() != nil {
 		return langserver.Analysis{}, errors.Join(err, ctx.Err())
 	}
