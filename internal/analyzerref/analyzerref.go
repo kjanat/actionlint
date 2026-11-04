@@ -11,7 +11,7 @@ import (
 
 // IsNil detects both nil interfaces and typed nil analyzer values before
 // metadata or execution methods are called.
-func IsNil(value analyzer.Analyzer) bool {
+func IsNil(value analyzer.Checker) bool {
 	if value == nil {
 		return true
 	}

@@ -15,10 +15,10 @@ import (
 func ConfigureAnalyzers(config *repoconfig.Config, registrations []analyzer.Registration) ([]analyzer.Registration, error) {
 	selected := make([]analyzer.Registration, 0, len(registrations))
 	for _, registration := range registrations {
-		if analyzerref.IsNil(registration.Analyzer) {
+		if analyzerref.IsNil(registration.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
-		name := registration.Analyzer.Descriptor().Name
+		name := registration.Checker.Descriptor().Name
 		if repoconfig.DiagnosticLevel(config, name) == "off" {
 			continue
 		}

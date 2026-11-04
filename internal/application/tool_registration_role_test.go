@@ -20,7 +20,7 @@ func (selectedToolGuest) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs", Maturity: "stable"}
 }
 
-func (selectedToolGuest) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (selectedToolGuest) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return nil, nil
 }
 
@@ -42,7 +42,7 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 			if tc.explicit {
 				selection = registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{}}}
 			}
-			options, err := application.ConfigureToolIntegrations(application.Options{Tools: registry.Registrations(selection), Analyzers: []analyzer.Registration{{Analyzer: selectedToolGuest{}}}})
+			options, err := application.ConfigureToolIntegrations(application.Options{Tools: registry.Registrations(selection), Analyzers: []analyzer.Registration{{Checker: selectedToolGuest{}}}})
 			if err != nil {
 				t.Fatal(err)
 			}

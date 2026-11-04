@@ -41,7 +41,7 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			input := analyzer.Input{Reference: entry, AvailableInputs: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
-			registration := analyzer.Registration{Analyzer: testAnalyzer{
+			registration := analyzer.Registration{Checker: testAnalyzer{
 				descriptor: analyzer.Descriptor{Descriptor: rule.Descriptor{Name: "selection-clone"}},
 				run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {
 					if (supplied.SelectedScripts == nil) != tc.wantNil {

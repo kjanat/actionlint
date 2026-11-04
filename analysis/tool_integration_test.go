@@ -39,7 +39,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 				t.Fatal(err)
 			}
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: true}
-			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 			needed, err := application.RequiredTools(t.Context(), options, []string{"workflow.yml"})
 			if err != nil || needed["shellcheck"] != tc.want {
 				t.Fatalf("native fallback required=%v, want %t; error=%v", needed, tc.want, err)
@@ -68,7 +68,7 @@ func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing
 	for _, unsupported := range []bool{false, true} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: unsupported}
 		explicit := json.RawMessage(`{"private-option": [1, 2]}`)
-		_, err := analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
+		_, err := analysis.CheckSources(t.Context(), analysis.Request{Options: analysis.Options{Checks: []analyzer.Registration{{Checker: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
 		if (err != nil) != unsupported {
 			t.Fatalf("unsupported=%t error=%v", unsupported, err)
 		}
@@ -83,7 +83,7 @@ func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing
 
 func TestPublicManagedOptionsValidateBeforeNegotiation(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)}
-	_, err := analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest, Options: json.RawMessage(`{"unknown":true}`)}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
+	_, err := analysis.CheckSources(t.Context(), analysis.Request{Options: analysis.Options{Checks: []analyzer.Registration{{Checker: guest, Options: json.RawMessage(`{"unknown":true}`)}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
 	if err == nil || guest.explicit != nil {
 		t.Fatalf("invalid options reached negotiation: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
+		_, err = analysis.CheckSources(t.Context(), analysis.Request{Options: analysis.Options{Checks: []analyzer.Registration{{Checker: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -110,7 +110,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 	}
 }
 
-func (a *integratedAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a *integratedAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.calls++
 	return []diagnostic.Diagnostic{{Message: "managed finding", Path: input.Path, Start: input.Scripts[0].Start}}, nil
 }
@@ -118,11 +118,11 @@ func (a *integratedAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([
 func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 	for _, disabled := range []bool{false, true} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-		options := analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}
+		options := analysis.Options{Checks: []analyzer.Registration{{Checker: guest}}}
 		if disabled {
 			options.Tools = map[string]analysis.Tool{"shellcheck": {Process: &analysis.Process{}}}
 		}
-		result, err := analysis.Analyze(t.Context(), analysis.Request{Options: options, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
+		result, err := analysis.CheckSources(t.Context(), analysis.Request{Options: options, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +153,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 	if !found {
 		t.Fatal("managed descriptor missing")
 	}
-	for _, guests := range [][]analyzer.Analyzer{{valid(), valid()}, {&integratedAnalyzer{tool: "unknown", contract: "unknown@0.1.0"}}, {&integratedAnalyzer{tool: "shellcheck", contract: "unknown@0.1.0"}}} {
+	for _, guests := range [][]analyzer.Checker{{valid(), valid()}, {&integratedAnalyzer{tool: "unknown", contract: "unknown@0.1.0"}}, {&integratedAnalyzer{tool: "shellcheck", contract: "unknown@0.1.0"}}} {
 		if _, err := analysis.Rules(guests...); err == nil {
 			t.Fatal("invalid managed integration accepted")
 		}
@@ -162,7 +162,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 
 func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := application.Options{Analyzers: []analyzer.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	if _, err := application.ConfigureToolIntegrations(options, "shellcheck"); err == nil {
 		t.Fatal("document analyzer replaced an already selected engine")
 	}
@@ -173,7 +173,7 @@ func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 
 func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := application.Options{Analyzers: []analyzer.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	configured, err := application.ConfigureToolIntegrations(options)
 	if err != nil {
 		t.Fatal(err)
@@ -183,11 +183,11 @@ func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T)
 		t.Fatalf("unchanged configuration must remain valid: %v", err)
 	}
 	other := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	configured.Analyzers = []analyzer.Registration{{Analyzer: other}}
+	configured.Analyzers = []analyzer.Registration{{Checker: other}}
 	if _, err := application.ConfigureToolIntegrations(configured); err == nil {
 		t.Fatal("new provider silently replaced existing negotiated integration")
 	}
-	if len(configured.Analyzers) != 1 || configured.Analyzers[0].Analyzer != other {
+	if len(configured.Analyzers) != 1 || configured.Analyzers[0].Checker != other {
 		t.Fatal("failed configuration mutated caller registrations")
 	}
 }
@@ -216,7 +216,7 @@ func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
+			_, err = analysis.CheckSources(t.Context(), analysis.Request{Options: analysis.Options{Checks: []analyzer.Registration{{Checker: guest}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
 			if err != nil {
 				t.Fatal(err)
 			}

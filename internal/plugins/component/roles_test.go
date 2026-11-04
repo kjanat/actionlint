@@ -18,7 +18,7 @@ func TestUnavailableRolesRejectCallsWithoutRuntime(t *testing.T) {
 		!reflect.DeepEqual(p.ScriptDescriptor(), analyzer.ScriptEngineDescriptor{}) {
 		t.Fatal("absent role did not return an empty descriptor")
 	}
-	if _, err := p.Analyze(t.Context(), analyzer.Input{}); err == nil {
+	if _, err := p.CheckDocument(t.Context(), analyzer.Input{}); err == nil {
 		t.Fatal("unavailable analyzer accepted a call")
 	}
 	if _, err := p.ResolveRunners(t.Context(), runner.Request{}); err == nil {

@@ -33,3 +33,27 @@ func TestSelectedToolRegistrationReplacesBundledDescriptor(t *testing.T) {
 		}
 	}
 }
+
+func TestExperimentalToolRegistrationUsesExperimentalSelection(t *testing.T) {
+	descriptor := rule.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs", Maturity: rule.NurseryMaturity, Recommended: true}
+	for _, tc := range []struct {
+		name    string
+		presets Presets
+		want    Level
+	}{
+		{"default", Presets{}, "off"},
+		{"strict", Presets{Strict: true}, "off"},
+		{"experimental", Presets{Experimental: new(true)}, "on"},
+		{"disabled experimental", Presets{Experimental: new(false)}, "off"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := ResolveRegisteredRules(tc.presets, nil, RuleRegistration{Descriptor: descriptor, ReplacesTool: "shellcheck"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if level, ok := cfg.Lint.Rules.ResolvedLevel("shellcheck"); !ok || level != tc.want {
+				t.Fatalf("ShellCheck maturity selection = %q, found %t; want %q", level, ok, tc.want)
+			}
+		})
+	}
+}

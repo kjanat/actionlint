@@ -24,7 +24,7 @@ func (Analyzer) Descriptor() analyzer.Descriptor {
 	}
 }
 
-func (Analyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (Analyzer) CheckDocument(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	var findings []diagnostic.Diagnostic
 	for _, dependency := range input.Dependencies {
 		if err := ctx.Err(); err != nil {

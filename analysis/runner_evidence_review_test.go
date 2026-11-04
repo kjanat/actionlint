@@ -45,7 +45,7 @@ func (*evidenceCompletionObserver) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (o *evidenceCompletionObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if strings.Contains(input.Content, "runs-on: "+o.label) {
 		o.once.Do(func() { close(o.release) })
 	}
@@ -68,10 +68,10 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 		settings := analysis.Options{
 			WorkingDir: root,
 			Runners:    runner.Options{Target: "order", Providers: []runner.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
-			Analyzers:  []analyzer.Registration{{Analyzer: observer}},
+			Checks:     []analyzer.Registration{{Checker: observer}},
 		}
 		// a.yml waits until b.yml has been analyzed.
-		result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{source("b.yml", fast), source("a.yml", slow)}, Options: settings})
+		result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: []analysis.Source{source("b.yml", fast), source("a.yml", slow)}, Options: settings})
 		if err != nil {
 			t.Fatal(err)
 		}

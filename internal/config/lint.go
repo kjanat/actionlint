@@ -112,7 +112,7 @@ func (c *LintRulesConfig) validateSettings() error {
 				continue
 			}
 			legacyPlugin := category == "plugins" && LegacyGroup(name) == "external"
-			legacyNursery := category == "nursery" && d.Nursery()
+			legacyNursery := category == "nursery" && d.Experimental()
 			if d.Category != category && LegacyGroup(name) != category && !legacyPlugin && !legacyNursery {
 				return fmt.Errorf("yaml: rule %q belongs in lint.rules.%s, not lint.rules.%s", name, d.Category, category)
 			}

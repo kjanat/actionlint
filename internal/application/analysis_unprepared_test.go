@@ -19,7 +19,7 @@ func (sourceOnlyProbe) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (p sourceOnlyProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (p sourceOnlyProbe) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if input.Content != p.content || len(input.AvailableInputs) != 1 {
 		return nil, errors.New("source-only input changed")
 	}
@@ -48,7 +48,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 				t.Fatalf("missing preparation error: %v", err)
 			}
 			var used []rule.Descriptor
-			findings, err := runDocumentAnalyzers(t.Context(), []analyzer.Registration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
+			findings, err := runDocumentAnalyzers(t.Context(), []analyzer.Registration{{Checker: sourceOnlyProbe{content}}}, input, nil, &used)
 			if err != nil || len(findings) != 1 || findings[0].Message != "reported source finding" {
 				t.Fatalf("source analyzer skipped: %v %v", findings, err)
 			}

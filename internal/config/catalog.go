@@ -31,9 +31,6 @@ type Rule struct {
 	Configure    func(*Config, Setting)
 }
 
-// Nursery reports whether the rule is excluded from stable presets.
-func (r Rule) Nursery() bool { return r.Maturity == "nursery" }
-
 // Rules lists the built-in checks in registration order, then the bundled
 // tool providers' rules.
 func Rules() []Rule {

@@ -35,9 +35,9 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	var names []string
 	var registrations []repoconfig.RuleRegistration
 	for _, registration := range options.Analyzers {
-		if !analyzerref.IsNil(registration.Analyzer) {
-			names = append(names, registration.Analyzer.Descriptor().Name)
-			registrations = append(registrations, repoconfig.RuleRegistration{Descriptor: registration.Analyzer.Descriptor().Descriptor})
+		if !analyzerref.IsNil(registration.Checker) {
+			names = append(names, registration.Checker.Descriptor().Name)
+			registrations = append(registrations, repoconfig.RuleRegistration{Descriptor: registration.Checker.Descriptor().Descriptor})
 		}
 	}
 	for _, registration := range options.Tools {

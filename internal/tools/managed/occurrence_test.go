@@ -21,7 +21,7 @@ import (
 
 type occurrenceGuest struct{ documentGuest }
 
-func (g *occurrenceGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (g *occurrenceGuest) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	return nil, nil
 }
@@ -32,7 +32,7 @@ func (*occurrenceObserver) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
-func (observer *occurrenceObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (observer *occurrenceObserver) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	observer.input = input
 	return nil, nil
 }
@@ -80,7 +80,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 	if err := os.WriteFile(filename, []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}, Analyzers: []analyzer.Registration{{Analyzer: observer}}}, application.Input{Kind: application.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
+	_, err = application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}, Analyzers: []analyzer.Registration{{Checker: observer}}}, application.Input{Kind: application.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}, Analyzers: []analyzer.Registration{{Analyzer: observer}}}, application.Input{Kind: application.Files, Paths: []string{path}})
+	_, err = application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}, Analyzers: []analyzer.Registration{{Checker: observer}}}, application.Input{Kind: application.Files, Paths: []string{path}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,7 +18,7 @@ func (*actionInputObserver) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "action-input-observer", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
-func (o *actionInputObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (o *actionInputObserver) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	o.input = input
 	return nil, nil
 }
@@ -43,7 +43,7 @@ jobs:
 	observer := &actionInputObserver{}
 	_, err := application.Check(t.Context(), application.Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []analyzer.Registration{{Analyzer: observer}},
+		Analyzers:  []analyzer.Registration{{Checker: observer}},
 	}, application.Input{Kind: application.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	observer := &actionInputObserver{}
-	result, err := Check(t.Context(), application.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: observer}}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module})
+	result, err := Check(t.Context(), application.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Checker: observer}}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module})
 	if err != nil {
 		t.Fatal(err)
 	}

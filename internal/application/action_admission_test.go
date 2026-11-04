@@ -24,7 +24,7 @@ func (probe failedActionFactProbe) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: probe.name, Category: "correctness", RequiredInputs: []analyzer.InputKind{probe.fact}}
 }
 
-func (probe failedActionFactProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (probe failedActionFactProbe) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	probe.calls.Add(1)
 	if len(input.Scripts)+len(input.ActionInputs)+len(input.Invoked) != 0 || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != analyzer.Source {
 		return nil, errors.New("failed action leaked executable analyzer facts")
@@ -39,8 +39,8 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 	result, err := application.Analyze(t.Context(), application.Options{
 		WorkingDir: t.TempDir(),
 		Analyzers: []analyzer.Registration{
-			{Analyzer: failedActionFactProbe{name: "failed-action-source", fact: analyzer.Source, calls: &sourceCalls}},
-			{Analyzer: failedActionFactProbe{name: "failed-action-scripts", fact: analyzer.Scripts, calls: &scriptCalls}},
+			{Checker: failedActionFactProbe{name: "failed-action-source", fact: analyzer.Source, calls: &sourceCalls}},
+			{Checker: failedActionFactProbe{name: "failed-action-scripts", fact: analyzer.Scripts, calls: &scriptCalls}},
 		},
 		Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 			calls.Add(1)

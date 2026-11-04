@@ -75,7 +75,7 @@ func executionEnvironment(goos, goarch string) []string {
 func TestAnalyzerExecutorRejectsBypasses(t *testing.T) {
 	owner := runtime.FuncForPC(reflect.ValueOf(executor.RunOne).Pointer()).Name()
 	ownerPackage := owner[:strings.LastIndexByte(owner, '.')]
-	contractType := reflect.TypeFor[analyzer.Analyzer]()
+	contractType := reflect.TypeFor[analyzer.Checker]()
 	loaded, err := packages.Load(&packages.Config{
 		Context: t.Context(), Dir: "../..", Mode: executionPackageMode,
 	}, ownerPackage, contractType.PkgPath())
@@ -247,7 +247,7 @@ func platformExecutorProbe(a renamed.Analyzer, ctx context.Context, in renamed.I
 
 func executionContract(t *testing.T, loaded []*packages.Package) *types.Signature {
 	t.Helper()
-	contractType := reflect.TypeFor[analyzer.Analyzer]()
+	contractType := reflect.TypeFor[analyzer.Checker]()
 	var contract *types.Interface
 	for _, pkg := range loaded {
 		for _, err := range pkg.Errors {

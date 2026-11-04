@@ -11,18 +11,18 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
-// Analyzer reports deprecated workflow commands in declared and invoked scripts
+// Checker reports deprecated workflow commands in declared and invoked scripts
 // through the public analyzer contract.
-type Analyzer struct{}
+type Checker struct{}
 
 // Descriptor names the rule and the facts it consumes.
-func (Analyzer) Descriptor() analyzer.Descriptor {
+func (Checker) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "deprecated-commands", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}}
 }
 
-// Analyze maps each command to its declaring document. A command whose text
+// CheckDocument maps each command to its declaring document. A command whose text
 // has no source position is reported at the script start without a range.
-func (Analyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (Checker) CheckDocument(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	var findings []diagnostic.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {

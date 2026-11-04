@@ -19,7 +19,7 @@ type testAnalyzer struct {
 }
 
 func (a testAnalyzer) Descriptor() analyzer.Descriptor { return a.descriptor }
-func (a testAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a testAnalyzer) CheckDocument(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return a.run(ctx, input)
 }
 
@@ -64,7 +64,7 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 		}
 		return []diagnostic.Diagnostic{{Message: "complete"}}, nil
 	}}
-	findings, err := Run(t.Context(), input, []analyzer.Registration{{Analyzer: first}, {Analyzer: second}})
+	findings, err := Run(t.Context(), input, []analyzer.Registration{{Checker: first}, {Checker: second}})
 	if !errors.Is(err, failure) || len(findings) != 2 {
 		t.Fatalf("findings=%v err=%v", findings, err)
 	}
@@ -82,7 +82,7 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 			t.Error("ran without required facts")
 			return nil, nil
 		}}
-		_, err := Run(t.Context(), analyzer.Input{}, []analyzer.Registration{{Analyzer: a}})
+		_, err := Run(t.Context(), analyzer.Input{}, []analyzer.Registration{{Checker: a}})
 		if err == nil || !strings.Contains(err.Error(), string(requirement)) {
 			t.Fatal(err)
 		}
@@ -136,7 +136,7 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 		}
 		return nil, nil
 	}}
-	if _, err := Run(t.Context(), input, []analyzer.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
+	if _, err := Run(t.Context(), input, []analyzer.Registration{{Checker: first}, {Checker: second}}); err != nil {
 		t.Fatal(err)
 	}
 }

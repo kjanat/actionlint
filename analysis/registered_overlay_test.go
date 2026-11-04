@@ -18,10 +18,10 @@ func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
 	}
 	options := analysis.FileOptions{
 		WorkingDir:        root,
-		Analyzers:         []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
+		Checks:            []analyzer.Registration{{Checker: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
-	baseline, err := analysis.Files(t.Context(), []string{path}, options)
+	baseline, err := analysis.CheckFiles(t.Context(), []string{path}, options)
 	if err != nil || len(baseline.Diagnostics) != 1 {
 		t.Fatalf("baseline=%+v err=%v", baseline, err)
 	}
@@ -37,7 +37,7 @@ func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
 			t.Fatal(err)
 		}
 		options.ConfigOverlays = []config.Overlay{overlay}
-		result, err := analysis.Files(t.Context(), []string{path}, options)
+		result, err := analysis.CheckFiles(t.Context(), []string{path}, options)
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("%s: result=%+v err=%v", source, result, err)
 		}

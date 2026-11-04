@@ -64,7 +64,7 @@ type Options struct {
 	Repository func(context.Context, string) repository.Snapshot
 	Runners    runner.Options
 	Resolver   resolver.Resolver
-	Analyzers  []analyzer.Registration
+	Checks     []analyzer.Registration
 	// LoadScriptEngine authorizes configuration-selected Wasm engines. Nil disables
 	// them. Calls receive resolved paths and may be concurrent. Each analysis loads
 	// each path once and closes returned backends implementing Close(context.Context) error.
@@ -112,8 +112,8 @@ type Result struct {
 	FileCount      int                      `json:"file_count"`
 }
 
-// Analyze checks already-loaded sources. It does not perform source discovery.
-func Analyze(ctx context.Context, request Request) (*Result, error) {
+// CheckSources checks already-loaded sources. It does not perform source discovery.
+func CheckSources(ctx context.Context, request Request) (*Result, error) {
 	options, err := fileOptions(FileOptions{Options: request.Options})
 	if err != nil {
 		return nil, err
@@ -127,9 +127,9 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 	return applicationResultView(result), err
 }
 
-// Files checks explicit files and recursively selected directories with project
+// CheckFiles checks explicit files and recursively selected directories with project
 // discovery and configuration loading.
-func Files(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
+func CheckFiles(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
 	settings, err := fileOptions(options)
 	if err != nil {
 		return nil, err
@@ -145,8 +145,8 @@ func Files(ctx context.Context, paths []string, options FileOptions) (*Result, e
 	return applicationResultView(result), err
 }
 
-// Repository discovers and checks workflows and actions under a repository.
-func Repository(ctx context.Context, directory string, options FileOptions) (*Result, error) {
+// CheckRepository discovers and checks workflows and actions under a repository.
+func CheckRepository(ctx context.Context, directory string, options FileOptions) (*Result, error) {
 	settings, err := fileOptions(options)
 	if err != nil {
 		return nil, err
@@ -177,8 +177,8 @@ func fileOptions(options FileOptions) (application.Options, error) {
 		options.ConfigFile = filepath.Join(root, options.ConfigFile)
 	}
 	managed := map[string]bool{}
-	for _, registration := range options.Analyzers {
-		if integrator, ok := registration.Analyzer.(analyzer.ToolIntegrator); ok {
+	for _, registration := range options.Checks {
+		if integrator, ok := registration.Checker.(analyzer.ToolIntegrator); ok {
 			if descriptor := integrator.ToolIntegration(); descriptor != nil {
 				managed[descriptor.Tool] = true
 			}
@@ -207,7 +207,7 @@ func fileOptions(options FileOptions) (application.Options, error) {
 	return application.Options{
 		Repository:    options.Repository,
 		RemoteActions: options.RemoteActions,
-		Resolver:      options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
+		Resolver:      options.Resolver, Analyzers: options.Checks, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
 		ConfigOverlays: convertOverlays(options.ConfigOverlays), SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile:             options.ReadFile,
 		AllowConfigProcesses: options.AllowConfigProcesses,

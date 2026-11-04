@@ -49,7 +49,7 @@ func (g *sourceProbeGuest) NegotiateTool(_ context.Context, data, _ json.RawMess
 	return &analyzer.ToolNegotiation{Options: data, Resources: []analyzer.ToolResourceRequest{{Kind: analyzer.ToolWorkspace}, {Kind: analyzer.ToolDirectory, Path: g.directory}}}, nil
 }
 
-func (g *sourceProbeGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (g *sourceProbeGuest) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	content, err := fs.ReadFile(input.Files[len(input.Files)-1].FS, g.file)
 	if err != nil {
@@ -169,7 +169,7 @@ func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 	return &analyzer.ToolNegotiation{Options: data}, nil
 }
 
-func (g *documentGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (g *documentGuest) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	start, _ := input.Scripts[0].Position(1, 6, false)
 	end, _ := input.Scripts[0].Position(1, 12, true)
@@ -334,7 +334,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			options := application.Options{
 				WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: overlays,
 				Tools:     []tools.Registration{shellcheckRegistration(backend.Selection{Command: "shellcheck"})},
-				Analyzers: []analyzer.Registration{{Analyzer: guest}},
+				Analyzers: []analyzer.Registration{{Checker: guest}},
 			}
 			needed, err := application.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["shellcheck"] != tc.native {
@@ -377,7 +377,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			options := application.Options{
 				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []config.Overlay{base, disabled},
 				Tools:     []tools.Registration{shellcheckRegistration(backend.Selection{Command: "shellcheck", ManagedOnly: true})},
-				Analyzers: []analyzer.Registration{{Analyzer: guest}},
+				Analyzers: []analyzer.Registration{{Checker: guest}},
 			}
 			needed, err := application.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["shellcheck"] {
@@ -419,7 +419,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	options := application.Options{
 		WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
 		Tools:     []tools.Registration{shellcheckRegistration(backend.Selection{Command: "shellcheck"})},
-		Analyzers: []analyzer.Registration{{Analyzer: guest}},
+		Analyzers: []analyzer.Registration{{Checker: guest}},
 	}
 	needed, err := application.RequiredTools(t.Context(), options, []string{workflow})
 	if err != nil || !needed["shellcheck"] {
@@ -458,7 +458,7 @@ func TestDocumentPluginPlanningPropagatesCancellation(t *testing.T) {
 	options := application.Options{
 		WorkingDir: t.TempDir(), SkipProjectConfig: true,
 		Tools:     []tools.Registration{shellcheckRegistration(backend.Selection{Command: "shellcheck"})},
-		Analyzers: []analyzer.Registration{{Analyzer: guest}},
+		Analyzers: []analyzer.Registration{{Checker: guest}},
 	}
 	result := make(chan error, 1)
 	go func() {

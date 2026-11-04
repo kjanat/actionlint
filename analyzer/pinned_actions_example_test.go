@@ -10,7 +10,7 @@ import (
 )
 
 func ExampleAnalyzer_dependencies() {
-	result, err := analysis.Analyze(context.Background(), analysis.Request{
+	result, err := analysis.CheckSources(context.Background(), analysis.Request{
 		Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 `)}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: pinnedactions.Analyzer{}}}},
+		Options: analysis.Options{Checks: []analyzer.Registration{{Checker: pinnedactions.Analyzer{}}}},
 	})
 	if err != nil {
 		panic(err)

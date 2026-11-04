@@ -34,7 +34,7 @@ func (a sourceFactAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "shellcheck"}
 }
 
-func (a sourceFactAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a sourceFactAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -199,7 +199,7 @@ func (a partialFactAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "test"}
 }
 
-func (a partialFactAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a partialFactAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)

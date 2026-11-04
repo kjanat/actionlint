@@ -25,7 +25,7 @@ func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer engine.Close(t.Context())
-	result, err := analysis.Analyze(t.Context(), analysis.Request{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{
 		Sources: []analysis.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n")}},
 		Options: analysis.Options{Tools: map[string]analysis.Tool{"ruff": {Backend: ruffEchoBackend{engine}}}},
 	})

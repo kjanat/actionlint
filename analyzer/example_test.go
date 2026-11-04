@@ -16,7 +16,7 @@ func (sudoAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}
 }
 
-func (sudoAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (sudoAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	var findings []diagnostic.Diagnostic
 	for _, script := range input.Scripts {
 		if strings.Contains(script.Text, "sudo ") {
@@ -35,9 +35,9 @@ jobs:
       - id: install
         run: sudo apt-get install -y jq
 `)
-	result, err := analysis.Analyze(context.Background(), analysis.Request{
+	result, err := analysis.CheckSources(context.Background(), analysis.Request{
 		Sources: []analysis.Source{{Path: "workflow.yml", Content: source}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: sudoAnalyzer{}}}},
+		Options: analysis.Options{Checks: []analyzer.Registration{{Checker: sudoAnalyzer{}}}},
 	})
 	if err != nil {
 		fmt.Println("incomplete:", err)

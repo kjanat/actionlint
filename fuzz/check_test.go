@@ -37,7 +37,7 @@ jobs:
 			return
 		}
 
-		_, _ = analysis.Analyze(t.Context(), analysis.Request{
+		_, _ = analysis.CheckSources(t.Context(), analysis.Request{
 			Sources: []analysis.Source{{Path: "test.yaml", Content: data}},
 			Options: analysis.Options{ReadFile: func(string) ([]byte, error) { return nil, fs.ErrNotExist }},
 		})

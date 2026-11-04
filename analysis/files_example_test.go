@@ -21,7 +21,7 @@ func ExampleFiles() {
 		panic(err)
 	}
 
-	result, err := analysis.Files(context.Background(), []string{path}, analysis.FileOptions{
+	result, err := analysis.CheckFiles(context.Background(), []string{path}, analysis.FileOptions{
 		IgnorePatterns: []string{`label ".+" is unknown`},
 	})
 	if err != nil {

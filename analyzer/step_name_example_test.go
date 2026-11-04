@@ -17,7 +17,7 @@ func (stepNameAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (stepNameAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (stepNameAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if input.Kind != "workflow" {
 		return nil, nil
 	}
@@ -54,9 +54,9 @@ jobs:
     steps:
       - run: echo hello
 `)
-	result, err := analysis.Analyze(context.Background(), analysis.Request{
+	result, err := analysis.CheckSources(context.Background(), analysis.Request{
 		Sources: []analysis.Source{{Path: "workflow.yml", Content: source}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: stepNameAnalyzer{}}}},
+		Options: analysis.Options{Checks: []analyzer.Registration{{Checker: stepNameAnalyzer{}}}},
 	})
 	if err != nil {
 		panic(err)

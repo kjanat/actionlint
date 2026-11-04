@@ -43,7 +43,7 @@ type PreparedRegistration struct {
 }
 
 type preparedRegistration struct {
-	analyzer        analyzer.Analyzer
+	analyzer        analyzer.Checker
 	descriptor      analyzer.Descriptor
 	options         []byte
 	availableInputs []analyzer.InputKind
@@ -52,10 +52,10 @@ type preparedRegistration struct {
 
 // Prepare validates a registration once for an exact set of available input kinds.
 func Prepare(registration analyzer.Registration, available []analyzer.InputKind) (PreparedRegistration, error) {
-	if analyzerref.IsNil(registration.Analyzer) {
+	if analyzerref.IsNil(registration.Checker) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
-	descriptor := registration.Analyzer.Descriptor()
+	descriptor := registration.Checker.Descriptor()
 	descriptor.RequiredInputs = slices.Clone(descriptor.RequiredInputs)
 	descriptor.Descriptor = descriptor.Clone()
 	options := slices.Clone(registration.Options)
@@ -77,7 +77,7 @@ func Prepare(registration analyzer.Registration, available []analyzer.InputKind)
 			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unavailable input kind %q", descriptor.Name, requirement)
 		}
 	}
-	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Analyzer, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
+	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Checker, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
 }
 
 // PrepareForwarding admits a transparent adapter's implementation through the
@@ -155,7 +155,7 @@ func RunOne(ctx context.Context, input analyzer.Input, registration PreparedRegi
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	findings, err := registration.data.analyzer.Analyze(ctx, supplied)
+	findings, err := registration.data.analyzer.CheckDocument(ctx, supplied)
 	findings = slices.Clone(findings)
 	err = errors.Join(err, related.BindDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
 	if canceled := ctx.Err(); canceled != nil && !errors.Is(err, canceled) {

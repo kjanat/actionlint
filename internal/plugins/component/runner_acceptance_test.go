@@ -67,9 +67,9 @@ func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
 	snapshot := runnerFixtureRequest(t).Snapshot
 	snapshot.Content = "{"
 	observer := &runtimeObserver{}
-	result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    needs: missing\n    runs-on: buildkite-windows\n    steps: [{run: echo hello}]\n")}}, Options: analysis.Options{
-		Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-		Analyzers: []analyzer.Registration{{Analyzer: observer}},
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    needs: missing\n    runs-on: buildkite-windows\n    steps: [{run: echo hello}]\n")}}, Options: analysis.Options{
+		Runners: runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
+		Checks:  []analyzer.Registration{{Checker: observer}},
 	}})
 	if err == nil || !strings.Contains(err.Error(), "invalid queue snapshot") {
 		t.Fatalf("missing operational error: %v", err)
@@ -95,7 +95,7 @@ func TestRunnerProviderShellValidation(t *testing.T) {
 		label string
 		want  bool
 	}{{"buildkite-windows", false}, {"buildkite-linux", true}} {
-		result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + tc.label + "\n    steps: [{run: echo hello, shell: cmd}]\n")}}, Options: analysis.Options{
+		result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + tc.label + "\n    steps: [{run: echo hello, shell: cmd}]\n")}}, Options: analysis.Options{
 			Runners: runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: runnerFixtureRequest(t).Snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 		}})
 		if err != nil {

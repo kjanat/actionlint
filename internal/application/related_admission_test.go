@@ -112,7 +112,7 @@ func (relatedAdmissionProbe) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "related-admission-probe", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (relatedAdmissionProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (relatedAdmissionProbe) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	point := diagnostic.Position{Line: 1, Column: 1}
 	valid := diagnostic.Related{Path: input.Path, Start: point, End: point}
 	foreign := valid
@@ -128,7 +128,7 @@ func (relatedAdmissionProbe) Analyze(_ context.Context, input analyzer.Input) ([
 }
 
 func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
-	result, err := Analyze(t.Context(), Options{WorkingDir: t.TempDir(), Analyzers: []analyzer.Registration{{Analyzer: relatedAdmissionProbe{}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: t.TempDir(), Analyzers: []analyzer.Registration{{Checker: relatedAdmissionProbe{}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejected, ok := errors.AsType[*related.RejectedError](err)
 	if !ok || rejected.Count() != 3 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "primary" || len(result.Diagnostics[0].Related) != 1 || !result.Diagnostics[0].Related[0].Revision.Valid() {
 		t.Fatalf("result=%+v error=%v", result, err)

@@ -36,7 +36,7 @@ func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 	return &analyzer.ToolNegotiation{Options: data}, nil
 }
 
-func (guest *fallbackGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (guest *fallbackGuest) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	guest.inputs = append(guest.inputs, input)
 	return []diagnostic.Diagnostic{{Path: input.Path, Message: "plugin"}}, nil
 }
@@ -111,7 +111,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 
 type scalingGuest struct{ fallbackGuest }
 
-func (*scalingGuest) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (*scalingGuest) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return nil, nil
 }
 

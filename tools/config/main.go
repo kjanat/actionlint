@@ -145,7 +145,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 					setting.Properties.Set("options", &jsonschema.Schema{Description: "Options specific to this rule; null resets to defaults.", AnyOf: []*jsonschema.Schema{{Type: "null"}, {AllOf: []*jsonschema.Schema{{Type: "object"}, optionsSchema}}}})
 				}
 				description := rule.Description
-				if rule.Maturity == "nursery" {
+				if rule.Experimental() {
 					description += ". Nursery; disabled by default and excluded from stable presets."
 				} else if !rule.Recommended {
 					description += ". Stable; not enabled by the recommended preset."

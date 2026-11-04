@@ -104,7 +104,7 @@ func Configure(registration tools.Registration) tools.Registration {
 	}
 	registration.ConfiguredBackend = nil
 	if replace := registration.WithAnalyzer; replace != nil {
-		registration.WithAnalyzer = func(guest analyzer.Analyzer) (tools.Registration, error) {
+		registration.WithAnalyzer = func(guest analyzer.Checker) (tools.Registration, error) {
 			replacement, err := replace(guest)
 			if err != nil {
 				return tools.Registration{}, err

@@ -16,7 +16,7 @@ jobs:
     steps:
       - run: echo hello
 `)
-	result, err := analysis.Analyze(context.Background(), analysis.Request{
+	result, err := analysis.CheckSources(context.Background(), analysis.Request{
 		Sources: []analysis.Source{{Path: "workflow.yml", Content: source}},
 	})
 	if err != nil {

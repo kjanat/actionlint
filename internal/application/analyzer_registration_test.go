@@ -13,13 +13,13 @@ import (
 
 type registrationBoundaryTrap struct{}
 
-type registrationBoundaryPlain struct{ analyzer.Analyzer }
+type registrationBoundaryPlain struct{ analyzer.Checker }
 
 func (*registrationBoundaryTrap) Descriptor() analyzer.Descriptor {
 	panic("metadata called before registration validation")
 }
 
-func (*registrationBoundaryTrap) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (*registrationBoundaryTrap) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	panic("analysis called before registration validation")
 }
 
@@ -34,7 +34,7 @@ func (*registrationBoundaryTrap) NegotiateTool(context.Context, json.RawMessage,
 func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		analyzer analyzer.Analyzer
+		analyzer analyzer.Checker
 	}{
 		{name: "nil interface"},
 		{name: "typed nil analyzer", analyzer: (*registrationBoundaryPlain)(nil)},
@@ -63,7 +63,7 @@ func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 				}},
 			} {
 				t.Run(endpoint.name, func(t *testing.T) {
-					options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: &registrationBoundaryTrap{}}, {Analyzer: tc.analyzer}}}
+					options := application.Options{Analyzers: []analyzer.Registration{{Checker: &registrationBoundaryTrap{}}, {Checker: tc.analyzer}}}
 					if err := endpoint.run(options); err == nil || !strings.Contains(err.Error(), "nil analyzer registration") {
 						t.Fatalf("invalid registration was not rejected: %v", err)
 					}

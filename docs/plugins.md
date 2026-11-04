@@ -984,7 +984,8 @@ lint:
 Names must match analyzers registered by this invocation. Global/group presets,
 `lint.enabled`, `lint.rules.disable` and per-file overrides apply to plugin rules.
 An explicit `recommended` preset uses the descriptor's recommendation; `all`
-excludes nursery rules. Disabled analyzers are not executed. Options are checked
+excludes rules whose metadata sets `maturity` to `nursery`. The `--experimental`
+flag enables those rules. Disabled analyzers are not executed. Options are checked
 against the descriptor's bundled JSON schema before execution; external schema
 references are refused. Go registration options override repository options.
 Core script engines with a bundled adapter use that adapter's configuration (for example,

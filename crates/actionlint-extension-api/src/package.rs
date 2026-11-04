@@ -247,7 +247,7 @@ mod tests {
             description: String::new(),
             category: "correctness".into(),
             subcategory: String::new(),
-            maturity: "experimental".into(),
+            maturity: "nursery".into(),
             provider: "example".into(),
             recommended: false,
             explanation: String::new(),

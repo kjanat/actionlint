@@ -19,12 +19,12 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 	case "none":
 		return "off"
 	case "all":
-		if !d.Nursery() {
+		if !d.Experimental() {
 			return "on"
 		}
 		return "off"
 	case "recommended":
-		if d.Recommended && !d.Nursery() {
+		if d.Recommended && !d.Experimental() {
 			return defaultLevel(d)
 		}
 		return "off"
@@ -42,7 +42,7 @@ func defaultLevel(d Rule) Level {
 
 func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	level := defaultLevel(d)
-	if d.Nursery() || !d.Recommended && !selected {
+	if d.Experimental() || !d.Recommended && !selected {
 		level = "off"
 	}
 	if enabled, known := policyEnabled(cfg, d.Name); known {
@@ -56,13 +56,13 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 		rules = cfg.Lint.Rules
 	}
 	level = presetLevel(rules.Preset, d, level)
-	if p.Strict && !d.Nursery() {
+	if p.Strict && !d.Experimental() {
 		level = "on"
 		if d.DefaultLevel != "" {
 			level = "error"
 		}
 	}
-	if p.Experimental != nil && *p.Experimental && d.Nursery() {
+	if p.Experimental != nil && *p.Experimental && d.Experimental() {
 		level = "on"
 	}
 	// Retained legacy controls apply only to their original membership. The
@@ -80,7 +80,7 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	if selected {
 		groups = append(groups, rules.Plugins)
 	}
-	if d.Nursery() {
+	if d.Experimental() {
 		// Decode-only nursery controls retain their historical opt-in. A
 		// migration expands that selection into individual category entries.
 		if rules.Nursery.Preset() == "all" {
@@ -97,12 +97,12 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	for _, group := range groups {
 		// Category baselines select stable checks only. Nursery checks need
 		// an individual enable or the invocation's experimental switch.
-		if !d.Nursery() {
+		if !d.Experimental() {
 			level = presetLevel(group.Preset(), d, level)
 		} else if group.Preset() == "none" {
 			level = "off"
 		}
-		if group.Level() != "" && group.Level() != "default" && (!d.Nursery() || level != "off" || group.Level() == "off") {
+		if group.Level() != "" && group.Level() != "default" && (!d.Experimental() || level != "off" || group.Level() == "off") {
 			level = group.Level()
 		}
 		// An explicit setting supplies the options and, unless it defers to the
@@ -117,7 +117,7 @@ func SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
 	if explicitLevel != "" {
 		level = explicitLevel
 	}
-	if d.Nursery() && p.Experimental != nil && !*p.Experimental {
+	if d.Experimental() && p.Experimental != nil && !*p.Experimental {
 		level = "off"
 	}
 	if disabled(rules.Disable, d.Name) || cfg != nil && cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
@@ -191,7 +191,7 @@ func ResolveRegisteredRules(p Presets, config *Config, registrations ...RuleRegi
 		if !rule.ValidCategory(descriptor.Category) {
 			return nil, fmt.Errorf("rule %q has invalid category %q; expected one of %s", descriptor.Name, descriptor.Category, strings.Join(rule.Categories(), ", "))
 		}
-		if descriptor.Maturity != "" && descriptor.Maturity != "stable" && descriptor.Maturity != "nursery" {
+		if !rule.ValidMaturity(descriptor.Maturity) {
 			return nil, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
 		}
 		if len(descriptor.OptionsSchema) > 0 {
@@ -289,7 +289,7 @@ func bindSettings(config *Config, descriptors []Rule, registered map[string]bool
 				case "external":
 					_, valid = toolProviders()[name]
 				case "nursery":
-					valid = descriptor.Nursery()
+					valid = descriptor.Experimental()
 				}
 				if !valid {
 					return fmt.Errorf("rule %q belongs in lint.rules.%s, not lint.rules.%s", name, descriptor.Category, category)

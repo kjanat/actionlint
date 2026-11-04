@@ -10,7 +10,7 @@ import (
 )
 
 func TestPublicAnalysisPreservesActionMetadataCoverage(t *testing.T) {
-	result, err := analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{WorkingDir: t.TempDir()}, Sources: []analysis.Source{{Path: "ci.yml", Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}}})
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{Options: analysis.Options{WorkingDir: t.TempDir()}, Sources: []analysis.Source{{Path: "ci.yml", Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}}})
 	if err != nil {
 		t.Fatal(err)
 	}

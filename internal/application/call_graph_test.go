@@ -19,7 +19,7 @@ func (*callGraphCollector) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Invocations, analyzer.Scripts}}
 }
 
-func (collector *callGraphCollector) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (collector *callGraphCollector) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	collector.mu.Lock()
 	defer collector.mu.Unlock()
 	collector.inputs = append(collector.inputs, input)
@@ -35,7 +35,7 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 	writeFixture(t, root, "middle/action.yml", "name: middle\ndescription: middle\nruns: {using: composite, steps: [{uses: $/inner}]}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n")
 	collector := &callGraphCollector{}
-	_, err := application.Check(t.Context(), application.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: collector}}}, application.Input{Kind: application.Files, Paths: []string{first, second}})
+	_, err := application.Check(t.Context(), application.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Checker: collector}}}, application.Input{Kind: application.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}

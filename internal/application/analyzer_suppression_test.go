@@ -21,7 +21,7 @@ func (a suppressionAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: a.name, Category: "security", RequiredInputs: []analyzer.InputKind{analyzer.Scripts}}
 }
 
-func (a suppressionAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a suppressionAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	var findings []diagnostic.Diagnostic
 	for _, script := range input.Scripts {
 		findings = append(findings, diagnostic.Diagnostic{Path: input.Path, Rule: a.name, Start: script.Start, Message: "plugin finding"})
@@ -55,7 +55,7 @@ func TestRegisteredAnalyzerSuppressions(t *testing.T) {
 				content = strings.Replace(content, "      - run:", tc.before+"      - run:", 1)
 			}
 			path := writeSuppressionFixture(t, root, ".github/workflows/ci.yml", content)
-			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: suppressionAnalyzer{"no-sudo"}}}}, Input{Kind: Files, Paths: []string{path}})
+			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Checker: suppressionAnalyzer{"no-sudo"}}}}, Input{Kind: Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -77,7 +77,7 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			path := writeSuppressionFixture(t, root, "config.yaml", "lint: {rules: {disable: ["+name+"]}}\n")
-			opts := Options{WorkingDir: root, ConfigFile: path, Analyzers: []analyzer.Registration{{Analyzer: suppressionAnalyzer{name}}}}
+			opts := Options{WorkingDir: root, ConfigFile: path, Analyzers: []analyzer.Registration{{Checker: suppressionAnalyzer{name}}}}
 			_, err := Check(t.Context(), opts, Input{Kind: Files})
 			if err != nil {
 				t.Fatal(err)
@@ -108,7 +108,7 @@ func TestAnalyzerNameIsNotATool(t *testing.T) {
 		writeSuppressionFixture(t, root, ".git/HEAD", "ref: refs/heads/master\n")
 		writeSuppressionFixture(t, root, ".github/actionlint.yaml", config)
 		path := writeSuppressionFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
-		opts := Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: suppressionAnalyzer{"no-sudo"}}}}
+		opts := Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Checker: suppressionAnalyzer{"no-sudo"}}}}
 		if _, err := Check(t.Context(), opts, Input{Kind: Files, Paths: []string{path}}); err == nil || !strings.Contains(err.Error(), `unknown tool "no-sudo"`) {
 			t.Fatalf("%s: analyzer accepted as a tool: %v", config, err)
 		}

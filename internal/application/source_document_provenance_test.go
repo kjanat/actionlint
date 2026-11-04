@@ -16,7 +16,7 @@ func (actionSourceReferenceProbe) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (p actionSourceReferenceProbe) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (p actionSourceReferenceProbe) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return []diagnostic.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: diagnostic.Position{Line: 1, Column: 1}}}, nil
 }
 
@@ -36,7 +36,7 @@ func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
 			workflowPath := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 			result, err := application.Check(t.Context(), application.Options{
 				WorkingDir: root,
-				Analyzers:  []analyzer.Registration{{Analyzer: actionSourceReferenceProbe{path: actionPath}}},
+				Analyzers:  []analyzer.Registration{{Checker: actionSourceReferenceProbe{path: actionPath}}},
 			}, application.Input{Kind: application.Files, Paths: []string{workflowPath}})
 			if err != nil {
 				t.Fatal(err)

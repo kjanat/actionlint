@@ -30,20 +30,20 @@ type Descriptor struct {
 	RequiredInputs []InputKind
 }
 
-// Analyzer completes all work before returning. The host may call Analyze
+// Checker completes all work before returning. The host may call Analyze
 // concurrently for different documents. Implementations must honor cancellation.
 // Findings may accompany an error when an analysis is incomplete.
 // Descriptor and Analyze must not panic; the host does not recover analyzer panics.
-type Analyzer interface {
+type Checker interface {
 	Descriptor() Descriptor
-	Analyze(context.Context, Input) ([]diagnostic.Diagnostic, error)
+	CheckDocument(context.Context, Input) ([]diagnostic.Diagnostic, error)
 }
 
 // Registration supplies analyzer-specific configuration without exposing the
 // host's mutable configuration objects or rule registry.
 type Registration struct {
-	Analyzer Analyzer
-	Options  json.RawMessage
+	Checker Checker
+	Options json.RawMessage
 }
 
 // Input is one document and its shared analysis facts. Each analyzer receives

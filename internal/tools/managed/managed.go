@@ -29,7 +29,7 @@ func Bind(base tools.Registration, p backend.Provider) tools.Registration {
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shellprofile.ID {
 		return base
 	}
-	base.WithAnalyzer = func(guest analyzer.Analyzer) (tools.Registration, error) {
+	base.WithAnalyzer = func(guest analyzer.Checker) (tools.Registration, error) {
 		return withAnalyzer(base, p, guest)
 	}
 	return base
@@ -50,7 +50,7 @@ func defaultSelection(sel backend.Selection, name string) bool {
 
 // withAnalyzer selects a document analyzer or the provider's transport per
 // document, accounting for settings in overrides and composite actions.
-func withAnalyzer(base tools.Registration, p backend.Provider, guest analyzer.Analyzer) (tools.Registration, error) {
+func withAnalyzer(base tools.Registration, p backend.Provider, guest analyzer.Checker) (tools.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
 	integrator, ok := guest.(analyzer.ToolIntegrator)
@@ -241,7 +241,7 @@ func (r documentRoute) negotiate(ctx context.Context, guest analyzer.ToolIntegra
 
 type documentRunner struct {
 	documentRoute
-	guest      analyzer.Analyzer
+	guest      analyzer.Checker
 	integrator analyzer.ToolIntegrator
 	context    tools.Context
 	native     func() (tools.Runner, error)
@@ -305,7 +305,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 			continue
 		}
 		files.configure(&input)
-		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Analyzer: r.guest, Options: input.Options}})
+		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Checker: r.guest, Options: input.Options}})
 		for _, finding := range result {
 			mapped, mapErr := files.finding(r.name, finding, script, i)
 			if mapErr != nil {

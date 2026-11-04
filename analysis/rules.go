@@ -13,13 +13,13 @@ import (
 // Rules returns built-in and registered analyzer metadata in name order. A
 // negotiated tool integration replaces that tool's metadata; duplicate providers
 // and unsupported integration profiles are rejected as they are during analysis.
-func Rules(extensions ...analyzer.Analyzer) ([]rule.Descriptor, error) {
+func Rules(extensions ...analyzer.Checker) ([]rule.Descriptor, error) {
 	registrations := make([]analyzer.Registration, 0, len(extensions))
 	for _, extension := range extensions {
 		if extension == nil {
 			return nil, errors.New("nil analyzer registration")
 		}
-		registrations = append(registrations, analyzer.Registration{Analyzer: extension})
+		registrations = append(registrations, analyzer.Registration{Checker: extension})
 	}
 	configured, err := application.ConfigureToolIntegrations(application.Options{Analyzers: registrations, Tools: registry.Registrations(registry.Defaults())})
 	if err != nil {
@@ -27,7 +27,7 @@ func Rules(extensions ...analyzer.Analyzer) ([]rule.Descriptor, error) {
 	}
 	descriptors := make([]rule.Descriptor, 0, len(configured.Analyzers))
 	for _, registration := range configured.Analyzers {
-		descriptors = append(descriptors, registration.Analyzer.Descriptor().Descriptor)
+		descriptors = append(descriptors, registration.Checker.Descriptor().Descriptor)
 	}
 	result, err := rulecatalog.Combine(descriptors...)
 	if err != nil {

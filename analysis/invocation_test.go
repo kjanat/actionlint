@@ -23,7 +23,7 @@ func (*invocationAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "composite-scripts", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
-func (a *invocationAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a *invocationAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -67,8 +67,8 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	}
 	a := &invocationAnalyzer{}
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
-	result, err := analysis.Files(t.Context(), []string{workflow}, analysis.FileOptions{
-		WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: a}}, SkipProjectConfig: true,
+	result, err := analysis.CheckFiles(t.Context(), []string{workflow}, analysis.FileOptions{
+		WorkingDir: root, Checks: []analyzer.Registration{{Checker: a}}, SkipProjectConfig: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +130,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 		}
 	}
 	capture := &invocationAnalyzer{}
-	_, err := analysis.Files(t.Context(), []string{filepath.Join(root, ".github", "workflows", "ci.yml")}, analysis.FileOptions{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
+	_, err := analysis.CheckFiles(t.Context(), []string{filepath.Join(root, ".github", "workflows", "ci.yml")}, analysis.FileOptions{WorkingDir: root, SkipProjectConfig: true, Checks: []analyzer.Registration{{Checker: capture}}})
 	if err != nil {
 		t.Fatal(err)
 	}

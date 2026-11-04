@@ -51,11 +51,11 @@ func writeRepository(t *testing.T, files map[string]string) string {
 	return root
 }
 
-func analyzeRepository(t *testing.T, root string, plugin analyzer.Analyzer) *analysis.Result {
+func analyzeRepository(t *testing.T, root string, plugin analyzer.Checker) *analysis.Result {
 	t.Helper()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
-	result, err := analysis.Files(t.Context(), []string{workflow}, analysis.FileOptions{
-		WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: plugin}}, SkipProjectConfig: true,
+	result, err := analysis.CheckFiles(t.Context(), []string{workflow}, analysis.FileOptions{
+		WorkingDir: root, Checks: []analyzer.Registration{{Checker: plugin}}, SkipProjectConfig: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 
 func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]diagnostic.Diagnostic, error) {
 	t.Helper()
-	return plugin.Analyze(t.Context(), analyzer.Input{Path: "ci.yml", Options: json.RawMessage(options)})
+	return plugin.CheckDocument(t.Context(), analyzer.Input{Path: "ci.yml", Options: json.RawMessage(options)})
 }
 
 func TestFailuresAreReportedAndIsolated(t *testing.T) {
@@ -219,12 +219,12 @@ func TestCancelledContextStopsAnalysis(t *testing.T) {
 		cancel()
 	}()
 	start := time.Now()
-	_, err := plugin.Analyze(ctx, analyzer.Input{Path: "ci.yml", Options: json.RawMessage("hang")})
+	_, err := plugin.CheckDocument(ctx, analyzer.Input{Path: "ci.yml", Options: json.RawMessage("hang")})
 	if err == nil || !errors.Is(err, context.Canceled) || time.Since(start) > 5*time.Second {
 		t.Fatalf("err=%v after %s", err, time.Since(start))
 	}
 	cancel()
-	if _, err := plugin.Analyze(ctx, analyzer.Input{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
+	if _, err := plugin.CheckDocument(ctx, analyzer.Input{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err=%v", err)
 	}
 }
@@ -360,9 +360,9 @@ func TestPartialOutcomePreservesFindings(t *testing.T) {
 	if len(findings) != 1 || findings[0].Code != "MB001" {
 		t.Fatalf("partial findings=%+v", findings)
 	}
-	result, err := analysis.Analyze(t.Context(), analysis.Request{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{
 		Sources: []analysis.Source{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: plugin, Options: json.RawMessage(`"partial"`)}}},
+		Options: analysis.Options{Checks: []analyzer.Registration{{Checker: plugin, Options: json.RawMessage(`"partial"`)}}},
 	})
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
 		t.Fatalf("application error=%v", err)
@@ -398,9 +398,9 @@ func TestPartialOutcomeRetainsValidRulesAndAllErrors(t *testing.T) {
 			}
 		}
 	}
-	result, err := analysis.Analyze(t.Context(), analysis.Request{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{
 		Sources: []analysis.Source{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}},
+		Options: analysis.Options{Checks: []analyzer.Registration{{Checker: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}},
 	})
 	checkError(err)
 	if result == nil || len(result.Diagnostics) != len(wantMessages) {

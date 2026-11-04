@@ -139,7 +139,7 @@ export default defineDocumentProvider({
 	}
 	dependency := analyzer.Dependency{Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: diagnostic.Position{Line: 6, Column: 15}, End: diagnostic.Position{Line: 6, Column: 30}}
 	input := analyzer.Input{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: source.YAML, AvailableInputs: []analyzer.InputKind{analyzer.Source, analyzer.Dependencies}, Dependencies: []analyzer.Dependency{dependency}}
-	findings, err := checker.Analyze(t.Context(), input)
+	findings, err := checker.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)
 	}

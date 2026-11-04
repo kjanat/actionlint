@@ -13,7 +13,7 @@ import (
 )
 
 type FactAnalyzer struct {
-	Analyzer analyzer.Analyzer
+	Analyzer analyzer.Checker
 	Options  json.RawMessage
 }
 
@@ -22,7 +22,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		return nil, ErrInvalidBatch
 	}
 	available := []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations}
-	prepared, err := analyzerhost.Prepare(analyzer.Registration{Analyzer: adapter.Analyzer, Options: adapter.Options}, available)
+	prepared, err := analyzerhost.Prepare(analyzer.Registration{Checker: adapter.Analyzer, Options: adapter.Options}, available)
 	if err != nil {
 		return nil, err
 	}

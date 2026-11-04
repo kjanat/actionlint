@@ -26,7 +26,7 @@ func (*invocationCollector) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Scripts, analyzer.Invocations, analyzer.Execution}}
 }
 
-func (c *invocationCollector) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (c *invocationCollector) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	collector := &invocationCollector{}
 	_, err := application.Check(t.Context(), application.Options{
 		WorkingDir: root,
-		Analyzers:  []analyzer.Registration{{Analyzer: collector}},
+		Analyzers:  []analyzer.Registration{{Checker: collector}},
 	}, application.Input{Kind: application.Files, Paths: []string{outer}})
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +106,7 @@ jobs:
 			collector := &invocationCollector{}
 			_, err := application.Check(t.Context(), application.Options{
 				WorkingDir: root,
-				Analyzers:  []analyzer.Registration{{Analyzer: collector}},
+				Analyzers:  []analyzer.Registration{{Checker: collector}},
 			}, application.Input{Kind: application.Files, Paths: paths})
 			if err != nil {
 				t.Fatal(err)

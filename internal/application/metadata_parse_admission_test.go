@@ -32,7 +32,7 @@ func (metadataAdmissionAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (a metadataAdmissionAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if a.inspect != nil {
 		if err := a.inspect(); err != nil {
 			return nil, err
@@ -57,7 +57,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			var result *Result
 			var err, conflict error
 			if !quarantined {
-				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: probe}}}, []sourceUnit{unit})
+				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Checker: probe}}}, []sourceUnit{unit})
 			} else {
 				// The existing constructor seam gives the test the real result owner;
 				// the analyzer runs after composition and source verification.
@@ -78,7 +78,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 				}
 				processes := analyzerhost.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
-				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []analyzer.Registration{{Analyzer: probe}}, Processes: processes}
+				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []analyzer.Registration{{Checker: probe}}, Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
 					func(ctx context.Context, overlays []capture.Overlay, reader capture.Reader) (*capture.Store, error) {
 						var initErr error

@@ -21,7 +21,7 @@ func TestSourceAnnotationsShareTheCallMemoryBudget(t *testing.T) {
 	// Leave one page beyond the host imports for stdin and none for annotations.
 	plugin.memory.limit = callImportMemory(t, plugin) + 1<<16
 	plugin.limits.MemoryPages = uint32(plugin.memory.limit >> 16)
-	if _, err := plugin.Analyze(t.Context(), analyzer.Input{}); !errors.Is(err, errMemoryBudget) {
+	if _, err := plugin.CheckDocument(t.Context(), analyzer.Input{}); !errors.Is(err, errMemoryBudget) {
 		t.Fatalf("annotations ignored the shared memory budget: %v", err)
 	}
 	if plugin.engine != nil || plugin.memory.used != 0 {

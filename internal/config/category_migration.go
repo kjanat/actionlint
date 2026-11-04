@@ -200,7 +200,7 @@ func migrateRuleCategories(root *yaml.Node, registrations []rule.Descriptor) (*y
 				case "plugins":
 					member = registered[descriptor.Name]
 				case "nursery":
-					member = descriptor.Nursery()
+					member = descriptor.Experimental()
 				}
 				if !member {
 					continue

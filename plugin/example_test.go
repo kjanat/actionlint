@@ -21,9 +21,9 @@ func ExampleLoad() {
 	}
 	defer component.Close(ctx)
 	fmt.Println("loaded", component.Descriptor().Name, "with", component.Limits())
-	result, err := analysis.Analyze(ctx, analysis.Request{
+	result, err := analysis.CheckSources(ctx, analysis.Request{
 		Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\n")}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: component}}},
+		Options: analysis.Options{Checks: []analyzer.Registration{{Checker: component}}},
 	})
 	if err != nil {
 		fmt.Println("incomplete:", err)

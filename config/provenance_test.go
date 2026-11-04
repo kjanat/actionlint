@@ -24,7 +24,7 @@ func TestLoadedConfigProvenanceReachesAnalysisInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := analysis.Analyze(t.Context(), analysis.Request{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{
 		Sources: []analysis.Source{{Path: "ci.yml", Content: []byte("on: push\njobs: {}\n"), Config: cfg}},
 		Options: analysis.Options{WorkingDir: root},
 	})

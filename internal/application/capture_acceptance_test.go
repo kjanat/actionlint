@@ -22,7 +22,7 @@ func TestResultCaptureSharesRevisionAcrossRepositoryCaches(t *testing.T) {
 	collector := &invocationCollector{}
 	result, err := application.Analyze(t.Context(), application.Options{
 		WorkingDir: root,
-		Analyzers:  []analyzer.Registration{{Analyzer: collector}},
+		Analyzers:  []analyzer.Registration{{Checker: collector}},
 		ReadFile: func(requested string) ([]byte, error) {
 			if filepath.Clean(requested) != path {
 				return os.ReadFile(requested)

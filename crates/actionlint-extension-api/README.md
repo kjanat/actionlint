@@ -18,7 +18,7 @@ impl Guest for Plugin {
             description: "Example analyzer".into(),
             category: "correctness".into(),
             subcategory: "scripts".into(),
-            maturity: "experimental".into(),
+            maturity: "nursery".into(),
             provider: "example".into(),
             recommended: false,
             explanation: "A starting point for an analyzer.".into(),

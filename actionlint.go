@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/analysis"
 )
 
-// Analyze checks in-memory workflows and action manifests without rendering output.
-func Analyze(ctx context.Context, request analysis.Request) (*analysis.Result, error) {
-	return analysis.Analyze(ctx, request)
+// CheckSources checks in-memory workflows and action manifests without rendering output.
+func CheckSources(ctx context.Context, request analysis.Request) (*analysis.Result, error) {
+	return analysis.CheckSources(ctx, request)
 }

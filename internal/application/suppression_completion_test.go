@@ -21,7 +21,7 @@ func (suppressionCompletionProbe) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (probe suppressionCompletionProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if input.Path == "failing.yml" {
 		return nil, probe.failure
 	}
@@ -33,7 +33,7 @@ func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
 	cause := errors.New("scanner unavailable")
 	result, err := Analyze(t.Context(), Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []analyzer.Registration{{Analyzer: suppressionCompletionProbe{cause}}},
+		Analyzers:  []analyzer.Registration{{Checker: suppressionCompletionProbe{cause}}},
 	}, []workspace.Source{
 		{Path: "failing.yml", Content: []byte(prefix + "      - run: echo ok # ignore completion-probe\n")},
 		{Path: "complete.yml", Content: []byte(prefix + "      - run: echo ok # ignore expression-reference\n")},

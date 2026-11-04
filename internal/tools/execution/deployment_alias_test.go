@@ -23,7 +23,7 @@ func (a invocationSourceAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "shellcheck"}
 }
 
-func (a invocationSourceAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)

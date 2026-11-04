@@ -27,7 +27,7 @@ func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
 			})
 			first := make(chan error, 1)
 			go func() {
-				_, err := plugin.Analyze(t.Context(), analyzer.Input{Options: json.RawMessage("log")})
+				_, err := plugin.CheckDocument(t.Context(), analyzer.Input{Options: json.RawMessage("log")})
 				first <- err
 			}()
 			defer func() {
@@ -45,7 +45,7 @@ func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
 			defer cancel()
 			second := make(chan error, 1)
 			go func() {
-				_, err := plugin.Analyze(ctx, analyzer.Input{Options: json.RawMessage("ok")})
+				_, err := plugin.CheckDocument(ctx, analyzer.Input{Options: json.RawMessage("ok")})
 				second <- err
 			}()
 			if cancelQueued {

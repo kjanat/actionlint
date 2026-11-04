@@ -42,13 +42,13 @@ type RuleInputs struct {
 type Descriptor struct {
 	repoconfig.Rule
 	Build   func(RuleInputs) workflowvisit.Rule
-	Script  analyzer.Analyzer
+	Script  analyzer.Checker
 	Enabled func(RuleInputs) bool
 }
 
 type behaviour struct {
 	Build   func(RuleInputs) workflowvisit.Rule
-	Script  analyzer.Analyzer
+	Script  analyzer.Checker
 	Enabled func(RuleInputs) bool
 }
 
@@ -88,7 +88,7 @@ func ruleBehaviours() map[string]behaviour {
 		"expression": {Build: func(c RuleInputs) workflowvisit.Rule {
 			return newRuleExpressionWithRemote(c.Actions, c.Workflows, c.Runners, c.RemoteActions, c.Context)
 		}},
-		"deprecated-commands": {Script: workflowcommands.Analyzer{}},
+		"deprecated-commands": {Script: workflowcommands.Checker{}},
 		"if-cond":             {Build: func(c RuleInputs) workflowvisit.Rule { return NewRuleIfCond() }},
 		"uncancellable-condition": {Build: func(RuleInputs) workflowvisit.Rule {
 			return newDeclarationRule("uncancellable-condition")

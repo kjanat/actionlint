@@ -14,7 +14,7 @@ import (
 
 type Selection struct {
 	Rules      []workflowvisit.Rule
-	Scripts    []analyzer.Analyzer
+	Scripts    []analyzer.Checker
 	ScriptInfo []rule.Descriptor
 }
 

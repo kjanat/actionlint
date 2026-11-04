@@ -22,16 +22,16 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-// DocumentAnalyzer runs the same process transport against captured documents.
+// DocumentChecker runs the same process transport against captured documents.
 // It never admits a finding or edit in a different, uncaptured file.
-type DocumentAnalyzer struct {
+type DocumentChecker struct {
 	backend    *Backend
 	descriptor analyzer.Descriptor
 	documents  []string
 	directory  bool
 }
 
-func NewDocumentAnalyzer(manifest provider.Manifest, command *analyzerhost.Command, options Options) (*DocumentAnalyzer, error) {
+func NewDocumentAnalyzer(manifest provider.Manifest, command *analyzerhost.Command, options Options) (*DocumentChecker, error) {
 	if manifest.Role != provider.RoleDocument || manifest.Transport != provider.TransportProcess || manifest.Preparation != "generic" {
 		return nil, errors.New("document providers require process transport and generic preparation")
 	}
@@ -53,14 +53,14 @@ func NewDocumentAnalyzer(manifest provider.Manifest, command *analyzerhost.Comma
 			return nil, fmt.Errorf("unsupported document selector %q", kind)
 		}
 	}
-	return &DocumentAnalyzer{backend: backend, descriptor: analyzer.Descriptor{Descriptor: manifest.Rule.Clone(), RequiredInputs: requires}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, provider.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, provider.ResourceWorkspace)}, nil
+	return &DocumentChecker{backend: backend, descriptor: analyzer.Descriptor{Descriptor: manifest.Rule.Clone(), RequiredInputs: requires}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, provider.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, provider.ResourceWorkspace)}, nil
 }
 
-func (d *DocumentAnalyzer) Descriptor() analyzer.Descriptor {
+func (d *DocumentChecker) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Descriptor: d.descriptor.Clone(), RequiredInputs: slices.Clone(d.descriptor.RequiredInputs)}
 }
 
-func (d *DocumentAnalyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (d *DocumentChecker) CheckDocument(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if input.Kind != "workflow" && input.Kind != "action" {
 		return nil, fmt.Errorf("unsupported document kind %q", input.Kind)
 	}
@@ -172,7 +172,7 @@ func sameDocument(name, filename, directory string) bool {
 	return candidate == expected
 }
 
-func (d *DocumentAnalyzer) finding(input analyzer.Input, entry analyzer.ScriptDiagnostic) (diagnostic.Diagnostic, error) {
+func (d *DocumentChecker) finding(input analyzer.Input, entry analyzer.ScriptDiagnostic) (diagnostic.Diagnostic, error) {
 	if len(entry.Fixes) != 0 && !d.backend.capabilities.Fixes {
 		return diagnostic.Diagnostic{}, errors.New("document provider returned undeclared fixes")
 	}

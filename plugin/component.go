@@ -75,9 +75,9 @@ func (p *Component) HasAnalyzer() bool { return p.implementation().HasAnalyzer()
 // Descriptor returns a detached analyzer descriptor, or its zero value.
 func (p *Component) Descriptor() analyzer.Descriptor { return p.implementation().Descriptor() }
 
-// Analyze checks one document using the analyzer role.
-func (p *Component) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
-	registration, err := executor.PrepareForwarding(analyzer.Registration{Analyzer: p.implementation(), Options: input.Options}, input.AvailableInputs)
+// CheckDocument checks one document using the analyzer role.
+func (p *Component) CheckDocument(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	registration, err := executor.PrepareForwarding(analyzer.Registration{Checker: p.implementation(), Options: input.Options}, input.AvailableInputs)
 	if err != nil {
 		return nil, snapshotRuntimeFailure(err)
 	}

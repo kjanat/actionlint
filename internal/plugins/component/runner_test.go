@@ -99,7 +99,7 @@ func (*runtimeObserver) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Execution}}
 }
 
-func (o *runtimeObserver) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (o *runtimeObserver) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	o.scripts = append(o.scripts, input.Scripts...)
 	return nil, nil
 }
@@ -117,9 +117,9 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			observer := &runtimeObserver{}
-			result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}}, Options: analysis.Options{
-				Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-				Analyzers: []analyzer.Registration{{Analyzer: observer}},
+			result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}}, Options: analysis.Options{
+				Runners: runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
+				Checks:  []analyzer.Registration{{Checker: observer}},
 			}})
 			if err != nil {
 				t.Fatal(err)
@@ -150,11 +150,11 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: []analysis.Source{{
 		Path:    "workflow.yml",
 		Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
 		Config:  cfg,
-	}}, Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: observer}}}})
+	}}, Options: analysis.Options{Checks: []analyzer.Registration{{Checker: observer}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

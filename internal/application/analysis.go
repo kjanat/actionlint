@@ -167,10 +167,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	var extensions []rule.Descriptor
 	for _, registration := range request.Analyzers {
-		if analyzerref.IsNil(registration.Analyzer) {
+		if analyzerref.IsNil(registration.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
-		extensions = append(extensions, registration.Analyzer.Descriptor().Descriptor)
+		extensions = append(extensions, registration.Checker.Descriptor().Descriptor)
 	}
 	seenTools := map[string]bool{}
 	for _, registration := range request.Tools {

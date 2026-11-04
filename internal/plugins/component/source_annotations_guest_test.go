@@ -26,7 +26,7 @@ func TestGuestReadsOnlyCurrentScriptAnnotations(t *testing.T) {
 		Scripts:         []analyzer.Script{{Reference: root, Text: "echo root", Comments: []analyzer.SourceComment{{Text: "# root", Start: diagnostic.Position{Line: 2, Column: 7}}}}},
 		Invoked:         []analyzer.Script{{Reference: action, Text: "echo action", Path: "action.yml", Comments: []analyzer.SourceComment{{Text: "# action", Start: diagnostic.Position{Line: 6, Column: 19}, Placement: analyzer.TrailingComment}}}},
 	}
-	findings, err := guest.Analyze(t.Context(), input)
+	findings, err := guest.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 2 {
 		t.Fatalf("findings=%+v, error=%v", findings, err)
 	}
@@ -45,7 +45,7 @@ func TestGuestReadsOnlyCurrentScriptAnnotations(t *testing.T) {
 	}
 	input.Scripts[0].Comments = nil
 	input.Invoked[0].Comments = nil
-	if findings, err := guest.Analyze(t.Context(), input); err != nil || len(findings) != 0 {
+	if findings, err := guest.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {
 		t.Fatalf("annotations leaked across guest instances: %+v, %v", findings, err)
 	}
 }
@@ -54,11 +54,11 @@ func TestGuestAnnotationFailureDoesNotPoisonLaterCalls(t *testing.T) {
 	guest := loadPlugin(t, "source-annotations", component.Options{})
 	ref := source.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
 	input := analyzer.Input{AvailableInputs: []analyzer.InputKind{analyzer.Scripts}, Scripts: []analyzer.Script{{Reference: ref, Text: "echo root", Comments: []analyzer.SourceComment{{Text: "# first\n# second", Start: diagnostic.Position{Line: 2, Column: 7}}}}}}
-	if findings, err := guest.Analyze(t.Context(), input); findings != nil || err == nil || !strings.Contains(err.Error(), "invalid physical source comment at 2:7") {
+	if findings, err := guest.CheckDocument(t.Context(), input); findings != nil || err == nil || !strings.Contains(err.Error(), "invalid physical source comment at 2:7") {
 		t.Fatalf("invalid comment did not fail through the guest import: findings=%+v, err=%v", findings, err)
 	}
 	input.Scripts[0].Comments[0].Text = "# recovered"
-	findings, err := guest.Analyze(t.Context(), input)
+	findings, err := guest.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 || findings[0].Message != "# recovered" {
 		t.Fatalf("annotation failure poisoned the next call: findings=%+v, err=%v", findings, err)
 	}
@@ -97,7 +97,7 @@ func TestGuestAnnotationInterfaceVersions(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = guest.Close(context.WithoutCancel(t.Context())) })
 			ref := source.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
-			findings, err := guest.Analyze(t.Context(), analyzer.Input{AvailableInputs: []analyzer.InputKind{analyzer.Scripts}, Scripts: []analyzer.Script{{Reference: ref, Comments: []analyzer.SourceComment{{Text: "# compatible", Start: diagnostic.Position{Line: 1, Column: 1}}}}}})
+			findings, err := guest.CheckDocument(t.Context(), analyzer.Input{AvailableInputs: []analyzer.InputKind{analyzer.Scripts}, Scripts: []analyzer.Script{{Reference: ref, Comments: []analyzer.SourceComment{{Text: "# compatible", Start: diagnostic.Position{Line: 1, Column: 1}}}}}})
 			if err != nil || len(findings) != 1 || findings[0].Message != "# compatible" {
 				t.Fatalf("compatible import was not linked to the host: findings=%+v, err=%v", findings, err)
 			}

@@ -12,7 +12,7 @@ type pointerAnalyzer struct{}
 
 func (*pointerAnalyzer) Descriptor() analyzer.Descriptor { return analyzer.Descriptor{Name: "pointer"} }
 
-func (*pointerAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (*pointerAnalyzer) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return nil, nil
 }
 
@@ -20,7 +20,7 @@ func TestIsNil(t *testing.T) {
 	var typed *pointerAnalyzer
 	for _, tc := range []struct {
 		name  string
-		value analyzer.Analyzer
+		value analyzer.Checker
 		want  bool
 	}{
 		{"nil interface", nil, true},

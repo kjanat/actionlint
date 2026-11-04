@@ -22,7 +22,7 @@ func (*settingsAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 }
 
-func (a *settingsAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagmodel.Diagnostic, error) {
+func (a *settingsAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagmodel.Diagnostic, error) {
 	a.calls++
 	a.options = input.Options
 	return []diagmodel.Diagnostic{{Message: "custom finding", Start: diagmodel.Position{Line: 1, Column: 1}}}, nil
@@ -51,7 +51,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := &settingsAnalyzer{}
-			result, err := application.Analyze(t.Context(), application.Options{Analyzers: []analyzer.Registration{{Analyzer: a}}}, []workspace.Source{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
+			result, err := application.Analyze(t.Context(), application.Options{Analyzers: []analyzer.Registration{{Checker: a}}}, []workspace.Source{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &settingsAnalyzer{}
-	request := application.Options{Analyzers: []analyzer.Registration{{Analyzer: a}}}
+	request := application.Options{Analyzers: []analyzer.Registration{{Checker: a}}}
 	requestSources := []workspace.Source{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}
 	if _, err := application.Analyze(t.Context(), request, requestSources); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 0 {
 		t.Fatalf("invalid options were executed: calls=%d err=%v", a.calls, err)

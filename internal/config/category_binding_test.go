@@ -97,6 +97,7 @@ func TestCategoryBindingFailures(t *testing.T) {
 		{"provider as category", `{}`, []rule.Descriptor{{Name: "community-check", Category: "plugins"}}, "invalid category"},
 		{"maturity as category", `{}`, []rule.Descriptor{{Name: "community-check", Category: "nursery"}}, "invalid category"},
 		{"invalid maturity", `{}`, []rule.Descriptor{{Name: "community-check", Category: "security", Maturity: "beta"}}, "invalid maturity"},
+		{"old maturity spelling", `{}`, []rule.Descriptor{{Name: "shellcheck", Category: "correctness", Maturity: "experimental"}}, "invalid maturity"},
 		{"builtin collision", `{}`, []rule.Descriptor{{Name: "expression", Category: "correctness", Provider: "community"}}, "conflicts"},
 		{"bad schema", `{}`, []rule.Descriptor{{Name: "community-check", Category: "security", OptionsSchema: json.RawMessage(`{`)}}, "options schema"},
 		{"bad options", `security: {community-check: {level: on, options: {count: wrong}}}`, []rule.Descriptor{{Name: "community-check", Category: "security", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer"}}}`)}}, `options for rule "community-check"`},
@@ -118,34 +119,36 @@ func TestCategoryBindingFailures(t *testing.T) {
 }
 
 func TestCategoryBindingNurserySelection(t *testing.T) {
-	descriptor := rule.Descriptor{Name: "community-check", Category: "correctness", Provider: "community", Maturity: "nursery", Recommended: true}
-	for _, tc := range []struct {
-		rules   string
-		presets repoconfig.Presets
-		want    repoconfig.Level
-	}{
-		{"{}", repoconfig.Presets{}, "off"},
-		{"{preset: recommended}", repoconfig.Presets{}, "off"},
-		{"{preset: all}", repoconfig.Presets{}, "off"},
-		{"{correctness: all}", repoconfig.Presets{}, "off"},
-		{"{correctness: warn}", repoconfig.Presets{}, "off"},
-		{"{nursery: all}", repoconfig.Presets{}, "on"},
-		{"{nursery: warn}", repoconfig.Presets{}, "warn"},
-		{"{}", repoconfig.Presets{Strict: true}, "off"},
-		{"{}", repoconfig.Presets{Experimental: new(true)}, "on"},
-		{"{correctness: {community-check: warn}}", repoconfig.Presets{}, "warn"},
-		{"{correctness: {community-check: off}}", repoconfig.Presets{Experimental: new(true)}, "off"},
-		{"{correctness: {community-check: warn}}", repoconfig.Presets{Experimental: new(false)}, "off"},
-	} {
-		t.Run(tc.rules+"/"+string(tc.want), func(t *testing.T) {
-			cfg, err := repoconfig.Parse([]byte("lint: {rules: " + tc.rules + "}"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			resolved := resolveRules(t, tc.presets, cfg, descriptor)
-			if got := repoconfig.DiagnosticLevel(resolved, descriptor.Name); got != tc.want {
-				t.Fatalf("got %s, want %s", got, tc.want)
-			}
-		})
+	for _, maturity := range []string{rule.NurseryMaturity} {
+		descriptor := rule.Descriptor{Name: "community-check", Category: "correctness", Provider: "community", Maturity: maturity, Recommended: true}
+		for _, tc := range []struct {
+			rules   string
+			presets repoconfig.Presets
+			want    repoconfig.Level
+		}{
+			{"{}", repoconfig.Presets{}, "off"},
+			{"{preset: recommended}", repoconfig.Presets{}, "off"},
+			{"{preset: all}", repoconfig.Presets{}, "off"},
+			{"{correctness: all}", repoconfig.Presets{}, "off"},
+			{"{correctness: warn}", repoconfig.Presets{}, "off"},
+			{"{nursery: all}", repoconfig.Presets{}, "on"},
+			{"{nursery: warn}", repoconfig.Presets{}, "warn"},
+			{"{}", repoconfig.Presets{Strict: true}, "off"},
+			{"{}", repoconfig.Presets{Experimental: new(true)}, "on"},
+			{"{correctness: {community-check: warn}}", repoconfig.Presets{}, "warn"},
+			{"{correctness: {community-check: off}}", repoconfig.Presets{Experimental: new(true)}, "off"},
+			{"{correctness: {community-check: warn}}", repoconfig.Presets{Experimental: new(false)}, "off"},
+		} {
+			t.Run(maturity+"/"+tc.rules+"/"+string(tc.want), func(t *testing.T) {
+				cfg, err := repoconfig.Parse([]byte("lint: {rules: " + tc.rules + "}"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				resolved := resolveRules(t, tc.presets, cfg, descriptor)
+				if got := repoconfig.DiagnosticLevel(resolved, descriptor.Name); got != tc.want {
+					t.Fatalf("got %s, want %s", got, tc.want)
+				}
+			})
+		}
 	}
 }

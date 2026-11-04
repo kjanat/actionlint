@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	_ analyzer.Analyzer               = (*plugin.Component)(nil)
+	_ analyzer.Checker                = (*plugin.Component)(nil)
 	_ runner.Provider                 = (*plugin.Component)(nil)
 	_ analyzer.DescribedScriptBackend = (*plugin.Component)(nil)
 	_ analyzer.ScriptConfigValidator  = (*plugin.Component)(nil)

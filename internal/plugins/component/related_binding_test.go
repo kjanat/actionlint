@@ -18,7 +18,7 @@ import (
 type relatedProbe struct{ locations []diagnostic.Related }
 
 func (relatedProbe) Descriptor() analyzer.Descriptor { return analyzer.Descriptor{Name: "example"} }
-func (p relatedProbe) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (p relatedProbe) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return []diagnostic.Diagnostic{{Rule: "example", Message: "primary", Path: "workflow.yml", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Related: p.locations}}, nil
 }
 
@@ -46,7 +46,7 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 	}
 	input := analyzer.Input{Path: "workflow.yml", Revision: revision, Coordinates: source.YAML}
 	locations := []diagnostic.Related{{Message: "same request", Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 1}}}
-	native, nativeErr := analyzerhost.Run(t.Context(), input, []analyzer.Registration{{Analyzer: relatedProbe{locations}}})
+	native, nativeErr := analyzerhost.Run(t.Context(), input, []analyzer.Registration{{Checker: relatedProbe{locations}}})
 	wire, witErr := liftAnalysisForInput(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())), &input)
 	a, na := errors.AsType[*related.RejectedError](nativeErr)
 	b, nb := errors.AsType[*related.RejectedError](witErr)

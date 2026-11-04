@@ -45,11 +45,11 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 			// A component must not reconstruct declarations from raw source text.
 			for _, content := range []string{"", "not YAML: [", "jobs: {}"} {
 				input.Content = content
-				want, err := native.Analyze(t.Context(), input)
+				want, err := native.CheckDocument(t.Context(), input)
 				if err != nil {
 					t.Fatal(err)
 				}
-				got, err := plugin.Analyze(t.Context(), input)
+				got, err := plugin.CheckDocument(t.Context(), input)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -76,11 +76,11 @@ jobs:
   reuse:
     uses: owner/repo/.github/workflows/ci.yml@main
 `
-	check := func(a analyzer.Analyzer) []diagnostic.Diagnostic {
+	check := func(a analyzer.Checker) []diagnostic.Diagnostic {
 		t.Helper()
-		result, err := analysis.Analyze(t.Context(), analysis.Request{
+		result, err := analysis.CheckSources(t.Context(), analysis.Request{
 			Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}},
-			Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: a}}},
+			Options: analysis.Options{Checks: []analyzer.Registration{{Checker: a}}},
 		})
 		if err != nil {
 			t.Fatal(err)

@@ -51,7 +51,7 @@ type Registration struct {
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(Script) (profile.Prepared, error)
 	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
-	WithAnalyzer func(analyzer.Analyzer) (Registration, error)
+	WithAnalyzer func(analyzer.Checker) (Registration, error)
 }
 
 type Runner interface {

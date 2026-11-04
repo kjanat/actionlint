@@ -29,7 +29,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 				input.Coordinates = "invalid"
 			}
 			locations := []diagnostic.Related{{Path: "ci.yml"}, {Path: "./ci.yml"}, {Path: "foreign.yml"}}
-			registration := analyzer.Registration{Analyzer: testAnalyzer{descriptor: analyzer.Descriptor{Name: "related-probe"}, run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {
+			registration := analyzer.Registration{Checker: testAnalyzer{descriptor: analyzer.Descriptor{Name: "related-probe"}, run: func(_ context.Context, supplied analyzer.Input) ([]diagnostic.Diagnostic, error) {
 				if supplied.Revision != input.Revision || supplied.Coordinates != input.Coordinates {
 					t.Fatal("request evidence projection changed")
 				}

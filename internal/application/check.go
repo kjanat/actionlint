@@ -124,7 +124,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		if factory, ok := options.Resolver.(resolver.SessionFactory); ok {
 			options.Resolver = factory.NewSession()
 		}
-		options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Analyzer: resolution.NewAnalyzer(options.Resolver)})
+		options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Checker: resolution.NewAnalyzer(options.Resolver)})
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -208,8 +208,8 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if !analyzerref.IsNil(registration.Analyzer) {
-			names = append(names, registration.Analyzer.Descriptor().Name)
+		if !analyzerref.IsNil(registration.Checker) {
+			names = append(names, registration.Checker.Descriptor().Name)
 		}
 	}
 	for _, registration := range options.Tools {

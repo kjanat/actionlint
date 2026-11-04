@@ -35,9 +35,9 @@ func (p *Plugin) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Descriptor: p.analyzerDescriptor.Clone(), RequiredInputs: append([]analyzer.InputKind(nil), p.analyzerDescriptor.RequiredInputs...)}
 }
 
-// Analyze runs the plugin on one document in a fresh instance. A trap, an
+// CheckDocument runs the plugin on one document in a fresh instance. A trap, an
 // exit, an exceeded limit or a refused call is returned as an error.
-func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (p *Plugin) CheckDocument(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	if !p.HasAnalyzer() {
 		return nil, errors.New("component does not implement the analyzer role")
 	}

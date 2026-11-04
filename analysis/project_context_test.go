@@ -66,7 +66,7 @@ jobs:
 				sources = append(sources, analysis.Source{Path: "local/action.yml", Content: []byte(action)})
 			}
 			observer := &invocationAnalyzer{}
-			options := analysis.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: observer}}}
+			options := analysis.Options{WorkingDir: root, Checks: []analyzer.Registration{{Checker: observer}}}
 			if mode != "snapshots" {
 				options.ReadFile = func(path string) ([]byte, error) {
 					if filepath.Clean(path) == filepath.Join(root, "local", "action.yml") {
@@ -81,7 +81,7 @@ jobs:
 					return nil, &os.PathError{Op: "read", Path: path, Err: os.ErrNotExist}
 				}
 			}
-			result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: sources, Options: options})
+			result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: sources, Options: options})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,7 +146,7 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 					}
 				}
 				options := analysis.FileOptions{
-					WorkingDir: workingDir, Analyzers: []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
+					WorkingDir: workingDir, Checks: []analyzer.Registration{{Checker: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
 						rel, err := filepath.Rel(root, path)
 						if err != nil || !filepath.IsAbs(path) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 							return nil, fmt.Errorf("read escaped analysis root: %s", path)
@@ -158,9 +158,9 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 				var result *analysis.Result
 				var err error
 				if repository {
-					result, err = analysis.Repository(t.Context(), "", options)
+					result, err = analysis.CheckRepository(t.Context(), "", options)
 				} else {
-					result, err = analysis.Files(t.Context(), []string{filepath.Join(root, ".github", "workflows", "ci.yml")}, options)
+					result, err = analysis.CheckFiles(t.Context(), []string{filepath.Join(root, ".github", "workflows", "ci.yml")}, options)
 				}
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || result.FileCount != 1 {
 					t.Fatalf("result=%+v err=%v", result, err)

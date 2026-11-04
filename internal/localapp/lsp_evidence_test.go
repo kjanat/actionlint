@@ -35,7 +35,7 @@ func (editorPathAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (editorPathAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (editorPathAnalyzer) CheckDocument(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	reference := input.Reference
 	return []diagnostic.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Related: []diagnostic.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}, Fixes: []diagnostic.Fix{{Description: "normalize", Applicability: diagnostic.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []diagnostic.Edit{{Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }
@@ -66,7 +66,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if directory != "" {
 			key = "workflow.yml"
 		}
-		analysis, err := analyzeDocuments(t.Context(), application.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: editorPathAnalyzer{}}}}, map[string]langserver.Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+		analysis, err := analyzeDocuments(t.Context(), application.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]langserver.Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
 		if err != nil || len(analysis.Diagnostics) != 1 {
 			t.Fatalf("working directory %q lost findings: %+v %v", directory, analysis, err)
 		}
@@ -202,7 +202,7 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != analysis.Sources[path].Revision.Digest() {
 		t.Fatal("published alias was not bound to its captured revision")
 	}
-	analysis, err = analyzeDocuments(t.Context(), application.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: editorPathAnalyzer{}}}}, map[string]langserver.Document{path: {URI: langserver.FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+	analysis, err = analyzeDocuments(t.Context(), application.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]langserver.Document{path: {URI: langserver.FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
 	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
 		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
 	}

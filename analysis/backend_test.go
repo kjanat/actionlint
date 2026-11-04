@@ -51,7 +51,7 @@ func TestScriptBackendsWithoutCommands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := analysis.Analyze(t.Context(), analysis.Request{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{
 		Sources: []analysis.Source{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
 jobs:
   test:
@@ -106,10 +106,10 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 		{Tools: map[string]analysis.Tool{"ruff": {Backend: backend, Process: &analysis.Process{Executable: "ruff"}}}},
 		{Tools: map[string]analysis.Tool{"shellcheck": {Backend: backend, Process: &analysis.Process{Executable: "shellcheck"}}}},
 	} {
-		if _, err := analysis.Analyze(t.Context(), analysis.Request{Options: options}); err == nil {
+		if _, err := analysis.CheckSources(t.Context(), analysis.Request{Options: options}); err == nil {
 			t.Fatal("accepted ambiguous tool")
 		}
-		if _, err := analysis.Files(t.Context(), nil, analysis.FileOptions{Options: options}); err == nil {
+		if _, err := analysis.CheckFiles(t.Context(), nil, analysis.FileOptions{Options: options}); err == nil {
 			t.Fatal("accepted ambiguous file tool")
 		}
 	}
@@ -117,7 +117,7 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 
 func TestUnknownToolIsRejected(t *testing.T) {
 	options := analysis.Options{Tools: map[string]analysis.Tool{"missing": {}}}
-	_, err := analysis.Analyze(t.Context(), analysis.Request{Options: options})
+	_, err := analysis.CheckSources(t.Context(), analysis.Request{Options: options})
 	if err == nil || !strings.Contains(err.Error(), `unknown tool "missing"`) {
 		t.Fatalf("unknown tool accepted: %v", err)
 	}

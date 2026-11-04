@@ -65,7 +65,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 		}
 		return nil, nil
 	}}
-	if _, err := Run(t.Context(), input, []analyzer.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
+	if _, err := Run(t.Context(), input, []analyzer.Registration{{Checker: first}, {Checker: second}}); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(graph.Export(), want) || input.SelectedScripts[0] != script {

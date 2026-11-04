@@ -185,7 +185,7 @@ func (l *loadedPlugins) configure(ctx context.Context, options application.Optio
 			if err != nil {
 				return options, &PluginLoadError{err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Analyzer: checker})
+			options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Checker: checker})
 			continue
 		}
 		selection := backend.Selection{Command: name}

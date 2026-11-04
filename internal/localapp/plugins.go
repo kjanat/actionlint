@@ -170,7 +170,7 @@ func (l *loadedPlugins) registrations() []analyzer.Registration {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		registrations = append(registrations, analyzer.Registration{Analyzer: plugin})
+		registrations = append(registrations, analyzer.Registration{Checker: plugin})
 	}
 	return registrations
 }

@@ -18,15 +18,15 @@ func (a namedFindingAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: string(a), Category: "correctness"}
 }
 
-func (namedFindingAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (namedFindingAnalyzer) CheckDocument(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	return []diagnostic.Diagnostic{{Message: "same observation", Start: diagnostic.Position{Line: 6, Column: 14}}}, nil
 }
 
 func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
-	result, err := analysis.Analyze(t.Context(), analysis.Request{
+	result, err := analysis.CheckSources(t.Context(), analysis.Request{
 		Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}},
-		Options: analysis.Options{Analyzers: []analyzer.Registration{
-			{Analyzer: namedFindingAnalyzer("first")}, {Analyzer: namedFindingAnalyzer("second")},
+		Options: analysis.Options{Checks: []analyzer.Registration{
+			{Checker: namedFindingAnalyzer("first")}, {Checker: namedFindingAnalyzer("second")},
 		}},
 	})
 	if err != nil {
@@ -54,15 +54,15 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 	}
 	options := analysis.FileOptions{
 		WorkingDir:        root,
-		Analyzers:         []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
+		Checks:            []analyzer.Registration{{Checker: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
-	baseline, err := analysis.Files(t.Context(), []string{path}, options)
+	baseline, err := analysis.CheckFiles(t.Context(), []string{path}, options)
 	if err != nil || baseline == nil || len(baseline.Diagnostics) != 1 {
 		t.Fatalf("baseline=%+v err=%v", baseline, err)
 	}
 	options.ConfigOverlays = []config.Overlay{overlay}
-	result, err := analysis.Files(t.Context(), []string{path}, options)
+	result, err := analysis.CheckFiles(t.Context(), []string{path}, options)
 	if err != nil || result == nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("overlay did not disable lint findings: result=%+v err=%v", result, err)
 	}

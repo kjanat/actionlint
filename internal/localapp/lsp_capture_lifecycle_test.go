@@ -172,7 +172,7 @@ func (*cancellingEditorAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []analyzer.InputKind{analyzer.Source}}
 }
 
-func (a *cancellingEditorAnalyzer) Analyze(ctx context.Context, _ analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	close(a.started)
 	<-ctx.Done()
 	return nil, ctx.Err()
@@ -189,7 +189,7 @@ func TestCancelledEditorAnalysisPublishesNoCapturedText(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		analysis, err := analyzeDocuments(ctx, application.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: &cancellingEditorAnalyzer{started: started}}}}, map[string]langserver.Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+		analysis, err := analyzeDocuments(ctx, application.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Checker: &cancellingEditorAnalyzer{started: started}}}}, map[string]langserver.Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
 		done <- result{analysis, err}
 	}()
 	select {

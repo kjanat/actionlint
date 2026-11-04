@@ -28,7 +28,7 @@ func TestFilesRootsRelativeTargetsInWorkingDirectory(t *testing.T) {
 				path, expected = "<stdin>", "<stdin>"
 			}
 			paths := []string{path}
-			result, err := analysis.Files(t.Context(), paths, analysis.FileOptions{
+			result, err := analysis.CheckFiles(t.Context(), paths, analysis.FileOptions{
 				WorkingDir: root, ReadFile: func(actual string) ([]byte, error) {
 					if actual != expected {
 						return nil, fmt.Errorf("read %q; want %q", actual, expected)
@@ -75,7 +75,7 @@ func TestRepositoryRootsRelativeDirectoryInWorkingDirectory(t *testing.T) {
 			case "empty":
 				directory, workingDir = "", repository
 			}
-			result, err := analysis.Repository(t.Context(), directory, analysis.FileOptions{
+			result, err := analysis.CheckRepository(t.Context(), directory, analysis.FileOptions{
 				WorkingDir: workingDir, SkipProjectConfig: true,
 			})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {

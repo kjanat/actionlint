@@ -79,9 +79,9 @@ func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg 
 	t.Helper()
 	switch mode {
 	case "files":
-		return analysis.Files(t.Context(), paths, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"})
+		return analysis.CheckFiles(t.Context(), paths, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"})
 	case "repository":
-		return analysis.Repository(t.Context(), root, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"})
+		return analysis.CheckRepository(t.Context(), root, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"})
 	default:
 		var sources []analysis.Source
 		for _, path := range paths {
@@ -91,7 +91,7 @@ func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg 
 			}
 			sources = append(sources, analysis.Source{Path: path, Content: content, Config: cfg})
 		}
-		return analysis.Analyze(t.Context(), analysis.Request{Sources: sources, Options: options})
+		return analysis.CheckSources(t.Context(), analysis.Request{Sources: sources, Options: options})
 	}
 }
 
@@ -169,7 +169,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 	}
 	backend := &configuredBackend{}
 	options := analysis.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return backend, nil }}
-	result, err := analysis.Files(t.Context(), paths, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"})
+	result, err := analysis.CheckFiles(t.Context(), paths, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"})
 	if err != nil || result == nil || len(result.Diagnostics) != 3 || backend.checks.Load() != 3 || backend.closes.Load() != 1 {
 		t.Fatalf("configured ShellCheck: result=%+v err=%v checks=%d closes=%d", result, err, backend.checks.Load(), backend.closes.Load())
 	}
@@ -179,7 +179,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatal("explicit backend must override configured engine")
 		return nil, nil
 	}
-	if _, err := analysis.Files(t.Context(), paths, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"}); err != nil {
+	if _, err := analysis.CheckFiles(t.Context(), paths, analysis.FileOptions{Options: options, ConfigFile: "actionlint.yaml"}); err != nil {
 		t.Fatal(err)
 	}
 	if explicit.checks.Load() != 3 || explicit.closes.Load() != 0 {
@@ -286,7 +286,7 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				}
 				sources = append(sources, analysis.Source{Path: paths[i], Content: content, Config: selected})
 			}
-			result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: sources, Options: options})
+			result, err := analysis.CheckSources(t.Context(), analysis.Request{Sources: sources, Options: options})
 			if err != nil || result == nil || len(result.Diagnostics) != 2 || loads.Load() != 1 || backend.checks.Load() != 2 || backend.closes.Load() != 1 {
 				t.Fatalf("inline engine: result=%+v err=%v loads=%d checks=%d closes=%d", result, err, loads.Load(), backend.checks.Load(), backend.closes.Load())
 			}
