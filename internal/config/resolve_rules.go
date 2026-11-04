@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -238,9 +239,7 @@ func bindSettings(config *Config, descriptors []Rule, registered map[string]bool
 			return fmt.Errorf("invalid rule preset %q", lint.Rules.Preset)
 		}
 		groups := lint.Rules.Groups()
-		for category, group := range lint.Rules.LegacyGroups() {
-			groups[category] = group
-		}
+		maps.Copy(groups, lint.Rules.LegacyGroups())
 		for category, group := range groups {
 			if group.Level() != "" && !group.Level().Valid() {
 				return fmt.Errorf("invalid level %q in lint.rules.%s", group.Level(), category)

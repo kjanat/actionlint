@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/kjanat/go-yaml/v4"
@@ -98,9 +99,7 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 // ValidateRuleNames, because settings built with NewSetting skip parsing.
 func (c *LintRulesConfig) validateSettings() error {
 	groups := c.Groups()
-	for category, group := range c.LegacyGroups() {
-		groups[category] = group
-	}
+	maps.Copy(groups, c.LegacyGroups())
 	for category, group := range groups {
 		for name, setting := range group.Rules() {
 			if name == "required-actions" {
