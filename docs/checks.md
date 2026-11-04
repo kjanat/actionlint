@@ -208,11 +208,9 @@ test.yaml:13:26: expecting a single ${{...}} expression or float number literal,
 
 [Playground](https://kjanat.github.io/actionlint/#eNo0zEEKAjEMheH9nOJdoDIKbnKbDKQ6kmlLk6DeXqp1Fd5P+GohtLD78qib0QK4mI8LmHd2ub1/C8i8a8psTqg5z3jwKzXurCpKOJ+u396jWBp0bFE8kvJgpyrN/mQanwRTkYbLus4M+H5IDU/HXsLFCP6smOMTAAD//2y5NWY=)
 
-Some mapping values are restricted to some constant strings. Several mapping values expect boolean value like `true` or
-`false`. And some mapping values expect integer or floating number values.
-
-actionlint checks such constant strings are used properly while parsing and reports an error when an unexpected value is
-specified.
+Workflow fields can require a value from a fixed set of strings, a boolean, or a
+number. actionlint checks literal values against the field's allowed values and
+type, and reports values that do not meet those requirements.
 
 <a id="check-syntax-expression"></a>
 
@@ -473,9 +471,12 @@ jobs:
       - run: echo "${{ startsWith('hello, world') }}"
       # Wrong type of parameter
       - run: echo "${{ startsWith('hello, world', github.event) }}"
-      # Function overloads can be handled properly. contains() has string version and array version
+      # contains() accepts either a string or an array as its first argument.
       - run: echo "${{ contains('hello, world', 'lo,') }}"
       - run: echo "${{ contains(github.event.issue.labels.*.name, 'enhancement') }}"
+      # fromJSON() supplies an array of event names to contains().
+      - if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+        run: echo 'Push or pull request'
 ```
 
 Output:
@@ -503,7 +504,7 @@ test.yaml:15:51: argument-type: 2nd argument of function call is not assignable.
    |                                                   ^~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqckdFKAzEQRd/7FZciRCWbD9gf8UFEsutgVtOZsjNjhbL/LmlBFNo+7FMe7jk3l0S4x/PetURMqk76svmQQfsNYKTWTmB21q6RPjibdzW37BSp0V7PFNA1sgeNRRDujkc4f7Ic+HUUNvo2LEu4hr5PVnxI9EVsegXcNlAtz/Y0WbkPhWqViIPM9S1EhCoxPGBZtjddvSCvs+K/1Tc72gvkiXXF6F/172Xp9Fup5oGqpsfEeUcRgbhkHmlHbOfSnwEAjzGVzw==)
+[Playground](https://kjanat.github.io/actionlint/#eNqckUFO6zAQhvc9xch6ktsnNwfIEVgAEgsWVRU5YYoDzjh4ZihSlbsjlwpaRLvoKov5vn8m/hPVsBqVg4OeWZHXs5fUcj0DEGQpX4CsxMtCaqskuoy+zPYjFhz5iwJYFrIG7EIC+2+3A6VXSltqukSCHwLTZM+hz70EbSt8RxI+A5oCsvgsj72EuQ0YY3KwTTk+WQc2JmcXME3most/yNdZ7uTqixnlBXxPfMXR3+rxsmrfVhV9i5Gr/xX5AR1YpOCpwwFJfoX2m/onaZPTcPNwdzu3K1PKNw7MqDE2Gd8UWczaLk5/rikLFoc0OC7vXjlAylB8OPj2cwCohrtJ)
 
 [Contexts][contexts-doc] and [built-in functions][funcs-doc] are strongly typed. Typos in property access of contexts and
 function names can be checked. And invalid function calls like wrong number of arguments or type mismatch at parameter also
