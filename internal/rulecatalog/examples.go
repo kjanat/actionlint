@@ -9,6 +9,7 @@ import (
 // Examples are executable workflow documents. Engine tests check that the before
 // form reports the named rule and the after form is clean without external tools.
 var examples = map[string][]rule.Example{
+	"coercion": {example("Use the boolean value directly when checking branch protection.", "    if: startsWith(github.ref_protected, 'true')\n", "    if: github.ref_protected\n")},
 	"uncancellable-condition": {example("When this job should stop on cancellation, use !cancelled(). Do not make this change for required cancellation cleanup or reporting.",
 		"    if: ${{ always() }}\n", "    if: ${{ !cancelled() }}\n")},
 	"missing-workflow-permissions": {example("Declare only the token permissions this job needs; this job uses no token scopes.",

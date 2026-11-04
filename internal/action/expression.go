@@ -18,6 +18,7 @@ type actionExpressionAvailability struct {
 // Violation identifies an unavailable context, invalid call or expression syntax.
 type Violation struct {
 	Code    DiagnosticCode
+	Rule    string
 	Context string
 	Message string
 	// Offsets are one-based decoded byte positions; endOffset is exclusive.
@@ -28,6 +29,15 @@ type Violation struct {
 
 // ExpressionViolations checks availability without inventing caller-owned types.
 func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Violation {
+	return expressionViolations(s, bare, field, inputs, false)
+}
+
+// ExpressionFindings also includes optional expression advisories from the shared checker.
+func ExpressionFindings(s string, bare bool, field string, inputs Inputs) []Violation {
+	return expressionViolations(s, bare, field, inputs, true)
+}
+
+func expressionViolations(s string, bare bool, field string, inputs Inputs, advisories bool) []Violation {
 	avail, ok := actionMetadataAvailability[field]
 	if !ok {
 		return nil
@@ -70,6 +80,23 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
 		s = s[lex.Offset():]
 		base += lex.Offset()
+		if advisories {
+			checker := exprlang.NewChecker(false, &exprlang.Options{Checks: exprlang.Checks{SuspiciousCoercion: true}})
+			checker.SetContextAvailability(avail.contexts)
+			checker.UpdateInputs(exprlang.NewMapObjectType(exprlang.StringType()))
+			checker.UpdateSteps(exprlang.NewMapObjectType(exprlang.AnyType()))
+			result := checker.CheckResult(expr)
+			for _, finding := range result.Findings {
+				if !finding.Advisory || finding.Rule != "coercion" {
+					continue
+				}
+				v := Violation{Rule: finding.Rule, Message: finding.Message}
+				if positionsKnown {
+					v.Offset, v.EndOffset = expressionOffset+finding.Offset+1, expressionOffset+finding.EndOffset+1
+				}
+				out = append(out, v)
+			}
+		}
 		exprlang.Visit(expr, func(node, _ exprlang.Node, entering bool) {
 			if !entering {
 				return

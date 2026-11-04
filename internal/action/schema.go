@@ -168,13 +168,16 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 	if value := yamlExprString(n); !evaluated && value != nil && strings.Contains(value.Value, "${{") {
 		if _, allowed := actionMetadataAvailability[path]; allowed {
 			if !strings.HasPrefix(path, "runs.steps.*.") && path != "inputs.*.default" {
-				for _, violation := range ExpressionViolations(value.Value, false, path, meta.Inputs) {
+				for _, violation := range rule.expressionFindings(value.Value, path, meta.Inputs) {
 					message := violation.Message
 					if violation.Context != "" {
 						message = fmt.Sprintf("context %q is not available", violation.Context)
 					}
 					pos := ExpressionPosition(meta, value, violation.Offset)
 					rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, value, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
+					if violation.Rule != "" {
+						rule.findings[len(rule.findings)-1].Rule = violation.Rule
+					}
 				}
 			}
 			if definition == "step-if" {
@@ -250,13 +253,16 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 					rule.checkActionSchemaMappingValue(meta, value, definition, location, depth+1, evaluated, seen)
 					continue
 				} else {
-					for _, violation := range ExpressionViolations(expr.Value, false, path, meta.Inputs) {
+					for _, violation := range rule.expressionFindings(expr.Value, path, meta.Inputs) {
 						message := violation.Message
 						if violation.Context != "" {
 							message = fmt.Sprintf("context %q is not available in keys", violation.Context)
 						}
 						pos := ExpressionPosition(meta, expr, violation.Offset)
 						rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, expr, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
+						if violation.Rule != "" {
+							rule.findings[len(rule.findings)-1].Rule = violation.Rule
+						}
 					}
 				}
 			}
@@ -345,14 +351,29 @@ func Validate(meta *Metadata) []diagnostic.Diagnostic {
 	return checker.findings
 }
 
+// ValidateWithAdvisories includes optional expression findings for host policy.
+func ValidateWithAdvisories(meta *Metadata) []diagnostic.Diagnostic {
+	checker := &schemaChecker{advisories: true}
+	checker.checkActionMetadataSchema(meta)
+	return checker.findings
+}
+
 type actionSchemaVisit struct {
 	node       *syntax.Node
 	definition string
 }
 
 type schemaChecker struct {
-	findings []diagnostic.Diagnostic
-	active   map[actionSchemaVisit]bool
+	findings   []diagnostic.Diagnostic
+	active     map[actionSchemaVisit]bool
+	advisories bool
+}
+
+func (rule *schemaChecker) expressionFindings(s, field string, inputs Inputs) []Violation {
+	if rule.advisories {
+		return ExpressionFindings(s, false, field, inputs)
+	}
+	return ExpressionViolations(s, false, field, inputs)
 }
 
 func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code DiagnosticCode, format string, args ...any) {

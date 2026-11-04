@@ -15,7 +15,7 @@ List of checks:
 - [Contextual typing for `matrix` object](#check-contextual-matrix-object)
 - [YAML tags of matrix values](#check-matrix-value-tags)
 - [Contextual typing for `needs` object](#check-contextual-needs-object)
-- [Strict type checks for comparison operators](#check-comparison-types)
+- [Comparison coercions](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
 - [Executable bits on repository scripts](#check-executable-bit)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
@@ -469,7 +469,7 @@ jobs:
       - run: echo "${{ startWith('hello, world', 'lo,') }}"
       # Wrong number of arguments
       - run: echo "${{ startsWith('hello, world') }}"
-      # Wrong type of parameter
+      # An object argument makes this predicate return false.
       - run: echo "${{ startsWith('hello, world', github.event) }}"
       # contains() accepts either a string or an array as its first argument.
       - run: echo "${{ contains('hello, world', 'lo,') }}"
@@ -498,10 +498,6 @@ test.yaml:13:24: argument-count: number of arguments is wrong. function "startsW
    |
 13 |       - run: echo "${{ startsWith('hello, world') }}"
    |                        ^~~~~~~~~~
-test.yaml:15:51: argument-type: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression-type]
-   |
-15 |       - run: echo "${{ startsWith('hello, world', github.event) }}"
-   |                                                   ^~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqckUFO6zAQhvc9xch6ktsnNwfIEVgAEgsWVRU5YYoDzjh4ZihSlbsjlwpaRLvoKov5vn8m/hPVsBqVg4OeWZHXs5fUcj0DEGQpX4CsxMtCaqskuoy+zPYjFhz5iwJYFrIG7EIC+2+3A6VXSltqukSCHwLTZM+hz70EbSt8RxI+A5oCsvgsj72EuQ0YY3KwTTk+WQc2JmcXME3most/yNdZ7uTqixnlBXxPfMXR3+rxsmrfVhV9i5Gr/xX5AR1YpOCpwwFJfoX2m/onaZPTcPNwdzu3K1PKNw7MqDE2Gd8UWczaLk5/rikLFoc0OC7vXjlAylB8OPj2cwCohrtJ)
@@ -553,6 +549,10 @@ test.yaml:9:24: format-placeholder: format string "{0}{1}" does not contain plac
   |
 9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
   |                        ^~~~~~
+test.yaml:9:24: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+  |
+9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
+  |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
 test.yaml:11:24: format-placeholder: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression-call]
    |
 11 |       - run: echo "${{ format('{0}{1}{2}', 1, 2) }}"
@@ -1003,60 +1003,20 @@ actionlint defines a type of `needs` variable contextually by looking at each jo
 
 <a id="check-comparison-types"></a>
 
-## Strict type checks for comparison operators
+## Comparison coercions
 
-Example input:
+GitHub Actions accepts comparisons between different types and converts their values
+according to [its expression rules][operators-doc]. actionlint accepts these comparisons
+and infers a boolean result. For example, `true > false` evaluates to `true`, and
+`fromJSON('[]') == 0` evaluates to `false` because an array converts to `NaN`.
 
-```yaml
-on:
-  workflow_call:
-    inputs:
-      timeout:
-        type: boolean
+String parameters also accept scalar conversions: `contains(null, '')` and
+`startsWith(true, 'TR')` both evaluate to `true`. Their inferred return type is boolean.
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'called!'
-        # ERROR: Comparing string to object is always evaluated to false
-        if: ${{ github.event == 'workflow_call' }}
-      - run: echo 'timeout is too long'
-        # ERROR: Comparing boolean value with `>` doesn't make sense
-        if: ${{ inputs.timeout > 60 }}
-```
-
-Output:
-
-```console
-test.yaml:13:17: operand-type: "object" value cannot be compared to "string" value with "==" operator [expression-type]
-   |
-13 |         if: ${{ github.event == 'workflow_call' }}
-   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:16:17: operand-type: "bool" value cannot be compared to "number" value with ">" operator [expression-type]
-   |
-16 |         if: ${{ inputs.timeout > 60 }}
-   |                 ^~~~~~~~~~~~~~~~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNpsj81KwDAQhO99ihGEnFo8eQjUV5Gmbtto3C3NxiIl7y7pH4jednc+ZmaFbQWssnwMQdbXvguhHADPc9J4zID6T5Kk1wro90wWTiRQx1X1Lm5nleIJLYljLWyRXGJNdeiKtktRab6d60JaUD8JTImntwdzx/jB4nHbMHqdkmvoi1jRtjC/Ghvk/J/d2Ro+QkUQhMe/1sejzcW+4PkJOf8EAAD//0dGU1w=)
-
-Expressions in `${{ }}` placeholders support `==`, `!=`, `>`, `>=`, `<`, `<=` comparison operators. Arbitrary types of operands
-can be compared. When different type values are compared, they are implicitly converted to numbers before the comparison. Please
-see [the official document][operators-doc] to know the details of operators behavior.
-
-However, comparisons between some types are actually meaningless:
-
-- Objects and arrays are converted to `NaN`. Comparing an object or an array with other type is always evaluated to false.
-- Comparing booleans, null, objects, and arrays with `>`, `>=`, `<`, `<=` makes no sense.
-
-actionlint checks operands of comparison operators and reports errors in these cases.
-
-There are some additional surprising behaviors, but actionlint allows them not to cause false positives as much as possible.
-
-- `0 == null`, `'0' == null`, `false == null` are true since they are implicitly converted to `0 == 0`
-- `'0' == false` and `0 == false` are true due to the same reason as above
-- Objects and arrays are only considered equal when they are the same instance
+To warn about boolean or null string arguments and surprising comparison operands,
+enable `lint.rules.suspicious.coercion: warn`. The rule is off by default.
+It reports a possible mistake, so it offers no automatic fix. The separate
+`mixed-type-comparisons` rule checks string-versus-number or boolean conditions.
 
 <a id="check-executable-bit"></a>
 

@@ -66,6 +66,7 @@ func buildRegisteredRules() []Rule {
 		{Name: "missing-local-action"},
 		{Name: "string-conditions"},
 		{Name: "mixed-type-comparisons"},
+		{Name: "coercion", SupportsActions: true, Scope: CompositeScope, DefaultLevel: "warn"},
 		{Name: "case-insensitive-conditions"},
 		{Name: "mixed-type-matrix-filters"},
 		{Name: "forbidden-suppression", Scope: SourceScope, Options: func() any { return &SuppressionsPolicy{} }, Configure: configureSuppressionsPolicy},

@@ -21,6 +21,8 @@ func TestCategoryMigrationPreservesSelection(t *testing.T) {
 		`lint: {rules: {external: off}}`,
 		`lint: {rules: {external: {level: error, shellcheck: warn}}}`,
 		`lint: {rules: {correctness: {uncancellable-condition: warn}}}`,
+		`lint: {rules: {suspicious: {suspicious-coercion: warn}}}`,
+		`lint: {rules: {disable: [suspicious-coercion]}}`,
 		`lint: {rules: {policy: {require-commit-hash: off}}, enabled: true}`,
 		`lint: {rules: {disable: [require-commit-hash]}}`,
 		`lint: {rules: {conventions: {job-timeout: {level: error, options: {max-minutes: 20}}}}}`,
@@ -120,9 +122,24 @@ func TestCategoryMigrationFormatsAndConflicts(t *testing.T) {
 			t.Fatalf("%s second migration: %v", filename, err)
 		}
 	}
+	for filename, input := range map[string]string{
+		"coercion.yaml": `lint: {rules: {suspicious: {suspicious-coercion: warn}}}`,
+		"coercion.json": `{"lint":{"rules":{"suspicious":{"suspicious-coercion":"warn"}}}}`,
+		"coercion.toml": "[lint.rules.suspicious]\nsuspicious-coercion = 'warn'\n",
+	} {
+		result, err := MigrateDocument(filename, []byte(input))
+		if err != nil || !result.Changed || !bytes.Contains(result.Content, []byte("coercion")) || bytes.Contains(result.Content, []byte("suspicious-coercion")) {
+			t.Fatalf("%s: %v\n%s", filename, err, result.Content)
+		}
+		second, err := MigrateDocument(filename, result.Content)
+		if err != nil || second.Changed || !bytes.Equal(second.Content, result.Content) {
+			t.Fatalf("%s second migration: %v", filename, err)
+		}
+	}
 	for _, input := range []string{
 		`lint: {rules: {policy: {require-commit-hash: off}, security: {unpinned-reference: error}}}`,
 		`lint: {rules: {security: {require-commit-hash: off, unpinned-reference: error}}}`,
+		`lint: {rules: {suspicious: {suspicious-coercion: off, coercion: error}}}`,
 	} {
 		if _, err := MigrateDocument("config.yaml", []byte(input)); err == nil || !strings.Contains(err.Error(), "conflicts") {
 			t.Fatalf("conflict silently accepted: %v", err)

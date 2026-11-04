@@ -15,6 +15,8 @@ func CanonicalName(name string) string {
 		return "missing-action-metadata"
 	case "disallow-suppressions":
 		return "forbidden-suppression"
+	case "suspicious-coercion":
+		return "coercion"
 	default:
 		return name
 	}

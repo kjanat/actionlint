@@ -180,6 +180,7 @@ func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {
 	options := &exprlang.Options{Checks: exprlang.Checks{
 		StringConditions:          repoconfig.DiagnosticLevel(config, "string-conditions") != "off",
 		MixedTypeComparisons:      repoconfig.DiagnosticLevel(config, "mixed-type-comparisons") != "off",
+		SuspiciousCoercion:        repoconfig.DiagnosticLevel(config, "coercion") != "off",
 		CaseInsensitiveConditions: repoconfig.DiagnosticLevel(config, "case-insensitive-conditions") != "off",
 	}}
 	facts := repoconfig.RepositoryFacts(config, repository.Snapshot{})

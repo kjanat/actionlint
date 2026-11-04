@@ -1,6 +1,7 @@
 package diagnosticpolicy
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -66,14 +67,16 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 }
 
 func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "ci.yml")
 	for _, selector := range []string{"require-job-timeout", "job-timeout"} {
 		t.Run(selector, func(t *testing.T) {
 			cfg, err := repoconfig.Parse([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &findingmodel.Finding{Rule: "job-timeout", Path: "/repo/ci.yml", Start: diagnostic.Position{Line: 1}}
-			got := FilterConfigured("/repo/ci.yml", "/repo", nil, []*findingmodel.Finding{finding}, cfg, false, func(string) repoconfig.Level { return "error" })
+			finding := &findingmodel.Finding{Rule: "job-timeout", Path: path, Start: diagnostic.Position{Line: 1}}
+			got := FilterConfigured(path, root, nil, []*findingmodel.Finding{finding}, cfg, false, func(string) repoconfig.Level { return "error" })
 			if len(got) != 0 {
 				t.Fatalf("configured selector %q did not suppress canonical finding: %+v", selector, got)
 			}

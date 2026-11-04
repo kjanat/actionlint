@@ -121,6 +121,7 @@
                   "missing-local-action",
                   "string-conditions",
                   "mixed-type-comparisons",
+                  "coercion",
                   "case-insensitive-conditions",
                   "mixed-type-matrix-filters",
                   "forbidden-suppression",
@@ -409,6 +410,7 @@
                                                           "cache-operation",
                                                           "cache-write-untrusted",
                                                           "case-insensitive-conditions",
+                                                          "coercion",
                                                           "context-availability",
                                                           "credentials",
                                                           "deprecated-commands",
@@ -773,6 +775,7 @@
                                 "missing-local-action",
                                 "string-conditions",
                                 "mixed-type-comparisons",
+                                "coercion",
                                 "case-insensitive-conditions",
                                 "mixed-type-matrix-filters",
                                 "matrix",
@@ -3244,6 +3247,7 @@
                               "enum": [
                                 "string-conditions",
                                 "mixed-type-comparisons",
+                                "coercion",
                                 "case-insensitive-conditions",
                                 "mixed-type-matrix-filters",
                                 "forbidden-suppression",
@@ -3280,6 +3284,7 @@
                           "missing-local-action",
                           "string-conditions",
                           "mixed-type-comparisons",
+                          "coercion",
                           "case-insensitive-conditions",
                           "mixed-type-matrix-filters",
                           "forbidden-suppression",
@@ -4054,6 +4059,7 @@
                                 "missing-local-action",
                                 "string-conditions",
                                 "mixed-type-comparisons",
+                                "coercion",
                                 "case-insensitive-conditions",
                                 "mixed-type-matrix-filters",
                                 "forbidden-suppression",
@@ -4131,6 +4137,75 @@
                               "title": "case-insensitive-conditions",
                               "description": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
                               "markdownDescription": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "coercion": {
+                              "title": "coercion",
+                              "description": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset.",
+                              "markdownDescription": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset.",
                               "oneOf": [
                                 {
                                   "anyOf": [
@@ -5109,6 +5184,7 @@
                                                                     "cache-operation",
                                                                     "cache-write-untrusted",
                                                                     "case-insensitive-conditions",
+                                                                    "coercion",
                                                                     "context-availability",
                                                                     "credentials",
                                                                     "deprecated-commands",
@@ -5473,6 +5549,7 @@
                                           "missing-local-action",
                                           "string-conditions",
                                           "mixed-type-comparisons",
+                                          "coercion",
                                           "case-insensitive-conditions",
                                           "mixed-type-matrix-filters",
                                           "matrix",
@@ -7944,6 +8021,7 @@
                                         "enum": [
                                           "string-conditions",
                                           "mixed-type-comparisons",
+                                          "coercion",
                                           "case-insensitive-conditions",
                                           "mixed-type-matrix-filters",
                                           "forbidden-suppression",
@@ -7980,6 +8058,7 @@
                                     "missing-local-action",
                                     "string-conditions",
                                     "mixed-type-comparisons",
+                                    "coercion",
                                     "case-insensitive-conditions",
                                     "mixed-type-matrix-filters",
                                     "forbidden-suppression",
@@ -8754,6 +8833,7 @@
                                           "missing-local-action",
                                           "string-conditions",
                                           "mixed-type-comparisons",
+                                          "coercion",
                                           "case-insensitive-conditions",
                                           "mixed-type-matrix-filters",
                                           "forbidden-suppression",
@@ -8831,6 +8911,75 @@
                                         "title": "case-insensitive-conditions",
                                         "description": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
                                         "markdownDescription": "Flag case-insensitive identity comparisons. Stable; not enabled by the recommended preset.",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "coercion": {
+                                        "title": "coercion",
+                                        "description": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset.",
+                                        "markdownDescription": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset.",
                                         "oneOf": [
                                           {
                                             "anyOf": [

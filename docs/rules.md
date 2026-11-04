@@ -69,6 +69,41 @@ Expression string comparisons ignore case; avoid using them as case-sensitive id
 
 Configure this rule with `lint.rules.suspicious.case-insensitive-conditions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## coercion
+
+Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with another type, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity.
+
+Check the intended argument or operand type. Use a string literal when text is intended, or compare values of the intended types. This rule offers no automatic edit because the intended value is unknown.
+
+- Category: `suspicious/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.suspicious.coercion`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Use the boolean value directly when checking branch protection.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref_protected, 'true')
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.ref_protected
+    steps:
+      - run: echo ok
+```
+
 ## context-availability
 
 Validate contexts and functions available at a workflow field.

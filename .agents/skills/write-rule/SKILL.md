@@ -55,7 +55,8 @@ Choose the rule's metadata and behavior from the cases examined above:
 | Maturity           | Use stable only when semantics, valid counterexamples, and integration behavior are verified. Use nursery for an experimental heuristic or unresolved semantic coverage; explain what evidence is missing.                                                                                                                |
 | Fix                | Offer an automatic fix only when the source edit preserves intended behavior. Use a reviewable suggestion for a deliberate behavior change. Omit the fix when no justified edit is available. Decide per finding.                                                                                                         |
 
-Choose a finding ID that names the problem. Add a configuration option only when
+Choose a finding ID that names the problem without prefixing its category.
+Add a configuration option only when
 users need to choose between supported behaviors; describe what each value changes.
 Check the catalogue and configuration loader for accepted metadata and how presets
 select rules. Provider identity does not determine category, severity, or defaults.

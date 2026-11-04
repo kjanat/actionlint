@@ -131,7 +131,13 @@ func Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]b
 			findings = FilterConfigured(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
 		}
 		findings = slices.DeleteFunc(findings, func(e *findingmodel.Finding) bool {
-			switch diagnosticLevel(e.Rule) {
+			level := diagnosticLevel(e.Rule)
+			if level == "on" {
+				if descriptor, ok := repoconfig.FindRule(e.Rule); ok && descriptor.DefaultLevel != "" {
+					level = descriptor.DefaultLevel
+				}
+			}
+			switch level {
 			case "off":
 				return true
 			case "warn":

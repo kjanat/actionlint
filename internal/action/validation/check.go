@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/diagnostic"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -23,6 +24,28 @@ import (
 type validator struct {
 	standalone *actionmeta.Metadata
 	errs       []*findingmodel.Finding
+	advisories bool
+}
+
+// CheckWithAdvisories includes optional expression findings for host policy.
+func CheckWithAdvisories(meta *actionmeta.Metadata, caller *workflowlang.Pos) []*findingmodel.Finding {
+	rule := validator{advisories: true}
+	rule.checkLocalActionMetadata(meta, caller)
+	return rule.errs
+}
+
+// StandaloneWithAdvisories includes optional expression findings for host policy.
+func StandaloneWithAdvisories(meta *actionmeta.Metadata) []*findingmodel.Finding {
+	rule := validator{standalone: meta, advisories: true}
+	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
+	return rule.errs
+}
+
+func (rule *validator) expressionFindings(s string, bare bool, field string, inputs actionmeta.Inputs) []actionmeta.Violation {
+	if rule.advisories {
+		return actionmeta.ExpressionFindings(s, bare, field, inputs)
+	}
+	return actionmeta.ExpressionViolations(s, bare, field, inputs)
 }
 
 func (rule *validator) Error(pos *workflowlang.Pos, code actionmeta.DiagnosticCode, message string) {
@@ -204,7 +227,7 @@ func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int
 func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 	const field = "inputs.*.default"
 	for _, kv := range meta.InputDefaults {
-		for _, v := range actionmeta.ExpressionViolations(kv.Value.Value, false, field, meta.Inputs) {
+		for _, v := range rule.expressionFindings(kv.Value.Value, false, field, meta.Inputs) {
 			pos := actionmeta.ExpressionPosition(meta, &kv.Value, v.Offset)
 			message := v.Message
 			if v.Context != "" {
@@ -217,6 +240,9 @@ func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 				meta, pos.Line, pos.Col, actionmeta.ExpressionEndPosition(meta, &kv.Value, v), v.Code,
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
+			if v.Rule != "" {
+				rule.errs[len(rule.errs)-1].Rule = v.Rule
+			}
 		}
 	}
 }
@@ -286,7 +312,7 @@ func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, 
 		if v == nil {
 			return
 		}
-		for _, violation := range actionmeta.ExpressionViolations(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
+		for _, violation := range rule.expressionFindings(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
 			pos := actionmeta.ExpressionPosition(meta, v, violation.Offset)
 			end := actionmeta.ExpressionEndPosition(meta, v, violation)
 			if ctx := violation.Context; ctx != "" {
@@ -297,6 +323,9 @@ func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, 
 				)
 			} else {
 				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, violation.Code, `%s at %q key`, violation.Message, key)
+			}
+			if violation.Rule != "" {
+				rule.errs[len(rule.errs)-1].Rule = violation.Rule
 			}
 		}
 	}
@@ -511,7 +540,13 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 }
 
 func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
-	for _, d := range actionmeta.Validate(meta) {
+	var findings []diagnostic.Diagnostic
+	if rule.advisories {
+		findings = actionmeta.ValidateWithAdvisories(meta)
+	} else {
+		findings = actionmeta.Validate(meta)
+	}
+	for _, d := range findings {
 		finding := findingmodel.FromDiagnostic(d)
 		finding.Source = meta.Source
 		finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
