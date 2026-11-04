@@ -35,6 +35,24 @@ func ConditionConstantValue(expr Node) (any, bool) {
 // unknown variable stays unknown; absent properties of a known object are null.
 // It never changes the parsed expression or the caller's context values.
 func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) {
+	return expressionValue(expr, variables, nil)
+}
+
+// ExpressionValueWithLookup also asks for qualified context paths, such as
+// runner.os. This permits partial context knowledge without treating other
+// properties as null. Unknown paths fall back to ordinary object evaluation.
+func ExpressionValueWithLookup(expr Node, lookup func(string) (any, bool)) (any, bool) {
+	return expressionValue(expr, lookup, lookup)
+}
+
+func expressionValue(expr Node, variables, properties func(string) (any, bool)) (any, bool) {
+	if properties != nil {
+		if reference := StaticReference(expr); strings.Contains(reference, ".") {
+			if result, known := properties(reference); known {
+				return result, true
+			}
+		}
+	}
 	switch n := expr.(type) {
 	case *VariableNode:
 		if variables == nil {
@@ -42,17 +60,17 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 		}
 		return variables(n.Name)
 	case *ObjectDerefNode:
-		receiver, known := ExpressionValue(n.Receiver, variables)
+		receiver, known := expressionValue(n.Receiver, variables, properties)
 		if !known {
 			return nil, false
 		}
 		return constantProperty(receiver, n.Property)
 	case *IndexAccessNode:
-		receiver, known := ExpressionValue(n.Operand, variables)
+		receiver, known := expressionValue(n.Operand, variables, properties)
 		if !known {
 			return nil, false
 		}
-		index, known := ExpressionValue(n.Index, variables)
+		index, known := expressionValue(n.Index, variables, properties)
 		if !known {
 			return nil, false
 		}
@@ -87,20 +105,20 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 	case *StringNode:
 		return n.Value, true
 	case *NotOpNode:
-		v, ok := ExpressionValue(n.Operand, variables)
+		v, ok := expressionValue(n.Operand, variables, properties)
 		return !ExpressionTruthy(v), ok
 	case *LogicalOpNode:
-		left, ok := ExpressionValue(n.Left, variables)
+		left, ok := expressionValue(n.Left, variables, properties)
 		if !ok {
 			return nil, false
 		}
 		if ExpressionTruthy(left) == (n.Kind == LogicalOpNodeKindOr) {
 			return left, true
 		}
-		return ExpressionValue(n.Right, variables)
+		return expressionValue(n.Right, variables, properties)
 	case *CompareOpNode:
-		left, lok := ExpressionValue(n.Left, variables)
-		right, rok := ExpressionValue(n.Right, variables)
+		left, lok := expressionValue(n.Left, variables, properties)
+		right, rok := expressionValue(n.Right, variables, properties)
 		if !lok || !rok {
 			return nil, false
 		}
@@ -122,7 +140,7 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 			demand := argumentDemand(policy, i, len(n.Args), checked)
 			arg := callArgument{source: AnyType(), demand: demand}
 			if demand != DemandSkipped {
-				value, known := ExpressionValue(n.Args[i], variables)
+				value, known := expressionValue(n.Args[i], variables, properties)
 				if !known {
 					return nil, false
 				}

@@ -103,6 +103,26 @@ func conditionNeverRunsInStatuses(expression exprlang.Node, statuses []string) b
 }
 
 func conditionStatusTruth(expression exprlang.Node, status string, cancelled bool) conditionTruth {
+	return conditionContextTruth(expression, status, cancelled, nil)
+}
+
+// NeverRunsWithVariables proves a condition false for supplied context values
+// across execution statuses. Unsupported values and operations stay unknown.
+func NeverRunsWithVariables(expression exprlang.Node, variables func(string) (any, bool)) bool {
+	for _, status := range []string{"success", "failure", "other"} {
+		for _, cancelled := range []bool{false, true} {
+			if conditionContextTruth(expression, status, cancelled, variables) != conditionFalse {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func conditionContextTruth(expression exprlang.Node, status string, cancelled bool, variables func(string) (any, bool)) conditionTruth {
+	if result, known := exprlang.ExpressionValueWithLookup(expression, variables); known {
+		return knownConditionTruth(exprlang.ExpressionTruthy(result))
+	}
 	switch node := expression.(type) {
 	case *exprlang.NullNode:
 		return conditionFalse
@@ -127,7 +147,7 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 			return knownConditionTruth(cancelled)
 		}
 	case *exprlang.NotOpNode:
-		switch conditionStatusTruth(node.Operand, status, cancelled) {
+		switch conditionContextTruth(node.Operand, status, cancelled, variables) {
 		case conditionFalse:
 			return conditionTrue
 		case conditionTrue:
@@ -136,8 +156,8 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 			return conditionUnknown
 		}
 	case *exprlang.LogicalOpNode:
-		left := conditionStatusTruth(node.Left, status, cancelled)
-		right := conditionStatusTruth(node.Right, status, cancelled)
+		left := conditionContextTruth(node.Left, status, cancelled, variables)
+		right := conditionContextTruth(node.Right, status, cancelled, variables)
 		switch node.Kind {
 		case exprlang.LogicalOpNodeKindAnd:
 			if left == conditionFalse || right == conditionFalse {
@@ -156,7 +176,7 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 		case exprlang.LogicalOpNodeKindInvalid:
 		}
 	case *exprlang.CompareOpNode:
-		if result, known := conditionStatusValue(node, status, cancelled); known {
+		if result, known := conditionContextValue(node, status, cancelled, variables); known {
 			return knownConditionTruth(exprlang.ExpressionTruthy(result))
 		}
 	}
@@ -165,16 +185,16 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 
 // Comparisons use operand values: && and || return an operand, rather
 // than converting it to bool. In particular, always() && 'x' is not true == 1.
-func conditionStatusValue(expression exprlang.Node, status string, cancelled bool) (any, bool) {
-	if constant, known := exprlang.ConditionConstantValue(expression); known {
+func conditionContextValue(expression exprlang.Node, status string, cancelled bool, variables func(string) (any, bool)) (any, bool) {
+	if constant, known := exprlang.ExpressionValueWithLookup(expression, variables); known {
 		return constant, true
 	}
 	switch node := expression.(type) {
 	case *exprlang.FuncCallNode, *exprlang.NotOpNode:
-		truth := conditionStatusTruth(expression, status, cancelled)
+		truth := conditionContextTruth(expression, status, cancelled, variables)
 		return truth == conditionTrue, truth != conditionUnknown
 	case *exprlang.LogicalOpNode:
-		left, known := conditionStatusValue(node.Left, status, cancelled)
+		left, known := conditionContextValue(node.Left, status, cancelled, variables)
 		if !known {
 			return nil, false
 		}
@@ -190,10 +210,10 @@ func conditionStatusValue(expression exprlang.Node, status string, cancelled boo
 		case exprlang.LogicalOpNodeKindInvalid:
 			return nil, false
 		}
-		return conditionStatusValue(node.Right, status, cancelled)
+		return conditionContextValue(node.Right, status, cancelled, variables)
 	case *exprlang.CompareOpNode:
-		left, leftKnown := conditionStatusValue(node.Left, status, cancelled)
-		right, rightKnown := conditionStatusValue(node.Right, status, cancelled)
+		left, leftKnown := conditionContextValue(node.Left, status, cancelled, variables)
+		right, rightKnown := conditionContextValue(node.Right, status, cancelled, variables)
 		if leftKnown && rightKnown {
 			return exprlang.CompareConditionValues(node.Kind, left, right)
 		}

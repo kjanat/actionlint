@@ -13,21 +13,28 @@ func (c Combination) Evaluate(text string) value.Value {
 	if expression == nil {
 		return value.Template(text, value.Origin{})
 	}
-	matrix := make(map[string]any, len(c.values))
-	for name, item := range c.values {
-		literal, known := expressionValue(item)
-		if !known {
-			return value.DynamicValue(text, value.KindUnknown, value.Origin{FromExpression: true})
-		}
-		matrix[name] = literal
-	}
-	result, known := exprlang.ExpressionValue(expression, func(name string) (any, bool) {
-		return matrix, name == "matrix"
-	})
+	result, known := exprlang.ExpressionValue(expression, c.LookupExpressionVariable)
 	if !known {
 		return value.DynamicValue(text, value.KindUnknown, value.Origin{FromExpression: true})
 	}
 	return value.FromJSON(result, value.Origin{FromExpression: true})
+}
+
+// LookupExpressionVariable exposes a complete matrix row to the shared evaluator.
+// An unresolved member makes the object unknown rather than silently omitting it.
+func (c Combination) LookupExpressionVariable(name string) (any, bool) {
+	if name != "matrix" {
+		return nil, false
+	}
+	matrix := make(map[string]any, len(c.values))
+	for name, item := range c.values {
+		literal, known := expressionValue(item)
+		if !known {
+			return nil, false
+		}
+		matrix[name] = literal
+	}
+	return matrix, true
 }
 
 func expressionValue(item value.Value) (any, bool) {

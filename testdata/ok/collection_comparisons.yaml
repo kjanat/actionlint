@@ -1,3 +1,4 @@
+# GitHub accepts these comparisons, including collection and scalar coercions.
 on: push
 
 jobs:
@@ -12,17 +13,17 @@ jobs:
         a2:
           - [{ }]
     steps:
-      # comparing == to object with implicit conversion is not allowed
+      # String/object equality uses numeric coercion.
       - run: echo '${{ 'foo' == matrix.o }}'
-      # comparing != to array with implicit conversion is not allowed
+      # An array converts to NaN for comparison with a number.
       - run: echo '${{ 42 != matrix.a }}'
-      # comparing == array and incompatible array is not allowed
+      # Arrays are compared by instance identity.
       - run: echo '${{ matrix.a == matrix.a2 }}'
-      # comparing > to null is not allowed
+      # Null converts to zero.
       - run: echo '${{ 1 > null }}'
-      # comparing > to bool is not allowed
+      # Boolean ordering converts false and true to zero and one.
       - run: echo '${{ false < true }}'
-      # comparing >= to object is not allowed
+      # Object ordering uses NaN.
       - run: echo '${{ 'foo' >= matrix.o }}'
-      # comparing <= to array is not allowed
+      # Array ordering uses NaN.
       - run: echo '${{ false <= matrix.a }}'
