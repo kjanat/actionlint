@@ -60,6 +60,9 @@ func (rule *ruleWorkflowCall) VisitJobPre(n workflowdecl.JobView) error {
 	if !u.Present() || u.Value() == "" || u.ContainsExpression() {
 		return nil
 	}
+	if _, hosted := references.ParseRepositoryURL(u.Value()); hosted {
+		return nil // vendor-lock-in reports URL-form uses declarations.
+	}
 
 	if _, ok := references.LocalWorkflow(u.Value()); ok {
 		rule.checkWorkflowCallUsesLocal(n.WorkflowCall(), n.Permissions(), n.CacheMode())

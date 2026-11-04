@@ -74,6 +74,8 @@ func buildRegisteredRules() []Rule {
 		{Name: "credentials"},
 		{Name: "shell-name"},
 		{Name: "runner-label"},
+		{Name: "container-runner", SupportsActions: true, Scope: CompositeScope},
+		{Name: "vendor-lock-in", SupportsActions: true, Scope: SourceScope},
 		{Name: "events"},
 		{Name: "job-needs"},
 		{Name: "parallel-steps"},

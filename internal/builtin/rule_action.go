@@ -60,6 +60,10 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 	}
 
 	spec := e.Uses().Value()
+	if _, hosted := references.ParseRepositoryURL(spec); hosted {
+		// vendor-lock-in owns URL-form references independently of metadata checks.
+		return nil
+	}
 
 	if strings.HasPrefix(spec, "./") {
 		// Relative to repository root

@@ -10,12 +10,60 @@ import (
 )
 
 func Selectors(job workflowdecl.JobView) []runnerapi.Selector {
+	alternatives := selectorAlternatives(job)
+	if alternatives == nil {
+		return nil
+	}
+	selectors := make([]runnerapi.Selector, len(alternatives))
+	for index, alternative := range alternatives {
+		selectors[index] = alternative.Selector
+	}
+	return selectors
+}
+
+// Alternative associates a runner selector with the matrix row that produced it.
+type Alternative struct {
+	Selector    runnerapi.Selector
+	Matrix      matrix.Combination
+	AnswerIndex int
+	MatrixKnown bool
+}
+
+// Alternatives joins execution rows to the provider selector that resolves them.
+// A matrix unrelated to runs-on does not change the provider's request or certainty.
+func Alternatives(job workflowdecl.JobView) []Alternative {
+	alternatives := selectorAlternatives(job)
+	for index := range alternatives {
+		alternatives[index].AnswerIndex = index
+		alternatives[index].MatrixKnown = !alternatives[index].Selector.Incomplete && hasMatrixReference(job.RunsOn().Selection())
+	}
+	if len(alternatives) != 1 || hasMatrixReference(job.RunsOn().Selection()) {
+		return alternatives
+	}
+	rows, complete := job.Strategy().MatrixResolution().Combinations(256)
+	if !complete {
+		return alternatives
+	}
+	result := make([]Alternative, 0, len(rows))
+	for _, row := range rows {
+		selector := alternatives[0].Selector
+		selector.Labels = slices.Clone(selector.Labels)
+		if selector.Group != nil {
+			group := *selector.Group
+			selector.Group = &group
+		}
+		result = append(result, Alternative{Selector: selector, Matrix: row, MatrixKnown: true})
+	}
+	return result
+}
+
+func selectorAlternatives(job workflowdecl.JobView) []Alternative {
 	if !job.Present() || !job.RunsOn().Present() {
 		return nil
 	}
 	selection := job.RunsOn().Selection()
 	if !hasMatrixReference(selection) {
-		return []runnerapi.Selector{selectorFor(selection, matrix.Combination{}, false)}
+		return []Alternative{{Selector: selectorFor(selection, matrix.Combination{}, false)}}
 	}
 	strategy := job.Strategy().MatrixResolution()
 	combinations, complete := strategy.Combinations(256)
@@ -23,13 +71,13 @@ func Selectors(job workflowdecl.JobView) []runnerapi.Selector {
 		if len(combinations) == 0 {
 			combinations = []matrix.Combination{{}}
 		}
-		result := make([]runnerapi.Selector, 0, len(combinations))
+		result := make([]Alternative, 0, len(combinations))
 		for _, combination := range combinations {
-			result = append(result, selectorFor(selection, combination, false))
+			result = append(result, Alternative{Selector: selectorFor(selection, combination, false), Matrix: combination})
 		}
 		return result
 	}
-	result := []runnerapi.Selector{selectorFor(selection, matrix.Combination{}, true)}
+	result := []Alternative{{Selector: selectorFor(selection, matrix.Combination{}, true)}}
 	for _, candidate := range selectionValues(selection) {
 		property := runnerMatrixProperty(candidate.Source())
 		if property == "" {
@@ -37,7 +85,8 @@ func Selectors(job workflowdecl.JobView) []runnerapi.Selector {
 		}
 		reachable := strategy.ReachableAfterExcludes(property)
 		for _, item := range reachable.Values {
-			result = append(result, selectorFor(selection, (matrix.Combination{}).With(property, item), true))
+			combination := (matrix.Combination{}).With(property, item)
+			result = append(result, Alternative{Selector: selectorFor(selection, combination, true), Matrix: combination})
 		}
 	}
 	return result

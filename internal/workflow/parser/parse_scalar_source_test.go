@@ -21,6 +21,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 		{"verbatim-tag", `run: !<tag:syntax.org,2002:str> "echo $foo"`, "$foo", "$foo"},
 		{"multiline-properties", "run: &script # source anchor\n  !!str\n  \"echo $foo\"", "$foo", "$foo"},
 		{"unicode-escape", `run: "echo \u0024foo"`, "$foo", `\u0024foo`},
+		{"unicode-slash-escape", `run: "echo https:\u002f\u002fexample.test $foo"`, "$foo", "$foo"},
 		{"unicode-before", `run: "echo \u00e9 $foo"`, "$foo", "$foo"},
 		{"newline-escape", `run: "echo\n$foo"`, "$foo", "$foo"},
 		{"single", `run: 'echo ''hello'' $foo'`, "$foo", "$foo"},
@@ -79,6 +80,14 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Runny's next parser at 1ba885c2065fd9be317808ab3fd406f392635cf7
+// also rejects this YAML escape. Unicode escapes such as \u002f are accepted.
+func TestQuotedSlashEscapeRejected(t *testing.T) {
+	if _, err := codec.Parse([]byte(`run: "https:\/\/github.com/mlugg/setup-zig@v2"`)); err == nil {
+		t.Fatal("slash escape unexpectedly accepted unlike the GitHub runner")
 	}
 }
 

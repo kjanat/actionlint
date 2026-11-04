@@ -102,7 +102,7 @@ jobs:
       nginx:
         image: nginx:latest
         credentials: *cred
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - run: ./login.bash "$username@$password"
         env: *cred

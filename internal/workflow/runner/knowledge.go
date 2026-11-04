@@ -51,6 +51,16 @@ func (r jobRecord) knowledge() JobKnowledge {
 type Knowledge struct {
 	jobs   map[workflowdecl.JobView]jobRecord
 	report runnerapi.Report
+	target string
+}
+
+// Target identifies the selected execution platform, including documents without
+// runner requests, such as standalone actions and reusable-workflow callers.
+func (k *Knowledge) Target() string {
+	if k == nil {
+		return ""
+	}
+	return k.target
 }
 
 func (k *Knowledge) Job(job workflowdecl.JobView) JobKnowledge {
@@ -113,16 +123,16 @@ func Prepare(ctx context.Context, snapshot documentparse.SourceSnapshot, custom 
 // PrepareWithLabels keeps unavailable repository labels distinct from a known
 // empty set while sharing the same provider and trait resolution path.
 func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapshot, custom LabelSet, options runnerapi.Options, scope string) (*Knowledge, error) {
-	k := &Knowledge{jobs: make(map[workflowdecl.JobView]jobRecord)}
+	if options.Target == "" {
+		options.Target = "github"
+	}
+	k := &Knowledge{jobs: make(map[workflowdecl.JobView]jobRecord), target: options.Target}
 	if !snapshot.Present() {
 		return k, nil
 	}
 	workflow, available := snapshot.WorkflowView()
 	if !available {
 		return k, nil
-	}
-	if options.Target == "" {
-		options.Target = "github"
 	}
 	hasSnapshot := options.Snapshot != (runnerapi.Snapshot{})
 	switch options.Snapshot.Freshness {
@@ -167,9 +177,6 @@ func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapsho
 		selected = registration.Provider
 		identity = registration.Identity
 	}
-	if selected == nil {
-		return k, fmt.Errorf("no runner provider %q for target %q", options.Provider, options.Target)
-	}
 	var selectors []runnerapi.Selector
 	type jobRange struct {
 		job        workflowdecl.JobView
@@ -188,6 +195,9 @@ func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapsho
 	}
 	if len(selectors) == 0 {
 		return k, nil
+	}
+	if selected == nil {
+		return k, fmt.Errorf("no runner provider %q for target %q", options.Provider, options.Target)
 	}
 	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot, Selectors: selectors}
 	descriptor := selected.RunnerDescriptor()

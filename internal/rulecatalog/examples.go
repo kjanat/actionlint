@@ -9,6 +9,16 @@ import (
 // Examples are executable workflow documents. Engine tests check that the before
 // form reports the named rule and the after form is clean without external tools.
 var examples = map[string][]rule.Example{
+	"vendor-lock-in": {{
+		Description: "Remove the GitHub URL prefix without changing the action or its version.",
+		Before:      "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: https://github.com/mlugg/setup-zig@v2\n",
+		After:       "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: mlugg/setup-zig@v2\n",
+	}},
+	"container-runner": {{
+		Description: "Use a Linux runner with Docker for a job container.",
+		Before:      "on: push\njobs:\n  build:\n    runs-on: windows-latest\n    container: alpine:3\n    steps:\n      - run: echo ok\n",
+		After:       "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    container: alpine:3\n    steps:\n      - run: echo ok\n",
+	}},
 	"coercion": {example("Use the boolean value directly when checking branch protection.", "    if: startsWith(github.ref_protected, 'true')\n", "    if: github.ref_protected\n")},
 	"uncancellable-condition": {example("When this job should stop on cancellation, use !cancelled(). Do not make this change for required cancellation cleanup or reporting.",
 		"    if: ${{ always() }}\n", "    if: ${{ !cancelled() }}\n")},

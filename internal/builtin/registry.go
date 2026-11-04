@@ -60,13 +60,15 @@ func ruleBehaviours() map[string]behaviour {
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {
 			return &workflowRunNamesRule{Base: builtinRuleBase("workflow-run-names"), root: absolutePath(c.ProjectRoot), index: c.WorkflowNames}
 		}, Enabled: workflowRunNamesAvailable},
-		"matrix":         {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
-		"credentials":    {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
-		"shell-name":     {Build: func(c Context) workflowvisit.Rule { return newRuleShellName(c.Runners) }},
-		"runner-label":   {Build: func(c Context) workflowvisit.Rule { return newRuleRunnerLabel(c.Runners) }},
-		"events":         {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
-		"job-needs":      {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
-		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
+		"matrix":           {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
+		"credentials":      {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
+		"shell-name":       {Build: func(c Context) workflowvisit.Rule { return newRuleShellName(c.Runners) }},
+		"runner-label":     {Build: func(c Context) workflowvisit.Rule { return newRuleRunnerLabel(c.Runners) }},
+		"container-runner": {Build: func(c Context) workflowvisit.Rule { return newRuleContainerRunner(c) }},
+		"vendor-lock-in":   {Build: func(c Context) workflowvisit.Rule { return newRuleVendorLockIn(c.Runners) }},
+		"events":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
+		"job-needs":        {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
+		"parallel-steps":   {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
 		"action": {Build: func(c Context) workflowvisit.Rule {
 			rule := newRuleAction(c.Actions)
 			rule.remote, rule.context = c.RemoteActions, c.Context

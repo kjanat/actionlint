@@ -15,6 +15,10 @@ func (p *Parser) IndexDependencySpans(workflow *workflowlang.Workflow) {
 		}
 		if scalar := p.scalarSource(value.SourceScalar.Pos, value.SourceScalar.Value); scalar != nil {
 			value.SourceScalar.End = scalar.ScalarEnd
+			if workflow.ExpressionSources == nil {
+				workflow.ExpressionSources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
+			}
+			workflow.ExpressionSources[value.SourceScalar.Pos] = scalar
 		}
 	}
 	var steps func([]*workflowlang.Step)

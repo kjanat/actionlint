@@ -19,8 +19,13 @@ func (v StringView) Semantic() value.Value {
 }
 
 // ExpressionSource maps this scalar's decoded expression back to physical YAML.
-// The view borrows only the record's immutable, captured source mapping.
 func (v StringView) ExpressionSource() ScriptSourceView {
+	return v.ScalarSource()
+}
+
+// ScalarSource maps decoded scalar content to its captured physical YAML.
+// It is available for indexed expressions, conditions and dependency references.
+func (v StringView) ScalarSource() ScriptSourceView {
 	if !v.Present() || v.owner == nil || v.owner.record.workflow == nil {
 		return ScriptSourceView{}
 	}

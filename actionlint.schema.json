@@ -129,6 +129,8 @@
                   "credentials",
                   "shell-name",
                   "runner-label",
+                  "container-runner",
+                  "vendor-lock-in",
                   "events",
                   "job-needs",
                   "parallel-steps",
@@ -411,6 +413,7 @@
                                                           "cache-write-untrusted",
                                                           "case-insensitive-conditions",
                                                           "coercion",
+                                                          "container-runner",
                                                           "context-availability",
                                                           "credentials",
                                                           "deprecated-commands",
@@ -455,6 +458,7 @@
                                                           "unpinned-reference",
                                                           "unsound-ternary",
                                                           "unused-suppression",
+                                                          "vendor-lock-in",
                                                           "workflow-call",
                                                           "workflow-run-names"
                                                         ],
@@ -782,6 +786,8 @@
                                 "credentials",
                                 "shell-name",
                                 "runner-label",
+                                "container-runner",
+                                "vendor-lock-in",
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
@@ -926,6 +932,75 @@
                               "title": "cache-operation",
                               "description": "Report cache actions blocked by explicit cache access limits",
                               "markdownDescription": "Report cache actions blocked by explicit cache access limits",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "container-runner": {
+                              "title": "container-runner",
+                              "description": "Report Docker container requirements for selected runners",
+                              "markdownDescription": "Report Docker container requirements for selected runners",
                               "oneOf": [
                                 {
                                   "anyOf": [
@@ -3028,6 +3103,75 @@
                                 }
                               ]
                             },
+                            "vendor-lock-in": {
+                              "title": "vendor-lock-in",
+                              "description": "Report repository URL references unsupported by GitHub",
+                              "markdownDescription": "Report repository URL references unsupported by GitHub",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "workflow-call": {
                               "title": "workflow-call",
                               "description": "Validate reusable workflow references and their declared inputs and outputs",
@@ -3292,6 +3436,8 @@
                           "credentials",
                           "shell-name",
                           "runner-label",
+                          "container-runner",
+                          "vendor-lock-in",
                           "events",
                           "job-needs",
                           "parallel-steps",
@@ -4066,6 +4212,8 @@
                                 "matrix",
                                 "shell-name",
                                 "runner-label",
+                                "container-runner",
+                                "vendor-lock-in",
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
@@ -4880,6 +5028,8 @@
                                 "credentials",
                                 "shell-name",
                                 "runner-label",
+                                "container-runner",
+                                "vendor-lock-in",
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
@@ -5185,6 +5335,7 @@
                                                                     "cache-write-untrusted",
                                                                     "case-insensitive-conditions",
                                                                     "coercion",
+                                                                    "container-runner",
                                                                     "context-availability",
                                                                     "credentials",
                                                                     "deprecated-commands",
@@ -5229,6 +5380,7 @@
                                                                     "unpinned-reference",
                                                                     "unsound-ternary",
                                                                     "unused-suppression",
+                                                                    "vendor-lock-in",
                                                                     "workflow-call",
                                                                     "workflow-run-names"
                                                                   ],
@@ -5556,6 +5708,8 @@
                                           "credentials",
                                           "shell-name",
                                           "runner-label",
+                                          "container-runner",
+                                          "vendor-lock-in",
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
@@ -5700,6 +5854,75 @@
                                         "title": "cache-operation",
                                         "description": "Report cache actions blocked by explicit cache access limits",
                                         "markdownDescription": "Report cache actions blocked by explicit cache access limits",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "container-runner": {
+                                        "title": "container-runner",
+                                        "description": "Report Docker container requirements for selected runners",
+                                        "markdownDescription": "Report Docker container requirements for selected runners",
                                         "oneOf": [
                                           {
                                             "anyOf": [
@@ -7802,6 +8025,75 @@
                                           }
                                         ]
                                       },
+                                      "vendor-lock-in": {
+                                        "title": "vendor-lock-in",
+                                        "description": "Report repository URL references unsupported by GitHub",
+                                        "markdownDescription": "Report repository URL references unsupported by GitHub",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "workflow-call": {
                                         "title": "workflow-call",
                                         "description": "Validate reusable workflow references and their declared inputs and outputs",
@@ -8066,6 +8358,8 @@
                                     "credentials",
                                     "shell-name",
                                     "runner-label",
+                                    "container-runner",
+                                    "vendor-lock-in",
                                     "events",
                                     "job-needs",
                                     "parallel-steps",
@@ -8840,6 +9134,8 @@
                                           "matrix",
                                           "shell-name",
                                           "runner-label",
+                                          "container-runner",
+                                          "vendor-lock-in",
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
@@ -9654,6 +9950,8 @@
                                           "credentials",
                                           "shell-name",
                                           "runner-label",
+                                          "container-runner",
+                                          "vendor-lock-in",
                                           "events",
                                           "job-needs",
                                           "parallel-steps",

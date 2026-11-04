@@ -104,6 +104,41 @@ jobs:
       - run: echo ok
 ```
 
+## container-runner
+
+GitHub-managed job containers, service containers and Docker actions require Linux and a Docker daemon. Report an error for known Windows or macOS selections. Warn for GitHub-hosted ubuntu-slim: it includes Docker client tools but no local daemon; a compatible remote daemon may satisfy the requirement. Inspect available action metadata and expanded local composites, with matrix rows and conditions determining which selections can reach the container. Unknown runner facts and unavailable action bodies do not establish a violation. Docker commands in scripts can use remote daemons and are not classified by this rule.
+
+Select a Linux runner with Docker, such as ubuntu-latest, or guard the container action so incompatible matrix rows do not execute it. For ubuntu-slim, verify any remote daemon configuration before suppressing the warning. Self-hosted Linux runners need an accessible Docker daemon. No automatic fix is offered because changing the runner can change job behavior.
+
+- Category: `correctness/runners`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.container-runner`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Use a Linux runner with Docker for a job container.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: windows-latest
+    container: alpine:3
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: alpine:3
+    steps:
+      - run: echo ok
+```
+
 ## context-availability
 
 Validate contexts and functions available at a workflow field.
@@ -1064,6 +1099,39 @@ Run actionlint fix --apply or use the editor quick fix to remove unused selector
 - Enabled by default: `true`
 
 Configure this rule with `lint.rules.correctness.unused-suppression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## vendor-lock-in
+
+GitHub Actions accepts repository shorthand in uses, not full repository URLs. On the github execution target, report URL references in action steps and reusable-workflow calls. An HTTPS github.com URL offers a safe fix that removes its prefix while preserving the repository, action path and ref. Other hosts have no automatic substitution: the same owner/repository name on GitHub does not establish the same action. Docker registry URLs, local actions and dynamic references are excluded. Other execution targets are not restricted by this rule.
+
+Use owner/repo[/path]@ref for an action hosted in the current GitHub instance. To use an externally hosted action, choose and verify a GitHub mirror, or check out the external source and invoke its local action. The prefix fix is unavailable for URLs with credentials, ports, URL encoding, queries, fragments or invalid shorthand.
+
+- Category: `correctness/dependencies`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.vendor-lock-in`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Remove the GitHub URL prefix without changing the action or its version.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://github.com/mlugg/setup-zig@v2
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mlugg/setup-zig@v2
+```
 
 ## workflow-call
 

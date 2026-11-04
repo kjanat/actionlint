@@ -17,12 +17,9 @@ func ForSuppressions(config *Config, path, root string) (*Config, error) {
 // ForAction projects only the settings consumed by action checks before merging
 // per-file overrides; action metadata has no jobs or workflow policy options.
 func ForAction(config *Config, path, root string) (*Config, error) {
-	selected := map[string][]string{}
-	for _, descriptor := range Rules() {
-		if descriptor.SupportsActions || descriptor.Scope == SourceScope {
-			selected[descriptor.Group] = append(selected[descriptor.Group], descriptor.Name)
-		}
-	}
+	selected := scopedRuleNames(func(descriptor Rule) bool {
+		return descriptor.SupportsActions || descriptor.Scope == SourceScope
+	})
 	return scopedConfigForFile(config, path, root, func(node *yaml.Node) *yaml.Node {
 		return configtree.SelectLintRules(node, selected)
 	}, true)
@@ -63,14 +60,19 @@ func scopedConfigForFile(config *Config, path, root string, selectLint func(*yam
 // suppressionLintNode keeps the rules whose findings belong to the checked
 // source itself, including tool providers scoped to the source.
 func suppressionLintNode(node *yaml.Node) *yaml.Node {
-	selected := map[string][]string{
-		"correctness": {"inline-suppression", "deprecated-commands"},
-		"policy":      {"disallow-suppressions"},
-	}
-	for _, name := range toolProviderNames() {
-		if toolProviders()[name].scope == SourceScope {
-			selected["external"] = append(selected["external"], name)
+	selected := scopedRuleNames(func(descriptor Rule) bool { return descriptor.Scope == SourceScope })
+	return configtree.SelectLintRules(node, selected)
+}
+
+func scopedRuleNames(include func(Rule) bool) map[string][]string {
+	selected := map[string][]string{}
+	for _, descriptor := range Rules() {
+		if include(descriptor) {
+			selected[descriptor.Group] = append(selected[descriptor.Group], descriptor.Name)
+			if legacy := LegacyGroup(descriptor.Name); legacy != "" && legacy != descriptor.Group {
+				selected[legacy] = append(selected[legacy], descriptor.Name)
+			}
 		}
 	}
-	return configtree.SelectLintRules(node, selected)
+	return selected
 }

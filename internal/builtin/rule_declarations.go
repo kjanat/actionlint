@@ -6,6 +6,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/checks"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -17,6 +19,40 @@ type declarationRule struct {
 	workflowCheck func(workflowdecl.WorkflowView) []checks.Finding
 	jobCheck      func(workflowdecl.JobView) []checks.Finding
 	stepCheck     func(workflowdecl.StepView) []checks.Finding
+}
+
+// invocationDeclarationRule applies a source-local check to composite bodies.
+// Workflow entry steps use the ordinary visitor and are not checked twice.
+type invocationDeclarationRule struct {
+	*declarationRule
+	contexts []invocation.Context
+}
+
+func (r *invocationDeclarationRule) EnterInvocation(scope Invocation) error {
+	if !scope.Context.Valid() || !scope.Source.Present() {
+		return invocation.ErrForeignContext
+	}
+	r.contexts = append(r.contexts, scope.Context)
+	return nil
+}
+
+func (r *invocationDeclarationRule) LeaveInvocation(scope invocation.Context) error {
+	if len(r.contexts) == 0 || r.contexts[len(r.contexts)-1] != scope {
+		return invocation.ErrForeignContext
+	}
+	r.contexts = r.contexts[:len(r.contexts)-1]
+	return nil
+}
+
+func (r *invocationDeclarationRule) VisitInvocationStep(step workflowdecl.StepView) error {
+	return r.VisitStep(step)
+}
+
+func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+	if len(r.contexts) == 0 {
+		return nil
+	}
+	return r.VisitStep(step)
 }
 
 func newDeclarationRule(name string) *declarationRule {
@@ -79,6 +115,25 @@ func NewRuleEmptyTriggers() workflowvisit.Rule { return newDeclarationRule("empt
 func NewRuleEmptyJob() workflowvisit.Rule      { return newDeclarationRule("empty-job") }
 func NewRuleEmptyRun() workflowvisit.Rule      { return newDeclarationRule("empty-run") }
 func NewRuleNumericValues() workflowvisit.Rule { return newDeclarationRule("numeric-values") }
+
+func newRuleVendorLockIn(runners *runnerlang.Knowledge) workflowvisit.Rule {
+	r := newDeclarationRule("vendor-lock-in")
+	target := runners.Target()
+	r.jobCheck = func(job workflowdecl.JobView) []checks.Finding {
+		return checks.VendorLockIn(job.WorkflowCall().Uses(), target)
+	}
+	r.stepCheck = func(step workflowdecl.StepView) []checks.Finding {
+		if action, present := step.Action(); present {
+			findings := checks.VendorLockIn(action.Uses(), target)
+			for i := range findings {
+				findings[i].Step = step
+			}
+			return findings
+		}
+		return nil
+	}
+	return &invocationDeclarationRule{declarationRule: r}
+}
 
 func NewRuleCredentials() workflowvisit.Rule   { return newDeclarationRule("credentials") }
 func NewRuleEvents() workflowvisit.Rule        { return newDeclarationRule("events") }
