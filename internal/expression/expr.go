@@ -18,6 +18,8 @@ type Error struct {
 	// Rule identifies the configurable check; Code identifies its diagnostic kind.
 	Rule string
 	Code string
+	// Advisory marks a finding that does not invalidate the expression.
+	Advisory bool
 }
 
 func (e *Error) Error() string {

@@ -25,19 +25,19 @@ func (rule *Checker) checkOneExpression(s workflowdecl.StringView, what, workflo
 	}
 
 	ts, ok := rule.checkExprsIn(s.Value(), viewPosition(s), s.Quoted(), false, workflowKey)
-	if !ok {
-		return exprlang.AnyType(), false
-	}
 
 	if len(ts) != 1 {
+		if !ok {
+			return exprlang.AnyType(), false
+		}
 		// This case should be unreachable since only one ${{ }} is included is checked by parser
 		rule.Errorf(viewPosition(s), "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
 		return exprlang.AnyType(), false
 	}
-
-	if value, known := expressionLiteral(s.Value()); known {
-		return exprlang.TypeOfJSONValue(value), true
+	if !ok {
+		return ts[0].semantics.Type, false
 	}
+
 	return ts[0].ty, true
 }
 
@@ -386,16 +386,16 @@ func (rule *Checker) checkIfCondition(str workflowdecl.StringView, workflowKey s
 		rule.checkString(str, workflowKey)
 		return
 	}
-	if condTy, ok := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); ok && !exprlang.BoolType().Assignable(condTy) {
-		rule.Errorf(viewPosition(str), "\"if\" condition should be type \"bool\" but got type %q", condTy.String())
+	if result := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); result.Valid && !exprlang.BoolType().Assignable(result.Type) {
+		rule.Errorf(viewPosition(str), "\"if\" condition should be type \"bool\" but got type %q", result.Type.String())
 	}
 }
 
 func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
 	for _, t := range ts {
-		ty := t.templateInvalid
-		if ty.Kind() == exprlang.KindAny {
-			ty = t.ty
+		ty := t.ty
+		if t.refinement.hasTemplateInvalid {
+			ty = t.refinement.templateInvalid
 		}
 		switch ty.Kind() {
 		case exprlang.KindObject, exprlang.KindArray:

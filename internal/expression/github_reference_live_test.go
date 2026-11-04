@@ -57,6 +57,27 @@ var githubReferenceImage = sync.OnceValues(func() (string, error) {
 // this repository. Without it, the documentation tests run entirely offline.
 func checkGitHubReferenceLive(t *testing.T, input string, variables map[string]any, want any) {
 	t.Helper()
+	checkGitHubReferenceOutcome(t, input, variables, githubReferenceExpectation{value: want})
+}
+
+type githubReferenceFailure uint8
+
+const (
+	githubReferenceSuccess githubReferenceFailure = iota
+	githubReferenceParseFailure
+	githubReferenceRuntimeFailure
+)
+
+type githubReferenceExpectation struct {
+	failure       githubReferenceFailure
+	value         any
+	exceptionType string
+}
+
+// Check parse and evaluation separately: Runny reports both failures as a
+// rejected result, while a skipped invalid expression can still return a value.
+func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[string]any, want githubReferenceExpectation) {
+	t.Helper()
 	image, err := githubReferenceImage()
 	if errors.Is(err, errGitHubReferenceUnavailable) {
 		t.Skip(err)
@@ -90,12 +111,15 @@ func checkGitHubReferenceLive(t *testing.T, input string, variables map[string]a
 	var report struct {
 		RunnerSHA string `json:"runnerSha"`
 		Engines   []struct {
-			Engine    string `json:"engine"`
-			Parsed    bool   `json:"parsed"`
-			Evaluated bool   `json:"evaluated"`
-			Accepted  bool   `json:"accepted"`
-			Diagnosed bool   `json:"diagnosed"`
-			Canonical any    `json:"canonical"`
+			Engine        string          `json:"engine"`
+			Parsed        *bool           `json:"parsed"`
+			Evaluated     *bool           `json:"evaluated"`
+			Accepted      *bool           `json:"accepted"`
+			Diagnosed     *bool           `json:"diagnosed"`
+			Kind          string          `json:"kind"`
+			Canonical     json.RawMessage `json:"canonical"`
+			ExceptionType string          `json:"exceptionType"`
+			Exception     string          `json:"exception"`
 		} `json:"engines"`
 	}
 	if err := json.Unmarshal(output, &report); err != nil {
@@ -105,11 +129,31 @@ func checkGitHubReferenceLive(t *testing.T, input string, variables map[string]a
 		t.Fatalf("missing reference identity or unexpected engine count: %s", output)
 	}
 	engine := report.Engines[0]
-	if engine.Engine != "next" || !engine.Parsed || !engine.Evaluated || !engine.Accepted || engine.Diagnosed {
-		t.Fatalf("reference did not accept and evaluate the expression: %s", output)
+	if engine.Engine != "next" || engine.Parsed == nil || engine.Evaluated == nil || engine.Accepted == nil || engine.Diagnosed == nil {
+		t.Fatalf("missing reference outcome fields: %s", output)
 	}
-	if diff := cmp.Diff(want, engine.Canonical); diff != "" {
-		t.Fatalf("Runny value mismatch (-want +got):\n%s\n%s", diff, output)
+	wantParsed := want.failure != githubReferenceParseFailure
+	wantEvaluated := want.failure == githubReferenceSuccess
+	if *engine.Parsed != wantParsed || *engine.Evaluated != wantEvaluated || *engine.Accepted != wantEvaluated || *engine.Diagnosed {
+		t.Fatalf("unexpected reference outcome for failure phase %d: %s", want.failure, output)
+	}
+	if wantEvaluated {
+		if engine.Kind == "" || engine.ExceptionType != "" || engine.Exception != "" {
+			t.Fatalf("missing value kind or unexpected exception: %s", output)
+		}
+		var canonical any
+		if len(engine.Canonical) != 0 {
+			if err := json.Unmarshal(engine.Canonical, &canonical); err != nil {
+				t.Fatalf("invalid Runny value: %v\n%s", err, output)
+			}
+		} else if engine.Kind != "Null" {
+			t.Fatalf("missing Runny value: %s", output)
+		}
+		if diff := cmp.Diff(want.value, canonical); diff != "" {
+			t.Fatalf("Runny value mismatch (-want +got):\n%s\n%s", diff, output)
+		}
+	} else if engine.ExceptionType != want.exceptionType || engine.Exception == "" || engine.Kind != "" || len(engine.Canonical) != 0 {
+		t.Fatalf("unexpected reference failure details; want %q: %s", want.exceptionType, output)
 	}
 	t.Logf("verified with %s, runner %s", image, report.RunnerSHA)
 }

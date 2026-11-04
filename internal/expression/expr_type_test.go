@@ -518,25 +518,25 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 			what: "number merges with string",
 			ty:   NumberType(),
 			with: StringType(),
-			want: StringType(),
+			want: AnyType(),
 		},
 		{
 			what: "string is merged by number",
 			ty:   StringType(),
 			with: NumberType(),
-			want: StringType(),
+			want: AnyType(),
 		},
 		{
 			what: "bool merges with string",
 			ty:   BoolType(),
 			with: StringType(),
-			want: StringType(),
+			want: AnyType(),
 		},
 		{
 			what: "string is merged by bool",
 			ty:   StringType(),
 			with: BoolType(),
-			want: StringType(),
+			want: AnyType(),
 		},
 		{
 			what: "object props",
@@ -586,7 +586,7 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 				"foo": StringType(),
 			}).Type(),
 			want: NewObjectType(map[string]Type{
-				"foo": StringType(),
+				"foo": AnyType(),
 			}).Type(),
 		},
 		{
@@ -629,7 +629,7 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 			what: "compatible array element",
 			ty:   NewArrayType(NumberType()).Type(),
 			with: NewArrayType(StringType()).Type(),
-			want: NewArrayType(StringType()).Type(),
+			want: NewArrayType(AnyType()).Type(),
 		},
 		{
 			what: "incompatible array element",
@@ -703,7 +703,7 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 			what: "nested array",
 			ty:   NewArrayType(NewArrayType(NumberType()).Type()).Type(),
 			with: NewArrayType(NewArrayType(StringType()).Type()).Type(),
-			want: NewArrayType(NewArrayType(StringType()).Type()).Type(),
+			want: NewArrayType(NewArrayType(AnyType()).Type()).Type(),
 		},
 		{
 			what: "nested objects",
@@ -727,18 +727,18 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 				"foo": NewObjectType(map[string]Type{
 					"foo":  NumberType(),
 					"bar":  StringType(),
-					"piyo": StringType(),
+					"piyo": AnyType(),
 				}).Type(),
 				"aaa": NumberType(),
 				"bbb": StringType(),
-				"ccc": StringType(),
+				"ccc": AnyType(),
 			}).Type(),
 		},
 		{
 			what: "map object with compatible map object",
 			ty:   NewMapObjectType(NumberType()).Type(),
 			with: NewMapObjectType(StringType()).Type(),
-			want: NewMapObjectType(StringType()).Type(),
+			want: NewMapObjectType(AnyType()).Type(),
 		},
 		{
 			what: "map object with incompatible map object",
@@ -913,12 +913,12 @@ func TestExprTypeTypeOfJSONValue(t *testing.T) {
 		{
 			what:  "merged array element",
 			value: []any{"hello", 1.0, true},
-			want:  NewArrayType(StringType()).Type(),
+			want:  NewArrayType(AnyType()).Type(),
 		},
 		{
 			what:  "recursively merged array element",
 			value: []any{[]any{"hello"}, []any{1.0}, []any{true}},
-			want:  NewArrayType(NewArrayType(StringType()).Type()).Type(),
+			want:  NewArrayType(NewArrayType(AnyType()).Type()).Type(),
 		},
 		{
 			what:  "array element fallback to any",

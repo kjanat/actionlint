@@ -13,6 +13,37 @@ import (
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
+func TestUnusedFormatArgumentDoesNotHideScriptSafety(t *testing.T) {
+	for _, tc := range []struct {
+		name, runner, format, args  string
+		wantCall, wantInterpolation bool
+	}{
+		{"known shell and safe result", "ubuntu-latest", "{0}{1}", "1, 2, 3", true, false},
+		{"known shell and unsafe result", "ubuntu-latest", "{0};{1}", "1, 2, 3", true, true},
+		{"unknown shell and safe result", "${{ vars.RUNNER }}", "{0}{1}", "1, 2, 3", true, true},
+		{"unknown shell without advisory", "${{ vars.RUNNER }}", "{0}{1}", "1, 2", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n    steps:\n      - run: echo \"${{ format('" + tc.format + "', " + tc.args + ") }}\"\n"
+			rule, workflow := newTestCheckerForSource(t, source)
+			job := testJob(t, workflow, "test")
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0))} {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			call, interpolation := false, false
+			for _, finding := range rule.Findings() {
+				call = call || finding.Rule == "expression-call"
+				interpolation = interpolation || finding.Rule == "script-interpolation"
+			}
+			if call != tc.wantCall || interpolation != tc.wantInterpolation {
+				t.Fatalf("expected format advisory=%v and interpolation=%v: %+v", tc.wantCall, tc.wantInterpolation, rule.Findings())
+			}
+		})
+	}
+}
+
 func TestInheritedScriptEnvironment(t *testing.T) {
 	for _, tc := range []struct {
 		name, workflowEnv, jobEnv, stepEnv string

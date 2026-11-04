@@ -114,8 +114,7 @@ func (t Type) Assignable(other Type) bool {
 		// Every value converts to bool, as in `if: ${{ steps.foo }}`.
 		return true
 	case KindString:
-		// Bool and null values also convert to string, but in almost every
-		// expression such a conversion is a mistake.
+		// Function parameter conversions are modeled separately from this compatibility rule.
 		return other.kind == KindString || other.kind == KindNumber || other.kind == KindAny
 	case KindObject:
 		if other.kind == KindAny {
@@ -141,18 +140,8 @@ func (t Type) Merge(other Type) Type {
 		if other.kind == KindNull {
 			return t
 		}
-	case KindNumber:
-		// A number merged with a string is a string.
-		if other.kind == KindNumber || other.kind == KindString {
-			return other
-		}
-	case KindBool:
-		// A bool merged with a string is a string.
-		if other.kind == KindBool || other.kind == KindString {
-			return other
-		}
-	case KindString:
-		if other.kind == KindString || other.kind == KindNumber || other.kind == KindBool {
+	case KindNumber, KindBool, KindString:
+		if t.kind == other.kind {
 			return t
 		}
 	case KindObject:

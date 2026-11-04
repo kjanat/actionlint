@@ -8,7 +8,31 @@ import (
 	"testing"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
+
+func TestExpressionRefinementStates(t *testing.T) {
+	checker := newTestChecker()
+	for _, tc := range []struct {
+		name       string
+		evaluation exprlang.EvaluationResult
+		want       value.State
+	}{
+		{"known null", exprlang.EvaluationResult{State: exprlang.EvaluationKnown, Value: nil}, value.Evaluated},
+		{"unknown", exprlang.EvaluationResult{State: exprlang.EvaluationUnknown}, value.Dynamic},
+		{"invalid", exprlang.EvaluationResult{State: exprlang.EvaluationInvalid}, value.Invalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checker.expressionType("${{ env.value }}", tc.evaluation)
+			if got.state != tc.want || got.hasTemplateInvalid {
+				t.Fatalf("refinement=%+v, want state %v without invalid template row", got, tc.want)
+			}
+			if tc.name == "known null" && got.ty.Kind() != exprlang.KindNull {
+				t.Fatalf("known null type lost: %v", got.ty)
+			}
+		})
+	}
+}
 
 func TestKP2BWMatrixExpressionTypes(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("..", "..", "integration", "workflow", "testdata", "repositories", "kp2bw-windows-bw-cmd.yml"))

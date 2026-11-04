@@ -88,5 +88,6 @@ func (sema *Checker) checkIdentityComparison(node, left, right Node) {
 
 func (sema *Checker) ruleError(node Node, name, message string) {
 	err := errorAtExpr(findingKind{name, name}, node, message)
+	err.Advisory = true
 	sema.errs = append(sema.errs, err)
 }

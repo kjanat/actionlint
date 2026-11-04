@@ -106,33 +106,52 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 		}
 		return CompareConditionValues(n.Kind, left, right)
 	case *FuncCallNode:
-		if strings.EqualFold(n.Callee, "case") {
-			if len(n.Args) < 3 || len(n.Args)%2 == 0 {
-				return nil, false
-			}
-			for i := 0; i < len(n.Args)-1; i += 2 {
+		signatures, found := BuiltinFuncSignatures[strings.ToLower(n.Callee)]
+		if !found || len(signatures) == 0 {
+			return nil, false
+		}
+		policy := signatures[0].EvaluationPolicy
+		args := make([]any, len(n.Args))
+		checked := make([]callArgument, len(n.Args))
+		order := []int{}
+		if len(n.Args) > 0 {
+			order = append(order, 0)
+		}
+		for position := 0; position < len(order); position++ {
+			i := order[position]
+			demand := argumentDemand(policy, i, len(n.Args), checked)
+			arg := callArgument{source: AnyType(), demand: demand}
+			if demand != DemandSkipped {
 				value, known := ExpressionValue(n.Args[i], variables)
 				if !known {
 					return nil, false
 				}
-				predicate, boolean := value.(bool)
+				arg.value, arg.state, arg.source = value, argumentKnown, TypeOfJSONValue(value)
+				args[i] = value
+			}
+			checked[i] = arg
+			if position == 0 {
+				order = append(order, argumentExecutionOrder(policy, len(n.Args), checked)...)
+			}
+		}
+		switch strings.ToLower(n.Callee) {
+		case "case":
+			if len(args) < 3 || len(args)%2 == 0 {
+				return nil, false
+			}
+			for i := 0; i < len(args)-1; i += 2 {
+				if checked[i].demand == DemandSkipped {
+					continue
+				}
+				predicate, boolean := args[i].(bool)
 				if !boolean {
 					return nil, false
 				}
 				if predicate {
-					return ExpressionValue(n.Args[i+1], variables)
+					return args[i+1], true
 				}
 			}
-			return ExpressionValue(n.Args[len(n.Args)-1], variables)
-		}
-		args := make([]any, len(n.Args))
-		for i, arg := range n.Args {
-			var ok bool
-			if args[i], ok = ExpressionValue(arg, variables); !ok {
-				return nil, false
-			}
-		}
-		switch strings.ToLower(n.Callee) {
+			return args[len(args)-1], true
 		case "tojson":
 			if len(args) == 1 {
 				switch value := args[0].(type) {
@@ -185,7 +204,7 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 			return strings.Join(parts, separator), true
 		case "fromjson":
 			if len(args) == 1 {
-				if s, ok := args[0].(string); ok {
+				if s, ok := constantFunctionString(args[0]); ok {
 					parsed, err := parseFromJSON(s)
 					// Loose JSON erases integer -0's sign; strict JSON can keep
 					// it. Do not turn mode-dependent formatting into a constant.
@@ -207,6 +226,20 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 					}
 					return false, known
 				}
+				// Composite arguments are accepted, but the runner returns false
+				// without converting them to strings.
+				if _, ok := args[0].([]any); ok {
+					return false, true
+				}
+				if _, ok := args[0].(map[string]any); ok {
+					return false, true
+				}
+				if _, ok := args[1].([]any); ok {
+					return false, true
+				}
+				if _, ok := args[1].(map[string]any); ok {
+					return false, true
+				}
 				left, lok := constantPredicateString(args[0])
 				right, rok := constantPredicateString(args[1])
 				if lok && rok {
@@ -223,8 +256,8 @@ func ExpressionValue(expr Node, variables func(string) (any, bool)) (any, bool) 
 			}
 		case "format":
 			if len(args) > 0 {
-				if format, ok := args[0].(string); ok {
-					return constantConditionFormat(format, args[1:])
+				if plan, known := argumentFormatPlan(&checked[0], len(args)-1); known {
+					return constantPlannedFormat(plan, args[1:])
 				}
 			}
 		}
@@ -293,6 +326,18 @@ func CompareConditionValues(kind CompareOpNodeKind, left, right any) (bool, bool
 	return compareConditionNumbers(kind, ToNumber(left), ToNumber(right)), true
 }
 
+func constantFunctionString(value any) (string, bool) {
+	if s, ok := constantPredicateString(value); ok {
+		return s, true
+	}
+	switch value.(type) {
+	case []any, map[string]any:
+		return constantJoinString(value)
+	default:
+		return "", false
+	}
+}
+
 func constantJoinString(value any) (string, bool) {
 	switch value := value.(type) {
 	case string:
@@ -334,33 +379,27 @@ func compareConditionNumbers(kind CompareOpNodeKind, a, b float64) bool {
 }
 
 func constantConditionFormat(format string, args []any) (any, bool) {
+	return constantPlannedFormat(planFormat(format, len(args)), args)
+}
+
+func constantPlannedFormat(plan formatPlan, args []any) (any, bool) {
+	if !plan.valid {
+		return nil, false
+	}
 	var out strings.Builder
-	for i := 0; i < len(format); {
-		c := format[i]
-		if c != '{' && c != '}' {
-			out.WriteByte(c)
-			i++
+	for _, part := range plan.parts {
+		if part.index < 0 {
+			out.WriteString(part.text)
 			continue
 		}
-		if i+1 < len(format) && format[i+1] == c {
-			out.WriteByte(c)
-			i += 2
-			continue
-		}
-		end := strings.IndexByte(format[i:], '}')
-		if c != '{' || end < 2 {
+		if part.specifier != "" {
 			return nil, false
 		}
-		index, err := strconv.Atoi(format[i+1 : i+end])
-		if err != nil || index < 0 || index >= len(args) {
-			return nil, false
-		}
-		value, known := constantPredicateString(args[index])
+		value, known := constantFunctionString(args[part.index])
 		if !known {
 			return nil, false
 		}
 		out.WriteString(value)
-		i += end + 1
 	}
 	return out.String(), true
 }

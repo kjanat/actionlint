@@ -1,45 +1,59 @@
 package expressions
 
-import exprlang "actionlint.kjanat.dev/v2/internal/expression"
+import (
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+)
+
+type expressionRefinement struct {
+	ty                 exprlang.Type
+	state              value.State
+	templateInvalid    exprlang.Type
+	hasTemplateInvalid bool
+}
 
 // expressionType keeps finite matrix-dependent expressions precise without
 // choosing one row's value for another. Unknown or oversized matrices retain
 // the ordinary semantic checker's type.
-func (rule *Checker) expressionType(text string) (exprlang.Type, exprlang.Type, bool) {
-	if literal, known := expressionLiteral(text); known {
-		return exprlang.TypeOfJSONValue(literal), exprlang.AnyType(), true
+func (rule *Checker) expressionType(text string, evaluation exprlang.EvaluationResult) expressionRefinement {
+	switch evaluation.State {
+	case exprlang.EvaluationKnown:
+		return expressionRefinement{ty: exprlang.TypeOfJSONValue(evaluation.Value), state: value.Evaluated}
+	case exprlang.EvaluationInvalid, exprlang.EvaluationNotAttempted:
+		return expressionRefinement{state: value.Invalid}
+	case exprlang.EvaluationUnknown:
 	}
 	if !rule.scriptJob.Present() {
-		return exprlang.AnyType(), exprlang.AnyType(), false
+		return expressionRefinement{state: value.Dynamic}
 	}
 	combinations, complete := rule.matrixResolution(rule.scriptJob.Strategy()).Combinations(256)
 	if !complete || len(combinations) == 0 {
-		return exprlang.AnyType(), exprlang.AnyType(), false
+		return expressionRefinement{state: value.Dynamic}
 	}
-	result := exprlang.AnyType()
-	invalid := exprlang.AnyType()
-	allKnown, first := true, true
+	result := expressionRefinement{state: value.Evaluated}
+	first := true
 	for _, combination := range combinations {
 		resolved := combination.Evaluate(text)
 		if !resolved.Known() {
-			allKnown = false
+			if resolved.State() == value.Invalid {
+				result.state = value.Invalid
+			} else if result.state != value.Invalid {
+				result.state = value.Dynamic
+			}
 			continue
 		}
 		inferred := matrixValueType(resolved, exprlang.AnyType())
 		switch inferred.Kind() {
 		case exprlang.KindObject, exprlang.KindArray:
-			invalid = inferred
+			result.templateInvalid, result.hasTemplateInvalid = inferred, true
 		case exprlang.KindAny, exprlang.KindString, exprlang.KindNumber, exprlang.KindBool, exprlang.KindNull:
 		}
 		if first {
-			result = inferred
+			result.ty = inferred
 			first = false
 		} else {
-			result = result.Merge(inferred)
+			result.ty = result.ty.Merge(inferred)
 		}
 	}
-	if !allKnown {
-		return exprlang.AnyType(), invalid, false
-	}
-	return result, invalid, true
+	return result
 }

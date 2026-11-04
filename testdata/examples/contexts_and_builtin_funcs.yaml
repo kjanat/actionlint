@@ -11,8 +11,8 @@ jobs:
       - run: echo "${{ startWith('hello, world', 'lo,') }}"
       # Wrong number of arguments
       - run: echo "${{ startsWith('hello, world') }}"
-      # Wrong type of parameter
+      # An object argument makes this predicate return false.
       - run: echo "${{ startsWith('hello, world', github.event) }}"
-      # Function overloads can be handled properly. contains() has string version and array version
+      # contains() accepts either a string or an array as its first argument.
       - run: echo "${{ contains('hello, world', 'lo,') }}"
       - run: echo "${{ contains(github.event.issue.labels.*.name, 'enhancement') }}"

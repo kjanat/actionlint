@@ -8,6 +8,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
@@ -33,28 +34,30 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 		rule.expressionOffset = offset
 		col := col + offset
 
-		ty, offsetAfter, parsed, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
+		result, offsetAfter, parsed := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
 		// Parsed expressions have a complete boundary even when semantic checks fail.
 		if !parsed {
 			return nil, false
 		}
-		valid = valid && ok
+		valid = valid && result.Valid
 		if offsetAfter == 0 {
 			return nil, true
 		}
-		templateInvalid := exprlang.AnyType()
-		if ok {
-			inferred, invalid, known := rule.expressionType("${{" + s[:offsetAfter])
-			templateInvalid = invalid
-			if known {
-				ty = inferred
+		ty := result.Type
+		refinement := expressionRefinement{state: value.Dynamic}
+		if result.Valid {
+			refinement = rule.expressionType("${{"+s[:offsetAfter], result.Evaluation)
+			if refinement.state == value.Evaluated && (result.Call == nil || result.Call.ReturnDomain != exprlang.ReturnDomainExcludesValue) {
+				ty = refinement.ty
 			}
+		} else {
+			refinement.state = value.Invalid
 		}
 		position := workflowlang.Pos{Line: line, Col: col - 3}
 		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
 			position = *mapped
 		}
-		ts = append(ts, typedExpr{ty: ty, pos: position, templateInvalid: templateInvalid})
+		ts = append(ts, typedExpr{ty: ty, semantics: result, pos: position, refinement: refinement})
 
 		s = s[offsetAfter:]
 		offset += offsetAfter
@@ -88,7 +91,7 @@ func (rule *Checker) exprFinding(err *exprlang.Error, lineBase, colBase int, sev
 	rule.errs = append(rule.errs, r)
 }
 
-func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, bool) {
+func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) exprlang.ExpressionCheckResult {
 	options := rule.options.Semantics
 	if rule.jobReferences != nil {
 		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
@@ -139,11 +142,12 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 	if rule.compositeScript {
 		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
 	}
-	ty, errs := c.Check(expr)
+	result := c.CheckResult(expr)
+	ty, errs := result.Type, result.Findings
 	for _, finding := range exprlang.PermissiveJSONCalls(expr) {
 		rule.exprFinding(finding, line, col, "info")
 	}
-	canCheckInterpolation := len(errs) == 0 || rule.options.ScriptInjectionDisabled && !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule != "script-injection" })
+	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule == "script-injection" }))
 	// Serialized scalars still require a data-argument position. A closed
 	// string such as toJSON(null) must not bypass that check in eval or sh -c.
 	closedArgumentList := checkUntrusted && canCheckInterpolation && !c.IsScriptScalar(expr) && rule.scriptWordLists[rule.expressionOffset-3] && rule.safeScriptArgumentList(expr)
@@ -181,18 +185,18 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 			rule.exprError(finding, line, col)
 		}
 	}
-	if workflowKey == "" && len(errs) == 0 {
+	if workflowKey == "" && result.Valid {
 		if _, literal := expr.(*exprlang.StringNode); !literal {
 			position := &workflowlang.Pos{Line: line, Col: col}
 			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
 				position = mapped
 			}
 			rule.Error(position, "expressions are not allowed in this static workflow field")
-			return ty, false
+			result.Valid = false
 		}
 	}
 
-	return ty, len(errs) == 0
+	return result
 }
 
 func (rule *Checker) safeScriptStatusSelector(node exprlang.Node) bool {
@@ -231,18 +235,16 @@ func (rule *Checker) safeScriptStatusSelector(node exprlang.Node) bool {
 }
 
 // checkSemantics parses and checks the expression at the start of src. offset
-// is where the expression ends in src. parsed is false after a syntax error,
-// and ok is false when any error was reported.
-func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (ty exprlang.Type, offset int, parsed, ok bool) {
+// is where the expression ends in src. parsed is false after a syntax error.
+func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (result exprlang.ExpressionCheckResult, offset int, parsed bool) {
 	l := exprlang.NewLexer(src)
 	p := exprlang.NewParser()
 	expr, err := p.Parse(l)
 	if err != nil {
 		rule.exprError(err, line, col)
-		return exprlang.AnyType(), l.Offset(), false, false
+		return exprlang.ExpressionCheckResult{Type: exprlang.AnyType()}, l.Offset(), false
 	}
-	t, ok := rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey)
-	return t, l.Offset(), true, ok
+	return rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey), l.Offset(), true
 }
 
 func convertExprLineColToPos(line, col, lineBase, colBase int) workflowlang.Pos {

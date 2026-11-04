@@ -89,22 +89,20 @@ func TestGitHubReferenceValues(t *testing.T) {
 	}
 }
 
-func TestGitHubReferenceStrictCoercionDiagnostics(t *testing.T) {
-	// GitHub defines these conversions, but actionlint deliberately reports them
-	// as likely mistakes. Test runtime values separately from the lint policy.
-	// See docs/checks.md#check-comparison-types and Type.Assignable.
+func TestGitHubReferenceCoercions(t *testing.T) {
+	// Supported coercions infer bool without type errors, independently of warning selection.
 	for _, tc := range []struct {
 		input string
 		want  bool
 		kind  Kind
 		kinds []findingKind
 	}{
-		{"fromJSON('[]') == 0", false, KindBool, []findingKind{operandType}},
-		{"fromJSON('{}') >= 0", false, KindBool, []findingKind{operandType}},
-		{"contains(null, '')", true, KindAny, []findingKind{argumentType, argumentType}},
-		{"startsWith(true, 'TR')", true, KindAny, []findingKind{argumentType}},
-		{"true > false", true, KindBool, []findingKind{operandType}},
-		{"null <= 0", true, KindBool, []findingKind{operandType}},
+		{"fromJSON('[]') == 0", false, KindBool, nil},
+		{"fromJSON('{}') >= 0", false, KindBool, nil},
+		{"contains(null, '')", true, KindBool, nil},
+		{"startsWith(true, 'TR')", true, KindBool, nil},
+		{"true > false", true, KindBool, nil},
+		{"null <= 0", true, KindBool, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			node, ty := checkGitHubReference(t, tc.input, tc.kinds...)

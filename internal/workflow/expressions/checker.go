@@ -14,10 +14,10 @@ import (
 )
 
 type typedExpr struct {
-	ty  exprlang.Type
-	pos workflowlang.Pos
-	// A known row can be invalid in a template even when other rows merge to any.
-	templateInvalid exprlang.Type
+	ty         exprlang.Type
+	semantics  exprlang.ExpressionCheckResult
+	pos        workflowlang.Pos
+	refinement expressionRefinement
 }
 
 // Checker validates expression syntax and types in workflow declarations.

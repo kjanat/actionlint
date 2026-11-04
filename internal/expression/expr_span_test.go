@@ -13,7 +13,6 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 		{`startWith('a', 'b').x`, `undefined function`, `startWith`},
 		{`contains('a')[0]`, `number of arguments`, `contains`},
 		{`env[fromJSON('true')]`, `property access of object`, `fromJSON('true')`},
-		{`startsWith(fromJSON('true'), 'x')`, `argument of function call`, `fromJSON('true')`},
 		{`(fromJSON('{"a":1}'))['b']`, `property "b"`, `(fromJSON('{"a":1}'))['b']`},
 		{`env[(true)]`, `property access of object`, `(true)`},
 	} {

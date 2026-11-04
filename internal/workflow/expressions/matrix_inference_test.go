@@ -14,7 +14,7 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 		{"numeric expression command", `item: "${{ github.event.workflow_run.pull_requests.*.number }}"`, `${{ matrix.item }}`, "number", true},
 		{"string sequence remains unsafe", `item: ["${{ github.head_ref }}"]`, `echo '${{ matrix.item }}'`, "string", true},
 		{"numeric includes merge", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: [{item: 42}]`, `echo '${{ matrix.item }}'`, "number", false},
-		{"string includes merge", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: [{item: 'bad"value'}]`, `echo '${{ matrix.item }}'`, "string", true},
+		{"mixed includes merge", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: [{item: 'bad"value'}]`, `echo '${{ matrix.item }}'`, "any", true},
 		{"unknown include does not inherit row type", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: [{item: "${{ github.head_ref }}"}]`, `echo '${{ matrix.item }}'`, "any", true},
 		{"unknown include array does not inherit row type", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: "${{ fromJSON(vars.INCLUDE) }}"`, `echo '${{ matrix.item }}'`, "any", true},
 		{"unknown excludes preserve numeric row type", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", exclude: "${{ fromJSON(vars.EXCLUDE) }}"`, `echo '${{ matrix.item }}'`, "number", false},

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
@@ -31,74 +30,20 @@ func ordinal(i int) string {
 	return fmt.Sprintf("%d%s", i, suffix)
 }
 
-// parseFormatFuncSpecifiers parses the format String passed to `format()` calls.
-// https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#format
-func parseFormatFuncSpecifiers(f string, n int) map[int]struct{} {
-	ret := make(map[int]struct{}, n)
-
-	const none int = -1
-	start, end := none, none
-
-	for i, r := range f {
-		// Before specifier
-		if start == none {
-			if r == '{' {
-				// Opening brace
-				start = i + 1
-			}
-			continue
-		}
-
-		// Inside specifier
-		if end == none {
-			switch {
-			case r == '{' && i == start:
-				// Escaped '{'
-				start = none
-			case r == '}':
-				if i == start {
-					// Empty specifier '{}'
-					start = none
-				} else {
-					// Closing brace.
-					end = i
-				}
-			case r < '0' || r > '9':
-				if r == '{' {
-					start = i + 1
-				} else {
-					start = none
-				}
-			}
-			continue
-		}
-
-		// After specifier
-		if r == '}' {
-			// Parsing specifier needs to be delayed while '}' continues.
-			continue
-		}
-		if (i-end)%2 == 1 {
-			// Odd number of closing braces means the specifier closed. For example '{0}}}' contains
-			// a specifier but '{0}}}}' doesn't.
-			v, _ := strconv.Atoi(f[start:end])
-			ret[v] = struct{}{}
-		}
-		if r == '{' {
-			start = i + 1
-		} else {
-			start = none
-		}
-		end = none
+// parseFormatFuncSpecifiers returns references from a syntactically valid template.
+// The argument count is checked separately by the call's format plan.
+func parseFormatFuncSpecifiers(format string, capacity int) map[int]struct{} {
+	references := make(map[int]struct{}, capacity)
+	plan := planFormat(format, 256)
+	if !plan.valid {
+		return references
 	}
-
-	// When the input ends while '}' continues at end of specifier
-	if start > none && end > none && (len(f)-end)%2 == 1 {
-		v, _ := strconv.Atoi(f[start:end])
-		ret[v] = struct{}{}
+	for _, part := range plan.parts {
+		if part.index >= 0 {
+			references[part.index] = struct{}{}
+		}
 	}
-
-	return ret
+	return references
 }
 
 // Functions
@@ -107,17 +52,25 @@ func parseFormatFuncSpecifiers(f string, n int) map[int]struct{} {
 type FuncSignature struct {
 	// Name is a name of the function.
 	Name string
-	// Ret is a return type of the function.
+	// Ret declares the function's return domain, including for invalid calls.
+	// A known result can refine this domain without replacing the declaration.
 	Ret Type
-	// Params is a list of parameter types of the function. The final element of this list might
-	// be repeated as variable length arguments.
+	// Params describes the types consumed after parameter conversion. Accepted
+	// source types, conversion outcomes and converted values are recorded separately
+	// for each argument. The final parameter repeats for variadic signatures.
 	Params []Type
 	// VariableLengthParams is a flag to handle variable length parameters. When this flag is set to
 	// true, it means that the last type of params might be specified multiple times (including zero
 	// times). Setting true implies length of Params is more than 0.
 	VariableLengthParams bool
+	// MaxParams is a parser limit. Zero means the signature has no upper limit.
+	MaxParams int
 	// IsConstFunc is true when the function returns a constant when all parameters are constants.
 	IsConstFunc bool
+	// CompositeStringFallback accepts composite values without string conversion.
+	CompositeStringFallback bool
+	// EvaluationPolicy describes which arguments the function evaluates.
+	EvaluationPolicy FunctionEvaluationPolicy
 }
 
 func (sig *FuncSignature) String() string {
@@ -138,8 +91,10 @@ func (sig *FuncSignature) String() string {
 var BuiltinFuncSignatures = map[string][]*FuncSignature{
 	"contains": {
 		{
-			Name: "contains",
-			Ret:  BoolType(),
+			Name:                    "contains",
+			EvaluationPolicy:        EvaluateContains,
+			CompositeStringFallback: true,
+			Ret:                     BoolType(),
 			Params: []Type{
 				StringType(),
 				StringType(),
@@ -147,8 +102,10 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 			IsConstFunc: true,
 		},
 		{
-			Name: "contains",
-			Ret:  BoolType(),
+			Name:                    "contains",
+			EvaluationPolicy:        EvaluateContains,
+			CompositeStringFallback: true,
+			Ret:                     BoolType(),
 			Params: []Type{
 				NewArrayType(AnyType()).Type(),
 				AnyType(),
@@ -157,8 +114,10 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		},
 	},
 	"startswith": {{
-		Name: "startsWith",
-		Ret:  BoolType(),
+		Name:                    "startsWith",
+		EvaluationPolicy:        EvaluateStringPredicate,
+		CompositeStringFallback: true,
+		Ret:                     BoolType(),
 		Params: []Type{
 			StringType(),
 			StringType(),
@@ -166,8 +125,10 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		IsConstFunc: true,
 	}},
 	"endswith": {{
-		Name: "endsWith",
-		Ret:  BoolType(),
+		Name:                    "endsWith",
+		EvaluationPolicy:        EvaluateStringPredicate,
+		CompositeStringFallback: true,
+		Ret:                     BoolType(),
 		Params: []Type{
 			StringType(),
 			StringType(),
@@ -175,13 +136,17 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		IsConstFunc: true,
 	}},
 	"format": {{
-		Name:        "format",
-		Ret:         StringType(),
-		Params:      []Type{StringType()},
-		IsConstFunc: true,
+		Name:             "format",
+		EvaluationPolicy: EvaluateFormat,
+		MaxParams:        255,
+		Ret:              StringType(),
+		Params:           []Type{StringType()},
+		IsConstFunc:      true,
 	}, {
-		Name: "format",
-		Ret:  StringType(),
+		Name:             "format",
+		EvaluationPolicy: EvaluateFormat,
+		MaxParams:        255,
+		Ret:              StringType(),
 		Params: []Type{
 			StringType(),
 			AnyType(), // variable length
@@ -191,32 +156,40 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 	}},
 	"join": {
 		{
-			Name:        "join",
-			Ret:         StringType(),
-			Params:      []Type{StringType()},
-			IsConstFunc: true,
+			Name:                    "join",
+			EvaluationPolicy:        EvaluateJoin,
+			CompositeStringFallback: true,
+			Ret:                     StringType(),
+			Params:                  []Type{StringType()},
+			IsConstFunc:             true,
 		},
 		{
-			Name:        "join",
-			Ret:         StringType(),
-			Params:      []Type{StringType(), StringType()},
-			IsConstFunc: true,
+			Name:                    "join",
+			EvaluationPolicy:        EvaluateJoin,
+			CompositeStringFallback: true,
+			Ret:                     StringType(),
+			Params:                  []Type{StringType(), StringType()},
+			IsConstFunc:             true,
 		},
 		{
-			Name: "join",
-			Ret:  StringType(),
+			Name:                    "join",
+			EvaluationPolicy:        EvaluateJoin,
+			CompositeStringFallback: true,
+			Ret:                     StringType(),
 			Params: []Type{
-				NewArrayType(StringType()).Type(),
+				NewArrayType(AnyType()).Type(),
 				StringType(),
 			},
 			IsConstFunc: true,
 		},
 		// When the second parameter is omitted, values are concatenated with ','.
 		{
-			Name: "join",
-			Ret:  StringType(),
+			Name:                    "join",
+			EvaluationPolicy:        EvaluateJoin,
+			CompositeStringFallback: true,
+			Ret:                     StringType(),
 			Params: []Type{
-				NewArrayType(StringType()).Type(),
+				NewArrayType(AnyType()).Type(),
 			},
 			IsConstFunc: true,
 		},
@@ -238,8 +211,9 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		IsConstFunc: true,
 	}},
 	"hashfiles": {{
-		Name: "hashFiles",
-		Ret:  StringType(),
+		Name:      "hashFiles",
+		MaxParams: 255,
+		Ret:       StringType(),
 		Params: []Type{
 			StringType(),
 		},
@@ -266,8 +240,10 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		Params: []Type{},
 	}},
 	"case": {{
-		Name: "case",
-		Ret:  AnyType(),
+		Name:             "case",
+		EvaluationPolicy: EvaluateCase,
+		MaxParams:        255,
+		Ret:              AnyType(),
 		Params: []Type{
 			BoolType(),
 			AnyType(),
@@ -405,6 +381,7 @@ var BuiltinGlobalVariableTypes = map[string]Type{
 // - https://docs.github.com/en/actions/learn-github-actions/expressions
 type Checker struct {
 	skipEvaluation        bool
+	conditionalEvaluation bool
 	funcs                 map[string][]*FuncSignature
 	vars                  map[string]Type
 	errs                  []*Error
@@ -417,6 +394,10 @@ type Checker struct {
 	configSecrets         []string
 	condition             bool
 	checks                Checks
+	callFacts             map[*FuncCallNode]FunctionCallFacts
+	evaluationInvalid     bool
+	validationFailed      bool
+	staticInvalid         bool
 }
 
 // NewChecker creates new Checker instance. When checkUntrustedInput is
@@ -455,8 +436,28 @@ func errorfAtExpr(kind findingKind, e Node, format string, args ...any) *Error {
 	return errorAtExpr(kind, e, fmt.Sprintf(format, args...))
 }
 
+// validationError records the semantic failure independently of its finding.
+func (sema *Checker) validationError(err *Error) {
+	sema.validationFailed = true
+	sema.staticInvalid = true
+	sema.errs = append(sema.errs, err)
+}
+
+// evaluationError records a runtime failure only when the expression is demanded.
+// A possible argument failure stays local to that argument's evaluation facts.
+func (sema *Checker) evaluationError(err *Error) {
+	if sema.skipEvaluation {
+		return
+	}
+	sema.evaluationInvalid = true
+	if !sema.conditionalEvaluation {
+		sema.validationFailed = true
+		sema.errs = append(sema.errs, err)
+	}
+}
+
 func (sema *Checker) errorf(kind findingKind, e Node, format string, args ...any) {
-	sema.errs = append(sema.errs, errorfAtExpr(kind, e, format, args...))
+	sema.validationError(errorfAtExpr(kind, e, format, args...))
 }
 
 func errorfAtCallee(kind findingKind, n *FuncCallNode, format string, args ...any) *Error {
@@ -464,7 +465,7 @@ func errorfAtCallee(kind findingKind, n *FuncCallNode, format string, args ...an
 }
 
 func (sema *Checker) calleeErrorf(kind findingKind, n *FuncCallNode, format string, args ...any) {
-	sema.errs = append(sema.errs, errorfAtCallee(kind, n, format, args...))
+	sema.validationError(errorfAtCallee(kind, n, format, args...))
 }
 
 func (sema *Checker) ensureVarsCopied() {
@@ -1001,60 +1002,151 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 	return AnyType()
 }
 
-func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []Type) *Error {
+// argumentValueState distinguishes an unknown value from a rejected conversion.
+type argumentValueState uint8
+
+const (
+	argumentUnknown argumentValueState = iota
+	argumentKnown
+	argumentInvalid
+)
+
+type callArgument struct {
+	source Type
+	value  any
+	state  argumentValueState
+	demand ArgumentDemand
+	format *formatPlan
+}
+
+// ArgumentConversion identifies the conversion applied by a parameter.
+type ArgumentConversion uint8
+
+const (
+	ConversionNone ArgumentConversion = iota
+	ConversionString
+	ConversionUnavailable
+)
+
+// parameterMatch keeps the source argument, parameter contract and converted
+// value separate. Unknown values remain unknown even when their type is accepted.
+type parameterMatch struct {
+	argument   callArgument
+	accepted   bool
+	parameter  Type
+	conversion ArgumentConversion
+	converted  Type
+	value      any
+	state      argumentValueState
+}
+
+func matchParameter(parameter Type, arg callArgument, compositeFallback bool) parameterMatch {
+	m := parameterMatch{argument: arg, accepted: true, parameter: parameter, converted: arg.source, value: arg.value, state: arg.state}
+	actual := arg.source
+	if actual.Kind() == KindAny && arg.state == argumentKnown {
+		actual = TypeOfJSONValue(arg.value)
+	}
+	if parameter.Kind() == KindString {
+		switch actual.Kind() {
+		case KindBool, KindNull, KindNumber, KindArray, KindObject:
+			if compositeFallback && (actual.Kind() == KindArray || actual.Kind() == KindObject) {
+				m.conversion = ConversionUnavailable
+				return m
+			}
+			m.conversion = ConversionString
+			m.converted = StringType()
+			if m.state == argumentKnown {
+				if value, ok := constantFunctionString(m.value); ok {
+					m.value = value
+				} else {
+					m.value, m.state = nil, argumentUnknown
+				}
+			}
+			return m
+		}
+	}
+	if p, ok := parameter.Array(); ok {
+		if a, ok := actual.Array(); ok {
+			// Array parameters consume the original elements. Scalar string
+			// conversion does not imply that an entire array is normalized.
+			elem := matchParameter(p.Elem(), callArgument{source: a.Elem()}, false)
+			if !elem.accepted || elem.conversion != ConversionNone {
+				m.accepted = false
+				m.state = argumentInvalid
+			}
+			return m
+		}
+	}
+	// Function acceptance is a separate contract from Type.Assignable,
+	// which also includes expression-level boolean and string compatibility.
+	if parameter.Kind() != KindAny && actual.Kind() != KindAny &&
+		(parameter.Kind() != actual.Kind() || (parameter.Kind() == KindObject && !parameter.Assignable(actual))) {
+		m.accepted = false
+		m.state = argumentInvalid
+	}
+	return m
+}
+
+type signatureMatch struct {
+	signature  *FuncSignature
+	arityValid bool
+	arguments  []parameterMatch
+	err        *Error
+}
+
+func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []callArgument) signatureMatch {
+	match := signatureMatch{signature: sig}
 	lp, la := len(sig.Params), len(args)
+	if sig.MaxParams > 0 && la > sig.MaxParams {
+		match.err = errorfAtCallee(argumentCount, n, "function %q takes at most %d arguments but %d arguments are given", n.Callee, sig.MaxParams, la)
+		return match
+	}
 	if sig.VariableLengthParams && (lp > la) || !sig.VariableLengthParams && lp != la {
 		atLeast := ""
 		if sig.VariableLengthParams {
 			atLeast = "at least "
 		}
-		return errorfAtCallee(argumentCount,
-			n,
+		match.err = errorfAtCallee(argumentCount, n,
 			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
-			sig.String(),
-			atLeast,
-			lp,
-			la,
-		)
+			sig.String(), atLeast, lp, la)
+		return match
 	}
-
-	for i := range len(sig.Params) {
-		p, a := sig.Params[i], args[i]
-		if !p.Assignable(a) {
-			return errorfAtExpr(argumentType,
-				n.Args[i],
+	if sig.EvaluationPolicy == EvaluateCase && la%2 == 0 {
+		match.err = errorfAtCallee(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", la)
+		return match
+	}
+	match.arityValid = true
+	for i, arg := range args {
+		p := sig.parameterAt(i, la)
+		m := matchParameter(p, arg, sig.CompositeStringFallback)
+		match.arguments = append(match.arguments, m)
+		if !m.accepted && match.err == nil {
+			match.err = errorfAtExpr(argumentType, n.Args[i],
 				"%s argument of function call is not assignable. %q cannot be assigned to %q. called function type is %q",
-				ordinal(i+1),
-				a.String(),
-				p.String(),
-				sig.String(),
-			)
+				ordinal(i+1), arg.source.String(), p.String(), sig.String())
 		}
 	}
-
-	// A variadic signature requires its listed parameters; optional tails are
-	// represented by a separate overload, as with format(String).
-	if sig.VariableLengthParams {
-		rest := args[lp:]
-		p := sig.Params[lp-1]
-		for i, a := range rest {
-			if !p.Assignable(a) {
-				return errorfAtExpr(argumentType,
-					n.Args[lp+i],
-					"%s argument of function call is not assignable. %q cannot be assigned to %q. called function type is %q",
-					ordinal(lp+i+1),
-					a.String(),
-					p.String(),
-					sig.String(),
-				)
-			}
-		}
-	}
-
-	return nil
+	return match
 }
 
-func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) Type {
+// commonReturn reports a return contract only when every candidate declares
+// the same type. Type.Merge has expression-specific coercion semantics and is
+// not a union of overload return contracts.
+func commonReturn(matches []signatureMatch) (Type, bool) {
+	if len(matches) == 0 {
+		return AnyType(), false
+	}
+	ret := matches[0].signature.Ret
+	for _, match := range matches[1:] {
+		if !ret.Equal(match.signature.Ret) {
+			return AnyType(), false
+		}
+	}
+	return ret, true
+}
+
+func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, match signatureMatch) Type {
+	sig := match.signature
 	if sema.skipEvaluation && (strings.EqualFold(n.Callee, "fromJSON") || strings.EqualFold(n.Callee, "format")) {
 		return sig.Ret
 	}
@@ -1069,66 +1161,110 @@ func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) T
 	// Special checks for specific built-in functions
 	switch strings.ToLower(n.Callee) {
 	case "format":
-		lit, ok := n.Args[0].(*StringNode)
-		if !ok {
+		arg := match.arguments[0]
+		format, ok := arg.value.(string)
+		if arg.state != argumentKnown || !ok {
 			return sig.Ret
 		}
 		l := len(n.Args) - 1 // -1 means removing first format string argument
-
-		holders := parseFormatFuncSpecifiers(lit.Value, l)
-
+		plan, _ := argumentFormatPlan(&match.arguments[0].argument, l)
 		for i := range l {
-			if _, ok := holders[i]; !ok {
-				sema.calleeErrorf(formatPlaceholder, n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
-				continue
+			if !plan.references(i) {
+				finding := errorfAtCallee(formatPlaceholder, n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", format, i)
+				finding.Advisory = true
+				sema.errs = append(sema.errs, finding)
 			}
-			delete(holders, i) // forget it to check unused placeholders
 		}
-
-		for i := range holders {
-			sema.calleeErrorf(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
+		missing := false
+		for _, part := range plan.parts {
+			if part.index >= l {
+				missing = true
+				sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", format, part.index, l))
+			}
+		}
+		if !plan.valid && !missing {
+			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q has an invalid placeholder", format))
+		}
+		if plan.valid {
+			for _, part := range plan.parts {
+				if part.index >= 0 && match.arguments[part.index+1].argument.state == argumentInvalid {
+					break
+				}
+				if part.specifier != "" {
+					sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q uses unsupported format specifier %q", format, part.specifier))
+					break
+				}
+			}
 		}
 	case "fromjson":
-		lit, ok := n.Args[0].(*StringNode)
-		if !ok {
+		arg := match.arguments[0]
+		input, ok := arg.value.(string)
+		if arg.state != argumentKnown || !ok {
 			return sig.Ret
 		}
-		value, collisions, err := readFromJSON(lit.Value)
+		value, collisions, err := readFromJSON(input)
 		if err != nil && !errors.Is(err, errFromJSONUnsupported) {
 			if syntax, ok := errors.AsType[*fromJSONError](err); ok {
-				sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON() at offset %d: %s", syntax.Offset, syntax)
+				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON() at offset %d: %s", syntax.Offset, syntax))
 			} else {
-				sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON(): %s", err)
+				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON(): %s", err))
 			}
 			return sig.Ret
 		}
 		for _, collision := range collisions {
-			sema.errorf(jsonCollision, lit, "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)
+			sema.errorf(jsonCollision, n.Args[0], "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)
 		}
 		if len(collisions) > 0 || err != nil {
 			return sig.Ret
 		}
 		return TypeOfJSONValue(value)
-	case "case":
-		if len(n.Args)%2 == 0 {
-			sema.calleeErrorf(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
-		}
 	}
 
 	return sig.Ret
 }
 
-func (sema *Checker) checkExpressionBranch(node Node, skipped bool) Type {
-	previous := sema.skipEvaluation
-	sema.skipEvaluation = previous || skipped
+func (sema *Checker) checkDemandedExpression(node Node, demand ArgumentDemand) (Type, bool) {
+	previousInvalid := sema.evaluationInvalid
+	previousConditional := sema.conditionalEvaluation
+	previousSkipped := sema.skipEvaluation
+	sema.evaluationInvalid = false
+	sema.conditionalEvaluation = previousConditional || demand == DemandConditional
+	sema.skipEvaluation = previousSkipped || demand == DemandSkipped
 	ty := sema.check(node)
-	sema.skipEvaluation = previous
+	invalid := sema.evaluationInvalid
+	sema.evaluationInvalid = previousInvalid || (invalid && demand == DemandRequired)
+	sema.conditionalEvaluation = previousConditional
+	sema.skipEvaluation = previousSkipped
+	return ty, invalid
+}
+
+func (sema *Checker) checkExpressionBranch(node Node, demand ArgumentDemand) Type {
+	ty, _ := sema.checkDemandedExpression(node, demand)
 	return ty
 }
 
-func (sema *Checker) checkCaseCall(n *FuncCallNode) Type {
+func (sema *Checker) checkCallArgument(node Node, demand ArgumentDemand) callArgument {
+	ty, invalid := sema.checkDemandedExpression(node, demand)
+	arg := callArgument{source: ty, demand: demand}
+	if invalid && demand != DemandSkipped {
+		arg.state = argumentInvalid
+	} else if demand != DemandSkipped {
+		if value, known := ConditionConstantValue(node); known {
+			arg.value, arg.state = value, argumentKnown
+		}
+	}
+	return arg
+}
+
+func (sema *Checker) checkCaseCall(n *FuncCallNode, sig *FuncSignature) Type {
 	sema.checkSpecialFunctionAvailability(n)
-	ty, _ := sema.checkCaseBranches(n.Args, true)
+	var alternatives []Type
+	args := make([]callArgument, 0, len(n.Args))
+	ty, _ := sema.checkCaseBranches(n.Args, &alternatives, &args, len(n.Args))
+	sema.recordCallArguments(n, checkFuncSignature(n, sig, args))
+	facts := sema.callFacts[n]
+	facts.RefinedAlternatives = alternatives
+	sema.callFacts[n] = facts
 	return ty
 }
 
@@ -1137,29 +1273,52 @@ func (sema *Checker) checkCaseCall(n *FuncCallNode) Type {
 // Predicates never contribute. Branches made unreachable by constant predicates
 // are still checked but skip evaluation, so their types are left out of the
 // merge. The second result reports whether any branch in args was reachable.
-func (sema *Checker) checkCaseBranches(args []Node, remaining bool) (Type, bool) {
+func (sema *Checker) checkCaseBranches(args []Node, alternatives *[]Type, checked *[]callArgument, count int) (Type, bool) {
+	check := func(node Node) callArgument {
+		demand := argumentDemand(EvaluateCase, len(*checked), count, *checked)
+		arg := sema.checkCallArgument(node, demand)
+		*checked = append(*checked, arg)
+		return arg
+	}
 	if len(args) == 1 {
-		return sema.checkExpressionBranch(args[0], !remaining), remaining
+		arg := check(args[0])
+		reachable := arg.demand != DemandSkipped
+		if reachable {
+			*alternatives = append(*alternatives, arg.source)
+		}
+		return arg.source, reachable
 	}
-	ty := sema.checkExpressionBranch(args[0], !remaining)
-	if k := ty.Kind(); remaining && !sema.skipEvaluation && k != KindBool && k != KindAny {
-		sema.errorf(operandType, args[0], "case() predicate must be boolean but found %s", ty.String())
+	arg := check(args[0])
+	ty := arg.source
+	if match := matchParameter(BoolType(), arg, false); !match.accepted && arg.demand != DemandSkipped && !sema.skipEvaluation {
+		previousInvalid := sema.evaluationInvalid
+		previous := sema.conditionalEvaluation
+		sema.conditionalEvaluation = previous || arg.demand == DemandConditional
+		actual := ty
+		if arg.state == argumentKnown {
+			actual = TypeOfJSONValue(arg.value)
+		}
+		sema.evaluationError(errorfAtExpr(operandType, args[0], "case() predicate must be boolean but found %s", actual.String()))
+		sema.conditionalEvaluation = previous
+		if arg.demand != DemandRequired {
+			sema.evaluationInvalid = previousInvalid
+		}
 	}
-	value, known := ConditionConstantValue(args[0])
-	predicate, boolean := value.(bool)
-	valueReachable := remaining && (!known || !boolean || predicate)
+	var valueArgument callArgument
 	valueType := sema.withEventGuard(args[0], true, func() Type {
-		return sema.checkExpressionBranch(args[1], !valueReachable)
+		valueArgument = check(args[1])
+		return valueArgument.source
 	})
-	if known && boolean && predicate {
-		remaining = false
+	valueReachable := valueArgument.demand != DemandSkipped
+	if valueReachable {
+		*alternatives = append(*alternatives, valueType)
 	}
 	// Later predicates and the default are reachable only when this predicate
 	// is false. Keep those guards nested so all earlier exclusions apply.
 	var restType Type
 	var restReachable bool
 	sema.withEventGuard(args[0], false, func() Type {
-		restType, restReachable = sema.checkCaseBranches(args[2:], remaining)
+		restType, restReachable = sema.checkCaseBranches(args[2:], alternatives, checked, count)
 		return restType
 	})
 	switch {
@@ -1167,6 +1326,8 @@ func (sema *Checker) checkCaseBranches(args []Node, remaining bool) (Type, bool)
 		return valueType.Merge(restType), true
 	case valueReachable:
 		return valueType, true
+	case !restReachable:
+		return AnyType(), false
 	default:
 		return restType, restReachable
 	}
@@ -1198,11 +1359,6 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 		return AnyType()
 	}
 
-	// The runner's expression parser limits these variadic functions to 255 arguments.
-	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/DTExpressions2/Expressions2/ExpressionConstants.cs
-	if (callee == "hashfiles" || callee == "format" || callee == "case") && len(n.Args) > 255 {
-		sema.calleeErrorf(argumentCount, n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
-	}
 	if sema.jobCondition && (callee == "success" || callee == "failure") && len(n.Args) > 0 {
 		sigs = []*FuncSignature{{
 			Name:                 callee,
@@ -1212,29 +1368,122 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 		}}
 	}
 
-	if callee == "case" && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
-		return sema.checkCaseCall(n)
-	}
-	tys := make([]Type, 0, len(n.Args))
-	for _, a := range n.Args {
-		tys = append(tys, sema.check(a))
-	}
-
-	// Check all overloads
-	errs := []*Error{}
+	declared := make([]Type, 0, len(sigs))
 	for _, sig := range sigs {
-		err := checkFuncSignature(n, sig, tys)
-		if err == nil {
-			// When one of overload pass type Check, overload was resolved correctly
-			return sema.checkBuiltinFuncCall(n, sig)
+		if !slices.ContainsFunc(declared, func(ty Type) bool { return ty.Equal(sig.Ret) }) {
+			declared = append(declared, sig.Ret)
 		}
-		errs = append(errs, err)
+	}
+	sema.callFacts[n] = FunctionCallFacts{DeclaredReturns: declared}
+
+	policy := sigs[0].EvaluationPolicy
+	if policy == EvaluateCase && len(n.Args) >= 3 && len(n.Args)%2 == 1 && (sigs[0].MaxParams == 0 || len(n.Args) <= sigs[0].MaxParams) {
+		return sema.checkCaseCall(n, sigs[0])
+	}
+	args := make([]callArgument, len(n.Args))
+	if len(n.Args) > 0 {
+		args[0] = sema.checkCallArgument(n.Args[0], DemandRequired)
+		blocked := args[0].state == argumentInvalid
+		for _, index := range argumentExecutionOrder(policy, len(n.Args), args) {
+			demand := argumentDemand(policy, index, len(n.Args), args)
+			if blocked {
+				demand = DemandSkipped
+			}
+			args[index] = sema.checkCallArgument(n.Args[index], demand)
+			blocked = blocked || (demand == DemandRequired && args[index].state == argumentInvalid)
+		}
 	}
 
-	// All candidates failed
-	sema.errs = append(sema.errs, errs...)
+	var candidates, accepted []signatureMatch
+	for _, sig := range sigs {
+		match := checkFuncSignature(n, sig, args)
+		candidates = append(candidates, match)
+		if match.err == nil {
+			accepted = append(accepted, match)
+		}
+	}
+	if len(accepted) == 0 {
+		// Arity is checked during parsing even in an unevaluated branch.
+		// Conversion failures only matter when the call is evaluated.
+		matchingArity := slices.DeleteFunc(slices.Clone(candidates), func(candidate signatureMatch) bool { return !candidate.arityValid })
+		if len(matchingArity) > 0 {
+			for _, candidate := range matchingArity {
+				sema.evaluationError(candidate.err)
+			}
+			sema.recordCallArguments(n, matchingArity[0])
+		} else {
+			for _, candidate := range candidates {
+				sema.validationError(candidate.err)
+			}
+			if len(candidates) > 0 {
+				sema.recordCallArguments(n, candidates[0])
+			}
+		}
+		ret, _ := commonReturn(candidates)
+		return ret
+	}
+	_, common := commonReturn(accepted)
+	if !common {
+		return AnyType()
+	}
+	match := accepted[0]
+	// Prefer the overload requiring fewer conversions or fallback behaviors.
+	score := func(candidate signatureMatch) int {
+		n := 0
+		for _, arg := range candidate.arguments {
+			if arg.conversion != ConversionNone {
+				n++
+			}
+		}
+		return n
+	}
+	for _, candidate := range accepted[1:] {
+		if score(candidate) < score(match) {
+			match = candidate
+		}
+	}
+	if sema.checks.SuspiciousCoercion {
+		for i, arg := range match.arguments {
+			if !sema.skipEvaluation && arg.argument.demand != DemandSkipped && arg.conversion == ConversionString && (arg.argument.source.Kind() == KindBool || arg.argument.source.Kind() == KindNull) {
+				operation := "converts"
+				if sema.conditionalEvaluation || arg.argument.demand == DemandConditional {
+					operation = "may convert"
+				}
+				sema.ruleError(n.Args[i], "coercion", fmt.Sprintf("%s argument of %s() %s %s to a string; check whether a string value was intended", ordinal(i+1), n.Callee, operation, arg.argument.source))
+			}
+		}
+	}
+	// Refinement uses the selected call and cannot replace its declared return
+	// contract when matching overloads have different returns.
+	refined := sema.checkBuiltinFuncCall(n, match)
+	sema.recordCallArguments(n, match)
+	facts := sema.callFacts[n]
+	if !refined.Equal(match.signature.Ret) {
+		facts.RefinedAlternatives = []Type{refined}
+	}
+	sema.callFacts[n] = facts
+	return refined
+}
 
-	return AnyType()
+func (sema *Checker) recordCallArguments(n *FuncCallNode, match signatureMatch) {
+	facts := sema.callFacts[n]
+	for _, arg := range match.arguments {
+		value := EvaluationResult{State: EvaluationState(arg.state), Value: arg.value}
+		if arg.argument.demand == DemandSkipped {
+			value = EvaluationResult{State: EvaluationUnknown}
+		}
+		facts.Arguments = append(facts.Arguments, FunctionArgumentFacts{
+			Source:      arg.argument.source,
+			SourceValue: EvaluationResult{State: EvaluationState(arg.argument.state), Value: arg.argument.value},
+			Accepted:    arg.accepted,
+			Demand:      arg.argument.demand,
+			Parameter:   arg.parameter,
+			Converted:   arg.converted,
+			Conversion:  arg.conversion,
+			Value:       value,
+		})
+	}
+	sema.callFacts[n] = facts
 }
 
 func (sema *Checker) checkNotOp(n *NotOpNode) Type {
@@ -1245,45 +1494,18 @@ func (sema *Checker) checkNotOp(n *NotOpNode) Type {
 	return BoolType()
 }
 
-func validateCompareOpOperands(op CompareOpNodeKind, l, r Type) bool {
-	// Comparison behavior: https://docs.github.com/en/actions/learn-github-actions/expressions#operators
-	switch op {
-	case CompareOpNodeKindEq, CompareOpNodeKindNotEq:
-		switch l.Kind() {
-		case KindAny, KindNull:
-			return true
-		case KindNumber, KindBool, KindString:
-			// Objects and arrays are coerced to NaN hence the comparison result is always false
-			return r.Kind() != KindObject && r.Kind() != KindArray
-		case KindObject:
-			k := r.Kind()
-			return k == KindObject || k == KindNull || k == KindAny
-		case KindArray:
-			if la, ok := l.Array(); ok {
-				if ra, ok := r.Array(); ok {
-					return validateCompareOpOperands(op, la.Elem(), ra.Elem())
-				}
-			}
-			k := r.Kind()
-			return k == KindNull || k == KindAny
-		}
-		panic("unreachable")
-	case CompareOpNodeKindLess, CompareOpNodeKindLessEq, CompareOpNodeKindGreater, CompareOpNodeKindGreaterEq:
-		// null, bool, array, and object cannot be compared with these operators
-		switch l.Kind() {
-		case KindAny, KindNumber, KindString:
-			k := r.Kind()
-			return k != KindNull && k != KindBool && k != KindObject && k != KindArray
-		case KindNull, KindBool, KindObject, KindArray:
-			return false
-		}
-		panic("unreachable")
-	case CompareOpNodeKindInvalid:
-		// Invalid operators are not rejected here.
-		fallthrough
-	default:
-		return true
+// suspiciousComparison identifies supported comparisons whose conversion can hide
+// a mistaken operand. Unknown types provide no evidence for this warning.
+func suspiciousComparison(op CompareOpNodeKind, left, right Type) bool {
+	l, r := left.Kind(), right.Kind()
+	if l == KindAny || r == KindAny {
+		return false
 	}
+	composite := func(k Kind) bool { return k == KindArray || k == KindObject }
+	if op.IsEqualityOp() {
+		return l != r && (composite(l) || composite(r))
+	}
+	return composite(l) || composite(r) || l == KindNull || r == KindNull || l == KindBool || r == KindBool
 }
 
 func (sema *Checker) checkCompareOp(n *CompareOpNode) Type {
@@ -1291,8 +1513,8 @@ func (sema *Checker) checkCompareOp(n *CompareOpNode) Type {
 	r := sema.check(n.Right)
 	sema.checkConditionComparison(n, l, r)
 
-	if !validateCompareOpOperands(n.Kind, l, r) {
-		sema.errorf(operandType, n, "%q value cannot be compared to %q value with %q operator", l.String(), r.String(), n.Kind.String())
+	if sema.checks.SuspiciousCoercion && suspiciousComparison(n.Kind, l, r) {
+		sema.ruleError(n, "coercion", fmt.Sprintf("comparison of %s and %s with %s uses Actions coercion or NaN; check whether these operand types were intended", l, r, n.Kind))
 	}
 
 	return BoolType()
@@ -1312,13 +1534,13 @@ func (sema *Checker) checkWithNarrowing(n Node, isTruthy bool) Type {
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
 				sema.check(n.Left)
-				return sema.withEventGuard(n.Left, true, func() Type { return sema.check(n.Right) })
+				return sema.withEventGuard(n.Left, true, func() Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 			}
 		case LogicalOpNodeKindOr:
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
 				sema.check(n.Left)
-				return sema.withEventGuard(n.Left, false, func() Type { return sema.check(n.Right) })
+				return sema.withEventGuard(n.Left, false, func() Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 			}
 		case LogicalOpNodeKindInvalid:
 			// Invalid operators are not narrowed.
@@ -1337,15 +1559,13 @@ func (sema *Checker) checkLogicalOp(n *LogicalOpNode) Type {
 		// When `l` is false in `l && r`, its type is `typeof(l)`. Otherwise `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is falsy.
 		left := sema.checkWithNarrowing(n.Left, false)
-		value, known := ConditionConstantValue(n.Left)
-		right := sema.withEventGuard(n.Left, true, func() Type { return sema.checkExpressionBranch(n.Right, known && !ExpressionTruthy(value)) })
+		right := sema.withEventGuard(n.Left, true, func() Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 		return left.Merge(right)
 	case LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
-		value, known := ConditionConstantValue(n.Left)
-		right := sema.withEventGuard(n.Left, false, func() Type { return sema.checkExpressionBranch(n.Right, known && ExpressionTruthy(value)) })
+		right := sema.withEventGuard(n.Left, false, func() Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 		return left.Merge(right)
 	case LogicalOpNodeKindInvalid:
 		// Invalid operators still check both operands.
@@ -1391,11 +1611,84 @@ func (sema *Checker) check(expr Node) Type {
 	}
 }
 
-// Check checks semantics of given expression syntax tree. It returns the type of the expression as
-// the first return value when the Check was successfully done. And it returns all errors found
-// while checking the expression as the second return value.
-func (sema *Checker) Check(expr Node) (Type, []*Error) {
+// EvaluationState distinguishes values, unknown results, runtime failures and
+// expressions whose static validation prevented evaluation.
+type EvaluationState uint8
+
+const (
+	EvaluationUnknown EvaluationState = iota
+	EvaluationKnown
+	EvaluationInvalid
+	// EvaluationNotAttempted means static validation prevented evaluation.
+	EvaluationNotAttempted
+)
+
+// EvaluationResult records a value only when its state is EvaluationKnown.
+type EvaluationResult struct {
+	State EvaluationState
+	Value any
+}
+
+// FunctionArgumentFacts separates the accepted parameter contract from the
+// argument's source type, conversion and demand when its call is evaluated.
+type FunctionArgumentFacts struct {
+	Source      Type
+	SourceValue EvaluationResult
+	Accepted    bool
+	Demand      ArgumentDemand
+	Parameter   Type
+	Converted   Type
+	Conversion  ArgumentConversion
+	Value       EvaluationResult
+}
+
+// ReturnDomainState reports whether a known result fits a declared return.
+type ReturnDomainState uint8
+
+const (
+	ReturnDomainUnknown ReturnDomainState = iota
+	ReturnDomainContainsValue
+	ReturnDomainExcludesValue
+)
+
+// FunctionCallFacts preserves declared returns alongside argument facts and
+// value-dependent refinements.
+type FunctionCallFacts struct {
+	ReturnDomain        ReturnDomainState
+	DeclaredReturns     []Type
+	RefinedAlternatives []Type
+	Arguments           []FunctionArgumentFacts
+}
+
+// ExpressionCheckResult keeps inferred types, findings and failure phases
+// separate. An invalid call can still have a declared return type.
+type ExpressionCheckResult struct {
+	Type       Type
+	Valid      bool
+	Findings   []*Error
+	Evaluation EvaluationResult
+	// Call is nil when the root expression has no known function contract.
+	Call         *FunctionCallFacts
+	FailurePhase FailurePhase
+}
+
+// FailurePhase identifies whether validation rejected the expression or a
+// demanded evaluation failed. Findings alone do not determine this phase.
+type FailurePhase uint8
+
+const (
+	FailureNone FailurePhase = iota
+	FailureStaticValidation
+	FailureEvaluation
+)
+
+// CheckResult checks an expression and returns its independent semantic facts.
+func (sema *Checker) CheckResult(expr Node) ExpressionCheckResult {
 	sema.errs = []*Error{}
+	sema.callFacts = make(map[*FuncCallNode]FunctionCallFacts)
+	sema.evaluationInvalid = false
+	sema.validationFailed = false
+	sema.staticInvalid = false
 	if sema.untrusted != nil {
 		sema.untrusted.Init()
 	}
@@ -1418,7 +1711,92 @@ func (sema *Checker) Check(expr Node) (Type, []*Error) {
 			}
 		}
 	}
-	return ty, errs
+	evaluation := EvaluationResult{State: EvaluationUnknown}
+	phase := FailureNone
+	if sema.staticInvalid {
+		evaluation.State = EvaluationNotAttempted
+		phase = FailureStaticValidation
+	} else if sema.evaluationInvalid {
+		evaluation.State = EvaluationInvalid
+		phase = FailureEvaluation
+	} else if value, known := ConditionConstantValue(expr); known {
+		evaluation = EvaluationResult{State: EvaluationKnown, Value: value}
+	}
+	result := ExpressionCheckResult{Type: ty, Valid: !sema.validationFailed, Findings: errs, Evaluation: evaluation, FailurePhase: phase}
+	if call, ok := expr.(*FuncCallNode); ok {
+		if facts, found := sema.callFacts[call]; found {
+			if evaluation.State == EvaluationKnown {
+				facts.ReturnDomain = ReturnDomainExcludesValue
+				for _, declared := range facts.DeclaredReturns {
+					if returnContainsValue(declared, evaluation.Value) {
+						facts.ReturnDomain = ReturnDomainContainsValue
+						break
+					}
+				}
+			}
+			if facts.ReturnDomain == ReturnDomainContainsValue {
+				actual := TypeOfJSONValue(evaluation.Value)
+				if !actual.Equal(result.Type) {
+					facts.RefinedAlternatives = []Type{actual}
+				}
+			}
+			result.Call = &facts
+		}
+	}
+	return result
+}
+
+// returnContainsValue checks actual values against the declared shape without
+// applying expression coercions or the compatibility rules in Assignable.
+func returnContainsValue(declared Type, value any) bool {
+	if declared.Kind() == KindAny {
+		return true
+	}
+	switch v := value.(type) {
+	case nil:
+		return declared.Kind() == KindNull
+	case bool:
+		return declared.Kind() == KindBool
+	case float64:
+		return declared.Kind() == KindNumber
+	case string:
+		return declared.Kind() == KindString
+	case []any:
+		array, ok := declared.Array()
+		if !ok {
+			return false
+		}
+		for _, item := range v {
+			if !returnContainsValue(array.Elem(), item) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		object, ok := declared.Object()
+		if !ok {
+			return false
+		}
+		shape := object.rep()
+		for name, item := range v {
+			if property, exists := shape.props[strings.ToLower(name)]; exists {
+				if !returnContainsValue(property, item) {
+					return false
+				}
+			} else if shape.mapped == nil || !returnContainsValue(*shape.mapped, item) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+// Check returns the inferred type and findings for compatibility.
+func (sema *Checker) Check(expr Node) (Type, []*Error) {
+	result := sema.CheckResult(expr)
+	return result.Type, result.Findings
 }
 
 // IsConstant returns the given expression is a constant. For example the following expressions

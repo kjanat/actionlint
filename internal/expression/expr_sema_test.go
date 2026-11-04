@@ -511,12 +511,12 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "&& operator with non-bool operands",
 			input:    "10 && 'foo'",
-			expected: StringType(),
+			expected: AnyType(),
 		},
 		{
 			what:     "|| operator with non-bool operands",
 			input:    "'foo' || 42",
-			expected: StringType(),
+			expected: AnyType(),
 		},
 		{
 			what:  "coercing two objects on && operator",
@@ -698,11 +698,6 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "format() function arguments validation",
 			input:    "format('{0}{0}{0} {1}{2}{1} {1}{2}{1}{2} {0} {1}{1}{1} {2}{2}{2} {0}{0}{0}{0} {0}', 1, 'foo', true)",
-			expected: StringType(),
-		},
-		{
-			what:     "braces not for placeholders in format string of format() call",
-			input:    "format('{0} {} {x} {', 1)",
 			expected: StringType(),
 		},
 		{
@@ -942,12 +937,12 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "don't narrow type on nested && operator",
 			input:    "('foo' && 10) && 20",
-			expected: StringType(),
+			expected: AnyType(),
 		},
 		{
 			what:     "don't narrow type on nested || operator",
 			input:    "('foo' || 10) || 20",
-			expected: StringType(),
+			expected: AnyType(),
 		},
 		{
 			what:     "narrowed || operator at LHS and && operator at RHS",
@@ -989,7 +984,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			input: `fromJSON('{"foo":true,"bar":["foo", 12.3],"piyo":null}')`,
 			expected: NewStrictObjectType(map[string]Type{
 				"foo":  BoolType(),
-				"bar":  NewArrayType(StringType()).Type(), // Element type was merged
+				"bar":  NewArrayType(AnyType()).Type(), // Element types differ.
 				"piyo": NullType(),
 			}).Type(),
 		},
@@ -1056,7 +1051,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "case() merges string and number results",
 			input:    "case(github.event_name == 'push', 1, 'fallback')",
-			expected: StringType(),
+			expected: AnyType(),
 		},
 		{
 			what:     "case() unknown default",
@@ -1368,39 +1363,17 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 		},
 		{
-			what:  "wrong type at parameter",
-			input: "startsWith('foo', null)",
-			expected: []string{
-				"2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\"",
-			},
-		},
-		{
-			what:  "wrong type at parameter of overloaded function",
-			input: "contains('foo', null)",
-			expected: []string{
-				"2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\"",
-				"1st argument of function call is not assignable. \"string\" cannot be assigned to \"array<any>\"",
-			},
-		},
-		{
-			what:  "wrong type at rest parameter",
-			input: "hashFiles(null)",
-			expected: []string{
-				"1st argument of function call is not assignable. \"null\" cannot be assigned to \"string\"",
-			},
-		},
-		{
-			what:  "wrong type at rest parameter part2",
-			input: "hashFiles('foo', null)",
-			expected: []string{
-				"2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\"",
-			},
-		},
-		{
 			what:  "less arguments for format() builtin function call",
 			input: "format('format {0} {1}', 'foo')",
 			expected: []string{
 				"format string \"format {0} {1}\" contains placeholder {1} but only 1 arguments are given to format",
+			},
+		},
+		{
+			what:  "unescaped braces in format string of format() call",
+			input: "format('{0} {} {x} {', 1)",
+			expected: []string{
+				"format string \"{0} {} {x} {\" has an invalid placeholder",
 			},
 		},
 		{
@@ -1461,16 +1434,6 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 			matrix: NewStrictObjectType(map[string]Type{
 				"foo": AnyType(),
-			}),
-		},
-		{
-			what:  "type mismatch in matrix value",
-			input: "startsWith('hello', matrix.foo)",
-			expected: []string{
-				"2nd argument of function call is not assignable. \"null\" cannot be assigned to \"string\"",
-			},
-			matrix: NewStrictObjectType(map[string]Type{
-				"foo": NullType(),
 			}),
 		},
 		{
@@ -1794,215 +1757,29 @@ func TestExprSemanticsCheckError(t *testing.T) {
 	}
 }
 
+// Actions defines comparison results for all operand types, including NaN
+// conversion and collection identity. Warnings are selected independently.
 func TestExprCompareOperandsCheck(t *testing.T) {
-	// Matrix of operator -> lhs type -> rhs type -> result
-	// Result `true` means the comparison is allowed. `false` means the comparison causes an error.
-	matrix := map[string]map[string]map[string]bool{
-		"==": {
-			"number": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   true,
-				"null":   true,
-				"object": false,
-				"array":  false,
-			},
-			"string": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   true,
-				"null":   true,
-				"object": false,
-				"array":  false,
-			},
-			"bool": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   true,
-				"null":   true,
-				"object": false,
-				"array":  false,
-			},
-			"null": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   true,
-				"null":   true,
-				"object": true,
-				"array":  true,
-			},
-			"object": {
-				"any":    true,
-				"number": false,
-				"string": false,
-				"bool":   false,
-				"null":   true,
-				"object": true,
-				"array":  false,
-			},
-			"array": {
-				"any":      true,
-				"number":   false,
-				"string":   false,
-				"bool":     false,
-				"null":     true,
-				"object":   false,
-				"array":    true,
-				"array_2d": false,
-			},
-			"array_2d": {
-				"any":      true,
-				"number":   false,
-				"string":   false,
-				"bool":     false,
-				"null":     true,
-				"object":   false,
-				"array":    false,
-				"array_2d": true,
-			},
-			"any": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   true,
-				"null":   true,
-				"object": true,
-				"array":  true,
-			},
-		},
-		"<": {
-			"number": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   false,
-				"null":   false,
-				"object": false,
-				"array":  false,
-			},
-			"string": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   false,
-				"null":   false,
-				"object": false,
-				"array":  false,
-			},
-			"bool": {
-				"any":    false,
-				"number": false,
-				"string": false,
-				"bool":   false,
-				"null":   false,
-				"object": false,
-				"array":  false,
-			},
-			"null": {
-				"any":    false,
-				"number": false,
-				"string": false,
-				"bool":   false,
-				"null":   false,
-				"object": false,
-				"array":  false,
-			},
-			"any": {
-				"any":    true,
-				"number": true,
-				"string": true,
-				"bool":   false,
-				"null":   false,
-				"object": false,
-				"array":  false,
-			},
-			"object": {
-				"any":    false,
-				"number": false,
-				"string": false,
-				"bool":   false,
-				"null":   false,
-				"object": false,
-				"array":  false,
-			},
-			"array": {
-				"any":      false,
-				"number":   false,
-				"string":   false,
-				"bool":     false,
-				"null":     false,
-				"object":   false,
-				"array":    false,
-				"array_2d": false,
-			},
-		},
-	}
-
-	for op, expr := range matrix {
-		for lhs, rest := range expr {
-			for rhs, ok := range rest {
-				input := lhs + " " + op + " " + rhs
+	types := map[string]Type{"number": NumberType(), "text": StringType(), "boolean": BoolType(), "nothing": NullType(), "object": NewEmptyObjectType().Type(), "array": NewArrayType(NumberType()).Type(), "unknown": AnyType()}
+	for _, op := range []string{"==", "!=", "<", "<=", ">", ">="} {
+		for left := range types {
+			for right := range types {
+				input := left + " " + op + " " + right
 				t.Run(input, func(t *testing.T) {
-					p := NewParser()
-					e, err := p.Parse(NewLexer(input + "}}"))
-					if err != nil {
-						t.Fatal("Parse error:", input)
-					}
-
 					c := NewChecker(false, nil)
-					c.vars = map[string]Type{
-						"number":   NumberType(),
-						"string":   StringType(),
-						"bool":     BoolType(),
-						"object":   NewEmptyObjectType().Type(),
-						"array":    NewArrayType(NumberType()).Type(),
-						"array_2d": NewArrayType(NewArrayType(NumberType()).Type()).Type(),
-						"any":      AnyType(),
+					c.vars = types
+					names := make([]string, 0, len(types))
+					for name := range types {
+						names = append(names, name)
 					}
-					c.SetContextAvailability([]string{
-						"any",
-						"number",
-						"string",
-						"bool",
-						"null",
-						"object",
-						"array",
-						"array_2d",
-					})
-
-					ty, errs := c.Check(e)
-					if ok {
-						if len(errs) > 0 {
-							t.Fatal("semantics check failed:", errs)
-						}
-						if ty.Kind() != KindBool {
-							t.Fatalf("wanted bool type but have %q", ty)
-						}
-					} else {
-						if len(errs) != 1 {
-							t.Fatal("more than one error occurred", errs)
-						}
-						msg := errs[0].Error()
-
-						toType := func(n string) string {
-							switch n {
-							case "array":
-								return "array<number>"
-							case "array_2d":
-								return "array<array<number>>"
-							default:
-								return n
-							}
-						}
-						want := fmt.Sprintf("%q value cannot be compared to %q value with %q operator", toType(lhs), toType(rhs), op)
-
-						if !strings.Contains(msg, want) {
-							t.Fatalf("error message %q doesn't contain expected message %q", msg, want)
-						}
+					c.SetContextAvailability(names)
+					node, err := NewParser().Parse(NewLexer(input + "}}"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					ty, findings := c.Check(node)
+					if ty.Kind() != KindBool || len(findings) != 0 {
+						t.Fatalf("type=%s findings=%v", ty, findings)
 					}
 				})
 			}
@@ -2261,7 +2038,6 @@ func TestParseFormatSpecifiers(t *testing.T) {
 		{
 			what: "specifier inside specifier",
 			in:   "{1{0}2}",
-			want: []int{0},
 		},
 		{
 			what: "escaped single",
@@ -2338,7 +2114,6 @@ func TestParseFormatSpecifiers(t *testing.T) {
 		{
 			what: "opening brace after escaped closing brace",
 			in:   "{1}}{2}",
-			want: []int{2},
 		},
 		{
 			what: "escaped opening brace after escaped closing brace",
@@ -2347,7 +2122,6 @@ func TestParseFormatSpecifiers(t *testing.T) {
 		{
 			what: "escaped opening brace after closing brace",
 			in:   "{1}{{2}",
-			want: []int{1},
 		},
 		{
 			what: "kuma-",

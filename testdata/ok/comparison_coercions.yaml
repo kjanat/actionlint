@@ -9,8 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo 'called!'
-        # ERROR: Comparing string to object is always evaluated to false
+        # Valid comparison: the object converts to NaN, producing false.
         if: ${{ github.event == 'workflow_call' }}
       - run: echo 'timeout is too long'
-        # ERROR: Comparing boolean value with `>` doesn't make sense
+        # Valid comparison: the boolean converts to 0 or 1.
         if: ${{ inputs.timeout > 60 }}

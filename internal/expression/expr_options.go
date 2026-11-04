@@ -12,5 +12,6 @@ type Options struct {
 type Checks struct {
 	StringConditions          bool
 	MixedTypeComparisons      bool
+	SuspiciousCoercion        bool
 	CaseInsensitiveConditions bool
 }

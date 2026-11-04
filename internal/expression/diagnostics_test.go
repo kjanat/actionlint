@@ -16,7 +16,6 @@ func TestDiagnosticIdentities(t *testing.T) {
 		{"contains", "expression-call", "missing-call", false},
 		{"contains('x')", "expression-call", "argument-count", false},
 		{"fromJSON('{')", "expression-call", "invalid-json", false},
-		{"contains(github, 'x')", "expression-type", "argument-type", false},
 		{"github.event.issue.title", "script-injection", "untrusted-interpolation", true},
 	} {
 		t.Run(tc.rule+"/"+tc.code, func(t *testing.T) {
