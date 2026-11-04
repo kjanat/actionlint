@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!!**/testdata", "!internal/webhook/payload/catalogue.json"]
+    "includes": ["**", "!!**/*.{yml,yaml}", "!!**/testdata", "!internal/webhook/payload/catalogue.json"]
   },
   "formatter": {
     "enabled": false,
@@ -22,7 +22,8 @@
         "useLiteralKeys": "off"
       },
       "suspicious": {
-        "noControlCharactersInRegex": "off"
+        "noControlCharactersInRegex": "off",
+        "noTemplateCurlyInString": "off"
       }
     },
     "domains": {
