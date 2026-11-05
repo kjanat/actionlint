@@ -19,3 +19,11 @@ func projectRoot(p *workspace.Project) string {
 	}
 	return p.RootDir()
 }
+
+// dependencyRoot resolves local references without asserting a repository identity.
+func dependencyRoot(project *workspace.Project, fallbackRoot string) string {
+	if root := projectRoot(project); root != "" {
+		return root
+	}
+	return fallbackRoot
+}
