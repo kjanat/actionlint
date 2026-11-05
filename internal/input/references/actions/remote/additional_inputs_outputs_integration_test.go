@@ -17,7 +17,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func TestRequestActionAdditionalInputsKeepClosedOutputs(t *testing.T) {
+func TestRequestActionAllowsAdditionalInputsAndRejectsUnknownOutputs(t *testing.T) {
 	fixture, err := actionfixtures.ReadManifest("request-action.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestRequestActionAdditionalInputsKeepClosedOutputs(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !definition.AllowsAdditionalInputs() || definition.SkipOutputs() || !slices.Equal(definition.OutputNames(), []string{"data", "headers", "status"}) {
-				t.Fatal("selection lost additional inputs or its closed output contract")
+				t.Fatal("selection lost additional inputs or the declared output names")
 			}
 			route, exists := definition.Input("route")
 			if !exists || !route.Required {
@@ -91,7 +91,7 @@ func TestRequestActionAdditionalInputsKeepClosedOutputs(t *testing.T) {
 			if !exists {
 				t.Fatal("fixture job is missing")
 			}
-			checker := expressions.New(expressions.Dependencies{RemoteAction: func(spec string) (actionmeta.Definition, error) {
+			checker := expressions.New(expressions.Dependencies{Action: func(spec string) (actionmeta.Definition, error) {
 				return service.Lookup(t.Context(), spec)
 			}}, expressions.Options{})
 			if err := checker.VisitWorkflowPre(view); err != nil {

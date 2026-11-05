@@ -149,6 +149,10 @@ YAML decoding recognizes YAML structure and source locations. Workflow/action de
 
 The model records definitions separately from invocations. Two calls to the same action share its definition but can have different inputs, types, reachable steps and findings. Rules receive views of these relationships instead of reconstructing them from YAML nodes.
 
+Declaration kind, reference origin, action implementation and execution environment are separate facts. A step declares a script or an action invocation; a job can declare a reusable-workflow call. Workspace and repository references can identify actions with the same inputs, outputs and implementation. Composite, JavaScript and Docker describe action implementations. A job container describes an execution environment, not another kind of step.
+
+Resolution adds the target definition and source revision to the call. Expansion adds the target's child jobs, steps and scripts without replacing the caller's declaration. Checks that need action inputs or outputs receive the same definition type for workspace and repository actions. Reference interpretation, source acquisition and unavailable-source reasons belong to the resolver rather than to those checks.
+
 The model also distinguishes a known absence from something that could not be determined. Its construction reports unresolved references to the session, which requests more input when allowed. Model code does not initiate hidden network requests.
 
 #### Expression boundaries

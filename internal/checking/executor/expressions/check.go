@@ -2,35 +2,23 @@ package expressions
 
 import (
 	"context"
-	"errors"
-
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-
 	workflowexpr "actionlint.kjanat.dev/v2/internal/checking/expressions"
-
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
-
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
-
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
-
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -38,11 +26,11 @@ import (
 type ruleExpression struct {
 	*workflowexpr.Checker
 	reporting.Logger
-	config       *repoconfig.Config
-	host         repository.Snapshot
-	frames       []expressionInvocation
-	findings     workflowvisit.Findings
-	remoteLookup func(string) (actionmeta.Definition, error)
+	config            *repoconfig.Config
+	host              repository.Snapshot
+	frames            []expressionInvocation
+	findings          workflowvisit.Findings
+	invocationActions func(string) (actionmeta.Definition, error)
 }
 
 type expressionInvocation struct {
@@ -55,7 +43,7 @@ func (r *ruleExpression) EnterInvocation(scope checkcalls.Invocation) error {
 		return invocation.ErrForeignContext
 	}
 	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
-	r.Checker = workflowexpr.New(workflowexpr.Dependencies{RemoteAction: r.remoteLookup}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
+	r.Checker = workflowexpr.New(workflowexpr.Dependencies{Action: r.invocationActions}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
 	return nil
 }
 
@@ -118,33 +106,12 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 // New connects expression checking to the supplied dependency lookups and runner facts.
 func New(ctx context.Context, actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: "expression"}
-	if remote != nil {
-		r.remoteLookup = func(spec string) (actionmeta.Definition, error) {
-			if err := ctx.Err(); err != nil {
-				return actionmeta.Definition{}, err
-			}
-			return remote.Lookup(spec), nil
-		}
-	}
+	r.invocationActions = lookup.New(ctx, nil, remote).Lookup
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
-		Runners: runners,
-		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
-			if actionsCache == nil {
-				return nil, nil
-			}
-			meta, _, err := actionsCache.FindMetadata(spec)
-			// Action validation owns unresolved references and explicit mapping failures.
-			if _, unresolved := errors.AsType[actionlocal.UnresolvedError](err); unresolved {
-				return nil, nil
-			}
-			if _, mapping := errors.AsType[actionlocal.MappingError](err); mapping {
-				return nil, nil
-			}
-			return meta, err
-		},
-		RemoteAction: r.remoteLookup,
-		Workflow:     workflowCache.FindMetadataForCall,
-		Log:          r.Debug,
+		Runners:  runners,
+		Action:   lookup.New(ctx, actionsCache, remote).Lookup,
+		Workflow: workflowCache.FindMetadataForCall,
+		Log:      r.Debug,
 	}, workflowExpressionOptions(nil))
 	return r
 }

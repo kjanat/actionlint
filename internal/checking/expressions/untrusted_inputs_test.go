@@ -883,8 +883,8 @@ func BenchmarkUntrustedInputs(b *testing.B) {
 		}
 		nodes = append(nodes, node)
 	}
-	b.ResetTimer()
-	for range b.N {
+
+	for b.Loop() {
 		for _, node := range nodes {
 			checkUntrustedInputs(node)
 		}
