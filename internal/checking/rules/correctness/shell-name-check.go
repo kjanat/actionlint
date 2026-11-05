@@ -69,7 +69,7 @@ func (rule *ruleShellName) VisitWorkflowPre(view workflowdecl.WorkflowView) erro
 }
 
 func (rule *ruleShellName) checkShellValue(shell value.Value) {
-	for _, d := range execution.CheckShell(shell, rule.platform) {
+	for _, d := range checkShell(shell, rule.platform) {
 		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 }

@@ -1,4 +1,4 @@
-package execution
+package correctness
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-// CheckShell validates builtin names and accepts custom shell templates.
-func CheckShell(shell value.Value, platform runnerlang.Platform) []results.Diagnostic {
+// checkShell validates builtin names and accepts custom shell templates.
+func checkShell(shell value.Value, platform runnerlang.Platform) []results.Diagnostic {
 	node, known := shell.ScalarString()
 	if !known {
 		return nil
