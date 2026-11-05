@@ -23,10 +23,9 @@ type actionExpressionAvailability struct {
 	functions map[string]actionFunctionLimits
 }
 
-// Violation identifies an unavailable context, invalid call or expression syntax.
-type Violation struct {
-	Code    DiagnosticCode
-	Rule    string
+// ExpressionProblem identifies invalid expression syntax, unavailable names or suspicious coercion.
+type ExpressionProblem struct {
+	Code    ProblemCode
 	Context string
 	Message string
 	// Offsets are one-based decoded byte positions; endOffset is exclusive.
@@ -35,17 +34,17 @@ type Violation struct {
 	EndOffset int
 }
 
-// ExpressionViolations checks availability without inventing caller-owned types.
-func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Violation {
+// ValidateExpression checks syntax and availability without assuming invocation-specific types.
+func ValidateExpression(s string, bare bool, field string, inputs Inputs) []ExpressionProblem {
 	return expressionViolations(s, bare, field, inputs, false)
 }
 
-// ExpressionFindings also includes optional expression advisories from the shared checker.
-func ExpressionFindings(s string, bare bool, field string, inputs Inputs) []Violation {
+// InspectExpression also identifies suspicious coercions reported by the shared checker.
+func InspectExpression(s string, bare bool, field string, inputs Inputs) []ExpressionProblem {
 	return expressionViolations(s, bare, field, inputs, true)
 }
 
-func expressionViolations(s string, bare bool, field string, inputs Inputs, advisories bool) []Violation {
+func expressionViolations(s string, bare bool, field string, inputs Inputs, advisories bool) []ExpressionProblem {
 	avail, ok := actionMetadataAvailability[field]
 	if !ok {
 		return nil
@@ -53,19 +52,19 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 	base, positionsKnown := 0, true
 	if bare && (!strings.Contains(s, "${{") || exprsyntax.LiteralExpressionValue(s) != nil) {
 		if _, err, _ := exprsyntax.ParseConditionExpression(s); err != nil {
-			violation := Violation{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
+			violation := ExpressionProblem{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
 			if exprsyntax.ConditionSource(s) == s {
 				violation.Offset = err.Offset + 1
 				violation.EndOffset = err.EndOffset + 1
 			}
-			return []Violation{violation}
+			return []ExpressionProblem{violation}
 		}
 		folded := exprsyntax.ConditionSource(s)
 		positionsKnown = folded == s
 		s = "${{" + folded + "}}"
 		base = -3 // The synthetic opening delimiter is absent from the scalar.
 	}
-	var out []Violation
+	var out []ExpressionProblem
 	for {
 		i := strings.Index(s, "${{")
 		if i < 0 {
@@ -77,7 +76,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 		lex := exprsyntax.NewLexer(s)
 		expr, err := exprsyntax.NewParser().Parse(lex)
 		if err != nil {
-			violation := Violation{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
+			violation := ExpressionProblem{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
 			if positionsKnown {
 				violation.Offset = expressionOffset + err.Offset + 1
 				violation.EndOffset = expressionOffset + err.EndOffset + 1
@@ -95,10 +94,10 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 			checker.UpdateSteps(exprtypes.NewMapObjectType(exprtypes.AnyType()))
 			result := checker.CheckResult(expr)
 			for _, finding := range result.Findings {
-				if !finding.Advisory || finding.Rule != "coercion" {
+				if !finding.Advisory || finding.Code != string(CodeCoercion) {
 					continue
 				}
-				v := Violation{Rule: finding.Rule, Message: finding.Message}
+				v := ExpressionProblem{Code: CodeCoercion, Message: finding.Message}
 				if positionsKnown {
 					v.Offset, v.EndOffset = expressionOffset+finding.Offset+1, expressionOffset+finding.EndOffset+1
 				}
@@ -109,7 +108,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 			if !entering {
 				return
 			}
-			var v Violation
+			var v ExpressionProblem
 			switch n := node.(type) {
 			case *exprsyntax.VariableNode:
 				if !slices.Contains(avail.contexts, strings.ToLower(n.Name)) {
@@ -136,7 +135,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 				if name == "fromjson" && len(n.Args) == 1 {
 					if literal, ok := n.Args[0].(*exprsyntax.StringNode); ok {
 						for _, collision := range runnerjson.JSONMemberCollisions(literal.Value) {
-							v := Violation{Code: CodeJSONMemberCollision, Message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)}
+							v := ExpressionProblem{Code: CodeJSONMemberCollision, Message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)}
 							if positionsKnown {
 								v.Offset = expressionOffset + n.Token().Offset + 1
 								v.EndOffset = v.Offset + len(n.Token().Value)
@@ -184,7 +183,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 					}
 				}
 			}
-			if v != (Violation{}) {
+			if v != (ExpressionProblem{}) {
 				if positionsKnown {
 					v.Offset = expressionOffset + node.Token().Offset + 1
 					v.EndOffset = v.Offset + len(node.Token().Value)
@@ -194,8 +193,8 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 		})
 	}
 	if !positionsKnown {
-		seen := make(map[Violation]bool)
-		out = slices.DeleteFunc(out, func(v Violation) bool {
+		seen := make(map[ExpressionProblem]bool)
+		out = slices.DeleteFunc(out, func(v ExpressionProblem) bool {
 			if v.Offset != 0 {
 				return false
 			}

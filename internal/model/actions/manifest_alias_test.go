@@ -29,7 +29,7 @@ func TestManifestRejectsAnchorsAndAliases(t *testing.T) {
 			var got []results.Position
 			for _, d := range Validate(meta) {
 				if strings.Contains(d.Message, "YAML anchors") || strings.Contains(d.Message, "YAML aliases") {
-					if d.Rule != "action" || d.Path != filepath.Join("nested", "action.yaml") {
+					if d.Code != CodeYAMLAnchor && d.Code != CodeYAMLAlias || d.Path != filepath.Join("nested", "action.yaml") {
 						t.Fatalf("manifest diagnostic lost source identity: %+v", d)
 					}
 					got = append(got, d.Start)

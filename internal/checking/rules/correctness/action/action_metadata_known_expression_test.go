@@ -99,7 +99,7 @@ runs:
 }
 
 func TestActionJSONMemberCollisions(t *testing.T) {
-	violations := actionmeta.ExpressionViolations(`${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, false, "runs.steps.*.env", nil)
+	violations := actionmeta.ValidateExpression(`${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, false, "runs.steps.*.env", nil)
 	if len(violations) != 1 || !strings.Contains(violations[0].Message, "collide under case-insensitive lookup") {
 		t.Fatal(violations)
 	}

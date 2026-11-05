@@ -16,7 +16,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 			t.Fatal("source-less metadata has source provenance")
 		}
 		for range 2 {
-			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (workflowlang.Pos{Line: 2, Col: 3}) || actionmeta.ExpressionEndPosition(meta, value, actionmeta.Violation{Offset: 1, EndOffset: 2}) != nil {
+			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (workflowlang.Pos{Line: 2, Col: 3}) || actionmeta.ExpressionEndPosition(meta, value, actionmeta.ExpressionProblem{Offset: 1, EndOffset: 2}) != nil {
 				t.Fatal("source-less metadata did not retain its fallback position")
 			}
 		}
@@ -52,7 +52,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	}
 	writeFixture(t, root, "empty/action.yml", "null\n")
 	empty, _, err := base.FindMetadata("./empty")
-	if err != nil || empty == nil || actionmeta.ExpressionEndPosition(empty, value, actionmeta.Violation{Offset: 1, EndOffset: 2}) != nil {
+	if err != nil || empty == nil || actionmeta.ExpressionEndPosition(empty, value, actionmeta.ExpressionProblem{Offset: 1, EndOffset: 2}) != nil {
 		t.Fatalf("null YAML bypassed cache initialization: %+v, %v", empty, err)
 	}
 

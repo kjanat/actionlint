@@ -1,7 +1,6 @@
 package action
 
 import (
-	"maps"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -21,35 +20,35 @@ func ParseDefinition(content []byte) Definition {
 // DefinitionInspection is an immutable result of inspecting an action manifest.
 // A definition is available only when parsing and manifest validation succeed.
 type DefinitionInspection struct {
-	definition  *Definition
-	diagnostics []results.Diagnostic
+	definition *Definition
+	problems   []MetadataProblem
 }
 
 // InspectDefinition parses and validates an action manifest before exposing its
-// call-site facts. Diagnostics retain locations in the supplied manifest.
+// call-site facts. Problems identify locations in the supplied manifest.
 func InspectDefinition(content []byte) DefinitionInspection {
 	metadata, err := Parse("action.yml", content)
 	if err != nil {
 		loadDiagnostics := codec.LoadDiagnostics(err)
-		diagnostics := make([]results.Diagnostic, 0, len(loadDiagnostics))
+		problems := make([]MetadataProblem, 0, len(loadDiagnostics))
 		for _, item := range loadDiagnostics {
 			mark := item.Mark()
-			diagnostics = append(diagnostics, results.Diagnostic{
-				Rule: "action", Code: string(CodeMetadataParse), Path: "action.yml", Message: item.Message(),
+			problems = append(problems, MetadataProblem{
+				Code: CodeMetadataParse, Path: "action.yml", Message: item.Message(),
 				Start: results.Position{Line: mark.Line, Column: mark.Column},
 			})
 		}
-		if len(diagnostics) == 0 {
-			diagnostics = append(diagnostics, results.Diagnostic{Rule: "action", Code: string(CodeMetadataParse), Path: "action.yml", Message: err.Error()})
+		if len(problems) == 0 {
+			problems = append(problems, MetadataProblem{Code: CodeMetadataParse, Path: "action.yml", Message: err.Error()})
 		}
-		return DefinitionInspection{diagnostics: diagnostics}
+		return DefinitionInspection{problems: problems}
 	}
 	if metadata == nil || metadata.Root == nil {
-		return DefinitionInspection{diagnostics: []results.Diagnostic{{Rule: "action", Code: string(CodeMetadataEmpty), Path: "action.yml", Message: "action metadata is empty"}}}
+		return DefinitionInspection{problems: []MetadataProblem{{Code: CodeMetadataEmpty, Path: "action.yml", Message: "action metadata is empty"}}}
 	}
-	diagnostics := Validate(metadata)
-	if len(diagnostics) != 0 {
-		return DefinitionInspection{diagnostics: cloneDiagnostics(diagnostics)}
+	problems := Validate(metadata)
+	if len(problems) != 0 {
+		return DefinitionInspection{problems: slices.Clone(problems)}
 	}
 	definition := NewDefinition(metadata)
 	return DefinitionInspection{definition: &definition}
@@ -63,31 +62,9 @@ func (i DefinitionInspection) Definition() (Definition, bool) {
 	return *i.definition, true
 }
 
-// Diagnostics returns an owned copy of manifest diagnostics.
-func (i DefinitionInspection) Diagnostics() []results.Diagnostic {
-	return cloneDiagnostics(i.diagnostics)
-}
-
-func cloneDiagnostics(diagnostics []results.Diagnostic) []results.Diagnostic {
-	cloned := slices.Clone(diagnostics)
-	for index := range cloned {
-		d := &cloned[index]
-		if d.Reference != nil {
-			reference := *d.Reference
-			d.Reference = &reference
-		}
-		d.Related = slices.Clone(d.Related)
-		d.Fixes = slices.Clone(d.Fixes)
-		for fixIndex := range d.Fixes {
-			d.Fixes[fixIndex].Edits = slices.Clone(d.Fixes[fixIndex].Edits)
-			if d.Fixes[fixIndex].Revisions != nil {
-				revisions := make(map[string]string, len(d.Fixes[fixIndex].Revisions))
-				maps.Copy(revisions, d.Fixes[fixIndex].Revisions)
-				d.Fixes[fixIndex].Revisions = revisions
-			}
-		}
-	}
-	return cloned
+// Problems returns a detached copy of the manifest's validation problems.
+func (i DefinitionInspection) Problems() []MetadataProblem {
+	return slices.Clone(i.problems)
 }
 
 type inputContract uint8

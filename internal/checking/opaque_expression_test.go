@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-func TestAnalyzeOpaqueCompositeInputsPublishCapturedExpressionFindings(t *testing.T) {
+func TestAnalyzeOpaqueCompositeInputsPublishCapturedInspectExpression(t *testing.T) {
 	for _, standalone := range []bool{false, true} {
 		for _, cycle := range []bool{false, true} {
 			for _, sink := range []struct{ expression, rule string }{{"github.event.issue.title", "script-injection"}, {"github.repository", "script-interpolation"}} {

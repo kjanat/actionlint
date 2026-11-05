@@ -60,7 +60,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 		})
 	}
 	// Inputs cannot be referenced while evaluating their defaults.
-	violations := actionmeta.ExpressionViolations("${{ github_repository }}", false, "inputs.*.default", actionmeta.Inputs{"github_repository": {Name: "github_repository"}})
+	violations := actionmeta.ValidateExpression("${{ github_repository }}", false, "inputs.*.default", actionmeta.Inputs{"github_repository": {Name: "github_repository"}})
 	if len(violations) != 1 || !strings.Contains(violations[0].Message, `did you mean "github.repository"?`) {
 		t.Fatalf("suggested unavailable input context: %+v", violations)
 	}

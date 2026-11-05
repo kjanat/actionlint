@@ -8,7 +8,7 @@ import (
 )
 
 // ExpressionEndPosition returns a verified exclusive end, or nil without a mapping.
-func ExpressionEndPosition(meta *Metadata, value *ExprString, violation Violation) *workflowlang.Pos {
+func ExpressionEndPosition(meta *Metadata, value *ExprString, violation ExpressionProblem) *workflowlang.Pos {
 	if violation.Offset <= 0 || violation.EndOffset < violation.Offset || violation.EndOffset > len(value.Value)+1 {
 		return nil
 	}

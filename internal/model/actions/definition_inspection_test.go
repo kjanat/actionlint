@@ -24,20 +24,20 @@ func TestInspectDefinitionRejectsInvalidManifest(t *testing.T) {
 			if _, ok := inspection.Definition(); ok {
 				t.Fatal("invalid manifest produced a definition")
 			}
-			diagnostics := inspection.Diagnostics()
-			if len(diagnostics) == 0 {
-				t.Fatal("invalid manifest produced no diagnostics")
+			problems := inspection.Problems()
+			if len(problems) == 0 {
+				t.Fatal("invalid manifest produced no problems")
 			}
-			if diagnostics[0].Rule != "action" || diagnostics[0].Path != "action.yml" {
-				t.Fatalf("diagnostic lost manifest identity: %+v", diagnostics[0])
+			if problems[0].Code == "" || problems[0].Path != "action.yml" {
+				t.Fatalf("problem lost manifest identity: %+v", problems[0])
 			}
-			if tc.line != 0 && diagnostics[0].Start != (results.Position{Line: tc.line, Column: tc.column}) {
-				t.Fatalf("diagnostic position = %+v, want %d:%d", diagnostics[0].Start, tc.line, tc.column)
+			if tc.line != 0 && problems[0].Start != (results.Position{Line: tc.line, Column: tc.column}) {
+				t.Fatalf("problem position = %+v, want %d:%d", problems[0].Start, tc.line, tc.column)
 			}
-			// Returned diagnostic storage must not alias the inspection result.
-			diagnostics[0].Message = "changed"
-			if strings.Contains(inspection.Diagnostics()[0].Message, "changed") {
-				t.Fatal("diagnostics exposed mutable internal storage")
+			// Returned problem storage must not alias the inspection result.
+			problems[0].Message = "changed"
+			if strings.Contains(inspection.Problems()[0].Message, "changed") {
+				t.Fatal("problems exposed mutable internal storage")
 			}
 		})
 	}
@@ -48,7 +48,7 @@ func TestInspectDefinitionReturnsValidatedImmutableFacts(t *testing.T) {
 	inspection := InspectDefinition(source)
 	definition, ok := inspection.Definition()
 	if !ok {
-		t.Fatalf("valid manifest diagnostics: %+v", inspection.Diagnostics())
+		t.Fatalf("valid manifest problems: %+v", inspection.Problems())
 	}
 	if !definition.Present() || definition.Using() != "composite" {
 		t.Fatalf("unexpected definition facts: present=%v using=%q", definition.Present(), definition.Using())
@@ -59,8 +59,8 @@ func TestInspectDefinitionReturnsValidatedImmutableFacts(t *testing.T) {
 	if !slices.Equal(second, []string{"token"}) {
 		t.Fatalf("input names exposed mutable internal storage: %v", second)
 	}
-	if len(inspection.Diagnostics()) != 0 {
-		t.Fatalf("valid manifest diagnostics: %+v", inspection.Diagnostics())
+	if len(inspection.Problems()) != 0 {
+		t.Fatalf("valid manifest problems: %+v", inspection.Problems())
 	}
 }
 
@@ -69,7 +69,7 @@ func TestInspectDefinitionRejectsEmptyManifest(t *testing.T) {
 	if _, ok := inspection.Definition(); ok {
 		t.Fatal("empty manifest produced a definition")
 	}
-	if len(inspection.Diagnostics()) == 0 {
+	if len(inspection.Problems()) == 0 {
 		t.Fatal("empty manifest produced no diagnostic")
 	}
 }
@@ -88,7 +88,7 @@ func TestInspectDefinitionOutputKnowledge(t *testing.T) {
 			inspection := InspectDefinition([]byte("name: fixture\ndescription: fixture\n" + test.declaration + "runs: {using: composite, steps: []}\n"))
 			definition, valid := inspection.Definition()
 			if !valid {
-				t.Fatal(inspection.Diagnostics())
+				t.Fatal(inspection.Problems())
 			}
 			if definition.SkipOutputs() != test.unknown || !slices.Equal(definition.OutputNames(), test.names) {
 				t.Fatalf("output knowledge: unknown=%v names=%v", definition.SkipOutputs(), definition.OutputNames())

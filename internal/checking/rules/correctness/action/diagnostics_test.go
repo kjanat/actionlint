@@ -41,3 +41,30 @@ func TestActionDiagnosticCodes(t *testing.T) {
 		})
 	}
 }
+
+func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
+	const expression = "${{ format('{0}', startsWith(true, 'TR')) }}"
+	for _, tc := range []struct{ name, source string }{
+		{"output value", "name: example\ndescription: example\noutputs:\n  value:\n    description: value\n    value: " + expression + "\nruns: {using: composite, steps: []}\n"},
+		{"input default", "name: example\ndescription: example\ninputs:\n  value:\n    description: value\n    default: " + expression + "\nruns: {using: composite, steps: []}\n"},
+		{"composite step", "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - name: " + expression + "\n      run: echo ok\n      shell: bash\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			inspection := actionmeta.InspectDefinition([]byte(tc.source))
+			if _, valid := inspection.Definition(); !valid || len(inspection.Problems()) != 0 {
+				t.Fatalf("supported coercion invalidated the definition: %+v", inspection.Problems())
+			}
+			if findings := actioncheck.Standalone(meta); len(findings) != 0 {
+				t.Fatalf("supported coercion became an action error: %+v", findings)
+			}
+			findings := actioncheck.StandaloneWithAdvisories(meta)
+			if len(findings) != 1 || findings[0].Rule != "coercion" || findings[0].Code != "" || findings[0].Start.Line == 0 || findings[0].Start.Column == 0 {
+				t.Fatalf("coercion problem lost its rule or source range: %+v", findings)
+			}
+		})
+	}
+}
