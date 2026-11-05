@@ -80,13 +80,14 @@ func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination
 	for name, item := range inclusion.values {
 		if axisIndex(axes, name) < 0 {
 			values[name] = item
-			keyOrigins[name] = inclusion.keyOrigin(name)
+			keyOrigins[name] = inclusion.KeyOrigin(name)
 		}
 	}
 	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
 }
 
-func (c Combination) keyOrigin(name string) value.Origin {
+// KeyOrigin returns the declaration location of a field, falling back to its value origin.
+func (c Combination) KeyOrigin(name string) value.Origin {
 	if origin, declared := c.keyOrigins[strings.ToLower(name)]; declared {
 		return origin
 	}
@@ -100,22 +101,26 @@ type Reach struct {
 	Complete     bool
 }
 
-type exclusionIssue interface{ exclusionIssue() }
+// ExclusionProblem identifies a filter declaration that prevents complete matrix expansion.
+type ExclusionProblem interface{ exclusionProblem() }
 
-type exclusionWithoutAxes struct{ origin value.Origin }
+// ExclusionWithoutAxes identifies an exclusion with no base axes to filter.
+type ExclusionWithoutAxes struct{ Origin value.Origin }
 
-func (exclusionWithoutAxes) exclusionIssue() {}
+func (ExclusionWithoutAxes) exclusionProblem() {}
 
-type emptyExclusion struct{ origin value.Origin }
+// EmptyExclusion identifies a filter without fields.
+type EmptyExclusion struct{ Origin value.Origin }
 
-func (emptyExclusion) exclusionIssue() {}
+func (EmptyExclusion) exclusionProblem() {}
 
-type unknownExclusionAxis struct {
-	name   string
-	origin value.Origin
+// UnknownExclusionAxis identifies a filter field absent from a closed axis domain.
+type UnknownExclusionAxis struct {
+	Name   string
+	Origin value.Origin
 }
 
-func (unknownExclusionAxis) exclusionIssue() {}
+func (UnknownExclusionAxis) exclusionProblem() {}
 
 type Resolution struct {
 	state        value.State
@@ -141,13 +146,15 @@ func (r Resolution) Open() bool {
 	return r.unknownKeys || r.state == value.Dynamic || r.state == value.Invalid
 }
 
-func (r Resolution) exclusionIssues() iter.Seq[exclusionIssue] {
-	return func(yield func(exclusionIssue) bool) {
+// ExclusionProblems yields invalid filters with their captured declaration origins.
+// An open axis domain does not establish that a named axis is absent.
+func (r Resolution) ExclusionProblems() iter.Seq[ExclusionProblem] {
+	return func(yield func(ExclusionProblem) bool) {
 		if len(r.exclude) == 0 {
 			return
 		}
 		for _, filter := range r.exclude {
-			if len(filter.values) == 0 && !yield(emptyExclusion{origin: filter.origin}) {
+			if len(filter.values) == 0 && !yield(EmptyExclusion{Origin: filter.origin}) {
 				return
 			}
 		}
@@ -155,12 +162,12 @@ func (r Resolution) exclusionIssues() iter.Seq[exclusionIssue] {
 			return
 		}
 		if len(r.axes) == 0 {
-			yield(exclusionWithoutAxes{origin: r.origin})
+			yield(ExclusionWithoutAxes{Origin: r.origin})
 			return
 		}
 		for _, filter := range r.exclude {
 			for name := range filter.Values() {
-				if axisIndex(r.axes, name) < 0 && !yield(unknownExclusionAxis{name: name, origin: filter.keyOrigin(name)}) {
+				if axisIndex(r.axes, name) < 0 && !yield(UnknownExclusionAxis{Name: name, Origin: filter.KeyOrigin(name)}) {
 					return
 				}
 			}
@@ -169,7 +176,7 @@ func (r Resolution) exclusionIssues() iter.Seq[exclusionIssue] {
 }
 
 func (r Resolution) hasExclusionIssues() bool {
-	for range r.exclusionIssues() {
+	for range r.ExclusionProblems() {
 		return true
 	}
 	return false
@@ -654,10 +661,6 @@ func (r Resolution) witnessSurvives(witness Combination) bool {
 		}
 	}
 	return true
-}
-
-func (r Resolution) Check(mixedTypes bool) []results.Diagnostic {
-	return checkResolution(r, mixedTypes)
 }
 
 func Subset(actual, filter value.Value) bool {
