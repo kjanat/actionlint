@@ -19,7 +19,7 @@ func (sema *Checker) UpdateEvent(event exprtypes.ObjectType) {
 
 // missingProperty gives a bounded diagnostic for dot, literal bracket and filtered access.
 func (sema *Checker) missingProperty(node, receiver exprsyntax.Node, name string, object exprtypes.ObjectType) {
-	path := eventReference(receiver)
+	path := exprsyntax.DisplayReference(receiver)
 	kind := unknownProperty
 	suffix := ""
 	key := strings.ToLower(path)
@@ -86,32 +86,4 @@ func CloseName(name string, candidates []string) string {
 		suggestion = candidate
 	}
 	return suggestion
-}
-
-// eventReference formats a payload access path for diagnostics, using [] for
-// non-string indexes and .* for array projections.
-func eventReference(n exprsyntax.Node) string {
-	switch n := n.(type) {
-	case *exprsyntax.VariableNode:
-		if n.First.Value != "" {
-			return n.First.Value
-		}
-		return n.Name
-	case *exprsyntax.ArrayDerefNode:
-		if base := eventReference(n.Receiver); base != "" {
-			return base + ".*"
-		}
-	case *exprsyntax.IndexAccessNode:
-		if base := eventReference(n.Operand); base != "" {
-			if lit, ok := n.Index.(*exprsyntax.StringNode); ok {
-				return base + "." + lit.Value
-			}
-			return base + "[]"
-		}
-	case *exprsyntax.ObjectDerefNode:
-		if base := eventReference(n.Receiver); base != "" {
-			return base + "." + n.PropertyName()
-		}
-	}
-	return ""
 }

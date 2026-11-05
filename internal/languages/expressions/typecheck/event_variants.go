@@ -88,7 +88,7 @@ func eventGuardValue(node exprsyntax.Node, variant exprtypes.EventVariant) (bool
 			return false, false
 		}
 		var value string
-		switch strings.ToLower(eventReference(ref)) {
+		switch strings.ToLower(exprsyntax.DisplayReference(ref)) {
 		case "github.event_name":
 			value = variant.Event
 			if value == "" {
