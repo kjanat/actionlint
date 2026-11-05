@@ -1,0 +1,64 @@
+# https://github.com/rhysd/actionlint/issues/250
+
+on: push
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - container:
+              "3.10": "python:3.10"
+              "3.11": "python:3.11"
+              "3.12": "python:3.12"
+              "3.13": "python:3.13"
+        double_quoted:
+          - version: "3.10"
+        single_quoted:
+          - version: '3.10'
+        tagged:
+          - version: !!str 3.11
+        folded:
+          - version: >-
+              3.12
+        literal:
+          - version: |-
+              3.13
+        # These plain scalars are resolved as numbers by the YAML library and as
+        # strings by GitHub, which reads them with the YAML 1.2 core schema.
+        binary:
+          - version: 0b10
+        upper_binary:
+          - version: 0B10
+        signed_hex:
+          - version: -0x10
+        underscored:
+          - version: 1_000
+        # The core schema has no boolean spelled as a word other than true and
+        # false, and no timestamp.
+        yes_word:
+          - version: yes
+        on_word:
+          - version: on
+        off_word:
+          - version: off
+        label:
+          - version: ubuntu-latest
+        date:
+          - version: 2026-08-21
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ matrix.os.container[matrix.double_quoted.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.single_quoted.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.tagged.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.folded.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.literal.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.binary.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.upper_binary.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.signed_hex.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.underscored.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.yes_word.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.on_word.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.off_word.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.label.version] }}"
+      - run: echo "${{ matrix.os.container[matrix.date.version] }}"

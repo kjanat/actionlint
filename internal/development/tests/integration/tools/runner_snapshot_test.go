@@ -43,7 +43,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			engine := &snapshotScriptBackend{}
-			registration, err := scripts.Register(rule.Descriptor{Name: "powershell-test", Provider: "test"}, []string{"pwsh", "powershell"}, engine)
+			registration, err := scripts.Register(rule.Descriptor{Name: "powershell-test", Provider: "test", Category: "correctness", Maturity: "stable"}, []string{"pwsh", "powershell"}, engine)
 			if err != nil {
 				t.Fatal(err)
 			}
