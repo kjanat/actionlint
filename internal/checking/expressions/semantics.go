@@ -7,6 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
@@ -166,6 +167,14 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 	result := c.CheckResult(expr)
 	ty, errs := result.Type, result.Findings
+	if strings.HasSuffix(workflowKey, ".if") {
+		if rule.options.StringConditions {
+			errs = append(errs, suspicious.StringConditions(expr, result.Types)...)
+		}
+		if rule.options.MixedTypeComparisons {
+			errs = append(errs, suspicious.MixedTypeComparisons(expr, result.Types)...)
+		}
+	}
 	if checkUntrusted {
 		errs = append(errs, security.ScriptInjection(expr, result.Findings)...)
 	}
