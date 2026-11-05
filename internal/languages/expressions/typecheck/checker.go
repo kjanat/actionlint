@@ -1308,8 +1308,11 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	} else if sema.evaluationInvalid {
 		evaluation.State = exprvalues.EvaluationInvalid
 		phase = FailureEvaluation
-	} else if value, known := expreval.ConditionConstantValue(expr); known {
-		evaluation = exprvalues.EvaluationResult{State: exprvalues.EvaluationKnown, Value: value}
+	} else {
+		evaluation = expreval.Evaluate(expr, nil)
+		if evaluation.State == exprvalues.EvaluationInvalid {
+			phase = FailureEvaluation
+		}
 	}
 	result := ExpressionCheckResult{Type: ty, Types: InferredTypes{byNode: sema.nodeTypes}, Valid: !sema.validationFailed, Findings: errs, Evaluation: evaluation, FailurePhase: phase}
 	if call, ok := expr.(*exprsyntax.FuncCallNode); ok {
