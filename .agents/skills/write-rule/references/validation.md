@@ -18,7 +18,7 @@ test an unknown value too and identify the information needed to decide whether
 that input violates the rule.
 
 For example, a cancellation check must distinguish job and step conditions and
-intentional cleanup. See `internal/workflow/checks/uncancellable_condition_test.go`:
+intentional cleanup. See `internal/checking/executor/declarations/uncancellable_condition_test.go`:
 it exercises compound conditions and classifies behavior-changing fixes as unsafe.
 The existence of that test is not independent proof of GitHub's behavior.
 
@@ -44,7 +44,7 @@ directory, runs TypeScript-source tests, and cleans up. Leave `ACTIONLINT` unset
 to use that build, or set it deliberately to the host being tested:
 
 ```sh
-mise exec -- bun packages/plugin-sdk/scripts/test.ts tests/authoring.test.ts
+mise exec -- bun plugins/sdk/typescript/scripts/test.ts tests/authoring.test.ts
 ```
 
 ## Independent and real-world checks
@@ -57,8 +57,8 @@ or implementation revision and what it confirms. Another linter or SchemaStore c
 disagreement but cannot alone establish execution semantics.
 
 For source-mapping comparisons, inspect
-`internal/workflow/parser/scalar_source_reference_test.go` and
-`testdata/conformance/scalar-source/reference.json`. The recorded test runs offline;
+`internal/development/tests/conformance/yaml/scalar_source_reference_test.go` and
+`internal/development/tests/conformance/yaml/testdata/scalar-source/reference.json`. The recorded test runs offline;
 the `scalar-source-reference` task in `tasks.toml` also includes live Runny replay.
 Do not present recorded replay as a fresh live comparison.
 

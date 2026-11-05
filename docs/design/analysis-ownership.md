@@ -17,19 +17,19 @@ Application owns composition and invocation resources. The engine receives
 synchronous passes and traversal hooks; it does not construct registrations,
 resolve configuration, dispatch document languages or manage execution.
 
-| Owner                           | Contract                                                                                                            |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `document`                      | Workflow/action outlines, references and serialization, without configuration dependencies.                         |
-| `internal/documentparse`        | Separate workflow and action decoders, syntax findings, outlines and source indexes.                                |
-| `internal/workflow/parser`      | Physical YAML admission, workflow decoding, scalar spans and comments.                                              |
-| `internal/workflow/declaration` | Immutable workflow/action declarations, bound source identities and detached value projections.                     |
-| `internal/checks`               | Builtin selection, configured analyzer registrations, pass configuration and synchronous provenance capture.        |
-| `internal/application`          | Input dispatch, resolved document configuration, registration validation, tool construction and resource ownership. |
-| `internal/workspace`            | Repository discovery and immutable Git index snapshots shared within a session.                                     |
-| `internal/engine`               | Ordered workflow traversal over supplied passes, with hooks for caller-owned expansion.                             |
-| `internal/workflow/composition` | Nested invocation discovery, execution facts, script completion and collection into one result.                     |
-| `internal/tools/execution`      | Prepared script batches, fact/tool adapters and bounded execution.                                                  |
-| `internal/diagnosticpolicy`     | Reference inference, suppression/severity/filter policy, diagnostic completion and cross-document deduplication.    |
+| Owner                                   | Contract                                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `document`                              | Workflow/action outlines, references and serialization, without configuration dependencies.                         |
+| `internal/model/parsing`                | Separate workflow and action decoders, syntax findings, outlines and source indexes.                                |
+| `internal/model/workflows/parser`       | Physical YAML admission, workflow decoding, scalar spans and comments.                                              |
+| `internal/model/workflows`              | Immutable workflow/action declarations, bound source identities and detached value projections.                     |
+| `internal/checking/selection`           | Builtin selection, configured analyzer registrations, pass configuration and synchronous provenance capture.        |
+| `internal/checking`                     | Input dispatch, resolved document configuration, registration validation, tool construction and resource ownership. |
+| `internal/input/workspace`              | Repository discovery and immutable Git index snapshots shared within a session.                                     |
+| `internal/checking/passes`              | Ordered workflow traversal over supplied passes, with hooks for caller-owned expansion.                             |
+| `internal/checking/executor/composites` | Nested invocation discovery, execution facts, script completion and collection into one result.                     |
+| `internal/checking/scripts`             | Prepared script batches, fact/tool adapters and bounded execution.                                                  |
+| `internal/results/policy`               | Reference inference, suppression/severity/filter policy, diagnostic completion and cross-document deduplication.    |
 
 ```mermaid
 flowchart LR

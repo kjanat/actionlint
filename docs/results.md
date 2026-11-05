@@ -140,9 +140,9 @@ unknown declarations. They carry no guarantee of runner support or executability
 Inputs and outputs include descriptions and source positions when available; inputs
 also expose `required` and `default`, and outputs expose declared `value`.
 
-Actions appear when analysis reads their metadata. The CLI still selects
-workflows; it does not scan every `action.yml` in a repository. Go callers can use
-`ParseActionOutline` to parse an action manifest directly.
+Actions appear when a selected input is an action manifest or checking reads a
+called action's metadata. Directory inputs select action manifests and workflows
+under `.github/workflows`, subject to discovery and configuration exclusions.
 
 Jobs and steps include the parsed `uses` string and may include a structured
 `reference`: repository, workspace, self-repository, container, builtin, or

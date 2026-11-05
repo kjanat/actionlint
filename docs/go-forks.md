@@ -1,22 +1,20 @@
 # Go dependency forks
 
 The graph shows which modules depend on which forks. Solid arrows are module
-requirements; dotted arrows are indirect pins in actionlint's root module.
+requirements; dotted arrows are indirect requirements in actionlint's root module.
 Versions are those selected by the consuming modules.
 
 ```mermaid
 flowchart LR
     A[actionlint] --> Y["kjanat/go-yaml/v4<br/>v4.0.0-rc.7"]
-    A --> W["kjanat/wacogo<br/>v0.2.0"]
+    A --> W["kjanat/wacogo<br/>v0.2.3"]
     A --> Z["kjanat/wazero<br/>v1.11.1"]
-    A -. indirect pin .-> G["kjanat/go-modules<br/>v0.9.1"]
+    A --> G["kjanat/go-modules<br/>v0.9.1"]
     W --> G
     W --> Z
     G --> Z
     G --> CM["go.bytecodealliance.org/cm<br/>v0.3.0 · upstream"]
-    T[tools/plugin-contract] --> G
-    E[insecure-download example tooling] --> G
-    E --> CM
+    E[Go plugin SDK] --> CM
     A --> J["invopop/jsonschema<br/>v0.14.0"]
     J --> O["pb33f/ordered-map/v2<br/>v2.3.2"]
     O --> P["pb33f/go-yaml<br/>v0.1.1"]
@@ -36,11 +34,10 @@ requirement can be lower.
 | [pb33f/go-yaml](https://github.com/pb33f/go-yaml)         | [yaml/go-yaml](https://github.com/yaml/go-yaml)                               | Schema tooling through jsonschema and ordered-map; separate from actionlint's YAML codec. |
 
 The [root module](../go.mod) uses wacogo for components and wazero directly for
-core Wasm plugins. [plugin-contract](../tools/plugin-contract/go.mod) uses
-go-modules to generate the plugin contract. The
-[insecure-download example](../examples/plugins/insecure-download/go.mod) uses
-its `wit-bindgen-go` tool; the example's `go.bytecodealliance.org/cm` runtime
-dependency remains upstream.
+core Wasm plugins. Its [plugin-contract generator](../internal/development/generators/plugin-contract)
+uses go-modules to read WIT. The root module also declares the `wacogo-witgen`
+and `wit-bindgen-go` generation tools. The [Go plugin SDK](../plugins/sdk/go/go.mod)
+depends only on the upstream `go.bytecodealliance.org/cm` runtime.
 
 The selected forks' own `go.mod` files define the recursive requirements shown
 above.

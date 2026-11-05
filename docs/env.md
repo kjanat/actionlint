@@ -2,8 +2,7 @@
 
 The CLI reads the variables below as defaults. Explicit flags take precedence,
 including `false`, empty values, and legacy spellings such as `-config-file`.
-Settings apply to both root invocations and the `check` command. Go library calls
-do not read `ACTIONLINT_*` variables.
+Settings apply to both root invocations and the `check` command.
 
 Only settings used by the selected operation are read. Help, version, rules and
 completion do not load configuration or initialize external linters. `config init`

@@ -481,7 +481,7 @@ Until it is merged, use one of the [project-maintained distributions](#project-m
 
 ---
 
-[Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [Go]: https://go.dev/
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin "AUR package for kjanat/actionlint (binary)"
