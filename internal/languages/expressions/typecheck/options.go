@@ -5,10 +5,4 @@ package typecheck
 type Options struct {
 	Variables []string
 	Secrets   []string
-	Checks    Checks
-}
-
-// Checks selects optional semantics without depending on rule presets.
-type Checks struct {
-	SuspiciousCoercion bool
 }

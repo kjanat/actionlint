@@ -12,53 +12,6 @@ import (
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
-func TestSuspiciousCoercion(t *testing.T) {
-	for _, tc := range []struct {
-		input    string
-		warnings int
-	}{
-		{"contains(null, '')", 1},
-		{"startsWith(true, 'TR')", 1},
-		{"endsWith('true', true)", 1},
-		{"hashFiles('foo', null)", 1},
-		{"fromJSON('[]') == 0", 1},
-		{"fromJSON('{}') >= 0", 1},
-		{"true > false", 1},
-		{"null <= 0", 1},
-		{"contains('hello', 'ell')", 0},
-		{"contains(fromJSON('[true]'), true)", 0},
-		{"endsWith(711, '11')", 0},
-		{"fromJSON('{}') == fromJSON('{}')", 0},
-		{"fromJSON('[]') == fromJSON('[1]')", 0},
-		{"github.event.unknown >= 0", 0},
-		{"startsWith(github.event.unknown, 'x')", 0},
-	} {
-		for _, enabled := range []bool{false, true} {
-			t.Run(tc.input+map[bool]string{false: "/off", true: "/on"}[enabled], func(t *testing.T) {
-				node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				checker := NewChecker(&Options{Checks: Checks{SuspiciousCoercion: enabled}})
-				checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
-				_, findings := checker.Check(node)
-				want := 0
-				if enabled {
-					want = tc.warnings
-				}
-				if len(findings) != want {
-					t.Fatalf("findings=%v, want %d", findings, want)
-				}
-				for _, finding := range findings {
-					if finding.Rule != "coercion" || finding.Code != "coercion" || finding.EndOffset <= finding.Offset {
-						t.Fatalf("invalid warning: %+v", finding)
-					}
-				}
-			})
-		}
-	}
-}
-
 // Predicate and join behavior follows actions/runner at 1ba885c2065fd9be317808ab3fd406f392635cf7.
 func TestFunctionCallFacts(t *testing.T) {
 	for _, tc := range []struct {
@@ -203,11 +156,11 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		t.Fatal("filtering findings changed validation")
 	}
 
-	checker = NewChecker(&Options{Checks: Checks{SuspiciousCoercion: true}})
+	checker = NewChecker(nil)
 	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 	result := checker.CheckResult(parse("startsWith(true, github.event.issue.title)"))
-	if !result.Valid || len(result.Findings) != 1 {
-		t.Fatalf("advisory finding changed validation: %+v", result)
+	if !result.Valid || len(result.Findings) != 0 {
+		t.Fatalf("type checking emitted a coercion policy finding: %+v", result)
 	}
 	result = checker.CheckResult(parse("github.event.issue.title"))
 	if !result.Valid || len(result.Findings) != 0 {

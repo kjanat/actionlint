@@ -9,7 +9,7 @@ import (
 // StringConditions reports a bare string reference used as a condition.
 func StringConditions(root exprsyntax.Node, types exprlang.InferredTypes) []*exprlang.Error {
 	if ty, known := types.TypeOf(root); known && conditionStringReference(root, ty) {
-		return []*exprlang.Error{conditionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")}
+		return []*exprlang.Error{expressionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")}
 	}
 	return nil
 }
@@ -31,15 +31,10 @@ func MixedTypeComparisons(root exprsyntax.Node, types exprlang.InferredTypes) []
 			return
 		}
 		if conditionStringReference(comparison.Left, left) && numericOrBooleanLiteral(comparison.Right) || conditionStringReference(comparison.Right, right) && numericOrBooleanLiteral(comparison.Left) {
-			findings = append(findings, conditionFinding(comparison, "mixed-type-comparisons", "condition compares a string to a number or boolean using Actions numeric coercion; compare strings explicitly or parse and validate the value with fromJSON()"))
+			findings = append(findings, expressionFinding(comparison, "mixed-type-comparisons", "condition compares a string to a number or boolean using Actions numeric coercion; compare strings explicitly or parse and validate the value with fromJSON()"))
 		}
 	})
 	return findings
-}
-
-func conditionFinding(node exprsyntax.Node, name, message string) *exprlang.Error {
-	span := exprsyntax.ExpressionSpan(node)
-	return &exprlang.Error{Rule: name, Code: name, Message: message, Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column, Advisory: true}
 }
 
 func conditionStringReference(expr exprsyntax.Node, ty exprtypes.Type) bool {

@@ -23,25 +23,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-func ordinal(i int) string {
-	suffix := "th"
-	switch i % 10 {
-	case 1:
-		if i%100 != 11 {
-			suffix = "st"
-		}
-	case 2:
-		if i%100 != 12 {
-			suffix = "nd"
-		}
-	case 3:
-		if i%100 != 13 {
-			suffix = "rd"
-		}
-	}
-	return fmt.Sprintf("%d%s", i, suffix)
-}
-
 // parseFormatFuncSpecifiers returns references from a syntactically valid template.
 // The argument count is checked separately by the call's format plan.
 func parseFormatFuncSpecifiers(format string, capacity int) map[int]struct{} {
@@ -196,15 +177,14 @@ type Checker struct {
 	jobCondition          bool
 	configVars            []string
 	configSecrets         []string
-	checks                Checks
 	callFacts             map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts
 	evaluationInvalid     bool
 	validationFailed      bool
 	staticInvalid         bool
 }
 
-// NewChecker creates a type checker with the configured names and semantic checks.
-// A nil configuration uses built-in names and disables optional checks.
+// NewChecker creates a type checker with the configured variable and secret names.
+// A nil configuration uses built-in names.
 func NewChecker(cfg *Options) *Checker {
 	c := &Checker{
 		funcs:      exprfunctions.BuiltinFuncSignatures,
@@ -213,7 +193,6 @@ func NewChecker(cfg *Options) *Checker {
 		nodeTypes:  make(map[exprsyntax.Node]exprtypes.Type),
 	}
 	if cfg != nil {
-		c.checks = cfg.Checks
 		c.configVars = cfg.Variables
 		c.configSecrets = cfg.Secrets
 	}
@@ -825,7 +804,7 @@ func checkFuncSignature(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSigna
 		if !m.Accepted && match.err == nil {
 			match.err = errorfAtExpr(argumentType, n.Args[i],
 				"%s argument of function call is not assignable. %q cannot be assigned to %q. called function type is %q",
-				ordinal(i+1), arg.Source.String(), p.String(), sig.String())
+				messages.Ordinal(i+1), arg.Source.String(), p.String(), sig.String())
 		}
 	}
 	return match
@@ -1143,17 +1122,6 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 			match = candidate
 		}
 	}
-	if sema.checks.SuspiciousCoercion {
-		for i, arg := range match.arguments {
-			if !sema.skipEvaluation && arg.Argument.Demand != exprfunctions.DemandSkipped && arg.Conversion == exprfunctions.ConversionString && (arg.Argument.Source.Kind() == exprtypes.KindBool || arg.Argument.Source.Kind() == exprtypes.KindNull) {
-				operation := "converts"
-				if sema.conditionalEvaluation || arg.Argument.Demand == exprfunctions.DemandConditional {
-					operation = "may convert"
-				}
-				sema.ruleError(n.Args[i], "coercion", fmt.Sprintf("%s argument of %s() %s %s to a string; check whether a string value was intended", ordinal(i+1), n.Callee, operation, arg.Argument.Source))
-			}
-		}
-	}
 	// Refinement uses the selected call and cannot replace its declared return
 	// contract when matching overloads have different returns.
 	refined := sema.checkBuiltinFuncCall(n, match)
@@ -1196,27 +1164,9 @@ func (sema *Checker) checkNotOp(n *exprsyntax.NotOpNode) exprtypes.Type {
 	return exprtypes.BoolType()
 }
 
-// suspiciousComparison identifies supported comparisons whose conversion can hide
-// a mistaken operand. Unknown types provide no evidence for this warning.
-func suspiciousComparison(op exprsyntax.CompareOpNodeKind, left, right exprtypes.Type) bool {
-	l, r := left.Kind(), right.Kind()
-	if l == exprtypes.KindAny || r == exprtypes.KindAny {
-		return false
-	}
-	composite := func(k exprtypes.Kind) bool { return k == exprtypes.KindArray || k == exprtypes.KindObject }
-	if op.IsEqualityOp() {
-		return l != r && (composite(l) || composite(r))
-	}
-	return composite(l) || composite(r) || l == exprtypes.KindNull || r == exprtypes.KindNull || l == exprtypes.KindBool || r == exprtypes.KindBool
-}
-
 func (sema *Checker) checkCompareOp(n *exprsyntax.CompareOpNode) exprtypes.Type {
-	l := sema.check(n.Left)
-	r := sema.check(n.Right)
-
-	if sema.checks.SuspiciousCoercion && suspiciousComparison(n.Kind, l, r) {
-		sema.ruleError(n, "coercion", fmt.Sprintf("comparison of %s and %s with %s uses Actions coercion or NaN; check whether these operand types were intended", l, r, n.Kind))
-	}
+	sema.check(n.Left)
+	sema.check(n.Right)
 
 	return exprtypes.BoolType()
 }
@@ -1483,10 +1433,4 @@ func (sema *Checker) IsConstant(expr exprsyntax.Node) bool {
 	default:
 		panic("unreachable")
 	}
-}
-
-func (sema *Checker) ruleError(node exprsyntax.Node, name, message string) {
-	err := errorAtExpr(findingKind{name, name}, node, message)
-	err.Advisory = true
-	sema.errs = append(sema.errs, err)
 }

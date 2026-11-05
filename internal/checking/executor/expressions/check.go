@@ -143,11 +143,10 @@ func workflowExpressionOptions(config *repoconfig.Config) workflowexpr.Options {
 }
 
 func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host repository.Snapshot) workflowexpr.Options {
-	semantics := expressionOptionsFromConfig(config)
 	facts := repoconfig.RepositoryFacts(config, host)
-	semantics.Variables, semantics.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
 	return workflowexpr.Options{
-		Semantics:                 *semantics,
+		Semantics:                 exprlang.Options{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)},
+		SuspiciousCoercion:        config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
 		CaseInsensitiveConditions: config.RuleSet().DiagnosticLevel(config, "case-insensitive-conditions") != "off",
 		StringConditions:          config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
 		MixedTypeComparisons:      config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
@@ -155,13 +154,4 @@ func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host reposito
 		UnsoundTernary:            config.RuleSet().DiagnosticLevel(config, "unsound-ternary") != "off",
 		ScriptInjectionDisabled:   config.RuleSet().DiagnosticLevel(config, "script-injection") == "off",
 	}
-}
-
-func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {
-	options := &exprlang.Options{Checks: exprlang.Checks{
-		SuspiciousCoercion: config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
-	}}
-	facts := repoconfig.RepositoryFacts(config, repository.Snapshot{})
-	options.Variables, options.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
-	return options
 }

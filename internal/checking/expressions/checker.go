@@ -73,6 +73,7 @@ type ReferenceNames struct {
 type Options struct {
 	Semantics                 exprlang.Options
 	UnsoundTernary            bool
+	SuspiciousCoercion        bool
 	StringConditions          bool
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool

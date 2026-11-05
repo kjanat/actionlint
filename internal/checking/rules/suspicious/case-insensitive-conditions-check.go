@@ -15,7 +15,7 @@ func CaseInsensitiveConditions(root exprsyntax.Node, types exprlang.InferredType
 		_, leftLiteral := left.(*exprsyntax.StringNode)
 		_, rightLiteral := right.(*exprsyntax.StringNode)
 		if identityConditionReference(left) && rightLiteral || identityConditionReference(right) && leftLiteral {
-			findings = append(findings, conditionFinding(node, "case-insensitive-conditions", "string operation in condition ignores case; case variants of this ref, identity, label or environment also match"))
+			findings = append(findings, expressionFinding(node, "case-insensitive-conditions", "string operation in condition ignores case; case variants of this ref, identity, label or environment also match"))
 		}
 	}
 	exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
