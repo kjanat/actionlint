@@ -52,11 +52,11 @@ func TestInvalidCallRetainsReturnType(t *testing.T) {
 }
 
 func TestExpressionPreservesCallFacts(t *testing.T) {
-	exprfunctions.BuiltinFuncSignatures["hosttest"] = []*exprfunctions.FuncSignature{
+	exprfunctions.Builtins["hosttest"] = exprfunctions.Function{Signatures: []*exprfunctions.FuncSignature{
 		{Name: "hosttest", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
 		{Name: "hosttest", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
-	}
-	t.Cleanup(func() { delete(exprfunctions.BuiltinFuncSignatures, "hosttest") })
+	}}
+	t.Cleanup(func() { delete(exprfunctions.Builtins, "hosttest") })
 	for _, tc := range []struct {
 		source   string
 		declared []exprtypes.Kind
@@ -80,9 +80,11 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 			}
 		}
 	}
-	original := exprfunctions.BuiltinFuncSignatures["startswith"]
-	exprfunctions.BuiltinFuncSignatures["startswith"] = []*exprfunctions.FuncSignature{{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}
-	t.Cleanup(func() { exprfunctions.BuiltinFuncSignatures["startswith"] = original })
+	original := exprfunctions.Builtins["startswith"]
+	changed := original
+	changed.Signatures = []*exprfunctions.FuncSignature{{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}
+	exprfunctions.Builtins["startswith"] = changed
+	t.Cleanup(func() { exprfunctions.Builtins["startswith"] = original })
 	rule := newTestChecker()
 	types, valid := rule.checkExprsIn("${{ startsWith('x', 'x') }}", &workflowlang.Pos{Line: 1, Col: 1}, false, false, "env")
 	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindNumber || types[0].semantics.Call == nil || types[0].semantics.Call.ReturnDomain != exprfunctions.ReturnDomainExcludesValue {

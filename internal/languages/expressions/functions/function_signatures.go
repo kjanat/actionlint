@@ -56,11 +56,11 @@ func (sig *FuncSignature) String() string {
 	return fmt.Sprintf("%s(%s%s) -> %s", sig.Name, strings.Join(ts, ", "), elip, sig.Ret.String())
 }
 
-// BuiltinFuncSignatures is a set of all builtin function signatures. All function names are in
-// lower case because function names are compared in case insensitive.
+// Builtins declares function signatures and their supported constant implementations.
+// Keys use lowercase names because function lookup ignores case.
 // https://docs.github.com/en/actions/learn-github-actions/expressions#functions
-var BuiltinFuncSignatures = map[string][]*FuncSignature{
-	"contains": {
+var Builtins = map[string]Function{
+	"contains": {Signatures: []*FuncSignature{
 		{
 			Name:                    "contains",
 			EvaluationPolicy:        EvaluateContains,
@@ -83,8 +83,8 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 			},
 			IsConstFunc: true,
 		},
-	},
-	"startswith": {{
+	}, implementation: evaluateContains},
+	"startswith": {Signatures: []*FuncSignature{{
 		Name:                    "startsWith",
 		EvaluationPolicy:        EvaluateStringPredicate,
 		CompositeStringFallback: true,
@@ -94,8 +94,8 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 			exprtypes.StringType(),
 		},
 		IsConstFunc: true,
-	}},
-	"endswith": {{
+	}}, implementation: evaluateStartsWith},
+	"endswith": {Signatures: []*FuncSignature{{
 		Name:                    "endsWith",
 		EvaluationPolicy:        EvaluateStringPredicate,
 		CompositeStringFallback: true,
@@ -105,8 +105,8 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 			exprtypes.StringType(),
 		},
 		IsConstFunc: true,
-	}},
-	"format": {{
+	}}, implementation: evaluateEndsWith},
+	"format": {Signatures: []*FuncSignature{{
 		Name:             "format",
 		EvaluationPolicy: EvaluateFormat,
 		MaxParams:        255,
@@ -124,8 +124,8 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
-	}},
-	"join": {
+	}}, implementation: evaluateFormat},
+	"join": {Signatures: []*FuncSignature{
 		{
 			Name:                    "join",
 			EvaluationPolicy:        EvaluateJoin,
@@ -164,24 +164,24 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 			},
 			IsConstFunc: true,
 		},
-	},
-	"tojson": {{
+	}, implementation: evaluateJoin},
+	"tojson": {Signatures: []*FuncSignature{{
 		Name: "toJSON",
 		Ret:  exprtypes.StringType(),
 		Params: []exprtypes.Type{
 			exprtypes.AnyType(),
 		},
 		IsConstFunc: true,
-	}},
-	"fromjson": {{
+	}}, implementation: evaluateToJSON},
+	"fromjson": {Signatures: []*FuncSignature{{
 		Name: "fromJSON",
 		Ret:  exprtypes.AnyType(),
 		Params: []exprtypes.Type{
 			exprtypes.StringType(),
 		},
 		IsConstFunc: true,
-	}},
-	"hashfiles": {{
+	}}, implementation: evaluateFromJSON},
+	"hashfiles": {Signatures: []*FuncSignature{{
 		Name:      "hashFiles",
 		MaxParams: 255,
 		Ret:       exprtypes.StringType(),
@@ -189,28 +189,28 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 			exprtypes.StringType(),
 		},
 		VariableLengthParams: true,
-	}},
-	"success": {{
+	}}},
+	"success": {Signatures: []*FuncSignature{{
 		Name:   "success",
 		Ret:    exprtypes.BoolType(),
 		Params: []exprtypes.Type{},
-	}},
-	"always": {{
+	}}},
+	"always": {Signatures: []*FuncSignature{{
 		Name:   "always",
 		Ret:    exprtypes.BoolType(),
 		Params: []exprtypes.Type{},
-	}},
-	"cancelled": {{
+	}}},
+	"cancelled": {Signatures: []*FuncSignature{{
 		Name:   "cancelled",
 		Ret:    exprtypes.BoolType(),
 		Params: []exprtypes.Type{},
-	}},
-	"failure": {{
+	}}},
+	"failure": {Signatures: []*FuncSignature{{
 		Name:   "failure",
 		Ret:    exprtypes.BoolType(),
 		Params: []exprtypes.Type{},
-	}},
-	"case": {{
+	}}},
+	"case": {Signatures: []*FuncSignature{{
 		Name:             "case",
 		EvaluationPolicy: EvaluateCase,
 		MaxParams:        255,
@@ -222,7 +222,7 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
-	}},
+	}}, implementation: evaluateCase},
 }
 
 // Global variables
@@ -237,4 +237,19 @@ func (sig *FuncSignature) ParameterAt(index, count int) exprtypes.Type {
 		return exprtypes.AnyType()
 	}
 	return sig.Params[min(index, len(sig.Params)-1)]
+}
+
+// AcceptsArgumentCount checks arity and parser limits without evaluating arguments.
+func (sig *FuncSignature) AcceptsArgumentCount(count int) bool {
+	if sig.MaxParams > 0 && count > sig.MaxParams {
+		return false
+	}
+	if sig.VariableLengthParams {
+		if count < len(sig.Params) {
+			return false
+		}
+	} else if count != len(sig.Params) {
+		return false
+	}
+	return sig.EvaluationPolicy != EvaluateCase || count%2 == 1
 }

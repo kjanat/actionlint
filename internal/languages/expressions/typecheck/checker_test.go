@@ -455,7 +455,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 						).Type(),
 					},
 				},
-				"contains": exprfunctions.BuiltinFuncSignatures["contains"],
+				"contains": exprfunctions.Builtins["contains"].Signatures,
 			},
 		},
 		{
@@ -1782,7 +1782,8 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 }
 
 func TestExprBuiltinFunctionSignatures(t *testing.T) {
-	for name, sigs := range exprfunctions.BuiltinFuncSignatures {
+	for name, function := range exprfunctions.Builtins {
+		sigs := function.Signatures
 		if len(sigs) == 0 {
 			t.Errorf("overload candidates of %q should not be empty", name)
 		}
