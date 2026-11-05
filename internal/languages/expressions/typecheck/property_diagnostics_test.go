@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -22,10 +24,10 @@ func TestPropertyDiagnostics(t *testing.T) {
 		{"github.event[0].author[env.KEY]", ""},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
-			checker := NewChecker(nil)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			// displayNme is equally close to two declared names: never guess.
 			author := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType(), "displayNme2": exprtypes.StringType()})
-			gh, _ := BuiltinGlobalVariableTypes["github"].Object()
+			gh, _ := contextspec.BuiltinGlobalVariableTypes["github"].Object()
 			gh = gh.With("event", exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"author": author.Type()}).Type()).Type())
 			checker.SetContextTypes(map[string]exprtypes.Type{"github": gh.Type(), "env": exprtypes.NewMapObjectType(exprtypes.StringType()).Type()})
 			checker.SetContextAvailability([]string{"github", "env"})

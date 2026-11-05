@@ -16,7 +16,6 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
@@ -36,142 +35,19 @@ func parseFormatFuncSpecifiers(format string, capacity int) map[int]struct{} {
 	return references
 }
 
-// Functions
-
-// builtinSecretProps are the secrets which GitHub Actions always provides to a workflow.
-// ACTIONS_STEP_DEBUG and ACTIONS_RUNNER_DEBUG seem supplied from caller of the workflow (#130).
-var builtinSecretProps = map[string]exprtypes.Type{
-	"github_token":         exprtypes.StringType(),
-	"actions_step_debug":   exprtypes.StringType(),
-	"actions_runner_debug": exprtypes.StringType(),
-}
-
-// BuiltinGlobalVariableTypes defines types of all global variables. All context variables are
-// documented at https://docs.github.com/en/actions/learn-github-actions/contexts
-var BuiltinGlobalVariableTypes = map[string]exprtypes.Type{
-	// https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context
-	// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/contexts
-	"github": exprtypes.NewNamedObjectType(map[string]exprtypes.Type{
-		"action":                    exprtypes.StringType(),
-		"action_path":               exprtypes.StringType(), // Note: Composite actions only
-		"action_ref":                exprtypes.StringType(),
-		"action_repository":         exprtypes.StringType(),
-		"action_status":             exprtypes.StringType(), // Note: Composite actions only
-		"actor":                     exprtypes.StringType(),
-		"actor_id":                  exprtypes.StringType(),
-		"api_url":                   exprtypes.StringType(),
-		"artifact_cache_size_limit": exprtypes.NumberType(), // Note: Missing from the context reference
-		"artifacts":                 exprtypes.StringType(),
-		"artifacts_list":            exprtypes.StringType(),
-		"base_ref":                  exprtypes.StringType(),
-		"env":                       exprtypes.StringType(),
-		"event":                     exprtypes.NewEmptyObjectType().Type(), // Note: Stricter type check for this payload would be possible
-		"event_name":                exprtypes.StringType(),
-		"event_path":                exprtypes.StringType(),
-		"graphql_url":               exprtypes.StringType(),
-		"head_ref":                  exprtypes.StringType(),
-		"job":                       exprtypes.StringType(),
-		"output":                    exprtypes.StringType(), // Note: Runner-provided file command path missing from the context reference
-		"path":                      exprtypes.StringType(),
-		"ref":                       exprtypes.StringType(),
-		"ref_name":                  exprtypes.StringType(),
-		"ref_protected":             exprtypes.BoolType(),
-		"ref_type":                  exprtypes.StringType(),
-		"repository":                exprtypes.StringType(),
-		"repository_id":             exprtypes.StringType(),
-		"repository_owner":          exprtypes.StringType(),
-		"repository_owner_id":       exprtypes.StringType(),
-		"repository_visibility":     exprtypes.StringType(), // Note: Missing from the context reference; documented as an OIDC claim
-		"repositoryUrl":             exprtypes.StringType(),
-		"retention_days":            exprtypes.StringType(),
-		"run_attempt":               exprtypes.StringType(),
-		"run_id":                    exprtypes.StringType(),
-		"run_number":                exprtypes.StringType(),
-		"secret_source":             exprtypes.StringType(),
-		"server_url":                exprtypes.StringType(),
-		"sha":                       exprtypes.StringType(),
-		"state":                     exprtypes.StringType(), // Note: Runner-provided file command path missing from the context reference
-		"step_summary":              exprtypes.StringType(), // Note: Runner-provided file command path missing from the context reference
-		"token":                     exprtypes.StringType(),
-		"triggering_actor":          exprtypes.StringType(),
-		"workflow":                  exprtypes.StringType(),
-		"workflow_ref":              exprtypes.StringType(),
-		"workflow_sha":              exprtypes.StringType(),
-		"workspace":                 exprtypes.StringType(),
-	}).Type(),
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#env-context
-	"env": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(), // env.<env_name>
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#job-context
-	"job": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-		"check_run_id": exprtypes.NumberType(),
-		"container": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-			"id":      exprtypes.StringType(),
-			"network": exprtypes.StringType(),
-		}).Type(),
-		"services": exprtypes.NewMapObjectType(
-			exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-				"id":      exprtypes.StringType(), // job.services.<service id>.id
-				"network": exprtypes.StringType(),
-				"ports":   exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),
-			}).Type(),
-		).Type(),
-		"status":              exprtypes.StringType(),
-		"workflow_file_path":  exprtypes.StringType(), // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
-		"workflow_ref":        exprtypes.StringType(),
-		"workflow_repository": exprtypes.StringType(),
-		"workflow_sha":        exprtypes.StringType(),
-	}).Type(),
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context
-	"steps": exprtypes.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#runner-context
-	"runner": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-		"name":        exprtypes.StringType(),
-		"os":          exprtypes.StringType(),
-		"arch":        exprtypes.StringType(),
-		"temp":        exprtypes.StringType(),
-		"tool_cache":  exprtypes.StringType(),
-		"debug":       exprtypes.StringType(),
-		"environment": exprtypes.StringType(), // https://github.com/github/docs/issues/32443
-	}).Type(),
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#secrets-context
-	"secrets": exprtypes.NewStrictObjectType(builtinSecretProps).WithMapped(exprtypes.StringType()).Type(),
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#strategy-context
-	"strategy": exprtypes.NewObjectType(map[string]exprtypes.Type{
-		"fail-fast":    exprtypes.BoolType(),
-		"job-index":    exprtypes.NumberType(),
-		"job-total":    exprtypes.NumberType(),
-		"max-parallel": exprtypes.NumberType(),
-	}).Type(),
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#matrix-context
-	"matrix": exprtypes.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#needs-context
-	"needs": exprtypes.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context
-	// https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-	"inputs": exprtypes.NewEmptyStrictObjectType().Type(),
-	// https://docs.github.com/en/actions/learn-github-actions/contexts#vars-context
-	"vars": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(), // vars.<var_name>
-}
-
-// Semantics Checker
-
-// Checker is a semantics Checker for expression syntax. It checks types of values
-// in given expression syntax tree. It additionally checks other semantics like arguments of
-// format() built-in function. To know the details of the syntax, see
-//
-// - https://docs.github.com/en/actions/learn-github-actions/contexts
-// - https://docs.github.com/en/actions/learn-github-actions/expressions
+// Checker checks names and types in a caller-supplied scope and records
+// function-call facts, evaluation outcomes and language issues.
 type Checker struct {
 	skipEvaluation        bool
 	conditionalEvaluation bool
 	funcs                 map[string][]*exprfunctions.FuncSignature
 	vars                  map[string]exprtypes.Type
 	errs                  []*Error
-	varsCopied            bool
 	nodeTypes             map[exprsyntax.Node]exprtypes.Type
 	availableContexts     []string
-	availableSpecialFuncs []string
-	jobCondition          bool
+	functionAvailability  map[string]exprfunctions.Availability
+	functionOverloads     map[string][]*exprfunctions.FuncSignature
+	baseSecrets           map[string]exprtypes.Type
 	configVars            []string
 	configSecrets         []string
 	callFacts             map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts
@@ -180,18 +56,21 @@ type Checker struct {
 	staticInvalid         bool
 }
 
-// NewChecker creates a type checker with the configured variable and secret names.
-// A nil configuration uses built-in names.
-func NewChecker(cfg *Options) *Checker {
+// NewChecker creates a type checker with caller-supplied context facts.
+// A nil configuration permits unknown configured variable and secret names.
+func NewChecker(scope Scope, cfg *Options) *Checker {
 	functions := make(map[string][]*exprfunctions.FuncSignature, len(exprfunctions.Builtins))
 	for name, function := range exprfunctions.Builtins {
 		functions[name] = function.Signatures
 	}
 	c := &Checker{
-		funcs:      functions,
-		vars:       BuiltinGlobalVariableTypes,
-		varsCopied: false,
-		nodeTypes:  make(map[exprsyntax.Node]exprtypes.Type),
+		funcs:     functions,
+		nodeTypes: make(map[exprsyntax.Node]exprtypes.Type),
+	}
+	c.SetContextTypes(scope.ContextTypes())
+	c.SetAvailability(scope)
+	if secrets, ok := c.vars["secrets"].Object(); ok {
+		c.baseSecrets = maps.Collect(secrets.Properties())
 	}
 	if cfg != nil {
 		c.configVars = cfg.Variables
@@ -248,18 +127,6 @@ func (sema *Checker) calleeErrorf(kind findingKind, n *exprsyntax.FuncCallNode, 
 	sema.validationError(errorfAtCallee(kind, n, format, args...))
 }
 
-func (sema *Checker) ensureVarsCopied() {
-	if sema.varsCopied {
-		return
-	}
-
-	// Make shallow copy of current variables map not to pollute global variable
-	copied := make(map[string]exprtypes.Type, len(sema.vars))
-	maps.Copy(copied, sema.vars)
-	sema.vars = copied
-	sema.varsCopied = true
-}
-
 // SetContextTypes replaces the expression's context names and types with a caller-supplied scope.
 // Names are case-insensitive. The Checker copies the map.
 func (sema *Checker) SetContextTypes(contexts map[string]exprtypes.Type) {
@@ -267,36 +134,30 @@ func (sema *Checker) SetContextTypes(contexts map[string]exprtypes.Type) {
 	for name, ty := range contexts {
 		sema.vars[strings.ToLower(name)] = ty
 	}
-	sema.varsCopied = true
 }
 
 // UpdateMatrix updates matrix object to given object type. Since matrix values change according to
 // 'matrix' section of job configuration, the type needs to be updated.
 func (sema *Checker) UpdateMatrix(ty exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
 	sema.vars["matrix"] = ty.Type()
 }
 
 // UpdateSteps updates 'steps' context object to given object type.
 func (sema *Checker) UpdateSteps(ty exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
 	sema.vars["steps"] = ty.Type()
 }
 
 // UpdateNeeds updates 'needs' context object to given object type.
 func (sema *Checker) UpdateNeeds(ty exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
 	sema.vars["needs"] = ty.Type()
 }
 
 // UpdateSecrets updates 'secrets' context object to given object type. The strictness of the
 // given type is preserved, so an open type keeps allowing unknown secret names.
 func (sema *Checker) UpdateSecrets(ty exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
-
 	// Merges automatically supplied secrets with manually defined secrets.
 	var builder exprtypes.ObjectBuilder
-	for name, value := range builtinSecretProps {
+	for name, value := range sema.baseSecrets {
 		builder.Set(name, value)
 	}
 	for name, value := range ty.Properties() {
@@ -310,7 +171,6 @@ func (sema *Checker) UpdateSecrets(ty exprtypes.ObjectType) {
 
 // UpdateInputs updates 'inputs' context object to given object type.
 func (sema *Checker) UpdateInputs(ty exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
 	o, ok := sema.vars["inputs"].Object()
 	if !ok || o.Len() == 0 && o.IsStrict() {
 		sema.vars["inputs"] = ty.Type()
@@ -362,21 +222,14 @@ func (sema *Checker) UpdateDispatchInputs(ty exprtypes.ObjectType) {
 
 // UpdateJobs updates 'jobs' context object to given object type.
 func (sema *Checker) UpdateJobs(ty exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
 	sema.vars["jobs"] = ty.Type()
 }
 
-// SetContextAvailability sets available context names while semantics checks. Some contexts limit
-// where they can be used.
-// https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-//
-// Elements of 'avail' parameter must be in lower case to Check context names in case-insensitive.
-//
-// If this method is not called before checks, Checker considers any contexts are
-// available by default.
-// Available contexts for workflow keys can be obtained from actionlint.ContextAvailability.
+// SetContextAvailability selects which supplied context names can be referenced.
+// An empty list permits every supplied context. Names must use lowercase.
+// The checker copies the list.
 func (sema *Checker) SetContextAvailability(avail []string) {
-	sema.availableContexts = avail
+	sema.availableContexts = slices.Clone(avail)
 }
 
 func (sema *Checker) checkAvailableContext(n *exprsyntax.VariableNode) {
@@ -402,40 +255,9 @@ func (sema *Checker) checkAvailableContext(n *exprsyntax.VariableNode) {
 	)
 }
 
-// SetSpecialFunctionAvailability sets names of available special functions while semantics checks.
-// Some functions limit where they can be used.
-// https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-//
-// Elements of 'avail' parameter must be in lower case to Check function names in case-insensitive.
-//
-// If this method is not called before checks, Checker considers no special function is
-// allowed by default. Allowed functions can be obtained from actionlint.SpecialFunctionNames global
-// constant.
-//
-// Available function names for workflow keys can be obtained from actionlint.ContextAvailability.
-func (sema *Checker) SetSpecialFunctionAvailability(avail []string) {
-	sema.availableSpecialFuncs = avail
-}
-
-// SetWorkflowKeyAvailability selects workflow contexts, special functions, and
-// position-specific signatures. Job conditions allow job arguments to success
-// and failure; step and snapshot conditions require zero arguments.
-func (sema *Checker) SetWorkflowKeyAvailability(key string) {
-	contexts, functions := contextspec.WorkflowKeyAvailability(key)
-	sema.SetContextAvailability(contexts)
-	sema.SetSpecialFunctionAvailability(functions)
-	sema.jobCondition = key == "jobs.<job_id>.if"
-}
-
-func (sema *Checker) checkSpecialFunctionAvailability(n *exprsyntax.FuncCallNode) {
-	f := strings.ToLower(n.Callee)
-
-	allowed, ok := contextspec.SpecialFunctionNames[f]
-	if !ok {
-		return // This function is not special
-	}
-
-	if slices.Contains(sema.availableSpecialFuncs, f) {
+func (sema *Checker) checkFunctionAvailability(n *exprsyntax.FuncCallNode) {
+	availability, denied := sema.functionRestriction(n.Callee)
+	if !denied {
 		return
 	}
 
@@ -444,7 +266,7 @@ func (sema *Checker) checkSpecialFunctionAvailability(n *exprsyntax.FuncCallNode
 		"calling function %q is not allowed here. %q is only available in %s. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details",
 		n.Callee,
 		n.Callee,
-		messages.Quotes(allowed),
+		messages.Quotes(availability.AvailableAt),
 	)
 }
 
@@ -829,7 +651,7 @@ func commonReturn(matches []signatureMatch) (exprtypes.Type, bool) {
 
 func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match signatureMatch) exprtypes.Type {
 	sig := match.signature
-	sema.checkSpecialFunctionAvailability(n)
+	sema.checkFunctionAvailability(n)
 	if sema.skipEvaluation {
 		return sig.Ret
 	}
@@ -881,7 +703,7 @@ func (sema *Checker) checkCallArgument(node exprsyntax.Node, demand exprfunction
 }
 
 func (sema *Checker) checkCaseCall(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature) exprtypes.Type {
-	sema.checkSpecialFunctionAvailability(n)
+	sema.checkFunctionAvailability(n)
 	var alternatives []exprtypes.Type
 	args := make([]exprfunctions.CallArgument, 0, len(n.Args))
 	ty, _ := sema.checkCaseBranches(n.Args, &alternatives, &args, len(n.Args))
@@ -952,10 +774,15 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 	// Check function name in case insensitive. For example, toJson and toJSON are the same function.
 	callee := strings.ToLower(n.Callee)
 	sigs, ok := sema.funcs[callee]
+	if overloads, overridden := sema.functionOverloads[callee]; overridden {
+		sigs, ok = overloads, true
+	}
 	if !ok {
-		candidates := make([]string, 0, len(sema.funcs))
-		for name, signatures := range sema.funcs {
-			if _, special := contextspec.SpecialFunctionNames[name]; special && !slices.Contains(sema.availableSpecialFuncs, name) {
+		functions := maps.Clone(sema.funcs)
+		maps.Copy(functions, sema.functionOverloads)
+		candidates := make([]string, 0, len(functions))
+		for name, signatures := range functions {
+			if _, denied := sema.functionRestriction(name); denied {
 				continue
 			}
 			if len(signatures) > 0 {
@@ -966,21 +793,12 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
 			return exprtypes.AnyType()
 		}
-		ss := make([]string, 0, len(sema.funcs))
-		for n := range sema.funcs {
+		ss := make([]string, 0, len(functions))
+		for n := range functions {
 			ss = append(ss, n)
 		}
 		sema.calleeErrorf(unknownFunction, n, "undefined function %q. available functions are %s", n.Callee, messages.SortedQuotes(ss))
 		return exprtypes.AnyType()
-	}
-
-	if sema.jobCondition && (callee == "success" || callee == "failure") && len(n.Args) > 0 {
-		sigs = []*exprfunctions.FuncSignature{{
-			Name:                 callee,
-			Ret:                  exprtypes.BoolType(),
-			Params:               []exprtypes.Type{exprtypes.StringType()},
-			VariableLengthParams: true,
-		}}
 	}
 
 	declared := make([]exprtypes.Type, 0, len(sigs))

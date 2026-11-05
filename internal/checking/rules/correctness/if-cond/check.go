@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -27,7 +30,7 @@ func Check(value string, start sourcepos.Position) []results.Diagnostic {
 	if expr == nil {
 		return report(fmt.Sprintf("if: condition %q is always evaluated to true because extra characters are around ${{ }}", value))
 	}
-	checker := exprcheck.NewChecker(nil)
+	checker := exprcheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	if !checker.IsConstant(expr) {
 		return nil
 	}

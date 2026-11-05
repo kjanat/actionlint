@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	expr "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -57,7 +59,7 @@ func TestPayloadExpressions(t *testing.T) {
 		{"caller remains open under guard", []Trigger{{Name: "workflow_call"}, {Name: "push"}}, "github.event_name == 'issues' && github.event.issue.title", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			c := expr.NewChecker(nil)
+			c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			c.UpdateEvent(FromTriggers(tc.triggers))
 			c.SetContextAvailability([]string{"github"})
 			n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
@@ -111,7 +113,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	c := expr.NewChecker(nil)
+	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	c.UpdateEvent(Type(declaration.Publish("", w, false, "").Bind("unit-event-payload").Workflow()))
 	c.SetContextAvailability([]string{"github"})
 	n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))

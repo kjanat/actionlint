@@ -11,7 +11,6 @@ import (
 // UpdateEvent installs a payload projection as github.event. Types are
 // immutable, so the potentially large schema graph is shared, not copied.
 func (sema *Checker) UpdateEvent(event exprtypes.ObjectType) {
-	sema.ensureVarsCopied()
 	if gh, ok := sema.vars["github"].Object(); ok {
 		sema.vars["github"] = gh.With("event", event.Type()).Type()
 	}

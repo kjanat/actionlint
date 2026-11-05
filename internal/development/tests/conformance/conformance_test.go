@@ -20,9 +20,11 @@ import (
 	"strings"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
@@ -382,7 +384,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if lexer.Offset() != len(c.Input)+2 {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
-		checker := exprlang.NewChecker(nil)
+		checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 		contexts := map[string]exprtypes.Type{}
 		for name := range c.Contexts {
 			contexts[strings.ToLower(name)] = exprtypes.AnyType()
@@ -400,10 +402,10 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				_, errs := checker.Check(n)
 				diagnostics = append(diagnostics, errs...)
 			case *exprsyntax.FuncCallNode:
-				callChecker := exprlang.NewChecker(nil)
+				callChecker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 				callChecker.SetContextTypes(map[string]exprtypes.Type{"argument": exprtypes.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
-				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
+				callChecker.SetFunctionAvailability(contextspec.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
 				args := make([]exprsyntax.Node, len(n.Args))
 				for i := range args {
 					parsed, err := parser.Parse(exprsyntax.NewLexer("argument}}"))

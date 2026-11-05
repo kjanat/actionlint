@@ -4,8 +4,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
@@ -30,7 +32,7 @@ func TestDiagnosticIdentities(t *testing.T) {
 			if parseError != nil {
 				t.Fatalf("invalid diagnostic fixture: %v", parseError)
 			} else {
-				checker := exprlang.NewChecker(nil)
+				checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 				checker.SetContextAvailability([]string{"github"})
 				_, findings = checker.Check(node)
 				if tc.script {

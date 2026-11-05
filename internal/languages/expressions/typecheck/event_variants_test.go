@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -54,7 +56,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 		{"case(env.DYNAMIC == 'yes', github.event.label, '')", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
-			checker := NewChecker(nil)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.UpdateEvent(event)
 			checker.SetContextAvailability([]string{"github", "env"})
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
@@ -92,7 +94,7 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 		"case(github.event_name == 'push', '', github.event.issue.title)",
 	} {
 		t.Run(source, func(t *testing.T) {
-			checker := NewChecker(nil)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.UpdateEvent(event)
 			checker.SetContextAvailability([]string{"github"})
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))

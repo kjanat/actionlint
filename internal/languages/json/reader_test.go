@@ -7,9 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	evaluation "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	typecheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+
 	jsonlang "actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
@@ -61,7 +66,7 @@ func TestFromJSONValue(t *testing.T) {
 			if !known || !reflect.DeepEqual(folded, tc.want) {
 				t.Fatalf("constant got %#v, known=%v", folded, known)
 			}
-			if _, errs := typecheck.NewChecker(nil).Check(expr); len(errs) != 0 {
+			if _, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expr); len(errs) != 0 {
 				t.Fatal(errs)
 			}
 		})
@@ -108,7 +113,7 @@ func TestFromJSONInvalidSyntax(t *testing.T) {
 			if _, known := evaluation.ConditionConstantValue(expr); known {
 				t.Fatal("folded invalid input")
 			}
-			_, errs := typecheck.NewChecker(nil).Check(expr)
+			_, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expr)
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "broken JSON string") {
 				t.Fatal(errs)
 			}
@@ -142,12 +147,12 @@ func TestFromJSONUnsupportedConstructor(t *testing.T) {
 		if _, known := evaluation.ConditionConstantValue(expr); known {
 			t.Fatal("folded unsupported constructor")
 		}
-		if _, errs := typecheck.NewChecker(nil).Check(expr); len(errs) != 0 {
+		if _, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expr); len(errs) != 0 {
 			t.Fatal(errs)
 		}
 	}
 	expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('{a:new Date(0), A:1}') }}")
-	_, errs := typecheck.NewChecker(nil).Check(expr)
+	_, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expr)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, "collide under case-insensitive lookup") {
 		t.Fatal(errs)
 	}
@@ -167,7 +172,7 @@ func TestFromJSONCollisionOffsets(t *testing.T) {
 	if _, known := evaluation.ConditionConstantValue(expr); known {
 		t.Fatal("folded ambiguous member")
 	}
-	_, errs := typecheck.NewChecker(nil).Check(expr)
+	_, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expr)
 	if len(errs) != 2 {
 		t.Fatal(errs)
 	}

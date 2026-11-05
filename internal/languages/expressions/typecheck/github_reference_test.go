@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -249,8 +251,8 @@ func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...finding
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(nil)
-	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 	checker.UpdateSteps(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 		"demo": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 			"conclusion": exprtypes.StringType(), "outputs": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),

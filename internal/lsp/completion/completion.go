@@ -51,8 +51,8 @@ func Complete(content string, offset int) []expr.Completion {
 		}
 		start = lineStart + colon + 1
 	}
-	c := expr.NewChecker(nil)
-	c.SetWorkflowKeyAvailability(key)
+	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
+	c.SetAvailability(contextspec.WorkflowExpressionScope(key))
 	parsed, _ := workflowparser.Parse([]byte(content))
 	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
 	c.UpdateEvent(events.Type(w))

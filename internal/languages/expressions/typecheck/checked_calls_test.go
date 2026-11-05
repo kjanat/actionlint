@@ -3,8 +3,12 @@ package typecheck
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
@@ -21,7 +25,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			root := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
-			checker := NewChecker(nil)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
 			result := checker.CheckResult(root)
 			found := false
@@ -52,7 +56,7 @@ func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture is not a call")
 	}
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	first := checker.CheckResult(root)
 	if !first.Valid || first.Call == nil {
 		t.Fatalf("invalid fixture: %+v", first)

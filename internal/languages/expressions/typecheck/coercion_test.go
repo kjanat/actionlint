@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
@@ -46,8 +48,8 @@ func TestFunctionCallFacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(nil)
-			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 			got := checker.CheckResult(node)
 			if got.Type.Kind() != tc.kind || got.Valid != tc.valid || got.Evaluation.State != tc.state || got.Evaluation.Value != tc.value {
 				t.Fatalf("got type %s, valid %v, evaluation %+v, findings %v; want %s, %v, %v, %v", got.Type, got.Valid, got.Evaluation, got.Findings, tc.kind, tc.valid, tc.state, tc.value)
@@ -66,8 +68,8 @@ func TestFunctionContractFacts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		checker := NewChecker(nil)
-		checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+		checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 		return checker.CheckResult(node)
 	}
 	got := check("fromJSON(true)")
@@ -100,7 +102,7 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	got := checker.CheckResult(node)
 	if len(got.Findings) != 2 || got.Findings[0].Code != "argument-count" || got.Findings[1].Code != "operand-type" {
 		t.Fatalf("findings: %v", got.Findings)
@@ -108,7 +110,7 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 }
 
 func TestOverloadDeclaredAlternatives(t *testing.T) {
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"test": {
 		{Name: "test", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
 		{Name: "test", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
@@ -124,7 +126,7 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 }
 
 func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
@@ -145,7 +147,7 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		}
 		return node
 	}
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.callFacts = make(map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts)
 	checker.check(parse("startsWith(true)"))
 	if !checker.validationFailed || len(checker.errs) == 0 {
@@ -156,8 +158,8 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		t.Fatal("filtering findings changed validation")
 	}
 
-	checker = NewChecker(nil)
-	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+	checker = NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 	result := checker.CheckResult(parse("startsWith(true, github.event.issue.title)"))
 	if !result.Valid || len(result.Findings) != 0 {
 		t.Fatalf("type checking emitted a coercion policy finding: %+v", result)
@@ -192,7 +194,7 @@ func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
 }
 
 func TestKnownResultRefinesDeclaredAny(t *testing.T) {
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {

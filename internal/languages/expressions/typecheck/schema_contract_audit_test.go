@@ -47,9 +47,9 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 				if !slices.Contains(contextspec.AllWorkflowKeys, key) {
 					t.Fatal("missing from generated workflow key inventory")
 				}
-				for context := range exprlang.BuiltinGlobalVariableTypes {
-					checker := exprlang.NewChecker(nil)
-					checker.SetWorkflowKeyAvailability(key)
+				for context := range contextspec.BuiltinGlobalVariableTypes {
+					checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+					checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
 					expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("toJSON(" + context + ")}}"))
 					if err != nil {
 						t.Fatal(err)
@@ -95,8 +95,8 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(nil)
-			checker.SetWorkflowKeyAvailability(tc.key)
+			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
 			_, errs := checker.Check(expr)
 			if (len(errs) == 0) != tc.valid {
 				t.Fatalf("valid=%v, diagnostics=%v", tc.valid, errs)

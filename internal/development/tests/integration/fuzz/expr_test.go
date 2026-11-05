@@ -4,6 +4,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -26,7 +28,7 @@ func FuzzExprParse(f *testing.F) {
 			return
 		}
 
-		c := exprlang.NewChecker(nil)
+		c := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 		c.Check(e)
 	})
 }
