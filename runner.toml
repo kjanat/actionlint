@@ -1,11 +1,5 @@
 #:schema https://kjanat.github.io/runner/schemas/runner.toml.schema.json
 
-[tasks.build]
-env = { SKIP_GO_GENERATE = "1" }
-
-[tasks.actionlint]
-source = "go"
-
 [chain]
 on_fail = "wait"
 
@@ -20,3 +14,9 @@ summary  = true
 progress = true
 groups   = true
 timing   = true
+
+[tasks.build]
+env = { SKIP_GO_GENERATE = "1" }
+
+[tasks.actionlint]
+source = "go"

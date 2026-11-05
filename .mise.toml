@@ -19,60 +19,68 @@ command = "go"
 args    = ["run", "golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest"]
 
 [tools]
-bun                               = "1.4.4"
-npm                               = "12.2.0"
-go                                = "1.27.3"
-node                              = "26"
-"github:koalaman/shellcheck"      = { prefix = "0.11" }
-"github:kjanat/shellcheck-rs"     = {
+bun                        = "1.4.4"
+npm                        = "12.2.0"
+go                         = "1.27.3"
+node                       = "26"
+shellcheck                 = "0.11.0"
+rshellcheck                = {
   version        = "1.0.0",
   version_prefix = "rshellcheck-v",
-  matching_regex = '^rshellcheck-[0-9].*-(aarch64|x86_64|armv7|i686)-.+\.(tar\.gz|zip)$'
+  matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
 }
-grype                             = "latest"
-ruff                              = "0.17.0"
-syft                              = "latest"
-tinygo                            = { prefix = "0.43" }
-wasm-tools                        = "latest"
-yamllint                          = "latest"
-zizmor                            = "latest"
-"github:charmbracelet/markscribe" = { prefix = "0.8" }
-"github:jgm/pandoc"               = { prefix = "3" }
-"github:kjanat/kprint"            = { version = "0.60.6-kjanat" }
-"github:kjanat/runner"            = { prefix = "0.28" }
-"github:microsoft/TypeScript"     = { prefix = "7" }
-"github:tombi-toml/tombi"         = { prefix = "1.9" }
-"github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
-"npm:@kjanat/fmt"                 = { version = "latest", minimum_release_age = "0s", allow_low_downloads = true, depends = ["node"] }
-rust                              = {
+grype                      = "0.121.1"
+ruff                       = "0.17.0"
+syft                       = "1.56.0"
+tinygo                     = "0.43.0"
+wasm-tools                 = "1.263.0"
+yamllint                   = "1.38.0"
+zizmor                     = "1.31.1"
+tombi                      = "1.10.0"
+markscribe                 = "0.8.1"
+pandoc                     = "3.13"
+kprint                     = "0.60.6-kjanat"
+runner-run                 = "0.28.0"
+typescript                 = "7.0.2"
+biome                      = {
+  version        = "2.6.5",
+  version_prefix = "@biomejs/biome@",
+}
+kfmt                       = {
+  version             = "latest",
+  minimum_release_age = "0s",
+  allow_low_downloads = true,
+  depends             = ["node"],
+}
+rust                       = {
   version    = "latest",
   components = ["clippy", "rustfmt"],
   targets    = ["wasm32-unknown-unknown", "wasm32-wasip2"]
 }
-
-[tools."golangci-lint"]
-prefix  = "2"
-depends = ["go"]
-
-[tools."github:kjanat/actionlint"]
-version = "latest"
-depends = ["github:kjanat/shellcheck-rs"]
-
-[tools."github:rhysd/actionlint"]
-version = "latest"
-depends = ["github:kjanat/shellcheck-rs"]
-
-[tools.wasi-sdk]
-version        = "34"
-version_prefix = "wasi-sdk-"
-filter_bins    = ["wasm32-wasip2-clang", "wasm32-wasip2-clang++"]
-
-[tools.wasi-sdk.platforms]
-windows-x64   = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
-windows-arm64 = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
+"golangci-lint"            = { version = "2.15.0", depends = ["go"] }
+"github:kjanat/actionlint" = { version = "latest", depends = ["github:kjanat/shellcheck-rs"] }
+"github:rhysd/actionlint"  = { version = "latest", depends = ["github:kjanat/shellcheck-rs"] }
+wasi-sdk                   = {
+  version        = "34",
+  version_prefix = "wasi-sdk-",
+  filter_bins    = ["wasm32-wasip2-clang", "wasm32-wasip2-clang++"],
+  platforms      = {
+    windows-x64   = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] },
+    windows-arm64 = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
+  }
+}
 
 [tool_alias]
-wasi-sdk = "github:WebAssembly/wasi-sdk"
+wasi-sdk    = "github:WebAssembly/wasi-sdk"
+pandoc      = "github:jgm/pandoc"
+kprint      = "github:kjanat/kprint"
+kfmt        = "npm:@kjanat/fmt"
+runner-run  = "github:kjanat/runner"
+typescript  = "github:microsoft/TypeScript"
+biome       = "github:biomejs/biome"
+markscribe  = "github:charmbracelet/markscribe"
+shellcheck  = "github:koalaman/shellcheck"
+rshellcheck = "github:kjanat/shellcheck-rs"
 
 [settings]
 experimental                        = true
@@ -80,11 +88,10 @@ idiomatic_version_file_enable_tools = ["go", "node", "bun", "rust"]
 minimum_release_age                 = "0s"
 minimum_release_age_excludes        = [
   "npm:@kjanat/*",
-  "github:kjanat/*",
   "npm:@kprint/*",
+  "github:kjanat/*",
   "github:koalaman/shellcheck",
-  "github:kjanat/shellcheck-rs",
-  "github:microsoft/TypeScript",
+  "github:microsoft/TypeScript"
 ]
 
 [env]
