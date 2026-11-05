@@ -1,9 +1,11 @@
-package calls
+// Package workflowcall checks reusable-workflow arguments, secrets and permission grants.
+package workflowcall
 
 import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -16,7 +18,7 @@ func callFinding(pos workflowlang.Pos, format string, args ...any) results.Diagn
 
 // CheckArguments validates required and supplied inputs and secrets against
 // reusable workflow metadata.
-func CheckArguments(call declaration.WorkflowCallView, m *Metadata) []results.Diagnostic {
+func CheckArguments(call declaration.WorkflowCallView, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if !call.Present() || !call.Uses().Present() || m == nil {
 		return findings
@@ -84,9 +86,9 @@ func CheckArguments(call declaration.WorkflowCallView, m *Metadata) []results.Di
 
 // CheckPermissions compares every callee job's requirements with the explicit
 // caller grant. Conditions do not weaken this contract: GitHub validates it before execution.
-func CheckPermissions(call declaration.WorkflowCallView, granted ResolvedPermissions, m *Metadata) []results.Diagnostic {
+func CheckPermissions(call declaration.WorkflowCallView, granted calls.ResolvedPermissions, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
-	if !call.Present() || !call.Uses().Present() || m == nil || granted.Kind != PermissionsDeclared {
+	if !call.Present() || !call.Uses().Present() || m == nil || granted.Kind != calls.PermissionsDeclared {
 		return findings
 	}
 	report := func(pos workflowlang.Pos, format string, args ...any) {

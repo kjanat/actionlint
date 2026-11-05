@@ -1,4 +1,4 @@
-package calls_test
+package rules_test
 
 import (
 	"fmt"
@@ -7,13 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	workflowcall "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-call"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
-	cwd := filepath.Join("testdata", "reusable-workflows")
+	cwd := filepath.Join("..", "..", "..", "..", "model", "calls", "testdata", "reusable-workflows")
 	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{
@@ -204,7 +205,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 			}
 			view := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {WorkflowCall: c}}}, false, "").Bind("call-fixture").Workflow()
 			job, _ := view.JobsAt("test")
-			findings := calls.CheckArguments(job.WorkflowCall(), metadata)
+			findings := workflowcall.CheckArguments(job.WorkflowCall(), metadata)
 
 			errs := []string{}
 			for _, err := range findings {
