@@ -15,6 +15,7 @@ type EvaluationContext interface {
 type Function struct {
 	Signatures     []*FuncSignature
 	implementation func(EvaluationContext) exprvalues.EvaluationResult
+	inspect        func([]ParameterMatch, *CallInspection)
 }
 
 // Evaluate validates argument count before requesting values from the context.

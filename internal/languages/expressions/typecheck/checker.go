@@ -1,7 +1,6 @@
 package typecheck
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -16,8 +15,6 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-
-	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
@@ -832,66 +829,31 @@ func commonReturn(matches []signatureMatch) (exprtypes.Type, bool) {
 
 func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match signatureMatch) exprtypes.Type {
 	sig := match.signature
-	if sema.skipEvaluation && (strings.EqualFold(n.Callee, "fromJSON") || strings.EqualFold(n.Callee, "format")) {
+	sema.checkSpecialFunctionAvailability(n)
+	if sema.skipEvaluation {
 		return sig.Ret
 	}
-	sema.checkSpecialFunctionAvailability(n)
-	// Special checks for specific built-in functions
-	switch strings.ToLower(n.Callee) {
-	case "format":
-		arg := match.arguments[0]
-		format, ok := arg.Value.(string)
-		if arg.State != exprfunctions.ArgumentKnown || !ok {
-			return sig.Ret
-		}
-		l := len(n.Args) - 1 // -1 means removing first format string argument
-		plan, _ := exprfunctions.ArgumentFormatPlan(&match.arguments[0].Argument, l)
-		missing := false
-		for part := range plan.Parts() {
-			if part.Index >= l {
-				missing = true
-				sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", format, part.Index, l))
-			}
-		}
-		if !plan.Valid() && !missing {
-			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q has an invalid placeholder", format))
-		}
-		if plan.Valid() {
-			for part := range plan.Parts() {
-				if part.Index >= 0 && match.arguments[part.Index+1].Argument.State == exprfunctions.ArgumentInvalid {
-					break
-				}
-				if part.Specifier != "" {
-					sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q uses unsupported format specifier %q", format, part.Specifier))
-					break
-				}
-			}
-		}
-	case "fromjson":
-		arg := match.arguments[0]
-		input, ok := arg.Value.(string)
-		if arg.State != exprfunctions.ArgumentKnown || !ok {
-			return sig.Ret
-		}
-		value, collisions, err := runnerjson.Read(input)
-		if err != nil && !errors.Is(err, runnerjson.ErrUnsupportedValue) {
-			if syntax, ok := errors.AsType[*runnerjson.ReadError](err); ok {
-				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON() at offset %d: %s", syntax.Offset, syntax))
+	function := exprfunctions.Builtins[strings.ToLower(n.Callee)]
+	inspection := function.InspectArguments(sig, match.arguments)
+	for _, problem := range inspection.Problems {
+		switch problem := problem.(type) {
+		case exprfunctions.MissingFormatArgument:
+			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", problem.Template, problem.Index, problem.Count))
+		case exprfunctions.InvalidFormatPlaceholder:
+			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q has an invalid placeholder", problem.Template))
+		case exprfunctions.UnsupportedFormatSpecifier:
+			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q uses unsupported format specifier %q", problem.Template, problem.Specifier))
+		case exprfunctions.InvalidJSON:
+			if problem.Offset != nil {
+				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON() at offset %d: %s", *problem.Offset, problem.Message))
 			} else {
-				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON(): %s", err))
+				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON(): %s", problem.Message))
 			}
-			return sig.Ret
+		case exprfunctions.JSONMemberCollision:
+			sema.errorf(jsonCollision, n.Args[0], "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", problem.First, problem.Second, problem.Offset)
 		}
-		for _, collision := range collisions {
-			sema.errorf(jsonCollision, n.Args[0], "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)
-		}
-		if len(collisions) > 0 || err != nil {
-			return sig.Ret
-		}
-		return exprtypes.TypeOfJSONValue(value)
 	}
-
-	return sig.Ret
+	return inspection.ReturnType
 }
 
 func (sema *Checker) checkDemandedExpression(node exprsyntax.Node, demand exprfunctions.ArgumentDemand) (exprtypes.Type, bool) {

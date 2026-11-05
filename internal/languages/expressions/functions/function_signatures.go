@@ -124,7 +124,7 @@ var Builtins = map[string]Function{
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
-	}}, implementation: evaluateFormat},
+	}}, implementation: evaluateFormat, inspect: inspectFormat},
 	"join": {Signatures: []*FuncSignature{
 		{
 			Name:                    "join",
@@ -180,7 +180,7 @@ var Builtins = map[string]Function{
 			exprtypes.StringType(),
 		},
 		IsConstFunc: true,
-	}}, implementation: evaluateFromJSON},
+	}}, implementation: evaluateFromJSON, inspect: inspectFromJSON},
 	"hashfiles": {Signatures: []*FuncSignature{{
 		Name:      "hashFiles",
 		MaxParams: 255,
