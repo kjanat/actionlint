@@ -49,9 +49,19 @@ function fixture(
 	const run = (/** @type {string} */ command, /** @type {string[]} */ args) => {
 		calls.push([command, ...args]);
 		if (command === 'gh') {
-			if (args[1].includes('/commits?')) return newRevision;
-			if (missingFamily && args[1].includes(oldRevision)) throw new Error('HTTP 404: compiler family absent');
-			const matches = available && (currentMatches || args[1].includes(newRevision));
+			assert.equal(args[0], 'api');
+			assert.match(args[1], /^repos\/NixOS\/nixpkgs\/commits\?/);
+			return newRevision;
+		}
+		if (command === 'curl') {
+			const url = args.at(-1);
+			assert.ok(typeof url === 'string');
+			assert.match(
+				url,
+				/^https:\/\/raw\.githubusercontent\.com\/NixOS\/nixpkgs\/[a-f0-9]{40}\/pkgs\/development\/compilers\/go\/1\.99\.nix$/,
+			);
+			if (missingFamily && url.includes(oldRevision)) throw new Error('HTTP 404: compiler family absent');
+			const matches = available && (currentMatches || url.includes(newRevision));
 			return `version = "${matches ? '1.99.3' : '1.98.2'}";`;
 		}
 		assert.equal(command, 'nix');
