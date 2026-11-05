@@ -1078,7 +1078,13 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 			declared = append(declared, sig.Ret)
 		}
 	}
-	sema.callFacts[n] = exprfunctions.FunctionCallFacts{DeclaredReturns: declared}
+	demand := exprfunctions.DemandRequired
+	if sema.skipEvaluation {
+		demand = exprfunctions.DemandSkipped
+	} else if sema.conditionalEvaluation {
+		demand = exprfunctions.DemandConditional
+	}
+	sema.callFacts[n] = exprfunctions.FunctionCallFacts{DeclaredReturns: declared, Demand: demand}
 
 	policy := sigs[0].EvaluationPolicy
 	if policy == exprfunctions.EvaluateCase && len(n.Args) >= 3 && len(n.Args)%2 == 1 && (sigs[0].MaxParams == 0 || len(n.Args) <= sigs[0].MaxParams) {
@@ -1171,6 +1177,7 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 
 func (sema *Checker) recordCallArguments(n *exprsyntax.FuncCallNode, match signatureMatch) {
 	facts := sema.callFacts[n]
+	facts.SignatureMatched = match.err == nil
 	for _, arg := range match.arguments {
 		value := exprvalues.EvaluationResult{State: exprvalues.EvaluationState(arg.State), Value: arg.Value}
 		if arg.Argument.Demand == exprfunctions.DemandSkipped {
@@ -1326,6 +1333,7 @@ func (sema *Checker) check(expr exprsyntax.Node) (ty exprtypes.Type) {
 type ExpressionCheckResult struct {
 	Type       exprtypes.Type
 	Types      InferredTypes
+	Calls      CheckedCalls
 	Valid      bool
 	Findings   []*Error
 	Evaluation exprvalues.EvaluationResult
@@ -1384,9 +1392,12 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 					facts.RefinedAlternatives = []exprtypes.Type{actual}
 				}
 			}
-			result.Call = &facts
+			sema.callFacts[call] = facts
+			detached := facts.Clone()
+			result.Call = &detached
 		}
 	}
+	result.Calls = CheckedCalls{byNode: sema.callFacts}
 	return result
 }
 
