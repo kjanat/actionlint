@@ -1215,7 +1215,7 @@ func suspiciousComparison(op exprsyntax.CompareOpNodeKind, left, right exprtypes
 func (sema *Checker) checkCompareOp(n *exprsyntax.CompareOpNode) exprtypes.Type {
 	l := sema.check(n.Left)
 	r := sema.check(n.Right)
-	sema.checkConditionComparison(n, l, r)
+	sema.checkConditionComparison(n)
 
 	if sema.checks.SuspiciousCoercion && suspiciousComparison(n.Kind, l, r) {
 		sema.ruleError(n, "coercion", fmt.Sprintf("comparison of %s and %s with %s uses Actions coercion or NaN; check whether these operand types were intended", l, r, n.Kind))
@@ -1353,9 +1353,6 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.validationFailed = false
 	sema.staticInvalid = false
 	ty := sema.check(expr)
-	if sema.condition && sema.checks.StringConditions && conditionStringReference(expr, ty) {
-		sema.ruleError(expr, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")
-	}
 	errs := detachErrors(sema.errs)
 
 	evaluation := exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}

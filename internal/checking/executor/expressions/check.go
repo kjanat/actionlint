@@ -148,6 +148,8 @@ func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host reposito
 	semantics.Variables, semantics.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
 	return workflowexpr.Options{
 		Semantics:               *semantics,
+		StringConditions:        config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
+		MixedTypeComparisons:    config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
 		JobReferences:           func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
 		UnsoundTernary:          config.RuleSet().DiagnosticLevel(config, "unsound-ternary") != "off",
 		ScriptInjectionDisabled: config.RuleSet().DiagnosticLevel(config, "script-injection") == "off",
@@ -156,8 +158,6 @@ func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host reposito
 
 func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {
 	options := &exprlang.Options{Checks: exprlang.Checks{
-		StringConditions:          config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
-		MixedTypeComparisons:      config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
 		SuspiciousCoercion:        config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
 		CaseInsensitiveConditions: config.RuleSet().DiagnosticLevel(config, "case-insensitive-conditions") != "off",
 	}}

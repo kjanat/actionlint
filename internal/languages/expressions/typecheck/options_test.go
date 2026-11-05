@@ -11,8 +11,6 @@ func TestCheckSelectionWithoutRepositoryConfig(t *testing.T) {
 		source, rule string
 		checks       Checks
 	}{
-		{"env.FLAG", "string-conditions", Checks{StringConditions: true}},
-		{"github.ref == 1", "mixed-type-comparisons", Checks{MixedTypeComparisons: true}},
 		{"github.ref == 'main'", "case-insensitive-conditions", Checks{CaseInsensitiveConditions: true}},
 	} {
 		for _, enabled := range []bool{false, true} {

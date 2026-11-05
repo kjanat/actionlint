@@ -10,8 +10,6 @@ type Options struct {
 
 // Checks selects optional semantics without depending on rule presets.
 type Checks struct {
-	StringConditions          bool
-	MixedTypeComparisons      bool
 	SuspiciousCoercion        bool
 	CaseInsensitiveConditions bool
 }

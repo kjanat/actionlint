@@ -73,6 +73,8 @@ type ReferenceNames struct {
 type Options struct {
 	Semantics               exprlang.Options
 	UnsoundTernary          bool
+	StringConditions        bool
+	MixedTypeComparisons    bool
 	ScriptInjectionDisabled bool
 	JobReferences           func(workflowdecl.JobView) ReferenceNames
 }
