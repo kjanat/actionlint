@@ -41,13 +41,15 @@ type Options struct {
 	Processes     *process.ProcessPool
 	RemoteActions actions.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
-	Repository             func(context.Context, string) repository.Snapshot
-	Runners                runner.Options
-	Tools                  []tools.Registration
-	Resolver               references.Resolver
-	WorkingDir, ConfigFile string
-	ConfigOverlays         []repoconfig.Overlay
-	SkipProjectConfig      bool
+	Repository func(context.Context, string) repository.Snapshot
+	Runners    runner.Options
+	Tools      []tools.Registration
+	Resolver   references.Resolver
+	WorkingDir string
+	// ConfigFile resolves relative to WorkingDir unless it is absolute or remote.
+	ConfigFile        string
+	ConfigOverlays    []repoconfig.Overlay
+	SkipProjectConfig bool
 	// NoIgnore disables Git-ignore filtering during discovery, not config file filters.
 	NoIgnore  bool
 	Analyzers []checkinputs.Registration
@@ -169,14 +171,9 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if input.Kind == inputmodel.Prepared {
 		request.Sources, request.WorkingDir = slices.Clone(input.Sources), options.WorkingDir
 		if options.WorkingDir != "" {
-			root, err := filepath.Abs(options.WorkingDir)
+			request.LocalDependencyRoot, err = filepath.Abs(options.WorkingDir)
 			if err != nil {
 				return nil, err
-			}
-			for i := range request.Sources {
-				if request.Sources[i].Project == nil {
-					request.Sources[i].Project = workspace.Identity(root)
-				}
 			}
 		}
 		return analyzePrepared(ctx, request)

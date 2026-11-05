@@ -3,7 +3,9 @@ package checking
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -55,6 +57,36 @@ func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
 	}
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression-reference" || result.Diagnostics[0].Path != sources[2].Path {
 		t.Fatalf("host facts leaked between repositories: %+v", result.Diagnostics)
+	}
+}
+
+func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *testing.T) {
+	root := t.TempDir()
+	write := func(path, content string) {
+		t.Helper()
+		path = filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(".github/workflows/reuse.yml", "on: {workflow_call: {inputs: {required: {type: string, required: true}}}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
+	write(".github/actions/hello/action.yml", "name: Hello\ndescription: Greet the caller\nruns: {using: composite, steps: [{shell: bash, run: echo hello}]}\n")
+	content := "on: push\njobs:\n  caller: {uses: ./.github/workflows/reuse.yml}\n  action: {runs-on: ubuntu-latest, steps: [{uses: ./.github/actions/hello}]}\n"
+	result, err := Analyze(t.Context(), Options{
+		WorkingDir: root,
+		Repository: func(context.Context, string) repository.Snapshot {
+			t.Error("working directory was presented as an identified repository")
+			return repository.Snapshot{}
+		},
+	}, []workspace.Source{{Path: ".github/workflows/ci.yml", Content: []byte(content)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "workflow-call" || !strings.Contains(result.Diagnostics[0].Message, `input "required" is required`) {
+		t.Fatalf("local dependencies did not resolve from the working directory: %+v", result.Diagnostics)
 	}
 }
 

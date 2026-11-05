@@ -76,16 +76,19 @@ type analysisRequest struct {
 	RemoteActions actions.Provider
 	Repository    func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
-	captureJoinTimeout   time.Duration
-	Runners              runner.Options
-	Sources              []sourceUnit
-	SourceOverlays       []SourceOverlay
-	DiskSources          bool
-	Analyzers            []checkinputs.Registration
-	Tools                []tools.Registration
-	IgnorePatterns       repoconfig.IgnorePatterns
-	OnRulesCreated       func([]workflowvisit.Rule) []workflowvisit.Rule
-	WorkingDir           string
+	captureJoinTimeout time.Duration
+	Runners            runner.Options
+	Sources            []sourceUnit
+	SourceOverlays     []SourceOverlay
+	DiskSources        bool
+	Analyzers          []checkinputs.Registration
+	Tools              []tools.Registration
+	IgnorePatterns     repoconfig.IgnorePatterns
+	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule
+	WorkingDir         string
+	// LocalDependencyRoot supplies the explicit base for prepared sources without
+	// a repository identity. Empty leaves their local dependency root unknown.
+	LocalDependencyRoot  string
 	ReadFile             func(string) ([]byte, error)
 	RulePresets          repoconfig.Presets
 	LoadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
@@ -370,7 +373,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			return nil, err
 		}
 	}
-	// One reusable-workflow cache per project root; "" (no project) never hits.
+	// Local dependencies use the project root or an explicitly supplied dependency root.
 	workflows := map[string]*calls.Cache{}
 	session.workingDir = absPath(cwd)
 	session.repositories = make(map[string]repository.Snapshot)
@@ -406,7 +409,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	})
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
-		root := projectRoot(source.Project)
+		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
 		wc, configured := workflows[root]
 		if !configured {
 			wc = calls.NewCache(root, cwd, session.debugWriter())
@@ -439,7 +442,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			path = source.Path
 		}
 		inputs.add(path)
-		ac, wc := actions.GetCache(lifetime, projectRoot(source.Project)), workflows[projectRoot(source.Project)]
+		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
+		ac, wc := actions.GetCache(lifetime, root), workflows[root]
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
