@@ -839,49 +839,27 @@ func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match sign
 	return inspection.ReturnType
 }
 
-func (sema *Checker) reportCallProblems(n *exprsyntax.FuncCallNode, problems []exprfunctions.CallProblem) {
-	for _, problem := range problems {
-		switch problem := problem.(type) {
-		case exprfunctions.MissingFormatArgument:
-			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", problem.Template, problem.Index, problem.Count))
-		case exprfunctions.InvalidFormatPlaceholder:
-			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q has an invalid placeholder", problem.Template))
-		case exprfunctions.UnsupportedFormatSpecifier:
-			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q uses unsupported format specifier %q", problem.Template, problem.Specifier))
-		case exprfunctions.InvalidJSON:
-			if problem.Offset != nil {
-				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON() at offset %d: %s", *problem.Offset, problem.Message))
-			} else {
-				sema.evaluationError(errorfAtExpr(invalidJSON, n.Args[0], "broken JSON string is passed to fromJSON(): %s", problem.Message))
-			}
-		case exprfunctions.JSONMemberCollision:
-			sema.errorf(jsonCollision, n.Args[0], "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", problem.First, problem.Second, problem.Offset)
-		case exprfunctions.InvalidCasePredicate:
-			previousInvalid := sema.evaluationInvalid
-			previous := sema.conditionalEvaluation
-			sema.conditionalEvaluation = previous || problem.Demand == exprfunctions.DemandConditional
-			sema.evaluationError(errorfAtExpr(operandType, n.Args[problem.Index], "case() predicate must be boolean but found %s", problem.Actual.String()))
-			sema.conditionalEvaluation = previous
-			if problem.Demand != exprfunctions.DemandRequired {
-				sema.evaluationInvalid = previousInvalid
-			}
-		}
-	}
+func (sema *Checker) checkDemandedExpression(node exprsyntax.Node, demand exprfunctions.ArgumentDemand) (exprtypes.Type, bool) {
+	var ty exprtypes.Type
+	invalid := sema.withEvaluationDemand(demand, func() { ty = sema.check(node) })
+	return ty, invalid
 }
 
-func (sema *Checker) checkDemandedExpression(node exprsyntax.Node, demand exprfunctions.ArgumentDemand) (exprtypes.Type, bool) {
+// withEvaluationDemand isolates failures from conditional and skipped operations
+// while preserving failures already established in the enclosing expression.
+func (sema *Checker) withEvaluationDemand(demand exprfunctions.ArgumentDemand, operation func()) bool {
 	previousInvalid := sema.evaluationInvalid
 	previousConditional := sema.conditionalEvaluation
 	previousSkipped := sema.skipEvaluation
 	sema.evaluationInvalid = false
 	sema.conditionalEvaluation = previousConditional || demand == exprfunctions.DemandConditional
 	sema.skipEvaluation = previousSkipped || demand == exprfunctions.DemandSkipped
-	ty := sema.check(node)
+	operation()
 	invalid := sema.evaluationInvalid
 	sema.evaluationInvalid = previousInvalid || (invalid && demand == exprfunctions.DemandRequired)
 	sema.conditionalEvaluation = previousConditional
 	sema.skipEvaluation = previousSkipped
-	return ty, invalid
+	return invalid
 }
 
 func (sema *Checker) checkExpressionBranch(node exprsyntax.Node, demand exprfunctions.ArgumentDemand) exprtypes.Type {

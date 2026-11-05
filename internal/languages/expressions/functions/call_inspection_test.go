@@ -12,11 +12,11 @@ func TestInspectKnownCallArguments(t *testing.T) {
 		name, function string
 		values         []any
 		kind           exprtypes.Kind
-		problems       []CallProblem
+		problems       []CallProblemReport
 	}{
-		{"missing format replacement", "format", []any{"{1}", true}, exprtypes.KindString, []CallProblem{MissingFormatArgument{Template: "{1}", Index: 1, Count: 1}}},
-		{"malformed format placeholder", "format", []any{"{"}, exprtypes.KindString, []CallProblem{InvalidFormatPlaceholder{Template: "{"}}},
-		{"unsupported format specifier", "format", []any{"{0:N2}", true}, exprtypes.KindString, []CallProblem{UnsupportedFormatSpecifier{Template: "{0:N2}", Specifier: "N2"}}},
+		{"missing format replacement", "format", []any{"{1}", true}, exprtypes.KindString, []CallProblemReport{{Problem: MissingFormatArgument{Template: "{1}", Index: 1, Count: 1}, Demand: DemandRequired}}},
+		{"malformed format placeholder", "format", []any{"{"}, exprtypes.KindString, []CallProblemReport{{Problem: InvalidFormatPlaceholder{Template: "{"}, Demand: DemandRequired}}},
+		{"unsupported format specifier", "format", []any{"{0:N2}", true}, exprtypes.KindString, []CallProblemReport{{Problem: UnsupportedFormatSpecifier{Template: "{0:N2}", Specifier: "N2"}, Demand: DemandRequired}}},
 		{"JSON boolean refines return", "fromjson", []any{"true"}, exprtypes.KindBool, nil},
 		{"JSON array refines return", "fromjson", []any{"[1,2]"}, exprtypes.KindArray, nil},
 		{"JSON negative zero has numeric type", "fromjson", []any{"-0"}, exprtypes.KindNumber, nil},
@@ -53,7 +53,7 @@ func TestUnsupportedJSONStillReportsMemberCollisions(t *testing.T) {
 	if inspection.ReturnType.Kind() != exprtypes.KindAny || len(inspection.Problems) != 1 {
 		t.Fatalf("inspection=%+v, want unknown return type and one collision", inspection)
 	}
-	collision, ok := inspection.Problems[0].(JSONMemberCollision)
+	collision, ok := inspection.Problems[0].Problem.(JSONMemberCollision)
 	if !ok || collision.First != "A" || collision.Second != "a" || collision.Offset <= 0 {
 		t.Fatalf("problem=%+v, want collision between A and a with its JSON offset", inspection.Problems[0])
 	}
@@ -65,17 +65,17 @@ func TestCaseInspectionPreservesPredicateDemand(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		arguments []CallArgument
-		problems  []CallProblem
+		problems  []CallProblemReport
 	}{
 		{"required nonboolean", []CallArgument{
 			{Source: exprtypes.AnyType(), State: ArgumentKnown, Value: float64(1), Demand: DemandRequired}, value, value,
-		}, []CallProblem{InvalidCasePredicate{Index: 0, Actual: exprtypes.NumberType(), Demand: DemandRequired}}},
+		}, []CallProblemReport{{Problem: InvalidCasePredicate{Index: 0, Actual: exprtypes.NumberType()}, Demand: DemandRequired}}},
 		{"skipped nonboolean", []CallArgument{
 			{Source: exprtypes.NumberType(), Demand: DemandSkipped}, value, value,
 		}, nil},
 		{"conditional later predicate", []CallArgument{
 			boolean, value, {Source: exprtypes.StringType(), State: ArgumentKnown, Value: "text", Demand: DemandConditional}, value, value,
-		}, []CallProblem{InvalidCasePredicate{Index: 2, Actual: exprtypes.StringType(), Demand: DemandConditional}}},
+		}, []CallProblemReport{{Problem: InvalidCasePredicate{Index: 2, Actual: exprtypes.StringType()}, Demand: DemandConditional}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			function := Builtins["case"]

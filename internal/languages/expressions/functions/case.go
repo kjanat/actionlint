@@ -9,14 +9,14 @@ func inspectCase(arguments []ParameterMatch, inspection *CallInspection) {
 	for index := 0; index < len(arguments)-1; index += 2 {
 		match := arguments[index]
 		argument := match.Argument
-		if match.Accepted || argument.Demand == DemandSkipped {
+		if match.Accepted {
 			continue
 		}
 		actual := argument.Source
 		if argument.State == ArgumentKnown {
 			actual = exprtypes.TypeOfJSONValue(argument.Value)
 		}
-		inspection.Problems = append(inspection.Problems, InvalidCasePredicate{Index: index, Actual: actual, Demand: argument.Demand})
+		inspection.addProblem(InvalidCasePredicate{Index: index, Actual: actual}, argument.Demand)
 	}
 }
 
