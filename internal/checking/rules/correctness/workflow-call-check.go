@@ -3,6 +3,7 @@ package correctness
 import (
 	"strings"
 
+	workflowcall "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-call"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 
@@ -107,7 +108,7 @@ func (rule *ruleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.Workf
 		return
 	}
 
-	for _, d := range calls.CheckArguments(call, m) {
+	for _, d := range workflowcall.CheckArguments(call, m) {
 		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 
@@ -132,7 +133,7 @@ func (rule *ruleWorkflowCall) checkWorkflowCallPermissions(call workflowdecl.Wor
 		}
 	}
 
-	for _, d := range calls.CheckPermissions(call, granted, m) {
+	for _, d := range workflowcall.CheckPermissions(call, granted, m) {
 		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 }
