@@ -67,14 +67,21 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 		name  string
 		setup func(t *testing.T, root string, git func(...string)) string
 	}{
-		{"ignore rules", func(t *testing.T, root string, git func(...string)) string { return root }},
+		{"ignore rules", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+			return root
+		}},
 		{"hook environment", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			t.Setenv("GIT_DIR", filepath.Join(root, "missing"))
 			t.Setenv("GIT_WORK_TREE", filepath.Join(root, "missing"))
 			t.Setenv("GIT_INDEX_FILE", filepath.Join(root, "missing", "index"))
 			return root
 		}},
 		{"inherited pathspec and trace settings", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			for _, name := range []string{"GIT_LITERAL_PATHSPECS", "GIT_NOGLOB_PATHSPECS", "GIT_TRACE", "GIT_TRACE2", "GIT_TRACE_PERFORMANCE", "GIT_TRACE_SETUP"} {
 				t.Setenv(name, "1")
 			}
@@ -83,6 +90,8 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			return root
 		}},
 		{"newline in the repository path", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			if runtime.GOOS == "windows" {
 				t.Skip("Windows paths cannot contain newlines")
 			}
@@ -94,6 +103,8 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			return moved
 		}},
 		{"deleted tracked manifest", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			writeFixture(t, root, "deleted/action.yml", "name: fixture\n")
 			git("add", "--", "deleted/action.yml")
 			git("commit", "--quiet", "-m", "Delete")
@@ -103,6 +114,8 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			return root
 		}},
 		{"tracked symlink", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			if err := os.MkdirAll(filepath.Join(root, "link"), 0o750); err != nil {
 				t.Fatal(err)
 			}
@@ -113,6 +126,8 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			return root
 		}},
 		{"symlinked directory", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			writeFixture(t, root, "moved/action.yml", "name: fixture\n")
 			git("add", "--", "moved/action.yml")
 			git("commit", "--quiet", "-m", "Move")
@@ -127,12 +142,16 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			return root
 		}},
 		{"nested repository", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			writeFixture(t, root, "nested/action.yml", "name: fixture\n")
 			git("add", "--", "nested/action.yml")
 			writeFixture(t, root, "nested/.git", "gitdir: elsewhere\n")
 			return root
 		}},
 		{"symlinked root", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			alias := filepath.Join(t.TempDir(), "alias")
 			if err := os.Symlink(root, alias); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
@@ -140,13 +159,19 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 			return alias
 		}},
 		{"subdirectory", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			return filepath.Join(root, "sub")
 		}},
 		{"ceiling at the repository root", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			t.Setenv("GIT_CEILING_DIRECTORIES", root)
 			return filepath.Join(root, "sub")
 		}},
 		{"worktree", func(t *testing.T, root string, git func(...string)) string {
+			t.Helper()
+
 			worktree := filepath.Join(t.TempDir(), "worktree")
 			git("worktree", "add", "--quiet", worktree)
 			if info, err := os.Lstat(filepath.Join(worktree, ".git")); err != nil || info.IsDir() {
@@ -230,23 +255,33 @@ func TestActionsGitError(t *testing.T) {
 		setup func(t *testing.T, root string)
 	}{
 		{"invalid repository", func(t *testing.T, root string) {
+			t.Helper()
+
 			writeFixture(t, root, ".git", "gitdir: elsewhere\n")
 		}},
 		{"git unavailable", func(t *testing.T, root string) {
+			t.Helper()
+
 			gitFixture(t, root)
 			t.Setenv("PATH", t.TempDir())
 		}},
 		{"unreadable ignore file", func(t *testing.T, root string) {
+			t.Helper()
+
 			gitFixture(t, root)
 			seal(t, filepath.Join(root, ".gitignore"))
 		}},
 		{"unreadable tracked directory", func(t *testing.T, root string) {
+			t.Helper()
+
 			git := gitFixture(t, root)
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
 			git("add", "--", "sealed/action.yml")
 			seal(t, filepath.Join(root, "sealed"))
 		}},
 		{"unreadable untracked directory", func(t *testing.T, root string) {
+			t.Helper()
+
 			gitFixture(t, root)
 			writeFixture(t, root, "sealed/action.yml", "name: fixture\n")
 			seal(t, filepath.Join(root, "sealed"))
@@ -402,6 +437,8 @@ func TestActionsReportSplitIndexAndGitfile(t *testing.T) {
 		want  func(t *testing.T) string
 	}{
 		{root, func(t *testing.T) string {
+			t.Helper()
+
 			shared, err := filepath.Glob(filepath.Join(root, ".git", "sharedindex.*"))
 			if err != nil || len(shared) != 1 {
 				t.Fatalf("split index files = %q, %v", shared, err)
@@ -413,6 +450,8 @@ func TestActionsReportSplitIndexAndGitfile(t *testing.T) {
 			return physical
 		}},
 		{worktree, func(t *testing.T) string {
+			t.Helper()
+
 			physical, err := filepath.EvalSymlinks(filepath.Join(worktree, ".git"))
 			if err != nil {
 				t.Fatal(err)

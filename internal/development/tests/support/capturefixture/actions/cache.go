@@ -15,20 +15,20 @@ import (
 
 // NewCache uses one source-capture store for metadata lookups and closes it when the test ends.
 // If a reader is supplied, lookups use it instead of the native filesystem reader.
-func NewCache(t testing.TB, root string, debug io.Writer, readers ...*files.Reader) *actionlocal.Cache {
-	t.Helper()
-	reader := files.New(t.Context(), nil, nil)
+func NewCache(tb testing.TB, root string, debug io.Writer, readers ...*files.Reader) *actionlocal.Cache {
+	tb.Helper()
+	reader := files.New(tb.Context(), nil, nil)
 	if len(readers) != 0 {
 		reader = readers[0]
 	}
-	store, err := capture.New(t.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
+	store, err := capture.New(tb.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
 		return reader.ReadFile(filepath.FromSlash(path))
 	})
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
-	cache := actionlocal.NewCache(t.Context(), root, debug)
-	cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: root, Reader: reader, CustomReader: len(readers) != 0})
-	capturefixture.CloseCaptures(t, store)
+	cache := actionlocal.NewCache(tb.Context(), root, debug)
+	cache.Configure(actionlocal.Options{Captures: store, Context: tb.Context(), WorkingDir: root, Reader: reader, CustomReader: len(readers) != 0})
+	capturefixture.CloseCaptures(tb, store)
 	return cache
 }

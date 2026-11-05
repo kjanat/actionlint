@@ -7,12 +7,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 )
 
-func sourceFixtureBase(t testing.TB) string { return capturefixture.CurrentDir(t) }
+func sourceFixtureBase(tb testing.TB) string {
+	tb.Helper()
+	return capturefixture.CurrentDir(tb)
+}
 
 type capturedSnapshots = declarations.CapturedSnapshots
 
-func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
-	t.Helper()
-	_, _, snapshots := declarations.NewCapturedSnapshots(t, base)
+func newCapturedSnapshots(tb testing.TB, base string) *capturedSnapshots {
+	tb.Helper()
+	_, _, snapshots := declarations.NewCapturedSnapshots(tb, base)
 	return snapshots
 }

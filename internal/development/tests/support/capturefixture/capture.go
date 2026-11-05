@@ -31,14 +31,14 @@ type CapturedSources struct {
 // The fixture keeps a private reference to the same store for Capture, so a
 // caller cannot point Capture at a different store. The store is closed when
 // the test ends.
-func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) (*capture.Store, *CapturedSources) {
-	t.Helper()
+func NewCapturedSources(tb testing.TB, base string, overlays ...capture.Overlay) (*capture.Store, *CapturedSources) {
+	tb.Helper()
 	if !filepath.IsAbs(base) {
-		t.Fatalf("capture fixture requires an absolute base: %q", base)
+		tb.Fatalf("capture fixture requires an absolute base: %q", base)
 	}
-	fixture := &CapturedSources{base: base, ctx: t.Context(), content: make(map[string][]byte)}
-	reader := files.New(t.Context(), nil, nil)
-	store, err := capture.New(t.Context(), overlays, func(_ context.Context, document string) ([]byte, error) {
+	fixture := &CapturedSources{base: base, ctx: tb.Context(), content: make(map[string][]byte)}
+	reader := files.New(tb.Context(), nil, nil)
+	store, err := capture.New(tb.Context(), overlays, func(_ context.Context, document string) ([]byte, error) {
 		fixture.mu.Lock()
 		content, exists := fixture.content[document]
 		content = bytes.Clone(content)
@@ -49,19 +49,19 @@ func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) 
 		return reader.ReadFile(document)
 	})
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	fixture.store = store
-	CloseCaptures(t, store)
+	CloseCaptures(tb, store)
 	return store, fixture
 }
 
 // CurrentDir returns the absolute working directory for relative-path fixtures.
-func CurrentDir(t testing.TB) string {
-	t.Helper()
+func CurrentDir(tb testing.TB) string {
+	tb.Helper()
 	base, err := os.Getwd()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return base
 }
@@ -93,15 +93,15 @@ func (f *CapturedSources) Capture(path string, content []byte, coordinates sourc
 }
 
 // CloseCaptures joins fixture IO without inheriting the test's cleanup cancellation.
-func CloseCaptures(t testing.TB, store *capture.Store) {
-	t.Helper()
-	// t.Context is canceled before cleanup runs; keep its values, drop its cancellation.
-	parent := context.WithoutCancel(t.Context())
-	t.Cleanup(func() {
+func CloseCaptures(tb testing.TB, store *capture.Store) {
+	tb.Helper()
+	// Cleanup uses the test context values without inheriting its cancellation.
+	parent := context.WithoutCancel(tb.Context())
+	tb.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(parent, time.Second)
 		defer cancel()
 		if err := store.Close(ctx); err != nil {
-			t.Error(err)
+			tb.Error(err)
 		}
 	})
 }

@@ -9,8 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
-func selectedGraphInput(t testing.TB, count int) Input {
-	t.Helper()
+func selectedGraphInput(tb testing.TB, count int) Input {
+	tb.Helper()
 	entry := InvocationEntry{ID: OccurrenceID(strings.Repeat("a", 64)), Kind: WorkflowEntry, Reference: source.Reference{Document: "workflow", Node: "document"}}
 	records := CallGraphData{Entry: entry, Budget: InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
 	for index := range count {
@@ -21,7 +21,7 @@ func selectedGraphInput(t testing.TB, count int) Input {
 	}
 	graph, err := NewCallGraph(records)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	selected := records.Scripts[0]
 	return Input{

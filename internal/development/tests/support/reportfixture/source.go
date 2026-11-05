@@ -10,11 +10,11 @@ import (
 )
 
 // CapturedSource binds test content to its source revision and coordinate system.
-func CapturedSource(t testing.TB, path string, content []byte, model source.Coordinates) report.CapturedSource {
-	t.Helper()
+func CapturedSource(tb testing.TB, path string, content []byte, model source.Coordinates) report.CapturedSource {
+	tb.Helper()
 	revision, err := source.NewRevision(sourceid.Document(path), sourceid.Digest(content))
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return report.CapturedSource{Revision: revision, Coordinates: model, CoordinatesAvailable: utf8.Valid(content), Content: content}
 }

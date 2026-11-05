@@ -38,20 +38,20 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdec
 	return checker, workflow
 }
 
-func testJob(t testing.TB, workflow workflowdecl.WorkflowView, key string) workflowdecl.JobView {
-	t.Helper()
+func testJob(tb testing.TB, workflow workflowdecl.WorkflowView, key string) workflowdecl.JobView {
+	tb.Helper()
 	job, present := workflow.Job(key)
 	if !present {
-		t.Fatalf("fixture job %q absent", key)
+		tb.Fatalf("fixture job %q absent", key)
 	}
 	return job
 }
 
-func testStep(t testing.TB, job workflowdecl.JobView, index int) workflowdecl.StepView {
-	t.Helper()
+func testStep(tb testing.TB, job workflowdecl.JobView, index int) workflowdecl.StepView {
+	tb.Helper()
 	steps := slices.Collect(job.Steps())
 	if index < 0 || index >= len(steps) {
-		t.Fatalf("fixture step %d absent", index)
+		tb.Fatalf("fixture step %d absent", index)
 	}
 	return steps[index]
 }

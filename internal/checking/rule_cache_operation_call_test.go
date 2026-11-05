@@ -42,6 +42,8 @@ jobs:
 `
 					want := mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore"
 					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
+						t.Helper()
+
 						if !want {
 							if len(diagnostics) != 0 {
 								t.Fatal(diagnostics)
@@ -117,6 +119,8 @@ jobs:
 				files["leaf.yaml"] = tc.leaf
 			}
 			checkCacheOperationCalls(t, files, tc.config, func(t *testing.T, diagnostics []*findingmodel.Finding) {
+				t.Helper()
+
 				if tc.kind == "" {
 					if len(diagnostics) != 0 {
 						t.Fatal(diagnostics)
@@ -352,6 +356,8 @@ jobs:
 						wantRule = "unused-suppression"
 					}
 					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
+						t.Helper()
+
 						if wantRule == "" {
 							if len(diagnostics) != 0 {
 								t.Fatal(diagnostics)

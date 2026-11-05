@@ -13,7 +13,7 @@ import (
 // Windows runners can report 8.3 names such as RUNNER~1. Source capture keys
 // documents by physical path, so fixtures that compare read paths against the
 // root must start from the same spelling.
-func Physical(t testing.TB) string {
-	t.Helper()
-	return files.PhysicalPath(t.TempDir())
+func Physical(tb testing.TB) string {
+	tb.Helper()
+	return files.PhysicalPath(tb.TempDir())
 }

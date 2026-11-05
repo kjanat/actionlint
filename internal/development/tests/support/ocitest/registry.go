@@ -57,11 +57,11 @@ type Registry struct {
 }
 
 // New starts an OCI registry fixture closed with the test.
-func New(t testing.TB) *Registry {
-	t.Helper()
+func New(tb testing.TB) *Registry {
+	tb.Helper()
 	r := &Registry{content: map[string][]byte{}, types: map[string]string{}, served: map[string][]byte{}, tags: map[string]string{}, requests: map[string]int{}}
 	r.server = httptest.NewServer(http.HandlerFunc(r.serve))
-	t.Cleanup(r.server.Close)
+	tb.Cleanup(r.server.Close)
 	r.host = strings.TrimPrefix(r.server.URL, "http://")
 	return r
 }
@@ -84,29 +84,29 @@ func (r *Registry) Blob(mediaType string, data []byte) Descriptor {
 }
 
 // Manifest stores an image manifest listing layers.
-func (r *Registry) Manifest(t testing.TB, layers ...Descriptor) Descriptor {
-	t.Helper()
+func (r *Registry) Manifest(tb testing.TB, layers ...Descriptor) Descriptor {
+	tb.Helper()
 	config := r.Blob(emptyMediaType, []byte("{}"))
-	return r.document(t, ManifestMediaType, map[string]any{"schemaVersion": 2, "mediaType": ManifestMediaType, "config": config, "layers": layers})
+	return r.document(tb, ManifestMediaType, map[string]any{"schemaVersion": 2, "mediaType": ManifestMediaType, "config": config, "layers": layers})
 }
 
 // Index stores an image index with one entry per platform "<os>/<arch>".
-func (r *Registry) Index(t testing.TB, platforms map[string]Descriptor) Descriptor {
-	t.Helper()
+func (r *Registry) Index(tb testing.TB, platforms map[string]Descriptor) Descriptor {
+	tb.Helper()
 	entries := make([]Descriptor, 0, len(platforms))
 	for platform, manifest := range platforms {
 		os, arch, _ := strings.Cut(platform, "/")
 		manifest.Platform = &Platform{Architecture: arch, OS: os}
 		entries = append(entries, manifest)
 	}
-	return r.document(t, IndexMediaType, map[string]any{"schemaVersion": 2, "mediaType": IndexMediaType, "manifests": entries})
+	return r.document(tb, IndexMediaType, map[string]any{"schemaVersion": 2, "mediaType": IndexMediaType, "manifests": entries})
 }
 
-func (r *Registry) document(t testing.TB, mediaType string, document map[string]any) Descriptor {
-	t.Helper()
+func (r *Registry) document(tb testing.TB, mediaType string, document map[string]any) Descriptor {
+	tb.Helper()
 	data, err := json.Marshal(document)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return r.Blob(mediaType, data)
 }

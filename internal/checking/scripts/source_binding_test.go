@@ -20,6 +20,8 @@ import (
 )
 
 func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, parsing.SourceSnapshot, string) {
+	t.Helper()
+
 	graph, collection, snapshot, path, _ := actionBatchFixtureWithDocument(t, mapped)
 	return graph, collection, snapshot, path
 }

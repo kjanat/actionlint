@@ -13,40 +13,40 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func snapshotWorkflow(t testing.TB, snapshot SourceSnapshot) workflowdecl.WorkflowView {
-	t.Helper()
+func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflowdecl.WorkflowView {
+	tb.Helper()
 	workflow, present := snapshot.WorkflowView()
 	if !present {
-		t.Fatal("workflow declarations unavailable")
+		tb.Fatal("workflow declarations unavailable")
 	}
 	return workflow
 }
 
-func snapshotJobSteps(t testing.TB, snapshot SourceSnapshot, key string) []workflowdecl.StepView {
-	t.Helper()
-	job, present := snapshotWorkflow(t, snapshot).JobsAt(key)
+func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []workflowdecl.StepView {
+	tb.Helper()
+	job, present := snapshotWorkflow(tb, snapshot).JobsAt(key)
 	if !present {
-		t.Fatalf("workflow job %q unavailable", key)
+		tb.Fatalf("workflow job %q unavailable", key)
 	}
 	return slices.Collect(job.Steps())
 }
 
-func snapshotActionSteps(t testing.TB, snapshot SourceSnapshot) []workflowdecl.StepView {
-	t.Helper()
+func snapshotActionSteps(tb testing.TB, snapshot SourceSnapshot) []workflowdecl.StepView {
+	tb.Helper()
 	action, present := snapshot.ActionView()
 	if !present {
-		t.Fatal("action declarations unavailable")
+		tb.Fatal("action declarations unavailable")
 	}
 	return slices.Collect(action.Steps())
 }
 
 // sourceFixtureBase explicitly retains the working directory used by these
 // legacy relative-path fixtures; production receives its session base instead.
-func sourceFixtureBase(t testing.TB) string {
-	t.Helper()
+func sourceFixtureBase(tb testing.TB) string {
+	tb.Helper()
 	base, err := os.Getwd()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return base
 }
@@ -57,12 +57,12 @@ type capturedSnapshots struct {
 	sources *testutil.CapturedSources
 }
 
-func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
-	t.Helper()
-	store, sources := testutil.NewCapturedSources(t, base)
+func newCapturedSnapshots(tb testing.TB, base string) *capturedSnapshots {
+	tb.Helper()
+	store, sources := testutil.NewCapturedSources(tb, base)
 	registry, err := NewSourceSnapshots(store)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return &capturedSnapshots{registry, store, sources}
 }

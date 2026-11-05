@@ -8,25 +8,28 @@ version = "2"
 [linters]
 default = "standard"
 enable  = [
-  "contextcheck",
-  "depguard",
-  "exhaustive",
-  "dupl",
+  "dogsled",
   "asasalint",
   "asciicheck",
   "bidichk",
   "bodyclose",
+  "contextcheck",
   "copyloopvar",
+  "depguard",
+  "dupl",
   "dupword",
   "durationcheck",
   "errname",
   "errorlint",
+  "exhaustive",
   "exptostd",
   "fatcontext",
   "forbidigo",
   "forcetypeassert",
   "gocheckcompilerdirectives",
+  "gochecksumtype",
   "gocritic",
+  "gomoddirectives",
   "intrange",
   "iotamixing",
   "makezero",
@@ -41,6 +44,7 @@ enable  = [
   "predeclared",
   "reassign",
   "recvcheck",
+  "thelper",
   "unconvert",
   "unparam",
   "usestdlibvars",
@@ -99,6 +103,9 @@ deny  = [
 ]
 
 [linters.settings.exhaustive]
+default-signifies-exhaustive = false
+
+[linters.settings.gochecksumtype]
 default-signifies-exhaustive = false
 
 [linters.settings.staticcheck]

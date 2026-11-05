@@ -13,62 +13,65 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func workflowView(t testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.WorkflowView {
-	t.Helper()
+func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.WorkflowView {
+	tb.Helper()
 	view, available := snapshot.WorkflowView()
 	if !available {
-		t.Fatal("workflow declarations unavailable")
+		tb.Fatal("workflow declarations unavailable")
 	}
 	return view
 }
 
-func workflowJob(t testing.TB, workflow workflowdecl.WorkflowView, key string) workflowdecl.JobView {
-	t.Helper()
+func workflowJob(tb testing.TB, workflow workflowdecl.WorkflowView, key string) workflowdecl.JobView {
+	tb.Helper()
 	job, available := workflow.JobsAt(key)
 	if !available {
-		t.Fatalf("workflow job %q unavailable", key)
+		tb.Fatalf("workflow job %q unavailable", key)
 	}
 	return job
 }
 
-func workflowStepViews(t testing.TB, workflow workflowdecl.WorkflowView, key string) []workflowdecl.StepView {
-	t.Helper()
-	return slices.Collect(workflowJob(t, workflow, key).Steps())
+func workflowStepViews(tb testing.TB, workflow workflowdecl.WorkflowView, key string) []workflowdecl.StepView {
+	tb.Helper()
+	return slices.Collect(workflowJob(tb, workflow, key).Steps())
 }
 
-func actionStepViews(t testing.TB, snapshot parsing.SourceSnapshot) []workflowdecl.StepView {
-	t.Helper()
+func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflowdecl.StepView {
+	tb.Helper()
 	action, available := snapshot.ActionView()
 	if !available {
-		t.Fatal("action declarations unavailable")
+		tb.Fatal("action declarations unavailable")
 	}
 	return slices.Collect(action.Steps())
 }
 
-func stepReference(t testing.TB, snapshot parsing.SourceSnapshot, step workflowdecl.StepView) source.Reference {
-	t.Helper()
+func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflowdecl.StepView) source.Reference {
+	tb.Helper()
 	if err := snapshot.ValidateStep(step); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return step.Reference()
 }
 
-func stepPosition(t testing.TB, step workflowdecl.StepView) workflowlang.Pos {
-	t.Helper()
+func stepPosition(tb testing.TB, step workflowdecl.StepView) workflowlang.Pos {
+	tb.Helper()
 	position, present := step.Pos()
 	if !present {
-		t.Fatal("step position unavailable")
+		tb.Fatal("step position unavailable")
 	}
 	return position
 }
 
-func sourceFixtureBase(t testing.TB) string { return capturefixture.CurrentDir(t) }
+func sourceFixtureBase(tb testing.TB) string {
+	tb.Helper()
+	return capturefixture.CurrentDir(tb)
+}
 
 type capturedSnapshots = declarations.CapturedSnapshots
 
 // newCapturedSnapshots returns the registry and capture store for code under
 // test and the fixture that admits documents into them.
-func newCapturedSnapshots(t testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *capturedSnapshots) {
-	t.Helper()
-	return declarations.NewCapturedSnapshots(t, base)
+func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *capturedSnapshots) {
+	tb.Helper()
+	return declarations.NewCapturedSnapshots(tb, base)
 }

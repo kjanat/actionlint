@@ -11,20 +11,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 )
 
-func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *Cache {
-	t.Helper()
+func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *Cache {
+	tb.Helper()
 	base, err := os.Getwd()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	cache := NewCache(root, cwd, debug)
-	store, err := capture.New(t.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
+	store, err := capture.New(tb.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
 		return os.ReadFile(filepath.FromSlash(path))
 	})
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
-	cache.SetSources(t.Context(), store, base)
-	capturefixture.CloseCaptures(t, store)
+	cache.SetSources(tb.Context(), store, base)
+	capturefixture.CloseCaptures(tb, store)
 	return cache
 }

@@ -39,56 +39,56 @@ type editorPublication struct {
 
 type editorExchange func(send func(string, int, any), read func() editorPublication)
 
-func firstEditorPublication(t testing.TB, analyze Analyze, uri, text string, exchanges ...editorExchange) (editorPublication, []string) {
-	t.Helper()
+func firstEditorPublication(tb testing.TB, analyze Analyze, uri, text string, exchanges ...editorExchange) (editorPublication, []string) {
+	tb.Helper()
 	server, client := net.Pipe()
-	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
+	tb.Cleanup(func() { _ = client.Close(); _ = server.Close() })
 	if err := client.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	done := make(chan error, 1)
-	go func() { done <- Serve(t.Context(), server, server, analyze) }()
+	go func() { done <- Serve(tb.Context(), server, server, analyze) }()
 	send := func(method string, id int, params any) {
-		t.Helper()
+		tb.Helper()
 		message := map[string]any{"jsonrpc": "2.0", "method": method, "params": params}
 		if id != 0 {
 			message["id"] = id
 		}
 		body, err := json.Marshal(message)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		if _, err := fmt.Fprintf(client, "Content-Length: %d\r\n\r\n%s", len(body), body); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 	}
 	reader := bufio.NewReader(client)
 	read := func() editorPublication {
-		t.Helper()
+		tb.Helper()
 		var size int
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		if _, err := fmt.Sscanf(line, "Content-Length: %d", &size); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		if _, err := reader.ReadString('\n'); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		body := make([]byte, size)
 		if _, err := io.ReadFull(reader, body); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		var message editorPublication
 		if err := json.Unmarshal(body, &message); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		return message
 	}
 	send("initialize", 1, nil)
 	if message := read(); message.ID != 1 {
-		t.Fatalf("initialization response missing: %+v", message)
+		tb.Fatalf("initialization response missing: %+v", message)
 	}
 	send("textDocument/didOpen", 0, map[string]any{"textDocument": Document{URI: uri, Version: 17, Text: text}})
 	var publication editorPublication
@@ -100,7 +100,7 @@ func firstEditorPublication(t testing.TB, analyze Analyze, uri, text string, exc
 			continue
 		}
 		if message.Method != "textDocument/publishDiagnostics" {
-			t.Fatalf("unexpected message: %+v", message)
+			tb.Fatalf("unexpected message: %+v", message)
 		}
 		publication = message
 		break
@@ -110,11 +110,11 @@ func firstEditorPublication(t testing.TB, analyze Analyze, uri, text string, exc
 	}
 	send("shutdown", 2, nil)
 	if message := read(); message.ID != 2 {
-		t.Fatalf("unexpected message before shutdown: %+v", message)
+		tb.Fatalf("unexpected message before shutdown: %+v", message)
 	}
 	send("exit", 0, nil)
 	if err := <-done; err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return publication, logs
 }

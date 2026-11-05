@@ -133,6 +133,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 		build func(*testing.T, *invocation.Builder)
 	}{
 		{"expanded", checkinputs.ExpandedCall{}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "owner/action")
 			if _, err := b.Resolve(ctx, expanded(t, target)); err != nil {
 				t.Fatal(err)
@@ -142,6 +144,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			}
 		}},
 		{"opaque", checkinputs.OpaqueCall{Reason: checkinputs.NonComposite, Detail: "opaque"}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "owner/action")
 			o, err := invocation.Opaque(invocation.ReasonNonComposite, "opaque")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
@@ -149,6 +153,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			}
 		}},
 		{"unavailable", checkinputs.UnavailableCall{Reason: checkinputs.NonLocal, Detail: "unavailable"}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "owner/action")
 			o, err := invocation.Unavailable(invocation.ReasonNonLocal, "unavailable")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
@@ -156,6 +162,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			}
 		}},
 		{"unresolved", checkinputs.UnresolvedCall{Reason: checkinputs.MissingManifest, Detail: "unresolved"}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "owner/action")
 			o, err := invocation.Unresolved(invocation.ReasonMissingManifest, "unresolved")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
@@ -163,6 +171,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			}
 		}},
 		{"dynamic", checkinputs.DynamicCall{Detail: "dynamic"}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "${{ inputs.action }}")
 			o, err := invocation.Dynamic("dynamic")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
@@ -170,12 +180,16 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			}
 		}},
 		{"cycle", checkinputs.CycleCall{}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("action.yml", "recurse"), "owner/action")
 			if _, err := b.Resolve(ctx, expanded(t, ref("action.yml", "entry"))); err != nil {
 				t.Fatal(err)
 			}
 		}},
 		{"depth-limited", checkinputs.DepthLimitedCall{}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			outer := begin(t, b, b.RootContext(), ref("workflow.yml", "outer"), "owner/outer")
 			if _, err := b.Resolve(outer, expanded(t, target)); err != nil {
 				t.Fatal(err)
@@ -189,6 +203,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			}
 		}},
 		{"interrupted", checkinputs.InterruptedCall{Reason: checkinputs.OperationalFailure, Detail: "interrupted", Target: checkinputs.Present(target)}, func(t *testing.T, b *invocation.Builder) {
+			t.Helper()
+
 			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "owner/action")
 			if _, err := b.Resolve(ctx, expanded(t, target)); err != nil {
 				t.Fatal(err)
@@ -496,6 +512,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 		inspect func(checkinputs.CallResolution) string
 	}{
 		{"opaque-dockerfile", invocation.ReasonDockerfileOnly, string(checkinputs.DockerfileOnly), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Opaque(invocation.ReasonDockerfileOnly, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -507,6 +525,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"opaque-non-composite", invocation.ReasonNonComposite, string(checkinputs.NonComposite), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Opaque(invocation.ReasonNonComposite, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -518,6 +538,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unavailable-non-local", invocation.ReasonNonLocal, string(checkinputs.NonLocal), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unavailable(invocation.ReasonNonLocal, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -529,6 +551,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unavailable-not-fetched", invocation.ReasonNotFetched, string(checkinputs.NotFetched), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unavailable(invocation.ReasonNotFetched, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -540,6 +564,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unavailable-lookup-disabled", invocation.ReasonLookupDisabled, string(checkinputs.LookupDisabled), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unavailable(invocation.ReasonLookupDisabled, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -551,6 +577,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unavailable-placement", invocation.ReasonPlacementUncertain, string(checkinputs.PlacementUncertain), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unavailable(invocation.ReasonPlacementUncertain, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -562,6 +590,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unresolved-invalid-call", invocation.ReasonInvalidCall, string(checkinputs.InvalidCall), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unresolved(invocation.ReasonInvalidCall, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -573,6 +603,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unresolved-missing-manifest", invocation.ReasonMissingManifest, string(checkinputs.MissingManifest), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unresolved(invocation.ReasonMissingManifest, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -584,6 +616,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unresolved-read-failed", invocation.ReasonReadFailed, string(checkinputs.ReadFailed), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unresolved(invocation.ReasonReadFailed, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -595,6 +629,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unresolved-parse-failed", invocation.ReasonParseFailed, string(checkinputs.ParseFailed), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unresolved(invocation.ReasonParseFailed, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -606,6 +642,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"unresolved-mapping-failed", invocation.ReasonMappingFailed, string(checkinputs.MappingFailed), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			t.Helper()
+
 			o, err := invocation.Unresolved(invocation.ReasonMappingFailed, "detail")
 			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
 				t.Fatal(err)
@@ -617,6 +655,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"interrupted-canceled", invocation.ReasonCanceled, string(checkinputs.Canceled), func(t *testing.T, b *invocation.Builder, _ invocation.Context) {
+			t.Helper()
+
 			if _, err := b.Interrupt(invocation.ReasonCanceled, "detail"); err != nil {
 				t.Fatal(err)
 			}
@@ -627,6 +667,8 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			return ""
 		}},
 		{"interrupted-operational", invocation.ReasonOperational, string(checkinputs.OperationalFailure), func(t *testing.T, b *invocation.Builder, _ invocation.Context) {
+			t.Helper()
+
 			if _, err := b.Interrupt(invocation.ReasonOperational, "detail"); err != nil {
 				t.Fatal(err)
 			}

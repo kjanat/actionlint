@@ -19,13 +19,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func editorSymlink(t testing.TB, target, alias string) {
-	t.Helper()
+func editorSymlink(tb testing.TB, target, alias string) {
+	tb.Helper()
 	if err := os.Symlink(target, alias); err != nil {
 		if errors.Is(err, os.ErrPermission) || errors.Is(err, errors.ErrUnsupported) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {
-			t.Skipf("host symlink privilege unavailable: %v", err)
+			tb.Skipf("host symlink privilege unavailable: %v", err)
 		}
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 }
 
