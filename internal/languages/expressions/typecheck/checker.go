@@ -186,8 +186,12 @@ type Checker struct {
 // NewChecker creates a type checker with the configured variable and secret names.
 // A nil configuration uses built-in names.
 func NewChecker(cfg *Options) *Checker {
+	functions := make(map[string][]*exprfunctions.FuncSignature, len(exprfunctions.Builtins))
+	for name, function := range exprfunctions.Builtins {
+		functions[name] = function.Signatures
+	}
 	c := &Checker{
-		funcs:      exprfunctions.BuiltinFuncSignatures,
+		funcs:      functions,
 		vars:       BuiltinGlobalVariableTypes,
 		varsCopied: false,
 		nodeTypes:  make(map[exprsyntax.Node]exprtypes.Type),

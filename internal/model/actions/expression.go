@@ -142,12 +142,14 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 					}
 				}
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
-					signatures, ok := exprfunctions.BuiltinFuncSignatures[name]
+					function, ok := exprfunctions.Builtins[name]
+					signatures := function.Signatures
 					if !ok {
 						v.Code = CodeExpressionCall
 						v.Message = fmt.Sprintf("calls unknown function %q", name)
 						var candidates []string
-						for candidate, signatures := range exprfunctions.BuiltinFuncSignatures {
+						for candidate, function := range exprfunctions.Builtins {
+							signatures := function.Signatures
 							if slices.Contains(actionMetadataSpecialFunctions, candidate) {
 								if _, available := avail.functions[candidate]; !available {
 									continue
@@ -160,9 +162,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 						if suggestion := exprlang.CloseName(name, candidates); suggestion != "" {
 							v.Message += fmt.Sprintf("; did you mean %q?", suggestion)
 						}
-					} else if !actionFunctionArityMatches(signatures, len(n.Args)) ||
-						(name == "format" || name == "case") && len(n.Args) > 255 ||
-						name == "case" && len(n.Args)%2 == 0 {
+					} else if !actionFunctionArityMatches(signatures, len(n.Args)) {
 						v.Code = CodeExpressionCall
 						v.Message = fmt.Sprintf("calls function %q with an invalid number of arguments (%d)", name, len(n.Args))
 					}
@@ -205,7 +205,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 
 func actionFunctionArityMatches(signatures []*exprfunctions.FuncSignature, count int) bool {
 	for _, signature := range signatures {
-		if signature.VariableLengthParams && count >= len(signature.Params) || !signature.VariableLengthParams && count == len(signature.Params) {
+		if signature.AcceptsArgumentCount(count) {
 			return true
 		}
 	}
