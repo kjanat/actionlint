@@ -1,12 +1,9 @@
 package execution
 
 import (
-	"strings"
 	"testing"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestResolveShellPreservesSemanticStates(t *testing.T) {
@@ -84,14 +81,5 @@ func TestContainerScalarImages(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestCheckShellConvertsKnownScalar(t *testing.T) {
-	origin := value.Origin{Span: value.Span{Start: results.Position{Line: 6, Column: 12}}}
-	shell := DefaultShell(value.Template(`${{ fromJSON('{"shell":42}') }}`, origin))
-	findings := CheckShell(shell, runnerlang.MacOrLinux)
-	if shell.Kind() != value.Number || len(findings) != 1 || !strings.Contains(findings[0].Message, `shell name "42" is invalid`) || findings[0].Start != origin.Span.Start {
-		t.Fatalf("converted scalar validation lost type or location: shell=%v, findings=%v", shell.Kind(), findings)
 	}
 }

@@ -62,6 +62,7 @@ func TestHelpHyperlinks(t *testing.T) {
 }
 
 func TestHyperlinksDoNotChangeMachineOutput(t *testing.T) {
+	t.Chdir(t.TempDir())
 	t.Setenv("FORCE_HYPERLINKS", "1")
 	for _, args := range [][]string{
 		{"--help", "--json"},
