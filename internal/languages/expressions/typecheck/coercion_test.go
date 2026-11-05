@@ -39,7 +39,7 @@ func TestSuspiciousCoercion(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				checker := NewChecker(false, &Options{Checks: Checks{SuspiciousCoercion: enabled}})
+				checker := NewChecker(&Options{Checks: Checks{SuspiciousCoercion: enabled}})
 				checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 				_, findings := checker.Check(node)
 				want := 0
@@ -93,7 +93,7 @@ func TestFunctionCallFacts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(false, nil)
+			checker := NewChecker(nil)
 			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 			got := checker.CheckResult(node)
 			if got.Type.Kind() != tc.kind || got.Valid != tc.valid || got.Evaluation.State != tc.state || got.Evaluation.Value != tc.value {
@@ -113,7 +113,7 @@ func TestFunctionContractFacts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		checker := NewChecker(false, nil)
+		checker := NewChecker(nil)
 		checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 		return checker.CheckResult(node)
 	}
@@ -147,7 +147,7 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	got := checker.CheckResult(node)
 	if len(got.Findings) != 2 || got.Findings[0].Code != "argument-count" || got.Findings[1].Code != "operand-type" {
 		t.Fatalf("findings: %v", got.Findings)
@@ -155,7 +155,7 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 }
 
 func TestOverloadDeclaredAlternatives(t *testing.T) {
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"test": {
 		{Name: "test", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
 		{Name: "test", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
@@ -171,7 +171,7 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 }
 
 func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
@@ -192,7 +192,7 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		}
 		return node
 	}
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.callFacts = make(map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts)
 	checker.check(parse("startsWith(true)"))
 	if !checker.validationFailed || len(checker.errs) == 0 {
@@ -203,15 +203,15 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		t.Fatal("filtering findings changed validation")
 	}
 
-	checker = NewChecker(true, &Options{Checks: Checks{SuspiciousCoercion: true}})
+	checker = NewChecker(&Options{Checks: Checks{SuspiciousCoercion: true}})
 	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 	result := checker.CheckResult(parse("startsWith(true, github.event.issue.title)"))
 	if !result.Valid || len(result.Findings) != 1 {
 		t.Fatalf("advisory finding changed validation: %+v", result)
 	}
 	result = checker.CheckResult(parse("github.event.issue.title"))
-	if !result.Valid || len(result.Findings) == 0 {
-		t.Fatalf("security finding changed validation: %+v", result)
+	if !result.Valid || len(result.Findings) != 0 {
+		t.Fatalf("type checking emitted a script security policy finding: %+v", result)
 	}
 }
 
@@ -239,7 +239,7 @@ func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
 }
 
 func TestKnownResultRefinesDeclaredAny(t *testing.T) {
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {

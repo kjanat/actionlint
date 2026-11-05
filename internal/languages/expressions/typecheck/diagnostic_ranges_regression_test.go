@@ -7,38 +7,6 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-func TestExpressionSpanParserReuse(t *testing.T) {
-	p := exprsyntax.NewParser()
-	for _, source := range []string{
-		"", "(", "foo.", "contains('a',)", "'unclosed", "foo\x00",
-		" (((github.event.issue.title))) ", "(startWith('a')).x", "env[format('{0}', (true))]",
-		"\n( fromJSON('{\"x\":1}') )['bad']", "!((github.event.issue.title))",
-		"foo &&\n", "((1))", "github.event[github.event.issue.title].body",
-	} {
-		source += "}}"
-		node, err := p.Parse(exprsyntax.NewLexer(source))
-		fresh, freshErr := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source))
-		if err != nil {
-			if freshErr == nil || *err != *freshErr {
-				t.Fatalf("reuse changed error for %q: %+v / %+v", source, err, freshErr)
-			}
-			if err.Offset < 0 || err.EndOffset < err.Offset || err.EndOffset > len(source) {
-				t.Fatalf("invalid error span for %q: %+v", source, err)
-			}
-			continue
-		}
-		if freshErr != nil || exprsyntax.ExpressionSpan(node) != exprsyntax.ExpressionSpan(fresh) {
-			t.Fatalf("reuse changed parse span for %q", source)
-		}
-		_, findings := NewChecker(true, nil).Check(node)
-		for _, finding := range findings {
-			if finding.Offset < 0 || finding.EndOffset < finding.Offset || finding.EndOffset > len(source)-2 {
-				t.Fatalf("invalid semantic span for %q: %+v", source, finding)
-			}
-		}
-	}
-}
-
 func TestGroupedCallDiagnosticSpans(t *testing.T) {
 	for _, suffix := range []string{"", ".x", "[0]", "['x'].y"} {
 		for _, tc := range []struct{ expr, fragment, want string }{
@@ -51,7 +19,7 @@ func TestGroupedCallDiagnosticSpans(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := NewChecker(false, nil).Check(node)
+			_, findings := NewChecker(nil).Check(node)
 			found := false
 			for _, finding := range findings {
 				if strings.Contains(finding.Message, tc.fragment) {

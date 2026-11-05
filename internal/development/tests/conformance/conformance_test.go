@@ -382,7 +382,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if lexer.Offset() != len(c.Input)+2 {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
-		checker := exprlang.NewChecker(false, nil)
+		checker := exprlang.NewChecker(nil)
 		contexts := map[string]exprtypes.Type{}
 		for name := range c.Contexts {
 			contexts[strings.ToLower(name)] = exprtypes.AnyType()
@@ -400,7 +400,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				_, errs := checker.Check(n)
 				diagnostics = append(diagnostics, errs...)
 			case *exprsyntax.FuncCallNode:
-				callChecker := exprlang.NewChecker(false, nil)
+				callChecker := exprlang.NewChecker(nil)
 				callChecker.SetContextTypes(map[string]exprtypes.Type{"argument": exprtypes.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})

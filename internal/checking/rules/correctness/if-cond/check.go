@@ -27,7 +27,7 @@ func Check(value string, start sourcepos.Position) []results.Diagnostic {
 	if expr == nil {
 		return report(fmt.Sprintf("if: condition %q is always evaluated to true because extra characters are around ${{ }}", value))
 	}
-	checker := exprcheck.NewChecker(false, nil)
+	checker := exprcheck.NewChecker(nil)
 	if !checker.IsConstant(expr) {
 		return nil
 	}

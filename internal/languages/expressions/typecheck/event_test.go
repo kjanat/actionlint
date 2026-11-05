@@ -11,7 +11,7 @@ import (
 func TestEventProjectionIsNotMutated(t *testing.T) {
 	array := exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"message": exprtypes.StringType()}).Type())
 	event := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": array.Type()})
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.SetContextAvailability([]string{"github"})
 	checker.UpdateEvent(event)
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.commits.*.message}}"))

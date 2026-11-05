@@ -130,7 +130,7 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 }
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
-	checker := exprlang.NewChecker(false, nil)
+	checker := exprlang.NewChecker(nil)
 	contexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
 	checker.SetContextTypes(contexts)
 	checker.SetContextAvailability([]string{"custom"})
@@ -143,7 +143,7 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 	if _, errs := checker.Check(custom); len(errs) != 0 {
 		t.Fatalf("scope was not normalized and copied: %v", errs)
 	}
-	other := exprlang.NewChecker(false, nil)
+	other := exprlang.NewChecker(nil)
 	if _, errs := other.Check(custom); len(errs) == 0 {
 		t.Fatal("custom scope leaked to another checker")
 	}

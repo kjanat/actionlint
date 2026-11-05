@@ -249,7 +249,7 @@ func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...finding
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 	checker.UpdateSteps(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 		"demo": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{

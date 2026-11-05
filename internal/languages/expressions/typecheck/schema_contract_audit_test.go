@@ -48,7 +48,7 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 					t.Fatal("missing from generated workflow key inventory")
 				}
 				for context := range exprlang.BuiltinGlobalVariableTypes {
-					checker := exprlang.NewChecker(false, nil)
+					checker := exprlang.NewChecker(nil)
 					checker.SetWorkflowKeyAvailability(key)
 					expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("toJSON(" + context + ")}}"))
 					if err != nil {
@@ -95,7 +95,7 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(false, nil)
+			checker := exprlang.NewChecker(nil)
 			checker.SetWorkflowKeyAvailability(tc.key)
 			_, errs := checker.Check(expr)
 			if (len(errs) == 0) != tc.valid {

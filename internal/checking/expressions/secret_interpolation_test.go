@@ -97,7 +97,7 @@ func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(false, nil)
+			checker := exprlang.NewChecker(nil)
 			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
 			_, findings := checker.Check(node)
 			findings = append(findings, checkSecretInterpolations(node, findings)...)

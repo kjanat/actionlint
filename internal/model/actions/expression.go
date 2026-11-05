@@ -88,7 +88,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 		s = s[lex.Offset():]
 		base += lex.Offset()
 		if advisories {
-			checker := exprlang.NewChecker(false, &exprlang.Options{Checks: exprlang.Checks{SuspiciousCoercion: true}})
+			checker := exprlang.NewChecker(&exprlang.Options{Checks: exprlang.Checks{SuspiciousCoercion: true}})
 			checker.SetContextAvailability(avail.contexts)
 			checker.UpdateInputs(exprtypes.NewMapObjectType(exprtypes.StringType()))
 			checker.UpdateSteps(exprtypes.NewMapObjectType(exprtypes.AnyType()))

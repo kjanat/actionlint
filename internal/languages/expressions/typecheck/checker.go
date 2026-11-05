@@ -190,7 +190,6 @@ type Checker struct {
 	vars                  map[string]exprtypes.Type
 	errs                  []*Error
 	varsCopied            bool
-	untrusted             *UntrustedInputChecker
 	availableContexts     []string
 	availableSpecialFuncs []string
 	jobCondition          bool
@@ -204,10 +203,9 @@ type Checker struct {
 	staticInvalid         bool
 }
 
-// NewChecker creates new Checker instance. When checkUntrustedInput is
-// set to true, the Checker will make use of possibly untrusted inputs error. The cfg parameter is
-// selected names and optional checks for this analysis. It may be nil.
-func NewChecker(checkUntrustedInput bool, cfg *Options) *Checker {
+// NewChecker creates a type checker with the configured names and semantic checks.
+// A nil configuration uses built-in names and disables optional checks.
+func NewChecker(cfg *Options) *Checker {
 	c := &Checker{
 		funcs:      exprfunctions.BuiltinFuncSignatures,
 		vars:       BuiltinGlobalVariableTypes,
@@ -217,9 +215,6 @@ func NewChecker(checkUntrustedInput bool, cfg *Options) *Checker {
 		c.checks = cfg.Checks
 		c.configVars = cfg.Variables
 		c.configSecrets = cfg.Secrets
-	}
-	if checkUntrustedInput {
-		c.untrusted = NewUntrustedInputChecker(BuiltinUntrustedInputs)
 	}
 	return c
 }
@@ -1349,19 +1344,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 		sema.ruleError(expr, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")
 	}
 	errs := detachErrors(sema.errs)
-	if sema.untrusted != nil {
-		sema.untrusted.Init()
-		exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
-			if entering {
-				sema.untrusted.OnVisitNodeEnter(node)
-			} else {
-				sema.untrusted.OnVisitNodeLeave(node)
-			}
-		})
-		sema.untrusted.OnVisitEnd()
-		errs = append(errs, sema.untrusted.Errs()...)
 
-	}
 	evaluation := exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 	phase := FailureNone
 	if sema.staticInvalid {

@@ -396,7 +396,7 @@ func checkCallDemandResult(t *testing.T, input string) ExpressionCheckResult {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 	return checker.CheckResult(node)
 }

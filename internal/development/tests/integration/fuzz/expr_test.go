@@ -26,7 +26,7 @@ func FuzzExprParse(f *testing.F) {
 			return
 		}
 
-		c := exprlang.NewChecker(true, nil)
+		c := exprlang.NewChecker(nil)
 		c.Check(e)
 	})
 }

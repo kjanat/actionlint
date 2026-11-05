@@ -9,7 +9,7 @@ import (
 )
 
 func TestScriptSafeScalarReferences(t *testing.T) {
-	checker := NewChecker(false, nil)
+	checker := NewChecker(nil)
 	checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
 	for _, tc := range []struct {
 		input string
@@ -100,7 +100,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := NewChecker(false, nil).CheckScriptInterpolation(node, tc.typeOf, ScriptShellArgument, func(ref exprsyntax.Node) bool {
+			findings := NewChecker(nil).CheckScriptInterpolation(node, tc.typeOf, ScriptShellArgument, func(ref exprsyntax.Node) bool {
 				name := exprsyntax.StaticReference(ref)
 				return name == "matrix.target" || name == "steps.test" || name == "needs.build"
 			})
@@ -133,7 +133,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := NewChecker(false, nil).CheckScriptInterpolation(node, exprtypes.StringType(), ScriptShellWord, func(ref exprsyntax.Node) bool {
+			findings := NewChecker(nil).CheckScriptInterpolation(node, exprtypes.StringType(), ScriptShellWord, func(ref exprsyntax.Node) bool {
 				name := exprsyntax.StaticReference(ref)
 				return tc.known && (name == "steps.test" || name == "needs.build")
 			})
@@ -147,7 +147,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings := NewChecker(false, nil).CheckScriptInterpolation(node, exprtypes.StringType(), ScriptShellArgument, nil)
+		findings := NewChecker(nil).CheckScriptInterpolation(node, exprtypes.StringType(), ScriptShellArgument, nil)
 		if len(findings) != 0 {
 			t.Errorf("data argument rejected for %s: %v", expression, findings)
 		}

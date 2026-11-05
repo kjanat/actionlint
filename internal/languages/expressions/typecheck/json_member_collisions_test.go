@@ -35,7 +35,7 @@ func TestJSONMemberCollisions(t *testing.T) {
 				t.Fatalf("got %v", collisions)
 			}
 			expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + tc.input + "') }}")
-			_, errs := NewChecker(false, nil).Check(expr)
+			_, errs := NewChecker(nil).Check(expr)
 			if len(errs) != tc.count {
 				t.Fatal(errs)
 			}
@@ -58,7 +58,7 @@ func TestJSONCollisionsDoNotMaskInvalidJSON(t *testing.T) {
 				t.Fatal(got)
 			}
 			expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + input + "') }}")
-			_, errs := NewChecker(false, nil).Check(expr)
+			_, errs := NewChecker(nil).Check(expr)
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "broken JSON string") {
 				t.Fatal(errs)
 			}

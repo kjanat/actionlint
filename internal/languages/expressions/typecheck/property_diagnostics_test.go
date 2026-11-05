@@ -22,7 +22,7 @@ func TestPropertyDiagnostics(t *testing.T) {
 		{"github.event[0].author[env.KEY]", ""},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
-			checker := NewChecker(false, nil)
+			checker := NewChecker(nil)
 			// displayNme is equally close to two declared names: never guess.
 			author := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType(), "displayNme2": exprtypes.StringType()})
 			gh, _ := BuiltinGlobalVariableTypes["github"].Object()

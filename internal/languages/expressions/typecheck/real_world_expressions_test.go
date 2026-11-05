@@ -26,7 +26,7 @@ func TestExprSemanticsCheckRealWorld(t *testing.T) {
 			t.Errorf("%q caused parse error: %v", expr, err)
 			continue
 		}
-		c := NewChecker(true, nil)
+		c := NewChecker(nil)
 		c.Check(root)
 	}
 	if err := s.Err(); err != nil {
@@ -84,7 +84,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 				if err != nil {
 					b.Fatalf("%q caused parse error: %v", expr, err)
 				}
-				NewChecker(true, nil).Check(root)
+				NewChecker(nil).Check(root)
 			}
 		}
 	})
@@ -100,18 +100,10 @@ func BenchmarkExprRealWorld(b *testing.B) {
 		}
 	}
 
-	b.Run("Sema-untrust", func(b *testing.B) {
+	b.Run("Typecheck", func(b *testing.B) {
 		for range b.N {
 			for _, t := range trees {
-				NewChecker(true, nil).Check(t)
-			}
-		}
-	})
-
-	b.Run("Sema-trust", func(b *testing.B) {
-		for range b.N {
-			for _, t := range trees {
-				NewChecker(false, nil).Check(t)
+				NewChecker(nil).Check(t)
 			}
 		}
 	})
