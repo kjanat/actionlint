@@ -52,7 +52,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			paths = strings.Fields(step.With.AddPaths)
 		}
 	}
-	if script == "" || !slices.Equal(paths, []string{"go.mod", ".mise.toml", "Dockerfile", "CONTRIBUTING.md", "flake.nix", "flake.lock"}) {
+	if script == "" || !slices.Equal(paths, []string{"go.mod", ".mise.toml", "distribution/docker/Dockerfile", "CONTRIBUTING.md", "flake.nix", "flake.lock"}) {
 		t.Fatalf("missing update step or incomplete PR paths: %v", paths)
 	}
 	original := make(map[string]string, len(paths))
@@ -67,7 +67,11 @@ func TestUpkeepGoToolchain(t *testing.T) {
 		t.Run(version, func(t *testing.T) {
 			dir := t.TempDir()
 			for name, data := range original {
-				if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+				target := filepath.Join(dir, name)
+				if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(target, []byte(data), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
