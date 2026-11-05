@@ -164,7 +164,7 @@ two constructors, and `byteOffsetAtColumn` in the two indicator helpers. Nothing
    symbols from that side of `error.go` (`Error` and its fields plus `ErrorTemplateFields`) and zero AST nodes.
    `playground` uses seven and zero. Both name the type explicitly, at `cmd/actionlint-action/lint.go:84`
    (`[]*actionlint.Error`), `cmd/actionlint-action/render.go:12` (`= actionlint.ErrorTemplateFields`) and
-   `playground/main.go:20` (`*actionlint.Error`). Putting `Error` in `ast` makes all three read `*ast.Error` and
+   `applications/playground/main.go:20` (`*actionlint.Error`). Putting `Error` in `ast` makes all three read `*ast.Error` and
    `ast.ErrorTemplateFields` in programs that never touch a workflow node.
 3. **It would put the whole AST behind `project`.** The diagnostic dependency of `config.go` is exactly two symbols,
    `Error` and `Error.Message`. With `Error` in `ast`, the configuration package imports the workflow syntax tree for
@@ -540,9 +540,9 @@ the top of the table carry the proof, and each is one `rg` away.
 The configuration implementation now separates public API types from reusable
 implementation machinery:
 
-- `internal/configtree`: YAML alias expansion, structural merging, local
+- `internal/input/configurationtree`: YAML alias expansion, structural merging, local
   `extends` loading, dependency tracking, and cycle detection.
-- `internal/filefilter`: feature-independent include/exclude glob selection.
+- `internal/input/selection`: feature-independent include/exclude glob selection.
 - `internal/lintconfig`: rule levels, presets, groups, and typed-option decoding.
 
 The root package retains public configuration aliases and adapters that connect

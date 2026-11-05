@@ -12,7 +12,7 @@
   and pre-commit.
 - [Configuration](config.md): Runner labels, variables, secrets, default permissions, error filters, and opt-in policy
   checks, with YAML Language Server schema support.
-- [Go API](api.md): How to use actionlint as Go library.
+- [Integration interfaces](api.md): Connect other programs through the CLI, language server and plugin SDKs.
 - [Go dependency forks](go-forks.md): Dependency graph, fork origins and consuming modules.
 - [Language server](lsp.md): Feature support, inference and editor integration.
 - [CI security sources](design/ci-security-sources.md): Source-backed rule research and coverage limits.

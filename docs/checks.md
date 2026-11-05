@@ -1554,7 +1554,7 @@ actionlint validates the Webhook configurations:
 | `tags`            | `push`                                                                       |
 | `tags-ignore`     | `push`                                                                       |
 
-The table of available Webhooks and their types are defined in [`webhooks.gen.go`](../internal/webhook/webhooks.gen.go). It is generated
+The table of available Webhooks and their types are defined in [`webhooks.gen.go`](../internal/model/contexts/events/triggers/webhooks.gen.go). It is generated
 by [a script][generate-webhook-events] and kept to the latest by CI workflow triggered weekly.
 
 <a id="check-workflow-dispatch-events"></a>
@@ -2064,13 +2064,12 @@ validates inputs at `with:` in the workflow are correct. Missing required inputs
 ## Remote action inputs and outputs
 
 Remote reference syntax is checked without metadata. Input names, required inputs
-and declared outputs are checked when a host supplies the action manifest through
-`analysis.Options.RemoteActions`. Both checks use the same request-scoped metadata
-service and the same selected content.
+and declared outputs are checked when dependency resolution supplies the action
+manifest. Both checks use the same request-scoped metadata service and selected content.
 
 There is no bundled popular-action list. Without a provider, remote metadata is
 unavailable; metadata-dependent checks skip that action. Local action validation
-continues to use the actual local manifest. See [the library API](api.md#configuration-and-syntax).
+continues to use the actual local manifest. See [remote action metadata](remote-actions.md).
 
 <a id="detect-outdated-popular-actions"></a>
 
@@ -3600,7 +3599,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 
 ---
 
-[Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [yamllint]: https://github.com/adrienverge/yamllint
 [issue-form]: https://github.com/kjanat/actionlint/issues/new
@@ -3635,7 +3634,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [actions-cache]: https://github.com/actions/cache
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/webhook/generate
+[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/development/generators/event-triggers
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

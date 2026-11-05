@@ -48,9 +48,9 @@ Releases follow strict Semantic Versioning for the supported CLI and configurati
 
 Backward-compatible features, including new lint rules, belong in minor releases. Backward-compatible fixes to existing checks belong in patch releases. A correctness motivation does not exempt an incompatible contract change from a major version bump.
 
-## Go library API
+## Integration interfaces
 
-The Go library API is unstable. It is not covered by the CLI and configuration compatibility commitments above; library consumers should expect API changes between releases.
+The Go host implementation is private. Integrations use the CLI, language server or plugin protocols. Plugin-author bindings live in the guest SDKs. See [integration interfaces](docs/api.md) to choose an entry point.
 
 ## Reporting an issue
 
@@ -148,7 +148,7 @@ Since actionlint doesn't use any cgo features, setting `CGO_ENABLED=0` environme
 
 ### Packaging source builds
 
-Use the module path from `go.mod` when stamping the version: `-ldflags "-X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=<package-version>"`. A different module path silently leaves the binary reporting a development version and linking to development documentation.
+Use the module path from `go.mod` when stamping the version: `-ldflags "-X actionlint.kjanat.dev/v2/internal/integrations/buildinfo.ReleaseVersion=<package-version>"`. A different module path silently leaves the binary reporting a development version and linking to development documentation.
 
 The source tarball uploaded by the release workflow includes `man/actionlint.1`. GitHub's automatically generated source downloads do not. Generate just the installed manpage with:
 
@@ -164,7 +164,7 @@ make man/actionlint.1 PANDOC='pandoc --standalone --from=markdown-smart --no-hig
 
 Shell completions come from the built binary's `-completion bash`, `-completion zsh`, and `-completion fish` commands. For local configuration validation, install `actionlint.schema.json` and the `schemas/` tree together, preserving their relative paths so references such as `schemas/shellcheck/0.11.0.schema.json` resolve.
 
-Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; implementation tests live with their packages and CLI integration tests in `internal/integration/cli`. Put Git, Bash, and ShellCheck on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
+Run `go test ./...` from the source root, including when only `cmd/actionlint` is built. That command directory has no tests; implementation tests live with their packages and CLI integration tests in `internal/development/tests/integration/cli`. Put Git, Bash, and ShellCheck on `PATH` for the tests. Ordinary builds use the checked-in generated sources; dependency fetching can happen before an offline build, as with Nix's `buildGoModule`.
 
 ### Nix development
 
@@ -211,12 +211,12 @@ open coverage.html
 Automated tests are as follows.
 
 - [Upstream conformance tests] compare actionlint with fixtures from GitHub's language services and runner, SchemaStore, and YAML Test Suite. Run `make conformance` when changing parsing or validation. Baselines record known differences and detect changes; a green job does not mean full runtime compatibility.
-- Unit tests are implemented in `*_test.go` files for testing the corresponding APIs. Test data for unit tests are put in `testdata/` directory.
-- UI tests based on matching to error messages are implemented in `linter_test.go` and all test data are stored in `testdata/` directory.
-  - `testdata/examples/` contains tests for all examples in ['Checks' document]. `*.yaml` files are an input workflow and `*.out` files are expected error messages.
-  - `testdata/ok/` contains 'OK' tests. All workflow files in this directory should cause no errors.
-  - `testdata/err/` contains 'Error' tests. Each `*.yaml` files are workflow inputs and corresponding `*.out` files are expected error messages (one error per line).
-  - `testdata/projects/` contains 'Project' tests. Each directories represent a single project (meaning a repository on GitHub). Corresponding `*.out` files are expected error messages. Empty `*.out` file means the test case should cause no errors. 'Project' test is used for use cases where multiple files are related (reusable workflows, local actions, config files, ...).
+- Unit tests use `*_test.go` files beside the implementation. Each package owns its fixtures in a local `testdata/` directory.
+- Workflow integration tests own `internal/development/tests/integration/workflow/testdata/`.
+  - `examples/` contains workflow examples from ['Checks' document]. Each `*.out` file records the expected diagnostics for its corresponding YAML input.
+  - `ok/` contains workflows expected to produce no findings.
+  - `err/` contains invalid workflows and their expected diagnostics.
+  - `projects/` contains repository fixtures for checks involving several files, such as reusable workflows, local actions and configuration.
 
 ## Linting
 
@@ -249,35 +249,35 @@ make lint-docs # Requires ShellCheck for the examples
 
 ## Fuzzing
 
-The targets in [`fuzz/`] use [Go's built-in fuzzing], so no external tool is needed. Their seed corpora run as ordinary tests, which means `go test ./...` already compiles and exercises them.
+The targets in [`internal/development/tests/integration/fuzz/`] use [Go's built-in fuzzing], so no external tool is needed. Their seed corpora run as ordinary tests, which means `go test ./...` already compiles and exercises them.
 
 `go test -fuzz` fuzzes exactly one target at a time, so name the one you want:
 
 ```sh
-go test -run '^$' -fuzz '^FuzzParse$' ./fuzz
+go test -run '^$' -fuzz '^FuzzParse$' ./internal/development/tests/integration/fuzz
 ```
 
 or
 
 ```sh
-make fuzz FUZZ_FUNC=FuzzParse
+FUZZ_FUNC=FuzzParse mise run fuzz
 ```
 
-Running `make fuzz` without `FUZZ_FUNC` fails with a list of the available targets. Inputs that trigger a failure are written to `fuzz/testdata/fuzz/<target>/` and become part of the seed corpus once committed.
+Running `mise run fuzz` without `FUZZ_FUNC` lists the available targets. Inputs that trigger a failure are written to `internal/development/tests/integration/fuzz/testdata/fuzz/<target>/` and become part of the seed corpus once committed.
 
 ## Update the pinned Docker base images
 
 [`Dockerfile`] selects its base images with the `GOLANG_VER` and `ALPINE_VER` build arguments. Both default to explicit version tags and both can be overridden:
 
 ```sh
-docker build --build-arg GOLANG_VER=1.27.3 --build-arg ALPINE_VER=3.24 -t actionlint .
+docker build -f distribution/docker/Dockerfile --build-arg GOLANG_VER=1.27.3 --build-arg ALPINE_VER=3.24 -t actionlint .
 ```
 
 To move the defaults to newer base images:
 
 1. Pick the new tags from Docker Hub ([golang], [alpine]). `GOLANG_VER` tracks the preferred `toolchain` in `go.mod`, which CI reads through `go-version-file`. `ALPINE_VER` selects the final runtime image independently of the Go builder.
 2. For Go, run `node tools/toolchain/update-go-toolchain.mjs go<major>.<minor>.<patch>` with Node, `gh`, and Nix available. It verifies matching Nix compilers, then updates `go.mod`, the Docker builder default, this example, and the Nix pin and lock together. If no matching Nix compiler is available, it leaves the files unchanged. Update the Alpine `ARG` separately. CI and release builds use the Dockerfile defaults unless explicitly overridden.
-3. Verify with `droast Dockerfile` and `docker build -t actionlint .`.
+3. Verify with `droast distribution/docker/Dockerfile` and `docker build -f distribution/docker/Dockerfile -t actionlint .`.
 4. Send the upgrade as its own pull request.
 
 ## Make a new release
@@ -302,10 +302,10 @@ A blocked or failed submission opens an issue in `kjanat/actionlint`, with the r
 
 When releasing v1.2.3 as example:
 
-1. Describe the release in [CHANGELOG.md], either under the `Unreleased` heading or in a `v1.2.3` section written out in full, and write the release notes to `docs/releases/v1.2.3.md`. That file is the body of the GitHub release, GoReleaser's release notes and the WinGet manifest notes. `bump-version` refuses to run when the changelog describes nothing or the file is missing.
+1. Describe the release in [CHANGELOG.md], either under the `Unreleased` heading or in a `v1.2.3` section written out in full, and write the release notes to `docs/releases/v1.2.3.md`. That file is the body of the GitHub release, GoReleaser's release notes and the WinGet manifest notes. Version preparation refuses to run when the changelog describes nothing or the file is missing.
 2. Validate and commit the release changes on `master`, including the changelog, and push them to `origin`.
-3. Run `go run ./tools/release/bump-version -check` to list every declared version reference and confirm the declaration is in sync with the repository
-4. Run `go run ./tools/release/bump-version -push 1.2.3`. It updates version references, runs the Nix checks, commits and pushes the source changes, then dispatches [release preparation](.github/workflows/release-prepare.yml). Drop `-push` to leave the edits for review; `-commit` creates only the source commit. Neither creates a version tag. See [the script README] for prerequisites and recovery commands. On Windows, Nix can run through WSL.
+3. Run `node tools/release/prepare-version.mjs --check` to list every declared version reference and check it against the repository.
+4. Run `node tools/release/prepare-version.mjs --push 1.2.3`. It updates version references, runs the Nix checks, commits and pushes the source changes, then dispatches [release preparation](.github/workflows/release-prepare.yml). Drop `--push` to leave the edits for review; `--commit` creates only the source commit. Neither creates a version tag. See [the script README] for prerequisites and recovery commands. On Windows, Nix can run through WSL.
 5. Wait for preparation to succeed and inspect the draft. It tests the candidate on Linux, macOS and Windows, checks Nix, and validates the container. Then run `node tools/release/release-candidate.mjs promote --version 1.2.3 --run RUN_ID` locally. Promotion verifies the successful run and every draft asset against its immutable manifest artifact, signs `v1.2.3` at the tested commit, records its ancestry with an `ours` merge, atomically pushes `master` and the tag, and publishes the draft. The tag contains the complete source tree, root `action.mjs`, and `SHA256SUMS`; generated files never enter the `master` tree. Pre-commit hooks are published separately from `kjanat/actionlint-pre-commit`. [The CI release job] distributes the published artifacts. Eligible floating `v1` and `v1.2` tags advance after its checks pass. All three references support the Action. The signing key stays local.
 6. Verify the release assets, npm packages, distribution updates, and floating action tags. The bump script has already moved `Unreleased` entries into the dated release section with its anchor and comparison link; no manual post-release changelog edit is needed. Published release tags and assets are immutable; changing those requires a new version.
 7. To change the notes after publication, edit `docs/releases/v1.2.3.md` on `master`. [The release notes workflow](.github/workflows/release-notes.yml) copies every changed file to its GitHub release; a file for a version without a release waits for that release. Promotion publishes the draft with the file's content, so a draft edited by hand is overwritten. Keep the changelog concise and the notes rich: examples, explanations of changed behavior, practical benefits. Preserve contributor mentions and issue/PR references in both, and verify examples against the released binary.
@@ -332,11 +332,11 @@ make man
 
 ## How to develop playground
 
-Visit [`playground/README.md`].
+Visit [`applications/playground/README.md`].
 
 ## How to deploy playground
 
-The [Pages workflow] deploys on pushes to `master` and after successful Release runs triggered by published releases within this repository. Release-triggered builds check out the current default branch. The source badge and documentation links identify the built revision; a separate latest-release badge links to the published release. The build job has read-only repository access and builds the bundle with `run actionlint-playground:build`, packages `playground/dist` together with the manual, and uploads it through `actions/upload-pages-artifact`.
+The [Pages workflow] deploys on pushes to `master` and after successful Release runs triggered by published releases within this repository. Release-triggered builds check out the current default branch. The source badge and documentation links identify the built revision; a separate latest-release badge links to the published release. The build job has read-only repository access and builds the bundle with `run actionlint-playground:build`, packages `applications/playground/dist` together with the manual, and uploads it through `actions/upload-pages-artifact`.
 
 Only the separate deployment job receives Pages write and OIDC permissions.
 
@@ -349,7 +349,7 @@ run playground:preview
 
 ## Maintain auto-generated sources
 
-Generators live with their owning subsystems under `internal/`: configuration schemas in `config/generate`, rule documentation in `rulecatalog/generate`, runner action tables in `action/generate`, and expression context data in `expression/context/generate`. Release tools live in `tools/release`, installers in `distribution/install`, and conformance tools in `internal/conformance`. CI invokes these same entry points.
+Generators live with their owning subsystems under `internal/`: configuration schemas in `config/generate`, rule documentation in `rulecatalog/generate`, runner action tables in `action/generate`, and expression context data in `expression/context/generate`. Release tools live in `tools/release`, installers in `distribution/install`, and conformance tools in `internal/development/tests/conformance`. CI invokes these same entry points.
 
 ### Action metadata availability
 
@@ -357,11 +357,11 @@ Generators live with their owning subsystems under `internal/`: configuration sc
 
 The weekly `Upkeep` job includes this file in its usual generation PR. Review schema changes there before merging; incompatible schema changes fail generation without replacing the existing output. `Generated content` checks that regeneration matches the checked-in file. Both workflows provide `GH_TOKEN` for the GitHub API; local generation also accepts `GITHUB_TOKEN`, or uses the public API unauthenticated when neither is set.
 
-To refresh only these tables, run `go run ./internal/action/generate`. Normal builds and lint runs use the checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
+To refresh only these tables, run `go run ./internal/model/actions/generate`. Normal builds and lint runs use the checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
 
 ### JavaScript action runtime lifecycle
 
-`go run ./internal/action/generate -runtimes` refreshes `internal/action/runtimes.gen.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
+`go run ./internal/model/actions/generate -runtimes` refreshes `internal/model/actions/runtimes.gen.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the output. Review upstream source changes when that happens. No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
@@ -419,35 +419,35 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [Linus Torvalds's message on AI-assisted maintenance]: https://lore.kernel.org/linux-media/CAHk-=wi4zC+Ze8e+p3tMv8TtG_80KzsZ1syL9anBtmEh5Z40vg@mail.gmail.com/
 [Pages workflow]: ./.github/workflows/pages.yml
 [Problem-Matchers]: https://github.com/kjanat/actionlint/actions/workflows/matcher.yml
-[README.md at the script directory]: ./internal/webhook/generate/README.md
+[README.md at the script directory]: ./internal/model/contexts/events/payload/generate/README.md
 [Release]: https://github.com/kjanat/actionlint/actions/workflows/release.yml
 [Upkeep]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
 [Upstream conformance tests]: docs/conformance.md
 [`.golangci.toml`]: ./.golangci.toml
-[`Dockerfile`]: ./Dockerfile
+[`Dockerfile`]: ./distribution/docker/Dockerfile
 [`Upkeep`]: .github/workflows/upkeep.yml
-[action-availability]: ./internal/action/availability.gen.go
+[action-availability]: ./internal/model/actions/availability.gen.go
 [`actionlint-matcher.json`]: .github/actionlint-matcher.json
-[`webhooks.gen.go`]: ./internal/webhook/webhooks.gen.go
-[`availability.gen.go`]: ./internal/expression/context/availability.gen.go
-[`check-checks`]: ./internal/rulecatalog/check-docs
+[`webhooks.gen.go`]: ./internal/model/contexts/events/payload/webhooks.gen.go
+[`availability.gen.go`]: ./internal/model/contexts/availability.gen.go
+[`check-checks`]: ./internal/development/tests/integration/documentation
 [`ci.yml`]: .github/workflows/ci.yml
 [`events-that-trigger-workflows.md`]: https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md
-[`fuzz/`]: ./fuzz
-[`generate-action-metadata`]: ./internal/action/generate/main.go
+[`internal/development/tests/integration/fuzz/`]: internal/development/tests/integration/fuzz
+[`generate-action-metadata`]: ./internal/model/actions/generate/main.go
 [`generate-actionlint-matcher`]: ./tools/matcher
-[`generate-webhook-events`]: ./internal/webhook/generate
+[`generate-webhook-events`]: ./internal/model/contexts/events/payload/generate
 [`man/actionlint.1.md`]: ./man/actionlint.1.md
 [`man/manual.css`]: ./man/manual.css
-[`playground/README.md`]: ./playground/README.md
+[`applications/playground/README.md`]: ./applications/playground/README.md
 [active branches]: https://github.com/kjanat/actionlint/branches
 [alpine]: https://hub.docker.com/_/alpine
 [autofix workflow]: .github/workflows/autofix.yml
-[changelog-feed package]: packages/changelog-feed/README.md
+[changelog-feed package]: libraries/github-changelog/README.md
 [changelog-from-release]: https://github.com/rhysd/changelog-from-release
 [flake]: flake.nix
 [fork repository]: https://github.com/kjanat/winget-pkgs
-[generate-availability]: ./internal/expression/context/generate
+[generate-availability]: ./internal/model/contexts/generate
 [golang]: https://hub.docker.com/_/golang
 [golangci-lint]: https://golangci-lint.run/
 [govulncheck]: https://go.dev/doc/security/vuln/
@@ -465,9 +465,9 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [the contexts document]: https://github.com/github/docs/blob/main/content/actions/learn-github-actions/contexts.md#context-availability
 [the document]: docs/usage.md#problem-matchers
 [the maintenance script]: #about-checks-doc
-[the readme of the script-2]: ./internal/rulecatalog/check-docs/README.md
-[the readme of the script]: ./internal/expression/context/generate/README.md
-[the script README]: ./tools/release/bump-version/README.md
+[the readme of the script-2]: ./internal/development/tests/integration/documentation/README.md
+[the readme of the script]: ./internal/model/contexts/generate/README.md
+[the script README]: ./tools/release/README.md
 [the upstream project]: https://github.com/rhysd/actionlint
 [the usage document]: docs/usage.md
 

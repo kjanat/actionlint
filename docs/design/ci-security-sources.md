@@ -19,7 +19,7 @@ mapping; rolling documentation needs a captured revision before rule acceptance.
 
 ## Initial coverage map
 
-Existing rule names come from [`rulecatalog`](../../internal/rulecatalog/catalog.go).
+Existing rule names come from the [index of rule declarations](../../internal/checking/rule_index.go).
 These are proposed relationships requiring a predicate-level review, not new
 rule selections or implemented standards profiles.
 

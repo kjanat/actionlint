@@ -1,101 +1,65 @@
-# Application and CLI boundary
+# CLI, editor and checking responsibilities
 
-## Decision
-
-The CLI translates command syntax into an application request. The application
-owns analysis execution and closes engines it loads before returning a result.
-The CLI owns terminal behavior, exit status, summaries and report publication.
+The native CLI and the language server submit requests to `internal/checking`.
+The browser executable starts the same language server through a browser transport.
+Command parsing, editor messages and output destinations belong to those callers.
 
 ```mermaid
 flowchart TD
-    CLI[internal/cli] --> Local[internal/localapp]
-    Local --> App[internal/application]
-    Local --> Runtime[plugins/component and plugins/core runtimes]
-    Library[analysis.Files and analysis.Repository] --> App
-    App --> Workspace[internal/workspace]
-    Workspace --> Config[internal/config]
-    App --> Decode[internal/documentparse]
-    App --> Registry[internal/checks]
-    App --> Composition[internal/workflow/composition]
-    App --> Policy[internal/diagnosticpolicy]
-    Composition --> Engine[internal/engine]
-    Composition --> Scripts[internal/tools/execution]
-    App --> Host[internal/analyzerhost]
-    Scripts --> Host
-    CLI --> Render[internal/render]
-    CLI --> Config[internal/config]
-    CLI --> Process[internal/processconfig]
-    CLI --> Build[internal/buildinfo]
+    Native[cmd/actionlint] --> CLI[internal/cli]
+    Browser[cmd/actionlint-lsp-wasm] --> LSP[internal/lsp]
+    CLI --> LSP
+    CLI --> Checking[internal/checking]
+    LSP --> Checking
+    Checking --> Workspace[internal/input/workspace]
+    Checking --> Decode[internal/model/parsing]
+    Checking --> Rules[internal/checking/selection]
+    Checking --> Calls[internal/checking/executor/composites]
+    Checking --> Plugins[internal/plugins/execution]
+    Checking --> Processes[internal/integrations/process]
+    Checking --> Results[internal/results/report]
+    CLI --> Output[internal/output]
+    Output --> Results
+    LSP --> Results
 ```
 
-`localapp` supplies the local WASM loaders and owns component-plugin lifetime.
-`application` accepts injected analyzer registrations and backend loaders. Neither
-the engine nor the public analysis API acquires a dependency on a WASM runtime.
-Callers manage explicitly supplied backends; the session closes engines created
-by its loader.
+## Checking requests
 
-## Responsibilities
+`checking.Check` accepts an `input.Request` and checking options. The request
+selects files, a repository, stdin or prepared sources. Workspace selection reads
+configuration and captures source text. `checking.Analyze` submits already prepared
+sources without discovering configuration or reading their paths again.
 
-- `application.Check` coordinates input preparation, analysis and backend cleanup,
-  including the empty-repository convention used by pre-commit. It drains the shared
-  process pool before closing loaded backends. It assembles the document context,
-  configured check registry, tool services and diagnostic policy.
-- `workspace` owns repository discovery, configuration loading and overlays,
-  file selection, source reads and configuration provenance. Its `Selection`
-  carries resolved sources and all consumed paths, including excluded discovery
-  candidates. It has no parser or analyzer dependency.
-- `analyzerhost` owns concurrent analyzer scheduling and the pool of loaded
-  script backends. It has no traversal or repository-configuration dependency.
-- The result contains the rule descriptions and source text needed for rendering.
-  Renderers do not inspect engine sessions or traversal state.
-- Cleanup runs with cancellation removed from its context. Cleanup errors are
-  joined with analysis failures, preserving partial results. Report publication
-  occurs only after analysis and cleanup succeed.
-- `cli/check.go` coordinates the request and selects the exit status.
-  `check_render.go` handles terminal formatting; `report_destination.go` owns
-  confirmation, temporary files and atomic publication.
-- Configuration creation and the embedded default template belong to
-  `internal/config`. Static rule metadata also comes from its existing catalogue.
-- Native command options and executable resolution belong to `processconfig`.
-- Release identity belongs to `buildinfo`. Build recipes stamp
-  `internal/buildinfo.ReleaseVersion` and `internal/buildinfo.InstallOrigin`.
+`checking.CheckWithPlugins` loads selected plugins, supplies their registrations
+to `Check`, and closes those plugins afterward. File-based plugin arguments are
+converted to selected sources by `CheckWithPluginPaths`.
 
-## Alternatives and trade-offs
+Rules receive decoded models and the inputs their declarations request. The
+checking session constructs those inputs and coordinates nested invocations.
+Neither a renderer nor an LSP diagnostic converter starts another analysis.
 
-Importing the public `analysis` API directly from the CLI would avoid a direct
-engine import, but its result intentionally omits the source buffers and rule
-metadata required by text and template output. Extending that public contract
-with terminal concerns would move the coupling into the library API.
+## Resource ownership
 
-The application returns `report.Analysis`, a value model of diagnostics, source
-snapshots, document outlines, configuration provenance and rule descriptors.
-`render.FromAnalysis` derives presentation values at the output boundary. The public
-library selects its public result view without constructing a renderer.
+The checking session waits for its process pool before closing engines loaded
+for the session. Cleanup uses a context that is not cancelled when the request
+is cancelled. Cleanup errors are joined with the checking error, so a caller can
+receive findings together with an explanation of incomplete work.
 
-Legacy linter/session and rendering compatibility adapters are test-only. Production
-callers use the application boundary, including the GitHub Action, Playground and
-documentation checker. Synthetic repository identities use `workspace.Identity`.
+A caller that supplies a backend directly owns that backend. A loader-created
+engine is closed by the session that loaded it. Plugin loading has its own
+matching close operation around the check.
 
-`documentparse` decodes workflows and action manifests through separate entrypoints.
-`checks` constructs the configured semantic passes. `workflow/composition` receives
-those passes and a script service, owns nested invocation analysis, and joins work
-before returning findings, script facts and source provenance. The engine only
-traverses workflow syntax. `diagnosticpolicy` enriches references and applies
-source-specific suppressions, severity, path filters and deduplication after all
-analyzers finish. See [Analysis ownership](analysis-ownership.md) for the decision
-and dependency constraints.
+## Results and delivery
 
-Five declaration checks use a shared visitor adapter over stateless workflow
-projections. Expression, composite and policy adapters use traversal state.
+`internal/results/report.Analysis` carries findings, captured sources, document
+outlines, configuration reports and rule descriptions. It contains no live rules,
+parser nodes or process handles. CLI rendering and editor diagnostics consume
+that report.
 
-## Enforcement
+The CLI selects output formats and opens destinations. Output renderers write to
+supplied writers. The CLI owns process status and stderr. The LSP owns protocol
+responses, document versions and edit delivery.
 
-Architecture tests reject direct CLI imports of engine and plugin-runtime
-implementations, application dependencies on the CLI or command framework, and
-concrete WASM runtime dependencies in the engine, application and public analysis
-API. Additional dependency checks keep input preparation independent of analysis
-and scheduling independent of traversal/configuration. Tests exercise preparation
-of malformed source without parsing, per-batch provenance, and script execution
-that follows traversal and completes before findings are collected. Lifecycle tests cover successful checks, analysis failures, cleanup failures,
-combined failures and cancellation. Existing CLI tests cover report publication,
-format equivalence, pre-commit discovery and terminal behavior.
+`internal/cli/check.go` executes the check command. `check_render.go` constructs
+renderers; `report_destination.go` manages output files and their publication.
+Build metadata comes from `internal/integrations/buildinfo`.

@@ -61,8 +61,8 @@ explicitly when its category changed and its former selection is still wanted.
 ## External tool selection
 
 Tools are selected by id: `--tool ID[=COMMAND]`, `--no-tool ID`,
-`ACTIONLINT_TOOL_<ID>_BIN`, `_FLAGS` and `_ENV`, the Action input `disable-tools`
-and `analysis.Options.Tools`. The two v1.17.0 options still work for one release
+`ACTIONLINT_TOOL_<ID>_BIN`, `_FLAGS` and `_ENV`, and the Action input `disable-tools`.
+The two v1.17.0 options still work for one release
 as hidden, deprecated aliases and print a warning. The v1.17.0 Action inputs are
 accepted and ignored.
 
@@ -75,12 +75,8 @@ accepted and ignored.
 | Action input `shellcheck` | `disable-tools: shellcheck`; the input is ignored                      |
 | Action input `pyflakes`   | `disable-tools: ruff`; the input is ignored                            |
 
-Unreleased v2 builds also had `--ruff`, `--no-ruff`, `--no-shellcheck`,
-`ACTIONLINT_SHELLCHECK_*`, `ACTIONLINT_RUFF_*`, the Action input `ruff` and the
-library fields `analysis.Options.ShellCheck` and `analysis.Options.Ruff`. They are
-removed without aliases; the `ruff` input is ignored like the v1.17.0 inputs. Use
-`analysis.Options{Tools: map[string]analysis.Tool{"shellcheck": tool, "ruff": tool}}`
-in the library; `analysis.Tools()` lists the valid map keys.
+The Go host implementation is private. Programs that previously embedded it
+should use the [CLI, LSP or plugin interfaces](api.md).
 
 The last `--tool`, `--no-tool` or `-shellcheck` for an id wins, so
 `--no-tool shellcheck -shellcheck=COMMAND` runs `COMMAND`. A disabled tool also

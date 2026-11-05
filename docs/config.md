@@ -33,9 +33,8 @@ lint:
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
 
-Repository facts are independent of diagnostic levels. A host can supply them through
-`analysis.Options.Repository`; the CLI currently uses configured facts. Each field is
-independently available. Omission inherits host knowledge; explicit `null` makes the
+Repository facts are independent of diagnostic levels. Configure them under
+`repository`. Each field is independently available. Omission inherits host knowledge; explicit `null` makes the
 fact unknown. Configuration overrides the host after inheritance and file selection.
 Each field replaces the complete fact, including variable and environment mappings.
 Unknown defaults skip only permission comparisons requiring that default; explicit
@@ -120,9 +119,7 @@ files, including `${{ configdir }}`, require a local configuration; repository
 paths such as `local-actions` still resolve against the analyzed repository.
 
 Missing bases, cycles, invalid settings, and chains deeper than 32 levels are
-errors. `config.Load`, `config.LoadContext` and file-based CLI configuration resolve
-inheritance. A supplied Go file reader receives HTTPS addresses too; actionlint
-never bypasses it with network fallback. In-memory `config.Parse` and inline Action
+errors. File-based configuration resolves inheritance. Inline Action
 overlays cannot resolve `extends`; select a configuration file instead. Explicit
 migration rewrites the selected local file and checks inherited remote bytes again
 before writing; it does not rewrite hosted configurations.
@@ -364,10 +361,6 @@ actionlint's workflow checks still run. Templates inside strings and comments
 continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
 
-The Go library opts in with `analysis.Options.Tools["ruff"]`, selecting either a
-`Process` or an `analyzer.ScriptBackend`; a zero `analysis.Tool` disables it.
-See [the library API](api.md#script-engine-backends) for cancellation, configuration
-and backend lifetime requirements.
 The GitHub Action runs Ruff unless its `disable-tools` input lists `ruff`.
 It uses the configured Ruff plugin; the Action does not install native Ruff
 or add it to `PATH`. The default `plugin-cache: true` restores and saves the
@@ -451,7 +444,7 @@ Core engines cache compiled code under the user cache directory in
 An explicit `--tool ruff` command, including `--tool ruff=false`, takes precedence over a
 configured `tools.ruff.backend.wasm`. Selecting a Ruff plugin and an explicit
 competing command/backend is rejected; select one execution source.
-See [script engines](plugins.md#script-engines) for lifecycle and Go APIs.
+See [script engines](plugins.md#script-engines) for their interfaces and execution limits.
 
 The pinning rule supports scoped exceptions without suppressing other action checks:
 
@@ -867,7 +860,7 @@ This writes `.github/actionlint.yaml` with the editor schema directive.
 
 ---
 
-[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [pat]: https://pkg.go.dev/path#Match
 [doublestar]: https://github.com/bmatcuk/doublestar

@@ -8,9 +8,11 @@ Before saving prose, check whether it tells the reader what happens or what to d
 
 ## Project structure
 
-Actionlint checks GitHub Actions workflows. The CLI lives in `cmd/actionlint/`. Public Go packages include `analysis/`, `analyzer/`, `source/`, and `diagnostic/`. Implementation code lives in `internal/`.
+Actionlint checks GitHub Actions workflows and action manifests. `cmd/actionlint/` starts the native CLI, and `cmd/actionlint-lsp-wasm/` starts the browser language server. Both use the private Go implementation under `internal/`.
 
-Tests sit beside Go source files. Fixtures live in `testdata/`, and CLI integration tests live in `internal/integration/cli/`. The `analyzers/` directory is a separate Go module. Documentation and assets live in `docs/` and `docs/assets/`. See `playground/` for the browser application and `examples/plugins/` for plugin examples.
+`applications/` contains the playground and GitHub Action. `libraries/` contains the browser LSP client and changelog reader. `plugins/protocol/` defines plugin messages and component interfaces; `plugins/sdk/` contains the Go, Rust and TypeScript authoring SDKs; `plugins/examples/` contains complete plugin examples. Installation packages and recipes live under `distribution/`.
+
+Go tests and fixtures sit beside the code they test. Cross-subsystem tests live under `internal/development/tests/integration/`, and comparisons with runner and Wasm implementations live under `internal/development/tests/conformance/`. There is no shared root fixture pool. Documentation and assets live under `docs/`. Go generators live under `internal/development/generators/`, and maintenance scripts live under `tools/`.
 
 ## Build and development commands
 
@@ -21,7 +23,7 @@ Activate mise and run commands from the repository root. Tools are configured in
 - `run actionlint -h` (runs `go run ./cmd/actionlint -h`): display CLI help.
 - `run generate`: regenerate sources; network access may be required.
 - `run fmt`: format with `kprint fmt` / `kfmt`, which uses the owner's kprint fork of dprint.
-- `run lint`: run architecture, Go, vulnerability, and platform-dependent WebAssembly checks.
+- `run lint`: run Go, vulnerability and browser WebAssembly checks.
 - `run lint-docs`: run actionlint on documentation examples and compare the diagnostics with their documented output. ShellCheck analyzes shell scripts when available.
 - `run -s [TASK...]`: runs multiple tasks sequentially.
 - `run -p [TASK...]`: runs multiple tasks in parallel.
@@ -50,10 +52,10 @@ Public API or wire-format compatibility must not block an authorized naming clea
 Use Go's `testing` package, `*_test.go` filenames, and `TestXxx` functions. Start with a focused regression:
 
 ```sh
-go test ./internal/filefilter -run TestValidPatternPortablePaths
+go test ./internal/input/selection -run TestValidPatternPortablePaths
 ```
 
-Run `run test` for the Go suite and `run test-analyzers` for the analyzer module. Windows tests omit `-race` by default. Applicable tests require Git, Bash, and ShellCheck.
+Run `run test` for the root Go module. Windows tests omit `-race` by default. Applicable tests require Git, Bash, and ShellCheck. The Go guest SDK and examples have separate modules; the plugin tasks build those guests with TinyGo.
 
 Use `run test:js` for root JavaScript/TypeScript checks. The playground uses Node's test runner and Vitest through `run actionlint-playground:test`. Generate coverage with `run cov`. Codecov reports are informational and enforce no minimum.
 

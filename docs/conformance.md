@@ -29,18 +29,18 @@ GitHub's runtime behavior.
 ## Run locally
 
 ```sh
-go run ./internal/conformance/fetch
-go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
+go run ./internal/development/tests/conformance/fetch
+go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/development/tests/conformance
 ```
 
 `make conformance` runs both commands. The harness, adapters, assessment logic, and baselines live together in
-[`internal/conformance/`](../internal/conformance/). The harness uses the public actionlint APIs from an external test
+[`internal/development/tests/conformance/`](../internal/development/tests/conformance/). The harness uses the public actionlint APIs from an external test
 package. Ordinary `go test ./...` does not fetch or require these archives.
 
 Relative archive and report paths are resolved from the repository root, including when the tests run from the
-`internal/conformance` package directory.
+`internal/development/tests/conformance` package directory.
 
-The fetch command downloads the revisions in [`sources.json`](../internal/conformance/sources.json) and verifies their
+The fetch command downloads the revisions in [`sources.json`](../internal/development/tests/conformance/sources.json) and verifies their
 SHA-256 digests. Archives live in `.cache/conformance/`, outside Git. Tests read them without extracting or executing
 upstream code. A missing or corrupt archive fails the test. Once the archives and Go dependencies are cached, the tests
 run offline; no GitHub token, JavaScript runtime, .NET SDK, ShellCheck, or Ruff is needed.
@@ -94,12 +94,12 @@ report an error. They may report different errors; existing actionlint tests che
 
 Three distinct records serve different purposes:
 
-- [`differences.json`](../internal/conformance/testdata/differences.json) is the diagnostic regression baseline: an exact map
+- [`differences.json`](../internal/development/tests/conformance/testdata/differences.json) is the diagnostic regression baseline: an exact map
   of case IDs to actionlint diagnostics. It contains no explanations or classifications. Every case still runs.
   CI fails when a new difference appears, diagnostics change, a difference resolves, or a baseline case disappears.
 - The generated observation report records what was compared and what happened, including every agreement.
   It is written before assessments are loaded, so a malformed review does not prevent observation output.
-- [`assessments.json`](../internal/conformance/testdata/assessments.json) contains reviewed interpretations. A group maps exact
+- [`assessments.json`](../internal/development/tests/conformance/testdata/assessments.json) contains reviewed interpretations. A group maps exact
   case IDs to observation fingerprints and lists one or more findings, each with a category, scope, rationale, and
   evidence references. This file has no diagnostic regression expectations.
 

@@ -79,9 +79,7 @@ Use [file exclusions](config.md) to
 omit fixtures or generated actions. Literally named files bypass discovery filters.
 
 Standalone actions have no known runner, so `executable-bit` is checked only when
-an action is reached through a workflow with a known runner. The Go API's
-`OnRulesCreated` hook applies to workflow inputs only; standalone metadata uses
-the built-in metadata and script checks, without invoking custom workflow rules.
+an action is reached through a workflow with a known runner.
 
 When `-` argument is given, actionlint reads inputs from stdin and checks it as
 workflow source.
@@ -378,23 +376,6 @@ Dependency reservations protect declared future work from optional enrichment.
 The quota check is not a guarantee: other processes can consume the same server
 quota after it is observed. Unknown quota information is not treated as zero.
 This accounting is invocation-owned and does not add lint configuration settings.
-
-Go hosts can share a request tracker across their acquisition clients and read
-its statistics:
-
-```go
-ctx, requests := network.TrackRequests(ctx)
-result, err := analysis.Files(ctx, paths, options)
-statistics := requests.Statistics()
-```
-
-Import `actionlint.kjanat.dev/v2/network`. Custom HTTP clients use
-`network.TrackHTTPRequests` below their retry and authentication adapters. Label requests
-with `network.WithRequestOptions`. For known future dependency work, call
-`RequestTracker.ReserveQuota`, use the reservation's `Context` for those requests, and defer
-`Close` to release unused units. GraphQL callers should supply an upper-bound
-point cost when a reservation must be protected; a request with unknown cost
-cannot spend reserved quota.
 
 External resolvers can add a `network` request report to their response:
 
@@ -741,7 +722,7 @@ actionlint --output sarif > actionlint.sarif
 
 Native SARIF output is a typed JSON document.
 
-Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
+See the [SARIF output example](../internal/development/tests/integration/output/testdata/format/test.sarif).
 
 #### Formatting syntax
 
@@ -980,7 +961,7 @@ there.
 
 ## Using actionlint from Go program
 
-Go APIs are available. See [the Go API document](api.md) for more details.
+Use the [integration interfaces](api.md) to connect other programs or write plugins.
 
 <a id="tools-integ"></a>
 
@@ -1267,7 +1248,7 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 ---
 
-[Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html

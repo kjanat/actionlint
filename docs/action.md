@@ -425,7 +425,7 @@ before promoting moving Action tags.
 New defaults add a compact summary and actionlint PATH export; turn either off when
 unwanted. JavaScript removes Docker's Linux/daemon requirement. Compatibility images are published
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin
-wrapper around the ordinary binary. [Release maintainers](../tools/release/bump-version/README.md)
+wrapper around the ordinary binary. [Release maintainers](../tools/release/README.md)
 prepare, inspect and promote the same tested candidate.
 
 | Symptom                    | Check                                                                                                |

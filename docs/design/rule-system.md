@@ -49,18 +49,19 @@ with its owning subsystem.
 
 ## Script-tool boundary
 
-`internal/tools` defines registration, prepared script batches and findings.
-`internal/tools/backend` adapts the shared snippet protocol to native processes or
-an injected WASM backend. `internal/tools/ruff` and `internal/tools/shellcheck` each own registration, native CLI
-protocols, snippet preparation and diagnostic conversion. `internal/tools/selection` shares the precedence rules
-for explicit and repository-configured transports. `internal/tools/adapters` only bundles registrations for callers.
+`internal/checking/scripts/contract` defines registration, prepared script batches and findings.
+`internal/plugins/execution/scripts` adapts the shared snippet protocol to native processes or
+an injected WASM backend. Bundled manifests and their jq transforms under
+`internal/plugins/manifests/bundled` define each tool's command and output conversion.
+`internal/checking/scripts/registry` constructs registrations from those manifests.
+`internal/plugins/execution/scripts` selects the explicit or repository-configured transport.
 Tool configuration is a map keyed by provider rule name; each bundled provider manifest under
-`internal/tools/provider/bundled` supplies its configuration schema and shorthands, and
-`internal/config/tools` holds invocation settings. Decoding configuration never imports tool execution.
+`internal/plugins/manifests/bundled` supplies its configuration schema and shorthands, and
+`internal/input/configuration/tools` holds invocation settings. Decoding configuration never imports tool execution.
 The engine and application depend on registrations, not these implementations.
 
-`internal/analyzerhost` owns process capacity and completion. `internal/localapp`
-composes artifact loading and registrations; independent core engines advertise
+`internal/integrations/process` owns process capacity and completion. CLI and LSP startup
+compose artifact loading and registrations; independent core engines advertise
 shell selectors in metadata. Adding a provider requires no engine-name switch.
 Dependency tests enforce both directions, and integration tests exercise an
 independent process provider and a remote core-WASM artifact.
@@ -69,8 +70,7 @@ independent process provider and a remote core-WASM artifact.
 
 Verify contracts with native and WASM consumers, final artifacts, source-coordinate
 and identity regressions, fix conflicts/staleness, LSP protocol exchanges, remote
-provider failures, and existing CLI/conformance behavior. Keep architecture tests
-for dependency direction. Update this checklist only with implemented and tested
+provider failures, and existing CLI/conformance behavior. Update this checklist only with implemented and tested
 outcomes.
 
 The Ruff plugin uses the sanitized-script engine ABI and is selected through
@@ -92,13 +92,13 @@ validated without implicit file or network access. The catalogue generates `docs
 `RuleBase` is an internal visitor adapter and finding accumulator. It no longer
 owns configuration or logging. Adapters opt into those capabilities explicitly.
 Environment names, conditions, permission declarations, identifiers and job dependency
-checks have stateless implementations in `internal/semantics`; identifiers and dependencies
+checks have stateless implementations in `internal/checking/constraints`; identifiers and dependencies
 receive complete scopes, without accumulating state through callback order.
-`internal/workflow/checks` also owns events, credentials, glob validation, parallel
+`internal/checking/executor/declarations` also owns events, credentials, glob validation, parallel
 steps and the commit-pinning, timeout and required-permissions checks.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
-`internal/workflow/calls`, and evaluated field shapes in `internal/workflow/schema`.
+`internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.
 Expression, action-metadata, matrix, cache, runner and shell checks still use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
 alone does not complete that work. Public analyzers do not implement visitor callbacks.
@@ -153,10 +153,10 @@ JSON carries rule and code separately. LSP qualifies diagnostic codes with their
 rule; SARIF uses `ruleId` for the rule and `properties.diagnosticCode` for the code.
 The latter replaces the old external-only `externalCode` property.
 
-Webhook observations are independent of this taxonomy. `internal/webhook/payload`
+Webhook observations are independent of this taxonomy. `internal/model/contexts/events/payload`
 owns the generated graph and its provenance, and returns isolated data through
 `Variants` and `Node`. It has no project-language dependencies. The workflow adapter
-in `internal/workflow/eventpayload` owns trigger/activity selection, Actions aliases,
+in `internal/model/contexts/events` owns trigger/activity selection, Actions aliases,
 projection into expression types and Actions-specific overlays. Both checking and
 editor completion consume that projection. The expression checker does not load
 Octokit data, read configuration or perform network requests.
