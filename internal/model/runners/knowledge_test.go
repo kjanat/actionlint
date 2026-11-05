@@ -113,7 +113,7 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(workflow.Views["test"])
-			if job.Platform != Windows || job.Shell != "pwsh" || !job.PathsKnown || !job.CaseInsensitive || len(job.Findings) != 0 {
+			if job.Platform != Windows || job.Shell != "pwsh" || !job.PathsKnown || !job.CaseInsensitive || len(job.Rejections) != 0 {
 				t.Fatalf("configured Windows label lost execution facts: %#v", job)
 			}
 		})
@@ -137,7 +137,7 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(workflow.Views["test"])
-			if job.Platform != Any || job.Shell != "" || job.PathsKnown || len(job.Findings) != tc.findings {
+			if job.Platform != Any || job.Shell != "" || job.PathsKnown || len(job.Rejections) != tc.findings {
 				t.Fatalf("unproven or contradictory label inferred execution facts: %#v", job)
 			}
 		})
@@ -146,14 +146,14 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 
 func TestProviderKnowledgeUncertainty(t *testing.T) {
 	for _, tc := range []struct {
-		name         string
-		resolution   runnerapi.Resolution
-		fresh        runnerapi.Freshness
-		complete     bool
-		snapshot     runnerapi.Snapshot
-		failure      error
-		wantShell    string
-		wantFindings int
+		name           string
+		resolution     runnerapi.Resolution
+		fresh          runnerapi.Freshness
+		complete       bool
+		snapshot       runnerapi.Snapshot
+		failure        error
+		wantShell      string
+		wantRejections int
 	}{
 		{"windows", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, true, runnerapi.Snapshot{}, nil, "pwsh", 0},
 		{"incomplete candidates", runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh"}}}, runnerapi.Fresh, false, runnerapi.Snapshot{}, nil, "", 0},
@@ -180,7 +180,7 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := k.Job(w.Views["test"])
-			if job.Shell != tc.wantShell || len(job.Findings) != tc.wantFindings {
+			if job.Shell != tc.wantShell || len(job.Rejections) != tc.wantRejections {
 				t.Fatalf("knowledge = %#v", job)
 			}
 			if tc.wantShell == "" && job.Platform != Any {
@@ -252,11 +252,11 @@ func TestKnowledgeReadersOwnTheirValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	job, report := k.Job(w.Views["test"]), k.Report()
-	if len(job.Findings) != 1 || len(job.Answers) != 1 || len(report.Answers) != 1 || len(report.Provider.Targets) == 0 {
+	if len(job.Rejections) != 1 || len(job.Answers) != 1 || len(report.Answers) != 1 || len(report.Provider.Targets) == 0 {
 		t.Fatalf("fixture lacks rejected label evidence: job=%#v report=%#v", job, report)
 	}
 	wantJob, wantReport := k.Job(w.Views["test"]), k.Report()
-	job.Findings[0].Message = "changed"
+	job.Rejections[0].Reason = "changed"
 	job.Answers[0].Resolution.(runnerapi.NoMatch).Rejections[0].Reason = "changed"
 	report.Answers[0].Resolution.(runnerapi.NoMatch).Rejections[0].Reason = "changed"
 	report.Provider.Targets[0] = "changed"
@@ -278,7 +278,7 @@ func TestProviderEmptyNoMatch(t *testing.T) {
 					if err == nil || !strings.Contains(err.Error(), "no rejections") {
 						t.Fatalf("empty no-match must fail provider validation: %v", err)
 					}
-				} else if err != nil || len(k.Job(w.Views["test"]).Findings) != 0 {
+				} else if err != nil || len(k.Job(w.Views["test"]).Rejections) != 0 {
 					t.Fatalf("uncertain no-match became a definitive rejection: %v %#v", err, k.Job(w.Views["test"]))
 				}
 			})
@@ -396,7 +396,7 @@ func TestPreparedRunnerGroupUncertainty(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := k.Job(w.Views["test"])
-			if job.Shell != tc.shell || len(job.Findings) != tc.findings {
+			if job.Shell != tc.shell || len(job.Rejections) != tc.findings {
 				t.Fatalf("group knowledge = %#v", job)
 			}
 			if tc.shell == "" && job.Platform != Any {

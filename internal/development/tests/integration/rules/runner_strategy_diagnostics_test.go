@@ -1,9 +1,12 @@
-package runner_test
+package rules_test
 
 import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -70,7 +73,20 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			findings := runnerlang.Check(runnerJobView(t, source), nil)
+			_, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := snapshots.Document("workflow.yml", []byte(source), parsing.Workflow([]byte(source)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			knowledge, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+			if err != nil {
+				t.Fatal(err)
+			}
+			check := productionRunnerRule(t, snapshot, knowledge)
+			if err := check.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
+				t.Fatal(err)
+			}
+			findings := check.Errs()
 			if len(findings) != len(tc.want) {
 				t.Fatalf("wanted %v, got %v", tc.want, findings)
 			}

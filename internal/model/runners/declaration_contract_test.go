@@ -9,7 +9,7 @@ import (
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 )
 
-func TestPreparedDeclarationFindingsRetainExcludedSpelling(t *testing.T) {
+func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {
 	for _, tc := range []struct {
 		name, exclude, include string
 		want                   int
@@ -25,11 +25,11 @@ func TestPreparedDeclarationFindingsRetainExcludedSpelling(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(w.Views["test"])
-			if len(job.Findings) != tc.want || job.Platform != Any || job.Shell != "" || !reflect.DeepEqual(job.Findings, Check(w.Views["test"], nil)) {
+			if len(job.Rejections) != tc.want || job.Platform != Any || job.Shell != "" || !reflect.DeepEqual(job.Rejections, LabelRejections(w.Views["test"], KnownLabels(nil))) {
 				t.Fatalf("declaration diagnostics diverged or supplied execution certainty: %+v", job)
 			}
-			for _, finding := range job.Findings {
-				if !strings.Contains(finding.Message, `label "ubuntu-lates" is unknown`) {
+			for _, finding := range job.Rejections {
+				if !strings.Contains(finding.Reason, `label "ubuntu-lates" is unknown`) {
 					t.Fatalf("unexpected declaration finding: %+v", finding)
 				}
 			}
@@ -40,15 +40,15 @@ func TestPreparedDeclarationFindingsRetainExcludedSpelling(t *testing.T) {
 func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
 	failure := errors.New("provider unavailable")
 	for _, tc := range []struct {
-		name         string
-		resolution   runnerapi.Resolution
-		failure      error
-		wantFindings int
-		wantShell    string
+		name           string
+		resolution     runnerapi.Resolution
+		failure        error
+		wantRejections int
+		wantShell      string
 	}{
 		{name: "custom labels resolve", resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "custom", OS: runnerapi.Linux, DefaultShell: "fish"}}}, wantShell: "fish"},
 		{name: "unknown stays unknown", resolution: runnerapi.Unknown{Reason: "runtime choice"}},
-		{name: "explicit invalid remains invalid", resolution: runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "provider rejected queue"}}}, wantFindings: 1},
+		{name: "explicit invalid response", resolution: runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "provider rejected queue"}}}, wantRejections: 1},
 		{name: "provider failure is not invalid", failure: failure},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -65,22 +65,22 @@ func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
 				t.Fatalf("provider error changed: %v", err)
 			}
 			job := knowledge.Job(w.Views["test"])
-			if len(job.Findings) != tc.wantFindings || job.Shell != tc.wantShell {
+			if len(job.Rejections) != tc.wantRejections || job.Shell != tc.wantShell {
 				t.Fatalf("built-in declaration semantics bypassed provider: %+v", job)
 			}
-			if len(job.Findings) != 0 && !strings.Contains(job.Findings[0].Message, "provider rejected queue") {
-				t.Fatalf("built-in labels replaced provider rejection: %+v", job.Findings)
+			if len(job.Rejections) != 0 && !strings.Contains(job.Rejections[0].Reason, "provider rejected queue") {
+				t.Fatalf("built-in labels replaced provider rejection: %+v", job.Rejections)
 			}
 		})
 	}
 	w := runnerWorkflow(t, "ubuntu-lates")
 	knowledge, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "custom", Provider: "missing"}, "scope")
-	if err == nil || !strings.Contains(err.Error(), "no runner provider") || len(knowledge.Job(w.Views["test"]).Findings) != 0 {
+	if err == nil || !strings.Contains(err.Error(), "no runner provider") || len(knowledge.Job(w.Views["test"]).Rejections) != 0 {
 		t.Fatalf("missing provider became a label rejection: knowledge=%+v error=%v", knowledge, err)
 	}
 }
 
-func TestBuiltinLabelFindingsRespectSnapshotEvidence(t *testing.T) {
+func TestBuiltinLabelRejectionsRespectSnapshotEvidence(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		snapshot runnerapi.Snapshot
@@ -99,11 +99,11 @@ func TestBuiltinLabelFindingsRespectSnapshotEvidence(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(w.Views["test"])
-			if len(job.Findings) != tc.want || job.PathsKnown || job.Platform != Any || job.Shell != "" {
+			if len(job.Rejections) != tc.want || job.PathsKnown || job.Platform != Any || job.Shell != "" {
 				t.Fatalf("snapshot evidence changed label certainty policy: %+v", job)
 			}
-			if tc.want == 2 && (!strings.Contains(job.Findings[0].Message, `label "ubuntu-lates" is unknown`) || !strings.Contains(job.Findings[1].Message, "conflicts with label")) {
-				t.Fatalf("fresh evidence lost declaration spelling or executed compatibility: %+v", job.Findings)
+			if tc.want == 2 && (!strings.Contains(job.Rejections[0].Reason, `label "ubuntu-lates" is unknown`) || !strings.Contains(job.Rejections[1].Reason, "conflicts with label")) {
+				t.Fatalf("fresh evidence lost declaration spelling or executed compatibility: %+v", job.Rejections)
 			}
 		})
 	}

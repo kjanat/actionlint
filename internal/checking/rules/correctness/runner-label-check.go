@@ -5,7 +5,9 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -25,14 +27,14 @@ func (r *ruleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
 	if !declaration.Present() {
 		return errors.New("runner-label job declaration is unavailable")
 	}
+	var rejections []runnerapi.Rejection
 	if r.runners != nil {
-		for _, d := range r.runners.Job(declaration).Findings {
-			r.Report(findingmodel.FromDiagnostic(d))
-		}
-		return nil
+		rejections = r.runners.Job(declaration).Rejections
+	} else {
+		rejections = runnerlang.LabelRejections(declaration, r.labels)
 	}
-	for _, d := range runnerlang.CheckWithLabels(declaration, r.labels) {
-		r.Report(findingmodel.FromDiagnostic(d))
+	for _, rejection := range rejections {
+		r.Report(findingmodel.FromDiagnostic(results.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}))
 	}
 	return nil
 }

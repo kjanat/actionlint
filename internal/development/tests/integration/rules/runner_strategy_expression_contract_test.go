@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -60,7 +61,11 @@ jobs:
 					t.Fatal("workflow source snapshot unavailable")
 				}
 				declaration := matrixJob(t, snapshot, "test")
-				errs := runnerlang.CheckWithLabels(declaration, runnerlang.KnownLabels(nil))
+				rejections := runnerlang.LabelRejections(declaration, runnerlang.KnownLabels(nil))
+				var errs []results.Diagnostic
+				for _, rejection := range rejections {
+					errs = append(errs, results.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason})
+				}
 				knowledge, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 				if err != nil {
 					t.Fatal(err)
@@ -84,20 +89,24 @@ jobs:
 						t.Fatalf("excluded-pair scenario lost surviving execution combinations: %+v", answers)
 					}
 				}
-				production := productionRunnerRule(t, snapshot, knowledge)
-				if err := production.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
-					t.Fatal(err)
-				}
-				findings := production.Errs()
-				var got []results.Diagnostic
-				if len(findings) != 0 {
-					got = make([]results.Diagnostic, len(findings))
-				}
-				for i, finding := range findings {
-					got[i] = finding.Diagnostic
-				}
-				if !reflect.DeepEqual(got, errs) {
-					t.Fatalf("production knowledge and direct check diverged: production=%v direct=%v", got, errs)
+				for _, production := range []workflowvisit.Rule{
+					productionRunnerRule(t, snapshot, knowledge),
+					correctness.NewRuleRunnerLabel(nil, runnerlang.KnownLabels(nil)),
+				} {
+					if err := production.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
+						t.Fatal(err)
+					}
+					findings := production.Errs()
+					var got []results.Diagnostic
+					if len(findings) != 0 {
+						got = make([]results.Diagnostic, len(findings))
+					}
+					for i, finding := range findings {
+						got[i] = finding.Diagnostic
+					}
+					if !reflect.DeepEqual(got, errs) {
+						t.Fatalf("production knowledge and direct check diverged: production=%v direct=%v", got, errs)
+					}
 				}
 				if len(errs) != tc.want {
 					t.Fatalf("wanted %d runner-label diagnostics, got %v", tc.want, errs)
