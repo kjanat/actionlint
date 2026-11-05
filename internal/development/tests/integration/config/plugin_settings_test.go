@@ -80,4 +80,8 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 	if _, err := checking.Analyze(t.Context(), request, requestSources); err != nil || a.calls != 1 || string(a.options) != `{"count":3}` {
 		t.Fatalf("explicit options lost precedence: calls=%d options=%s err=%v", a.calls, a.options, err)
 	}
+	request.Analyzers[0].Options = json.RawMessage(`{"count":0}`)
+	if _, err := checking.Analyze(t.Context(), request, requestSources); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 1 {
+		t.Fatalf("invalid explicit options were executed: calls=%d err=%v", a.calls, err)
+	}
 }

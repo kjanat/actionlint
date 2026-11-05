@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -35,7 +37,7 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 // A nil pointer or zero value permits suppressions. Use DisallowSuppressions
 // to construct an enabled policy.
 type SuppressionsPolicy struct {
-	ruleSet   RuleSet
+	names     rulemeta.Names
 	report    SuppressionReport
 	rules     []string
 	locations map[string]*yaml.Node
@@ -50,7 +52,7 @@ func (ruleSet RuleSet) DisallowSuppressions(report string, rules ...string) (*Su
 	if !ok {
 		return nil, fmt.Errorf("unknown suppression report %q; expected suppression, violation, or all", report)
 	}
-	p := &SuppressionsPolicy{report: mode, ruleSet: ruleSet}
+	p := &SuppressionsPolicy{report: mode, names: ruleSet.Names()}
 	for _, rule := range rules {
 		if !ruleSet.Suppressible(rule) {
 			return nil, fmt.Errorf("unknown suppressible rule %q", rule)
@@ -161,9 +163,8 @@ func (p *SuppressionsPolicy) ReportFor(rule string) SuppressionReport {
 	if p == nil {
 		return SuppressionsAllowed
 	}
-	ruleSet := p.ruleSet
 	if len(p.rules) != 0 && !slices.ContainsFunc(p.rules, func(name string) bool {
-		return ruleSet.ResolveAlias(name) == ruleSet.ResolveAlias(rule)
+		return p.names.ResolveAlias(name) == p.names.ResolveAlias(rule)
 	}) {
 		return SuppressionsAllowed
 	}

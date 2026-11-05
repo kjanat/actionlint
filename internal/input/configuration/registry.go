@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -11,9 +12,10 @@ import (
 // Construction copies metadata; later operations do not change the set.
 // Its zero value declares no rules.
 type RuleSet struct {
-	entries    []Rule
-	names      rulemeta.Names
-	registered map[string]bool
+	entries         []Rule
+	names           rulemeta.Names
+	registered      map[string]bool
+	optionOverrides map[string]json.RawMessage
 }
 
 // Names returns the read-only index of current names and declared aliases.

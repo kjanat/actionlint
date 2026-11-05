@@ -118,6 +118,12 @@ func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 			if setting.Level() != "" && !setting.Level().Valid() {
 				return fmt.Errorf("yaml: invalid rule level %q for %q", setting.Level(), name)
 			}
+			if options, overridden := ruleSet.optionOverrides[d.Name]; overridden {
+				if err := validateOptionsJSON(d, options); err != nil {
+					return fmt.Errorf("yaml: options for rule %q: %w", name, err)
+				}
+				continue
+			}
 			if _, provider := toolProviders()[d.Name]; provider {
 				// Installed provider replacements can supply their own schema.
 				continue

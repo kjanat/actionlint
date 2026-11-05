@@ -287,7 +287,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 	if err != nil {
 		return nil, err
 	}
-	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen}, seen: seen, options: optionOverrides}, nil
+	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides}, seen: seen, options: optionOverrides}, nil
 }
 
 func (ruleSet RuleSet) bindSettings(config *Config, descriptors []Rule, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {
