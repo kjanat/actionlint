@@ -13,6 +13,7 @@ import (
 	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -63,7 +64,7 @@ func (a sourceTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Findi
 		if script.Path != a.path || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != a.actionPath {
 			a.t.Fatalf("native adapter changed source deployment: %+v", script)
 		}
-		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "source finding", Path: script.Path, Start: results.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
+		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "source finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
 	}
 	return findings, nil
 }
@@ -221,7 +222,7 @@ func (a partialFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 	if len(scripts) != 1 || scripts[0].Text != "echo ok" {
 		a.t.Fatalf("changed script facts: %+v", input)
 	}
-	return []results.Diagnostic{{Rule: "test", Message: "partial finding", Start: results.Position{Line: 1, Column: 1}}}, a.failure
+	return []results.Diagnostic{{Rule: "test", Message: "partial finding", Start: sourcepos.Position{Line: 1, Column: 1}}}, a.failure
 }
 
 type partialTool struct {
@@ -237,7 +238,7 @@ func (a partialTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Find
 	if batch.Scripts[0].Path != "" || batch.Scripts[0].Content != nil {
 		a.t.Fatal("workflow script lost the native adapter's root-source fallback")
 	}
-	return []tools.Finding{{Rule: "test", Message: "partial finding", Start: results.Position{Line: 1, Column: 1}, Script: 0, Content: batch.Scripts[0].Content}}, a.failure
+	return []tools.Finding{{Rule: "test", Message: "partial finding", Start: sourcepos.Position{Line: 1, Column: 1}, Script: 0, Content: batch.Scripts[0].Content}}, a.failure
 }
 
 func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {

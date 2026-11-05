@@ -11,7 +11,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
-	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: diagmodel.Position{Line: 1, Column: 1}, EndColumn: 4, Source: []byte("echo $VALUE\n")}
+	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 1, Column: 1}, EndColumn: 4, Source: []byte("echo $VALUE\n")}
 	var files []policy.File
 	for _, change := range []func(*findingmodel.Finding){
 		func(*findingmodel.Finding) {},
@@ -41,7 +41,7 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 }
 
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
-	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: diagmodel.Position{Line: 2}, SuppressionTarget: &findingmodel.SuppressionOrigin{First: 2, Last: 3}}
+	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 2}, SuppressionTarget: &findingmodel.SuppressionOrigin{First: 2, Last: 3}}
 	_, sources := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Collect([]policy.File{{InputPath: "workflow.yml", Findings: []*findingmodel.Finding{finding}}})
 	if len(sources) != 1 || sources[0].Suppression == nil || *sources[0].Suppression != (report.SuppressionTarget{Path: "workflow.yml", First: 2, Last: 3}) {
 		t.Fatalf("same-source target not resolved: %+v", sources)
@@ -69,7 +69,7 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 		t.Fatal(err)
 	}
 	store, fixture := capturefixture.NewCapturedSources(t, root)
-	captured, err := fixture.Capture(alias, content, source.YAML)
+	captured, err := fixture.Capture(alias, content, sourcepos.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,16 +99,16 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 		name        string
 		content     []byte
 		failed      bool
-		reportedEnd diagmodel.Position
+		reportedEnd sourcepos.Position
 	}{
 		{name: "unverified reread", content: []byte("echo $VALUE\n")},
 		{name: "failed reread", content: []byte{}, failed: true},
-		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: diagmodel.Position{Line: 1, Column: 12}},
+		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: sourcepos.Position{Line: 1, Column: 12}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			finding := &findingmodel.Finding{
-				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: diagmodel.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
-				Reference: &source.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []diagmodel.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
+				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: sourcepos.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
+				Reference: &sourcepos.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []diagmodel.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
 				Source: tc.content, RawScriptSource: true, UnavailableSource: findingmodel.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed),
 			}
 			diagnostics, _ := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Collect([]policy.File{{Content: []byte("workflow text"), Findings: []*findingmodel.Finding{finding}}})
@@ -116,7 +116,7 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 				t.Fatalf("unavailable source gained revision evidence: %+v", diagnostics)
 			}
 			wantEnd := tc.reportedEnd
-			if wantEnd == (diagmodel.Position{}) {
+			if wantEnd == (sourcepos.Position{}) {
 				wantEnd = finding.Start
 			}
 			if diagnostics[0].End != wantEnd || tc.failed && diagnostics[0].Snippet != "" {
@@ -136,14 +136,14 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 }
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
-	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: diagmodel.Position{Line: 1, Column: 1}}
+	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 1, Column: 1}}
 	var files []policy.File
 	for _, change := range []func(*findingmodel.Finding){
 		func(*findingmodel.Finding) {},
 		func(e *findingmodel.Finding) { e.Code = "SC2086" },
 		func(e *findingmodel.Finding) { e.Severity = "warning" },
 		func(e *findingmodel.Finding) {
-			e.Fixes = []diagmodel.Fix{{Description: "quote", Edits: []diagmodel.Edit{{Path: "action.yml", Start: diagmodel.Position{Line: 1, Column: 1}, End: diagmodel.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
+			e.Fixes = []diagmodel.Fix{{Description: "quote", Edits: []diagmodel.Edit{{Path: "action.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
 		},
 	} {
 		finding := base
@@ -161,8 +161,8 @@ func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 	script := []byte("echo $A\necho $B\n")
 	findings := []*findingmodel.Finding{
-		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: diagmodel.Position{Line: 1, Column: 6}, Source: script},
-		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: diagmodel.Position{Line: 2, Column: 6}, Source: script},
+		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: sourcepos.Position{Line: 1, Column: 6}, Source: script},
+		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: sourcepos.Position{Line: 2, Column: 6}, Source: script},
 	}
 	_, sources := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Collect([]policy.File{{Content: []byte("workflow"), Findings: findings}})
 	if len(sources) != 2 {

@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 var ErrInvalidCallGraph = errors.New("analyzer: invalid invocation graph")
@@ -17,7 +16,7 @@ type OccurrenceID string
 // OptionalValue lists the invocation graph records that may be absent. Each
 // holds only strings and integers, so an Optional copy shares no storage.
 type OptionalValue interface {
-	InvocationStop | Interruption | source.Reference
+	InvocationStop | Interruption | sourcepos.Reference
 }
 
 // Optional distinguishes absence from a present zero value.
@@ -39,7 +38,7 @@ const (
 type InvocationEntry struct {
 	ID        OccurrenceID
 	Kind      InvocationEntryKind
-	Reference source.Reference
+	Reference sourcepos.Reference
 }
 
 type InvocationBudget struct{ MaxDepth, MaxCalls, MaxScripts int }
@@ -65,7 +64,7 @@ type ScriptOccurrence struct {
 	ID, Owner   OccurrenceID
 	Ancestry    []OccurrenceID
 	Depth       int
-	Declaration source.Reference
+	Declaration sourcepos.Reference
 	Kind        ScriptKind
 	Input       string
 }
@@ -75,8 +74,8 @@ type Call struct {
 	ID, Parent OccurrenceID
 	Ancestry   []OccurrenceID
 	Depth      int
-	Site       source.Reference
-	Step       results.Position
+	Site       sourcepos.Reference
+	Step       sourcepos.Position
 	Uses       string
 	HasUses    bool
 	Condition  CallCondition
@@ -93,7 +92,7 @@ const (
 // InvocationStop names the rejected call site or script declaration for Limit.
 type InvocationStop struct {
 	Parent OccurrenceID
-	Site   source.Reference
+	Site   sourcepos.Reference
 	Limit  StopLimit
 	Max    int
 }

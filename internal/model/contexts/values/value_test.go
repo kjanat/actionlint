@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestMissingAndExplicitScalarStates(t *testing.T) {
@@ -39,7 +39,7 @@ func TestMissingAndExplicitScalarStates(t *testing.T) {
 }
 
 func TestTemplateClassifiesLiteralEvaluatedDynamicAndInvalid(t *testing.T) {
-	origin := Origin{Span: Span{Start: results.Position{Line: 3, Column: 5}, End: results.Position{Line: 3, Column: 28}}}
+	origin := Origin{Span: Span{Start: sourcepos.Position{Line: 3, Column: 5}, End: sourcepos.Position{Line: 3, Column: 28}}}
 	for _, tc := range []struct {
 		name  string
 		input string
@@ -90,7 +90,7 @@ func TestEvaluatedExpressionTextRemainsData(t *testing.T) {
 }
 
 func TestConditionPreservesInvalidAndDynamicStates(t *testing.T) {
-	origin := Origin{Span: Span{Start: results.Position{Line: 4, Column: 3}}}
+	origin := Origin{Span: Span{Start: sourcepos.Position{Line: 4, Column: 3}}}
 	if got := Condition("true", origin); got.State() != Evaluated || got.Kind() != Bool || !got.Origin().FromExpression || got.Origin().Span != origin.Span {
 		t.Fatalf("constant condition: state=%v kind=%v", got.State(), got.Kind())
 	}
@@ -103,7 +103,7 @@ func TestConditionPreservesInvalidAndDynamicStates(t *testing.T) {
 }
 
 func TestEvaluatedChildrenKeepExpressionOriginAndAreDeepOwned(t *testing.T) {
-	span := Span{Start: results.Position{Line: 5, Column: 7}, End: results.Position{Line: 5, Column: 39}}
+	span := Span{Start: sourcepos.Position{Line: 5, Column: 7}, End: sourcepos.Position{Line: 5, Column: 39}}
 	input := map[string]any{"outer": []any{map[string]any{"value": "before"}}}
 	value := FromJSON(input, Origin{Span: span, FromExpression: true})
 	input["outer"].([]any)[0].(map[string]any)["value"] = "after"
@@ -124,8 +124,8 @@ func TestEvaluatedChildrenKeepExpressionOriginAndAreDeepOwned(t *testing.T) {
 }
 
 func TestSemanticEqualityIgnoresOriginAndKnownState(t *testing.T) {
-	literal := YAMLScalar("3.10", "!!float", Origin{Span: Span{Start: results.Position{Line: 1, Column: 1}}})
-	evaluated := FromJSON(3.1, Origin{Span: Span{Start: results.Position{Line: 2, Column: 4}}, FromExpression: true})
+	literal := YAMLScalar("3.10", "!!float", Origin{Span: Span{Start: sourcepos.Position{Line: 1, Column: 1}}})
+	evaluated := FromJSON(3.1, Origin{Span: Span{Start: sourcepos.Position{Line: 2, Column: 4}}, FromExpression: true})
 	if !literal.Equal(evaluated) {
 		t.Fatal("equal numeric values with different provenance/state compared unequal")
 	}

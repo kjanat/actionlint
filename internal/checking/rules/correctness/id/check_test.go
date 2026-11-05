@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -21,7 +22,7 @@ func TestValid(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
-	at := func(line int) results.Position { return results.Position{Line: line, Column: 5} }
+	at := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 5} }
 	long := strings.Repeat("x", 100)
 	job := Job{
 		ID:    &Name{Value: "1build", Start: at(1)},

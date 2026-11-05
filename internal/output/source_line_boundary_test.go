@@ -3,6 +3,7 @@ package output_test
 import (
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -22,7 +23,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 		t.Run(ending.name, func(t *testing.T) {
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
-				d := results.Diagnostic{Start: results.Position{Line: 1}}
+				d := results.Diagnostic{Start: sourcepos.Position{Line: 1}}
 				canonical := (&findingmodel.Finding{Diagnostic: d, RawScriptSource: raw}).Canonical(source)
 				view := render.FindingOf(canonical, source)
 				view.RawScript = raw
@@ -44,7 +45,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 
 func TestRawCRLFMarkerUsesDisplayEOF(t *testing.T) {
 	source := []byte("abc\r\n")
-	d := results.Diagnostic{Start: results.Position{Line: 1, Column: 4}, End: results.Position{Line: 1, Column: 5}}
+	d := results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 4}, End: sourcepos.Position{Line: 1, Column: 5}}
 	canonical := (&findingmodel.Finding{Diagnostic: d, RawScriptSource: true}).Canonical(source)
 	view := render.FindingOf(canonical, source)
 	view.RawScript = true

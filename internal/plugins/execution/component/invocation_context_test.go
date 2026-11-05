@@ -9,9 +9,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	bind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func invocationContextGraph(t *testing.T) checkinputs.CallGraph {
@@ -19,7 +18,7 @@ func invocationContextGraph(t *testing.T) checkinputs.CallGraph {
 	graph, err := checkinputs.NewCallGraph(checkinputs.CallGraphData{
 		Entry: checkinputs.InvocationEntry{
 			ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Kind: checkinputs.WorkflowEntry,
-			Reference: source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"},
+			Reference: sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"},
 		},
 		Budget: checkinputs.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}, Complete: true,
 	})
@@ -121,8 +120,8 @@ func TestInvocationContextValidEmptyGraph(t *testing.T) {
 func invocationContextPagedGraph(t *testing.T, count int) (checkinputs.CallGraph, []checkinputs.OccurrenceID, []checkinputs.OccurrenceID) {
 	t.Helper()
 	entryID := checkinputs.OccurrenceID(strings.Repeat("f", 64))
-	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
-	body := source.Reference{Document: entry.Document, Revision: entry.Revision, Node: "body"}
+	entry := sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
+	body := sourcepos.Reference{Document: entry.Document, Revision: entry.Revision, Node: "body"}
 	outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: body})
 	if err != nil {
 		t.Fatal(err)
@@ -139,8 +138,8 @@ func invocationContextPagedGraph(t *testing.T, count int) (checkinputs.CallGraph
 		callIDs = append(callIDs, id)
 		data.Calls = append(data.Calls, checkinputs.Call{
 			ID: id, Parent: parent, Ancestry: append([]checkinputs.OccurrenceID(nil), ancestry...), Depth: index + 1,
-			Site: source.Reference{Document: body.Document, Revision: body.Revision, Node: fmt.Sprintf("call-%d", index)},
-			Step: results.Position{Line: 1, Column: 1}, Condition: checkinputs.CallEnabled, Outcome: outcome,
+			Site: sourcepos.Reference{Document: body.Document, Revision: body.Revision, Node: fmt.Sprintf("call-%d", index)},
+			Step: sourcepos.Position{Line: 1, Column: 1}, Condition: checkinputs.CallEnabled, Outcome: outcome,
 		})
 		ancestry = append(ancestry, id)
 		parent = id
@@ -151,7 +150,7 @@ func invocationContextPagedGraph(t *testing.T, count int) (checkinputs.CallGraph
 		scriptIDs = append(scriptIDs, id)
 		data.Scripts = append(data.Scripts, checkinputs.ScriptOccurrence{
 			ID: id, Owner: parent, Ancestry: append([]checkinputs.OccurrenceID(nil), ancestry...), Depth: count,
-			Declaration: source.Reference{Document: body.Document, Revision: body.Revision, Node: fmt.Sprintf("script-%d", index)}, Kind: checkinputs.RunScript,
+			Declaration: sourcepos.Reference{Document: body.Document, Revision: body.Revision, Node: fmt.Sprintf("script-%d", index)}, Kind: checkinputs.RunScript,
 		})
 	}
 	graph, err := checkinputs.NewCallGraph(data)
@@ -249,12 +248,12 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 	t.Run("stop", func(t *testing.T) {
 		base := invocationContextGraph(t).Export()
 		callID := checkinputs.OccurrenceID(strings.Repeat("b", 64))
-		callSite := source.Reference{Document: base.Entry.Reference.Document, Revision: base.Entry.Reference.Revision, Node: "call"}
-		outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: source.Reference{Document: callSite.Document, Revision: callSite.Revision, Node: "body"}})
+		callSite := sourcepos.Reference{Document: base.Entry.Reference.Document, Revision: base.Entry.Reference.Revision, Node: "call"}
+		outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: sourcepos.Reference{Document: callSite.Document, Revision: callSite.Revision, Node: "body"}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		base.Calls = []checkinputs.Call{{ID: callID, Parent: base.Entry.ID, Ancestry: []checkinputs.OccurrenceID{base.Entry.ID}, Depth: 1, Site: callSite, Step: results.Position{Line: 1, Column: 1}, Condition: checkinputs.CallEnabled, Outcome: outcome}}
+		base.Calls = []checkinputs.Call{{ID: callID, Parent: base.Entry.ID, Ancestry: []checkinputs.OccurrenceID{base.Entry.ID}, Depth: 1, Site: callSite, Step: sourcepos.Position{Line: 1, Column: 1}, Condition: checkinputs.CallEnabled, Outcome: outcome}}
 		base.Stop = checkinputs.Present(checkinputs.InvocationStop{Parent: base.Entry.ID, Site: callSite, Limit: checkinputs.CallLimit, Max: 1})
 		base.Complete = false
 		graph, err := checkinputs.NewCallGraph(base)

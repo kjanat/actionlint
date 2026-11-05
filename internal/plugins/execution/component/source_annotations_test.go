@@ -7,24 +7,23 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
-	root := source.Reference{Document: "ci.yml", Revision: "root", Node: "step1", Address: "jobs.test.steps[0]"}
-	invoked := source.Reference{Document: "action.yml", Revision: "action", Node: "step1", Address: "runs.steps[0]"}
-	actionInput := source.Reference{Document: "ci.yml", Revision: "root", Node: "input1", Address: "jobs.test.steps[1].with.script"}
-	inputScript := checkinputs.Script{Reference: actionInput, Comments: []workflowfacts.SourceComment{{Text: "# action input", Start: results.Position{Line: 12, Column: 7}}}}
+	root := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "step1", Address: "jobs.test.steps[0]"}
+	invoked := sourcepos.Reference{Document: "action.yml", Revision: "action", Node: "step1", Address: "runs.steps[0]"}
+	actionInput := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "input1", Address: "jobs.test.steps[1].with.script"}
+	inputScript := checkinputs.Script{Reference: actionInput, Comments: []workflowfacts.SourceComment{{Text: "# action input", Start: sourcepos.Position{Line: 12, Column: 7}}}}
 	input := checkinputs.Input{
-		Scripts:      []checkinputs.Script{{Reference: root, Comments: []workflowfacts.SourceComment{{Text: "# root", Start: results.Position{Line: 1, Column: 3}}}}},
-		Invoked:      []checkinputs.Script{{Reference: invoked, Comments: []workflowfacts.SourceComment{{Text: "# invoked", Start: results.Position{Line: 9, Column: 5}, Placement: workflowfacts.TrailingComment}}}},
+		Scripts:      []checkinputs.Script{{Reference: root, Comments: []workflowfacts.SourceComment{{Text: "# root", Start: sourcepos.Position{Line: 1, Column: 3}}}}},
+		Invoked:      []checkinputs.Script{{Reference: invoked, Comments: []workflowfacts.SourceComment{{Text: "# invoked", Start: sourcepos.Position{Line: 9, Column: 5}, Placement: workflowfacts.TrailingComment}}}},
 		ActionInputs: []checkinputs.ActionInput{{Script: inputScript}},
 	}
-	query := func(ctx context.Context, ref source.Reference) []annotationsbind.Comment {
+	query := func(ctx context.Context, ref sourcepos.Reference) []annotationsbind.Comment {
 		t.Helper()
 		comments, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 		if err != nil {
@@ -50,7 +49,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	if got := query(ctx, root); len(got) != 1 || got[0].Text != "# root" {
 		t.Fatalf("returned comments alias the snapshot: %+v", got)
 	}
-	for _, forged := range []source.Reference{
+	for _, forged := range []sourcepos.Reference{
 		{Document: "other.yml", Revision: root.Revision, Node: root.Node, Address: root.Address},
 		{Document: root.Document, Revision: "other", Node: root.Node, Address: root.Address},
 		{Document: root.Document, Revision: root.Revision, Node: "other", Address: root.Address},
@@ -62,8 +61,8 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	}
 	for _, scope := range []struct {
 		ctx context.Context
-		ref source.Reference
-	}{{ctx, source.Reference{}}, {t.Context(), root}, {context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(checkinputs.Input{})), root}} {
+		ref sourcepos.Reference
+	}{{ctx, sourcepos.Reference{}}, {t.Context(), root}, {context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(checkinputs.Input{})), root}} {
 		if got := query(scope.ctx, scope.ref); len(got) != 0 {
 			t.Fatalf("unauthorized comments=%+v", got)
 		}
@@ -71,7 +70,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 }
 
 func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
-	comment := workflowfacts.SourceComment{Text: "# unidentified", Start: results.Position{Line: 1, Column: 1}}
+	comment := workflowfacts.SourceComment{Text: "# unidentified", Start: sourcepos.Position{Line: 1, Column: 1}}
 	unidentified := checkinputs.Script{Comments: []workflowfacts.SourceComment{comment}}
 	input := checkinputs.Input{
 		Scripts:      []checkinputs.Script{unidentified},
@@ -86,11 +85,11 @@ func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
 }
 
 func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
-	ref := source.Reference{Document: "ci.yml", Revision: "root", Node: "step", Address: "jobs.test.steps[0]"}
-	valid := workflowfacts.SourceComment{Text: "# shellcheck disable=SC2086", Start: results.Position{Line: 3, Column: 7}}
+	ref := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "step", Address: "jobs.test.steps[0]"}
+	valid := workflowfacts.SourceComment{Text: "# shellcheck disable=SC2086", Start: sourcepos.Position{Line: 3, Column: 7}}
 	for _, test := range []struct {
 		name, text string
-		start      results.Position
+		start      sourcepos.Position
 		placement  workflowfacts.CommentPlacement
 		want       string
 	}{
@@ -98,10 +97,10 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 		{"missing marker", "shellcheck disable=SC2086", valid.Start, workflowfacts.LeadingComment, "invalid physical source comment at 3:7"},
 		{"line feed", "# first\n# second", valid.Start, workflowfacts.LeadingComment, "invalid physical source comment at 3:7"},
 		{"carriage return", "# first\r# second", valid.Start, workflowfacts.LeadingComment, "invalid physical source comment at 3:7"},
-		{"zero line", valid.Text, results.Position{Line: 0, Column: 7}, workflowfacts.LeadingComment, "invalid physical source comment at 0:7"},
-		{"negative line", valid.Text, results.Position{Line: -1, Column: 7}, workflowfacts.LeadingComment, "invalid physical source comment at -1:7"},
-		{"zero column", valid.Text, results.Position{Line: 3, Column: 0}, workflowfacts.LeadingComment, "invalid physical source comment at 3:0"},
-		{"negative column", valid.Text, results.Position{Line: 3, Column: -1}, workflowfacts.LeadingComment, "invalid physical source comment at 3:-1"},
+		{"zero line", valid.Text, sourcepos.Position{Line: 0, Column: 7}, workflowfacts.LeadingComment, "invalid physical source comment at 0:7"},
+		{"negative line", valid.Text, sourcepos.Position{Line: -1, Column: 7}, workflowfacts.LeadingComment, "invalid physical source comment at -1:7"},
+		{"zero column", valid.Text, sourcepos.Position{Line: 3, Column: 0}, workflowfacts.LeadingComment, "invalid physical source comment at 3:0"},
+		{"negative column", valid.Text, sourcepos.Position{Line: 3, Column: -1}, workflowfacts.LeadingComment, "invalid physical source comment at 3:-1"},
 		{"unknown placement", valid.Text, valid.Start, workflowfacts.CommentPlacement(2), "invalid source comment placement 2"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -116,7 +115,7 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 			}
 		})
 	}
-	input := checkinputs.Input{Scripts: []checkinputs.Script{{Reference: ref, Comments: []workflowfacts.SourceComment{valid, {Text: "#", Start: results.Position{Line: 4, Column: 1}, Placement: workflowfacts.TrailingComment}}}}}
+	input := checkinputs.Input{Scripts: []checkinputs.Script{{Reference: ref, Comments: []workflowfacts.SourceComment{valid, {Text: "#", Start: sourcepos.Position{Line: 4, Column: 1}, Placement: workflowfacts.TrailingComment}}}}}
 	ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
 	got, err := (sourceAnnotations{}).Comments(ctx, invocationbind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 	want := []annotationsbind.Comment{

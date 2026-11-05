@@ -19,11 +19,11 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/results"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -391,16 +391,16 @@ func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.Script
 	if !ok {
 		start, hasEnd = *script.Key, false
 	}
-	var end results.Position
+	var end sourcepos.Position
 	if hasEnd {
 		position, endOK := script.Source.EndPos(endRow, d.EndLocation.Column)
 		if endOK && (position.Line > start.Line || position.Line == start.Line && position.Col >= start.Col) {
-			end = results.Position{Line: position.Line, Column: position.Col}
+			end = sourcepos.Position{Line: position.Line, Column: position.Col}
 		} else {
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: results.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Content: script.Content}
+	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: sourcepos.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Content: script.Content}
 	for _, fix := range d.Fixes {
 		if mapped, ok := scriptFix(script.Source, c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)

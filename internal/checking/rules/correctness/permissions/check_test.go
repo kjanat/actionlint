@@ -6,12 +6,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	permissionmodel "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCheck(t *testing.T) {
-	at := func(line, column int) results.Position { return results.Position{Line: line, Column: column} }
+	at := func(line, column int) sourcepos.Position { return sourcepos.Position{Line: line, Column: column} }
 	value := func(line, column int, text string) Value { return Value{Text: text, Start: at(line, column)} }
 	for _, test := range []struct {
 		name  string

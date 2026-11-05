@@ -15,11 +15,10 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func documentInput(t *testing.T, content string) checkinputs.Input {
@@ -30,11 +29,11 @@ func documentInput(t *testing.T, content string) checkinputs.Input {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256([]byte(content))
-	revision, err := source.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := sourcepos.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return checkinputs.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Dependencies}}
+	return checkinputs.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcepos.YAML, Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Dependencies}}
 }
 
 func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
@@ -70,7 +69,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 		t.Run(string(stdin), func(t *testing.T) {
 			input := documentInput(t, "on: push\njobs:\n  one:\n    if: ${{ github.actor == 'raw' }}\n")
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
-			input.Dependencies = []workflowfacts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: results.Position{Line: 2, Column: 1}, End: results.Position{Line: 2, Column: 5}}, {Reference: source.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
+			input.Dependencies = []workflowfacts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 2, Column: 5}}, {Reference: sourcepos.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
 			manifest := documentManifest(manifests.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: manifests.ConfigRendering{Render: manifests.RenderNone}})
 			manifest.RequiredInputs = []checkinputs.InputKind{checkinputs.Dependencies}
 			manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
@@ -123,7 +122,7 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 		t.Fatal(findings, err)
 	}
 	finding := findings[0]
-	if finding.Start != (results.Position{Line: 3, Column: 1}) || finding.End != (results.Position{Line: 3, Column: 4}) || finding.Path != input.Path || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[input.Path] != input.Revision.Digest() || finding.Fixes[0].Edits[0].Start != finding.Start {
+	if finding.Start != (sourcepos.Position{Line: 3, Column: 1}) || finding.End != (sourcepos.Position{Line: 3, Column: 4}) || finding.Path != input.Path || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[input.Path] != input.Revision.Digest() || finding.Fixes[0].Edits[0].Start != finding.Start {
 		t.Fatal("document coordinates/fix provenance lost", finding)
 	}
 	manifest.Capabilities.Fixes = false
@@ -154,7 +153,7 @@ func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 				t.Fatal(err)
 			}
 			findings, err := checker.CheckDocument(t.Context(), input)
-			if err != nil || len(findings) != 1 || findings[0].Start != (results.Position{Line: 2, Column: 2}) {
+			if err != nil || len(findings) != 1 || findings[0].Start != (sourcepos.Position{Line: 2, Column: 2}) {
 				t.Fatal(findings, err)
 			}
 		})

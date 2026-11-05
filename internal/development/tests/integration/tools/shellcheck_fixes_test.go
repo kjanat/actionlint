@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
@@ -19,7 +20,7 @@ import (
 
 func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 	t.Helper()
-	offset := func(pos diagmodel.Position) int {
+	offset := func(pos sourcepos.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')

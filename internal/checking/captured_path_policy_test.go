@@ -11,6 +11,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -27,7 +28,7 @@ func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input chec
 	if err := checker.retarget(); err != nil {
 		return nil, err
 	}
-	return []results.Diagnostic{{Rule: "captured-path-test", Path: input.Path, Reference: &input.Reference, Start: results.Position{Line: 1}, Message: "captured source"}}, nil
+	return []results.Diagnostic{{Rule: "captured-path-test", Path: input.Path, Reference: &input.Reference, Start: sourcepos.Position{Line: 1}, Message: "captured source"}}, nil
 }
 
 func TestResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {

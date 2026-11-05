@@ -1,14 +1,13 @@
 package facts
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // Mapping contains normalized names and source provenance for a declaration.
 // Complete is false when an insertion or key depends on runtime values.
 type Mapping struct {
-	Reference source.Reference
+	Reference sourcepos.Reference
 	Scope     string
 	Complete  bool
 	Entries   []Entry
@@ -21,7 +20,7 @@ type Entry struct {
 	State     KeyState
 	Source    string
 	Evaluated bool
-	Start     results.Position
+	Start     sourcepos.Position
 }
 
 // KeyState distinguishes a runtime name from a statically invalid declaration.

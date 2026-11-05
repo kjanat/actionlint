@@ -3,8 +3,8 @@ package visit
 import (
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
@@ -24,13 +24,13 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	}
 	want := []*findingmodel.Finding{
 		{
-			Message: "this is test 1", Start: diagmodel.Position{
+			Message: "this is test 1", Start: sourcepos.Position{
 				Line:   1,
 				Column: 2,
 			}, Rule: "dummy name",
 		},
 		{
-			Message: "this is test 2", Start: diagmodel.Position{
+			Message: "this is test 2", Start: sourcepos.Position{
 				Line:   3,
 				Column: 4,
 			}, Rule: "dummy name",

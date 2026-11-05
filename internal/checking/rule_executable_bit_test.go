@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -553,10 +554,10 @@ jobs:
 				if !strings.Contains(strings.ToLower(line), strings.ToLower(filepath.Base(tc.want))) {
 					t.Fatalf("diagnostic mapped to wrong line: %+v", findings[0])
 				}
-				if tc.name == "direct" && findings[0].Start != (diagmodel.Position{Line: 7, Column: 14}) {
+				if tc.name == "direct" && findings[0].Start != (sourcepos.Position{Line: 7, Column: 14}) {
 					t.Fatalf("direct call location: %+v", findings[0].Start)
 				}
-				if tc.name == "Unicode before invocation" && findings[0].Start != (diagmodel.Position{Line: 7, Column: 22}) {
+				if tc.name == "Unicode before invocation" && findings[0].Start != (sourcepos.Position{Line: 7, Column: 22}) {
 					t.Fatalf("Unicode call location: %+v", findings[0].Start)
 				}
 				if !slices.ContainsFunc(result.Inputs, func(path string) bool {

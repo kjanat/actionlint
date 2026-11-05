@@ -3,17 +3,17 @@ package declaration
 import (
 	"strconv"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func origin(pos *workflowlang.Pos, expression bool) value.Origin {
 	result := value.Origin{FromExpression: expression}
 	if pos != nil {
-		result.Span.Start = results.Position{Line: pos.Line, Column: pos.Col}
+		result.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Col}
 	}
 	return result
 }

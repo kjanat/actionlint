@@ -16,7 +16,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -44,7 +44,7 @@ func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.In
 			return nil, err
 		}
 	}
-	return []results.Diagnostic{{Message: "unrelated entry observation", Start: results.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Message: "unrelated entry observation", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t *testing.T) {
@@ -144,11 +144,11 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
 			store, fixture := capturefixture.NewCapturedSources(t, root)
-			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), source.YAML)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcepos.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), source.YAML)
+			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), sourcepos.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}

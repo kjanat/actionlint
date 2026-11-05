@@ -1,13 +1,13 @@
 package facts
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func Position(pos *workflowlang.Pos) results.Position {
+func Position(pos *workflowlang.Pos) sourcepos.Position {
 	if pos == nil {
-		return results.Position{}
+		return sourcepos.Position{}
 	}
-	return results.Position{Line: pos.Line, Column: pos.Col}
+	return sourcepos.Position{Line: pos.Line, Column: pos.Col}
 }

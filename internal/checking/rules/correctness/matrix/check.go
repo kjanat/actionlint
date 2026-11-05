@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
@@ -17,7 +18,7 @@ import (
 func Check(resolution matrixmodel.Resolution, mixedTypes bool) []results.Diagnostic {
 	axes := resolution.Axes()
 	var findings []results.Diagnostic
-	appendFinding := func(position results.Position, rule, format string, args ...any) {
+	appendFinding := func(position sourcepos.Position, rule, format string, args ...any) {
 		findings = append(findings, results.Diagnostic{Start: position, Rule: rule, Message: fmt.Sprintf(format, args...)})
 	}
 	for _, axis := range axes {

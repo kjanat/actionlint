@@ -10,11 +10,11 @@ import (
 	"slices"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Traits are the execution guarantees shared by every alternative of a job.
@@ -339,7 +339,7 @@ func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (jobRecor
 			for _, rejection := range result.Rejections {
 				if rejection.Position.Line == 0 {
 					if declaration, present := job.Pos(); present {
-						rejection.Position = results.Position{Line: declaration.Line, Column: declaration.Col}
+						rejection.Position = sourcepos.Position{Line: declaration.Line, Column: declaration.Col}
 					}
 				}
 				if !slices.Contains(record.rejections, rejection) {

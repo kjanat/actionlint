@@ -10,9 +10,9 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type routingRunner func(context.Context, tools.Batch) ([]tools.Finding, error)
@@ -115,7 +115,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
-	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (results.Position{Line: 11, Column: 7}) {
+	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (sourcepos.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
 }
@@ -161,7 +161,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	if !errors.Is(err, nativeFailure) || !errors.Is(err, inputFailure) || nativeCalls != 1 || inputCalls != 1 || len(findings) != 2 {
 		t.Fatalf("partial outcomes lost or routes duplicated: native=%d input=%d findings=%+v err=%v", nativeCalls, inputCalls, findings, err)
 	}
-	if findings[0].Script != 0 || findings[1].Script != 1 || findings[1].Start != (results.Position{Line: 11, Column: 7}) {
+	if findings[0].Script != 0 || findings[1].Script != 1 || findings[1].Start != (sourcepos.Position{Line: 11, Column: 7}) {
 		t.Fatalf("input source/index context lost: %+v", findings)
 	}
 }

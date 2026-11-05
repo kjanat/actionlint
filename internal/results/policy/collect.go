@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -14,7 +14,7 @@ import (
 // File carries completed document findings and their diagnostic identity scope.
 type File struct {
 	Project, InputPath string
-	Source             source.Revision
+	Source             sourcepos.Revision
 	Content            []byte
 	Action             bool
 	Findings           []*findingmodel.Finding
@@ -24,7 +24,7 @@ type File struct {
 func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report.DiagnosticSource) {
 	type location struct {
 		project, path, rule string
-		start               diagmodel.Position
+		start               sourcepos.Position
 	}
 	seen := make(map[location][]diagmodel.Diagnostic)
 	type metadataLocation struct {
@@ -37,7 +37,7 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 		finding findingmodel.MetadataKey
 	}
 	declarations := make(map[declarationLocation]bool)
-	parseDeclarations := make(map[source.Revision]bool)
+	parseDeclarations := make(map[sourcepos.Revision]bool)
 	for _, file := range files {
 		project := file.Project
 		for _, finding := range file.Findings {

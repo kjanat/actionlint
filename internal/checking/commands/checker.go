@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -32,7 +33,7 @@ func (Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]re
 			start, startOK := script.Position(textPosition(script.Text, command.Start, false))
 			end, endOK := script.Position(textPosition(script.Text, command.End, true))
 			if !startOK || !endOK {
-				start, end = script.Start, results.Position{}
+				start, end = script.Start, sourcepos.Position{}
 			}
 			findings = append(findings, results.Diagnostic{
 				Rule:    "deprecated-commands",

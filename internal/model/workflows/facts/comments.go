@@ -3,8 +3,8 @@ package facts
 import (
 	"iter"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // SourceComments publishes YAML attachments independently of the decoded scalar.
@@ -34,6 +34,6 @@ const (
 // SourceComment is one physical YAML comment, including '#'. Start points to '#'.
 type SourceComment struct {
 	Text      string
-	Start     results.Position
+	Start     sourcepos.Position
 	Placement CommentPlacement
 }

@@ -5,8 +5,7 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -33,7 +32,7 @@ func TestInlineSuppressionSpellings(t *testing.T) {
 					source := strings.ReplaceAll("run: | # "+declaration+" -- reviewed -- input\n  echo first\n  echo second\n"+next+"\n", "\n", ending)
 					directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 					want := []Directive{{
-						Position: results.Position{Line: 1, Column: 8}, First: 1, Last: 3,
+						Position: sourcepos.Position{Line: 1, Column: 8}, First: 1, Last: 3,
 						Rules: []string{"expression", "shellcheck"}, Reason: "reviewed -- input",
 					}}
 					if len(findings) != 0 {
@@ -60,7 +59,7 @@ func TestInlineSuppressionNextLineSpellings(t *testing.T) {
 			t.Run(command+"/"+selectors, func(t *testing.T) {
 				source := "# " + command + " " + selectors + "\nrun: |\n  echo ok\nnext: value\n"
 				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
-				want := []Directive{{Position: results.Position{Line: 1, Column: 1}, First: 2, Last: 3, Rules: []string{"expression", "shellcheck"}}}
+				want := []Directive{{Position: sourcepos.Position{Line: 1, Column: 1}, First: 2, Last: 3, Rules: []string{"expression", "shellcheck"}}}
 				if len(findings) != 0 {
 					t.Fatalf("unexpected grammar diagnostics: %+v", findings)
 				}
@@ -143,7 +142,7 @@ run-name: |
   two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
 `
 	comments := collectInlineSuppressionComments([]byte(source))
-	if len(comments) != 1 || comments[0].pos != (results.Position{Line: 2, Column: 7}) || comments[0].standalone {
+	if len(comments) != 1 || comments[0].pos != (sourcepos.Position{Line: 2, Column: 7}) || comments[0].standalone {
 		t.Fatalf("want only the real closing comment at 2:7, got %+v", comments)
 	}
 	directive, err := parseInlineSuppression(comments[0], []string{"cache-operation"}, rule.Names{})
@@ -151,7 +150,7 @@ run-name: |
 		t.Fatal(err)
 	}
 	want := Directive{
-		Position: results.Position{Line: 2, Column: 7}, First: 2, Last: 2,
+		Position: sourcepos.Position{Line: 2, Column: 7}, First: 2, Last: 2,
 		Rules: []string{"cache-operation"}, Reason: "reviewed -- intentionally unused",
 	}
 	if diff := cmp.Diff(want, directive, cmp.AllowUnexported(Directive{})); diff != "" {

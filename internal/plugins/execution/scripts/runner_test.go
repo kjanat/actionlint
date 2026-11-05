@@ -17,6 +17,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -92,7 +93,7 @@ func generated(script string) preparation.Prepared {
 
 func applyFix(t *testing.T, input string, fix results.Fix) string {
 	t.Helper()
-	offset := func(pos results.Position) int {
+	offset := func(pos sourcepos.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')
@@ -291,7 +292,7 @@ func TestReportedSourceFindings(t *testing.T) {
 		t.Fatalf("findings: %+v", findings)
 	}
 	read, missing := findings[0], findings[1]
-	if read.Message != "tool: X2086:info:1:6: quote it" || read.Start != (results.Position{Line: 1, Column: 6}) || read.End != (results.Position{Line: 1, Column: 8}) ||
+	if read.Message != "tool: X2086:info:1:6: quote it" || read.Start != (sourcepos.Position{Line: 1, Column: 6}) || read.End != (sourcepos.Position{Line: 1, Column: 8}) ||
 		!read.RawScript || string(read.Content) != "echo $x\n" || !strings.HasSuffix(read.Path, "lib.sh") || !filepath.IsAbs(read.Path) {
 		t.Errorf("reported finding: %+v", read)
 	}
@@ -300,7 +301,7 @@ func TestReportedSourceFindings(t *testing.T) {
 			t.Errorf("reported finding provenance: %+v", f)
 		}
 	}
-	if read.UnavailableSource.Reason() != "not-captured" || missing.UnavailableSource.Reason() != "read-failed" || len(missing.Content) != 0 || missing.End != (results.Position{}) {
+	if read.UnavailableSource.Reason() != "not-captured" || missing.UnavailableSource.Reason() != "read-failed" || len(missing.Content) != 0 || missing.End != (sourcepos.Position{}) {
 		t.Errorf("unavailable reasons: %q %q %+v", read.UnavailableSource.Reason(), missing.UnavailableSource.Reason(), missing)
 	}
 	if !slices.ContainsFunc(recorded, func(path string) bool { return strings.HasSuffix(path, "lib.sh") }) {
@@ -376,10 +377,10 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		t.Fatalf("findings: %+v", findings)
 	}
 	scriptFinding := findings[0]
-	if scriptFinding.Message != "X4:info:1:6: in script" || scriptFinding.Start != (results.Position{Line: 2, Column: 8}) || scriptFinding.End != (results.Position{Line: 2, Column: 14}) || len(scriptFinding.Fixes) != 1 {
+	if scriptFinding.Message != "X4:info:1:6: in script" || scriptFinding.Start != (sourcepos.Position{Line: 2, Column: 8}) || scriptFinding.End != (sourcepos.Position{Line: 2, Column: 14}) || len(scriptFinding.Fixes) != 1 {
 		t.Errorf("script finding: %+v", scriptFinding)
 	}
-	if findings[1].Code != "X5" || findings[1].End != (results.Position{}) {
+	if findings[1].Code != "X5" || findings[1].End != (sourcepos.Position{}) {
 		t.Errorf("end on a generated line kept: %+v", findings[1])
 	}
 

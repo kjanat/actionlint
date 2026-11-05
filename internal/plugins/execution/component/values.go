@@ -7,6 +7,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -57,7 +58,7 @@ func lowerU32(n int) wacogo.ValU32 {
 	return wacogo.ValU32(uint32(n))
 }
 
-func lowerPosition(p results.Position) *wacogo.ValRecord {
+func lowerPosition(p sourcepos.Position) *wacogo.ValRecord {
 	return wacogo.NewValRecord(field("line", lowerU32(p.Line)), field("column", lowerU32(p.Column)))
 }
 
@@ -191,27 +192,27 @@ func liftList(v wacogo.Val, what string) (*wacogo.ValList, error) {
 	return list, nil
 }
 
-func liftPosition(v wacogo.Val) (results.Position, error) {
+func liftPosition(v wacogo.Val) (sourcepos.Position, error) {
 	record, err := liftRecord(v, "position")
 	if err != nil {
-		return results.Position{}, err
+		return sourcepos.Position{}, err
 	}
 	line, ok := record.Field("line").(wacogo.ValU32)
 	if !ok {
-		return results.Position{}, liftError{"position line", record.Field("line")}
+		return sourcepos.Position{}, liftError{"position line", record.Field("line")}
 	}
 	column, ok := record.Field("column").(wacogo.ValU32)
 	if !ok {
-		return results.Position{}, liftError{"position column", record.Field("column")}
+		return sourcepos.Position{}, liftError{"position column", record.Field("column")}
 	}
 	maxInt := uint64(^uint(0) >> 1)
 	if line == 0 || column == 0 || uint64(line) > maxInt || uint64(column) > maxInt {
-		return results.Position{}, fmt.Errorf("position coordinates must be one-based and fit the host integer range: line %d, column %d", line, column)
+		return sourcepos.Position{}, fmt.Errorf("position coordinates must be one-based and fit the host integer range: line %d, column %d", line, column)
 	}
-	return results.Position{Line: int(line), Column: int(column)}, nil
+	return sourcepos.Position{Line: int(line), Column: int(column)}, nil
 }
 
-func validateRange(start, end results.Position) error {
+func validateRange(start, end sourcepos.Position) error {
 	if end.Line < start.Line || end.Line == start.Line && end.Column < start.Column {
 		return fmt.Errorf("range end precedes start: %d:%d to %d:%d", start.Line, start.Column, end.Line, end.Column)
 	}

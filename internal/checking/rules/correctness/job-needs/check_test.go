@@ -5,15 +5,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func at(line int) results.Position { return results.Position{Line: line, Column: 3} }
+func at(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 3} }
 
 func job(line int, id string, needs ...string) Job {
 	j := Job{ID: Name{Value: id, Start: at(line)}}
 	for i, need := range needs {
-		j.Needs = append(j.Needs, Name{Value: need, Start: results.Position{Line: line, Column: 20 + i}})
+		j.Needs = append(j.Needs, Name{Value: need, Start: sourcepos.Position{Line: line, Column: 20 + i}})
 	}
 	return j
 }
@@ -37,7 +38,7 @@ func TestCheck(t *testing.T) {
 			{Rule: "job-needs", Start: at(1), Message: `job "test" needs job "build" which does not exist in this workflow`},
 		}},
 		{"duplicate need", []Job{job(1, "build"), job(2, "test", "build", "BUILD")}, []results.Diagnostic{
-			{Rule: "job-needs", Start: results.Position{Line: 2, Column: 21}, Message: `job ID "BUILD" duplicates in "needs" section. note that job ID is case insensitive`},
+			{Rule: "job-needs", Start: sourcepos.Position{Line: 2, Column: 21}, Message: `job ID "BUILD" duplicates in "needs" section. note that job ID is case insensitive`},
 		}},
 		{"duplicate job", []Job{job(1, "build"), job(2, "BUILD")}, []results.Diagnostic{
 			{Rule: "job-needs", Start: at(2), Message: `job ID "BUILD" duplicates. previously defined at line:1,col:3. note that job ID is case insensitive`},

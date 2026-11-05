@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
@@ -93,8 +94,8 @@ runs:
 	}
 	diagnostic := diagmodel.Diagnostic{
 		Rule: "shellcheck", Code: "SC2086", Severity: "warning", Message: "Quote variable", Path: "ci.yml",
-		Start: diagmodel.Position{Line: 2, Column: 3}, End: diagmodel.Position{Line: 3, Column: 4}, Snippet: "echo $value",
-		Fixes: []diagmodel.Fix{{Description: "Quote", Edits: []diagmodel.Edit{{Path: "ci.yml", Start: diagmodel.Position{Line: 2, Column: 3}, End: diagmodel.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
+		Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 3, Column: 4}, Snippet: "echo $value",
+		Fixes: []diagmodel.Fix{{Description: "Quote", Edits: []diagmodel.Edit{{Path: "ci.yml", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
 	}
 	for _, code := range []int{0, 1, 2, 3, 99} {
 		result := commandstatus.NewCheckResult(code)

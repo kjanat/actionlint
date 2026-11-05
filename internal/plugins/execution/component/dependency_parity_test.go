@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	dependencypins "actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependency-pins"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
@@ -21,7 +21,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 		t.Fatalf("requires=%v", got)
 	}
 	native := dependencypins.Checker{}
-	reference := source.Reference{Document: "document", Revision: "revision", Node: "node", Address: "jobs.build.steps[0]"}
+	reference := sourcepos.Reference{Document: "document", Revision: "revision", Node: "node", Address: "jobs.build.steps[0]"}
 	for _, tc := range []struct {
 		name, kind, uses string
 		want             bool
@@ -42,7 +42,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []checkinputs.InputKind{checkinputs.Dependencies}, Dependencies: []workflowfacts.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
-				Start: results.Position{Line: 6, Column: 15}, End: results.Position{Line: 7, Column: 24},
+				Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 7, Column: 24},
 			}}}
 			// A component must not reconstruct declarations from raw source text.
 			for _, content := range []string{"", "not YAML: [", "jobs: {}"} {
@@ -102,10 +102,10 @@ jobs:
 	}
 	for i, want := range []struct {
 		message, address string
-		start, end       results.Position
+		start, end       sourcepos.Position
 	}{
-		{"action must be pinned to a full commit hash", "steps[0]", results.Position{Line: 6, Column: 15}, results.Position{Line: 6, Column: 36}},
-		{"reusable workflow must be pinned to a full commit hash", `jobs["reuse"]`, results.Position{Line: 8, Column: 11}, results.Position{Line: 8, Column: 51}},
+		{"action must be pinned to a full commit hash", "steps[0]", sourcepos.Position{Line: 6, Column: 15}, sourcepos.Position{Line: 6, Column: 36}},
+		{"reusable workflow must be pinned to a full commit hash", `jobs["reuse"]`, sourcepos.Position{Line: 8, Column: 11}, sourcepos.Position{Line: 8, Column: 51}},
 	} {
 		finding := got[i]
 		if finding.Reference == nil || finding.Reference.Document == "" || finding.Reference.Revision == "" || finding.Reference.Node == "" || !strings.HasSuffix(finding.Reference.Address, want.address) {

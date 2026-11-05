@@ -3,12 +3,13 @@ package finding
 import (
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
-	base := Finding{Rule: "first", Path: "ci.yml", Message: "same", Start: results.Position{Line: 1, Column: 1}}
+	base := Finding{Rule: "first", Path: "ci.yml", Message: "same", Start: sourcepos.Position{Line: 1, Column: 1}}
 	for _, change := range []struct {
 		name string
 		edit func(*Finding)

@@ -19,6 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -241,7 +242,7 @@ jobs:
 				t.Fatalf("duplicate/missing findings: %d %+v", len(guest.inputs), result.Diagnostics)
 			}
 			comments := guest.inputs[0].Scripts[0].Comments
-			if len(comments) != 1 || comments[0].Text != "# shellcheck disable=SC2034" || comments[0].Placement != workflowfacts.TrailingComment || comments[0].Start != (results.Position{Line: 6, Column: 26}) {
+			if len(comments) != 1 || comments[0].Text != "# shellcheck disable=SC2034" || comments[0].Placement != workflowfacts.TrailingComment || comments[0].Start != (sourcepos.Position{Line: 6, Column: 26}) {
 				t.Fatalf("document plugin lost attached YAML comments: %+v", comments)
 			}
 			finding := result.Diagnostics[0]

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // ToolIntegration advertises an optional, versioned host tool profile.
@@ -65,7 +65,7 @@ const (
 type PreparedLine struct {
 	Kind     PreparedLineKind
 	Line     int
-	Position results.Position
+	Position sourcepos.Position
 }
 type PreparedScript struct {
 	Text      string

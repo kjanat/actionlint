@@ -18,10 +18,10 @@ import (
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -61,13 +61,13 @@ jobs:
 		t.Fatalf("job casing/source order lost: %+v", clean.Jobs())
 	}
 	build, deploy := clean.Jobs()[0], clean.Jobs()[1]
-	if build.Name() != "${{ github.ref }}" || build.Start() == nil || *build.Start() != (diagmodel.Position{Line: 4, Column: 3}) {
+	if build.Name() != "${{ github.ref }}" || build.Start() == nil || *build.Start() != (sourcepos.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared expression/location lost: %+v", build)
 	}
 	if len(build.Steps()) != 2 || build.Steps()[0].Kind() != "uses" || build.Steps()[0].Uses() != "actions/checkout@v7" || build.Steps()[1].Kind() != "run" || build.Steps()[1].ID() != "script" {
 		t.Fatalf("wrong steps: %+v", build.Steps())
 	}
-	if build.Steps()[0].Start() == nil || *build.Steps()[0].Start() != (diagmodel.Position{Line: 8, Column: 9}) {
+	if build.Steps()[0].Start() == nil || *build.Steps()[0].Start() != (sourcepos.Position{Line: 8, Column: 9}) {
 		t.Fatalf("step location lost: %+v", build.Steps()[0])
 	}
 	if !reflect.DeepEqual(deploy.Needs(), []string{"ZBuild"}) || deploy.Uses() != "./.github/workflows/deploy.yml" || deploy.Steps() == nil || len(deploy.Steps()) != 0 {

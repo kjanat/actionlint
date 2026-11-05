@@ -4,11 +4,10 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // declarationSet collects the mappings and dependencies one document declares.
@@ -32,7 +31,7 @@ func (b *Bound) declarations() ([]workflowfacts.Mapping, []workflowfacts.Depende
 	return set.mappings, set.dependencies
 }
 
-func (d *declarationSet) job(b *Bound, job *workflowlang.Job, ref source.Reference) {
+func (d *declarationSet) job(b *Bound, job *workflowlang.Job, ref sourcepos.Reference) {
 	scope := ref.Address
 	if job.WorkflowCall != nil {
 		d.dependency(job.WorkflowCall.Uses, "workflow", ref)
@@ -66,25 +65,25 @@ func (d *declarationSet) steps(b *Bound, nodes []*workflowlang.Step) {
 	}
 }
 
-func (d *declarationSet) env(b *Bound, scope string, owner source.Reference, env *workflowlang.Env) {
+func (d *declarationSet) env(b *Bound, scope string, owner sourcepos.Reference, env *workflowlang.Env) {
 	if env != nil {
 		d.mapping(scope, owner, b.record.environments[env])
 	}
 }
 
-func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref source.Reference) {
+func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref sourcepos.Reference) {
 	if value == nil || value.ContainsExpression() {
 		return
 	}
 	start := workflowfacts.Position(value.Pos)
 	end := start
 	if physical := value.SourceScalar.End; physical.Line > 0 && physical.Col > 0 {
-		end = results.Position{Line: physical.Line, Column: physical.Col}
+		end = sourcepos.Position{Line: physical.Line, Column: physical.Col}
 	}
 	d.dependencies = append(d.dependencies, workflowfacts.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
 }
 
-func (d *declarationSet) mapping(scope string, owner source.Reference, values mapping.Mapping) {
+func (d *declarationSet) mapping(scope string, owner sourcepos.Reference, values mapping.Mapping) {
 	record := workflowfacts.Mapping{Scope: scope, Reference: owner, Complete: values.Complete()}
 	for declaration := range values.Declarations() {
 		state := workflowfacts.UnknownKey

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
@@ -169,7 +170,7 @@ func TestErrorPrettyPrint(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.message, func(t *testing.T) {
-			err := testFinding(&diagmodel.Position{Line: tc.line, Column: tc.column}, "kind", tc.message)
+			err := testFinding(&sourcepos.Position{Line: tc.line, Column: tc.column}, "kind", tc.message)
 			err.Diagnostic.Path = "filename.txt"
 
 			var buf bytes.Buffer
@@ -220,7 +221,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			err := testFinding(&diagmodel.Position{Line: 1, Column: tc.column}, "kind", tc.message)
+			err := testFinding(&sourcepos.Position{Line: 1, Column: tc.column}, "kind", tc.message)
 			err.Diagnostic.Path = "filename.txt"
 			f := testFields(err, []byte(tc.source))
 			if f.Message != tc.message {
@@ -250,7 +251,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 
 // Regression test for #128
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
-	err := testFinding(&diagmodel.Position{Line: 1, Column: 9999}, "kind", "this is message")
+	err := testFinding(&sourcepos.Position{Line: 1, Column: 9999}, "kind", "this is message")
 	err.Diagnostic.Path = "filename.yaml"
 	f := testFields(err, []byte("this is source"))
 	if strings.Contains(f.Snippet, "\n") {
@@ -259,7 +260,7 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
-	err := testFinding(&diagmodel.Position{Line: 1, Column: 6}, "kind", "this is message")
+	err := testFinding(&sourcepos.Position{Line: 1, Column: 6}, "kind", "this is message")
 	err.EndColumn = 9
 	f := testFields(err, []byte("echo $foo bar"))
 	if f.Snippet != "echo $foo bar\n     ^~~~" {
@@ -271,7 +272,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
-	err := testFinding(&diagmodel.Position{Line: 1, Column: 8}, "kind", "this is message")
+	err := testFinding(&sourcepos.Position{Line: 1, Column: 8}, "kind", "this is message")
 	err.EndColumn = 11
 	f := testFields(err, []byte("echo é $foo"))
 	if f.Snippet != "echo é $foo\n       ^~~~" {
@@ -283,7 +284,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
-	err := testFinding(&diagmodel.Position{Line: 1, Column: 5}, "kind", "this is message")
+	err := testFinding(&sourcepos.Position{Line: 1, Column: 5}, "kind", "this is message")
 	f := testFields(err, []byte("日本語 $foo"))
 	if f.Snippet != "日本語 $foo\n       ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -361,8 +362,8 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 
 func TestErrorPrintFormattedErrors(t *testing.T) {
 	errs := []*Finding{
-		testFinding(&diagmodel.Position{Line: 1, Column: 1}, "kind1", "error1"),
-		testFinding(&diagmodel.Position{Line: 1, Column: 0}, "kind2", "error2"),
+		testFinding(&sourcepos.Position{Line: 1, Column: 1}, "kind1", "error1"),
+		testFinding(&sourcepos.Position{Line: 1, Column: 0}, "kind2", "error2"),
 	}
 
 	f, err := newTestFormatter("{{range $ = .}}({{$.Message | printf \"%q\"}},{{$.Snippet | printf \"%q\"}}){{end}}")
@@ -508,7 +509,7 @@ func TestErrorFormatterPrintGetVersion(t *testing.T) {
 }
 
 // Fixtures construct presentation inputs directly; no engine or compatibility API is involved.
-func testFinding(pos *diagmodel.Position, kind, message string) *Finding {
+func testFinding(pos *sourcepos.Position, kind, message string) *Finding {
 	return &Finding{Diagnostic: diagmodel.Diagnostic{Start: *pos, Rule: kind, Message: message}}
 }
 

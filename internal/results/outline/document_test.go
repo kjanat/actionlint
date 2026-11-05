@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
@@ -66,7 +66,7 @@ func TestActionOutlinesWithoutRuntimeRoundTrip(t *testing.T) {
 func TestOutlineAccessorsReturnDetachedCopies(t *testing.T) {
 	needs := []string{"lint"}
 	workflow := outline.NewWorkflow(outline.WorkflowFields{Path: "ci.yml", Jobs: []outline.Job{
-		outline.NewJob(outline.JobFields{ID: "build", Needs: needs, Start: &results.Position{Line: 3, Column: 3}}),
+		outline.NewJob(outline.JobFields{ID: "build", Needs: needs, Start: &sourcepos.Position{Line: 3, Column: 3}}),
 	}})
 	needs[0] = "changed"
 	job := workflow.Jobs()[0]

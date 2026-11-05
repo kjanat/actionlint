@@ -8,9 +8,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type rangeReviewBackend struct{ end checkinputs.ScriptPosition }
@@ -55,7 +55,7 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 		}
 		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: ownedRun.Source(), Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
 		if err != nil || len(findings) != 2 || findings[0].Message != "valid" || findings[1].Message != "reversed" ||
-			findings[1].Start != (results.Position{Line: 8, Column: 15}) || findings[1].End != (results.Position{}) {
+			findings[1].Start != (sourcepos.Position{Line: 8, Column: 15}) || findings[1].End != (sourcepos.Position{}) {
 			t.Fatalf("reversed end kept or finding lost: findings=%+v err=%v", findings, err)
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -36,7 +37,7 @@ type failingRenderWriter struct{}
 
 func (failingRenderWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 func TestRendererWriteErrors(t *testing.T) {
-	analysis := report.Analysis{FileCount: 1, Diagnostics: []results.Diagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 2}}}}
+	analysis := report.Analysis{FileCount: 1, Diagnostics: []results.Diagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}}
 	for _, format := range []Format{FormatText, FormatOneline, FormatGCC, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub} {
 		t.Run(string(format), func(t *testing.T) {
 			renderer, err := New(format, "", false, func() string { return "test" }, nil)

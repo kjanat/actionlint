@@ -15,9 +15,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	render "actionlint.kjanat.dev/v2/internal/output"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
@@ -112,7 +112,7 @@ jobs:
 				t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 			}
 			assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
-			if finding.Start != (diagmodel.Position{Line: tc.line, Column: 6}) || finding.End != (diagmodel.Position{Line: tc.line, Column: 12}) {
+			if finding.Start != (sourcepos.Position{Line: tc.line, Column: 6}) || finding.End != (sourcepos.Position{Line: tc.line, Column: 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {

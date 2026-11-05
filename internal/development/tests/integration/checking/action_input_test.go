@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -55,8 +56,8 @@ jobs:
 	}
 	first, second := observer.input.ActionInputs[0], observer.input.ActionInputs[1]
 	want := []workflowfacts.SourceComment{
-		{Text: "# alias leading", Start: results.Position{Line: 11, Column: 13}, Placement: workflowfacts.LeadingComment},
-		{Text: "# alias trailing", Start: results.Position{Line: 12, Column: 29}, Placement: workflowfacts.TrailingComment},
+		{Text: "# alias leading", Start: sourcepos.Position{Line: 11, Column: 13}, Placement: workflowfacts.LeadingComment},
+		{Text: "# alias trailing", Start: sourcepos.Position{Line: 12, Column: 29}, Placement: workflowfacts.TrailingComment},
 	}
 	if len(first.Comments) != len(want) {
 		t.Fatalf("action input comments=%+v, want %+v", first.Comments, want)
@@ -70,7 +71,7 @@ jobs:
 		t.Fatalf("unannotated input inherited comments: %+v", second.Comments)
 	}
 	for _, input := range observer.input.ActionInputs {
-		if input.Text != "console.log('hello')" || len(input.Spans) == 0 || input.Spans[0].Document != (results.Position{Line: 3, Column: 20}) {
+		if input.Text != "console.log('hello')" || len(input.Spans) == 0 || input.Spans[0].Document != (sourcepos.Position{Line: 3, Column: 20}) {
 			t.Fatalf("aliased action input lost anchored text/span: %+v", input)
 		}
 	}
@@ -101,7 +102,7 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[results.Position]string{
+	want := map[sourcepos.Position]string{
 		{Line: 10, Column: 13}: "workflow.yml",
 		{Line: 14, Column: 36}: "workflow.yml",
 		{Line: 10, Column: 11}: "action.yml",

@@ -9,12 +9,11 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	schemapath "actionlint.kjanat.dev/v2/internal/input/configuration/schema/location"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type actionSchemaKind uint8
@@ -96,19 +95,19 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	if err := workflowparser.AdmitYAMLAliases(meta.Root); err != nil {
 		return
 	}
-	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)
+	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemaPath{}, 0, false)
 }
 
-func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemapath.Path, code ProblemCode, message string) {
+func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemaPath, code ProblemCode, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, code, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
-func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *syntax.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
+func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *syntax.Node, definition string, location schemaPath, depth int, evaluated bool) {
 	rule.checkActionSchemaMappingValue(meta, node, definition, location, depth, evaluated, nil)
 }
 
 // Insertions share their enclosing mapping namespace; child values start a new one.
-func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *syntax.Node, definition string, location schemapath.Path, depth int, evaluated bool, seen map[string]bool) {
+func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *syntax.Node, definition string, location schemaPath, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := Node(node)
 	if n == nil || definition == "any" {
@@ -373,9 +372,9 @@ func (rule *schemaChecker) expressionFindings(s, field string, inputs Inputs) []
 }
 
 func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code ProblemCode, format string, args ...any) {
-	d := MetadataProblem{Path: meta.Path(), Start: results.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
+	d := MetadataProblem{Path: meta.Path(), Start: sourcepos.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
 	if end != nil {
-		d.End = results.Position{Line: end.Line, Column: end.Col}
+		d.End = sourcepos.Position{Line: end.Line, Column: end.Col}
 	}
 	rule.problems = append(rule.problems, d)
 }

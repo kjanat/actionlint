@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -103,14 +104,14 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if invoked.Runtime == nil || invoked.Runtime.Shell != "bash" || invoked.Runtime.ShellImplicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
 		t.Fatalf("invoked runtime=%+v (root %s)", invoked.Runtime, resolved)
 	}
-	if invoked.Start != (results.Position{Line: 6, Column: 12}) {
+	if invoked.Start != (sourcepos.Position{Line: 6, Column: 12}) {
 		t.Fatalf("invoked start=%+v", invoked.Start)
 	}
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Reference == nil || *finding.Reference != invoked.Reference || finding.Rule != "composite-scripts" || !strings.HasSuffix(filepath.ToSlash(finding.Path), ".github/actions/greet/action.yml") || finding.Start != (results.Position{Line: 6, Column: 17}) || finding.End != (results.Position{Line: 6, Column: 22}) {
+	if finding.Reference == nil || *finding.Reference != invoked.Reference || finding.Rule != "composite-scripts" || !strings.HasSuffix(filepath.ToSlash(finding.Path), ".github/actions/greet/action.yml") || finding.Start != (sourcepos.Position{Line: 6, Column: 17}) || finding.End != (sourcepos.Position{Line: 6, Column: 22}) {
 		t.Fatalf("finding=%+v", finding)
 	}
 }

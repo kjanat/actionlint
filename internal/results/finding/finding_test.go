@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -81,7 +81,7 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			errs := make([]*Finding, 0, len(tc))
 			for _, p := range tc {
-				errs = append(errs, &Finding{Start: diagmodel.Position{Line: p.line, Column: p.col}})
+				errs = append(errs, &Finding{Start: sourcepos.Position{Line: p.line, Column: p.col}})
 			}
 
 			slices.SortFunc(errs, Compare)
@@ -103,19 +103,19 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 func TestErrorSortErrorsByFile(t *testing.T) {
 	errs := []*Finding{
 		{
-			Path: "path/to/C.txt", Start: diagmodel.Position{
+			Path: "path/to/C.txt", Start: sourcepos.Position{
 				Line:   1,
 				Column: 2,
 			},
 		},
 		{
-			Path: "path/to/A.txt", Start: diagmodel.Position{
+			Path: "path/to/A.txt", Start: sourcepos.Position{
 				Line:   2,
 				Column: 4,
 			},
 		},
 		{
-			Path: "path/to/B.txt", Start: diagmodel.Position{
+			Path: "path/to/B.txt", Start: sourcepos.Position{
 				Line:   3,
 				Column: 6,
 			},
@@ -147,7 +147,7 @@ func TestErrorSortErrorsByMessage(t *testing.T) {
 	errs := []*Finding{}
 	for _, m := range msgs {
 		errs = append(errs, &Finding{
-			Path: "path/to/file.yaml", Start: diagmodel.Position{
+			Path: "path/to/file.yaml", Start: sourcepos.Position{
 				Line:   1,
 				Column: 1,
 			}, Message: m,
@@ -168,7 +168,7 @@ func TestErrorSortErrorsByMessage(t *testing.T) {
 
 func TestErrorErrorToString(t *testing.T) {
 	err := &Finding{
-		Message: "this is message", Start: diagmodel.Position{
+		Message: "this is message", Start: sourcepos.Position{
 			Line:   1,
 			Column: 2,
 		}, Rule: "test",

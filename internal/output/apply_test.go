@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
@@ -22,7 +23,7 @@ func TestPlanAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := results.Diagnostic{Fixes: []results.Fix{{Applicability: results.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(before))}, Edits: []results.Edit{{Path: path, Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
+	d := results.Diagnostic{Fixes: []results.Fix{{Applicability: results.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(before))}, Edits: []results.Edit{{Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
 	reader := files.New(t.Context(), nil, nil)
 	plan, err := edits.Build(t.Context(), []results.Diagnostic{d}, reader, false)
 	if err != nil {

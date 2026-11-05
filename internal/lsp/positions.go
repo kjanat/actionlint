@@ -8,9 +8,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type position struct {
@@ -22,8 +21,8 @@ type sourceRange struct {
 	End   position `json:"end"`
 }
 
-func editorPosition(content []byte, p results.Position) (position, error) {
-	offset, err := sourceposition.Offset(content, source.YAML, p)
+func editorPosition(content []byte, p sourcepos.Position) (position, error) {
+	offset, err := sourceposition.Offset(content, sourcepos.YAML, p)
 	if err != nil {
 		return position{}, err
 	}
@@ -93,12 +92,12 @@ func comparePosition(a, b position) int {
 	return a.Character - b.Character
 }
 
-func diagnosticRange(content []byte, start, end results.Position) (sourceRange, error) {
+func diagnosticRange(content []byte, start, end sourcepos.Position) (sourceRange, error) {
 	first, err := editorPosition(content, start)
 	if err != nil {
 		return sourceRange{}, err
 	}
-	if end == (results.Position{}) {
+	if end == (sourcepos.Position{}) {
 		return sourceRange{first, first}, nil
 	}
 	last, err := editorPosition(content, end)

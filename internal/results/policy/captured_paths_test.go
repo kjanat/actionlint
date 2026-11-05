@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -29,7 +29,7 @@ func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 			t.Fatal(err)
 		}
 		got, err := processor.Apply(policy.Policy{Path: path, ConfigPath: path, Root: checkout, ProjectRoot: checkout, WorkingDir: checkout, Config: config},
-			[]*finding.Finding{{Rule: "expression-type", Path: path, Start: results.Position{Line: 1}}}, nil, nil)
+			[]*finding.Finding{{Rule: "expression-type", Path: path, Start: sourcepos.Position{Line: 1}}}, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

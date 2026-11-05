@@ -6,17 +6,17 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestManifestRejectsAnchorsAndAliases(t *testing.T) {
 	for _, tc := range []struct {
 		name, source string
-		want         []results.Position
+		want         []sourcepos.Position
 	}{
-		{"scalar", "name: &label example\ndescription: *label\nruns: {using: composite, steps: []}\n", []results.Position{{Line: 1, Column: 7}, {Line: 2, Column: 14}}},
-		{"collections", "name: example\ndescription: example\nruns: &runtime\n  using: composite\n  steps: &steps []\n", []results.Position{{Line: 3, Column: 7}, {Line: 5, Column: 10}}},
-		{"ignored value", "name: example\ndescription: example\nruns: {using: composite, steps: []}\nextra: {first: &value example, second: *value}\n", []results.Position{{Line: 4, Column: 16}, {Line: 4, Column: 40}}},
+		{"scalar", "name: &label example\ndescription: *label\nruns: {using: composite, steps: []}\n", []sourcepos.Position{{Line: 1, Column: 7}, {Line: 2, Column: 14}}},
+		{"collections", "name: example\ndescription: example\nruns: &runtime\n  using: composite\n  steps: &steps []\n", []sourcepos.Position{{Line: 3, Column: 7}, {Line: 5, Column: 10}}},
+		{"ignored value", "name: example\ndescription: example\nruns: {using: composite, steps: []}\nextra: {first: &value example, second: *value}\n", []sourcepos.Position{{Line: 4, Column: 16}, {Line: 4, Column: 40}}},
 		{"literal text", "name: example\ndescription: 'literal &label *label'\nruns: {using: composite, steps: []}\n# &comment *comment\n", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -26,7 +26,7 @@ func TestManifestRejectsAnchorsAndAliases(t *testing.T) {
 			}
 			root := meta.Root
 			content := slices.Clone(root.Content)
-			var got []results.Position
+			var got []sourcepos.Position
 			for _, d := range Validate(meta) {
 				if strings.Contains(d.Message, "YAML anchors") || strings.Contains(d.Message, "YAML aliases") {
 					if d.Code != CodeYAMLAnchor && d.Code != CodeYAMLAlias || d.Path != filepath.Join("nested", "action.yaml") {

@@ -14,12 +14,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
@@ -32,8 +32,8 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (results.Position{Line: 6, Column: 25}) ||
-		result.Diagnostics[0].End != (results.Position{Line: 6, Column: 32}) {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (sourcepos.Position{Line: 6, Column: 25}) ||
+		result.Diagnostics[0].End != (sourcepos.Position{Line: 6, Column: 32}) {
 		t.Fatalf("escaped CR lost token coordinates: %+v", result.Diagnostics)
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
-	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
 )
 
@@ -261,11 +261,11 @@ func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
 	return answer, nil
 }
 
-func liftRunnerPosition(value wacogo.Val) (results.Position, error) {
+func liftRunnerPosition(value wacogo.Val) (sourcepos.Position, error) {
 	// Runner rejections may address the containing job. This sentinel is not
 	// valid for analyzer diagnostics; all other coordinates use their checks.
 	if record, ok := value.(*wacogo.ValRecord); ok && record.Field("line") == wacogo.ValU32(0) && record.Field("column") == wacogo.ValU32(0) {
-		return results.Position{}, nil
+		return sourcepos.Position{}, nil
 	}
 	return liftPosition(value)
 }

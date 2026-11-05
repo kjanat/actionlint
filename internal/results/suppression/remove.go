@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -17,7 +17,7 @@ import (
 // preserves the directive's spelling, remaining separators and reason. Removing
 // the last selector removes the comment, never YAML or embedded script content.
 // The caller binds the returned edit to its captured source path and revision.
-func Remove(content []byte, position results.Position, rules, allowed []string, names rule.Names) (results.Edit, bool) {
+func Remove(content []byte, position sourcepos.Position, rules, allowed []string, names rule.Names) (results.Edit, bool) {
 	if len(rules) == 0 {
 		return results.Edit{}, false
 	}
@@ -44,7 +44,7 @@ func Remove(content []byte, position results.Position, rules, allowed []string, 
 		return results.Edit{}, false
 	}
 	comment := line[column:]
-	end := results.Position{Line: position.Line, Column: utf8.RuneCountInString(line) + 1}
+	end := sourcepos.Position{Line: position.Line, Column: utf8.RuneCountInString(line) + 1}
 	edit := results.Edit{Start: position, End: end}
 	remaining := slices.DeleteFunc(slices.Clone(declaration.Rules), func(name string) bool { return slices.Contains(rules, name) })
 	if len(remaining) == 0 {
@@ -59,7 +59,7 @@ func Remove(content []byte, position results.Position, rules, allowed []string, 
 			}
 			previous = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(previous), "#"))
 			if !isInlineSuppressionComment(previous) {
-				edit.End = results.Position{Line: position.Line + 1, Column: 1}
+				edit.End = sourcepos.Position{Line: position.Line + 1, Column: 1}
 			}
 		}
 	} else {
@@ -82,7 +82,7 @@ func Remove(content []byte, position results.Position, rules, allowed []string, 
 		}
 		edit.Replacement = comment[:selectorStart] + removeSelectors(comment[selectorStart:selectorEnd], rules) + comment[selectorEnd:]
 	}
-	_, _, err := sourceposition.Range(content, sourcemodel.YAML, edit.Start, edit.End)
+	_, _, err := sourceposition.Range(content, sourcepos.YAML, edit.Start, edit.End)
 	return edit, err == nil
 }
 

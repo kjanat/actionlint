@@ -4,6 +4,7 @@ import (
 	"maps"
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -15,18 +16,18 @@ import (
 func (e *Finding) Canonical(source []byte) results.Diagnostic {
 	source = e.sourceFor(source)
 	end := e.End
-	if end == (results.Position{}) {
-		end = results.Position{Line: e.Start.Line, Column: e.Start.Column + 1}
+	if end == (sourcepos.Position{}) {
+		end = sourcepos.Position{Line: e.Start.Line, Column: e.Start.Column + 1}
 		if e.UnavailableSource.Present() {
 			end = e.Start
 		}
 	}
 	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.RawScriptSource)
-	if !e.UnavailableSource.Present() && e.End == (results.Position{}) && snippet != "" {
+	if !e.UnavailableSource.Present() && e.End == (sourcepos.Position{}) && snippet != "" {
 		end.Column = text.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
 	}
 	if e.EndPosition != nil {
-		end = results.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Col}
+		end = sourcepos.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Col}
 	}
 	reference, fixes := cloneReference(e.Reference), canonicalFixes(e.Fixes, e.Path)
 	if e.UnavailableSource.Present() {

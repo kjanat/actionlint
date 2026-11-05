@@ -8,12 +8,13 @@ import (
 	"strconv"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type Name struct {
 	Value string
-	Start results.Position
+	Start sourcepos.Position
 }
 type Job struct {
 	ID    Name
@@ -22,14 +23,14 @@ type Job struct {
 type node struct {
 	id    string
 	needs []string
-	start results.Position
+	start sourcepos.Position
 }
 
 // Check resolves all declarations before finding cycles. The supplied jobs are
 // source ordered; graph walks use sorted IDs for deterministic cycle selection.
 func Check(jobs []Job) []results.Diagnostic {
 	var findings []results.Diagnostic
-	report := func(pos results.Position, message string) {
+	report := func(pos sourcepos.Position, message string) {
 		findings = append(findings, results.Diagnostic{Rule: "job-needs", Start: pos, Message: message})
 	}
 	nodes := map[string]node{}

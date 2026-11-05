@@ -18,6 +18,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/lsp/transport"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -80,7 +81,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				if !strings.Contains(doc.Text, "bad") {
 					continue
 				}
-				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
+				result = append(result, results.Diagnostic{Path: path, Rule: "test", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []results.Fix{{Description: "replace", Applicability: results.FixSafe, Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []results.Edit{{Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
 			sources := make(map[string]Source, len(docs))
 			for path, doc := range docs {
@@ -311,7 +312,7 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 				if doc.Text == "uses dependency" {
 					return Analysis{
 						Sources:     map[string]Source{dependency: testSource(t, dependency, "\ufeff😀bad\n"), related: relatedSource},
-						Diagnostics: []results.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 1, Column: 5}, Related: []results.Related{{Revision: relatedSource.Revision, Coordinates: relatedSource.Coordinates, Path: related, Message: "related", Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 1, Column: 9}}}}},
+						Diagnostics: []results.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Related: []results.Related{{Revision: relatedSource.Revision, Coordinates: relatedSource.Coordinates, Path: related, Message: "related", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 9}}}}},
 					}, nil
 				}
 			}

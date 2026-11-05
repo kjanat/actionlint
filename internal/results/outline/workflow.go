@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // Workflow describes selected workflow declarations recovered by a parser.
@@ -58,7 +58,7 @@ type workflowWire struct {
 // Jobs appear in source order. Start points to the job key, when available.
 type Job struct {
 	id, name, uses string
-	start          *results.Position
+	start          *sourcepos.Position
 	needs          []string
 	steps          []Step
 }
@@ -67,7 +67,7 @@ type Job struct {
 type JobFields struct {
 	ID    string
 	Name  string
-	Start *results.Position
+	Start *sourcepos.Position
 	Needs []string
 	Uses  string
 	Steps []Step
@@ -88,7 +88,7 @@ func (j Job) ID() string { return j.id }
 func (j Job) Name() string { return j.name }
 
 // Start returns a copy of the job key position, or nil when unknown.
-func (j Job) Start() *results.Position { return clonePosition(j.start) }
+func (j Job) Start() *sourcepos.Position { return clonePosition(j.start) }
 
 // Needs returns the declared job dependencies.
 func (j Job) Needs() []string { return slices.Clone(j.needs) }
@@ -104,13 +104,13 @@ func (j Job) Reference() UsesReference { return ParseWorkflowReference(j.uses) }
 func (j Job) Steps() []Step { return cloneSteps(j.steps) }
 
 type jobWire struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name,omitempty"`
-	Start     *results.Position `json:"start,omitempty"`
-	Needs     []string          `json:"needs"`
-	Uses      string            `json:"uses,omitempty"`
-	Reference UsesReference     `json:"reference,omitempty"`
-	Steps     []Step            `json:"steps"`
+	ID        string              `json:"id"`
+	Name      string              `json:"name,omitempty"`
+	Start     *sourcepos.Position `json:"start,omitempty"`
+	Needs     []string            `json:"needs"`
+	Uses      string              `json:"uses,omitempty"`
+	Reference UsesReference       `json:"reference,omitempty"`
+	Steps     []Step              `json:"steps"`
 }
 
 // MarshalJSON encodes the job's declarations.
@@ -143,7 +143,7 @@ func (j *Job) UnmarshalJSON(data []byte) error {
 // Steps contains the children of a parallel group, in declaration order.
 type Step struct {
 	id, name, kind, uses string
-	start                *results.Position
+	start                *sourcepos.Position
 	steps                []Step
 }
 
@@ -151,7 +151,7 @@ type Step struct {
 type StepFields struct {
 	ID    string
 	Name  string
-	Start *results.Position
+	Start *sourcepos.Position
 	Kind  string
 	Uses  string
 	Steps []Step
@@ -172,7 +172,7 @@ func (s Step) ID() string { return s.id }
 func (s Step) Name() string { return s.name }
 
 // Start returns a copy of the step position, or nil when unknown.
-func (s Step) Start() *results.Position { return clonePosition(s.start) }
+func (s Step) Start() *sourcepos.Position { return clonePosition(s.start) }
 
 // Kind returns run, uses, wait, cancel, parallel or unknown.
 func (s Step) Kind() string { return s.kind }
@@ -188,13 +188,13 @@ func (s Step) Reference() UsesReference { return ParseReference(s.uses) }
 func (s Step) Steps() []Step { return cloneSteps(s.steps) }
 
 type stepWire struct {
-	ID        string            `json:"id,omitempty"`
-	Name      string            `json:"name,omitempty"`
-	Start     *results.Position `json:"start,omitempty"`
-	Kind      string            `json:"kind"`
-	Uses      string            `json:"uses,omitempty"`
-	Reference UsesReference     `json:"reference,omitempty"`
-	Steps     []Step            `json:"steps,omitempty"`
+	ID        string              `json:"id,omitempty"`
+	Name      string              `json:"name,omitempty"`
+	Start     *sourcepos.Position `json:"start,omitempty"`
+	Kind      string              `json:"kind"`
+	Uses      string              `json:"uses,omitempty"`
+	Reference UsesReference       `json:"reference,omitempty"`
+	Steps     []Step              `json:"steps,omitempty"`
 }
 
 // MarshalJSON encodes the step's declarations.
@@ -223,7 +223,7 @@ func (s *Step) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func clonePosition(position *results.Position) *results.Position {
+func clonePosition(position *sourcepos.Position) *sourcepos.Position {
 	if position == nil {
 		return nil
 	}

@@ -3,6 +3,7 @@ package names
 import (
 	"fmt"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -33,7 +34,7 @@ func (n Names) CheckWorkflowRun(references []workflowdecl.StringView) []results.
 		return findings
 	}
 	report := func(pos *workflowlang.Pos, format string, args ...any) {
-		findings = append(findings, results.Diagnostic{Rule: "workflow-run-names", Message: fmt.Sprintf(format, args...), Start: results.Position{Line: pos.Line, Column: pos.Col}})
+		findings = append(findings, results.Diagnostic{Rule: "workflow-run-names", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}})
 	}
 	if !n.complete {
 		return findings

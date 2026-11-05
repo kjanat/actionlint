@@ -3,11 +3,11 @@ package condition
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestCheck(t *testing.T) {
-	start := results.Position{Line: 3, Column: 9}
+	start := sourcepos.Position{Line: 3, Column: 9}
 	for _, test := range []struct {
 		value, message string
 	}{

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -15,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func Check(value string, start results.Position) []results.Diagnostic {
+func Check(value string, start sourcepos.Position) []results.Diagnostic {
 	expr, err, _ := exprsyntax.ParseConditionExpression(value)
 	if err != nil {
 		return nil
