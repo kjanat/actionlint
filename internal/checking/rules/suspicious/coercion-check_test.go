@@ -4,7 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
@@ -34,8 +37,8 @@ func TestSuspiciousCoercion(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(nil)
-			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 			checked := checker.CheckResult(node)
 			if !checked.Valid || len(checked.Findings) != 0 {
 				t.Fatalf("type checking emitted policy findings: %+v", checked)
@@ -70,8 +73,8 @@ func TestCoercionFollowsArgumentDemand(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
-			checker := exprlang.NewChecker(nil)
-			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 			checked := checker.CheckResult(node)
 			if !checked.Valid {
 				t.Fatal(checked.Findings)

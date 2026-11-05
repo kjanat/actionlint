@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -130,7 +132,7 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 }
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
-	checker := exprlang.NewChecker(nil)
+	checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	contexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
 	checker.SetContextTypes(contexts)
 	checker.SetContextAvailability([]string{"custom"})
@@ -143,7 +145,7 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 	if _, errs := checker.Check(custom); len(errs) != 0 {
 		t.Fatalf("scope was not normalized and copied: %v", errs)
 	}
-	other := exprlang.NewChecker(nil)
+	other := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	if _, errs := other.Check(custom); len(errs) == 0 {
 		t.Fatal("custom scope leaked to another checker")
 	}

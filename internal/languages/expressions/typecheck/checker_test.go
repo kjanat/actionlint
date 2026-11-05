@@ -34,8 +34,8 @@ func TestExprContextPropertySuggestions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(nil)
-			checker.SetWorkflowKeyAvailability(tc.key)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
 			_, errs := checker.Check(expr)
 			var messages []string
 			for _, err := range errs {
@@ -57,10 +57,9 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 	for _, receiver := range []string{"inputs", "matrix", "steps", "needs", "jobs", "env", "custom"} {
 		for _, property := range []string{"github_token", "runner_os", "job_workflow_sha"} {
 			t.Run(receiver+"."+property, func(t *testing.T) {
-				checker := NewChecker(nil)
-				checker.ensureVarsCopied()
+				checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 				checker.vars[receiver] = exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"declared": exprtypes.BoolType()}).Type()
-				checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
+				checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
 				checker.availableContexts = append(checker.availableContexts, receiver)
 				expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(receiver + "." + property + "}}"))
 				if err != nil {
@@ -96,9 +95,9 @@ func TestExprDeclaredInputSuggestions(t *testing.T) {
 		{"declared dotted input", "inputs.github_repository", "jobs.<job_id>.steps.run", "", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"github_repository": exprtypes.StringType()})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			checker := NewChecker(nil)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.UpdateInputs(tc.inputs)
-			checker.SetWorkflowKeyAvailability(tc.key)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
 			if tc.key == "" {
 				checker.SetContextAvailability([]string{"github"})
 			}
@@ -144,9 +143,9 @@ func TestExprBareFunctionNames(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				checker := NewChecker(nil)
+				checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 				checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"always": exprtypes.BoolType()}))
-				checker.SetWorkflowKeyAvailability(key)
+				checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
 				_, errs := checker.Check(expr)
 				if tc.want == "" {
 					if len(errs) != 0 {
@@ -168,7 +167,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		checker := NewChecker(nil)
+		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 		checker.vars = maps.Clone(checker.vars)
 		checker.vars["always"] = exprtypes.BoolType()
 		checker.SetContextAvailability([]string{"always"})
@@ -224,7 +223,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "variable",
 			input:    "github",
-			expected: BuiltinGlobalVariableTypes["github"],
+			expected: contextspec.BuiltinGlobalVariableTypes["github"],
 		},
 		{
 			what:     "object property dereference",
@@ -1140,7 +1139,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 				t.Fatal("Parse error:", tc.input)
 			}
 
-			c := NewChecker(&Options{Variables: tc.configVars, Secrets: tc.configSecrets})
+			c := NewChecker(contextspec.DefaultExpressionScope(), &Options{Variables: tc.configVars, Secrets: tc.configSecrets})
 			c.SetContextAvailability([]string{"github", "job", "jobs", "matrix", "steps", "needs", "env", "inputs", "secrets", "vars", "runner"})
 			if tc.funcs != nil {
 				c.funcs = tc.funcs
@@ -1168,9 +1167,9 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 				c.SetContextAvailability(tc.availContexts)
 			}
 			if len(tc.availSPFuncs) > 0 {
-				c.SetSpecialFunctionAvailability(tc.availSPFuncs)
+				c.SetFunctionAvailability(contextspec.FunctionAvailability(tc.availSPFuncs))
 			} else {
-				c.SetSpecialFunctionAvailability(allSPFuncs)
+				c.SetFunctionAvailability(contextspec.FunctionAvailability(allSPFuncs))
 			}
 			ty, errs := c.Check(e)
 			if len(errs) > 0 {
@@ -1706,7 +1705,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				t.Fatal("Parse error:", tc.input)
 			}
 
-			c := NewChecker(&Options{Variables: tc.configVars, Secrets: tc.configSecrets})
+			c := NewChecker(contextspec.DefaultExpressionScope(), &Options{Variables: tc.configVars, Secrets: tc.configSecrets})
 			if tc.funcs != nil {
 				c.funcs = tc.funcs // Set functions for testing
 			}
@@ -1729,9 +1728,9 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				c.SetContextAvailability([]string{"github", "job", "jobs", "matrix", "steps", "needs", "env", "inputs", "secrets", "vars", "runner"})
 			}
 			if tc.availSP != nil {
-				c.SetSpecialFunctionAvailability(tc.availSP)
+				c.SetFunctionAvailability(contextspec.FunctionAvailability(tc.availSP))
 			} else {
-				c.SetSpecialFunctionAvailability(allSP)
+				c.SetFunctionAvailability(contextspec.FunctionAvailability(allSP))
 			}
 
 			_, errs := c.Check(e)
@@ -1760,7 +1759,7 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 			for right := range types {
 				input := left + " " + op + " " + right
 				t.Run(input, func(t *testing.T) {
-					c := NewChecker(nil)
+					c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 					c.vars = types
 					names := make([]string, 0, len(types))
 					for name := range types {
@@ -1811,7 +1810,7 @@ func TestExprBuiltinFunctionSignatures(t *testing.T) {
 }
 
 func TestExprSemanticsCheckerUpdateMatrix(t *testing.T) {
-	c := NewChecker(nil)
+	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	ty := exprtypes.NewEmptyObjectType()
 	prev := c.vars["matrix"]
 	c.UpdateMatrix(ty)
@@ -1826,7 +1825,7 @@ func TestExprSemanticsCheckerUpdateMatrix(t *testing.T) {
 }
 
 func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
-	c := NewChecker(nil)
+	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	ty := exprtypes.NewEmptyObjectType()
 	prev := c.vars["steps"]
 	c.UpdateSteps(ty)
@@ -1842,7 +1841,7 @@ func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
 
 func TestExprSematincsCheckerUpdateDispatchInputsVarType(t *testing.T) {
 	ty := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"foo": exprtypes.NullType()})
-	c := NewChecker(nil)
+	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	c.UpdateDispatchInputs(ty)
 	o := objectPath(t, c.vars["github"], "event", "inputs")
 	if _, ok := o.Property("foo"); !ok {
@@ -1858,7 +1857,7 @@ func TestExprSematincsCheckerUpdateDispatchInputsVarType(t *testing.T) {
 	}
 
 	// Check global value is not polluted
-	o = objectPath(t, BuiltinGlobalVariableTypes["github"], "event")
+	o = objectPath(t, contextspec.BuiltinGlobalVariableTypes["github"], "event")
 	if _, ok := o.Property("inputs"); ok {
 		t.Error("Global github.event.inputs exists", o)
 	}
@@ -1926,7 +1925,7 @@ func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
 	for _, tc := range tests {
 		name := fmt.Sprintf("%v then %v", tc.first, tc.second)
 		t.Run(name, func(t *testing.T) {
-			c := NewChecker(nil)
+			c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			c.UpdateInputs(tc.first)
 			c.UpdateDispatchInputs(tc.second)
 			have := c.vars["inputs"]
@@ -1956,7 +1955,7 @@ func testObjectPropertiesAreInLowerCase(t *testing.T, ty exprtypes.Type) {
 }
 
 func TestBuiltinGlobalVariableTypesValidation(t *testing.T) {
-	for ctx, ty := range BuiltinGlobalVariableTypes {
+	for ctx, ty := range contextspec.BuiltinGlobalVariableTypes {
 		for _, r := range ctx {
 			if 'A' <= r && r <= 'Z' {
 				t.Errorf("Context name must not contain uppercase character because comparison is case insensitive but got %q", ctx)
@@ -2199,7 +2198,7 @@ func TestExprIsConstant(t *testing.T) {
 				t.Fatalf("Parse error for input %q: %s", tc.input, err)
 			}
 
-			c := NewChecker(nil)
+			c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			b := c.IsConstant(e)
 			if b != tc.isConst {
 				t.Fatalf("wanted %v but got %v for input %q", tc.isConst, b, tc.input)
@@ -2220,7 +2219,7 @@ func TestContextReplacementDispatchInputs(t *testing.T) {
 		{exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"event": exprtypes.NewStrictObjectType(nil).Type()}).Type(), true},
 	}
 	for _, github := range githubContexts {
-		checker := NewChecker(nil)
+		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 		contexts := map[string]exprtypes.Type{}
 		if github.present {
 			contexts["GITHUB"] = github.ty

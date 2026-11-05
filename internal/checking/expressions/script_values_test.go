@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -332,7 +333,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			semantic := exprlang.NewChecker(nil)
+			semantic := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			semantic.SetContextAvailability([]string{"steps", "needs", "inputs"})
 			semantic.UpdateSteps(steps)
 			semantic.UpdateNeeds(needs)

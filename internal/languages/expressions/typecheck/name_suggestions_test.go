@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -36,8 +38,8 @@ func TestCloseExpressionNames(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(nil)
-			checker.SetWorkflowKeyAvailability(tc.key)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
 			_, errors := checker.Check(node)
 			if len(errors) != 1 {
 				t.Fatalf("expected one undefined-name finding, got %v", errors)
@@ -56,14 +58,13 @@ func TestCloseExpressionNames(t *testing.T) {
 
 func TestAmbiguousExpressionNames(t *testing.T) {
 	for _, function := range []bool{false, true} {
-		checker := NewChecker(nil)
+		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 		input := "githab.ref"
 		if function {
 			checker.funcs = maps.Clone(checker.funcs)
 			checker.funcs["startswhth"] = []*exprfunctions.FuncSignature{{Name: "startsWhth", Ret: exprtypes.BoolType()}}
 			input = "startsWath()"
 		} else {
-			checker.ensureVarsCopied()
 			checker.vars["githob"] = exprtypes.NewEmptyStrictObjectType().Type()
 			checker.SetContextAvailability([]string{"github", "githob"})
 		}

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -64,7 +66,7 @@ func TestExpressionSpanParserReuse(t *testing.T) {
 		if freshErr != nil || exprsyntax.ExpressionSpan(node) != exprsyntax.ExpressionSpan(fresh) {
 			t.Fatalf("reuse changed parse span for %q", source)
 		}
-		_, findings := exprlang.NewChecker(nil).Check(node)
+		_, findings := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(node)
 		findings = append(findings, checkUntrustedInputs(node)...)
 		for _, finding := range findings {
 			if finding.Offset < 0 || finding.EndOffset < finding.Offset || finding.EndOffset > len(source)-2 {

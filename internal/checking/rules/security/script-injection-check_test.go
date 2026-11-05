@@ -4,7 +4,10 @@ import (
 	"slices"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
@@ -20,8 +23,8 @@ func TestScriptInjectionCombinesIndependentValueSources(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
-			checker := exprlang.NewChecker(nil)
-			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
+			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
 			result := checker.CheckResult(node)
 			if len(result.Findings) != tc.semanticErrors {
 				t.Fatalf("unexpected semantic findings: %v", result.Findings)

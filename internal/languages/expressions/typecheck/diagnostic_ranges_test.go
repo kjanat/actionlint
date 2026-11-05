@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
@@ -22,7 +24,7 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := NewChecker(nil).Check(node)
+			_, findings := NewChecker(contextspec.DefaultExpressionScope(), nil).Check(node)
 			for _, finding := range findings {
 				if !strings.Contains(finding.Message, tc.message) {
 					continue

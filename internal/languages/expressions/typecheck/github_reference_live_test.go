@@ -74,9 +74,8 @@ type githubReferenceExpectation struct {
 	exceptionType string
 }
 
-// Check parse and evaluation separately: Runny reports both failures as a
-// rejected result, while a skipped invalid expression can still return a value.
-func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[string]any, want githubReferenceExpectation) {
+// runGitHubReference invokes a command in the pinned image after checking access.
+func runGitHubReference(t *testing.T, operation, input string, variables map[string]any) ([]byte, string) {
 	t.Helper()
 	image, err := githubReferenceImage()
 	if errors.Is(err, errGitHubReferenceUnavailable) {
@@ -86,7 +85,7 @@ func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[strin
 		t.Fatal(err)
 	}
 	if image == "" {
-		return
+		return nil, ""
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
@@ -99,7 +98,7 @@ func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[strin
 		args = append(args, "-e", "RUNNY_CONTEXT="+string(data))
 	}
 	// The next runner implements the current reference, including case().
-	args = append(args, image, "eval-expr", "--engine", "next", "--strict-json")
+	args = append(args, image, operation, "--engine", "next", "--strict-json")
 	command := exec.CommandContext(ctx, "docker", args...)
 	command.Stdin = strings.NewReader(input)
 	var stderr bytes.Buffer
@@ -107,6 +106,17 @@ func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[strin
 	output, err := command.Output()
 	if err != nil {
 		t.Fatalf("Runny failed: %v\n%s\n%s", err, stderr.String(), output)
+	}
+	return output, image
+}
+
+// Check parse and evaluation separately: Runny reports both failures as a
+// rejected result, while a skipped invalid expression can still return a value.
+func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[string]any, want githubReferenceExpectation) {
+	t.Helper()
+	output, image := runGitHubReference(t, "eval-expr", input, variables)
+	if image == "" {
+		return
 	}
 	var report struct {
 		RunnerSHA string `json:"runnerSha"`
@@ -156,4 +166,31 @@ func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[strin
 		t.Fatalf("unexpected reference failure details; want %q: %s", want.exceptionType, output)
 	}
 	t.Logf("verified with %s, runner %s", image, report.RunnerSHA)
+}
+
+func checkGitHubWorkflowReference(t *testing.T, workflow string, wantAccepted bool) {
+	t.Helper()
+	output, image := runGitHubReference(t, "parse-workflow", workflow, nil)
+	if image == "" {
+		return
+	}
+	var report struct {
+		RunnerSHA string `json:"runnerSha"`
+		Engines   []struct {
+			Engine         string            `json:"engine"`
+			Accepted       *bool             `json:"accepted"`
+			TemplateErrors []json.RawMessage `json:"templateErrors"`
+		} `json:"engines"`
+	}
+	if err := json.Unmarshal(output, &report); err != nil {
+		t.Fatalf("invalid Runny workflow response: %v\n%s", err, output)
+	}
+	if report.RunnerSHA == "" || len(report.Engines) != 1 || report.Engines[0].Engine != "next" || report.Engines[0].Accepted == nil {
+		t.Fatalf("missing workflow reference identity or outcome: %s", output)
+	}
+	engine := report.Engines[0]
+	if *engine.Accepted != wantAccepted || (len(engine.TemplateErrors) == 0) != wantAccepted {
+		t.Fatalf("Runny workflow acceptance mismatch, want accepted=%t: %s", wantAccepted, output)
+	}
+	t.Logf("verified workflow with %s, runner %s", image, report.RunnerSHA)
 }

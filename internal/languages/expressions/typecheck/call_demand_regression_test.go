@@ -4,7 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -490,8 +493,8 @@ func checkCallDemandResult(t *testing.T, input string) ExpressionCheckResult {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(nil)
-	checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 	return checker.CheckResult(node)
 }
 

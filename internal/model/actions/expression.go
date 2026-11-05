@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -114,7 +116,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 					if _, declared := inputs[name]; declared && slices.Contains(avail.contexts, "inputs") {
 						suggestion = "inputs." + name
 					} else {
-						suggestion = exprlang.ContextPropertySuggestion(name, avail.contexts, exprlang.BuiltinGlobalVariableTypes)
+						suggestion = exprlang.ContextPropertySuggestion(name, avail.contexts, contextspec.BuiltinGlobalVariableTypes)
 					}
 					if suggestion == "" {
 						suggestion = exprlang.CloseName(name, avail.contexts)

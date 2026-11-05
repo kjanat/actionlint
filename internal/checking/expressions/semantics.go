@@ -119,7 +119,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	if rule.jobReferences != nil {
 		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
 	}
-	c := exprlang.NewChecker(&options)
+	c := exprlang.NewChecker(contextspec.DefaultExpressionScope(), &options)
 	if rule.eventTy != nil {
 		c.UpdateEvent(*rule.eventTy)
 	}
@@ -159,7 +159,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 		if len(ctx) == 0 {
 			rule.debug("No context availability was found for workflow key %q", workflowKey)
 		}
-		c.SetWorkflowKeyAvailability(workflowKey)
+		c.SetAvailability(contextspec.WorkflowExpressionScope(workflowKey))
 	}
 
 	if rule.compositeScript {

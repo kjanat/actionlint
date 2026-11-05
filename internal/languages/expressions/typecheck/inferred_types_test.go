@@ -3,7 +3,10 @@ package typecheck
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
@@ -13,7 +16,7 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture is not a function call")
 	}
-	checker := NewChecker(nil)
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"matrix"})
 	checker.UpdateMatrix(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.NumberType()}))
 	first := checker.CheckResult(node)
@@ -46,7 +49,7 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 
 func TestInferredTypesPreserveInvalidCallReturnContract(t *testing.T) {
 	node := exprsyntax.ParseAssignedExpression("${{ startsWith(true) }}")
-	result := NewChecker(nil).CheckResult(node)
+	result := NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(node)
 	got, known := result.Types.TypeOf(node)
 	if result.Valid || !known || got.Kind() != exprtypes.KindBool {
 		t.Fatalf("invalid call lost boolean return type: type=%v known=%t result=%+v", got, known, result)
@@ -57,7 +60,7 @@ func TestInferredTypesCoverNodesVisitedThroughNarrowing(t *testing.T) {
 	for _, source := range []string{"(inputs.enabled && 1) || 2", "(!inputs.enabled || true) && false", "case(inputs.enabled, toJSON(inputs.count), 'fallback')"} {
 		t.Run(source, func(t *testing.T) {
 			node := exprsyntax.ParseAssignedExpression("${{ " + source + " }}")
-			checker := NewChecker(nil)
+			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetContextAvailability([]string{"inputs"})
 			checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType()}))
 			result := checker.CheckResult(node)

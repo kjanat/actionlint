@@ -3,7 +3,10 @@ package suspicious
 import (
 	"testing"
 
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
@@ -29,8 +32,8 @@ func TestCaseInsensitiveConditionsUseCheckedCalls(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(nil)
-			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
+			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 			result := checker.CheckResult(root)
 			if len(result.Findings) != tc.errors {
 				t.Fatalf("type findings=%v, want %d", result.Findings, tc.errors)
