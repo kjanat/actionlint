@@ -46,6 +46,8 @@ func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
 	const expression = "${{ format('{0}', startsWith(true, 'TR')) }}"
 	for _, tc := range []struct{ name, source string }{
 		{"output value", "name: example\ndescription: example\noutputs:\n  value:\n    description: value\n    value: " + expression + "\nruns: {using: composite, steps: []}\n"},
+		{"docker environment value", "name: example\ndescription: example\nruns:\n  using: docker\n  image: docker://alpine:3\n  env:\n    VALUE: " + expression + "\n"},
+		{"docker environment key", "name: example\ndescription: example\nruns:\n  using: docker\n  image: docker://alpine:3\n  env:\n    \"" + expression + "\": value\n"},
 		{"input default", "name: example\ndescription: example\ninputs:\n  value:\n    description: value\n    default: " + expression + "\nruns: {using: composite, steps: []}\n"},
 		{"composite step", "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - name: " + expression + "\n      run: echo ok\n      shell: bash\n"},
 	} {
