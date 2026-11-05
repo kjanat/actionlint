@@ -114,7 +114,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	if rule.jobReferences != nil {
 		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
 	}
-	c := exprlang.NewChecker(checkUntrusted, &options)
+	c := exprlang.NewChecker(&options)
 	if rule.eventTy != nil {
 		c.UpdateEvent(*rule.eventTy)
 	}
@@ -163,6 +163,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	result := c.CheckResult(expr)
 	ty, errs := result.Type, result.Findings
 	if checkUntrusted {
+		errs = append(errs, checkUntrustedInputs(expr)...)
 		errs = append(errs, checkSecretInterpolations(expr, result.Findings)...)
 	}
 	for _, finding := range permissiveJSONCalls(expr) {

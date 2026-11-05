@@ -23,7 +23,7 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := NewChecker(false, nil).Check(node)
+			_, findings := NewChecker(nil).Check(node)
 			for _, finding := range findings {
 				if !strings.Contains(finding.Message, tc.message) {
 					continue
@@ -109,37 +109,5 @@ func TestBareConditionSyntheticDelimiterSpans(t *testing.T) {
 				t.Fatalf("EOF span %d:%d, want %d:%d", err.Offset, err.EndOffset, len(source), len(source))
 			}
 		})
-	}
-}
-
-func TestUntrustedExpressionSpans(t *testing.T) {
-	for _, expression := range []string{`github.event.issue.title`, `github['event']['issue']['title']`, `github.event.*.body`, `github.event.issue`} {
-		for _, serialized := range []bool{false, true} {
-			if !serialized && expression == `github.event.issue` {
-				continue
-			}
-			source := expression
-			if serialized {
-				source = "toJSON(" + expression + ")"
-			}
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, findings := NewChecker(true, nil).Check(node)
-			found := false
-			for _, finding := range findings {
-				if !strings.Contains(finding.Message, "potentially untrusted") {
-					continue
-				}
-				found = true
-				if got := source[finding.Offset:finding.EndOffset]; got != expression {
-					t.Fatalf("%s range %q, want %q", source, got, expression)
-				}
-			}
-			if !found {
-				t.Fatalf("no untrusted finding for %s", source)
-			}
-		}
 	}
 }

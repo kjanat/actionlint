@@ -20,7 +20,7 @@ func TestCheckSelectionWithoutRepositoryConfig(t *testing.T) {
 			if enabled {
 				checks = tc.checks
 			}
-			checker := NewChecker(false, &Options{Checks: checks})
+			checker := NewChecker(&Options{Checks: checks})
 			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.if")
 			node, err, _ := exprsyntax.ParseConditionExpression(tc.source)
 			if err != nil {

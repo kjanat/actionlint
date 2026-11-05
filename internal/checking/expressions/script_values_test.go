@@ -330,7 +330,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			semantic := exprlang.NewChecker(false, nil)
+			semantic := exprlang.NewChecker(nil)
 			semantic.SetContextAvailability([]string{"steps", "needs", "inputs"})
 			semantic.UpdateSteps(steps)
 			semantic.UpdateNeeds(needs)

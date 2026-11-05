@@ -36,7 +36,7 @@ func TestCloseExpressionNames(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(false, nil)
+			checker := NewChecker(nil)
 			checker.SetWorkflowKeyAvailability(tc.key)
 			_, errors := checker.Check(node)
 			if len(errors) != 1 {
@@ -56,7 +56,7 @@ func TestCloseExpressionNames(t *testing.T) {
 
 func TestAmbiguousExpressionNames(t *testing.T) {
 	for _, function := range []bool{false, true} {
-		checker := NewChecker(false, nil)
+		checker := NewChecker(nil)
 		input := "githab.ref"
 		if function {
 			checker.funcs = maps.Clone(checker.funcs)

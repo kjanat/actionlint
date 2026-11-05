@@ -1,7 +1,10 @@
-package typecheck
+package expressions
 
 import (
+	"fmt"
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
@@ -216,7 +219,7 @@ type UntrustedInputChecker struct {
 	filteringObject bool
 	cur             []*UntrustedInputMap
 	start           exprsyntax.Node
-	errs            []*Error
+	errs            []*exprlang.Error
 	safeCalls       int
 	booleanContexts int
 	visits          []untrustedInputVisit
@@ -232,7 +235,7 @@ type untrustedInputVisit struct {
 func NewUntrustedInputChecker(roots UntrustedInputSearchRoots) *UntrustedInputChecker {
 	return &UntrustedInputChecker{
 		roots: roots,
-		errs:  []*Error{},
+		errs:  []*exprlang.Error{},
 	}
 }
 
@@ -358,7 +361,7 @@ func (u *UntrustedInputChecker) endInput(serialized bool) {
 
 func (u *UntrustedInputChecker) reportInputs(start exprsyntax.Node, inputs []string) {
 	if len(inputs) == 1 {
-		err := errorfAtExpr(untrustedInterpolation,
+		err := scriptInjectionIssuef("untrusted-interpolation",
 			start,
 			"%q is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
 			inputs[0],
@@ -367,7 +370,7 @@ func (u *UntrustedInputChecker) reportInputs(start exprsyntax.Node, inputs []str
 	} else if len(inputs) > 1 {
 		// When multiple untrusted inputs are detected, it means the expression extracts multiple properties with object
 		// filter syntax. Show all properties in error message.
-		err := errorfAtExpr(untrustedInterpolation,
+		err := scriptInjectionIssuef("untrusted-interpolation",
 			start,
 			"object filter extracts potentially untrusted properties %s. avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
 			messages.SortedQuotes(inputs),
@@ -547,8 +550,13 @@ func (u *UntrustedInputChecker) OnVisitEnd() {
 
 // Errs returns errors detected by this checker. This method should be called after visiting all
 // nodes in a syntax tree.
-func (u *UntrustedInputChecker) Errs() []*Error {
-	return detachErrors(u.errs)
+func (u *UntrustedInputChecker) Errs() []*exprlang.Error {
+	out := make([]*exprlang.Error, len(u.errs))
+	for i, issue := range u.errs {
+		copied := *issue
+		out[i] = &copied
+	}
+	return out
 }
 
 // Init initializes a state of checker.
@@ -558,4 +566,22 @@ func (u *UntrustedInputChecker) Init() {
 	u.booleanContexts = 0
 	u.visits = u.visits[:0]
 	u.reset()
+}
+
+func scriptInjectionIssuef(code string, node exprsyntax.Node, format string, args ...any) *exprlang.Error {
+	span := exprsyntax.ExpressionSpan(node)
+	return &exprlang.Error{Rule: "script-injection", Code: code, Message: fmt.Sprintf(format, args...), Offset: span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column}
+}
+
+func checkUntrustedInputs(expr exprsyntax.Node) []*exprlang.Error {
+	checker := NewUntrustedInputChecker(BuiltinUntrustedInputs)
+	exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
+		if entering {
+			checker.OnVisitNodeEnter(node)
+		} else {
+			checker.OnVisitNodeLeave(node)
+		}
+	})
+	checker.OnVisitEnd()
+	return checker.Errs()
 }

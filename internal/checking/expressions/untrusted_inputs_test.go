@@ -1,4 +1,4 @@
-package typecheck
+package expressions
 
 import (
 	"regexp"
@@ -855,4 +855,38 @@ func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
 			}
 		}
 	})
+}
+
+func FuzzUntrustedInputTraversal(f *testing.F) {
+	for _, source := range []string{"github.event.head_commit.message", "format('{0} {1}', matrix.os, runner.arch)", "success() && !cancelled()"} {
+		f.Add(source)
+	}
+	f.Fuzz(func(t *testing.T, source string) {
+		node, issue := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+		if issue != nil {
+			return
+		}
+		for _, finding := range checkUntrustedInputs(node) {
+			if finding.Offset < 0 || finding.EndOffset < finding.Offset || finding.EndOffset > len(source) {
+				t.Fatalf("invalid script-injection range: %+v", finding)
+			}
+		}
+	})
+}
+
+func BenchmarkUntrustedInputs(b *testing.B) {
+	nodes := make([]exprsyntax.Node, 0, len(testAllUntrustedInputs))
+	for _, source := range testAllUntrustedInputs {
+		node, issue := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+		if issue != nil {
+			b.Fatal(issue)
+		}
+		nodes = append(nodes, node)
+	}
+	b.ResetTimer()
+	for range b.N {
+		for _, node := range nodes {
+			checkUntrustedInputs(node)
+		}
+	}
 }
