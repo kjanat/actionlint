@@ -1,0 +1,42 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # 'shell' is not valid on a 'wait' step
+      - wait: build
+        shell: bash
+        if: success()
+        env:
+          FOO: bar
+        timeout-minutes: 1
+      # 'working-directory' is not valid on a 'cancel' step
+      - cancel: build
+        working-directory: /tmp
+        if: success()
+        env:
+          FOO: bar
+        timeout-minutes: 1
+      # 'shell' is not valid on a 'parallel' step
+      - parallel:
+          - run: echo a
+        shell: bash
+        id: parallel
+        name: Parallel
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 1
+        env:
+          FOO: bar
+      # invalid step nested in 'parallel' (neither run nor uses) -> recursion must lint it
+      - parallel:
+          - foo: bar
+      # 'cancel' takes a single step ID, not a list
+      - cancel: [a, b]
+      # 'wait-all' accepts true or a bare key, but not false
+      - wait-all: false
+      - wait-all: oops
+      # 'wait' and 'wait-all' cannot be combined in one step
+      - wait: build
+        wait-all:

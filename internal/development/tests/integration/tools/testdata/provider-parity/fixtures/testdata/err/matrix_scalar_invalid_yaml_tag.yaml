@@ -1,0 +1,84 @@
+on: push
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # The value does not match the core schema production of its tag.
+        binary_int:
+          - v: !!int 0b10
+        underscored_int:
+          - v: !!int 1_000
+        word_bool:
+          - v: !!bool yes
+        named_null:
+          - v: !!null nope
+        # The tag picks the production, so a hexadecimal is not a float and a
+        # decimal fraction is not an integer.
+        hex_float:
+          - v: !!float 0x1F
+        fraction_int:
+          - v: !!int 1.5
+        infinite_int:
+          - v: !!int .inf
+        # Only "!!str" is available on a quoted or block scalar.
+        quoted_int:
+          - v: !!int "5"
+        single_quoted_bool:
+          - v: !!bool 'true'
+        folded_int:
+          - v: !!int >-
+              5
+        literal_null:
+          - v: !!null |-
+              null
+        # A key of a matrix object carries a tag just like a value does.
+        tagged_key:
+          - !!int 0b10: value
+        # A rejected scalar falls back to string, so it is reported once here and
+        # not again where it is used.
+        obj:
+          - props:
+              foo: bar
+        rejected_index:
+          - v: !!int "5"
+        # The core schema has no tag beyond these five.
+        timestamp:
+          - v: !!timestamp 2026-08-21
+        binary:
+          - v: !!binary aGk=
+        own_tag:
+          - v: !foo bar
+        verbatim_tag:
+          - v: !<tag:example.com,2026:thing> baz
+        # These stay valid.
+        tagged_str:
+          - v: !!str 3.11
+        quoted_str:
+          - v: !!str "3.10"
+        folded_str:
+          - v: !!str >-
+              3.12
+        good_int:
+          - v: !!int 0x1F
+        good_bool:
+          - v: !!bool True
+        good_null:
+          - v: !!null ~
+        good_float:
+          - v: !!float .inf
+        exponent_float:
+          - v: !!float 1e5
+        # A matrix row name, the "include" and "exclude" keys themselves, and the
+        # keys of their entries all carry a tag just like a value does.
+        !!int 0b10:
+          - 1
+          - 2
+        !!int exclude:
+          - !!int 0b10: 1
+        !!bool include:
+          - !!int 0b10: 2
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ matrix.tagged_str.v }}"
+      - run: echo "${{ matrix.obj.props[matrix.rejected_index.v] }}"

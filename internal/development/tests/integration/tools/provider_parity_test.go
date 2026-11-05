@@ -370,7 +370,7 @@ func TestParityRevisionPathsPortable(t *testing.T) {
 func TestProviderParityFixtures(t *testing.T) {
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "fixtures")
-	t.Chdir(filepath.Join("internal", "development", "tests", "integration", "workflow"))
+	t.Chdir(filepath.Join("internal", "development", "tests", "integration", "tools", "testdata", "provider-parity", "fixtures"))
 	repository, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
