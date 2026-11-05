@@ -1,33 +1,33 @@
-package typecheck
+package context
 
 import (
-	"maps"
 	"strings"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
-// withEventGuard scopes narrowing to the evaluated branch without mutating a
-// shared context, leaking assumptions to later expressions, or changing lookup.
-func (sema *Checker) withEventGuard(guard exprsyntax.Node, truth bool, check func() exprtypes.Type) exprtypes.Type {
-	gh, ok := sema.vars["github"].Object()
+// NarrowEventTypes selects event payload variants that can reach the branch.
+// Missing context data or unknown guards cannot eliminate a possible variant.
+func NarrowEventTypes(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+	current, _ := lookup("github")
+	github, ok := current.Object()
 	if !ok {
-		return check()
+		return nil, true
 	}
-	event, ok := gh.Property("event")
+	event, ok := github.Property("event")
 	if !ok {
-		return check()
+		return nil, true
 	}
 	payload, ok := event.Object()
+	if !ok {
+		return nil, true
+	}
 	variants := payload.EventVariants()
-	if !ok || len(variants) == 0 {
-		return check()
+	if len(variants) == 0 {
+		return nil, true
 	}
 	selected := make([]exprtypes.EventVariant, 0, len(variants))
 	for _, variant := range variants {
@@ -37,18 +37,12 @@ func (sema *Checker) withEventGuard(guard exprsyntax.Node, truth bool, check fun
 		}
 	}
 	if len(selected) == 0 {
-		// No configured trigger can evaluate this branch. Its payload accesses
-		// and constant evaluation must not produce findings.
-		return exprtypes.AnyType()
+		return nil, false
 	}
 	if len(selected) == len(variants) {
-		return check()
+		return nil, true
 	}
-	previous := sema.vars
-	sema.vars = maps.Clone(previous)
-	sema.vars["github"] = gh.With("event", exprtypes.NewEventType(selected).Type()).Type()
-	defer func() { sema.vars = previous }()
-	return check()
+	return map[string]exprtypes.Type{"github": github.With("event", exprtypes.NewEventType(selected).Type()).Type()}, true
 }
 
 func eventGuardValue(node exprsyntax.Node, variant exprtypes.EventVariant) (bool, bool) {
