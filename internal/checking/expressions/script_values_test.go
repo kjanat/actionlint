@@ -337,19 +337,20 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			semantic.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 				"step": exprtypes.StringType(), "job": exprtypes.StringType(),
 			}))
-			typeOf, errs := semantic.Check(node)
+			checked := semantic.CheckResult(node)
+			typeOf, errs := checked.Type, checked.Findings
 			if len(errs) != 0 {
 				t.Fatalf("expression did not typecheck: %v", errs)
 			}
 			for _, position := range []struct {
 				name string
-				pos  exprlang.ScriptPosition
+				pos  scriptInsertionKind
 				want bool
 			}{
-				{"shell word", exprlang.ScriptShellWord, tc.wordSafe},
-				{"data argument", exprlang.ScriptShellArgument, tc.argument},
+				{"shell word", shellWordInsertion, tc.wordSafe},
+				{"data argument", shellArgumentInsertion, tc.argument},
 			} {
-				findings := semantic.CheckScriptInterpolation(node, typeOf, position.pos, func(node exprsyntax.Node) bool {
+				findings := checkScriptInterpolation(node, typeOf, checked.Types, position.pos, func(node exprsyntax.Node) bool {
 					return rule.safeScriptStatusSelector(node)
 				})
 				if (len(findings) == 0) != position.want {

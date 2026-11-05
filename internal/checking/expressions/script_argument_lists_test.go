@@ -61,3 +61,16 @@ func TestClosedScriptArgumentLists(t *testing.T) {
 		})
 	}
 }
+
+func TestSafeScriptArguments(t *testing.T) {
+	for _, text := range []string{"", "--allow-no-files --diff ", "--excludes .github", "--flag\tvalue", "if fi 2"} {
+		if !safeScriptArguments(text) {
+			t.Fatalf("literal argument list rejected: %q", text)
+		}
+	}
+	for _, text := range []string{"a; id", "$(id)", "`id`", "x\ny", "x\ry", "x\u00a0y", "x|y", "x>y", "x<y", "x#y", "x'y", `x"y`, `x\y`, "*.go", "x=y"} {
+		if safeScriptArguments(text) {
+			t.Fatalf("shell syntax accepted: %q", text)
+		}
+	}
+}

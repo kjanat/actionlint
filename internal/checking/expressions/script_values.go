@@ -28,10 +28,10 @@ func (proof scriptValueProof) safe(argument bool) bool {
 }
 
 func scriptLiteralProof(value string) scriptValueProof {
-	if exprlang.SafeScriptWord(value) {
+	if safeScriptWord(value) {
 		return scriptLiteralWord
 	}
-	if exprlang.SafeScriptLiteral(value) {
+	if safeScriptLiteral(value) {
 		return scriptArgumentOnly
 	}
 	return scriptUnsafe
@@ -61,7 +61,7 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 		return false
 	}
 	for _, text := range values {
-		if !exprlang.SafeScriptArguments(text) {
+		if !safeScriptArguments(text) {
 			return false
 		}
 	}
