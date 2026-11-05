@@ -3,6 +3,8 @@ package expressions
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
@@ -32,7 +34,7 @@ func TestDiagnosticIdentities(t *testing.T) {
 				checker.SetContextAvailability([]string{"github"})
 				_, findings = checker.Check(node)
 				if tc.script {
-					findings = append(findings, checkUntrustedInputs(node)...)
+					findings = append(findings, security.ScriptInjection(node, findings)...)
 				}
 			}
 			if len(findings) == 0 {

@@ -1,3 +1,3 @@
-// Package expressions projects workflow declarations and dependency metadata into
-// expression contexts, checks field types and maps diagnostics to source spans.
+// Package expressions builds workflow-specific expression contexts, checks field
+// types, invokes expression rules and maps findings to YAML source spans.
 package expressions

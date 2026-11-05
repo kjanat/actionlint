@@ -1,4 +1,4 @@
-package expressions
+package correctness
 
 import (
 	"strings"
@@ -26,7 +26,7 @@ func TestPermissiveJSONCalls(t *testing.T) {
 	} {
 		expression := "fromJSON('" + strings.ReplaceAll(tc.input, "'", "''") + "')"
 		node := exprsyntax.ParseAssignedExpression("${{ " + expression + " }}")
-		findings := permissiveJSONCalls(node)
+		findings := PermissiveJSONCalls(node)
 		if len(findings) != tc.count {
 			t.Fatalf("%s: got %+v, want %d", expression, findings, tc.count)
 		}
@@ -47,7 +47,7 @@ func TestPermissiveJSONCalls(t *testing.T) {
 		{`fromJSON(toJSON(fromJSON('[1,]')))`, 1},
 	} {
 		node := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
-		if findings := permissiveJSONCalls(node); len(findings) != tc.count {
+		if findings := PermissiveJSONCalls(node); len(findings) != tc.count {
 			t.Fatalf("%s: got %+v, want %d", tc.expression, findings, tc.count)
 		}
 	}

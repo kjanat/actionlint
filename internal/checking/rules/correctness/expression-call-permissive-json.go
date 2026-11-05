@@ -1,4 +1,4 @@
-package expressions
+package correctness
 
 import (
 	"encoding/json"
@@ -14,9 +14,9 @@ import (
 	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
-// permissiveJSONCalls locates known fromJSON arguments accepted only by the
+// PermissiveJSONCalls locates known fromJSON arguments accepted only by the
 // runner's loose reader. It does not change semantic validity or inferred types.
-func permissiveJSONCalls(expr exprsyntax.Node) []*exprlang.Error {
+func PermissiveJSONCalls(expr exprsyntax.Node) []*exprlang.Error {
 	var findings []*exprlang.Error
 	exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
 		call, ok := node.(*exprsyntax.FuncCallNode)

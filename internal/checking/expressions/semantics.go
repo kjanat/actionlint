@@ -4,6 +4,10 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
+	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -163,10 +167,9 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	result := c.CheckResult(expr)
 	ty, errs := result.Type, result.Findings
 	if checkUntrusted {
-		errs = append(errs, checkUntrustedInputs(expr)...)
-		errs = append(errs, checkSecretInterpolations(expr, result.Findings)...)
+		errs = append(errs, security.ScriptInjection(expr, result.Findings)...)
 	}
-	for _, finding := range permissiveJSONCalls(expr) {
+	for _, finding := range correctness.PermissiveJSONCalls(expr) {
 		rule.exprFinding(finding, line, col, "info")
 	}
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule == "script-injection" }))
@@ -203,7 +206,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 		rule.exprError(err, line, col)
 	}
 	if rule.options.UnsoundTernary {
-		for _, finding := range checkUnsoundTernaries(expr) {
+		for _, finding := range correctness.UnsoundTernary(expr) {
 			rule.exprError(finding, line, col)
 		}
 	}
