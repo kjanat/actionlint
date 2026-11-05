@@ -373,26 +373,26 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			}
 			source += "    runs-on: " + quoted(tc.labels) + "\n    steps:\n      - run: echo ok\n"
 			fixture := runnerSource(t, source)
-			errs := Check(fixture.Views["test"], tc.known)
+			errs := LabelRejections(fixture.Views["test"], KnownLabels(tc.known))
 			prepared, err := Prepare(t.Context(), fixture.Snapshot, tc.known, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			provided := prepared.Job(fixture.Views["test"]).Findings
+			provided := prepared.Job(fixture.Views["test"]).Rejections
 			wantProvided := tc.errs
 			if len(provided) != len(wantProvided) {
 				t.Fatalf("provider: want %d findings, got %v", len(wantProvided), provided)
 			}
 			for i, want := range wantProvided {
-				if !strings.Contains(provided[i].Message, want) {
-					t.Fatalf("provider: %q missing from %q", want, provided[i].Message)
+				if !strings.Contains(provided[i].Reason, want) {
+					t.Fatalf("provider: %q missing from %q", want, provided[i].Reason)
 				}
 			}
 			if len(errs) != len(tc.errs) {
 				t.Fatalf("%d error(s) are wanted but got %d error(s) actually: %v", len(tc.errs), len(errs), errs)
 			}
 			for i, want := range tc.errs {
-				have := errs[i].Message
+				have := errs[i].Reason
 				if !strings.Contains(have, want) {
 					t.Fatalf("%q is not contained in error message of errs[%d]: %q", want, i, have)
 				}
@@ -402,7 +402,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 }
 
 func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
-	if errs := Check(workflowdecl.JobView{}, nil); len(errs) != 0 {
+	if errs := LabelRejections(workflowdecl.JobView{}, KnownLabels(nil)); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 }
@@ -413,15 +413,15 @@ func TestUbuntuRunnerArchitectures(t *testing.T) {
 		for _, x64 := range []string{"ubuntu-" + version, "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores"} {
 			t.Run(x64+"/"+arm, func(t *testing.T) {
 				fixture := runnerWorkflow(t, "["+strconv.Quote(x64)+", "+strconv.Quote(arm)+"]")
-				errs := Check(fixture.Views["test"], nil)
-				if len(errs) != 1 || !strings.Contains(errs[0].Message, "conflicts with") {
+				errs := LabelRejections(fixture.Views["test"], KnownLabels(nil))
+				if len(errs) != 1 || !strings.Contains(errs[0].Reason, "conflicts with") {
 					t.Fatalf("incompatible architectures %s and %s: got %v", x64, arm, errs)
 				}
 			})
 		}
 		t.Run("linux/"+arm, func(t *testing.T) {
 			fixture := runnerWorkflow(t, "[linux, "+strconv.Quote(arm)+"]")
-			if errs := Check(fixture.Views["test"], nil); len(errs) != 0 {
+			if errs := LabelRejections(fixture.Views["test"], KnownLabels(nil)); len(errs) != 0 {
 				t.Fatalf("Linux must remain compatible with %s: %v", arm, errs)
 			}
 		})

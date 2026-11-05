@@ -30,13 +30,12 @@ type Traits struct {
 // Each value is owned by its reader.
 type JobKnowledge struct {
 	Traits
-	Findings []results.Diagnostic
-	Answers  []runnerapi.Answer
+	Rejections []runnerapi.Rejection
+	Answers    []runnerapi.Answer
 }
 
-// jobRecord is the stored form of JobKnowledge. Runner findings are always
-// runner-label rejections, so they are held as plain values; every reader
-// receives fresh diagnostics and answers and cannot alter another's view.
+// jobRecord stores runner traits, rejections and answers. Each query returns
+// detached slices so readers cannot change the stored knowledge.
 type jobRecord struct {
 	traits     Traits
 	rejections []runnerapi.Rejection
@@ -44,7 +43,7 @@ type jobRecord struct {
 }
 
 func (r jobRecord) knowledge() JobKnowledge {
-	return JobKnowledge{Traits: r.traits, Findings: labelFindings(r.rejections), Answers: detachAnswers(r.answers)}
+	return JobKnowledge{Traits: r.traits, Rejections: slices.Clone(r.rejections), Answers: detachAnswers(r.answers)}
 }
 
 // Knowledge contains prepared runner information for each job in a document.
@@ -271,12 +270,12 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 		if err != nil {
 			return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
 		}
-		// Supplied snapshots gate diagnostics with the same freshness and
+		// Supplied snapshots gate label rejections with the same freshness and
 		// completeness policy as their answers. No snapshot uses the fresh catalog.
 		if builtinLabels && (!hasSnapshot || options.Snapshot.Freshness == runnerapi.Fresh && options.Snapshot.Complete) {
-			// Provider answers describe execution alternatives. Built-in declaration
-			// spelling and execution compatibility share Check's diagnostic owner.
-			record.rejections = labelRejections(span.job, custom)
+			// Provider answers describe execution alternatives. Built-in rejections
+			// also describe spelling errors in declared but excluded alternatives.
+			record.rejections = LabelRejections(span.job, custom)
 		}
 		jobs[span.job] = record
 	}

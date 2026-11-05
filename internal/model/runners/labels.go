@@ -124,33 +124,9 @@ func KnownLabels(patterns []string) LabelSet {
 	return LabelSet{patterns: slices.Clone(patterns), known: true}
 }
 
-// Check owns built-in runner-label diagnostics. Spelling is checked on declared
-// alternatives; compatibility is checked only on execution selectors.
-func Check(job workflowdecl.JobView, customLabels []string) []results.Diagnostic {
-	return CheckWithLabels(job, KnownLabels(customLabels))
-}
-
-// CheckWithLabels retains built-in compatibility checks when repository labels
-// are unavailable; unavailable names do not establish an unknown-label finding.
-func CheckWithLabels(job workflowdecl.JobView, customLabels LabelSet) []results.Diagnostic {
-	return labelFindings(labelRejections(job, customLabels))
-}
-
-// labelFindings reports runner-label rejections as fresh diagnostics.
-func labelFindings(rejections []runner.Rejection) []results.Diagnostic {
-	if len(rejections) == 0 {
-		return nil
-	}
-	findings := make([]results.Diagnostic, len(rejections))
-	for i, rejection := range rejections {
-		findings[i] = results.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}
-	}
-	return findings
-}
-
-// labelRejections lists the distinct built-in label rejections of a job, in
-// the order they were found.
-func labelRejections(job workflowdecl.JobView, customLabels LabelSet) []runner.Rejection {
+// LabelRejections returns spelling and compatibility rejections without assigning a lint rule.
+// Unknown repository labels do not establish that an unrecognized name is invalid.
+func LabelRejections(job workflowdecl.JobView, customLabels LabelSet) []runner.Rejection {
 	if !job.Present() {
 		return nil
 	}

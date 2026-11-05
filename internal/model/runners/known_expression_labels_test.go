@@ -36,8 +36,8 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			errs := runnerlang.Check(runnerJobView(t, source), nil)
-			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want)) {
+			errs := runnerlang.LabelRejections(runnerJobView(t, source), runnerlang.KnownLabels(nil))
+			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Reason, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}
 		})

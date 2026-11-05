@@ -43,7 +43,7 @@ func TestSnapshotKnowledge(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(workflow.Views["test"])
-			if job.Shell != tc.shell || job.Platform != tc.platform || len(job.Findings) != tc.findings {
+			if job.Shell != tc.shell || job.Platform != tc.platform || len(job.Rejections) != tc.findings {
 				t.Fatalf("knowledge = %+v; want shell %q, platform %v, findings %d", job, tc.shell, tc.platform, tc.findings)
 			}
 		})
@@ -80,7 +80,7 @@ func TestSnapshotJoinsOSAndShellIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := knowledge.Job(workflow.Views["test"])
-	if job.Platform != Windows || job.Shell != "" || len(job.Findings) != 0 {
+	if job.Platform != Windows || job.Shell != "" || len(job.Rejections) != 0 {
 		t.Fatalf("disagreement about shell must not erase OS: %+v", job)
 	}
 }
@@ -89,7 +89,7 @@ func TestSnapshotSelectionAndIdentity(t *testing.T) {
 	workflow := runnerWorkflow(t, "desktop-pool")
 	options := runnerapi.Options{Snapshot: runnerapi.Snapshot{Content: desktopInventory, Scope: "repo", Freshness: runnerapi.Fresh, Complete: true}}
 	knowledge, err := Prepare(t.Context(), workflow.Snapshot, nil, options, "repo")
-	if err != nil || knowledge.Report().Provider.Name != "github" || len(knowledge.Job(workflow.Views["test"]).Findings) != 1 {
+	if err != nil || knowledge.Report().Provider.Name != "github" || len(knowledge.Job(workflow.Views["test"]).Rejections) != 1 {
 		t.Fatalf("snapshot silently selected provider: %+v, %v", knowledge, err)
 	}
 	options.Provider = "snapshot"
@@ -109,7 +109,7 @@ func TestSnapshotSelectionAndIdentity(t *testing.T) {
 	}
 	options.Snapshot = runnerapi.Snapshot{}
 	knowledge, err = Prepare(t.Context(), workflow.Snapshot, nil, options, "repo")
-	if err != nil || len(knowledge.Job(workflow.Views["test"]).Findings) != 0 {
+	if err != nil || len(knowledge.Job(workflow.Views["test"]).Rejections) != 0 {
 		t.Fatalf("absent snapshot should give unknown: %+v, %v", knowledge, err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())

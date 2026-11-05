@@ -21,7 +21,7 @@ func TestPreparedMalformedSelectorsRemainUnknown(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := k.Job(w.Views["test"])
-			if got.Platform != Any || got.Shell != "" || len(got.Findings) != 0 {
+			if got.Platform != Any || got.Shell != "" || len(got.Rejections) != 0 {
 				t.Fatalf("invalid shape acquired meaning: %#v", got)
 			}
 		})
@@ -46,7 +46,7 @@ func TestPartialSelectorsPreserveConstraints(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := k.Job(w.Views["test"]); got.Shell != "" || len(got.Findings) != 0 {
+		if got := k.Job(w.Views["test"]); got.Shell != "" || len(got.Rejections) != 0 {
 			t.Fatalf("partial alternatives claimed certainty: %#v", got)
 		}
 	}
@@ -58,7 +58,7 @@ func TestDynamicMatrixSelector(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := k.Job(w.Views["test"]); len(got.Findings) != 0 || got.Shell != "" {
+	if got := k.Job(w.Views["test"]); len(got.Rejections) != 0 || got.Shell != "" {
 		t.Fatalf("dynamic matrix inferred certainty: %#v", got)
 	}
 }
@@ -81,7 +81,7 @@ func TestPartialSelectorsKeepIndependentLabels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := k.Job(w.Views["test"]); got.Platform != Any || got.Shell != "" || len(got.Findings) != 2 {
+	if got := k.Job(w.Views["test"]); got.Platform != Any || got.Shell != "" || len(got.Rejections) != 2 {
 		t.Fatalf("partial selectors lost independent diagnostics or claimed certainty: %#v", got)
 	}
 }
@@ -96,12 +96,12 @@ func TestFixedSelectorDoesNotDependOnDynamicMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := k.Job(w.Views["test"]); got.Platform != MacOrLinux || got.Shell != "bash" || len(got.Findings) != 0 {
+	if got := k.Job(w.Views["test"]); got.Platform != MacOrLinux || got.Shell != "bash" || len(got.Rejections) != 0 {
 		t.Fatalf("fixed runner lost shell facts: %#v", got)
 	}
 }
 
-func TestPreparedNativeRunnerFindings(t *testing.T) {
+func TestPreparedNativeRunnerRejections(t *testing.T) {
 	for _, tc := range []struct {
 		selection string
 		count     int
@@ -116,7 +116,7 @@ func TestPreparedNativeRunnerFindings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := k.Job(w.Views["test"]).Findings
+		got := k.Job(w.Views["test"]).Rejections
 		if len(got) != tc.count {
 			t.Fatalf("%s: %#v", tc.selection, got)
 		}
@@ -135,7 +135,7 @@ func TestMatrixIncludeUnresolvedLabelsKeepFixedConstraints(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := k.Job(w.Views["test"]); got.Platform != Any || got.Shell != "" || len(got.Findings) != 0 {
+			if got := k.Job(w.Views["test"]); got.Platform != Any || got.Shell != "" || len(got.Rejections) != 0 {
 				t.Fatalf("unresolved include acquired runner facts: %#v", got)
 			}
 		})
@@ -167,7 +167,7 @@ func TestDynamicMatrixFiltersKeepAlternativesIncomplete(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := k.Job(w.Views["test"]); got.Platform != Any || got.Shell != "" || len(got.Findings) != 0 {
+			if got := k.Job(w.Views["test"]); got.Platform != Any || got.Shell != "" || len(got.Rejections) != 0 {
 				t.Fatalf("dynamic filter claimed certainty: %#v", got)
 			}
 		})
@@ -177,7 +177,7 @@ func TestDynamicMatrixFiltersKeepAlternativesIncomplete(t *testing.T) {
 func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 	for _, tc := range []struct {
 		name, exclude, include string
-		wantFindings           int
+		wantRejections         int
 	}{
 		{"known excluded typo", `[{os: ubuntu-lates}]`, `"${{ fromJSON(vars.INCLUDE) }}"`, 0},
 		{"conditional exclusion retains typo", `[{os: ubuntu-lates, arch: x64}]`, `"${{ fromJSON(vars.INCLUDE) }}"`, 1},
@@ -196,7 +196,7 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := record.knowledge(); len(got.Findings) != tc.wantFindings || got.Platform != Any || got.Shell != "" {
+			if got := record.knowledge(); len(got.Rejections) != tc.wantRejections || got.Platform != Any || got.Shell != "" {
 				t.Fatalf("excluded fallback label diagnostics or certainty: %#v", got)
 			}
 		})
@@ -228,7 +228,7 @@ func TestRunnerCheckCompleteMatrixDoesNotAddPhantomIncludeAlternative(t *testing
 	if len(selectors) != 1 || len(selectors[0].Labels) != 1 || selectors[0].Labels[0].Value != runnerapi.Literal("build-pool") {
 		t.Fatalf("include changed the original axis: %#v", selectors)
 	}
-	if findings := Check(w.Views["test"], []string{"build-pool"}); len(findings) != 0 {
+	if findings := LabelRejections(w.Views["test"], KnownLabels([]string{"build-pool"})); len(findings) != 0 {
 		t.Fatalf("complete combinations gained phantom include label: %v", findings)
 	}
 }
@@ -277,7 +277,7 @@ func TestIncompleteMatrixOmitsOnlyProvedMergedIncludeAxisValues(t *testing.T) {
 			if upper != tc.wantUpper {
 				t.Fatalf("uppercase alternative=%t, want %t", upper, tc.wantUpper)
 			}
-			findings := Check(w.Views["test"], []string{"build-pool"})
+			findings := LabelRejections(w.Views["test"], KnownLabels([]string{"build-pool"}))
 			if (len(findings) != 0) != tc.wantUpper {
 				t.Fatalf("phantom or missing include findings: %v", findings)
 			}
