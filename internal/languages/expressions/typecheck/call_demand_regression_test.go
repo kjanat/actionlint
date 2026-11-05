@@ -381,6 +381,52 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 	})
 }
 
+func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
+	for _, operation := range []struct {
+		input, exception string
+	}{
+		{"format('{1}', true)", "System.FormatException"},
+		{"fromJSON(null)", "System.Text.Json.JsonException"},
+		{"case(1, 'a', 'b')", "System.InvalidOperationException"},
+	} {
+		for _, predicate := range []string{"true", "false", "github.event.unknown"} {
+			input := "case(" + predicate + ", " + operation.input + ", 'fallback')"
+			t.Run(input, func(t *testing.T) {
+				got := checkCallDemandResult(t, input)
+				wantState := exprvalues.EvaluationUnknown
+				wantPhase := FailureNone
+				var wantValue any
+				wantFindings := 0
+				if predicate == "true" {
+					wantState, wantPhase, wantFindings = exprvalues.EvaluationInvalid, FailureEvaluation, 1
+				} else if predicate == "false" {
+					wantState, wantValue = exprvalues.EvaluationKnown, "fallback"
+				}
+				if got.Valid != (wantPhase == FailureNone) || got.FailurePhase != wantPhase || got.Evaluation.State != wantState || !cmp.Equal(got.Evaluation.Value, wantValue) || len(got.Findings) != wantFindings {
+					t.Fatalf("result=%+v, want phase=%v state=%v value=%v findings=%d", got, wantPhase, wantState, wantValue, wantFindings)
+				}
+				failure := githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: operation.exception}
+				success := githubReferenceExpectation{value: "fallback"}
+				switch predicate {
+				case "true":
+					checkGitHubReferenceOutcome(t, input, nil, failure)
+				case "false":
+					checkGitHubReferenceOutcome(t, input, nil, success)
+				default:
+					for _, selected := range []bool{false, true} {
+						want := success
+						if selected {
+							want = failure
+						}
+						variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": selected}}}
+						checkGitHubReferenceOutcome(t, input, variables, want)
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestCaseArityRejectsSkippedPaths(t *testing.T) {
 	for _, input := range []string{
 		"case(true, 'a')",

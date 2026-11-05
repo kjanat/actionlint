@@ -9,7 +9,21 @@ import (
 // already checked arguments. It does not traverse or evaluate expression syntax.
 type CallInspection struct {
 	ReturnType exprtypes.Type
-	Problems   []CallProblem
+	Problems   []CallProblemReport
+}
+
+// CallProblemReport records a problem and whether its operation is required,
+// conditional or skipped within the call. Enclosing expressions can further
+// restrict execution without changing the problem itself.
+type CallProblemReport struct {
+	Problem CallProblem
+	Demand  ArgumentDemand
+}
+
+func (inspection *CallInspection) addProblem(problem CallProblem, demand ArgumentDemand) {
+	if demand != DemandSkipped {
+		inspection.Problems = append(inspection.Problems, CallProblemReport{Problem: problem, Demand: demand})
+	}
 }
 
 // CallProblem describes a function operation independently of diagnostic codes
@@ -47,12 +61,10 @@ type JSONMemberCollision struct {
 
 func (JSONMemberCollision) callProblem() {}
 
-// InvalidCasePredicate identifies a reachable predicate rejected by the boolean
-// parameter contract. Demand distinguishes certain from conditional execution.
+// InvalidCasePredicate identifies a predicate rejected by the boolean contract.
 type InvalidCasePredicate struct {
 	Index  int
 	Actual exprtypes.Type
-	Demand ArgumentDemand
 }
 
 func (InvalidCasePredicate) callProblem() {}
@@ -80,11 +92,11 @@ func inspectFormat(arguments []ParameterMatch, inspection *CallInspection) {
 	for part := range plan.Parts() {
 		if part.Index >= count {
 			missing = true
-			inspection.Problems = append(inspection.Problems, MissingFormatArgument{Template: template, Index: part.Index, Count: count})
+			inspection.addProblem(MissingFormatArgument{Template: template, Index: part.Index, Count: count}, DemandRequired)
 		}
 	}
 	if !plan.Valid() && !missing {
-		inspection.Problems = append(inspection.Problems, InvalidFormatPlaceholder{Template: template})
+		inspection.addProblem(InvalidFormatPlaceholder{Template: template}, DemandRequired)
 	}
 	if plan.Valid() {
 		for part := range plan.Parts() {
@@ -92,7 +104,7 @@ func inspectFormat(arguments []ParameterMatch, inspection *CallInspection) {
 				break
 			}
 			if part.Specifier != "" {
-				inspection.Problems = append(inspection.Problems, UnsupportedFormatSpecifier{Template: template, Specifier: part.Specifier})
+				inspection.addProblem(UnsupportedFormatSpecifier{Template: template, Specifier: part.Specifier}, DemandRequired)
 				break
 			}
 		}
@@ -107,7 +119,7 @@ func inspectFromJSON(arguments []ParameterMatch, inspection *CallInspection) {
 	}
 	switch read := readFunctionJSON(text).(type) {
 	case InvalidJSON:
-		inspection.Problems = append(inspection.Problems, read)
+		inspection.addProblem(read, DemandRequired)
 	case unsupportedFunctionJSON:
 		inspectJSONMembers(read.parsed, inspection)
 	case decodedFunctionJSON:
@@ -120,6 +132,6 @@ func inspectFromJSON(arguments []ParameterMatch, inspection *CallInspection) {
 
 func inspectJSONMembers(parsed runnerjson.ReadResult, inspection *CallInspection) {
 	for _, collision := range parsed.Collisions {
-		inspection.Problems = append(inspection.Problems, JSONMemberCollision{First: collision.First, Second: collision.Second, Offset: collision.Offset})
+		inspection.addProblem(JSONMemberCollision{First: collision.First, Second: collision.Second, Offset: collision.Offset}, DemandRequired)
 	}
 }
