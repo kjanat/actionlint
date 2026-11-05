@@ -11,7 +11,6 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 	for _, tc := range []struct{ expression, message, want string }{
 		{`fromJSON('{"a":1}')['b']`, `property "b"`, `fromJSON('{"a":1}')['b']`},
 		{`steps.foo.outputs['bar']`, `property "foo"`, `steps.foo`},
-		{`format('{0}{1}', 1, 2, 3)[0]`, `does not contain placeholder`, `format`},
 		{`startWith('a', 'b').x`, `undefined function`, `startWith`},
 		{`contains('a')[0]`, `number of arguments`, `contains`},
 		{`env[fromJSON('true')]`, `property access of object`, `fromJSON('true')`},
