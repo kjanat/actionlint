@@ -9,8 +9,6 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-
 	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -23,7 +21,7 @@ type actionExpressionAvailability struct {
 	functions map[string]actionFunctionLimits
 }
 
-// ExpressionProblem identifies invalid expression syntax, unavailable names or suspicious coercion.
+// ExpressionProblem identifies invalid expression syntax or unavailable names.
 type ExpressionProblem struct {
 	Code    ProblemCode
 	Context string
@@ -34,20 +32,31 @@ type ExpressionProblem struct {
 	EndOffset int
 }
 
+// ParsedExpression contains one parsed expression and its decoded scalar offset.
+// Offset is one-based; zero means folding changed its source positions.
+type ParsedExpression struct {
+	Node   exprsyntax.Node
+	Offset int
+}
+
+// ExpressionReadResult separates parsed expressions from syntax and availability problems.
+// Each call owns its returned syntax trees and slices.
+type ExpressionReadResult struct {
+	Expressions []ParsedExpression
+	Problems    []ExpressionProblem
+}
+
 // ValidateExpression checks syntax and availability without assuming invocation-specific types.
 func ValidateExpression(s string, bare bool, field string, inputs Inputs) []ExpressionProblem {
-	return expressionViolations(s, bare, field, inputs, false)
+	return ReadExpressions(s, bare, field, inputs).Problems
 }
 
-// InspectExpression also identifies suspicious coercions reported by the shared checker.
-func InspectExpression(s string, bare bool, field string, inputs Inputs) []ExpressionProblem {
-	return expressionViolations(s, bare, field, inputs, true)
-}
-
-func expressionViolations(s string, bare bool, field string, inputs Inputs, advisories bool) []ExpressionProblem {
+// ReadExpressions parses the expressions allowed in an action field and checks available names.
+func ReadExpressions(s string, bare bool, field string, inputs Inputs) ExpressionReadResult {
+	var parsed []ParsedExpression
 	avail, ok := actionMetadataAvailability[field]
 	if !ok {
-		return nil
+		return ExpressionReadResult{}
 	}
 	base, positionsKnown := 0, true
 	if bare && (!strings.Contains(s, "${{") || exprsyntax.LiteralExpressionValue(s) != nil) {
@@ -57,7 +66,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 				violation.Offset = err.Offset + 1
 				violation.EndOffset = err.EndOffset + 1
 			}
-			return []ExpressionProblem{violation}
+			return ExpressionReadResult{Problems: []ExpressionProblem{violation}}
 		}
 		folded := exprsyntax.ConditionSource(s)
 		positionsKnown = folded == s
@@ -87,23 +96,11 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 		// The lexer consumes the closing delimiter and skips delimiters inside strings.
 		s = s[lex.Offset():]
 		base += lex.Offset()
-		if advisories {
-			checker := exprlang.NewChecker(&exprlang.Options{Checks: exprlang.Checks{SuspiciousCoercion: true}})
-			checker.SetContextAvailability(avail.contexts)
-			checker.UpdateInputs(exprtypes.NewMapObjectType(exprtypes.StringType()))
-			checker.UpdateSteps(exprtypes.NewMapObjectType(exprtypes.AnyType()))
-			result := checker.CheckResult(expr)
-			for _, finding := range result.Findings {
-				if !finding.Advisory || finding.Code != string(CodeCoercion) {
-					continue
-				}
-				v := ExpressionProblem{Code: CodeCoercion, Message: finding.Message}
-				if positionsKnown {
-					v.Offset, v.EndOffset = expressionOffset+finding.Offset+1, expressionOffset+finding.EndOffset+1
-				}
-				out = append(out, v)
-			}
+		offset := 0
+		if positionsKnown {
+			offset = expressionOffset + 1
 		}
+		parsed = append(parsed, ParsedExpression{Node: expr, Offset: offset})
 		exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
 			if !entering {
 				return
@@ -203,7 +200,7 @@ func expressionViolations(s string, bare bool, field string, inputs Inputs, advi
 			return duplicate
 		})
 	}
-	return out
+	return ExpressionReadResult{Expressions: parsed, Problems: out}
 }
 
 func actionFunctionArityMatches(signatures []*exprfunctions.FuncSignature, count int) bool {

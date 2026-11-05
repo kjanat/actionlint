@@ -25,7 +25,7 @@ runs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				findings := actionmeta.Validate(meta)
+				findings := actionmeta.Validate(meta).Problems
 				want := 1
 				if strings.HasPrefix(value, "${{ fromJSON(") {
 					want = 0

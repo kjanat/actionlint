@@ -70,7 +70,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 func TestSchemaRecursiveInsertionsDoNotExpandRejectedAliases(t *testing.T) {
 	const source = "name: cycle\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v4\n      with: &values\n        '${{ insert }}': *values\n        '${{insert}}': *values\n"
 	meta, _ := Parse("action.yml", []byte(source))
-	findings := Validate(meta)
+	findings := Validate(meta).Problems
 	if len(findings) != 3 {
 		t.Fatalf("recursive insertions changed physical diagnostics: %v", findings)
 	}

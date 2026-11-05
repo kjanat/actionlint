@@ -169,7 +169,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 	if value := yamlExprString(n); !evaluated && value != nil && strings.Contains(value.Value, "${{") {
 		if _, allowed := actionMetadataAvailability[path]; allowed {
 			if !strings.HasPrefix(path, "runs.steps.*.") && path != "inputs.*.default" {
-				for _, violation := range rule.expressionFindings(value.Value, path, meta.Inputs) {
+				for _, violation := range rule.expressionFindings(value, path, location.Display(), false, meta.Inputs) {
 					message := violation.Message
 					if violation.Context != "" {
 						message = fmt.Sprintf("context %q is not available", violation.Context)
@@ -251,7 +251,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 					rule.checkActionSchemaMappingValue(meta, value, definition, location, depth+1, evaluated, seen)
 					continue
 				} else {
-					for _, violation := range rule.expressionFindings(expr.Value, path, meta.Inputs) {
+					for _, violation := range rule.expressionFindings(expr, path, location.Display(), true, meta.Inputs) {
 						message := violation.Message
 						if violation.Context != "" {
 							message = fmt.Sprintf("context %q is not available in keys", violation.Context)
@@ -339,18 +339,30 @@ func actionLiteralExpression(s string) bool {
 	return exprsyntax.LiteralExpressionValue(s) != nil
 }
 
-// Validate checks manifest structure independently of repository and caller state.
-func Validate(meta *Metadata) []MetadataProblem {
-	checker := &schemaChecker{}
-	checker.checkActionMetadataSchema(meta)
-	return checker.problems
+// ExpressionField records a scalar expression found during manifest validation.
+// Value contains the decoded text and its original YAML position.
+type ExpressionField struct {
+	Value ExprString
+	// SchemaPath selects availability rules, for example outputs.*.value.
+	SchemaPath string
+	// FieldPath appears in diagnostics, for example outputs.result.value.
+	FieldPath string
+	// IsKey distinguishes mapping-key expressions from value expressions.
+	IsKey       bool
+	Expressions []ParsedExpression
 }
 
-// ValidateWithAdvisories also identifies suspicious expression coercions.
-func ValidateWithAdvisories(meta *Metadata) []MetadataProblem {
-	checker := &schemaChecker{advisories: true}
+// MetadataValidation separates structural problems from expression fields for later checks.
+type MetadataValidation struct {
+	Problems         []MetadataProblem
+	ExpressionFields []ExpressionField
+}
+
+// Validate checks manifest structure and records expression fields without applying lint policy.
+func Validate(meta *Metadata) MetadataValidation {
+	checker := &schemaChecker{}
 	checker.checkActionMetadataSchema(meta)
-	return checker.problems
+	return MetadataValidation{Problems: checker.problems, ExpressionFields: checker.expressions}
 }
 
 type actionSchemaVisit struct {
@@ -359,16 +371,15 @@ type actionSchemaVisit struct {
 }
 
 type schemaChecker struct {
-	problems   []MetadataProblem
-	active     map[actionSchemaVisit]bool
-	advisories bool
+	problems    []MetadataProblem
+	active      map[actionSchemaVisit]bool
+	expressions []ExpressionField
 }
 
-func (rule *schemaChecker) expressionFindings(s, field string, inputs Inputs) []ExpressionProblem {
-	if rule.advisories {
-		return InspectExpression(s, false, field, inputs)
-	}
-	return ValidateExpression(s, false, field, inputs)
+func (rule *schemaChecker) expressionFindings(value *ExprString, field, location string, key bool, inputs Inputs) []ExpressionProblem {
+	read := ReadExpressions(value.Value, false, field, inputs)
+	rule.expressions = append(rule.expressions, ExpressionField{Value: *value, SchemaPath: field, FieldPath: location, IsKey: key, Expressions: read.Expressions})
+	return read.Problems
 }
 
 func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code ProblemCode, format string, args ...any) {

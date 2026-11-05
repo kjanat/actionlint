@@ -20,6 +20,7 @@ import (
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -48,10 +49,11 @@ func StandaloneWithAdvisories(meta *actionmeta.Metadata) []*findingmodel.Finding
 }
 
 func (rule *validator) expressionFindings(s string, bare bool, field string, inputs actionmeta.Inputs) []actionmeta.ExpressionProblem {
+	read := actionmeta.ReadExpressions(s, bare, field, inputs)
 	if rule.advisories {
-		return actionmeta.InspectExpression(s, bare, field, inputs)
+		return append(read.Problems, expressionCoercionFindings(read.Expressions, field)...)
 	}
-	return actionmeta.ValidateExpression(s, bare, field, inputs)
+	return read.Problems
 }
 
 func (rule *validator) Error(pos *workflowlang.Pos, code actionmeta.ProblemCode, message string) {
@@ -543,11 +545,20 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 }
 
 func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
-	var problems []actionmeta.MetadataProblem
+	validation := actionmeta.Validate(meta)
+	problems := validation.Problems
 	if rule.advisories {
-		problems = actionmeta.ValidateWithAdvisories(meta)
-	} else {
-		problems = actionmeta.Validate(meta)
+		for _, field := range validation.ExpressionFields {
+			for _, finding := range expressionCoercionFindings(field.Expressions, field.SchemaPath) {
+				position := actionmeta.ExpressionPosition(meta, &field.Value, finding.Offset)
+				end := actionmeta.ExpressionEndPosition(meta, &field.Value, finding)
+				problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: sourcepos.Position{Line: position.Line, Column: position.Col}}
+				if end != nil {
+					problem.End = sourcepos.Position{Line: end.Line, Column: end.Col}
+				}
+				problems = append(problems, problem)
+			}
+		}
 	}
 	for _, problem := range problems {
 		ruleName, diagnosticCode := problemRule(problem.Code)

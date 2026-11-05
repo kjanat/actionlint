@@ -29,7 +29,7 @@ func TestActionMetadataInsertionDuplicates(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					errs := Validate(meta)
+					errs := Validate(meta).Problems
 					if len(errs) != tc.duplicates+tc.unsupported {
 						t.Fatalf("want %d duplicates and %d unsupported-syntax errors, got %v", tc.duplicates, tc.unsupported, errs)
 					}

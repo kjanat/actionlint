@@ -46,7 +46,7 @@ func InspectDefinition(content []byte) DefinitionInspection {
 	if metadata == nil || metadata.Root == nil {
 		return DefinitionInspection{problems: []MetadataProblem{{Code: CodeMetadataEmpty, Path: "action.yml", Message: "action metadata is empty"}}}
 	}
-	problems := Validate(metadata)
+	problems := Validate(metadata).Problems
 	if len(problems) != 0 {
 		return DefinitionInspection{problems: slices.Clone(problems)}
 	}

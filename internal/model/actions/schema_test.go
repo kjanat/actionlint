@@ -97,7 +97,7 @@ description: audit
 				if err != nil {
 					return
 				}
-				if len(Validate(meta)) == 0 {
+				if len(Validate(meta).Problems) == 0 {
 					t.Fatal("invalid property shape was accepted")
 				}
 			})

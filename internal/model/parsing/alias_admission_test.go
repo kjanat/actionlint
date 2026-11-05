@@ -110,7 +110,7 @@ func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
 	if _, rejected := errors.AsType[*codec.AdmissionError](document.ParseError); !rejected || document.CanAnalyze() || document.Provenance.record != nil && document.Provenance.record.Bind("rejected-action").ActionBody().Present() {
 		t.Fatal("parallel expansion bypassed action admission", document.ParseError)
 	}
-	if findings := actionmeta.Validate(document.Metadata); len(findings) == 0 {
+	if findings := actionmeta.Validate(document.Metadata).Problems; len(findings) == 0 {
 		t.Fatal("source-only schema validation lost physical alias findings")
 	}
 }
