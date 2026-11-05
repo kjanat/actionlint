@@ -1,4 +1,4 @@
-package expressions
+package correctness
 
 import (
 	"strings"
@@ -12,9 +12,9 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// checkUnsoundTernaries uses the shared Actions evaluator to identify falsy middle
+// UnsoundTernary uses the shared Actions evaluator to identify falsy middle
 // operands. Unknown middle operands are left alone to allow conditional fallbacks.
-func checkUnsoundTernaries(expr exprsyntax.Node) []*exprlang.Error {
+func UnsoundTernary(expr exprsyntax.Node) []*exprlang.Error {
 	var findings []*exprlang.Error
 	exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
 		if !entering {
