@@ -168,6 +168,9 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	result := c.CheckResult(expr)
 	ty, errs := result.Type, result.Findings
 	if strings.HasSuffix(workflowKey, ".if") {
+		if rule.options.CaseInsensitiveConditions {
+			errs = append(errs, suspicious.CaseInsensitiveConditions(expr, result.Types, result.Calls)...)
+		}
 		if rule.options.StringConditions {
 			errs = append(errs, suspicious.StringConditions(expr, result.Types)...)
 		}

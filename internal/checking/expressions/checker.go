@@ -71,12 +71,13 @@ type ReferenceNames struct {
 
 // Options selects expression diagnostics without repository configuration.
 type Options struct {
-	Semantics               exprlang.Options
-	UnsoundTernary          bool
-	StringConditions        bool
-	MixedTypeComparisons    bool
-	ScriptInjectionDisabled bool
-	JobReferences           func(workflowdecl.JobView) ReferenceNames
+	Semantics                 exprlang.Options
+	UnsoundTernary            bool
+	StringConditions          bool
+	MixedTypeComparisons      bool
+	CaseInsensitiveConditions bool
+	ScriptInjectionDisabled   bool
+	JobReferences             func(workflowdecl.JobView) ReferenceNames
 }
 
 // Dependencies supplies runner facts and action/workflow definitions for expression inference.

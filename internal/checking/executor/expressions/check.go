@@ -147,19 +147,19 @@ func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host reposito
 	facts := repoconfig.RepositoryFacts(config, host)
 	semantics.Variables, semantics.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
 	return workflowexpr.Options{
-		Semantics:               *semantics,
-		StringConditions:        config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
-		MixedTypeComparisons:    config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
-		JobReferences:           func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
-		UnsoundTernary:          config.RuleSet().DiagnosticLevel(config, "unsound-ternary") != "off",
-		ScriptInjectionDisabled: config.RuleSet().DiagnosticLevel(config, "script-injection") == "off",
+		Semantics:                 *semantics,
+		CaseInsensitiveConditions: config.RuleSet().DiagnosticLevel(config, "case-insensitive-conditions") != "off",
+		StringConditions:          config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
+		MixedTypeComparisons:      config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
+		JobReferences:             func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
+		UnsoundTernary:            config.RuleSet().DiagnosticLevel(config, "unsound-ternary") != "off",
+		ScriptInjectionDisabled:   config.RuleSet().DiagnosticLevel(config, "script-injection") == "off",
 	}
 }
 
 func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {
 	options := &exprlang.Options{Checks: exprlang.Checks{
-		SuspiciousCoercion:        config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
-		CaseInsensitiveConditions: config.RuleSet().DiagnosticLevel(config, "case-insensitive-conditions") != "off",
+		SuspiciousCoercion: config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
 	}}
 	facts := repoconfig.RepositoryFacts(config, repository.Snapshot{})
 	options.Variables, options.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
