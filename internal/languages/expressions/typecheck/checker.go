@@ -835,7 +835,12 @@ func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match sign
 	}
 	function := exprfunctions.Builtins[strings.ToLower(n.Callee)]
 	inspection := function.InspectArguments(sig, match.arguments)
-	for _, problem := range inspection.Problems {
+	sema.reportCallProblems(n, inspection.Problems)
+	return inspection.ReturnType
+}
+
+func (sema *Checker) reportCallProblems(n *exprsyntax.FuncCallNode, problems []exprfunctions.CallProblem) {
+	for _, problem := range problems {
 		switch problem := problem.(type) {
 		case exprfunctions.MissingFormatArgument:
 			sema.evaluationError(errorfAtCallee(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", problem.Template, problem.Index, problem.Count))
@@ -851,9 +856,17 @@ func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match sign
 			}
 		case exprfunctions.JSONMemberCollision:
 			sema.errorf(jsonCollision, n.Args[0], "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", problem.First, problem.Second, problem.Offset)
+		case exprfunctions.InvalidCasePredicate:
+			previousInvalid := sema.evaluationInvalid
+			previous := sema.conditionalEvaluation
+			sema.conditionalEvaluation = previous || problem.Demand == exprfunctions.DemandConditional
+			sema.evaluationError(errorfAtExpr(operandType, n.Args[problem.Index], "case() predicate must be boolean but found %s", problem.Actual.String()))
+			sema.conditionalEvaluation = previous
+			if problem.Demand != exprfunctions.DemandRequired {
+				sema.evaluationInvalid = previousInvalid
+			}
 		}
 	}
-	return inspection.ReturnType
 }
 
 func (sema *Checker) checkDemandedExpression(node exprsyntax.Node, demand exprfunctions.ArgumentDemand) (exprtypes.Type, bool) {
@@ -894,7 +907,13 @@ func (sema *Checker) checkCaseCall(n *exprsyntax.FuncCallNode, sig *exprfunction
 	var alternatives []exprtypes.Type
 	args := make([]exprfunctions.CallArgument, 0, len(n.Args))
 	ty, _ := sema.checkCaseBranches(n.Args, &alternatives, &args, len(n.Args))
-	sema.recordCallArguments(n, checkFuncSignature(n, sig, args))
+	match := checkFuncSignature(n, sig, args)
+	sema.recordCallArguments(n, match)
+	if !sema.skipEvaluation {
+		function := exprfunctions.Builtins[strings.ToLower(n.Callee)]
+		inspection := function.InspectArguments(sig, match.arguments)
+		sema.reportCallProblems(n, inspection.Problems)
+	}
 	facts := sema.callFacts[n]
 	facts.RefinedAlternatives = alternatives
 	sema.callFacts[n] = facts
@@ -921,22 +940,7 @@ func (sema *Checker) checkCaseBranches(args []exprsyntax.Node, alternatives *[]e
 		}
 		return arg.Source, reachable
 	}
-	arg := check(args[0])
-	ty := arg.Source
-	if match := exprfunctions.MatchParameter(exprtypes.BoolType(), arg, false); !match.Accepted && arg.Demand != exprfunctions.DemandSkipped && !sema.skipEvaluation {
-		previousInvalid := sema.evaluationInvalid
-		previous := sema.conditionalEvaluation
-		sema.conditionalEvaluation = previous || arg.Demand == exprfunctions.DemandConditional
-		actual := ty
-		if arg.State == exprfunctions.ArgumentKnown {
-			actual = exprtypes.TypeOfJSONValue(arg.Value)
-		}
-		sema.evaluationError(errorfAtExpr(operandType, args[0], "case() predicate must be boolean but found %s", actual.String()))
-		sema.conditionalEvaluation = previous
-		if arg.Demand != exprfunctions.DemandRequired {
-			sema.evaluationInvalid = previousInvalid
-		}
-	}
+	check(args[0])
 	var valueArgument exprfunctions.CallArgument
 	valueType := sema.withEventGuard(args[0], true, func() exprtypes.Type {
 		valueArgument = check(args[1])

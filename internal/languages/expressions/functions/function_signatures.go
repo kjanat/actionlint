@@ -222,7 +222,7 @@ var Builtins = map[string]Function{
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
-	}}, implementation: evaluateCase},
+	}}, implementation: evaluateCase, inspect: inspectCase},
 }
 
 // Global variables

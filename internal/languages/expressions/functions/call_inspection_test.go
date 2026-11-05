@@ -58,3 +58,36 @@ func TestUnsupportedJSONStillReportsMemberCollisions(t *testing.T) {
 		t.Fatalf("problem=%+v, want collision between A and a with its JSON offset", inspection.Problems[0])
 	}
 }
+
+func TestCaseInspectionPreservesPredicateDemand(t *testing.T) {
+	boolean := CallArgument{Source: exprtypes.BoolType(), Demand: DemandRequired}
+	value := CallArgument{Source: exprtypes.StringType(), Demand: DemandSkipped}
+	for _, tc := range []struct {
+		name      string
+		arguments []CallArgument
+		problems  []CallProblem
+	}{
+		{"required nonboolean", []CallArgument{
+			{Source: exprtypes.AnyType(), State: ArgumentKnown, Value: float64(1), Demand: DemandRequired}, value, value,
+		}, []CallProblem{InvalidCasePredicate{Index: 0, Actual: exprtypes.NumberType(), Demand: DemandRequired}}},
+		{"skipped nonboolean", []CallArgument{
+			{Source: exprtypes.NumberType(), Demand: DemandSkipped}, value, value,
+		}, nil},
+		{"conditional later predicate", []CallArgument{
+			boolean, value, {Source: exprtypes.StringType(), State: ArgumentKnown, Value: "text", Demand: DemandConditional}, value, value,
+		}, []CallProblem{InvalidCasePredicate{Index: 2, Actual: exprtypes.StringType(), Demand: DemandConditional}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			function := Builtins["case"]
+			signature := function.Signatures[0]
+			arguments := make([]ParameterMatch, len(tc.arguments))
+			for index, argument := range tc.arguments {
+				arguments[index] = MatchParameter(signature.ParameterAt(index, len(arguments)), argument, false)
+			}
+			got := function.InspectArguments(signature, arguments)
+			if !reflect.DeepEqual(got.Problems, tc.problems) {
+				t.Fatalf("problems=%+v, want %+v", got.Problems, tc.problems)
+			}
+		})
+	}
+}

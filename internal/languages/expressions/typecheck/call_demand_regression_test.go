@@ -1,6 +1,7 @@
 package typecheck
 
 import (
+	"strings"
 	"testing"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
@@ -320,6 +321,20 @@ func TestNestedConditionalCallDemand(t *testing.T) {
 }
 
 func TestCaseTypedPredicateFailures(t *testing.T) {
+	t.Run("later predicate range", func(t *testing.T) {
+		const input = "case(false, 'a', 'text', 'b', 'c')"
+		got := checkCallDemandResult(t, input)
+		if got.Valid || got.FailurePhase != FailureEvaluation || len(got.Findings) != 1 {
+			t.Fatalf("expected one runtime predicate failure: %+v", got)
+		}
+		finding := got.Findings[0]
+		start := strings.Index(input, "'text'")
+		if finding.Code != "operand-type" || finding.Offset != start || finding.EndOffset != start+len("'text'") {
+			t.Fatalf("finding=%+v, want operand-type at [%d,%d)", finding, start, start+len("'text'"))
+		}
+		checkGitHubReferenceOutcome(t, input, nil, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.InvalidOperationException"})
+	})
+
 	t.Run("required predicate", func(t *testing.T) {
 		const input = "case(github.event_name, fromJSON(null), fromJSON(null))"
 		got := checkCallDemandResult(t, input)

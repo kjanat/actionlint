@@ -47,8 +47,19 @@ type JSONMemberCollision struct {
 
 func (JSONMemberCollision) callProblem() {}
 
-// InspectArguments accepts a selected signature and its converted arguments.
-// Callers validate arity and parameter types before requesting this inspection.
+// InvalidCasePredicate identifies a reachable predicate rejected by the boolean
+// parameter contract. Demand distinguishes certain from conditional execution.
+type InvalidCasePredicate struct {
+	Index  int
+	Actual exprtypes.Type
+	Demand ArgumentDemand
+}
+
+func (InvalidCasePredicate) callProblem() {}
+
+// InspectArguments accepts a selected signature and its parameter matches.
+// Callers validate arity first. Matches can include rejected parameters when the
+// function reports that rejection during evaluation, as case() does.
 func (function Function) InspectArguments(signature *FuncSignature, arguments []ParameterMatch) CallInspection {
 	inspection := CallInspection{ReturnType: signature.Ret}
 	if function.inspect != nil {
