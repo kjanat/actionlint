@@ -5,6 +5,8 @@ import (
 	"maps"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -344,13 +346,13 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			}
 			for _, position := range []struct {
 				name string
-				pos  scriptInsertionKind
+				pos  correctness.ScriptInsertionKind
 				want bool
 			}{
-				{"shell word", shellWordInsertion, tc.wordSafe},
-				{"data argument", shellArgumentInsertion, tc.argument},
+				{"shell word", correctness.ShellWordInsertion, tc.wordSafe},
+				{"data argument", correctness.ShellArgumentInsertion, tc.argument},
 			} {
-				findings := checkScriptInterpolation(node, typeOf, checked.Types, position.pos, func(node exprsyntax.Node) bool {
+				findings := correctness.ScriptInterpolation(node, typeOf, checked.Types, position.pos, func(node exprsyntax.Node) bool {
 					return rule.safeScriptStatusSelector(node)
 				})
 				if (len(findings) == 0) != position.want {
