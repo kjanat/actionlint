@@ -47,20 +47,21 @@ func StandaloneWithAdvisories(meta *actionmeta.Metadata) []*findingmodel.Finding
 	return rule.errs
 }
 
-func (rule *validator) expressionFindings(s string, bare bool, field string, inputs actionmeta.Inputs) []actionmeta.Violation {
+func (rule *validator) expressionFindings(s string, bare bool, field string, inputs actionmeta.Inputs) []actionmeta.ExpressionProblem {
 	if rule.advisories {
-		return actionmeta.ExpressionFindings(s, bare, field, inputs)
+		return actionmeta.InspectExpression(s, bare, field, inputs)
 	}
-	return actionmeta.ExpressionViolations(s, bare, field, inputs)
+	return actionmeta.ValidateExpression(s, bare, field, inputs)
 }
 
-func (rule *validator) Error(pos *workflowlang.Pos, code actionmeta.DiagnosticCode, message string) {
-	finding := findingmodel.At(pos, "action", message)
-	finding.Code = string(code)
+func (rule *validator) Error(pos *workflowlang.Pos, code actionmeta.ProblemCode, message string) {
+	ruleName, diagnosticCode := problemRule(code)
+	finding := findingmodel.At(pos, ruleName, message)
+	finding.Code = diagnosticCode
 	rule.errs = append(rule.errs, finding)
 }
 
-func (rule *validator) Errorf(pos *workflowlang.Pos, code actionmeta.DiagnosticCode, format string, args ...any) {
+func (rule *validator) Errorf(pos *workflowlang.Pos, code actionmeta.ProblemCode, format string, args ...any) {
 	rule.Error(pos, code, fmt.Sprintf(format, args...))
 }
 
@@ -185,16 +186,17 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 
 // compositeStepErrorf reports an error at the step's own position in the action metadata file
 // instead of at the "uses" site in the workflow being linted.
-func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, code actionmeta.DiagnosticCode, format string, args ...any) {
+func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, code actionmeta.ProblemCode, format string, args ...any) {
 	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, code, format, args...)
 }
 
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
-func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *workflowlang.Pos, code actionmeta.DiagnosticCode, format string, args ...any) {
+func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *workflowlang.Pos, code actionmeta.ProblemCode, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	err := findingmodel.At(&workflowlang.Pos{Line: line, Col: col}, "action", fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
+	ruleName, diagnosticCode := problemRule(code)
+	err := findingmodel.At(&workflowlang.Pos{Line: line, Col: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
-	err.Code = string(code)
+	err.Code = diagnosticCode
 	err.Source = meta.Source
 	err.EndPosition = end
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
@@ -220,10 +222,11 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 }
 
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
-func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *workflowlang.Pos, code actionmeta.DiagnosticCode, format string, args ...any) {
-	err := findingmodel.Errorf(&workflowlang.Pos{Line: line, Col: col}, "action", format, args...)
+func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *workflowlang.Pos, code actionmeta.ProblemCode, format string, args ...any) {
+	ruleName, diagnosticCode := problemRule(code)
+	err := findingmodel.Errorf(&workflowlang.Pos{Line: line, Col: col}, ruleName, format, args...)
 	err.Path = meta.Path()
-	err.Code = string(code)
+	err.Code = diagnosticCode
 	err.Source = meta.Source
 	err.EndPosition = end
 	err.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
@@ -246,9 +249,6 @@ func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 				meta, pos.Line, pos.Col, actionmeta.ExpressionEndPosition(meta, &kv.Value, v), v.Code,
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
-			if v.Rule != "" {
-				rule.errs[len(rule.errs)-1].Rule = v.Rule
-			}
 		}
 	}
 }
@@ -329,9 +329,6 @@ func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, 
 				)
 			} else {
 				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, violation.Code, `%s at %q key`, violation.Message, key)
-			}
-			if violation.Rule != "" {
-				rule.errs[len(rule.errs)-1].Rule = violation.Rule
 			}
 		}
 	}
@@ -546,14 +543,18 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 }
 
 func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
-	var findings []results.Diagnostic
+	var problems []actionmeta.MetadataProblem
 	if rule.advisories {
-		findings = actionmeta.ValidateWithAdvisories(meta)
+		problems = actionmeta.ValidateWithAdvisories(meta)
 	} else {
-		findings = actionmeta.Validate(meta)
+		problems = actionmeta.Validate(meta)
 	}
-	for _, d := range findings {
-		finding := findingmodel.FromDiagnostic(d)
+	for _, problem := range problems {
+		ruleName, diagnosticCode := problemRule(problem.Code)
+		finding := findingmodel.FromDiagnostic(results.Diagnostic{
+			Rule: ruleName, Code: diagnosticCode, Path: problem.Path,
+			Message: problem.Message, Start: problem.Start, End: problem.End,
+		})
 		finding.Source = meta.Source
 		finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
 		rule.errs = append(rule.errs, finding)
@@ -584,4 +585,12 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 		node = next
 	}
 	return pos
+}
+
+// problemRule selects the configurable check and its reported subcode.
+func problemRule(code actionmeta.ProblemCode) (ruleName, diagnosticCode string) {
+	if code == actionmeta.CodeCoercion {
+		return "coercion", ""
+	}
+	return "action", string(code)
 }

@@ -22,7 +22,7 @@ func TestActionExpressionFallbackDeduplication(t *testing.T) {
 		{"${{ unknown() || unknown() }}", 2, true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			got := ExpressionViolations(tc.expression, true, "runs.steps.*.if", nil)
+			got := ValidateExpression(tc.expression, true, "runs.steps.*.if", nil)
 			if len(got) != tc.want {
 				t.Fatalf("want %d violations, got %+v", tc.want, got)
 			}
@@ -41,19 +41,19 @@ func TestActionExpressionFallbackDeduplication(t *testing.T) {
 func TestActionExpressionContextSuggestions(t *testing.T) {
 	for _, tc := range []struct {
 		field, expression string
-		want              []Violation
+		want              []ExpressionProblem
 	}{
-		{"runs.steps.*.run", "${{ github_repository }}", []Violation{{Code: CodeExpressionReference, Message: `uses undefined variable "github_repository"; did you mean "github.repository"?`, Offset: 5}}},
-		{"runs.steps.*.if", "GITHUB_REPOSITORY", []Violation{{Code: CodeExpressionReference, Message: `uses undefined variable "GITHUB_REPOSITORY"; did you mean "github.repository"?`, Offset: 1}}},
-		{"inputs.*.default", "${{ runner_os }}", []Violation{{Code: CodeExpressionReference, Message: `uses undefined variable "runner_os"; did you mean "runner.os"?`, Offset: 5}}},
-		{"runs.args.*", "${{ github_repository }}", []Violation{{Code: CodeExpressionContext, Context: "github_repository"}}},
-		{"runs.steps.*.run", "${{ secrets.TOKEN }}", []Violation{{Code: CodeExpressionContext, Context: "secrets"}}},
-		{"runs.steps.*.run", "${{ github_nonexistent }}", []Violation{{Code: CodeExpressionContext, Context: "github_nonexistent"}}},
+		{"runs.steps.*.run", "${{ github_repository }}", []ExpressionProblem{{Code: CodeExpressionReference, Message: `uses undefined variable "github_repository"; did you mean "github.repository"?`, Offset: 5}}},
+		{"runs.steps.*.if", "GITHUB_REPOSITORY", []ExpressionProblem{{Code: CodeExpressionReference, Message: `uses undefined variable "GITHUB_REPOSITORY"; did you mean "github.repository"?`, Offset: 1}}},
+		{"inputs.*.default", "${{ runner_os }}", []ExpressionProblem{{Code: CodeExpressionReference, Message: `uses undefined variable "runner_os"; did you mean "runner.os"?`, Offset: 5}}},
+		{"runs.args.*", "${{ github_repository }}", []ExpressionProblem{{Code: CodeExpressionContext, Context: "github_repository"}}},
+		{"runs.steps.*.run", "${{ secrets.TOKEN }}", []ExpressionProblem{{Code: CodeExpressionContext, Context: "secrets"}}},
+		{"runs.steps.*.run", "${{ github_nonexistent }}", []ExpressionProblem{{Code: CodeExpressionContext, Context: "github_nonexistent"}}},
 		{"runs.steps.*.run", "${{ inputs.github_token }} ${{ matrix.runner_os }}", nil},
 	} {
 		t.Run(tc.field+"/"+tc.expression, func(t *testing.T) {
-			got := ExpressionViolations(tc.expression, tc.field == "runs.steps.*.if", tc.field, nil)
-			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(Violation{}), cmpopts.IgnoreFields(Violation{}, "Offset", "EndOffset")); diff != "" {
+			got := ValidateExpression(tc.expression, tc.field == "runs.steps.*.if", tc.field, nil)
+			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(ExpressionProblem{}), cmpopts.IgnoreFields(ExpressionProblem{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -69,7 +69,7 @@ func TestActionCloseNameSuggestions(t *testing.T) {
 		{"runs.steps.*.run", "${{ secret.TOKEN }}", ""},
 	} {
 		t.Run(tc.field+tc.source, func(t *testing.T) {
-			violations := ExpressionViolations(tc.source, false, tc.field, nil)
+			violations := ValidateExpression(tc.source, false, tc.field, nil)
 			if len(violations) != 1 {
 				t.Fatalf("expected one invalid name, got %+v", violations)
 			}
@@ -89,46 +89,46 @@ func TestActionExpressionFunctions(t *testing.T) {
 	tests := []struct {
 		name, field, expression string
 		bare                    bool
-		want                    []Violation
+		want                    []ExpressionProblem
 	}{
 		{"bare condition", "runs.steps.*.if", "success() && !cancelled()", true, nil},
 		{"interpolated condition", "runs.steps.*.if", "${{ always() || failure() }}", true, nil},
 		{
 			"status outside condition", "runs.steps.*.name", "${{ success() }}", false,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "success" which is not available here`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "success" which is not available here`}},
 		},
 		{
 			"status in default", "inputs.*.default", "${{ always() }}", false,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}},
 		},
 		{
 			"hash with no patterns", "inputs.*.default", "${{ hashFiles() }}", false,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "hashfiles" with 0 argument(s); expected at least 1 and at most 255`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "hashfiles" with 0 argument(s); expected at least 1 and at most 255`}},
 		},
 		{
 			"status with argument", "runs.steps.*.if", "${{ success('x') }}", true,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "success" with 1 argument(s); expected at least 0 and at most 0`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "success" with 1 argument(s); expected at least 0 and at most 0`}},
 		},
 		{"case insensitive nested functions", "runs.steps.*.run", "${{ format('{0}', HASHFILES('*.go')) }}", false, nil},
 		{"caller properties have no invented types", "runs.steps.*.run", "${{ inputs.custom }} ${{ steps.custom.outputs.custom }}", false, nil},
 		{"quoted delimiters", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}", false, nil},
 		{
 			"literal then real function", "runs.steps.*.name", "${{ '}} ${{ success() }}' }}${{ success() }}", false,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "success" which is not available here`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "success" which is not available here`}},
 		},
 		{
 			"repeated functions", "inputs.*.default", "${{ always() }}${{ ALWAYS() }}", false,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}, {Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}, {Code: CodeExpressionCall, Message: `calls function "always" which is not available here`}},
 		},
 		{"hash maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 254) + "'x') }}", false, nil},
 		{
 			"hash over maximum", "runs.steps.*.shell", "${{ hashFiles(" + strings.Repeat("'x',", 255) + "'x') }}", false,
-			[]Violation{{Code: CodeExpressionCall, Message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}},
+			[]ExpressionProblem{{Code: CodeExpressionCall, Message: `calls function "hashfiles" with 256 argument(s); expected at least 1 and at most 255`}},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if diff := cmp.Diff(tc.want, ExpressionViolations(tc.expression, tc.bare, tc.field, nil), cmp.AllowUnexported(Violation{}), cmpopts.IgnoreFields(Violation{}, "Offset", "EndOffset")); diff != "" {
+			if diff := cmp.Diff(tc.want, ValidateExpression(tc.expression, tc.bare, tc.field, nil), cmp.AllowUnexported(ExpressionProblem{}), cmpopts.IgnoreFields(ExpressionProblem{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -150,7 +150,7 @@ func TestActionConditionCompleteConsumption(t *testing.T) {
 		{"${{ '' }}", false},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
-			violations := ExpressionViolations(tc.source, true, "runs.steps.*.if", nil)
+			violations := ValidateExpression(tc.source, true, "runs.steps.*.if", nil)
 			if tc.invalid {
 				if len(violations) != 1 || !strings.Contains(violations[0].Message, "unexpected trailing text in condition") {
 					t.Fatalf("want trailing-text error, got %#v", violations)
@@ -188,12 +188,12 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			got := ExpressionViolations(tc.expr, tc.bare, "runs.steps.*.if", nil)
-			var want []Violation
+			got := ValidateExpression(tc.expr, tc.bare, "runs.steps.*.if", nil)
+			var want []ExpressionProblem
 			for _, ctx := range tc.want {
-				want = append(want, Violation{Code: CodeExpressionContext, Context: ctx})
+				want = append(want, ExpressionProblem{Code: CodeExpressionContext, Context: ctx})
 			}
-			if diff := cmp.Diff(want, got, cmp.AllowUnexported(Violation{}), cmpopts.IgnoreFields(Violation{}, "Offset", "EndOffset")); diff != "" {
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(ExpressionProblem{}), cmpopts.IgnoreFields(ExpressionProblem{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -215,12 +215,12 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			got := ExpressionViolations(tc.expr, false, "inputs.*.default", nil)
-			var want []Violation
+			got := ValidateExpression(tc.expr, false, "inputs.*.default", nil)
+			var want []ExpressionProblem
 			for _, ctx := range tc.want {
-				want = append(want, Violation{Code: CodeExpressionContext, Context: ctx})
+				want = append(want, ExpressionProblem{Code: CodeExpressionContext, Context: ctx})
 			}
-			if diff := cmp.Diff(want, got, cmp.AllowUnexported(Violation{}), cmpopts.IgnoreFields(Violation{}, "Offset", "EndOffset")); diff != "" {
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(ExpressionProblem{}), cmpopts.IgnoreFields(ExpressionProblem{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
 			}
 		})

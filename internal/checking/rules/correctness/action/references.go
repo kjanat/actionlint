@@ -154,7 +154,7 @@ func (rule *validator) checkDockerAction(uri string, pos *workflowlang.Pos) {
 }
 
 // Called after RuntimeProblem has established a lifecycle finding.
-func runtimeProblemCode(using string) actionmeta.DiagnosticCode {
+func runtimeProblemCode(using string) actionmeta.ProblemCode {
 	if actionmeta.Runtimes[strings.ToLower(using)].Removed {
 		return actionmeta.CodeRuntimeRemoved
 	}

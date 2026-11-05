@@ -202,8 +202,8 @@ func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspec
 	if manifest.Identity().Directory() != "" {
 		manifestPath = manifest.Identity().Directory() + "/" + manifestPath
 	}
-	for _, d := range inspection.Diagnostics() {
-		problems = append(problems, actions.ManifestProblem{Code: d.Code, Message: d.Message, Path: manifestPath, Start: d.Start, End: d.End})
+	for _, d := range inspection.Problems() {
+		problems = append(problems, actions.ManifestProblem{Code: string(d.Code), Message: d.Message, Path: manifestPath, Start: d.Start, End: d.End})
 	}
 	return Result{availability: actions.InvalidMetadata(manifest, problems)}
 }

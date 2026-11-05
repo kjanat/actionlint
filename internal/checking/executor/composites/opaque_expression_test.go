@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
-func TestOpaqueCompositeInputsKeepExpressionFindingsAfterCycleFrontier(t *testing.T) {
+func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing.T) {
 	for _, standalone := range []bool{false, true} {
 		for _, cycle := range []bool{false, true} {
 			for _, sink := range []struct{ expression, rule string }{{"github.event.issue.title", "script-injection"}, {"github.repository", "script-interpolation"}} {

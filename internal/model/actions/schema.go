@@ -99,7 +99,7 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)
 }
 
-func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemapath.Path, code DiagnosticCode, message string) {
+func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemapath.Path, code ProblemCode, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, code, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
@@ -177,9 +177,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 					}
 					pos := ExpressionPosition(meta, value, violation.Offset)
 					rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, value, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
-					if violation.Rule != "" {
-						rule.findings[len(rule.findings)-1].Rule = violation.Rule
-					}
 				}
 			}
 			if definition == "step-if" {
@@ -262,9 +259,6 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 						}
 						pos := ExpressionPosition(meta, expr, violation.Offset)
 						rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, expr, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
-						if violation.Rule != "" {
-							rule.findings[len(rule.findings)-1].Rule = violation.Rule
-						}
 					}
 				}
 			}
@@ -347,17 +341,17 @@ func actionLiteralExpression(s string) bool {
 }
 
 // Validate checks manifest structure independently of repository and caller state.
-func Validate(meta *Metadata) []results.Diagnostic {
+func Validate(meta *Metadata) []MetadataProblem {
 	checker := &schemaChecker{}
 	checker.checkActionMetadataSchema(meta)
-	return checker.findings
+	return checker.problems
 }
 
-// ValidateWithAdvisories includes optional expression findings for host policy.
-func ValidateWithAdvisories(meta *Metadata) []results.Diagnostic {
+// ValidateWithAdvisories also identifies suspicious expression coercions.
+func ValidateWithAdvisories(meta *Metadata) []MetadataProblem {
 	checker := &schemaChecker{advisories: true}
 	checker.checkActionMetadataSchema(meta)
-	return checker.findings
+	return checker.problems
 }
 
 type actionSchemaVisit struct {
@@ -366,22 +360,22 @@ type actionSchemaVisit struct {
 }
 
 type schemaChecker struct {
-	findings   []results.Diagnostic
+	problems   []MetadataProblem
 	active     map[actionSchemaVisit]bool
 	advisories bool
 }
 
-func (rule *schemaChecker) expressionFindings(s, field string, inputs Inputs) []Violation {
+func (rule *schemaChecker) expressionFindings(s, field string, inputs Inputs) []ExpressionProblem {
 	if rule.advisories {
-		return ExpressionFindings(s, false, field, inputs)
+		return InspectExpression(s, false, field, inputs)
 	}
-	return ExpressionViolations(s, false, field, inputs)
+	return ValidateExpression(s, false, field, inputs)
 }
 
-func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code DiagnosticCode, format string, args ...any) {
-	d := results.Diagnostic{Path: meta.Path(), Start: results.Position{Line: line, Column: column}, Rule: "action", Code: string(code), Message: fmt.Sprintf(format, args...)}
+func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code ProblemCode, format string, args ...any) {
+	d := MetadataProblem{Path: meta.Path(), Start: results.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
 	if end != nil {
 		d.End = results.Position{Line: end.Line, Column: end.Col}
 	}
-	rule.findings = append(rule.findings, d)
+	rule.problems = append(rule.problems, d)
 }
