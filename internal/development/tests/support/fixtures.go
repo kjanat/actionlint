@@ -109,17 +109,17 @@ func AssertSourceFile(t *testing.T, got, want string) {
 	}
 }
 
-func FixtureSources(t testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []workspace.Source {
-	t.Helper()
+func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []workspace.Source {
+	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
 	sources := make([]workspace.Source, 0, len(paths))
-	reader := files.New(t.Context(), nil, nil)
+	reader := files.New(tb.Context(), nil, nil)
 	for _, path := range paths {
 		content, err := reader.ReadFile(path)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		display := path
 		if project != nil && filepath.IsAbs(path) {

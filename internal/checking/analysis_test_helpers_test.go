@@ -50,27 +50,27 @@ type capturedWorkflowCache struct {
 	snapshots *capturedSnapshots
 }
 
-func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *capturedWorkflowCache {
-	t.Helper()
+func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *capturedWorkflowCache {
+	tb.Helper()
 	if cwd == "" {
-		cwd = sourceFixtureBase(t)
+		cwd = sourceFixtureBase(tb)
 	}
-	registry, captures, snapshots := newCapturedSnapshots(t, cwd)
+	registry, captures, snapshots := newCapturedSnapshots(tb, cwd)
 	cache := calls.NewCache(root, cwd, debug)
-	cache.SetSources(t.Context(), captures, cwd)
+	cache.SetSources(tb.Context(), captures, cwd)
 	return &capturedWorkflowCache{Cache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *actionlocal.Cache, workflows *capturedWorkflowCache) ([]*findingmodel.Finding, error) {
-	t.Helper()
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *actionlocal.Cache, workflows *capturedWorkflowCache) ([]*findingmodel.Finding, error) {
+	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
 	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated}
 	if session.workingDir == "" {
-		session.workingDir = sourceFixtureBase(t)
+		session.workingDir = sourceFixtureBase(tb)
 	}
 	var declarations *capturedSnapshots
 	var workflowCache *calls.Cache
@@ -78,7 +78,7 @@ func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest,
 		session.snapshots, session.captures, declarations = workflows.registry, workflows.captures, workflows.snapshots
 		workflowCache = workflows.Cache
 	} else {
-		session.snapshots, session.captures, declarations = newCapturedSnapshots(t, session.workingDir)
+		session.snapshots, session.captures, declarations = newCapturedSnapshots(tb, session.workingDir)
 	}
 	address := source.InputPath
 	if address == "" {
@@ -108,8 +108,8 @@ func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest,
 }
 
 // readFixtureSources reads snapshots for tests that supply their own project and config.
-func readFixtureSources(t testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []sourceUnit {
-	t.Helper()
+func readFixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []sourceUnit {
+	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
@@ -117,7 +117,7 @@ func readFixtureSources(t testing.TB, paths []string, project *workspace.Project
 	for _, path := range paths {
 		content, err := os.ReadFile(path)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 		display := path
 		if project != nil && filepath.IsAbs(path) {

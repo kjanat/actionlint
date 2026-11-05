@@ -8,11 +8,11 @@ import (
 )
 
 // Directory creates a temporary directory with an empty .git marker for discovery tests.
-func Directory(t testing.TB) string {
-	t.Helper()
-	root := t.TempDir()
+func Directory(tb testing.TB) string {
+	tb.Helper()
+	root := tb.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return root
 }

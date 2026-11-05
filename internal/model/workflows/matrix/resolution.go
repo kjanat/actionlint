@@ -102,6 +102,8 @@ type Reach struct {
 }
 
 // ExclusionProblem identifies a filter declaration that prevents complete matrix expansion.
+//
+//sumtype:decl
 type ExclusionProblem interface{ exclusionProblem() }
 
 // ExclusionWithoutAxes identifies an exclusion with no base axes to filter.

@@ -26,12 +26,12 @@ type CapturedSnapshots struct {
 // NewCapturedSnapshots returns the declaration registry and capture store to
 // hand to code under test, and the fixture that admits documents into them.
 // The store is closed when the test ends.
-func NewCapturedSnapshots(t testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *CapturedSnapshots) {
-	t.Helper()
-	store, sources := capturefixture.NewCapturedSources(t, base)
+func NewCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *CapturedSnapshots) {
+	tb.Helper()
+	store, sources := capturefixture.NewCapturedSources(tb, base)
 	registry, err := parsing.NewSourceSnapshots(store)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return registry, store, &CapturedSnapshots{registry, store, sources}
 }

@@ -10,19 +10,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
-func sourceFixtureBase(t testing.TB) string { return capturefixture.CurrentDir(t) }
+func sourceFixtureBase(tb testing.TB) string {
+	tb.Helper()
+	return capturefixture.CurrentDir(tb)
+}
 
-func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *calls.Cache {
-	t.Helper()
-	cache, _ := newCapturedWorkflowCacheAndSnapshots(t, root, cwd, debug)
+func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *calls.Cache {
+	tb.Helper()
+	cache, _ := newCapturedWorkflowCacheAndSnapshots(tb, root, cwd, debug)
 	return cache
 }
 
-func newCapturedWorkflowCacheAndSnapshots(t testing.TB, root, cwd string, debug io.Writer) (*calls.Cache, *capturedSnapshots) {
-	t.Helper()
+func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*calls.Cache, *capturedSnapshots) {
+	tb.Helper()
 	cache := calls.NewCache(root, cwd, debug)
-	store, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-	cache.SetSources(t.Context(), store, sourceFixtureBase(t))
+	store, snapshots := newCapturedSnapshots(tb, sourceFixtureBase(tb))
+	cache.SetSources(tb.Context(), store, sourceFixtureBase(tb))
 	return cache, snapshots
 }
 
@@ -30,8 +33,8 @@ type capturedSnapshots = declarations.CapturedSnapshots
 
 // newCapturedSnapshots returns the capture store for caches under test and
 // the fixture that admits documents into the same store.
-func newCapturedSnapshots(t testing.TB, base string) (*capture.Store, *capturedSnapshots) {
-	t.Helper()
-	_, store, snapshots := declarations.NewCapturedSnapshots(t, base)
+func newCapturedSnapshots(tb testing.TB, base string) (*capture.Store, *capturedSnapshots) {
+	tb.Helper()
+	_, store, snapshots := declarations.NewCapturedSnapshots(tb, base)
 	return store, snapshots
 }

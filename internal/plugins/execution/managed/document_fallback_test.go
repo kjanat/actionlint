@@ -48,8 +48,8 @@ func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]too
 	return run(ctx, batch)
 }
 
-func documentBatchFixture(t testing.TB, count int) tools.Batch {
-	t.Helper()
+func documentBatchFixture(tb testing.TB, count int) tools.Batch {
+	tb.Helper()
 	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
 	graphData := checkinputs.CallGraphData{Entry: checkinputs.InvocationEntry{ID: checkinputs.OccurrenceID(fmt.Sprintf("%064x", 1)), Kind: checkinputs.WorkflowEntry, Reference: entry}, Budget: checkinputs.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
 	batch := tools.Batch{}
@@ -63,7 +63,7 @@ func documentBatchFixture(t testing.TB, count int) tools.Batch {
 	}
 	graph, err := checkinputs.NewCallGraph(graphData)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	batch.CallGraph = graph
 	return batch

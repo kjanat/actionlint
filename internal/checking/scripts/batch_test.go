@@ -147,6 +147,8 @@ func TestBatchRejectsForgedEntryPaths(t *testing.T) {
 }
 
 func batchFixture(t *testing.T, withInput bool) (invocation.Graph, Collection) {
+	t.Helper()
+
 	graph, collection, _ := batchFixtureWithWorkflow(t, withInput)
 	return graph, collection
 }
@@ -161,6 +163,8 @@ func batchFixtureWithWorkflow(t *testing.T, withInput bool) (invocation.Graph, C
 }
 
 func batchSourceFixture(t *testing.T, content []byte) (invocation.Graph, Collection) {
+	t.Helper()
+
 	graph, collection, _ := batchSourceFixtureWithWorkflow(t, content)
 	return graph, collection
 }

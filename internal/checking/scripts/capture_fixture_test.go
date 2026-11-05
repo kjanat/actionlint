@@ -9,13 +9,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-func sourceFixtureBase(t testing.TB) string { return capturefixture.CurrentDir(t) }
+func sourceFixtureBase(tb testing.TB) string {
+	tb.Helper()
+	return capturefixture.CurrentDir(tb)
+}
 
 type capturedSnapshots = declarations.CapturedSnapshots
 
 // newCapturedSnapshots returns the registry and capture store for code under
 // test and the fixture that admits documents into them.
-func newCapturedSnapshots(t testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *capturedSnapshots) {
-	t.Helper()
-	return declarations.NewCapturedSnapshots(t, base)
+func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *capturedSnapshots) {
+	tb.Helper()
+	return declarations.NewCapturedSnapshots(tb, base)
 }
