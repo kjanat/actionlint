@@ -92,7 +92,7 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 
 func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
 	rule := newTestChecker()
-	rule.options.Semantics.Checks.SuspiciousCoercion = true
+	rule.options.SuspiciousCoercion = true
 	source := "${{ startsWith(true, 'TR') }}"
 	types, valid := rule.checkExprsIn(source, &workflowlang.Pos{Line: 1, Col: 1}, false, false, "env")
 	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindBool || types[0].semantics.Type.Kind() != exprtypes.KindBool {
@@ -108,7 +108,7 @@ func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
 
 func TestAdvisoryDoesNotHideScriptInterpolation(t *testing.T) {
 	rule := newTestChecker()
-	rule.options.Semantics.Checks.SuspiciousCoercion = true
+	rule.options.SuspiciousCoercion = true
 	source := "${{ startsWith(true, 'TR') && github.event.issue.title }}"
 	_, valid := rule.checkExprsIn(source, &workflowlang.Pos{Line: 1, Col: 1}, false, true, "jobs.<job_id>.steps.run")
 	if !valid {
