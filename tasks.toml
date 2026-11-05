@@ -1,5 +1,20 @@
 #:schema https://mise.jdx.dev/schema/mise-task.json
 
+["protocol:go"]
+description = "Generate Go guest bindings from the plugin protocol"
+sources     = ["plugins/protocol/wit/**", "go.mod", "go.sum"]
+outputs     = ["plugins/sdk/go/bindings/**"]
+run         = "wasm-tools component wit plugins/protocol/wit --json | go tool wit-bindgen-go generate --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings"
+
+["protocol:sdk"]
+sources     = ["plugins/protocol/**"]
+outputs     = ["plugins/sdk/rust/wit/**", "plugins/sdk/rust/json/**"]
+run         = ["cp -R plugins/protocol/wit/. plugins/sdk/rust/wit/", "cp -R plugins/protocol/json/. plugins/sdk/rust/json/"]
+run_windows = '''
+Copy-Item -Path plugins/protocol/wit/* -Destination plugins/sdk/rust/wit -Recurse -Force
+Copy-Item -Path plugins/protocol/json/* -Destination plugins/sdk/rust/json -Recurse -Force
+'''
+
 ["all"]
 description = "Build, test and lint"
 depends     = ["build", "test", "lint"]
@@ -16,33 +31,30 @@ run         = "modernize -fix ./..."
 ["comment-cop"]
 run = "node .github/actions/comment-cop/comment-cop.mjs {{ env.COMMENT_COP_BASE | default(value=\"\") }}"
 
+["generate:readme-demo"]
+description = "Update the README comparison using released actionlint binaries"
+run         = "node tools/docs/readme-demo.mjs --fix README.md"
+
 ["test"]
 extends     = "go-test"
 description = "Run Go tests"
 
 ["conformance"]
 run = [
-  "go run ./internal/conformance/fetch",
-  "go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance"
+  "go run ./internal/development/tests/conformance/fetch",
+  "go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/development/tests/conformance"
 ]
 
 ["scalar-source-reference"]
 description = "Replay scalar source reference cases against pinned Runny"
 env         = { ACTIONLINT_REFERENCE_IMAGE = "ghcr.io/kjanat/runny-mc-fuzzface@sha256:05ac3c0842628d383cc1cea6f5f2b6710ceb9356cbc53540c45fb2bb1a9acc03" }
-run         = "go test ./internal/workflow/parser -run '^TestScalarSourceReference(Recorded|Live)$' -count=1 -timeout 10m"
+run         = "go test ./internal/development/tests/conformance/yaml -run '^TestScalarSourceReference(Recorded|Live)$' -count=1 -timeout 10m"
 
 ["coverage"]
 extends = "go-test"
 alias   = ["coverage.out"]
 vars    = { test_flags = "-coverprofile coverage.out -covermode=atomic" }
-sources = [
-  "*.go",
-  "{analysis,analyzer,cmd,config,diagnostic,document,fuzz,internal,resolver,rule,runner,source,syntax,tools}/**/*.go",
-  "go.{mod,sum}",
-  "internal/config/config_default.yaml",
-  "internal/webhook/payload/catalogue.json",
-  "testdata/**"
-]
+sources = ["cmd/**", "internal/**", "plugins/**", "tools/**", "go.{mod,sum}", "actionlint.schema.json", "schemas/**"]
 outputs = ["coverage.out"]
 
 ["coverage:html"]
@@ -56,91 +68,93 @@ run     = "go tool cover -html=coverage.out -o coverage.html"
 depends = ["coverage:html"]
 run     = "go tool cover -func=coverage.out"
 
-["lint:build:golangci"]
-extends     = "analyzer-build"
-description = "Build the configured golangci-lint with the local analyzer"
-outputs     = ["custom-gcl{{ vars.exe }}"]
-run         = "golangci-lint custom"
-
-["lint:build:architecture"]
-extends     = "analyzer-build"
-description = "Build the standalone architecture checker"
-outputs     = [".bin/actionlintarch{{ vars.exe }}"]
-run         = "go build -C analyzers -o ../.bin/actionlintarch{{ vars.exe }} ./cmd/actionlintarch"
-
-["lint-build"]
-depends = ["lint:build:golangci", "lint:build:architecture"]
-
-["test-analyzers"]
-run = "go test -C analyzers -count=1 ./..."
-
-["layers"]
-description = "Regenerate dependency layer rules"
-run         = "go run ./tools/layers"
-
-["layers-check"]
-run = "go run ./tools/layers -check"
-
 ["lint:golangci"]
-depends = ["lint:build:golangci"]
-run     = "./custom-gcl{{ vars.exe }} run"
-
-["lint:architecture"]
-depends = ["lint:build:architecture"]
-run     = "./.bin/actionlintarch{{ vars.exe }} ./..."
-
-["lint-architecture"]
-depends = ["layers-check"]
-run     = [{ task = "lint:architecture" }]
+run = "golangci-lint run"
 
 ["lint:playground"]
-depends = ["lint:build:golangci"]
-run     = "./custom-gcl{{ vars.exe }} run ./cmd/actionlint-lsp-wasm"
-env     = { GOOS = "js", GOARCH = "wasm" }
+run = "golangci-lint run ./cmd/actionlint-lsp-wasm"
+env = { GOOS = "js", GOARCH = "wasm" }
 
 ["lint:vulnerabilities"]
 run = "go run golang.org/x/vuln/cmd/govulncheck@latest ./..."
 
 ["lint"]
-description = "Run layer, Go, architecture, vulnerability and playground checks"
-depends     = ["lint-build"]
-run         = [
-  "mise run --continue-on-error layers-check ::: lint:golangci ::: lint:architecture",
-  "mise run lint:vulnerabilities",
-  "mise run lint:playground"
-]
+description = "Run Go, vulnerability and browser checks"
+
+run = ["mise run lint:golangci", "mise run lint:vulnerabilities", "mise run lint:playground"]
 
 ["lint-docs"]
-run = "go run ./internal/rulecatalog/check-docs -quiet ./docs/checks.md"
+run = "go run ./internal/development/tests/integration/documentation -quiet ./docs/checks.md"
 
 ["generate:payload"]
-sources = ["internal/webhook/payload/generate/**", "!internal/webhook/payload/generate/*.test.mts"]
-outputs = ["internal/webhook/payload/catalogue.json"]
-run     = "go generate -run 'payload/generate'"
+sources = ["tools/generate/webhook-payloads/**"]
+outputs = ["internal/model/contexts/events/payload/catalogue.json"]
+run     = "node ./tools/generate/webhook-payloads/main.mts"
+
+["generate:config-schema"]
+sources = [
+  "internal/development/generators/{config-schema,files}/**",
+  "internal/input/configuration/**/*.go",
+  "internal/checking/{rule_*,config_rules}.go",
+  "internal/checking/rules/**/*.go",
+  "internal/plugins/manifests/bundled/**",
+  "internal/plugins/execution/preparation/**/*.go",
+  "schemas/**"
+]
+outputs = ["actionlint.schema.json", "internal/input/configuration/schema/assets/**/*.json"]
+run     = "go run ./internal/development/generators/config-schema"
+
+["generate:rules"]
+sources = ["internal/development/generators/{rule-docs,files}/**", "internal/checking/rule_*.go", "internal/checking/rules/**/*.go"]
+outputs = ["docs/rules.md"]
+run     = "go run ./internal/development/generators/rule-docs"
+
+["generate:contexts"]
+sources = ["internal/development/generators/expression-contexts/**"]
+outputs = ["internal/model/contexts/availability.gen.go"]
+run     = "go run ./internal/development/generators/expression-contexts ./internal/model/contexts/availability.gen.go"
+
+["generate:events"]
+depends = ["generate:payload"]
+sources = ["internal/development/generators/event-triggers/**", "internal/model/contexts/events/payload/**"]
+outputs = ["internal/model/contexts/events/triggers/webhooks.gen.go"]
+run     = "go run ./internal/development/generators/event-triggers --registry ./internal/model/contexts/events/triggers/webhooks.gen.go"
+
+["generate:actions"]
+sources = ["internal/development/generators/action-metadata/**"]
+outputs = ["internal/model/actions/*.gen.go"]
+run     = [
+  "go run ./internal/development/generators/action-metadata -runtimes -output internal/model/actions/runtimes.gen.go",
+  "go run ./internal/development/generators/action-metadata -output internal/model/actions/availability.gen.go"
+]
+
+["generate:workflow-views"]
+sources = ["internal/development/generators/workflow-views/**", "internal/model/workflows/definition/*.go"]
+outputs = ["internal/model/workflows/*.gen.go"]
+run     = "go run ./internal/development/generators/workflow-views . internal/model/workflows"
 
 ["generate:go"]
-depends = ["generate:payload"]
-sources = [
-  "generate.go",
-  "{tools/config,internal/rulecatalog}/**/*.go",
-  "internal/{action,webhook,expression/context}/generate/**",
-  "internal/webhook/payload/{*.go,catalogue.json}"
+depends = [
+  "generate:config-schema",
+  "generate:rules",
+  "generate:contexts",
+  "generate:events",
+  "generate:actions",
+  "generate:workflow-views"
 ]
-outputs = ["actionlint.schema.json", "internal/{webhook,expression/context,action}/*.gen.go"]
-run     = "go generate -skip 'payload/generate'"
 
 ["contract"]
 extends = "plugin-contract"
-outputs = ["internal/plugins/component/*.gen.go"]
-run     = "go run -C tools/plugin-contract ."
+outputs = ["internal/plugins/execution/component/*.gen.go"]
+run     = "go run -C internal/development/generators/plugin-contract ."
 
 ["bindings"]
 extends = "plugin-contract"
-outputs = ["internal/plugins/component/{*.gen.go,bindings/**/*.gen.go}"]
-run     = "go generate ./internal/plugins/component"
+outputs = ["internal/plugins/execution/component/*.gen.go", "internal/plugins/protocol/component/**/*.gen.go"]
+run     = "go generate ./internal/plugins/execution/component"
 
 ["generate"]
-depends = ["generate:go", "bindings"]
+depends = ["protocol:sdk", "protocol:go", "generate:go", "bindings"]
 
 ["build"]
 description = "Build actionlint with its Git version"
@@ -148,7 +162,7 @@ run         = '''
 if [ -z "${SKIP_GO_GENERATE:-}" ]; then mise run generate; fi
 version="$(git describe --tags 2>/dev/null || true)"
 if [ -n "$version" ]; then
-  CGO_ENABLED=0 go build -ldflags "-X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=$version" -o actionlint ./cmd/actionlint
+  CGO_ENABLED=0 go build -ldflags "-X actionlint.kjanat.dev/v2/internal/integrations/buildinfo.ReleaseVersion=$version" -o actionlint ./cmd/actionlint
 else
   CGO_ENABLED=0 go build -o actionlint ./cmd/actionlint
 fi
@@ -162,7 +176,7 @@ if (-not $env:SKIP_GO_GENERATE) {
 $buildArgs = @('build', '-o', 'actionlint.exe')
 $version = git describe --tags 2>$null
 if ($LASTEXITCODE -eq 0) {
-  $buildArgs += @('-ldflags', "-X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=$version")
+  $buildArgs += @('-ldflags', "-X actionlint.kjanat.dev/v2/internal/integrations/buildinfo.ReleaseVersion=$version")
 }
 go @buildArgs ./cmd/actionlint
 exit $LASTEXITCODE
@@ -170,7 +184,7 @@ exit $LASTEXITCODE
 '''
 
 ["fuzz"]
-run = "{% if env.FUZZ_FUNC | default(value=\"\") %}go test -run '^$' -fuzz '^{{ env.FUZZ_FUNC }}$' ./fuzz{% else %}go test -list '^Fuzz' ./fuzz{% endif %}"
+run = "{% if env.FUZZ_FUNC | default(value=\"\") %}go test -run '^$' -fuzz '^{{ env.FUZZ_FUNC }}$' ./internal/development/tests/integration/fuzz{% else %}go test -list '^Fuzz' ./internal/development/tests/integration/fuzz{% endif %}"
 
 ["man:roff"]
 extends = "manual"
@@ -186,7 +200,7 @@ vars    = { suffix = ".html", flags = "--to=html --css=manual.css" }
 depends = ["man:roff", "man:html"]
 
 ["bench"]
-run = "go test -run '^$' -bench Lint -benchmem ./internal/application"
+run = "go test -run '^$' -bench Lint -benchmem ./internal/checking"
 
 ["matcher"]
 alias   = [".github/actionlint-matcher.json"]
@@ -213,16 +227,17 @@ vars    = { flags = "-format '{% raw %}{{json .}}{% endraw %}'", output = "want.
 depends = ["matcher:escape", "matcher:no-escape", "matcher:json"]
 
 ["plugins-check-native"]
-run = [
+depends = ["protocol:sdk"]
+run     = [
   "cargo check --workspace --locked --all-targets",
-  "cargo test --locked --example pipe-to-shell",
+  "cargo test --locked -p actionlint-example-pipe-to-shell",
   "cargo test --locked -p actionlint-extension-api",
   "cargo test --locked -p actionlint-extension-api --all-features"
 ]
 
 ["plugins:wat"]
-sources = ["internal/plugins/{component,core}/testdata/wat/*.wat"]
-outputs = ["internal/plugins/{component,core}/testdata/wat/*.wasm"]
+sources = ["internal/plugins/execution/{component,module}/testdata/wat/*.wat"]
+outputs = ["internal/plugins/execution/{component,module}/testdata/wat/*.wasm"]
 run     = '''
 {% for source in task_source_files() %}
 wasm-tools parse "{{ source }}" -o "{{ source | replace(from='.wat', to='.wasm') }}"
@@ -256,7 +271,7 @@ run = "biome check . --error-on-warnings"
 run = "bun run --filter '*' --if-present lint"
 
 ["test:js"]
-run = "run -p //.github/ci:test //.github/actions/comment-cop:test //.github/actions/setup-pandoc:test //.github/actions/setup-runner:test //.github/actions/setup-shellcheck:test //.github/actions/setup-wasm-toolchain:test //tools/matcher:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test"
+run = "run -p //.github/ci:test //.github/actions/comment-cop:test //.github/actions/setup-pandoc:test //.github/actions/setup-runner:test //.github/actions/setup-shellcheck:test //.github/actions/setup-wasm-toolchain:test //tools/matcher:test //tools/release:test //tools/toolchain:test //tools/generate/webhook-payloads:test //distribution/docker:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-npm:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test"
 
 ["test:workspaces"]
 run = "bun run --filter '*' --if-present test"
@@ -281,80 +296,89 @@ run_windows = "Copy-Item -LiteralPath '{{ usage.source }}' -Destination '{{ usag
 
 ["plugin:example:pipe-to-shell"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/pipe-to-shell.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm"]
 vars    = { fixture = "pipe-to-shell" }
+
+["plugin:example:managed-no-sudo"]
+extends = "rust-plugin"
+alias   = ["internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm"]
+vars    = { fixture = "managed-no-sudo" }
 
 ["plugin:example:source-annotations"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/source-annotations.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/source-annotations.wasm"]
 vars    = { fixture = "source-annotations", features = "source-annotations-fixture", target_dir = "target/plugin-fixtures/source-annotations" }
 
 ["plugin:example:pinned-actions"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/pinned-actions.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/pinned-actions.wasm"]
 vars    = { fixture = "pinned-actions" }
 
 ["plugin:example:buildkite-runners"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/buildkite-runners.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm"]
 vars    = { fixture = "buildkite-runners" }
 
 ["plugin:example:script-engine"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/script-engine.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/script-engine.wasm"]
 vars    = { fixture = "script-engine" }
 
 ["plugin:example:ruff-script-engine"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/ruff-script-engine.wasm"]
-vars    = { fixture = "ruff-script-engine", example = "script-engine", features = "ruff-fixture", target_dir = "target/plugin-fixtures/ruff-script-engine", artifact = "examples/script_engine" }
+alias   = ["internal/plugins/execution/component/testdata/plugins/ruff-script-engine.wasm"]
+vars    = { fixture = "ruff-script-engine", example = "script-engine", features = "ruff-fixture", target_dir = "target/plugin-fixtures/ruff-script-engine", artifact = "script_engine" }
 
 ["plugin:example:action-input"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/action-input.wasm"]
-vars    = { fixture = "action-input", example = "script-engine", features = "action-input-fixture", target_dir = "target/plugin-fixtures/action-input", artifact = "examples/script_engine", metadata = "examples/plugins/action-input.metadata.json" }
+alias   = ["internal/plugins/execution/component/testdata/plugins/action-input.wasm"]
+vars    = { fixture = "action-input", example = "script-engine", features = "action-input-fixture", target_dir = "target/plugin-fixtures/action-input", artifact = "script_engine", metadata = "plugins/examples/script-engine/action-input.metadata.json" }
 
 ["plugin:example:ruff-action-input"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/ruff-action-input.wasm"]
-vars    = { fixture = "ruff-action-input", example = "script-engine", features = "action-input-fixture,ruff-fixture", target_dir = "target/plugin-fixtures/ruff-action-input", artifact = "examples/script_engine", metadata = "examples/plugins/ruff-action-input.metadata.json" }
+alias   = ["internal/plugins/execution/component/testdata/plugins/ruff-action-input.wasm"]
+vars    = { fixture = "ruff-action-input", example = "script-engine", features = "action-input-fixture,ruff-fixture", target_dir = "target/plugin-fixtures/ruff-action-input", artifact = "script_engine", metadata = "plugins/examples/script-engine/ruff-action-input.metadata.json" }
 
 ["plugin:fixture:misbehave"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/misbehave.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/misbehave.wasm"]
 vars    = { fixture = "misbehave", package = "actionlint-plugin-misbehave" }
 
 ["plugin:fixture:script-engine-0.3.0"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/script-engine-0.3.0.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/script-engine-0.3.0.wasm"]
 vars    = { fixture = "script-engine-0.3.0", package = "actionlint-plugin-script-engine-0-3-0" }
 
 ["plugin:fixture:template-script-engine-0.3.0"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/template-script-engine-0.3.0.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/template-script-engine-0.3.0.wasm"]
 vars    = { fixture = "template-script-engine-0.3.0", package = "actionlint-plugin-template-script-engine-0-3-0" }
 
 ["plugin:fixture:oversized-descriptor-values"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/oversized-descriptor-values.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/oversized-descriptor-values.wasm"]
 vars    = { fixture = "oversized-descriptor-values", package = "actionlint-plugin-misbehave", profile = "release", features = "oversized-descriptor-values", target_dir = "target/plugin-fixtures/oversized-descriptor-values" }
 
 ["plugin:fixture:oversized-descriptor-bytes"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/oversized-descriptor-bytes.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/oversized-descriptor-bytes.wasm"]
 vars    = { fixture = "oversized-descriptor-bytes", package = "actionlint-plugin-misbehave", profile = "release", features = "oversized-descriptor-bytes", target_dir = "target/plugin-fixtures/oversized-descriptor-bytes" }
 
 ["plugin:fixture:echo"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/core/testdata/engines/echo.wasm"]
-vars    = { fixture = "echo", package = "actionlint-engine-echo", target = "wasm32-unknown-unknown", fixture_root = "internal/plugins/core/testdata/engines" }
+alias   = ["internal/plugins/execution/module/testdata/engines/echo.wasm"]
+vars    = { fixture = "echo", package = "actionlint-engine-echo", target = "wasm32-unknown-unknown", fixture_root = "internal/plugins/execution/module/testdata/engines" }
 
 ["plugin:example:no-sudo"]
 extends = "script-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/no-sudo.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"]
 vars    = { fixture = "no-sudo" }
 
 ["plugin:example:insecure-download"]
 extends = "script-plugin"
-alias   = ["internal/plugins/component/testdata/plugins/insecure-download.wasm"]
+alias   = ["internal/plugins/execution/component/testdata/plugins/insecure-download.wasm"]
 vars    = { fixture = "insecure-download" }
+
+["release:version"]
+description = "Prepare release version references, or check them with --check"
+run         = "node tools/release/prepare-version.mjs"

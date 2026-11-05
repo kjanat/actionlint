@@ -15,14 +15,18 @@
   "include": ["**/*"],
   "exclude": [
     "node_modules",
-    "packages",
-    "playground",
-    "testdata",
+    "libraries",
+    "applications/github-action",
+    "plugins/sdk/typescript",
+    "applications/playground",
+    "**/testdata/**",
+    "**/dist/**",
     "github-docs",
-    "examples/plugins/external-linters",
-    "examples/plugins/**/actionlint.js"
+    "plugins/examples/external-linters",
+    "plugins/examples/**/actionlint.js",
+    "plugins/examples/**/actionlint.mjs"
   ],
   "references": [
-    { "path": "./playground/tsconfig.json" }
+    { "path": "./applications/playground/tsconfig.json" }
   ]
 }

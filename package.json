@@ -19,15 +19,18 @@
     "#schemas/*": "./schemas/*"
   },
   "workspaces": [
+    "distribution/npm",
     "distribution/npm/facade",
     "distribution/pypi",
     "distribution/winget",
-    "examples/plugins/external-linters",
-    "examples/plugins/external-linters/*",
-    "examples/plugins/psscriptanalyzer",
-    "examples/plugins/typescript",
-    "packages/*",
-    "playground"
+    "plugins/examples/external-linters",
+    "plugins/examples/external-linters/*",
+    "plugins/examples/psscriptanalyzer",
+    "plugins/examples/typescript",
+    "libraries/*",
+    "applications/github-action",
+    "plugins/sdk/typescript",
+    "applications/playground"
   ],
   "overrides": {
     "undici": ">=8.11.2"

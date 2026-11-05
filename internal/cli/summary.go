@@ -5,12 +5,13 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	render "actionlint.kjanat.dev/v2/internal/output"
 
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/fatih/color"
 )
 
-func writeCheckSummary(out io.Writer, mode render.Color, summary render.CheckSummary) error {
+func writeCheckSummary(out io.Writer, mode render.Color, summary resultreport.CheckSummary) error {
 	files := "files"
 	if summary.Files == 1 {
 		files = "file"
@@ -45,5 +46,5 @@ func writeCheckSummary(out io.Writer, mode render.Color, summary render.CheckSum
 	if _, err := fmt.Fprintln(out, style.Sprint(text)); err != nil {
 		return err
 	}
-	return summary.WriteDetails(out)
+	return render.WriteSummaryDetails(out, summary)
 }

@@ -89,10 +89,10 @@ jobs:
             bash distribution/docker/test-docker-ruff.bash "${image}" "linux/${arch}"
             bash distribution/docker/test-docker-plugins.bash "${image}" "linux/${arch}"
             docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w,readonly \
-              "${image}" testdata/ok/minimal.yaml
+              "${image}" internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
             lint_status=0
             docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w,readonly \
-              "${image}" testdata/err/one_error.yaml || lint_status=$?
+              "${image}" internal/development/tests/integration/workflow/testdata/err/one_error.yaml || lint_status=$?
             test "${lint_status}" = 1
           done
       - uses: &DockerLogin docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0

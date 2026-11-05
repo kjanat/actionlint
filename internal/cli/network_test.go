@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/network"
+	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 )
 
 func TestNetworkStatisticsDoNotPolluteDiagnosticJSON(t *testing.T) {
@@ -17,7 +17,7 @@ func TestNetworkStatisticsDoNotPolluteDiagnosticJSON(t *testing.T) {
 		t.Fatalf("status=%d stdout=%s stderr=%s", status, &out, &log)
 	}
 	var statistics struct {
-		Network network.Statistics `json:"network"`
+		Network accounting.Statistics `json:"network"`
 	}
 	if err := json.Unmarshal(log.Bytes(), &statistics); err != nil {
 		t.Fatal(err)
@@ -34,7 +34,7 @@ func TestNetworkStatisticsAvailableAcrossCommands(t *testing.T) {
 			command := Command{Stdout: &out, Stderr: &log}
 			status := command.Main([]string{"actionlint", commandName, "--help", "--network-stats"})
 			var statistics struct {
-				Network *network.Statistics `json:"network"`
+				Network *accounting.Statistics `json:"network"`
 			}
 			lines := bytes.Split(bytes.TrimSpace(log.Bytes()), []byte("\n"))
 			if err := json.Unmarshal(lines[len(lines)-1], &statistics); err != nil || status != 0 || statistics.Network == nil {

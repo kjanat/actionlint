@@ -524,7 +524,9 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
 			if (!value) throw new Error(`${name} is required`);
 			return value;
 		};
-		if (operation === 'prepare') {
+		if (operation === 'notes') {
+			process.stdout.write(await releaseNotes(sourceRoot, required('--version')));
+		} else if (operation === 'prepare') {
 			const metadata = await prepareCandidate(sourceRoot, resolve(required('--out-dir')), required('--version'));
 			if (process.env.GITHUB_OUTPUT) {
 				await appendFile(
@@ -555,7 +557,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
 				),
 			);
 		} else {
-			throw new Error('Usage: release-candidate.mjs prepare|manifest|verify|promote [options]');
+			throw new Error('Usage: release-candidate.mjs notes|prepare|manifest|verify|promote [options]');
 		}
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : String(error));

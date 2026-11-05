@@ -31,11 +31,9 @@ inputs:
 runs:
   using: composite
   steps:
-    # Self-contained module: runs from the action directory, and invisible to
-    # ./... at the repository root because the go tool skips dot-directories.
     - name: Assemble packages
       shell: bash
-      working-directory: ${{ github.action_path }}
+      working-directory: ${{ github.workspace }}
       env:
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_REPOSITORY: ${{ inputs.repository }}
@@ -44,4 +42,4 @@ runs:
         INPUT_OUT_DIR: ${{ inputs.out-dir }}
         INPUT_DOWNLOADS: ${{ inputs.downloads }}
         INPUT_ONLY: ${{ inputs.only }}
-      run: go run .
+      run: node distribution/npm/src/cli.ts build

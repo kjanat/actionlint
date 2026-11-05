@@ -30,7 +30,7 @@ jobs:
       - name: Install catalogue generator dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Refresh upstream action and workflow metadata
-        run: go generate -skip generate-config-schema
+        run: mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -44,7 +44,7 @@ jobs:
           branch: ci/go-generate
           delete-branch: true
           add-paths: |
-            internal/webhook/payload/catalogue.json
+            internal/model/contexts/events/payload/catalogue.json
             :(glob)internal/**/*.gen.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
@@ -64,8 +64,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: $/.github/actions/setup-shellcheck
       - name: Keep mise metadata with cached tools
         shell: bash
@@ -86,7 +86,7 @@ jobs:
         env:
           MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint"
           MISE_DISABLE_TOOLS: "shellcheck,github:koalaman/shellcheck,rshellcheck,github:kjanat/shellcheck-rs"
-      - run: go run ./internal/documentation/check-readme -fix ./README.md
+      - run: node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
         id: versions
@@ -114,7 +114,7 @@ jobs:
           commit-message: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
           title: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
           body: |
-            `internal/documentation/check-readme -fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
+            `node tools/docs/readme-demo.mjs --fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
@@ -167,7 +167,7 @@ jobs:
           add-paths: |
             go.mod
             .mise.toml
-            Dockerfile
+            distribution/docker/Dockerfile
             CONTRIBUTING.md
             flake.nix
             flake.lock

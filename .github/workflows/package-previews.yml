@@ -60,8 +60,8 @@ jobs:
       - name: Check installed yamllint example
         uses: kjanat/actionlint-registry/check@97cb7fdaf812e04b9e80929709e54448c4d78d99 # master
         with:
-          artifact: examples/plugins/external-linters/yamllint/actionlint-provider.json
-          fixture: examples/plugins/external-linters/yamllint/installation.ts
+          artifact: plugins/examples/external-linters/yamllint/actionlint-provider.json
+          fixture: plugins/examples/external-linters/yamllint/installation.ts
           actionlint: ${{ runner.temp }}/actionlint
           kind: manifest
           allow-config-processes: true
@@ -69,22 +69,22 @@ jobs:
       - name: Check installed zizmor example
         uses: kjanat/actionlint-registry/check@97cb7fdaf812e04b9e80929709e54448c4d78d99 # master
         with:
-          artifact: examples/plugins/external-linters/zizmor/actionlint-provider.json
-          fixture: examples/plugins/external-linters/zizmor/installation.ts
+          artifact: plugins/examples/external-linters/zizmor/actionlint-provider.json
+          fixture: plugins/examples/external-linters/zizmor/installation.ts
           actionlint: ${{ runner.temp }}/actionlint
           kind: manifest
           allow-config-processes: true
           report: ${{ runner.temp }}/zizmor-candidate.json
       - name: Publish SDK and example package previews
         run: bun run --bun pkg-pr-new publish --bun --packageManager=bun --previewVersion
-          ./packages/changelog-feed
-          ./packages/plugin-sdk
-          ./examples/plugins/typescript
-          ./examples/plugins/psscriptanalyzer
-          ./examples/plugins/external-linters/grant
-          ./examples/plugins/external-linters/grype
-          ./examples/plugins/external-linters/poutine
-          ./examples/plugins/external-linters/runner-guard
-          ./examples/plugins/external-linters/syft
-          ./examples/plugins/external-linters/yamllint
-          ./examples/plugins/external-linters/zizmor
+          ./libraries/github-changelog
+          ./plugins/sdk/typescript
+          ./plugins/examples/typescript
+          ./plugins/examples/psscriptanalyzer
+          ./plugins/examples/external-linters/grant
+          ./plugins/examples/external-linters/grype
+          ./plugins/examples/external-linters/poutine
+          ./plugins/examples/external-linters/runner-guard
+          ./plugins/examples/external-linters/syft
+          ./plugins/examples/external-linters/yamllint
+          ./plugins/examples/external-linters/zizmor

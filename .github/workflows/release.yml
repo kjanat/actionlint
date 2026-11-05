@@ -316,7 +316,7 @@ jobs:
           mkdir .published-action-test
           sed -e "s|OWNER/REPO@RELEASE_TAG|${GITHUB_REPOSITORY}@v${VERSION}|g" \
             -e "s|OWNER/REPO@COMMIT_SHA|${GITHUB_REPOSITORY}@${CANDIDATE}|g" \
-            tools/action/testdata/published-action/action.yml > .published-action-test/action.yml
+            applications/github-action/tests/testdata/published-action/action.yml > .published-action-test/action.yml
       - name: Resolve both published references through the runner
         # The prepared composite contains literal external uses references.
         uses: ./.published-action-test

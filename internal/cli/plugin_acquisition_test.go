@@ -6,16 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/testutil"
+	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 )
 
 func TestExplicitRegistryGrantDoesNotPersistIntoConfiguration(t *testing.T) {
-	registry := testutil.NewPluginRegistry(t)
+	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const private = "https://127.0.0.1:8443/catalogue/"
 	for location, data := range registry.Files() {
-		if relative, found := strings.CutPrefix(location, testutil.FixtureRegistryURL); found {
+		if relative, found := strings.CutPrefix(location, fixtureregistry.FixtureRegistryURL); found {
 			registry.SetFile(private+relative, data)
 		}
 	}

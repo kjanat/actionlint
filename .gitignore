@@ -11,7 +11,6 @@
 /actionlint-workflow-ast
 /actionlint.exe
 /actionlint_fuzz-fuzz.zip
-/bump-version
 /cli
 /corpus
 /coverage.html
@@ -22,14 +21,16 @@
 /env.sh
 /man/actionlint.1
 /man/actionlint.1.html
-/packages/*/dist/
+/libraries/*/dist/
+/applications/*/dist/
+/plugins/sdk/typescript/dist/
 # Generated TypeScript plugin packages.
-/examples/plugins/**/actionlint.js
-/examples/plugins/**/actionlint.mjs
-/examples/plugins/**/actionlint-provider.json
-/examples/plugins/**/plugin-layout/
-/examples/plugins/**/*.tgz
-/packages/plugin-sdk/*.tgz
+/plugins/examples/**/actionlint.js
+/plugins/examples/**/actionlint.mjs
+/plugins/examples/**/actionlint-provider.json
+/plugins/examples/**/plugin-layout/
+/plugins/examples/**/*.tgz
+/plugins/sdk/typescript/*.tgz
 /playground-dist
 /result
 /result-*
@@ -40,8 +41,6 @@ node_modules/
 target/
 control/evidence/
 
-/custom-gcl
-/custom-gcl.exe
 /.bin/
 docs/superpowers
 

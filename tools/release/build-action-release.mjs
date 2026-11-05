@@ -76,7 +76,7 @@ export async function prepareRelease(root, directory, version, fromTag = false) 
 		execute(
 			process.execPath,
 			['--run', 'build', '--', '--out-dir', action],
-			join(root, 'packages/github-action'),
+			join(root, 'applications/github-action'),
 			{ ...process.env, ACTIONLINT_VERSION: version },
 		);
 	}

@@ -5,9 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	checking "actionlint.kjanat.dev/v2/internal/checking"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	configcmd "actionlint.kjanat.dev/v2/internal/cli/config"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.
@@ -37,7 +43,7 @@ func (r versionRequest) run(_ context.Context, streams Command) (int, error) {
 
 type rulesRequest struct {
 	Plugins   []string
-	Selection localapp.PluginSelection
+	Selection plugininstall.Selection
 	Name      string
 	JSON      bool
 }
@@ -48,16 +54,16 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 		selection.Paths = r.Plugins
 	}
 	if len(selection.Paths) > 0 && selection.LockFile != "" {
-		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
+		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
 	sources, err := selectedRulePlugins(ctx, selection)
 	if err != nil {
 		return 0, err
 	}
-	rules, err := localapp.RulesSources(ctx, sources)
+	rules, err := checking.RulesWithPlugins(ctx, sources)
 	if err != nil {
-		if _, loadFailure := errors.AsType[*localapp.PluginLoadError](err); loadFailure && len(selection.Paths) > 0 {
-			return 0, commandUsageError{err}
+		if _, loadFailure := errors.AsType[*pluginexec.LoadError](err); loadFailure && len(selection.Paths) > 0 {
+			return 0, commandargs.UsageError{Cause: err}
 		}
 		return 0, err
 	}
@@ -87,44 +93,30 @@ func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
 	return 0, writeDoctor(ctx, streams.Stdout, r)
 }
 
-type configPathRequest struct {
-	Config repoconfig.Selection
-	JSON   bool
-}
+type configPathRequest configcmd.PathOptions
 
 func (r configPathRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, writeConfigPath(streams.Stdout, r)
+	return 0, configcmd.WritePath(streams.Stdout, configcmd.PathOptions(r))
 }
 
-type configShowRequest struct {
-	Config       repoconfig.Selection
-	Plugins      []string
-	JSON, Origin bool
-}
+type configShowRequest configcmd.ShowOptions
 
 func (r configShowRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, writeConfigShow(ctx, streams.Stdout, r)
+	return 0, configcmd.WriteShow(ctx, streams.Stdout, configcmd.ShowOptions(r))
 }
 
-type configValidateRequest struct {
-	Config  repoconfig.Selection
-	Plugins []string
-	JSON    bool
-}
+type configValidateRequest configcmd.ValidateOptions
 
 func (r configValidateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, writeConfigValidation(ctx, streams.Stdout, r)
+	return 0, configcmd.WriteValidation(ctx, streams.Stdout, configcmd.ValidateOptions(r))
 }
 
 // configSchemaRequest prints the configuration JSON schema with the tool
 // providers that the --plugin flags or the selected configuration install.
-type configSchemaRequest struct {
-	Config  repoconfig.Selection
-	Plugins []string
-}
+type configSchemaRequest configcmd.SchemaOptions
 
 func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, writeConfigSchema(ctx, streams.Stdout, r)
+	return 0, configcmd.WriteSchema(ctx, streams.Stdout, configcmd.SchemaOptions(r))
 }
 
 type configInitRequest struct {
@@ -132,13 +124,10 @@ type configInitRequest struct {
 	Hyperlinks hyperlinkMode
 }
 
-type configMigrateRequest struct {
-	Config             repoconfig.Selection
-	JSON, Write, Check bool
-}
+type configMigrateRequest configcmd.MigrateOptions
 
 func (r configMigrateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return migrateCommandConfig(ctx, streams, r)
+	return configcmd.Migrate(ctx, commandstreams.Streams(streams), configcmd.MigrateOptions(r))
 }
 
 func (r configInitRequest) run(ctx context.Context, streams Command) (int, error) {

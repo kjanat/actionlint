@@ -1,12 +1,12 @@
 paths:
   shared: &shared [".github/ci/**", ".github/workflows/ci-changes.yml", ".{tool-versions,mise.toml}", "tasks.toml"]
-  go: &go ["*.go", "{analysis,config,diagnostic,document,syntax,analyzer,rule,source,resolver,runner,cmd,internal}/**", "go.{mod,sum}"]
-  workflow: &workflow ["*.go", "{analysis,config,diagnostic,document,syntax,analyzer,cmd,internal}/**", "go.{mod,sum}"]
+  go: &go ["*.go", "{cmd,internal,plugins/sdk/go}/**", "go.{mod,sum}"]
+  workflow: &workflow ["*.go", "{cmd,internal}/**", "go.{mod,sum}"]
   production: &production [*go, "!**/*_test.go"]
   node: &node ["package.json", "bun.lock", ".node-version", "tsconfig.json"]
   scripts: &scripts ["**/*.{js,mjs,cjs,ts,tsx}", "**/{package.json,tsconfig*.json,bun.lock}"]
   action: &action
-    - "{packages/github-action,distribution/npm/facade/types,tools/action,.github/actions/test-action}/**"
+    - "{applications/github-action,distribution/npm/facade/types,.github/actions/test-action}/**"
     - "tools/release/*.mjs"
     - action.yml
     - *node
@@ -19,19 +19,18 @@ workflows:
         - *go
         - "tools/**/*.go"
         - "tools/**/testdata/**"
-        - "{fuzz,testdata,schemas}/**"
+        - "schemas/**"
         - actionlint.schema.json
-        - Makefile
         - ".github/actions/setup-shellcheck/**"
         - ".github/workflows/upkeep.yml"
         - "{tools,distribution}/**/*.bash"
-        - Dockerfile
+        - distribution/docker/Dockerfile
         - CONTRIBUTING.md
         - "flake.{nix,lock}"
       race: *go-tests
       nix:
         - *go
-        - "{nix,fuzz,testdata,man,schemas}/**"
+        - "{distribution/nix,man,schemas}/**"
         - "tools/**/*.go"
         - "tools/**/testdata/**"
         - "flake.{nix,lock}"
@@ -40,12 +39,11 @@ workflows:
         - ".github/workflows/nix.yml"
       wasm:
         - *go
-        - "{playground,man,packages/changelog-feed,packages/language-server}/**"
-        - "!{cmd,internal/cli,internal/githubaction}/**"
+        - "{applications/playground,man,libraries/github-changelog,libraries/browser-lsp}/**"
+        - "!{cmd,internal/cli}/**"
         - "cmd/actionlint-lsp-wasm/**"
         - "!**/*_test.go"
         - *node
-        - Makefile
         - ".github/actions/setup-pandoc/**"
       javascript:
         - *scripts
@@ -59,70 +57,82 @@ workflows:
         - "{tools,distribution}/**/mise.toml"
       release:
         - *production
-        - Makefile
         - .goreleaser.yaml
         - ".github/actions/setup-pandoc/**"
-        - "{man,schemas,distribution,packages/github-action,packages/plugin-sdk,examples/plugins}/**"
+        - "{man,schemas,distribution,applications/github-action,plugins/sdk/typescript,plugins/examples}/**"
         - actionlint.schema.json
         - "tools/release/*.mjs"
         - action.yml
         - *node
-        - "!packages/github-action/tests/**"
+        - "!applications/github-action/tests/**"
         - "!tools/**/*.test.mjs"
         - "!**/testdata/**"
         - README.md
         - LICENSE.txt
         - "docs/**"
-      modules: ["{.github/actions,distribution,schemas,man}/**", actionlint.schema.json, README.md, LICENSE.txt, "go.{mod,sum}"]
+      guest-modules: ["plugins/{sdk/go,examples/insecure-download}/**", "go.{mod,sum}"]
       lint:
         - *go
         - "**/*.go"
         - .golangci.toml
         - docs/checks.md
         - "{tools,distribution}/**/*.bash"
-        - Makefile
         - ".github/{workflows,actions}/**"
         - .github/actionlint.yaml
         - "!**/testdata/**"
-      docker: [*production, Dockerfile, .dockerignore, "distribution/docker/**", action.yml, "!**/testdata/**"]
-      action: [*production, *action, .goreleaser.yaml, "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"]
+      docker: [*production, distribution/docker/Dockerfile, .dockerignore, "distribution/docker/**", action.yml, "!**/testdata/**"]
+      action: [
+        *production,
+        *action,
+        .goreleaser.yaml,
+        "!**/testdata/**",
+        "internal/development/tests/integration/workflow/testdata/ok/minimal.yaml",
+        "internal/development/tests/integration/workflow/testdata/err/one_error.yaml",
+      ]
       action-tests: *action
       plugins:
         - ".github/actions/setup-wasm-toolchain/**"
-        - "{plugins,crates,examples/plugins,plugin}/**"
-        - "testdata/{plugins,runner-provider}/**"
-        - "tools/{runner-host,plugin-contract}/**"
-        - "internal/{plugins,application,localapp}/**"
-        - "{analysis,analyzer,rule,source,resolver,runner,diagnostic}/**"
+        - "plugins/**"
+        - "internal/development/tests/conformance/wasm/**"
+        - "internal/development/generators/plugin-contract/**"
+        - "internal/{plugins,checking,input,model,results,lsp}/**"
+        - "internal/development/tests/integration/{checking,plugins}/**"
+        - "plugins/sdk/go/**"
         - "go.{mod,sum}"
-        - Makefile
         - "Cargo.{toml,lock}"
         - rust-toolchain.toml
 
   codeql:
     shared: [*shared, ".github/workflows/codeql.yml"]
     jobs:
-      go: ["**/*.go", "go.{mod,sum}", internal/config/config_default.yaml, ".github/codeql/**", "!**/testdata/**", "!**/*_test.go"]
+      go: ["**/*.go", "go.{mod,sum}", internal/input/configuration/config_default.yaml, ".github/codeql/**", "!**/testdata/**", "!**/*_test.go"]
       javascript-typescript: [*scripts, "**/*.jsx", ".github/codeql/**", "!**/testdata/**"]
       actions: [".github/{workflows,actions,codeql}/**", action.yml, "!.github/actions/**/testdata/**"]
 
   conformance:
     shared: [*shared, ".github/workflows/conformance.yml"]
     jobs:
-      conformance: [*workflow, "!{cmd,internal/cli,internal/githubaction}/**", "!**/*_test.go", "internal/conformance/**", "!**/*.md"]
+      conformance: [*workflow, "!{cmd,internal/cli}/**", "!**/*_test.go", "internal/development/tests/conformance/**", "!**/*.md"]
 
   matcher:
     shared: [*shared, ".github/workflows/matcher.yml"]
     jobs:
-      matcher: [*workflow, "!**/*_test.go", "tools/matcher/**", .github/actionlint-matcher.json, "testdata/**", Makefile, .node-version]
+      matcher: [
+        *workflow,
+        "!**/*_test.go",
+        "tools/matcher/**",
+        .github/actionlint-matcher.json,
+        "internal/development/tests/integration/workflow/testdata/**",
+        .node-version,
+      ]
 
   expression-probe-tests:
     shared: [*shared, ".github/workflows/expression-probe-tests.yml"]
     jobs:
       expression-probe: [
-        "internal/expression/probe/**",
+        "internal/development/tests/conformance/expressions/**",
         ".github/workflows/expr-conformance-probe.yml",
         .node-version,
-        "!internal/expression/probe/**/*.md",
-        "!internal/expression/probe/results/**",
+        "!internal/development/tests/conformance/expressions/**/*.md",
+        "!internal/development/tests/conformance/expressions/results/**",
       ]

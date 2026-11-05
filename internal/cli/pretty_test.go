@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
 func TestPrettyCheckCommand(t *testing.T) {

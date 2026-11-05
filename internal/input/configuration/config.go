@@ -1,0 +1,607 @@
+// Package config owns the repository configuration document: its model, decoding,
+// validation, inheritance, overlays and inspection.
+package config
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strconv"
+
+	configaddress "actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+
+	"github.com/bmatcuk/doublestar/v4"
+	"github.com/kjanat/go-yaml/v4"
+)
+
+// IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by
+// matching the error messages.
+type IgnorePatterns []*regexp.Regexp
+
+// Match returns whether the given error should be ignored due to the "ignore" configuration.
+func (pats IgnorePatterns) Match(message string) bool {
+	for _, r := range pats {
+		if r.MatchString(message) {
+			return true
+		}
+	}
+	return false
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (pats *IgnorePatterns) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf("yaml: \"ignore\" must be a sequence node at line:%d,col:%d", n.Line, n.Column)
+	}
+	rs := make([]*regexp.Regexp, 0, len(n.Content))
+	for _, p := range n.Content {
+		r, err := regexp.Compile(p.Value)
+		if err != nil {
+			return fmt.Errorf("invalid regular expression %q in \"ignore\" at line%d,col:%d: %w", p.Value, n.Line, n.Column, err)
+		}
+		rs = append(rs, r)
+	}
+	*pats = rs
+	return nil
+}
+
+// PathConfig is a configuration for specific file path pattern. This is for values of the "paths" mapping
+// in the configuration file.
+type PathConfig struct {
+	// Ignore suppresses diagnostics whose message matches any of these Go regular expressions.
+	//
+	// Applies only to workflow files matching the parent path glob. For example,
+	// `["shellcheck reported issue in this script: SC2086"]` ignores that ShellCheck diagnostic.
+	// Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.
+	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
+}
+
+// Policy configures checks for cache safety and repository conventions.
+// Cache checks default to enabled; repository conventions are opt-in.
+// Omission and null select the default.
+type Policy struct {
+	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheCallUnrestricted *bool `yaml:"cache-call-unrestricted" jsonschema:"nullable,default=true"`
+	// CacheOperation reports official cache action steps disabled by an explicit cache mode.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheOperation *bool `yaml:"cache-operation" jsonschema:"nullable,default=true"`
+	// CacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
+	// Enabled by default. Set false to disable it; null or omission keeps the default.
+	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
+	// DisallowSuppressions restricts inline and configured diagnostic exceptions.
+	// `true` or `{}` reports each prohibited directive or matching config exception
+	// as well as the violations it would suppress. Omission, null, or false permits exceptions.
+	// Both ignore and ignore-next-line are covered equally.
+	//
+	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.
+	// Omitted rules selects all suppressible rules; an explicit list must be nonempty.
+	// Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).
+	DisallowSuppressions *SuppressionsPolicy `yaml:"disallow-suppressions" jsonschema:"nullable"`
+	// RequireCommitHash requires `uses:` references to be pinned to a full commit SHA, or an image digest
+	// for Docker images, when set to `true`.
+	//
+	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; the check is
+	// disabled by default. Local references and references built with expressions are skipped.
+	RequireCommitHash *bool `yaml:"require-commit-hash" jsonschema:"nullable"`
+	// RequireActionMetadata requires usable fetched metadata for remote action
+	// references. Disabled by default; this does not enable network access.
+	RequireActionMetadata *bool `yaml:"require-action-metadata" jsonschema:"nullable"`
+	// RequireJobTimeout requires jobs to declare `timeout-minutes` when set to `true`.
+	//
+	// Use `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes.
+	// Either bound may be omitted. Bounds must be finite and greater than zero, and the minimum
+	// must not exceed the maximum. `{}` requires the key without bounds. Reusable workflow calls are skipped.
+	//
+	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; the check is
+	// disabled by default.
+	RequireJobTimeout *JobTimeoutPolicy `yaml:"require-job-timeout" jsonschema:"nullable"`
+	// RequirePermissions requires an explicit `permissions:` declaration.
+	//
+	// `true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`.
+	// `{scope: job}` requires a declaration on every job, including reusable workflow calls.
+	// `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.
+	//
+	// Set `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.
+	RequirePermissions *PermissionsPolicy `yaml:"require-permissions" jsonschema:"nullable"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *policyWire) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("yaml: \"policy\" must be a mapping node at line:%d,col:%d", n.Line, n.Column)
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		var err error
+		switch k.Value {
+		case "cache-write-untrusted":
+			err = v.Decode(&p.CacheWriteUntrusted)
+		case "cache-call-unrestricted":
+			err = v.Decode(&p.CacheCallUnrestricted)
+		case "cache-operation":
+			err = v.Decode(&p.CacheOperation)
+		case "disallow-suppressions":
+			err = v.Decode(&p.DisallowSuppressions)
+		case "require-commit-hash":
+			err = v.Decode(&p.RequireCommitHash)
+		case "require-action-metadata":
+			err = v.Decode(&p.RequireActionMetadata)
+		case "require-job-timeout":
+			err = v.Decode(&p.RequireJobTimeout)
+		case "require-permissions":
+			err = v.Decode(&p.RequirePermissions)
+		default:
+			return fmt.Errorf("yaml: unknown key %q in \"policy\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// JobTimeoutPolicy is the value of the "require-job-timeout" policy in the configuration file. The
+// value is a boolean which turns the check on and off, or a mapping which turns it on and sets the
+// allowed range in its "min-minutes" and "max-minutes" keys.
+type JobTimeoutPolicy struct {
+	enabled    bool
+	minMinutes float64
+	maxMinutes float64
+}
+
+// RequireJobTimeout creates a JobTimeoutPolicy which turns the check on. The argument is the largest
+// allowed number of minutes, where a value which is not larger than zero sets no upper limit.
+func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
+	return &JobTimeoutPolicy{enabled: true, maxMinutes: maxMinutes}
+}
+
+// RequireJobTimeoutRange requires job timeouts within the inclusive bounds. Zero omits a bound.
+// It rejects negative or non-finite bounds and a minimum larger than a nonzero maximum.
+func RequireJobTimeoutRange(minMinutes, maxMinutes float64) (*JobTimeoutPolicy, error) {
+	for _, bound := range []float64{minMinutes, maxMinutes} {
+		if bound < 0 || math.IsNaN(bound) || math.IsInf(bound, 0) {
+			return nil, fmt.Errorf("job timeout bounds must be finite and nonnegative, got %v", bound)
+		}
+	}
+	if maxMinutes > 0 && minMinutes > maxMinutes {
+		return nil, fmt.Errorf("minimum job timeout %v exceeds maximum %v", minMinutes, maxMinutes)
+	}
+	return &JobTimeoutPolicy{enabled: true, minMinutes: minMinutes, maxMinutes: maxMinutes}, nil
+}
+
+// Enabled returns whether the check is turned on. It returns false when the receiver is nil.
+func (p *JobTimeoutPolicy) Enabled() bool {
+	return p != nil && p.enabled
+}
+
+// MinMinutes returns the smallest allowed timeout in minutes. The boolean is false without an enabled lower bound.
+func (p *JobTimeoutPolicy) MinMinutes() (float64, bool) {
+	if !p.Enabled() || p.minMinutes <= 0 {
+		return 0, false
+	}
+	return p.minMinutes, true
+}
+
+// MaxMinutes returns the largest allowed "timeout-minutes:" value in minutes. The second return
+// value is false when the policy sets no upper limit.
+func (p *JobTimeoutPolicy) MaxMinutes() (float64, bool) {
+	if !p.Enabled() || p.maxMinutes <= 0 {
+		return 0, false
+	}
+	return p.maxMinutes, true
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
+	*p = JobTimeoutPolicy{}
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if err := n.Decode(&p.enabled); err != nil {
+			return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		}
+	case yaml.MappingNode:
+		p.enabled = true
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value != "min-minutes" && k.Value != "max-minutes" {
+				return fmt.Errorf("yaml: unknown key %q in \"require-job-timeout\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+			}
+			// Decoding through the YAML library reads a leading zero as YAML 1.1 octal, so
+			// "max-minutes: 017" would become 15. The workflow parser reads numbers from the raw
+			// text with strconv, and so does this.
+			f, err := strconv.ParseFloat(v.Value, 64)
+			if err != nil || v.Kind != yaml.ScalarNode {
+				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be a number but got %q at line:%d,col:%d", k.Value, v.Value, v.Line, v.Column)
+			}
+			if math.IsNaN(f) || math.IsInf(f, 0) {
+				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be finite but got %q at line:%d,col:%d", k.Value, v.Value, v.Line, v.Column)
+			}
+			if f <= 0 {
+				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", k.Value, f, v.Line, v.Column)
+			}
+			if k.Value == "min-minutes" {
+				p.minMinutes = f
+			} else {
+				p.maxMinutes = f
+			}
+		}
+		if p.maxMinutes > 0 && p.minMinutes > p.maxMinutes {
+			return fmt.Errorf("yaml: \"min-minutes\" must not exceed \"max-minutes\" in \"require-job-timeout\" at line:%d,col:%d", n.Line, n.Column)
+		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only booleans and mappings configure this policy.
+		fallthrough
+	default:
+		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+	}
+	return nil
+}
+
+// PermissionsPolicy selects where the "require-permissions" policy requires a declaration.
+type PermissionsPolicy struct {
+	enabled bool
+	scope   string
+}
+
+// RequirePermissions enables the policy with "workflow" or "job" scope. Other values return an error.
+func RequirePermissions(scope string) (*PermissionsPolicy, error) {
+	if scope != "workflow" && scope != "job" {
+		return nil, fmt.Errorf("permissions policy scope must be \"workflow\" or \"job\", got %q", scope)
+	}
+	return &PermissionsPolicy{enabled: true, scope: scope}, nil
+}
+
+// Enabled reports whether the policy is enabled. A nil receiver disables it.
+func (p *PermissionsPolicy) Enabled() bool {
+	return p != nil && p.enabled
+}
+
+// Scope returns "workflow" or "job", or an empty string when the policy is disabled.
+func (p *PermissionsPolicy) Scope() string {
+	if !p.Enabled() {
+		return ""
+	}
+	return p.scope
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
+	*p = PermissionsPolicy{scope: "workflow"}
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if err := n.Decode(&p.enabled); err != nil {
+			return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		}
+	case yaml.MappingNode:
+		p.enabled = true
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k, v := n.Content[i], n.Content[i+1]
+			if k.Value != "scope" {
+				return fmt.Errorf("yaml: unknown key %q in \"require-permissions\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+			}
+			if v.Kind != yaml.ScalarNode || v.Tag != "!!str" || (v.Value != "workflow" && v.Value != "job") {
+				return fmt.Errorf("yaml: \"scope\" in \"require-permissions\" must be \"workflow\" or \"job\" at line:%d,col:%d", v.Line, v.Column)
+			}
+			p.scope = v.Value
+		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only booleans and mappings configure this policy.
+		fallthrough
+	default:
+		return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+	}
+	return nil
+}
+
+// Config configures validation of GitHub Actions workflows for this repository.
+//
+// Declare custom runner labels and available variable or secret names, suppress selected
+// diagnostics by file path, choose assumed token permissions, and enable repository policy checks.
+// Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or
+// `.github/actionlint.toml`, or select a file with `--config`.
+// Every setting is optional; normal workflow correctness checks run without a configuration file.
+type Config struct {
+	// Extends loads local or HTTPS YAML, JSON and TOML configurations in order.
+	// Relative references resolve against their declaring file or URL. Later
+	// bases override earlier bases; this file wins over all bases.
+	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
+	// Plugins declares canonical plugin packages with exact registry versions,
+	// or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and
+	// latest before saving. Use name, version and registry for a custom catalogue,
+	// or source for a direct artifact. Empty or null disables plugins.
+	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
+	// Files selects repository-relative inputs shared by analysis features.
+	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
+	// Lint configures rule selection separately from repository policy.
+	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
+	// Repository supplies overrides for repository knowledge obtained by the host.
+	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
+	// Overrides applies per-file lint settings in declaration order. Later matching
+	// settings win; mappings merge and arrays replace. Paths are repository-relative.
+	Overrides []Override `yaml:"overrides" jsonschema:"nullable"`
+	// Ignores suppresses a rule for matching files, actions, jobs, or steps.
+	// Every specified selector must match. Later config files replace the list.
+	Ignores IgnoreConfigs `yaml:"ignores" jsonschema:"nullable"`
+	// Tools configures external linters for both the CLI and GitHub Action, keyed
+	// by the rule name of each tool provider, such as ruff or shellcheck.
+	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
+	// LocalActions maps generated action directories to checked-in source directories.
+	// Both paths are relative to the repository root, using ./ or $/ prefixes.
+	// Known checkout placements are removed before matching. Sources resolve once
+	// to actual directories; mappings do not chain.
+	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
+	// Paths applies configuration to workflow files matching a glob pattern.
+	//
+	// Keys are paths relative to the repository root, using `/` separators and doublestar glob syntax,
+	// for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.
+	Paths map[string]PathConfig `yaml:"-"`
+	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
+	//
+	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
+	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
+	Policy Policy `yaml:"-"`
+}
+
+// PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
+// be relative to the root of the project.
+func (cfg *Config) PathConfigs(path string) []PathConfig {
+	path = filepath.ToSlash(path)
+
+	var ret []PathConfig
+	if cfg != nil {
+		for p, c := range cfg.Paths {
+			// Glob patterns were validated in `Parse()`
+			if doublestar.MatchUnvalidated(p, path) {
+				patterns := slices.Clone(c.Ignore)
+				for i, pattern := range c.Ignore {
+					if pattern != nil {
+						patterns[i] = new(*pattern)
+					}
+				}
+				ret = append(ret, PathConfig{Ignore: patterns})
+			}
+		}
+	}
+	return ret
+}
+
+// RequiresCommitHash returns whether the "require-commit-hash" policy is enabled. It returns false
+// when the receiver is nil or when the key is not set.
+func (cfg *Config) RequiresCommitHash() bool {
+	return cfg != nil && cfg.Policy.RequireCommitHash != nil && *cfg.Policy.RequireCommitHash
+}
+
+// RequiresJobTimeout returns the "require-job-timeout" policy. It returns nil when the receiver is
+// nil or when the key is not set.
+func (cfg *Config) RequiresJobTimeout() *JobTimeoutPolicy {
+	if cfg == nil || cfg.Policy.RequireJobTimeout == nil {
+		return nil
+	}
+	return new(*cfg.Policy.RequireJobTimeout)
+}
+
+// RequiresPermissions returns the "require-permissions" policy, or nil for an unset key or nil receiver.
+func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
+	if cfg == nil || cfg.Policy.RequirePermissions == nil {
+		return nil
+	}
+	return new(*cfg.Policy.RequirePermissions)
+}
+
+// Parse parses the given bytes as an actionlint config file. When deserializing the YAML file
+// or the config validation fails, this function returns an error.
+func (ruleSet RuleSet) Parse(b []byte, additional ...string) (*Config, error) {
+	resolved, err := ruleSet.ResolveDocument(b, additional...)
+	if err != nil {
+		return nil, err
+	}
+	if len(resolved.Config.Extends) > 0 {
+		return nil, errors.New("extends requires a file path; load the configuration file instead of parsing bytes")
+	}
+	return resolved.Config, nil
+}
+
+// Resolved keeps validated values and their provenance from the same document.
+type Resolved struct {
+	Provenance Provenance
+	Node       *yaml.Node
+	Inputs     map[*yaml.Node]Input
+	Config     *Config
+	Values     map[string]any
+	Origins    map[string]Origin
+	Warnings   []Warning
+}
+
+func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (Resolved, error) {
+	var document yaml.Node
+	if err := yaml.Unmarshal(b, &document); err != nil {
+		return Resolved{}, decodeError{cause: err}
+	}
+	var root *yaml.Node
+	if len(document.Content) > 0 {
+		root = document.Content[0]
+	}
+	return ruleSet.ResolveNode(root, nil, additional...)
+}
+
+func (ruleSet RuleSet) ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, additional ...string) (Resolved, error) {
+	return ruleSet.resolveNode(root, inputs, true, additional...)
+}
+
+func (ruleSet RuleSet) resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, additional ...string) (Resolved, error) {
+	if inputs == nil {
+		expanded, err := configtree.Expand(root, make(map[*yaml.Node]bool))
+		if err != nil {
+			return Resolved{}, err
+		}
+		root = normalizeToolSwitch(expanded)
+	}
+	legacyWarnings := configWarnings(root, inputs)
+	var err error
+	root, _, err = ruleSet.migrateNode(root)
+	if err != nil {
+		return Resolved{}, err
+	}
+	var c Config
+	if root != nil {
+		if err := ruleSet.DecodeNode(root, &c); err != nil {
+			return Resolved{}, decodeError{cause: err}
+		}
+		// YAML null bypasses field decoders. Preserve its explicit selection of
+		// no plugins, including when it replaces an inherited declaration.
+		for i := 0; root.Kind == yaml.MappingNode && i+1 < len(root.Content); i += 2 {
+			if root.Content[i].Value == "plugins" && root.Content[i+1].ShortTag() == "!!null" {
+				c.Plugins = PluginDeclarations{}
+			}
+		}
+	}
+	ruleSet.projectSettings(&c)
+
+	if bindRules {
+		if err := ruleSet.ValidateRuleNames(&c, additional...); err != nil {
+			return Resolved{}, err
+		}
+	}
+	for pat := range c.Paths {
+		if !doublestar.ValidatePattern(pat) {
+			return Resolved{}, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+		}
+	}
+	values, err := ruleSet.EffectiveValues(&c)
+	if err != nil {
+		return Resolved{}, err
+	}
+	origins := map[string]Origin{}
+	configDefaultOrigins(values, "", origins)
+	if err := configOrigins(root, "", origins, inputs); err != nil {
+		return Resolved{}, err
+	}
+	for name, tool := range c.Tools {
+		if tool.Config != nil {
+			tool.Config.fromInput = origins["/tools/"+configPointerPart(name)+"/config"].Source == "input"
+		}
+	}
+	for i := range c.Overrides {
+		if tools := c.Overrides[i].Tools; tools != nil {
+			for _, tool := range *tools {
+				if tool.Config != nil {
+					tool.Config.fromInput = origins["/overrides"].Source == "input"
+				}
+			}
+		}
+	}
+	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
+}
+
+// Load reads settings from a configuration file. Read also retains source provenance.
+func (ruleSet RuleSet) Load(path string, additional ...string) (*Config, error) {
+	return ruleSet.LoadContext(context.Background(), path, additional...)
+}
+
+// LoadContext reads settings with cancellable local or HTTPS inheritance.
+// ReadContext also retains source provenance for analysis and path interpolation.
+func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
+	source, err := ruleSet.ReadContext(ctx, path, nil, additional...)
+	if err != nil {
+		return nil, err
+	}
+	return source.Config, nil
+}
+
+func (ruleSet RuleSet) Read(path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	return ruleSet.ReadContext(context.Background(), path, readFile, additional...)
+}
+
+// ReadContext preserves a supplied source reader for local and HTTPS inputs.
+// Without one, the host reader acquires local files and explicit HTTPS sources.
+func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	reader := configsource.New(ctx, readFile)
+	warningsByFile := map[string][]Warning{}
+	var bindingSources []bindingSource
+	documents := map[string]*yaml.Node{}
+	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, node, absPath(path) != origin, func(node *yaml.Node) error {
+			captured, err := captureRuleDocument(node)
+			documents[origin] = captured
+			return err
+		}, additional...)
+		warningsByFile[origin] = warnings
+		if err != nil {
+			return nil, err
+		}
+		var settings Config
+		if err := ruleSet.DecodeNode(normalized, &settings); err != nil {
+			return nil, err
+		}
+		bindingSources = append(bindingSources, ruleBindingSources(origin, &settings)...)
+		return normalized, nil
+	})
+	if err != nil {
+		if _, ok := errors.AsType[*os.PathError](err); ok {
+			return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+		}
+		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
+	}
+	inputs := map[*yaml.Node]Input{}
+	if len(loaded.Files) > 1 {
+		for node, file := range loaded.Origins {
+			inputs[node] = Input{File: file}
+		}
+	}
+	resolved, err := ruleSet.ResolveNode(loaded.Node, inputs, additional...)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
+	}
+	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
+	resolved.Config.Lint.Rules.bindingSources = bindingSources
+	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], documents: documents}
+	resolved.Warnings = nil
+	for _, file := range loaded.Files {
+		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])
+	}
+	return &Loaded{resolved, path}, nil
+}
+
+// RepositoryConfigNames lists the config file names read from .github, in precedence order.
+var RepositoryConfigNames = []string{"actionlint.yaml", "actionlint.yml", "actionlint.json", "actionlint.toml"}
+
+// LoadRepository reads the first existing file named in RepositoryConfigNames
+// from the repository's .github directory.
+func (ruleSet RuleSet) LoadRepository(root string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, string, error) {
+	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, additional...)
+}
+
+// LoadRepositoryContext discovers configuration with cancellable inheritance.
+func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, string, error) {
+	for _, f := range RepositoryConfigNames {
+		p := filepath.Join(root, ".github", f)
+		c, err := ruleSet.ReadContext(ctx, p, readFile, additional...)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			continue
+		case err != nil:
+			return nil, "", fmt.Errorf("could not parse config file %q: %w", p, err)
+		default:
+			return c, p, nil
+		}
+	}
+	return nil, "", nil
+}
+
+func absPath(path string) string {
+	if configaddress.Remote(path) {
+		return path
+	}
+	if p, err := filepath.Abs(path); err == nil {
+		path = p
+	}
+	return path
+}

@@ -1,0 +1,30 @@
+package kjanat:actionlint@0.2.0;
+
+/// Optional replacement of a host tool through an explicitly versioned profile.
+/// Package names and analyzer names never participate in negotiation.
+interface tool-integration {
+    record descriptor {
+        tool: string,
+        /// Versioned configuration profile identifier.
+        contract: string,
+        /// JSON Schema for the configuration passed to negotiate.
+        configuration-schema: string,
+    }
+    variant resource-request {
+        workspace,
+        directory(string),
+    }
+    record negotiated {
+        /// Plugin-owned JSON object supplied unchanged as analyzer options.
+        options: string,
+        /// Read-only grants requested from the host; never implicit in options.
+        resources: list<resource-request>,
+    }
+    describe: func() -> descriptor;
+    /// An error means unsupported configuration and permits native fallback.
+    /// Each call uses a fresh instance and must not depend on earlier calls.
+    /// options is an explicit plugin-owned JSON object supplied by the caller.
+    /// The guest combines it with config and derives resource requests from the
+    /// effective configuration. The host never merges opaque plugin options.
+    negotiate: func(config: string, options: string) -> result<negotiated, string>;
+}

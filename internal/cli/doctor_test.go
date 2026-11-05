@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestDoctorToolPresentation(t *testing.T) {

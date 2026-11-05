@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/pluginregistry"
-	"actionlint.kjanat.dev/v2/internal/testutil"
+	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestCheckPreservesInactivePluginLockInputs(t *testing.T) {
@@ -21,19 +21,19 @@ func TestCheckPreservesInactivePluginLockInputs(t *testing.T) {
 			if err := os.Mkdir(".git", 0o700); err != nil {
 				t.Fatal(err)
 			}
-			lockPath := filepath.Join(root, ".github", pluginregistry.LockName)
-			lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
+			lockPath := filepath.Join(root, ".github", plugininstall.LockName)
+			lock, err := plugininstall.OpenLock(t.Context(), lockPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if stale {
-				registry := testutil.NewPluginRegistry(t)
+				registry := fixtureregistry.NewPluginRegistry(t)
 				registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-				client, err := pluginregistry.New(testutil.FixtureRegistryURL)
+				client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
 				if err != nil {
 					t.Fatal(err)
 				}
-				pin, err := client.Resolve(t.Context(), testutil.FixturePluginName, "latest")
+				pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 				if err != nil {
 					t.Fatal(err)
 				}

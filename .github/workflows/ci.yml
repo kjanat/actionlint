@@ -133,7 +133,7 @@ jobs:
       - name: Build command manual
         run: run man
       - name: Install browser test runtime
-        working-directory: packages/language-server
+        working-directory: libraries/browser-lsp
         run: bunx playwright install --with-deps chromium
       - name: Build and test playground
         run: run -sk
@@ -207,25 +207,21 @@ jobs:
             dist/*_checksums.txt
           if-no-files-found: error
           retention-days: 7
-  action-modules:
+  go-guest-modules:
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['modules']) }}
-    name: Action modules
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['guest-modules']) }}
+    name: Go guest modules
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
       - uses: *SetupGo
         with: { go-version: stable, check-latest: true }
-      # Self-contained modules under a dot-directory, which the go tool skips
-      # when expanding a ... pattern. Test each in place.
-      - name: Test and vet each action module
+      - name: Verify Go guest module dependencies
         shell: bash -euo pipefail {0}
         run: |
-          for mod in .github/actions/*/go.mod; do
-            dir="$(dirname "${mod}")"
+          for dir in plugins/sdk/go plugins/examples/insecure-download; do
             echo "::group::${dir}"
-            go -C "${dir}" vet ./...
-            go -C "${dir}" test ./...
+            go -C "${dir}" mod tidy -diff
             echo "::endgroup::"
           done
   lint:
@@ -239,7 +235,6 @@ jobs:
       - parallel: [*Uv, *InstallShellCheck, *Runner]
       - uses: *SetupMise
         with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
-        # The custom build uses the base binary and the version in .custom-gcl.yml.
       - name: Install golangci-lint
         run: version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)";
           go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
@@ -283,31 +278,31 @@ jobs:
             ~/.cargo/registry/
             ~/.cargo/git/
             target/
-            tools/runner-host/target/
+            internal/development/tests/conformance/wasm/runner-host/target/
           key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', '**/Cargo.lock', 'Cargo.toml', '**/Cargo.toml') }}
           restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
       - name: Check Rust plugins and fixtures on the native target
-        run: make plugins-check-native
+        run: mise run plugins-check-native
       - name: Verify the guest SDK package
         run: cargo package --locked -p actionlint-extension-api --all-features
       - name: Build the pinned Wasmtime runner host
-        run: cargo build --locked --manifest-path tools/runner-host/Cargo.toml
+        run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
-        run: make -B plugins
+        run: mise run --force plugins
       - name: Verify generated plugin interfaces
-        run: go run -C tools/plugin-contract .;
-          git diff --exit-code -- ':(glob)internal/plugins/component/*.gen.go'
+        run: go run -C internal/development/generators/plugin-contract .;
+          git diff --exit-code -- ':(glob)internal/plugins/execution/component/*.gen.go' ':(glob)internal/plugins/protocol/component/**/*.gen.go'
       - name: Load the Rust, C and TinyGo examples
         run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
-          --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
-          --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
-          --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm
-          testdata/ok/minimal.yaml
+          --plugin internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm
+          --plugin internal/plugins/execution/component/testdata/plugins/no-sudo.wasm
+          --plugin internal/plugins/execution/component/testdata/plugins/insecure-download.wasm
+          internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
       - name: Test plugins including Wasmtime runner parity
-        env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/tools/runner-host/target/debug/actionlint-runner-host" }
+        env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host" }
         run: test -x "${ACTIONLINT_RUNNER_HOST}";
-          go test -count=1 -v ./internal/plugins/component ./internal/plugins/core ./plugin
-      - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/localapp ./internal/integration/cli
+          go test -count=1 -v ./internal/plugins/execution/component ./internal/plugins/execution/module ./internal/development/tests/integration/plugins
+      - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/checking ./internal/lsp ./internal/development/tests/integration/checking ./internal/development/tests/integration/cli
   docker:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
@@ -317,7 +312,7 @@ jobs:
       - *ActCheckNocred
       - name: Build image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with: { load: true, push: false, tags: actionlint:test }
+        with: { load: true, push: false, tags: actionlint:test, file: distribution/docker/Dockerfile }
       - name: Check bundled Ruff
         run: bash distribution/docker/test-docker-ruff.bash actionlint:test
       - name: Check published Wasm plugins and offline cache
@@ -327,7 +322,7 @@ jobs:
           --mount "type=bind,source=${PWD},target=/w"
           -- actionlint:test -color -verbose
       - name: Build Docker Action compatibility image
-        run: docker build --target action -t actionlint:action-test .
+        run: docker build -f distribution/docker/Dockerfile --target action -t actionlint:action-test .
       - name: Check Docker Action compatibility
         run: bash distribution/docker/test-docker-action.bash actionlint:action-test
       - parallel:
@@ -335,7 +330,7 @@ jobs:
             run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
               --require-label org.opencontainers.image.source:url
               --require-label org.opencontainers.image.licenses:spdx
-              - < Dockerfile
+              - < distribution/docker/Dockerfile
           - name: Lint Dockerfile with droast
             uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
   action:
@@ -363,7 +358,7 @@ jobs:
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
-        run: run -s actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test
+        run: run -s actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
@@ -443,11 +438,11 @@ jobs:
         id: smoke
         # ./ loads the candidate release tree generated in this job's workspace.
         uses: ./.actionlint-action-test
-        with: { files: testdata/ok/minimal.yaml, format: json, sarif: true }
+        with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, format: json, sarif: true }
       - name: Exercise inline configuration
         uses: ./.actionlint-action-test
         with:
-          files: testdata/ok/minimal.yaml
+          files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
           config: "config-variables: []"
           annotations: false
           summary: false
@@ -459,12 +454,12 @@ jobs:
       - name: Lint with shared configuration
         uses: ./.actionlint-action-test
         with:
-          files: testdata/ok/minimal.yaml
+          files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
           config-file: .github/actionlint.yaml
       - name: Exercise advisory review without a token
         uses: ./.actionlint-action-test
         with:
-          files: testdata/err/one_error.yaml
+          files: internal/development/tests/integration/workflow/testdata/err/one_error.yaml
           fail-on-error: false
           annotations: false
           review: true
@@ -492,7 +487,7 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          node tools/action/check-action-outputs.mjs
+          node applications/github-action/tests/check-action-outputs.mjs
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
@@ -523,7 +518,7 @@ jobs:
         id: slim
         uses: ./.actionlint-slim-test/actionlint-action/action
         env: { ACTIONLINT_ACTION_BINARY: "${{ github.workspace }}/.actionlint-slim-test/actionlint-test" }
-        with: { files: testdata/ok/minimal.yaml, shellcheck: false }
+        with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, shellcheck: false }
       - name: Verify Dockerless result
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
         run: test "${RESULT}" = success

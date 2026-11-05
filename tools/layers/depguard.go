@@ -178,7 +178,7 @@ func packageGlobs(pkg *modulePackage, tests bool) []string {
 }
 
 // negations excludes the packages whose directories end with the same path
-// as an owner's directory, such as internal/config for the public config.
+// as an owner's directory, such as internal/input/configuration for the public config.
 func negations(globs []string, owners []*modulePackage, tests bool, g *graph) []string {
 	var excluded []string
 	for _, pkg := range g.sortedPackages() {

@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/runner"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	"github.com/spf13/pflag"
 )
 

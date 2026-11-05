@@ -7,11 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/pluginref"
-	"actionlint.kjanat.dev/v2/internal/pluginregistry"
-	"actionlint.kjanat.dev/v2/internal/testutil"
+	checking "actionlint.kjanat.dev/v2/internal/checking"
+	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+
+	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
 // testReference builds a declaration through pluginref.New and fails the test
@@ -28,15 +29,15 @@ func testReference(t *testing.T, name, version, registry string) pluginref.Refer
 func TestRegistryAliasCommandScope(t *testing.T) {
 	refs := []pluginref.Reference{
 		testReference(t, "check", "latest", pluginref.DefaultRegistry),
-		testReference(t, "check", "v1.0.0", testutil.FixtureRegistryURL),
+		testReference(t, "check", "v1.0.0", fixtureregistry.FixtureRegistryURL),
 	}
-	project := &localapp.PluginProject{Lock: &pluginregistry.LockFile{Lock: pluginregistry.Lock{
-		Plugins: []pluginregistry.Pin{
+	project := &plugininstall.Project{Lock: &plugininstall.LockFile{Lock: plugininstall.Lock{
+		Plugins: []plugininstall.Pin{
 			{Name: "github.com/first/plugin", Alias: "check", Registry: pluginref.DefaultRegistry},
-			{Name: "github.com/second/plugin", Alias: "check", Registry: testutil.FixtureRegistryURL},
+			{Name: "github.com/second/plugin", Alias: "check", Registry: fixtureregistry.FixtureRegistryURL},
 		},
 	}}}
-	if _, err := declaredPlugin(t.Context(), project, refs, "check", ""); err == nil {
+	if _, err := plugincmd.DeclaredPlugin(t.Context(), project, refs, "check", ""); err == nil {
 		t.Fatal("ambiguous registry alias accepted")
 	}
 	for _, tc := range []struct {
@@ -44,29 +45,29 @@ func TestRegistryAliasCommandScope(t *testing.T) {
 		index          int
 	}{
 		{"check", pluginref.DefaultRegistry, 0},
-		{"check", testutil.FixtureRegistryURL, 1},
+		{"check", fixtureregistry.FixtureRegistryURL, 1},
 		{"github.com/second/plugin", "", 1},
 	} {
-		index, err := declaredPlugin(t.Context(), project, refs, tc.name, tc.registry)
+		index, err := plugincmd.DeclaredPlugin(t.Context(), project, refs, tc.name, tc.registry)
 		if err != nil || index != tc.index {
 			t.Fatalf("%+v: index=%d error=%v", tc, index, err)
 		}
 	}
-	if _, err := requestedPlugin("check", pluginInvocation{}, refs); err == nil {
+	if _, err := plugincmd.RequestedPlugin("check", plugincmd.RegistryOptions{}, refs); err == nil {
 		t.Fatal("install selected ambiguous alias registry")
 	}
-	ref, err := requestedPlugin("check", pluginInvocation{Registry: testutil.FixtureRegistryURL}, refs)
-	if err != nil || ref.Registry() != testutil.FixtureRegistryURL || ref.Version() != "v1.0.0" {
+	ref, err := plugincmd.RequestedPlugin("check", plugincmd.RegistryOptions{Registry: fixtureregistry.FixtureRegistryURL}, refs)
+	if err != nil || ref.Registry() != fixtureregistry.FixtureRegistryURL || ref.Version() != "v1.0.0" {
 		t.Fatalf("scoped install: %+v %v", ref, err)
 	}
 }
 
 func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
-	wasm, err := os.ReadFile("internal/plugins/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := testutil.NewPluginRegistry(t)
+	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", wasm)
 	registry.Add(t, "v1.1.0", wasm)
@@ -79,11 +80,11 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo test}]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "install", "community-check@v1.0.0", "--registry", testutil.FixtureRegistryURL)
+	pluginCommandTest(t, 0, "plugin", "install", "community-check@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	configPath := filepath.Join(".github", "actionlint.yaml")
-	lockPath := filepath.Join(".github", pluginregistry.LockName)
-	cfg, err := config.Load(configPath)
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != testutil.FixturePluginName {
+	lockPath := filepath.Join(".github", plugininstall.LockName)
+	cfg, err := checking.ConfigurationRules().Load(configPath)
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName {
 		t.Fatalf("canonical declaration lost: %+v %v", cfg, err)
 	}
 	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
@@ -98,16 +99,16 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 		t.Fatalf("offline alias triggered registry lookup: %v", requests)
 	}
 	registry.SetOffline(false)
-	pluginCommandTest(t, 0, "plugin", "update", testutil.FixturePluginName, "--version", "v1.1.0")
-	cfg, err = config.Load(configPath)
-	if err != nil || cfg.Plugins[0].Name() != testutil.FixturePluginName || cfg.Plugins[0].Version() != "v1.1.0" {
+	pluginCommandTest(t, 0, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "v1.1.0")
+	cfg, err = checking.ConfigurationRules().Load(configPath)
+	if err != nil || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName || cfg.Plugins[0].Version() != "v1.1.0" {
 		t.Fatalf("canonical update lost exact declaration: %+v %v", cfg, err)
 	}
 	beforeConfig, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "install", testutil.FixturePluginName, "--registry", testutil.FixtureRegistryURL)
+	pluginCommandTest(t, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL)
 	registry.SetRepository("github.com/another/plugin", 20)
 	registry.Add(t, "v1.1.0", wasm)
 	registry.Publish(t, "v1.1.0")
@@ -124,7 +125,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	pluginCommandTest(t, 0, "plugin", "remove", testutil.FixturePluginName)
+	pluginCommandTest(t, 0, "plugin", "remove", fixtureregistry.FixturePluginName)
 	if requests := registry.Requests(); len(requests) != 0 {
 		t.Fatalf("canonical removal of alias contacted registry: %v", requests)
 	}

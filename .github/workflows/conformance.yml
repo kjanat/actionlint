@@ -29,11 +29,11 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .cache/conformance/*.zip
-          key: conformance-${{ runner.os }}-${{ hashFiles('internal/conformance/sources.json') }}
+          key: conformance-${{ runner.os }}-${{ hashFiles('internal/development/tests/conformance/sources.json') }}
       - name: Fetch and verify pinned fixtures
-        run: go run ./internal/conformance/fetch
+        run: go run ./internal/development/tests/conformance/fetch
       - name: Compare actionlint with upstream expectations
-        run: go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
+        run: go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/development/tests/conformance
         env: { ACTIONLINT_CONFORMANCE_REPORT: .cache/conformance/results.json }
       - name: Upload comparison report
         if: ${{ always() }}

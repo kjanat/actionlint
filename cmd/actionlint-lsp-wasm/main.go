@@ -16,11 +16,12 @@ import (
 	"sync/atomic"
 	"syscall/js"
 
-	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/langserver"
-	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/tools/backend"
-	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	"actionlint.kjanat.dev/v2/internal/lsp/transport"
+
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/lsp"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 var requestSequence atomic.Uint64
@@ -60,9 +61,9 @@ func hostRequest(ctx context.Context, method string, params any) (js.Value, erro
 }
 
 func serve(ctx context.Context, in io.Reader, out io.Writer) error {
-	var workspace langserver.WorkspaceURIs
+	var workspace lsp.WorkspaceURIs
 	var tools []string
-	return langserver.ServeWithOptions(ctx, in, out, langserver.Options{
+	return lsp.ServeWithOptions(ctx, in, out, lsp.Options{
 		Initialize: func(raw json.RawMessage) error {
 			var params struct {
 				RootURI          string `json:"rootUri"`
@@ -84,7 +85,7 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 				root = "file:///workspace"
 			}
 			var err error
-			workspace, err = langserver.NewWorkspaceURIs(root, "/workspace")
+			workspace, err = lsp.NewWorkspaceURIs(root, "/workspace")
 			if err != nil {
 				return err
 			}
@@ -98,13 +99,13 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		},
 		PathFromURI: workspace.Path,
 		URIFromPath: workspace.URI,
-		Complete:    localapp.CompleteDocument,
-		Analyze: func(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
+		Complete:    lsp.CompleteDocument,
+		Analyze: func(ctx context.Context, documents map[string]lsp.Document) (lsp.Analysis, error) {
 			selections := registry.Selections{}
 			for _, name := range tools {
 				selections[name] = toolSelection(ctx, name)
 			}
-			options := application.Options{WorkingDir: "/workspace", SkipProjectConfig: true, Tools: registry.Registrations(selections)}
+			options := checking.Options{WorkingDir: "/workspace", SkipProjectConfig: true, Tools: registry.Registrations(selections)}
 			options.ReadFile = func(path string) ([]byte, error) {
 				uri := workspace.URI(path)
 				if uri == "" {
@@ -124,13 +125,13 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 				}
 				return []byte(value.String()), nil
 			}
-			return localapp.AnalyzeEditorDocuments(ctx, options, documents)
+			return lsp.AnalyzeEditorDocuments(ctx, options, documents)
 		},
 	})
 }
 
-func toolSelection(ctx context.Context, name string) backend.Selection {
-	return backend.Selection{Runner: func(args []string, script string) ([]byte, error) {
+func toolSelection(ctx context.Context, name string) scripts.Selection {
+	return scripts.Selection{Runner: func(args []string, script string) ([]byte, error) {
 		value, err := hostRequest(ctx, "actionlint/runTool", struct {
 			Name  string   `json:"name"`
 			Args  []string `json:"args"`
@@ -180,7 +181,7 @@ func main() {
 	go func() {
 		reader := bufio.NewReader(output)
 		for {
-			message, err := langserver.ReadMessage(reader)
+			message, err := transport.ReadPayload(reader)
 			if err != nil {
 				return
 			}

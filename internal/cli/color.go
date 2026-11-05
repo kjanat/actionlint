@@ -5,7 +5,9 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+
+	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
 func parseColorMode(mode string) (render.Color, error) {
@@ -28,7 +30,7 @@ func (a *commandApp) prepareColor() error {
 	if a.set["modern-color"] {
 		color, err := parseColorMode(a.opts.colorMode)
 		if err != nil {
-			return commandUsageError{err}
+			return commandargs.UsageError{Cause: err}
 		}
 		a.inv.Render.Color = color
 	}

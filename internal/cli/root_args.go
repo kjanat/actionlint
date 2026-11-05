@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+
 	"github.com/spf13/pflag"
 )
 
@@ -35,10 +37,10 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		}
 		if helpIndex < 0 && len(arg.flags) == 1 && arg.flags[0].flag.Name == "directory" {
 			if len(arg.tokens) == 1 && !strings.Contains(arg.tokens[0], "=") {
-				return nil, "", false, commandUsageError{errors.New("flag needs an argument: -C")}
+				return nil, "", false, commandargs.UsageError{Cause: errors.New("flag needs an argument: -C")}
 			}
 			if err := flags.Set("directory", arg.flags[0].value); err != nil {
-				return nil, "", false, commandUsageError{err}
+				return nil, "", false, commandargs.UsageError{Cause: err}
 			}
 			continue
 		}
@@ -70,7 +72,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 	err = flags.Parse(parsedArgs)
 	flags.Visit(func(flag *pflag.Flag) { a.set[flag.Name] = true })
 	if err != nil {
-		return nil, "", false, commandUsageError{err}
+		return nil, "", false, commandargs.UsageError{Cause: err}
 	}
 	if helpIndex >= 0 {
 		a.inv.JSON = a.errorJSON
@@ -85,7 +87,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 	forced = a.opts.command
 	if a.set["command"] {
 		if forced == "" {
-			return nil, "", false, commandUsageError{errors.New("--command requires a command name")}
+			return nil, "", false, commandargs.UsageError{Cause: errors.New("--command requires a command name")}
 		}
 		return rest, forced, false, nil
 	}
