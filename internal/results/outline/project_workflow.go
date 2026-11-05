@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
 // FromWorkflow projects decoded workflow declarations into a report outline.
@@ -91,9 +91,9 @@ func outlineString(value *workflowlang.String) string {
 	return value.Value
 }
 
-func outlinePosition(pos *workflowlang.Pos) *diagmodel.Position {
+func outlinePosition(pos *workflowlang.Pos) *sourcepos.Position {
 	if pos == nil {
 		return nil
 	}
-	return &diagmodel.Position{Line: pos.Line, Column: pos.Col}
+	return &sourcepos.Position{Line: pos.Line, Column: pos.Col}
 }

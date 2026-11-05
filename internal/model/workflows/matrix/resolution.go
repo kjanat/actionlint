@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // matrixAxis is one declared matrix row. Complete is false when a value or the
@@ -891,7 +891,7 @@ func expression(text *workflowlang.String) value.Value {
 func origin(pos *workflowlang.Pos, fromExpression bool) value.Origin {
 	o := value.Origin{FromExpression: fromExpression}
 	if pos != nil {
-		o.Span.Start = results.Position{Line: pos.Line, Column: pos.Col}
+		o.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Col}
 	}
 	return o
 }

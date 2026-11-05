@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -78,10 +79,10 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 					t.Fatalf("syntax message includes raw coordinates or lacks detail: %s", matched[0].Message)
 				}
 			}
-			var want diagmodel.Position
+			var want sourcepos.Position
 			for i, line := range strings.Split(metadata, "\n") {
 				if col := strings.Index(line, tc.token); col >= 0 {
-					want = diagmodel.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
+					want = sourcepos.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
 					if strings.HasPrefix(tc.name, "syntax-eof") {
 						want.Column = utf8.RuneCountInString(line) + 1
 					}
@@ -91,7 +92,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			if matched[0].Start != want {
 				t.Fatalf("want %+v got %+v: %s", want, matched[0].Start, matched[0].Message)
 			}
-			if tc.name == "syntax-delimiter" && matched[0].End != (diagmodel.Position{Line: want.Line, Column: want.Column + 2}) {
+			if tc.name == "syntax-delimiter" && matched[0].End != (sourcepos.Position{Line: want.Line, Column: want.Column + 2}) {
 				t.Fatalf("closing delimiter must retain its two-character range: %+v", matched[0])
 			}
 			if strings.HasPrefix(tc.name, "syntax-eof") && matched[0].End != want {

@@ -4,21 +4,21 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestSuppressionUseAcrossInvocations(t *testing.T) {
-	ref := source.Reference{Document: "shared-action", Revision: "revision-one"}
-	position := results.Position{Line: 4, Column: 15}
+	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
+	position := sourcepos.Position{Line: 4, Column: 15}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
 	candidate := func(document, revision, rule string) *findingmodel.Finding {
 		return &findingmodel.Finding{
 			Rule: "unused-suppression", Start: position,
-			Reference: &source.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: rule,
+			Reference: &sourcepos.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: rule,
 		}
 	}
 	files := []analyzedFile{
@@ -37,8 +37,8 @@ func TestSuppressionUseAcrossInvocations(t *testing.T) {
 
 func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 	const content = "run: echo ok # ignore shellcheck expression-reference -- keep reason\n"
-	position := results.Position{Line: 1, Column: strings.Index(content, "#") + 1}
-	ref := source.Reference{Document: "physical-action.yml", Revision: sourceid.Digest([]byte(content))}
+	position := sourcepos.Position{Line: 1, Column: strings.Index(content, "#") + 1}
+	ref := sourcepos.Reference{Document: "physical-action.yml", Revision: sourceid.Digest([]byte(content))}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
 	files := []analyzedFile{{source: sourceUnit{Content: []byte(content)}}}
@@ -59,12 +59,12 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 }
 
 func TestIncompleteSuppressionInvocationInvalidatesOnlyItsRevision(t *testing.T) {
-	ref := source.Reference{Document: "shared-action", Revision: "revision-one"}
+	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
 	var usage suppressionUses
 	usage.markIncomplete(ref)
 	candidate := func(document, revision string) *findingmodel.Finding {
 		return &findingmodel.Finding{
-			Rule: "unused-suppression", Reference: &source.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
+			Rule: "unused-suppression", Reference: &sourcepos.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
 		}
 	}
 	files := []analyzedFile{

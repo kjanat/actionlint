@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
 func parseActionOutline(path string, content []byte) (Action, error) {
@@ -50,7 +49,7 @@ runs:
 		t.Fatalf("input order/casing lost: %+v", outline.Inputs())
 	}
 	input := outline.Inputs()[0]
-	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (diagmodel.Position{Line: 4, Column: 3}) {
+	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (sourcepos.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared input metadata lost: %+v", input)
 	}
 	if second := outline.Inputs()[1]; second.Required == nil || *second.Required || second.Default != nil {

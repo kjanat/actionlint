@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Projection owns private records. Its accessors return detached values.
@@ -72,7 +72,7 @@ func New(graph invocation.Graph) (Projection, error) {
 		path := ancestry(parent, call.Parent())
 		view.Calls[i] = checkinputs.Call{
 			ID: checkinputs.OccurrenceID(call.ID()), Parent: checkinputs.OccurrenceID(call.Parent()), Ancestry: path, Depth: call.Depth(), Site: call.Site(),
-			Step: results.Position{Line: facts.Step.Line, Column: facts.Step.Column}, Uses: facts.Uses, HasUses: facts.HasUses, Condition: condition, Outcome: outcome,
+			Step: sourcepos.Position{Line: facts.Step.Line, Column: facts.Step.Column}, Uses: facts.Uses, HasUses: facts.HasUses, Condition: condition, Outcome: outcome,
 		}
 		paths[call.ID()] = path
 	}

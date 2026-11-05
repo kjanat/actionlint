@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -11,7 +12,6 @@ import (
 
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func (rule *Checker) checkMatrixSourceKey(source workflowdecl.StringView, evaluated bool) {
@@ -57,7 +57,7 @@ func (rule *Checker) checkMatrix(m workflowdecl.MatrixView, resolution matrixche
 	}
 	// inferred holds the element type of each row declaration. A missing
 	// position reads as any, which means nothing was inferred.
-	inferred := map[results.Position]exprtypes.Type{}
+	inferred := map[sourcepos.Position]exprtypes.Type{}
 	if m.Expression().Present() {
 		rule.checkMatrixExpression(m.Expression())
 	} else {
@@ -80,12 +80,12 @@ func (rule *Checker) checkMatrix(m workflowdecl.MatrixView, resolution matrixche
 			ty := rule.checkMatrixRow(row)
 			if row.Expression().Present() {
 				if pos := viewPosition(row.Expression()); pos != nil {
-					inferred[results.Position{Line: pos.Line, Column: pos.Col}] = ty
+					inferred[sourcepos.Position{Line: pos.Line, Column: pos.Col}] = ty
 				}
 			} else {
 				for item := range row.Values() {
 					if pos := rawValuePosition(item); pos != nil {
-						inferred[results.Position{Line: pos.Line, Column: pos.Col}] = ty
+						inferred[sourcepos.Position{Line: pos.Line, Column: pos.Col}] = ty
 					}
 				}
 			}
@@ -116,7 +116,7 @@ func matrixTypeFromResolution(resolution matrixcheck.Resolution) exprtypes.Objec
 	return matrixTypeFromResolutionWithInferredRows(resolution, nil)
 }
 
-func matrixTypeFromResolutionWithInferredRows(resolution matrixcheck.Resolution, inferred map[results.Position]exprtypes.Type) exprtypes.ObjectType {
+func matrixTypeFromResolutionWithInferredRows(resolution matrixcheck.Resolution, inferred map[sourcepos.Position]exprtypes.Type) exprtypes.ObjectType {
 	if !resolution.IncludesComplete() || resolution.Open() {
 		inferred = nil
 	}

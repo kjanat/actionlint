@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowmodel "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -35,7 +36,7 @@ func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input
 			if step.Name == nil {
 				findings = append(findings, results.Diagnostic{
 					Message: "every step must have its name",
-					Start:   results.Position{Line: step.Pos.Line, Column: step.Pos.Col},
+					Start:   sourcepos.Position{Line: step.Pos.Line, Column: step.Pos.Col},
 				})
 			}
 			if parallel, ok := step.Exec.(*workflowmodel.ExecParallel); ok {

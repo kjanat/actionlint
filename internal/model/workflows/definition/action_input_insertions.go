@@ -1,12 +1,12 @@
 package workflow
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func SemanticValue(node *String) value.Value {
@@ -15,7 +15,7 @@ func SemanticValue(node *String) value.Value {
 	}
 	origin := value.Origin{}
 	if node.Pos != nil {
-		origin.Span.Start = results.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Col}
 	}
 	if node.SourceScalar.Evaluated {
 		origin.FromExpression = true
@@ -52,7 +52,7 @@ func semanticMappingValue(node *String) value.Value {
 	}
 	origin := value.Origin{}
 	if node.Pos != nil {
-		origin.Span.Start = results.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Col}
 	}
 	return MappingScalar(node.Value, node.SourceScalar, origin)
 }

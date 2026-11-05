@@ -9,7 +9,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -20,19 +20,19 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	root := t.TempDir()
 	store, fixture := capturefixture.NewCapturedSources(t, root)
 	path := filepath.Join(root, "ci.yml")
-	entry, err := fixture.Capture(path, []byte("a\r\n"), source.YAML)
+	entry, err := fixture.Capture(path, []byte("a\r\n"), sourcepos.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	invalid, err := fixture.Capture("bad.sh", []byte{0xff}, source.RawLF)
+	invalid, err := fixture.Capture("bad.sh", []byte{0xff}, sourcepos.RawLF)
 	if err != nil {
 		t.Fatal(err)
 	}
-	conflicted, err := fixture.Capture("conflict.yml", []byte("x"), source.YAML)
+	conflicted, err := fixture.Capture("conflict.yml", []byte("x"), sourcepos.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Read(t.Context(), filepath.Join(root, "conflict.yml"), source.RawLF); err == nil {
+	if _, err := store.Read(t.Context(), filepath.Join(root, "conflict.yml"), sourcepos.RawLF); err == nil {
 		t.Fatal("missing conflict")
 	}
 	failedPath := filepath.Join(root, "missing.yml")
@@ -40,10 +40,10 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Read(t.Context(), failedPath, source.YAML); err == nil {
+	if _, err := store.Read(t.Context(), failedPath, sourcepos.YAML); err == nil {
 		t.Fatal("missing failed capture")
 	}
-	second, err := fixture.Capture("second.yml", []byte("a"), source.YAML)
+	second, err := fixture.Capture("second.yml", []byte("a"), sourcepos.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,33 +61,33 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	if states[failedDocument] != capture.Failed || states[conflicted.Revision().Document()] != capture.Conflicted {
 		t.Fatal("fixture did not seal failed/conflicted rows")
 	}
-	wrongDigest, err := source.NewRevision(entry.Revision().Document(), strings.Repeat("a", 64))
+	wrongDigest, err := sourcepos.NewRevision(entry.Revision().Document(), strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
-	failedRevision, err := source.NewRevision(failedDocument, strings.Repeat("b", 64))
+	failedRevision, err := sourcepos.NewRevision(failedDocument, strings.Repeat("b", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
-	good := results.Related{Message: "kept", Path: "ci.yml", Revision: entry.Revision(), Coordinates: source.YAML, Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 2}}
+	good := results.Related{Message: "kept", Path: "ci.yml", Revision: entry.Revision(), Coordinates: sourcepos.YAML, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}
 	eof := good
-	eof.Start = results.Position{Line: 2, Column: 1}
+	eof.Start = sourcepos.Position{Line: 2, Column: 1}
 	eof.End = eof.Start
-	absentRevision, err := source.NewRevision(filepath.ToSlash(filepath.Join(root, "absent.yml")), strings.Repeat("c", 64))
+	absentRevision, err := sourcepos.NewRevision(filepath.ToSlash(filepath.Join(root, "absent.yml")), strings.Repeat("c", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
 	bad := []results.Related{good, good, good, good, good, good, good, good, good, good, good, good, good}
 	bad[0].Revision = wrongDigest
-	bad[1].Coordinates = source.RawLF
+	bad[1].Coordinates = sourcepos.RawLF
 	bad[2].Path = "foreign.yml"
-	bad[3].End = results.Position{Line: 3, Column: 1}
+	bad[3].End = sourcepos.Position{Line: 3, Column: 1}
 	bad[4].Start, bad[4].End = good.End, good.Start
-	bad[5].Start = results.Position{Line: 1, Column: 3}
-	bad[6].Revision, bad[6].Coordinates, bad[6].Path = invalid.Revision(), source.RawLF, "bad.sh"
+	bad[5].Start = sourcepos.Position{Line: 1, Column: 3}
+	bad[6].Revision, bad[6].Coordinates, bad[6].Path = invalid.Revision(), sourcepos.RawLF, "bad.sh"
 	bad[7].Revision, bad[7].Path = conflicted.Revision(), "conflict.yml"
 	bad[8].Revision, bad[8].Path = failedRevision, "missing.yml"
-	bad[9].Revision = source.Revision{}
+	bad[9].Revision = sourcepos.Revision{}
 	bad[10].Coordinates = ""
 	bad[11].Revision, bad[11].Path = absentRevision, "absent.yml"
 	bad[12].Revision = second.Revision()
@@ -113,7 +113,7 @@ func (relatedAdmissionProbe) Descriptor() checkinputs.Descriptor {
 }
 
 func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
-	point := results.Position{Line: 1, Column: 1}
+	point := sourcepos.Position{Line: 1, Column: 1}
 	valid := results.Related{Path: input.Path, Start: point, End: point}
 	foreign := valid
 	foreign.Path = "other.yml"
@@ -123,7 +123,7 @@ func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.
 	badRange.End.Line = 999
 	badModel := valid
 	badModel.Revision = input.Revision
-	badModel.Coordinates = source.RawLF
+	badModel.Coordinates = sourcepos.RawLF
 	return []results.Diagnostic{{Path: input.Path, Message: "primary", Start: point, End: point, Related: []results.Related{valid, foreign, badRange, badModel}}}, nil
 }
 

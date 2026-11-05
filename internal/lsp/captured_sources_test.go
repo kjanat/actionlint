@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/lsp/transport"
 
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -26,14 +27,14 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 	go func() {
 		done <- Serve(t.Context(), server, server, func(_ context.Context, documents map[string]Document) (Analysis, error) {
 			for path, document := range documents {
-				finding := results.Diagnostic{Path: path, Rule: "captured", Message: "captured finding", Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 1, Column: 5}}
+				finding := results.Diagnostic{Path: path, Rule: "captured", Message: "captured finding", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}}
 				if document.Version == 2 {
 					// A conflicted capture has no publishable source, even though
 					// the editor still owns text and version metadata for it.
 					return Analysis{Diagnostics: []results.Diagnostic{finding}}, errors.New("source-revision-conflict: conflicting overlays")
 				}
 				if document.Version == 3 {
-					finding.Related = []results.Related{{Path: path + ".related", Message: "unavailable related source", Start: results.Position{Line: 1, Column: 2}}}
+					finding.Related = []results.Related{{Path: path + ".related", Message: "unavailable related source", Start: sourcepos.Position{Line: 1, Column: 2}}}
 				}
 				if document.Version == 4 {
 					invalid, outside := finding, finding
@@ -44,7 +45,7 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 					relatedPath := path + ".related"
 					target := testSource(t, relatedPath, "😀target\n")
 					other := testSource(t, relatedPath, "other revision\n")
-					finding.Related = []results.Related{{Revision: other.Revision, Coordinates: target.Coordinates, Path: relatedPath, Start: results.Position{Line: 1, Column: 2}, End: results.Position{Line: 1, Column: 8}}}
+					finding.Related = []results.Related{{Revision: other.Revision, Coordinates: target.Coordinates, Path: relatedPath, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 8}}}
 					return Analysis{Diagnostics: []results.Diagnostic{finding}, Sources: map[string]Source{path: testSource(t, path, "\ufeff😀bad\n"), relatedPath: target}}, nil
 				}
 				return Analysis{Diagnostics: []results.Diagnostic{finding}, Sources: map[string]Source{path: testSource(t, path, "\ufeff😀bad\n")}}, nil

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -42,7 +42,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		finding := &findingmodel.Finding{Rule: "expression-reference", Start: diagmodel.Position{Line: 10, Column: 20}}
+		finding := &findingmodel.Finding{Rule: "expression-reference", Start: sourcepos.Position{Line: 10, Column: 20}}
 		got := (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).FilterConfigured("ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg, false, (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).Levels(cfg))
 		var kinds []string
 		for _, e := range got {
@@ -56,7 +56,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign := &findingmodel.Finding{Rule: "expression-reference", Start: diagmodel.Position{Line: 10, Column: 20}, Path: "action.yml", Source: []byte("foreign")}
+	foreign := &findingmodel.Finding{Rule: "expression-reference", Start: sourcepos.Position{Line: 10, Column: 20}, Path: "action.yml", Source: []byte("foreign")}
 	if got := (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).FilterConfigured("ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{foreign}, cfg, false, (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).Levels(cfg)); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign finding: %#v", got)
 	}
@@ -84,7 +84,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &findingmodel.Finding{Rule: "shellcheck", Start: diagmodel.Position{Line: 1, Column: 6}, Path: script, Source: []byte("echo $VALUE\n"), SuppressionOrigin: &findingmodel.SuppressionOrigin{First: 10, Last: 10}}
+			finding := &findingmodel.Finding{Rule: "shellcheck", Start: sourcepos.Position{Line: 1, Column: 6}, Path: script, Source: []byte("echo $VALUE\n"), SuppressionOrigin: &findingmodel.SuppressionOrigin{First: 10, Last: 10}}
 			got := (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).FilterConfigured(workflow, root, []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg, false, (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).Levels(cfg))
 			if len(got) != tc.want {
 				t.Fatalf("got %d findings, want %d", len(got), tc.want)
@@ -116,7 +116,7 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &findingmodel.Finding{Rule: "expression-reference", Start: diagmodel.Position{Line: 10, Column: 20}}
+			finding := &findingmodel.Finding{Rule: "expression-reference", Start: sourcepos.Position{Line: 10, Column: 20}}
 			got := (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).FilterConfigured(filepath.Join(root, ".github", "workflows", "ci.yml"), root, []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg, false, (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).Levels(cfg))
 			if (len(got) == 0) != tc.suppressed {
 				t.Fatalf("got %#v", got)

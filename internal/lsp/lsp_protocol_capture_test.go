@@ -16,7 +16,7 @@ import (
 	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -157,18 +157,18 @@ func TestEditorUnavailableAndRawMismatchLogWithoutPublishingRanges(t *testing.T)
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			path, text := filepath.Join(root, "workflow.yml"), "first\rsecond\nbad"
-			model := source.YAML
+			model := sourcepos.YAML
 			unavailable, raw := false, true
 			switch name {
 			case "unavailable matching captured row":
 				unavailable, raw = true, false
 			case "non YAML captured row":
-				model, text = source.RawLF, "first\nbad"
+				model, text = sourcepos.RawLF, "first\nbad"
 			case "invalid UTF8 captured row":
 				text, raw = string([]byte{0xff}), false
 			}
 			captured := reportfixture.CapturedSource(t, path, []byte(text), model)
-			result := &checking.Result{Diagnostics: []results.Diagnostic{{Path: path, Start: results.Position{Line: 2, Column: 1}, Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []report.DiagnosticSource{{Content: []byte(text), RawScript: raw, Unavailable: unavailable}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &checking.Result{Diagnostics: []results.Diagnostic{{Path: path, Start: sourcepos.Position{Line: 2, Column: 1}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []report.DiagnosticSource{{Content: []byte(text), RawScript: raw, Unavailable: unavailable}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			publication, logs := firstEditorPublication(t, func(_ context.Context, documents map[string]Document) (Analysis, error) {
 				return FromReport(result, root, documents)
 			}, FileURI(path), text)

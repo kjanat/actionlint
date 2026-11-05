@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	envname "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/env-var"
 
@@ -21,7 +22,6 @@ import (
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Declaration is an immutable check selection. Every call returns independent
@@ -170,7 +170,7 @@ func identifiers(job declaration.JobView) []reporting.Finding {
 	for value := range job.Needs() {
 		input.Needs = append(input.Needs, name(value))
 	}
-	owners := map[results.Position]declaration.StepView{}
+	owners := map[sourcepos.Position]declaration.StepView{}
 	var collect func(iter.Seq[declaration.StepView])
 	collect = func(steps iter.Seq[declaration.StepView]) {
 		for step := range steps {

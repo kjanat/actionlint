@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
@@ -22,7 +22,7 @@ func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 		t.Fatalf("expected one directive diagnostic, got %v", got)
 	}
 	want := &findingmodel.Finding{
-		Start: diagmodel.Position{Line: 1, Column: 12}, Rule: "forbidden-suppression",
+		Start: sourcepos.Position{Line: 1, Column: 12}, Rule: "forbidden-suppression",
 		Message: "inline suppression of cache-operation is disallowed by policy.forbidden-suppression",
 	}
 	if diff := cmp.Diff(want, got[0], cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {

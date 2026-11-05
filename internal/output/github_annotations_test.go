@@ -5,13 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestGitHubAnnotationEscaping(t *testing.T) {
 	var out bytes.Buffer
-	diagnostics := []diagmodel.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: diagmodel.Position{Line: 2, Column: 3}, End: diagmodel.Position{Line: 2, Column: 5}}}
+	diagnostics := []diagmodel.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 2, Column: 5}}}
 	if err := render.WriteGitHub(&out, diagnostics); err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +25,7 @@ func TestGitHubAnnotationEscaping(t *testing.T) {
 func TestGitHubAnnotationLevels(t *testing.T) {
 	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
 		var out bytes.Buffer
-		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Severity: tc.severity, Start: diagmodel.Position{Line: 1, Column: 1}, End: diagmodel.Position{Line: 1, Column: 2}}}); err != nil {
+		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Severity: tc.severity, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {
@@ -46,7 +47,7 @@ func TestGitHubAnnotationUsesDiagnosticCode(t *testing.T) {
 }
 
 func TestTemplateRangeUsesInclusiveEndColumn(t *testing.T) {
-	d := diagmodel.Diagnostic{Start: diagmodel.Position{Line: 1, Column: 2}, End: diagmodel.Position{Line: 2, Column: 4}}
+	d := diagmodel.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 2, Column: 4}}
 	if got := render.FindingOf(d, []byte("abc\ndefgh")).TemplateFields().EndColumn; got != 3 {
 		t.Fatalf("want inclusive column 3, got %d", got)
 	}

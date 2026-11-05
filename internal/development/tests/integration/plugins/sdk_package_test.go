@@ -12,13 +12,12 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // The package is optional for Go-only contributors. This check exercises the
@@ -134,12 +133,12 @@ export default defineDocumentProvider({
 	content := "on: push\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/action@v1\n"
 	path := filepath.Join(runtimeDirectory, "workflow.yml")
 	sum := sha256.Sum256([]byte(content))
-	revision, err := source.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := sourcepos.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependency := workflowfacts.Dependency{Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: results.Position{Line: 6, Column: 15}, End: results.Position{Line: 6, Column: 30}}
-	input := checkinputs.Input{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: source.YAML, AvailableInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Dependencies}, Dependencies: []workflowfacts.Dependency{dependency}}
+	dependency := workflowfacts.Dependency{Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 6, Column: 30}}
+	input := checkinputs.Input{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcepos.YAML, AvailableInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Dependencies}, Dependencies: []workflowfacts.Dependency{dependency}}
 	findings, err := checker.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)

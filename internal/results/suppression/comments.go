@@ -5,17 +5,17 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // inlineSuppressionComment is a real YAML comment attached to a declaration.
 // Its position refers to the comment, independently of the YAML node's start.
 type inlineSuppressionComment struct {
-	pos        results.Position
+	pos        sourcepos.Position
 	text       string
 	standalone bool
 	startLine  int
@@ -72,7 +72,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		}
 		seen[line] = true
 		comments = append(comments, inlineSuppressionComment{
-			pos:        results.Position{Line: line, Column: utf8.RuneCountInString(lines[line-1][:col]) + 1},
+			pos:        sourcepos.Position{Line: line, Column: utf8.RuneCountInString(lines[line-1][:col]) + 1},
 			text:       text,
 			standalone: standalone,
 		})

@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	permissionmodel "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
@@ -13,7 +14,7 @@ import (
 
 type Value struct {
 	Text  string
-	Start results.Position
+	Start sourcepos.Position
 }
 type (
 	Scope       struct{ Name, Level Value }
@@ -26,7 +27,7 @@ type (
 func Check(input Declaration) []results.Diagnostic {
 	scopes := permissionmodel.Scopes()
 	var findings []results.Diagnostic
-	report := func(start results.Position, message string) {
+	report := func(start sourcepos.Position, message string) {
 		findings = append(findings, results.Diagnostic{Rule: "permissions", Start: start, Message: message})
 	}
 	if all := input.All; all != nil {

@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -96,7 +97,7 @@ func TestRustPluginReportsPipeToShell(t *testing.T) {
 	if finding.Reference == nil || finding.Reference.Node == "" || !strings.HasSuffix(finding.Reference.Address, "steps[0]") || finding.Help == "" || finding.Rule != "pipe-to-shell" || finding.Severity != "warning" || !strings.Contains(finding.Message, "into bash") {
 		t.Fatalf("finding=%+v", finding)
 	}
-	if finding.Start != (results.Position{Line: 6, Column: 62}) || finding.End != (results.Position{Line: 6, Column: 66}) {
+	if finding.Start != (sourcepos.Position{Line: 6, Column: 62}) || finding.End != (sourcepos.Position{Line: 6, Column: 66}) {
 		t.Fatalf("range=%+v-%+v", finding.Start, finding.End)
 	}
 }
@@ -115,16 +116,16 @@ func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
 	action, workflow, assignment, multiline := result.Diagnostics[0], result.Diagnostics[1], result.Diagnostics[2], result.Diagnostics[3]
-	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Start != (results.Position{Line: 6, Column: 12}) || action.End != (results.Position{Line: 6, Column: 16}) {
+	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Start != (sourcepos.Position{Line: 6, Column: 12}) || action.End != (sourcepos.Position{Line: 6, Column: 16}) {
 		t.Fatalf("action finding=%+v", action)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(workflow.Path), ".github/workflows/ci.yml") || workflow.Rule != "no-sudo" || workflow.Start != (results.Position{Line: 7, Column: 22}) || workflow.End != (results.Position{Line: 7, Column: 26}) {
+	if !strings.HasSuffix(filepath.ToSlash(workflow.Path), ".github/workflows/ci.yml") || workflow.Rule != "no-sudo" || workflow.Start != (sourcepos.Position{Line: 7, Column: 22}) || workflow.End != (sourcepos.Position{Line: 7, Column: 26}) {
 		t.Fatalf("workflow finding=%+v", workflow)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(assignment.Path), ".github/workflows/ci.yml") || assignment.Rule != "no-sudo" || assignment.Start != (results.Position{Line: 8, Column: 32}) {
+	if !strings.HasSuffix(filepath.ToSlash(assignment.Path), ".github/workflows/ci.yml") || assignment.Rule != "no-sudo" || assignment.Start != (sourcepos.Position{Line: 8, Column: 32}) {
 		t.Fatalf("assignment-prefixed command finding=%+v", assignment)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(multiline.Path), ".github/workflows/ci.yml") || multiline.Rule != "no-sudo" || multiline.Start != (results.Position{Line: 11, Column: 18}) {
+	if !strings.HasSuffix(filepath.ToSlash(multiline.Path), ".github/workflows/ci.yml") || multiline.Rule != "no-sudo" || multiline.Start != (sourcepos.Position{Line: 11, Column: 18}) {
 		t.Fatalf("multiline assignment finding=%+v", multiline)
 	}
 }
@@ -283,10 +284,10 @@ func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
 	action, workflow := result.Diagnostics[0], result.Diagnostics[1]
-	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Message != "step disables TLS verification with -k for a download" || action.Start != (results.Position{Line: 6, Column: 17}) || action.End != (results.Position{Line: 6, Column: 19}) {
+	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Message != "step disables TLS verification with -k for a download" || action.Start != (sourcepos.Position{Line: 6, Column: 17}) || action.End != (sourcepos.Position{Line: 6, Column: 19}) {
 		t.Fatalf("action finding=%+v", action)
 	}
-	if workflow.Rule != "insecure-download" || workflow.Message != "step disables TLS verification with --no-check-certificate for a download" || workflow.Start != (results.Position{Line: 7, Column: 19}) || workflow.End != (results.Position{Line: 7, Column: 41}) {
+	if workflow.Rule != "insecure-download" || workflow.Message != "step disables TLS verification with --no-check-certificate for a download" || workflow.Start != (sourcepos.Position{Line: 7, Column: 19}) || workflow.End != (sourcepos.Position{Line: 7, Column: 41}) {
 		t.Fatalf("workflow finding=%+v", workflow)
 	}
 }

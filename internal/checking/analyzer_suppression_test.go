@@ -10,6 +10,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -121,7 +122,7 @@ func TestAnalyzerNameIsNotATool(t *testing.T) {
 func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	const path = "actions/check/action.yml"
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
-	finding := &findingmodel.Finding{Rule: "no-sudo", Start: results.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
+	finding := &findingmodel.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
 	if got := (policy.Processor{RuleSet: ConfigurationRules()}).FilterForeignInline(path, source, []*findingmodel.Finding{finding}, nil, "no-sudo"); len(got) != 0 {
 		t.Fatalf("registered plugin finding escaped composite suppression: %+v", got)
 	}

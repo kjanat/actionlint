@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestManifestAliasesStandaloneAndNested(t *testing.T) {
@@ -30,7 +30,7 @@ func TestManifestAliasesStandaloneAndNested(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var got []diagmodel.Position
+				var got []sourcepos.Position
 				for _, d := range result.Diagnostics {
 					if !strings.Contains(d.Message, "YAML anchors") && !strings.Contains(d.Message, "YAML aliases") {
 						continue
@@ -40,7 +40,7 @@ func TestManifestAliasesStandaloneAndNested(t *testing.T) {
 					}
 					got = append(got, d.Start)
 				}
-				if len(got) != 2 || got[0] != (diagmodel.Position{Line: 1, Column: 7}) || got[1] != (diagmodel.Position{Line: 2, Column: 14}) {
+				if len(got) != 2 || got[0] != (sourcepos.Position{Line: 1, Column: 7}) || got[1] != (sourcepos.Position{Line: 2, Column: 14}) {
 					t.Fatalf("manifest anchor/alias diagnostics = %v; all diagnostics: %+v", got, result.Diagnostics)
 				}
 			})

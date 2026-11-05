@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
@@ -67,8 +67,8 @@ func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
 					t.Fatalf("dependency count = %d; want %d", len(dependencies), wantCount)
 				}
 				for i, dependency := range dependencies {
-					wantStart := results.Position{Line: 6, Column: indent + 9}
-					wantEnd := results.Position{Line: tc.endLine, Column: indent + tc.end}
+					wantStart := sourcepos.Position{Line: 6, Column: indent + 9}
+					wantEnd := sourcepos.Position{Line: tc.endLine, Column: indent + tc.end}
 					if dependency.Start != wantStart || dependency.End != wantEnd || dependency.Uses != "owner/action@v1" || dependency.Kind != "action" {
 						t.Errorf("dependency span/value = %+v; want %v..%v", dependency, wantStart, wantEnd)
 					}
@@ -99,10 +99,10 @@ func TestReusableAndParallelDependencySpans(t *testing.T) {
 	if len(dependencies) != 2 {
 		t.Fatal(dependencies)
 	}
-	if got := dependencies[0]; got.Kind != "workflow" || got.Start != (results.Position{Line: 4, Column: 11}) || got.End != (results.Position{Line: 4, Column: 43}) || got.Reference.Address != `jobs["caller"]` {
+	if got := dependencies[0]; got.Kind != "workflow" || got.Start != (sourcepos.Position{Line: 4, Column: 11}) || got.End != (sourcepos.Position{Line: 4, Column: 43}) || got.Reference.Address != `jobs["caller"]` {
 		t.Fatalf("reusable call span/owner = %+v", got)
 	}
-	if got := dependencies[1]; got.Kind != "action" || got.Start != (results.Position{Line: 9, Column: 19}) || got.End != (results.Position{Line: 9, Column: 36}) || got.Reference.Address != `jobs["steps"].steps[0].parallel[0]` {
+	if got := dependencies[1]; got.Kind != "action" || got.Start != (sourcepos.Position{Line: 9, Column: 19}) || got.End != (sourcepos.Position{Line: 9, Column: 36}) || got.Reference.Address != `jobs["steps"].steps[0].parallel[0]` {
 		t.Fatalf("parallel call span/owner = %+v", got)
 	}
 }
@@ -137,7 +137,7 @@ func TestMappingAliasDependencySpans(t *testing.T) {
 				t.Fatal(dependencies)
 			}
 			for i, dependency := range dependencies {
-				if dependency.Start != (results.Position{Line: 7, Column: indent + 9}) || dependency.End != (results.Position{Line: 7, Column: indent + 24}) || dependency.Kind != "action" || dependency.Uses != "owner/action@v1" {
+				if dependency.Start != (sourcepos.Position{Line: 7, Column: indent + 9}) || dependency.End != (sourcepos.Position{Line: 7, Column: indent + 24}) || dependency.Kind != "action" || dependency.Uses != "owner/action@v1" {
 					t.Errorf("mapping alias dependency %d span/value: %+v", i, dependency)
 				}
 				if dependency.Reference.Address != fmt.Sprintf("%s[%d]", address, i) || dependency.Reference.Document != snapshot.Reference().Document || dependency.Reference.Revision != snapshot.Reference().Revision {
@@ -167,7 +167,7 @@ func TestFoldedReusableDependencyPhysicalSpan(t *testing.T) {
 		t.Fatal(dependencies)
 	}
 	got := dependencies[0]
-	if got.Kind != "workflow" || got.Uses != "./.github/workflows/shared.yml" || got.Start != (results.Position{Line: 4, Column: 11}) || got.End != (results.Position{Line: 4, Column: 50}) || got.Reference.Address != `jobs["caller"]` || got.Reference.Document != snapshot.Reference().Document || got.Reference.Revision != snapshot.Reference().Revision {
+	if got.Kind != "workflow" || got.Uses != "./.github/workflows/shared.yml" || got.Start != (sourcepos.Position{Line: 4, Column: 11}) || got.End != (sourcepos.Position{Line: 4, Column: 50}) || got.Reference.Address != `jobs["caller"]` || got.Reference.Document != snapshot.Reference().Document || got.Reference.Revision != snapshot.Reference().Revision {
 		t.Fatalf("folded reusable dependency span/owner = %+v", got)
 	}
 }
@@ -188,7 +188,7 @@ func TestAliasedParallelDependencySpans(t *testing.T) {
 		t.Fatal(dependencies)
 	}
 	for i, dependency := range dependencies {
-		if dependency.Start != (results.Position{Line: 8, Column: 19}) || dependency.End != (results.Position{Line: 8, Column: 34}) || dependency.Kind != "action" || dependency.Uses != "owner/action@v1" || dependency.Reference.Address != fmt.Sprintf(`jobs["test"].steps[%d].parallel[0]`, i) || dependency.Reference.Document != snapshot.Reference().Document || dependency.Reference.Revision != snapshot.Reference().Revision {
+		if dependency.Start != (sourcepos.Position{Line: 8, Column: 19}) || dependency.End != (sourcepos.Position{Line: 8, Column: 34}) || dependency.Kind != "action" || dependency.Uses != "owner/action@v1" || dependency.Reference.Address != fmt.Sprintf(`jobs["test"].steps[%d].parallel[0]`, i) || dependency.Reference.Document != snapshot.Reference().Document || dependency.Reference.Revision != snapshot.Reference().Revision {
 			t.Errorf("aliased parallel dependency %d span/owner = %+v", i, dependency)
 		}
 	}

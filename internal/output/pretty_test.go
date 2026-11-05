@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
@@ -17,8 +18,8 @@ func TestPrettyDiagnostic(t *testing.T) {
 	}
 	d := results.Diagnostic{
 		Severity: "warning", Rule: "expression-reference", Message: "unknown variable",
-		Path: "ci.yml", Start: results.Position{Line: 1, Column: 3}, End: results.Position{Line: 1, Column: 6},
-		Help: "Use a declared value.", Related: []results.Related{{Message: "declaration", Path: "other.yml", Start: results.Position{Line: 4, Column: 2}}},
+		Path: "ci.yml", Start: sourcepos.Position{Line: 1, Column: 3}, End: sourcepos.Position{Line: 1, Column: 6},
+		Help: "Use a declared value.", Related: []results.Related{{Message: "declaration", Path: "other.yml", Start: sourcepos.Position{Line: 4, Column: 2}}},
 	}
 	var out strings.Builder
 	if err := r.Render(&out, Result{Findings: []Finding{FindingOf(d, []byte("  bad"))}}); err != nil {
@@ -37,7 +38,7 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 	rule := Rule{Name: "shellcheck", Help: "Configure this plugin.", Explanation: "Checks shell snippets.", DocumentationURL: "https://example.com/rule"}
 	d := results.Diagnostic{
 		Rule: rule.Name, Code: "SC2035", Severity: "info", Message: "Use ./*glob* or -- *glob*",
-		Path: "ci.yml", Start: results.Position{Line: 440, Column: 36},
+		Path: "ci.yml", Start: sourcepos.Position{Line: 440, Column: 36},
 		Help: rule.Help, Explanation: rule.Explanation,
 		DocumentationURL: rule.DocumentationURL,
 	}
@@ -78,7 +79,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 		{"abc", 4, 4, "abc", 3, 1},
 		{"abc", 8, 8, "abc", -1, 1},
 	} {
-		f := FindingOf(results.Diagnostic{Start: results.Position{Line: 1, Column: tc.column}, End: results.Position{Line: 1, Column: tc.end}}, []byte(tc.line))
+		f := FindingOf(results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: tc.column}, End: sourcepos.Position{Line: 1, Column: tc.end}}, []byte(tc.line))
 		line, start, length := f.prettySource(tc.line, 30)
 		if line != tc.want || start != tc.start || length != tc.length {
 			t.Errorf("%q: got %q %d %d, want %q %d %d", tc.line, line, start, length, tc.want, tc.start, tc.length)
@@ -107,7 +108,7 @@ func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	color.NoColor = false
 	t.Cleanup(func() { color.NoColor = previous })
 	var out strings.Builder
-	f := FindingOf(results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: results.Position{Line: 8, Column: 4}}, nil)
+	f := FindingOf(results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: sourcepos.Position{Line: 8, Column: 4}}, nil)
 	if err := f.printPretty(&out, 80); err != nil {
 		t.Fatal(err)
 	}

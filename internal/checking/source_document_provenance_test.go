@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -18,7 +19,7 @@ func (actionSourceReferenceProbe) Descriptor() checkinputs.Descriptor {
 }
 
 func (p actionSourceReferenceProbe) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
-	return []results.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: results.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {

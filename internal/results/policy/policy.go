@@ -7,8 +7,8 @@ import (
 
 	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -27,7 +27,7 @@ type Policy struct {
 	Log                  func(...any)
 	Debug                func(string, ...any)
 	// UsedSuppression records a matched selector for invocation-wide reconciliation.
-	UsedSuppression func(string, results.Position, string)
+	UsedSuppression func(string, sourcepos.Position, string)
 }
 
 // Apply filters completed findings using each source's resolved policy and normalizes their output order.
@@ -152,7 +152,7 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 }
 
 func (p Policy) inlineAudit(path string, level func(string) repoconfig.Level) *inlineAudit {
-	return &inlineAudit{level: level, used: func(position results.Position, rule string) {
+	return &inlineAudit{level: level, used: func(position sourcepos.Position, rule string) {
 		if p.UsedSuppression != nil {
 			p.UsedSuppression(path, position, rule)
 		}

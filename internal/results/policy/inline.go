@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -27,7 +28,7 @@ func (processor Processor) FilterInline(source []byte, findings []*findingmodel.
 
 type inlineAudit struct {
 	level func(string) repoconfig.Level
-	used  func(results.Position, string)
+	used  func(sourcepos.Position, string)
 }
 
 func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {

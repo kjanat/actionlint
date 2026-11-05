@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	triggers "actionlint.kjanat.dev/v2/internal/model/contexts/events/triggers"
@@ -25,7 +26,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	parsed, syntaxErrors := workflowparser.Parse([]byte(source))
 	findings := make([]results.Diagnostic, 0, len(syntaxErrors))
 	for _, issue := range syntaxErrors {
-		finding := findingmodel.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: results.Position{Line: issue.Line, Column: issue.Column}}
+		finding := findingmodel.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: sourcepos.Position{Line: issue.Line, Column: issue.Column}}
 		findings = append(findings, finding.Canonical([]byte(source)))
 	}
 	if parsed == nil {

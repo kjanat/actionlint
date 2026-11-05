@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -13,7 +14,7 @@ import (
 )
 
 func callFinding(pos workflowlang.Pos, format string, args ...any) results.Diagnostic {
-	return results.Diagnostic{Rule: "workflow-call", Message: fmt.Sprintf(format, args...), Start: results.Position{Line: pos.Line, Column: pos.Col}}
+	return results.Diagnostic{Rule: "workflow-call", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}}
 }
 
 // CheckArguments validates required and supplied inputs and secrets against

@@ -22,7 +22,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -69,7 +69,7 @@ type parityReport struct {
 	Rule        string             `json:"rule"`
 	Code        string             `json:"code,omitempty"`
 	Path        string             `json:"path"`
-	Start       results.Position   `json:"start"`
+	Start       sourcepos.Position `json:"start"`
 	Content     string             `json:"content,omitempty"`
 	RawScript   bool               `json:"raw_script,omitempty"`
 	Unavailable *parityUnavailable `json:"unavailable,omitempty"`
@@ -91,9 +91,9 @@ type paritySuppression struct {
 // parityCapture is a report.CapturedSource without its content, which the
 // revision identifies.
 type parityCapture struct {
-	Revision             source.Revision    `json:"revision"`
-	Coordinates          source.Coordinates `json:"coordinates"`
-	CoordinatesAvailable bool               `json:"coordinates_available,omitempty"`
+	Revision             sourcepos.Revision    `json:"revision"`
+	Coordinates          sourcepos.Coordinates `json:"coordinates"`
+	CoordinatesAvailable bool                  `json:"coordinates_available,omitempty"`
 }
 
 // contentHash identifies content in a snapshot; empty content has none.
@@ -144,7 +144,7 @@ func (r recordingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tool
 // loadParitySnapshots reads testdata/provider-parity/<name>.json.
 func loadParitySnapshots(t *testing.T, name string) paritySnapshots {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("internal", "integration", "tools", "testdata", "provider-parity", name+".json"))
+	data, err := os.ReadFile(filepath.Join("internal", "development", "tests", "integration", "tools", "testdata", "provider-parity", name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,6 +370,7 @@ func TestParityRevisionPathsPortable(t *testing.T) {
 func TestProviderParityFixtures(t *testing.T) {
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "fixtures")
+	t.Chdir(filepath.Join("internal", "development", "tests", "integration", "workflow"))
 	repository, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

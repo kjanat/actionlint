@@ -3,8 +3,8 @@ package action
 import (
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // ParseDefinition extracts call-site facts. Invalid or empty manifests leave
@@ -35,7 +35,7 @@ func InspectDefinition(content []byte) DefinitionInspection {
 			mark := item.Mark()
 			problems = append(problems, MetadataProblem{
 				Code: CodeMetadataParse, Path: "action.yml", Message: item.Message(),
-				Start: results.Position{Line: mark.Line, Column: mark.Column},
+				Start: sourcepos.Position{Line: mark.Line, Column: mark.Column},
 			})
 		}
 		if len(problems) == 0 {

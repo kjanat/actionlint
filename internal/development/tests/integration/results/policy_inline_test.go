@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -14,7 +14,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 		t.Run(rule.Name, func(t *testing.T) {
 			for _, severity := range []string{"error", "warning", "info"} {
 				source := []byte("name: demo # actionlint:ignore " + rule.Name + " -- reviewed\n")
-				findings := []*findingmodel.Finding{{Start: diagmodel.Position{Line: 1, Column: 1}, Rule: rule.Name, Severity: severity}}
+				findings := []*findingmodel.Finding{{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: rule.Name, Severity: severity}}
 				if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil); len(got) != 0 {
 					t.Fatal(got)
 				}
@@ -29,7 +29,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 
 func TestForeignInlineSuppressionSource(t *testing.T) {
 	source := []byte("name: demo # actionlint:ignore shellcheck -- reviewed\n")
-	finding := &findingmodel.Finding{Start: diagmodel.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: source}
+	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: source}
 	if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, []*findingmodel.Finding{finding}, nil); len(got) != 1 {
 		t.Fatal("caller suppressed foreign finding")
 	}

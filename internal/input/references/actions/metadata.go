@@ -3,8 +3,8 @@ package actions
 import (
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // MetadataState distinguishes usable, unavailable and invalid manifest evidence.
@@ -19,11 +19,11 @@ const (
 // ManifestProblem is a source position in the selected manifest, not a finding
 // in the calling workflow. Selection identifies the bytes which were inspected.
 type ManifestProblem struct {
-	Code    string           `json:"code,omitempty"`
-	Message string           `json:"message"`
-	Path    string           `json:"path"`
-	Start   results.Position `json:"start"`
-	End     results.Position `json:"end"`
+	Code    string             `json:"code,omitempty"`
+	Message string             `json:"message"`
+	Path    string             `json:"path"`
+	Start   sourcepos.Position `json:"start"`
+	End     sourcepos.Position `json:"end"`
 }
 
 // MetadataAvailability retains why metadata-dependent checks could or could not

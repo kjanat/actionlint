@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -27,7 +27,7 @@ func (editorPathAnalyzer) Descriptor() checkinputs.Descriptor {
 
 func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
 	reference := input.Reference
-	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
+	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }
 
 func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testing.T) {
@@ -64,7 +64,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if finding.Path != path || !filepath.IsAbs(finding.Path) || analysis.Sources[path].Text == "" {
 			t.Fatalf("relative primary path escaped normalization: %+v", finding)
 		}
-		if len(finding.Related) != 1 || finding.Related[0].Path != path || !finding.Related[0].Revision.Valid() || finding.Related[0].Coordinates != source.YAML {
+		if len(finding.Related) != 1 || finding.Related[0].Path != path || !finding.Related[0].Revision.Valid() || finding.Related[0].Coordinates != sourcepos.YAML {
 			t.Fatalf("relative related path escaped captured normalization: %+v", finding.Related)
 		}
 		if len(finding.Fixes) != 2 || finding.Fixes[0].Applicability != results.FixSafe || finding.Fixes[1].Applicability != results.FixSuggested {
@@ -140,21 +140,21 @@ func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
 	for _, test := range []struct {
 		name                       string
 		content                    []byte
-		model                      source.Coordinates
+		model                      sourcepos.Coordinates
 		raw, unavailable, admitted bool
 	}{
-		{name: "known YAML", content: []byte("😀bad\n"), model: source.YAML, admitted: true},
-		{name: "raw LF equivalent", content: []byte("😀bad\n"), model: source.YAML, raw: true, admitted: true},
-		{name: "unavailable matching captured buffer", content: []byte("😀bad\n"), model: source.YAML, unavailable: true},
-		{name: "raw LF lone CR", content: []byte("first\rsecond\nbad"), model: source.YAML, raw: true},
-		{name: "non YAML capture", content: []byte("😀bad\n"), model: source.RawLF, raw: true},
-		{name: "invalid UTF8 capture", content: []byte{0xff}, model: source.YAML},
+		{name: "known YAML", content: []byte("😀bad\n"), model: sourcepos.YAML, admitted: true},
+		{name: "raw LF equivalent", content: []byte("😀bad\n"), model: sourcepos.YAML, raw: true, admitted: true},
+		{name: "unavailable matching captured buffer", content: []byte("😀bad\n"), model: sourcepos.YAML, unavailable: true},
+		{name: "raw LF lone CR", content: []byte("first\rsecond\nbad"), model: sourcepos.YAML, raw: true},
+		{name: "non YAML capture", content: []byte("😀bad\n"), model: sourcepos.RawLF, raw: true},
+		{name: "invalid UTF8 capture", content: []byte{0xff}, model: sourcepos.YAML},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, "workflow.yml")
 			captured := reportfixture.CapturedSource(t, path, test.content, test.model)
-			result := &checking.Result{Diagnostics: []results.Diagnostic{{Path: path, Rule: "evidence", Start: results.Position{Line: 1, Column: 2}, Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []report.DiagnosticSource{{Content: test.content, RawScript: test.raw, Unavailable: test.unavailable}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &checking.Result{Diagnostics: []results.Diagnostic{{Path: path, Rule: "evidence", Start: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []report.DiagnosticSource{{Content: test.content, RawScript: test.raw, Unavailable: test.unavailable}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			analysis, err := FromReport(result, root, map[string]Document{path: {Text: string(test.content)}})
 			if test.admitted {
 				if err != nil || len(analysis.Diagnostics) != 1 {

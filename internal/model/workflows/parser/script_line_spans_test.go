@@ -6,9 +6,9 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
@@ -34,8 +34,8 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 			for _, span := range exec.Source.LineSpans() {
 				script.Spans = append(script.Spans, scriptmodel.Span{
 					Line: span.Line, Start: span.Start, End: span.End,
-					Document:    results.Position{Line: span.YamlLine, Column: span.YamlColumn},
-					DocumentEnd: results.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
+					Document:    sourcepos.Position{Line: span.YamlLine, Column: span.YamlColumn},
+					DocumentEnd: sourcepos.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
 				})
 			}
 			for lineIndex, text := range strings.Split(exec.Run.Value, "\n") {

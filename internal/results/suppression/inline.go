@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Directive is a validated inline exception over a physical source range.
 // Position identifies its comment; First and Last bound the declaration it covers.
 type Directive struct {
-	Position    results.Position
+	Position    sourcepos.Position
 	First, Last int
 	Rules       []string
 	Reason      string

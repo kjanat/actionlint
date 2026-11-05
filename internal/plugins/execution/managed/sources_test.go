@@ -17,6 +17,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -67,7 +68,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 			t.Fatalf("dependency missing: %s from %v", path, inputs)
 		}
 	}
-	finding, err := sources.finding("shellcheck", results.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: results.Position{Line: 1, Column: 1}, Fixes: []results.Fix{{Description: "must not survive"}}}, script, 3)
+	finding, err := sources.finding("shellcheck", results.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: sourcepos.Position{Line: 1, Column: 1}, Fixes: []results.Fix{{Description: "must not survive"}}}, script, 3)
 	if err != nil || finding.Path != sourcePath(file, root) || !finding.RawScript || string(finding.Content) != "VALUE=one\n" || finding.Script != 3 {
 		t.Fatalf("mapping=%+v error=%v", finding, err)
 	}

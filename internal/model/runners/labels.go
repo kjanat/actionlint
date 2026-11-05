@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
@@ -15,7 +16,6 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
@@ -102,7 +102,7 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 type labelFact struct {
 	text   string
 	source string
-	start  results.Position
+	start  sourcepos.Position
 }
 
 type checker struct {
@@ -261,7 +261,7 @@ func (rule *checker) checkCompat(compat runnerOSCompat, label labelFact) {
 	}
 }
 
-func (rule *checker) Errorf(position results.Position, format string, args ...any) {
+func (rule *checker) Errorf(position sourcepos.Position, format string, args ...any) {
 	rule.rejections = append(rule.rejections, runner.Rejection{Position: position, Reason: fmt.Sprintf(format, args...)})
 }
 

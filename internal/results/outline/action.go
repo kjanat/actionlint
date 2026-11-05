@@ -3,7 +3,7 @@ package outline
 import (
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // Action is a lossy projection of selected action declarations.
@@ -56,19 +56,19 @@ func (a Action) Runs() ActionRuns { return cloneRuns(a.runs) }
 // Input preserves declared required/default values independently.
 // A default does not erase an explicitly declared required: true.
 type Input struct {
-	ID          string            `json:"id"`
-	Description string            `json:"description,omitempty"`
-	Required    *bool             `json:"required,omitempty"`
-	Default     *string           `json:"default,omitempty"`
-	Start       *results.Position `json:"start,omitempty"`
+	ID          string              `json:"id"`
+	Description string              `json:"description,omitempty"`
+	Required    *bool               `json:"required,omitempty"`
+	Default     *string             `json:"default,omitempty"`
+	Start       *sourcepos.Position `json:"start,omitempty"`
 }
 
 // Output preserves an output declaration and optional expression.
 type Output struct {
-	ID          string            `json:"id"`
-	Description string            `json:"description,omitempty"`
-	Value       *string           `json:"value,omitempty"`
-	Start       *results.Position `json:"start,omitempty"`
+	ID          string              `json:"id"`
+	Description string              `json:"description,omitempty"`
+	Value       *string             `json:"value,omitempty"`
+	Start       *sourcepos.Position `json:"start,omitempty"`
 }
 
 func cloneInputs(inputs []Input) []Input {

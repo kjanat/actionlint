@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -13,18 +14,18 @@ import (
 func TestStructuredRenderRanges(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
-		end        diagmodel.Position
+		end        sourcepos.Position
 		github     string
 		legacySpan string
 	}{
-		{"single line", diagmodel.Position{Line: 1, Column: 4}, "line=1,endLine=1,col=2,endColumn=3", "1:2-3"},
-		{"multiple lines", diagmodel.Position{Line: 2, Column: 4}, "line=1,endLine=2", "1:2-5"},
-		{"next line boundary", diagmodel.Position{Line: 2, Column: 1}, "line=1,endLine=1", "1:2-5"},
-		{"later line boundary", diagmodel.Position{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
+		{"single line", sourcepos.Position{Line: 1, Column: 4}, "line=1,endLine=1,col=2,endColumn=3", "1:2-3"},
+		{"multiple lines", sourcepos.Position{Line: 2, Column: 4}, "line=1,endLine=2", "1:2-5"},
+		{"next line boundary", sourcepos.Position{Line: 2, Column: 1}, "line=1,endLine=1", "1:2-5"},
+		{"later line boundary", sourcepos.Position{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := []byte("abcde\nfghij\n")
-			finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: diagmodel.Position{Line: 1, Column: 2}, End: tc.end}
+			finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
 			result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []report.DiagnosticSource{{Content: source}}}
 
 			legacy, err := New("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false, testVersion, nil)
@@ -80,7 +81,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 }
 
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
-	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: diagmodel.Position{Line: 1, Column: 6}, End: diagmodel.Position{Line: 1, Column: 6}}
+	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
 	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []report.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: true}}}
 	result := FromAnalysis(analysis)
 	fields := result.Findings[0].TemplateFields()
@@ -112,7 +113,7 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 
 func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	source := []byte("on: push\n")
-	finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: diagmodel.Position{Line: 1, Column: 1}}
+	finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
 	result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []report.DiagnosticSource{{Content: source}}}
 
 	textRenderer, err := New(FormatText, "", true, testVersion, nil)
@@ -143,7 +144,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	finding := diagmodel.Diagnostic{
 		Path: "input.yml", Rule: "expression", Message: "bad text",
-		Start: diagmodel.Position{Line: 1, Column: 1}, Snippet: "on: push",
+		Start: sourcepos.Position{Line: 1, Column: 1}, Snippet: "on: push",
 	}
 	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
 	for _, format := range []Format{"", FormatOneline} {

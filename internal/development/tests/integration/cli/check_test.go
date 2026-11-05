@@ -18,6 +18,7 @@ import (
 	render "actionlint.kjanat.dev/v2/internal/output"
 	diagnosticmodel "actionlint.kjanat.dev/v2/internal/results"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
@@ -204,7 +205,7 @@ func TestCommandNativeJSON(t *testing.T) {
 			}
 			expected := []diagnosticmodel.Diagnostic{}
 			for _, field := range want {
-				expected = append(expected, diagnosticmodel.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: diagnosticmodel.Position{Line: field.Line, Column: field.Column}, End: diagnosticmodel.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+				expected = append(expected, diagnosticmodel.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: sourcepos.Position{Line: field.Line, Column: field.Column}, End: sourcepos.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
 			}
 			for i := range have.Diagnostics {
 				actual := have.Diagnostics[i]

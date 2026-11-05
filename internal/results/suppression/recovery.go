@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // recoverInlineSuppressionComments reads lexical comments when malformed YAML
@@ -67,7 +67,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				}
 				if isInlineSuppressionComment(text) {
 					comments = append(comments, inlineSuppressionComment{
-						pos: results.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
+						pos: sourcepos.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
 					})
 				}
 				break

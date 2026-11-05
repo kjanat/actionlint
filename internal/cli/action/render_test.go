@@ -6,9 +6,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 
-	results1 "actionlint.kjanat.dev/v2/internal/results"
-
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -43,11 +42,11 @@ func analysisForRenderSource(t *testing.T, source string) *checking.Result {
 func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
 	for _, tc := range []struct {
 		name              string
-		end               results1.Position
+		end               sourcepos.Position
 		column, indicator string
 	}{
-		{"single line", results1.Position{Line: 4, Column: 17}, "16", "^~~~"},
-		{"multiple lines", results1.Position{Line: 5, Column: 2}, "17", "^~~~~"},
+		{"single line", sourcepos.Position{Line: 4, Column: 17}, "16", "^~~~"},
+		{"multiple lines", sourcepos.Position{Line: 5, Column: 2}, "17", "^~~~~"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			analysis := analysisForRenderSource(t, `on: push

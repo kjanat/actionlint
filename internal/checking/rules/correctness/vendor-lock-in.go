@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -34,7 +35,7 @@ func VendorLockIn(uses declaration.StringView, target string) []results.Diagnost
 	}
 	location, _ := uses.Pos()
 	finding := results.Diagnostic{
-		Rule: "vendor-lock-in", Severity: "error", Start: results.Position{Line: location.Line, Column: location.Col},
+		Rule: "vendor-lock-in", Severity: "error", Start: sourcepos.Position{Line: location.Line, Column: location.Col},
 		Message: fmt.Sprintf("GitHub Actions requires owner/repo[/path]@ref in uses, not a full repository URL (host %q)", ref.Host()),
 	}
 	if ref.Shorthand() != "" {
@@ -45,7 +46,7 @@ func VendorLockIn(uses declaration.StringView, target string) []results.Diagnost
 			if startOK && endOK {
 				finding.Fixes = []results.Fix{{
 					Description: "Remove the GitHub URL prefix", Applicability: results.FixSafe,
-					Edits: []results.Edit{{Start: results.Position{Line: start.Line, Column: start.Col}, End: results.Position{Line: end.Line, Column: end.Col}}},
+					Edits: []results.Edit{{Start: sourcepos.Position{Line: start.Line, Column: start.Col}, End: sourcepos.Position{Line: end.Line, Column: end.Col}}},
 				}}
 			}
 		}

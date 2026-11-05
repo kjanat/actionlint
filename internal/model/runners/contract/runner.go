@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // Term distinguishes literal labels from unresolved expressions.
@@ -37,11 +37,11 @@ func (v Expression) MarshalJSON() ([]byte, error) {
 // refer to one of the supplied constraints or use (0, 0) for the containing job.
 type Constraint struct {
 	Value    Term
-	Position results.Position
+	Position sourcepos.Position
 }
 type Rejection struct {
 	Reason   string
-	Position results.Position
+	Position sourcepos.Position
 }
 
 // Selector is one conjunction. Separate selectors are alternatives, including

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -60,12 +60,12 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 				}
 				var findings []*findingmodel.Finding
 				if bodyLine != 0 {
-					findings = append(findings, &findingmodel.Finding{Start: diagmodel.Position{Line: bodyLine}, Rule: "expression-reference"})
+					findings = append(findings, &findingmodel.Finding{Start: sourcepos.Position{Line: bodyLine}, Rule: "expression-reference"})
 				}
 				if bodyCommentLine != 0 {
-					findings = append(findings, &findingmodel.Finding{Start: diagmodel.Position{Line: bodyCommentLine}, Rule: "expression-reference"})
+					findings = append(findings, &findingmodel.Finding{Start: sourcepos.Position{Line: bodyCommentLine}, Rule: "expression-reference"})
 				}
-				sibling := &findingmodel.Finding{Start: diagmodel.Position{Line: siblingLine}, Rule: "expression-reference"}
+				sibling := &findingmodel.Finding{Start: sourcepos.Position{Line: siblingLine}, Rule: "expression-reference"}
 				findings = append(findings, sibling)
 				got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil)
 				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {

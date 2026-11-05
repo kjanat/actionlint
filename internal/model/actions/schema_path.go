@@ -1,40 +1,43 @@
-// Package schemapath represents concrete document locations and their schema keys.
-package schemapath
+package action
 
 import (
 	"strconv"
 	"strings"
 )
 
-type segment struct {
+type schemaPathSegment struct {
 	key     string
 	index   int
 	isIndex bool
 	loose   bool
 }
 
-// Path is an immutable sequence of mapping keys and sequence indexes.
+// schemaPath is an immutable sequence of mapping keys and sequence indexes.
 // Its zero value names the document root.
-type Path struct{ segments []segment }
+type schemaPath struct{ segments []schemaPathSegment }
 
-func (p Path) append(s segment) Path {
-	segments := make([]segment, len(p.segments)+1)
+func (p schemaPath) append(s schemaPathSegment) schemaPath {
+	segments := make([]schemaPathSegment, len(p.segments)+1)
 	copy(segments, p.segments)
 	segments[len(p.segments)] = s
-	return Path{segments}
+	return schemaPath{segments}
 }
 
 // Key appends a declared schema property.
-func (p Path) Key(key string) Path { return p.append(segment{key: key}) }
+func (p schemaPath) Key(key string) schemaPath { return p.append(schemaPathSegment{key: key}) }
 
 // LooseKey adds a user-defined mapping key, represented by a schema wildcard.
-func (p Path) LooseKey(key string) Path { return p.append(segment{key: key, loose: true}) }
+func (p schemaPath) LooseKey(key string) schemaPath {
+	return p.append(schemaPathSegment{key: key, loose: true})
+}
 
 // Index adds a sequence element, represented by a schema wildcard.
-func (p Path) Index(index int) Path { return p.append(segment{index: index, isIndex: true}) }
+func (p schemaPath) Index(index int) schemaPath {
+	return p.append(schemaPathSegment{index: index, isIndex: true})
+}
 
 // Schema renders the case-insensitive lookup key used by availability tables.
-func (p Path) Schema() string {
+func (p schemaPath) Schema() string {
 	var b strings.Builder
 	for i, s := range p.segments {
 		if i > 0 {
@@ -50,7 +53,7 @@ func (p Path) Schema() string {
 }
 
 // Display renders a concrete path with quoted keys and terminal-safe escapes.
-func (p Path) Display() string {
+func (p schemaPath) Display() string {
 	var b strings.Builder
 	for i, s := range p.segments {
 		switch {
@@ -58,7 +61,7 @@ func (p Path) Display() string {
 			b.WriteByte('[')
 			b.WriteString(strconv.Itoa(s.index))
 			b.WriteByte(']')
-		case identifier(s.key):
+		case schemaPathIdentifier(s.key):
 			if i > 0 {
 				b.WriteByte('.')
 			}
@@ -82,7 +85,7 @@ func (p Path) Display() string {
 	return b.String()
 }
 
-func identifier(key string) bool {
+func schemaPathIdentifier(key string) bool {
 	if key == "" {
 		return false
 	}

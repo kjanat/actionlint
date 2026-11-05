@@ -11,13 +11,13 @@ import (
 	"strconv"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type State uint8
@@ -43,8 +43,8 @@ const (
 )
 
 type Span struct {
-	Start results.Position
-	End   results.Position
+	Start sourcepos.Position
+	End   sourcepos.Position
 }
 
 type Origin struct {

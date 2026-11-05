@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
@@ -14,10 +14,10 @@ import (
 func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
 	source := []byte("name: café # actionlint:ignore cache-operation -- reviewed\n")
 	errs := []*findingmodel.Finding{
-		{Start: diagmodel.Position{Line: 1}, Rule: "cache-operation"},
-		{Start: diagmodel.Position{Line: 1}, Rule: "cache-operation", Source: []byte("other file")},
-		{Start: diagmodel.Position{Line: 1}, Rule: "syntax-check"},
-		{Start: diagmodel.Position{Line: 2}, Rule: "cache-operation"},
+		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation"},
+		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation", Source: []byte("other file")},
+		{Start: sourcepos.Position{Line: 1}, Rule: "syntax-check"},
+		{Start: sourcepos.Position{Line: 2}, Rule: "cache-operation"},
 	}
 	if diff := cmp.Diff(errs[1:], (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, errs, nil), cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
 		t.Fatal(diff)

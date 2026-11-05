@@ -15,6 +15,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -85,7 +86,7 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(finding results.Diagnostic) bool { return finding.Rule != "document-fixture" })
-	if len(findings) != 1 || findings[0].Start != (results.Position{Line: 1, Column: 1}) || findings[0].Message != "captured document" {
+	if len(findings) != 1 || findings[0].Start != (sourcepos.Position{Line: 1, Column: 1}) || findings[0].Message != "captured document" {
 		t.Fatal("document provider did not run through analyzer admission", findings)
 	}
 	if len(findings[0].Fixes) != 1 || findings[0].Fixes[0].Edits[0].Start != findings[0].Start || len(findings[0].Fixes[0].Revisions) != 1 {

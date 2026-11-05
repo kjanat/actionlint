@@ -5,17 +5,17 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"github.com/kjanat/wacogo"
 )
 
 func TestLiftAnalysisPreservesValidSiblings(t *testing.T) {
 	values := wacogo.NewValListOf[wacogo.Val](
-		mixedDiagnostic("before", results.Position{Line: 1, Column: 1}, results.Position{Line: 1, Column: 2}),
-		mixedDiagnostic("zero", results.Position{}, results.Position{Line: 2, Column: 2}),
-		mixedDiagnostic("between", results.Position{Line: 3, Column: 1}, results.Position{Line: 3, Column: 2}),
-		mixedDiagnostic("reversed", results.Position{Line: 4, Column: 8}, results.Position{Line: 4, Column: 2}),
-		mixedDiagnostic("after", results.Position{Line: 5, Column: 1}, results.Position{Line: 5, Column: 2}),
+		mixedDiagnostic("before", sourcepos.Position{Line: 1, Column: 1}, sourcepos.Position{Line: 1, Column: 2}),
+		mixedDiagnostic("zero", sourcepos.Position{}, sourcepos.Position{Line: 2, Column: 2}),
+		mixedDiagnostic("between", sourcepos.Position{Line: 3, Column: 1}, sourcepos.Position{Line: 3, Column: 2}),
+		mixedDiagnostic("reversed", sourcepos.Position{Line: 4, Column: 8}, sourcepos.Position{Line: 4, Column: 2}),
+		mixedDiagnostic("after", sourcepos.Position{Line: 5, Column: 1}, sourcepos.Position{Line: 5, Column: 2}),
 	)
 	for _, independentError := range []bool{false, true} {
 		t.Run(strconv.FormatBool(independentError), func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestLiftAnalysisRejectsMalformedEnvelope(t *testing.T) {
 	}
 }
 
-func mixedDiagnostic(message string, start, end results.Position) *wacogo.ValRecord {
+func mixedDiagnostic(message string, start, end sourcepos.Position) *wacogo.ValRecord {
 	return wacogo.NewValRecord(
 		field("reference", wacogo.ValOptionNone()), field("related", wacogo.NewValListOf[wacogo.Val]()),
 		field("rule", wacogo.ValString("example")), field("code", wacogo.ValString("EX001")),

@@ -4,6 +4,7 @@ package reporting
 import (
 	"fmt"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -31,11 +32,11 @@ func (c *Collector) Errorf(p *workflow.Pos, format string, args ...any) {
 }
 
 // Position converts a workflow position to a diagnostic position. Nil means no position.
-func Position(p *workflow.Pos) results.Position {
+func Position(p *workflow.Pos) sourcepos.Position {
 	if p == nil {
-		return results.Position{}
+		return sourcepos.Position{}
 	}
-	return results.Position{Line: p.Line, Column: p.Col}
+	return sourcepos.Position{Line: p.Line, Column: p.Col}
 }
 
 // ViewPosition returns nil when a view has no source position.

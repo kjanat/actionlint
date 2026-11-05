@@ -10,13 +10,13 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type invocationSourceAnalyzer struct {
 	t     *testing.T
-	paths map[source.Reference]string
+	paths map[sourcepos.Reference]string
 }
 
 func (a invocationSourceAnalyzer) Descriptor() checkinputs.Descriptor {
@@ -59,7 +59,7 @@ func (a deploymentAliasTool) Analyze(_ context.Context, batch tools.Batch) ([]to
 		if script.Path != a.paths[i] || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != filepath.Dir(a.paths[i]) {
 			a.t.Fatalf("native adapter reused another deployment: %+v", script)
 		}
-		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: results.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
+		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
 	}
 	return findings, nil
 }
@@ -94,7 +94,7 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 	if len(units) != len(want) || units[0].Reference != units[2].Reference || units[1].Reference != units[3].Reference || units[0].Scope.Context.ID() == units[2].Scope.Context.ID() {
 		t.Fatal("fixture did not reuse declarations under distinct invocations")
 	}
-	byCall := map[source.Reference]string{}
+	byCall := map[sourcepos.Reference]string{}
 	for i, unit := range units {
 		if unit.Path != want[i] || string(unit.Content) != string(content) || &unit.Content[0] != &units[0].Content[0] || unit.Scope.Deployment.ActionPath() != filepath.Dir(want[i]) || unit.Scope.Paths.ActionPath != filepath.Dir(want[i]) {
 			t.Fatalf("source cache erased per-invocation deployment: %+v", unit)

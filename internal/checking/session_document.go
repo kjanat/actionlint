@@ -24,7 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -36,7 +36,6 @@ import (
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
@@ -223,7 +222,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 	}
 	policy := resultpolicy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, SourceConfigurations: settings.sources, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	policy.UsedSuppression = func(path string, position diagmodel.Position, rule string) {
+	policy.UsedSuppression = func(path string, position sourcepos.Position, rule string) {
 		if index, ok := references[path]; ok {
 			s.suppressionUses.observe(index.Document, position, rule)
 		}
@@ -268,7 +267,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			s.suppressionUses.markUnavailable(snapshot.Reference(), name)
 			for _, document := range result.SourceDocuments {
 				revision := document.Capture().Revision()
-				s.suppressionUses.markUnavailable(source.Reference{Document: revision.Document(), Revision: revision.Digest()}, name)
+				s.suppressionUses.markUnavailable(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}, name)
 			}
 		}
 	}()

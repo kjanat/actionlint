@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -35,7 +36,7 @@ runs:
 					findings = append(findings, d)
 				}
 			}
-			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != metadata || findings[0].Start != (diagmodel.Position{Line: 8, Column: 14}) || findings[0].Code != "SC2086" {
+			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != metadata || findings[0].Start != (sourcepos.Position{Line: 8, Column: 14}) || findings[0].Code != "SC2086" {
 				t.Fatalf("metadata diagnostic: %+v", result.Diagnostics)
 			}
 			if !slices.Contains(result.Inputs, metadata) {

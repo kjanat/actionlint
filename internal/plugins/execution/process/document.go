@@ -15,7 +15,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
@@ -191,7 +191,7 @@ func (d *DocumentChecker) finding(input checkinputs.Input, entry checkinputs.Scr
 	if err != nil {
 		return results.Diagnostic{}, err
 	}
-	var end results.Position
+	var end sourcepos.Position
 	if entry.EndLocation != (checkinputs.ScriptPosition{}) {
 		end, err = documentPosition(input, entry.EndLocation)
 		if err != nil {
@@ -233,13 +233,13 @@ func (d *DocumentChecker) finding(input checkinputs.Input, entry checkinputs.Scr
 
 // Process decoders normalize positions to LF/scalar coordinates. Resolve their
 // exact byte offset, then map it to the captured document's coordinate model.
-func documentPosition(input checkinputs.Input, p checkinputs.ScriptPosition) (results.Position, error) {
-	point := results.Position{Line: p.Row, Column: p.Column}
-	offset, err := sourceposition.Offset([]byte(input.Content), source.RawLF, point)
+func documentPosition(input checkinputs.Input, p checkinputs.ScriptPosition) (sourcepos.Position, error) {
+	point := sourcepos.Position{Line: p.Row, Column: p.Column}
+	offset, err := sourceposition.Offset([]byte(input.Content), sourcepos.RawLF, point)
 	if err != nil {
-		return results.Position{}, err
+		return sourcepos.Position{}, err
 	}
-	if input.Coordinates == source.RawLF {
+	if input.Coordinates == sourcepos.RawLF {
 		return point, nil
 	}
 	document := sourcemap.NewDocument(input.Content)
@@ -250,9 +250,9 @@ func documentPosition(input checkinputs.Input, p checkinputs.ScriptPosition) (re
 	for row := range document.LineCount() {
 		text, ending := document.Line(row)
 		if offset >= begin && offset <= begin+len(text) {
-			return results.Position{Line: row + 1, Column: utf8.RuneCountInString(input.Content[begin:offset]) + 1}, nil
+			return sourcepos.Position{Line: row + 1, Column: utf8.RuneCountInString(input.Content[begin:offset]) + 1}, nil
 		}
 		begin += len(text) + len(ending)
 	}
-	return results.Position{}, fmt.Errorf("document position %v lies inside a physical line break or BOM", p)
+	return sourcepos.Position{}, fmt.Errorf("document position %v lies inside a physical line break or BOM", p)
 }

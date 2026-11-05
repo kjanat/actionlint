@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -42,7 +42,7 @@ type Finding struct {
 	MetadataIdentity *MetadataIdentity
 	// MetadataParseSource is the captured revision whose parse failure was
 	// observed, bound by the producer before the finding is published.
-	MetadataParseSource source.Revision
+	MetadataParseSource sourcepos.Revision
 }
 
 // String returns a diagnostic with its source location and rule name.
@@ -54,7 +54,7 @@ func (e *Finding) String() string {
 func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
-		Start: results.Position{Line: pos.Line, Column: pos.Col},
+		Start: sourcepos.Position{Line: pos.Line, Column: pos.Col},
 	}
 }
 
@@ -62,7 +62,7 @@ func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
 func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
-		Start: results.Position{Line: pos.Line, Column: pos.Col},
+		Start: sourcepos.Position{Line: pos.Line, Column: pos.Col},
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -59,7 +59,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		diagnostics, err := checkexecutor.RunOne(ctx, input, prepared)
 		for _, d := range diagnostics {
 			finding := findingmodel.FromDiagnostic(d)
-			if d.End == (diagmodel.Position{}) {
+			if d.End == (sourcepos.Position{}) {
 				finding.EndPosition = nil
 			}
 			if d.Path == unit.Path {

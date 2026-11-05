@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -162,5 +163,5 @@ func (r *Trust) CheckCall(job declaration.JobView) []results.Diagnostic {
 }
 
 func report(pos workflowlang.Pos, kind, format string, args ...any) results.Diagnostic {
-	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: results.Position{Line: pos.Line, Column: pos.Col}}
+	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}}
 }

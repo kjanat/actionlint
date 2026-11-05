@@ -3,6 +3,7 @@ package output_test
 import (
 	"os"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
@@ -13,13 +14,13 @@ func ExampleFormatter() {
 		{
 			Message: "error message 1",
 			Path:    "foo.yaml",
-			Start:   diagmodel.Position{Line: 1, Column: 4},
+			Start:   sourcepos.Position{Line: 1, Column: 4},
 			Rule:    "rule1",
 		},
 		{
 			Message: "error message 2",
 			Path:    "foo.yaml",
-			Start:   diagmodel.Position{Line: 3, Column: 1},
+			Start:   sourcepos.Position{Line: 3, Column: 1},
 			Rule:    "rule2",
 		},
 	}

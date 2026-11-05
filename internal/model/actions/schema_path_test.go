@@ -1,4 +1,4 @@
-package schemapath
+package action
 
 import (
 	"strconv"
@@ -6,10 +6,10 @@ import (
 	"unicode/utf8"
 )
 
-func TestRender(t *testing.T) {
-	root := Path{}
+func TestSchemaPathRendering(t *testing.T) {
+	root := schemaPath{}
 	for _, tc := range []struct {
-		path            Path
+		path            schemaPath
 		display, schema string
 	}{
 		{root, "", ""},
@@ -39,8 +39,8 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func TestPathBranchesAreIndependent(t *testing.T) {
-	base := Path{}.Key("runs").Key("steps").Index(0).Key("with")
+func TestSchemaPathBranchesAreIndependent(t *testing.T) {
+	base := schemaPath{}.Key("runs").Key("steps").Index(0).Key("with")
 	first := base.LooseKey("first")
 	second := base.LooseKey("second")
 	if got := first.Display(); got != "runs.steps[0].with.first" {
@@ -54,7 +54,7 @@ func TestPathBranchesAreIndependent(t *testing.T) {
 	}
 }
 
-func FuzzDisplay(f *testing.F) {
+func FuzzSchemaPathDisplay(f *testing.F) {
 	for _, pair := range [][2]string{
 		{"x\ny", `x\ny`},
 		{"a.b", "a['b']"},
@@ -68,8 +68,8 @@ func FuzzDisplay(f *testing.F) {
 		if !utf8.ValidString(a) || !utf8.ValidString(b) {
 			t.Skip()
 		}
-		first := Path{}.Key("outputs").LooseKey(a).Key("value").Display()
-		second := Path{}.Key("outputs").LooseKey(b).Key("value").Display()
+		first := schemaPath{}.Key("outputs").LooseKey(a).Key("value").Display()
+		second := schemaPath{}.Key("outputs").LooseKey(b).Key("value").Display()
 		if a != b && first == second {
 			t.Fatalf("keys %q and %q both render as %q", a, b, first)
 		}

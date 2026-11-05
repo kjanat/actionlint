@@ -3,12 +3,12 @@ package envname
 import (
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCheck(t *testing.T) {
-	position := func(line int) results.Position { return results.Position{Line: line, Column: 7} }
+	position := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 7} }
 	findings := Check([]workflowfacts.Entry{
 		{Name: "GOOD_NAME", State: workflowfacts.KnownKey, Start: position(1)},
 		{Name: "BAD NAME", State: workflowfacts.KnownKey, Start: position(2)},

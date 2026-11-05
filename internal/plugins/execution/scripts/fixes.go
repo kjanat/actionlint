@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -63,8 +64,8 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared preparation.Prepar
 		start := mapped.YamlColumn + utf8.RuneCountInString(source.Value()[mapped.Start:bounds.Start+startOffset])
 		end := mapped.YamlColumn + utf8.RuneCountInString(source.Value()[mapped.Start:bounds.Start+endOffset])
 		edits = append(edits, results.Edit{
-			Start:       results.Position{Line: mapped.YamlLine, Column: start},
-			End:         results.Position{Line: mapped.YamlLine, Column: end},
+			Start:       sourcepos.Position{Line: mapped.YamlLine, Column: start},
+			End:         sourcepos.Position{Line: mapped.YamlLine, Column: end},
 			Replacement: replacement.Text,
 		})
 	}

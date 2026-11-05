@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -12,7 +12,7 @@ import (
 
 type suppressionUse struct {
 	document, revision, rule string
-	position                 results.Position
+	position                 sourcepos.Position
 }
 
 type (
@@ -26,7 +26,7 @@ type (
 func addUnusedSuppressionFixes(files []analyzedFile, allowed []string) {
 	type comment struct {
 		document, revision string
-		position           results.Position
+		position           sourcepos.Position
 	}
 	type group struct {
 		content  []byte
@@ -64,7 +64,7 @@ func addUnusedSuppressionFixes(files []analyzedFile, allowed []string) {
 	}
 	for key, entry := range groups {
 		fix, ok := (policy.Processor{RuleSet: ConfigurationRules()}).UnusedSuppressionFix(entry.content, entry.path,
-			source.Reference{Document: key.document, Revision: key.revision}, key.position, entry.rules, allowed)
+			sourcepos.Reference{Document: key.document, Revision: key.revision}, key.position, entry.rules, allowed)
 		if ok {
 			for _, finding := range entry.findings {
 				finding.Fixes = []results.Fix{fix}
@@ -83,7 +83,7 @@ type suppressionUses struct {
 	unavailable map[suppressionRule]bool
 }
 
-func (u *suppressionUses) observe(ref source.Reference, position results.Position, rule string) {
+func (u *suppressionUses) observe(ref sourcepos.Reference, position sourcepos.Position, rule string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if u.seen == nil {
@@ -92,7 +92,7 @@ func (u *suppressionUses) observe(ref source.Reference, position results.Positio
 	u.seen[suppressionUse{ref.Document, ref.Revision, rule, position}] = true
 }
 
-func (u *suppressionUses) markIncomplete(ref source.Reference) {
+func (u *suppressionUses) markIncomplete(ref sourcepos.Reference) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if u.incomplete == nil {
@@ -101,7 +101,7 @@ func (u *suppressionUses) markIncomplete(ref source.Reference) {
 	u.incomplete[suppressionRevision{ref.Document, ref.Revision}] = true
 }
 
-func (u *suppressionUses) markUnavailable(ref source.Reference, rule string) {
+func (u *suppressionUses) markUnavailable(ref sourcepos.Reference, rule string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if u.unavailable == nil {

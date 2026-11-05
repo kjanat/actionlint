@@ -9,7 +9,7 @@ import (
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/related"
 	"github.com/kjanat/wacogo"
@@ -22,7 +22,7 @@ func (relatedProbe) Descriptor() checkinputs.Descriptor {
 }
 
 func (p relatedProbe) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
-	return []results.Diagnostic{{Rule: "example", Message: "primary", Path: "workflow.yml", Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 2}, Related: p.locations}}, nil
+	return []results.Diagnostic{{Rule: "example", Message: "primary", Path: "workflow.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Related: p.locations}}, nil
 }
 
 func wireRelatedDiagnostic(locations []results.Related) *wacogo.ValRecord {
@@ -30,7 +30,7 @@ func wireRelatedDiagnostic(locations []results.Related) *wacogo.ValRecord {
 	for _, location := range locations {
 		values = append(values, wacogo.NewValRecord(field("message", wacogo.ValString(location.Message)), field("path", wacogo.ValString(location.Path)), field("start", lowerPosition(location.Start)), field("end", lowerPosition(location.End))))
 	}
-	base := mixedDiagnostic("primary", results.Position{Line: 1, Column: 1}, results.Position{Line: 1, Column: 2})
+	base := mixedDiagnostic("primary", sourcepos.Position{Line: 1, Column: 1}, sourcepos.Position{Line: 1, Column: 2})
 	var fields []wacogo.Field
 	for _, name := range []string{"reference", "related", "rule", "code", "severity", "message", "path", "explanation", "help", "documentation-url", "start", "end", "fixes"} {
 		value := base.Field(name)
@@ -43,12 +43,12 @@ func wireRelatedDiagnostic(locations []results.Related) *wacogo.ValRecord {
 }
 
 func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
-	revision, err := source.NewRevision("/repo/workflow.yml", strings.Repeat("a", 64))
+	revision, err := sourcepos.NewRevision("/repo/workflow.yml", strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := checkinputs.Input{Path: "workflow.yml", Revision: revision, Coordinates: source.YAML}
-	locations := []results.Related{{Message: "same request", Path: input.Path, Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: results.Position{Line: 1, Column: 1}, End: results.Position{Line: 1, Column: 1}}}
+	input := checkinputs.Input{Path: "workflow.yml", Revision: revision, Coordinates: sourcepos.YAML}
+	locations := []results.Related{{Message: "same request", Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}}
 	native, nativeErr := checkexecutor.Run(t.Context(), input, []checkinputs.Registration{{Checker: relatedProbe{locations}}})
 	wire, witErr := liftAnalysisForInput(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())), &input)
 	a, na := errors.AsType[*related.RejectedError](nativeErr)
@@ -59,7 +59,7 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 }
 
 func TestMalformedRelatedKeepsWITPrimaryAndCountsEveryLocation(t *testing.T) {
-	locations := []results.Related{{Path: "workflow.yml", Start: results.Position{Line: 2, Column: 1}, End: results.Position{Line: 1, Column: 1}}, {Path: "workflow.yml", Start: results.Position{}, End: results.Position{Line: 1, Column: 1}}}
+	locations := []results.Related{{Path: "workflow.yml", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}, {Path: "workflow.yml", Start: sourcepos.Position{}, End: sourcepos.Position{Line: 1, Column: 1}}}
 	findings, err := liftAnalysis(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())))
 	rejected, ok := errors.AsType[*related.RejectedError](err)
 	if !ok || rejected.Count() != 2 || len(findings) != 1 || findings[0].Message != "primary" || len(findings[0].Related) != 0 {
