@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -28,10 +30,10 @@ func (proof scriptValueProof) safe(argument bool) bool {
 }
 
 func scriptLiteralProof(value string) scriptValueProof {
-	if safeScriptWord(value) {
+	if correctness.SafeScriptWord(value) {
 		return scriptLiteralWord
 	}
-	if safeScriptLiteral(value) {
+	if correctness.SafeScriptLiteral(value) {
 		return scriptArgumentOnly
 	}
 	return scriptUnsafe
@@ -61,7 +63,7 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 		return false
 	}
 	for _, text := range values {
-		if !safeScriptArguments(text) {
+		if !correctness.SafeScriptArguments(text) {
 			return false
 		}
 	}

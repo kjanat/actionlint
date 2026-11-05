@@ -1,4 +1,4 @@
-package expressions
+package correctness
 
 import (
 	"testing"
@@ -35,7 +35,7 @@ func TestScriptSafeScalarReferences(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if safe := isScalarInterpolation(node, checker.CheckResult(node).Types); safe != tc.safe {
+		if safe := IsScalarInterpolation(node, checker.CheckResult(node).Types); safe != tc.safe {
 			t.Errorf("%s: safe=%t, want %t", tc.input, safe, tc.safe)
 		}
 	}
@@ -102,7 +102,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := checkScriptInterpolation(node, tc.typeOf, exprlang.NewChecker(nil).CheckResult(node).Types, shellArgumentInsertion, func(ref exprsyntax.Node) bool {
+			findings := ScriptInterpolation(node, tc.typeOf, exprlang.NewChecker(nil).CheckResult(node).Types, ShellArgumentInsertion, func(ref exprsyntax.Node) bool {
 				name := exprsyntax.StaticReference(ref)
 				return name == "matrix.target" || name == "steps.test" || name == "needs.build"
 			})
@@ -135,7 +135,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := checkScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(nil).CheckResult(node).Types, shellWordInsertion, func(ref exprsyntax.Node) bool {
+			findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(nil).CheckResult(node).Types, ShellWordInsertion, func(ref exprsyntax.Node) bool {
 				name := exprsyntax.StaticReference(ref)
 				return tc.known && (name == "steps.test" || name == "needs.build")
 			})
@@ -149,7 +149,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings := checkScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(nil).CheckResult(node).Types, shellArgumentInsertion, nil)
+		findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(nil).CheckResult(node).Types, ShellArgumentInsertion, nil)
 		if len(findings) != 0 {
 			t.Errorf("data argument rejected for %s: %v", expression, findings)
 		}
@@ -158,12 +158,12 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 
 func TestSafeScriptLiteral(t *testing.T) {
 	for _, value := range []string{"", "linux-x64", "org/repo", "https://github.com/org/repo", "false", "123"} {
-		if !safeScriptLiteral(value) {
+		if !SafeScriptLiteral(value) {
 			t.Errorf("safe value rejected: %q", value)
 		}
 	}
 	for _, value := range []string{"a b", "a\nb", "a\tb", "$NAME", "$(cmd)", "`cmd`", "a;b", "a&b", "a|b", "a'b", "a\"b", "a\\b", "%NAME%", "a!b", "*.txt", "a,b", "@args"} {
-		if safeScriptLiteral(value) {
+		if SafeScriptLiteral(value) {
 			t.Errorf("unsafe syntax characters accepted: %q", value)
 		}
 	}
@@ -171,29 +171,42 @@ func TestSafeScriptLiteral(t *testing.T) {
 
 func TestScriptKeywordWordProof(t *testing.T) {
 	for _, word := range []string{"case", "coproc", "do", "done", "else", "elif", "esac", "fi", "for", "function", "if", "in", "select", "then", "time", "until", "while"} {
-		if !safeScriptLiteral(word) || safeScriptWord(word) {
+		if !SafeScriptLiteral(word) || SafeScriptWord(word) {
 			t.Errorf("keyword must retain only its character proof: %q", word)
 		}
 	}
 	for _, word := range []string{"echo", "linux-x64", "org/repo", "fi-linux", "https://github.com/org/repo"} {
-		if !safeScriptWord(word) {
+		if !SafeScriptWord(word) {
 			t.Errorf("ordinary literal lost its word proof: %q", word)
 		}
 	}
 }
 
 func TestNumericScriptLiteralsRequireArgumentPosition(t *testing.T) {
-	if !safeScriptLiteral("") || safeScriptWord("") {
+	if !SafeScriptLiteral("") || SafeScriptWord("") {
 		t.Error("empty literal must have only an argument proof")
 	}
 	for _, value := range []string{"0", "2", "123"} {
-		if !safeScriptLiteral(value) || safeScriptWord(value) {
+		if !SafeScriptLiteral(value) || SafeScriptWord(value) {
 			t.Errorf("numeric literal must have only an argument proof: %q", value)
 		}
 	}
 	for _, value := range []string{"-2", "2.0", "2f"} {
-		if !safeScriptWord(value) {
+		if !SafeScriptWord(value) {
 			t.Errorf("non-IO-number literal lost its word proof: %q", value)
+		}
+	}
+}
+
+func TestSafeScriptArguments(t *testing.T) {
+	for _, text := range []string{"", "--allow-no-files --diff ", "--excludes .github", "--flag\tvalue", "if fi 2"} {
+		if !SafeScriptArguments(text) {
+			t.Fatalf("literal argument list rejected: %q", text)
+		}
+	}
+	for _, text := range []string{"a; id", "$(id)", "`id`", "x\ny", "x\ry", "x\u00a0y", "x|y", "x>y", "x<y", "x#y", "x'y", `x"y`, `x\y`, "*.go", "x=y"} {
+		if SafeScriptArguments(text) {
+			t.Fatalf("shell syntax accepted: %q", text)
 		}
 	}
 }

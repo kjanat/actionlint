@@ -1,4 +1,4 @@
-package expressions
+package correctness
 
 import (
 	"strings"
@@ -18,9 +18,9 @@ import (
 	shellsyntax "mvdan.cc/sh/v3/syntax"
 )
 
-// isScalarInterpolation reports whether interpolation emits a boolean, number or null.
+// IsScalarInterpolation reports whether interpolation emits a boolean, number or null.
 // toJSON serializes these primitives without adding string quotes.
-func isScalarInterpolation(node exprsyntax.Node, types exprlang.InferredTypes) bool {
+func IsScalarInterpolation(node exprsyntax.Node, types exprlang.InferredTypes) bool {
 	if call, ok := node.(*exprsyntax.FuncCallNode); ok && strings.EqualFold(call.Callee, "toJSON") && len(call.Args) == 1 {
 		node = call.Args[0]
 	}
@@ -32,10 +32,10 @@ func isScalarInterpolation(node exprsyntax.Node, types exprlang.InferredTypes) b
 	return kind == exprtypes.KindBool || kind == exprtypes.KindNumber || kind == exprtypes.KindNull
 }
 
-// safeScriptLiteral recognizes text without quoting, expansion, whitespace or
+// SafeScriptLiteral recognizes text without quoting, expansion, whitespace or
 // command-separator characters. A proved value may be inserted without allowing
 // its contents to introduce those constructs; it does not validate the command.
-func safeScriptLiteral(value string) bool {
+func SafeScriptLiteral(value string) bool {
 	for _, r := range value {
 		if scriptLiteralCharacter(r) {
 			continue
@@ -49,10 +49,10 @@ func scriptLiteralCharacter(r rune) bool {
 	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("_./:-", r)
 }
 
-// safeScriptArguments recognizes literal shell words separated by horizontal
+// SafeScriptArguments recognizes literal shell words separated by horizontal
 // whitespace. It requires an independent proof that insertion occupies a whole
 // command argument; it is not safe in command, assignment or redirection syntax.
-func safeScriptArguments(value string) bool {
+func SafeScriptArguments(value string) bool {
 	for _, r := range value {
 		if r == ' ' || r == '\t' || scriptLiteralCharacter(r) {
 			continue
@@ -62,11 +62,11 @@ func safeScriptArguments(value string) bool {
 	return true
 }
 
-// safeScriptWord additionally excludes empty text, I/O numbers, and Bash/POSIX
+// SafeScriptWord additionally excludes empty text, I/O numbers, and Bash/POSIX
 // reserved words from unrestricted shell-word proofs.
-func safeScriptWord(value string) bool {
+func SafeScriptWord(value string) bool {
 	// IsKeyword omits elif, which the parser handles as conditional syntax.
-	return value != "" && safeScriptLiteral(value) && !isScriptIONumber(value) && !shellsyntax.IsKeyword(value) && value != "elif"
+	return value != "" && SafeScriptLiteral(value) && !isScriptIONumber(value) && !shellsyntax.IsKeyword(value) && value != "elif"
 }
 
 // isScriptIONumber recognizes the unsigned decimal words that shells may parse
@@ -83,20 +83,20 @@ func isScriptIONumber(value string) bool {
 	return true
 }
 
-// scriptInsertionKind identifies the syntax proved by the script's language and parser.
-type scriptInsertionKind uint8
+// ScriptInsertionKind identifies the syntax proved by the script's language and parser.
+type ScriptInsertionKind uint8
 
 const (
-	unknownScriptInsertion scriptInsertionKind = iota
-	shellWordInsertion
-	shellArgumentInsertion
+	UnknownScriptInsertion ScriptInsertionKind = iota
+	ShellWordInsertion
+	ShellArgumentInsertion
 )
 
-// checkScriptInterpolation checks value characters and the script insertion context.
+// ScriptInterpolation checks value characters and the script insertion context.
 // Callers omit it when a specific secret or untrusted-input finding exists.
-func checkScriptInterpolation(expr exprsyntax.Node, ty exprtypes.Type, types exprlang.InferredTypes, position scriptInsertionKind, safeReference func(exprsyntax.Node) bool) []*exprlang.Error {
-	scalarArgument := position == shellArgumentInsertion
-	if ty.Kind() == exprtypes.KindString && isScalarInterpolation(expr, types) {
+func ScriptInterpolation(expr exprsyntax.Node, ty exprtypes.Type, types exprlang.InferredTypes, position ScriptInsertionKind, safeReference func(exprsyntax.Node) bool) []*exprlang.Error {
+	scalarArgument := position == ShellArgumentInsertion
+	if ty.Kind() == exprtypes.KindString && IsScalarInterpolation(expr, types) {
 		if scalarArgument {
 			return nil
 		}
@@ -113,7 +113,7 @@ func checkScriptInterpolation(expr exprsyntax.Node, ty exprtypes.Type, types exp
 		return unsafeScalarScriptInterpolation(expr)
 	case exprtypes.KindAny, exprtypes.KindString:
 	}
-	if position == unknownScriptInsertion {
+	if position == UnknownScriptInsertion {
 		return unsafeScriptInterpolation(expr)
 	}
 	if safeScriptExpression(expr, scalarArgument, safeReference) {
@@ -138,7 +138,7 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 		case nil, bool, float64:
 			return scalarArgument
 		case string:
-			return scalarArgument && safeScriptLiteral(value) || safeScriptWord(value)
+			return scalarArgument && SafeScriptLiteral(value) || SafeScriptWord(value)
 		default:
 			return false
 		}

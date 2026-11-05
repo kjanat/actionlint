@@ -3,6 +3,8 @@ package expressions
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -55,7 +57,7 @@ type Checker struct {
 	scriptScalarArgs  map[int]bool
 	scriptWordLists   map[int]bool
 	scriptEnvironment map[int]scriptEnvironmentReplacement
-	scriptInsertion   scriptInsertionKind
+	scriptInsertion   correctness.ScriptInsertionKind
 	scriptJob         workflowdecl.JobView
 	compositeScript   bool
 	jobReferences     *ReferenceNames

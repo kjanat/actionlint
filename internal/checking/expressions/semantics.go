@@ -175,16 +175,16 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule == "script-injection" }))
 	// Serialized scalars still require a data-argument position. A closed
 	// string such as toJSON(null) must not bypass that check in eval or sh -c.
-	closedArgumentList := checkUntrusted && canCheckInterpolation && !isScalarInterpolation(expr, result.Types) && rule.scriptWordLists[rule.expressionOffset-3] && rule.safeScriptArgumentList(expr)
+	closedArgumentList := checkUntrusted && canCheckInterpolation && !correctness.IsScalarInterpolation(expr, result.Types) && rule.scriptWordLists[rule.expressionOffset-3] && rule.safeScriptArgumentList(expr)
 	if checkUntrusted && canCheckInterpolation && !closedArgumentList {
 		scalarArgument := rule.scriptScalarArgs[rule.expressionOffset-3]
 		position := rule.scriptInsertion
 		if scalarArgument {
-			position = shellArgumentInsertion
+			position = correctness.ShellArgumentInsertion
 		}
-		findings := checkScriptInterpolation(expr, ty, result.Types, position, func(node exprsyntax.Node) bool {
+		findings := correctness.ScriptInterpolation(expr, ty, result.Types, position, func(node exprsyntax.Node) bool {
 			path := exprsyntax.StaticReference(node)
-			if isScalarInterpolation(node, result.Types) {
+			if correctness.IsScalarInterpolation(node, result.Types) {
 				return scalarArgument
 			}
 			if rule.safeScriptStatusSelector(node) {

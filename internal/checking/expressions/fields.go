@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -443,13 +445,13 @@ func (rule *Checker) checkScriptString(str workflowdecl.StringView, workflowKey 
 	rule.scriptScalarArgs = nil
 	rule.scriptWordLists = nil
 	rule.scriptEnvironment = nil
-	rule.scriptInsertion = unknownScriptInsertion
+	rule.scriptInsertion = correctness.UnknownScriptInsertion
 	if len(shell) > 0 {
 		proofs := proveScriptArguments(str.Value(), shell[0])
 		rule.scriptScalarArgs, rule.scriptWordLists = proofs.scalars, proofs.wordLists
 		rule.scriptEnvironment = proofs.environment
 		if _, ok := scriptShellVariant(shell[0]); ok {
-			rule.scriptInsertion = shellWordInsertion
+			rule.scriptInsertion = correctness.ShellWordInsertion
 		}
 	}
 	defer func() {
