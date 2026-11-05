@@ -196,7 +196,6 @@ type Checker struct {
 	jobCondition          bool
 	configVars            []string
 	configSecrets         []string
-	condition             bool
 	checks                Checks
 	callFacts             map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts
 	evaluationInvalid     bool
@@ -442,7 +441,6 @@ func (sema *Checker) SetSpecialFunctionAvailability(avail []string) {
 // position-specific signatures. Job conditions allow job arguments to success
 // and failure; step and snapshot conditions require zero arguments.
 func (sema *Checker) SetWorkflowKeyAvailability(key string) {
-	sema.condition = strings.HasSuffix(key, ".if")
 	contexts, functions := contextspec.WorkflowKeyAvailability(key)
 	sema.SetContextAvailability(contexts)
 	sema.SetSpecialFunctionAvailability(functions)
@@ -855,13 +853,6 @@ func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match sign
 		return sig.Ret
 	}
 	sema.checkSpecialFunctionAvailability(n)
-	if sema.condition && sema.checks.CaseInsensitiveConditions && len(n.Args) == 2 {
-		switch strings.ToLower(n.Callee) {
-		case "contains", "startswith", "endswith":
-			sema.checkIdentityComparison(n, n.Args[0], n.Args[1])
-		}
-	}
-
 	// Special checks for specific built-in functions
 	switch strings.ToLower(n.Callee) {
 	case "format":
@@ -1222,7 +1213,6 @@ func suspiciousComparison(op exprsyntax.CompareOpNodeKind, left, right exprtypes
 func (sema *Checker) checkCompareOp(n *exprsyntax.CompareOpNode) exprtypes.Type {
 	l := sema.check(n.Left)
 	r := sema.check(n.Right)
-	sema.checkConditionComparison(n)
 
 	if sema.checks.SuspiciousCoercion && suspiciousComparison(n.Kind, l, r) {
 		sema.ruleError(n, "coercion", fmt.Sprintf("comparison of %s and %s with %s uses Actions coercion or NaN; check whether these operand types were intended", l, r, n.Kind))
@@ -1493,4 +1483,10 @@ func (sema *Checker) IsConstant(expr exprsyntax.Node) bool {
 	default:
 		panic("unreachable")
 	}
+}
+
+func (sema *Checker) ruleError(node exprsyntax.Node, name, message string) {
+	err := errorAtExpr(findingKind{name, name}, node, message)
+	err.Advisory = true
+	sema.errs = append(sema.errs, err)
 }

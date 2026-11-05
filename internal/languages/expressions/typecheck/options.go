@@ -10,6 +10,5 @@ type Options struct {
 
 // Checks selects optional semantics without depending on rule presets.
 type Checks struct {
-	SuspiciousCoercion        bool
-	CaseInsensitiveConditions bool
+	SuspiciousCoercion bool
 }

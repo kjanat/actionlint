@@ -17,3 +17,9 @@ func (calls CheckedCalls) CallOf(node *exprsyntax.FuncCallNode) (exprfunctions.F
 	facts, found := calls.byNode[node]
 	return facts.Clone(), found
 }
+
+// HasMatchedSignature reports whether the checker selected a signature for this call.
+// Unchecked calls and calls rejected by every signature return false.
+func (calls CheckedCalls) HasMatchedSignature(node *exprsyntax.FuncCallNode) bool {
+	return calls.byNode[node].SignatureMatched
+}
