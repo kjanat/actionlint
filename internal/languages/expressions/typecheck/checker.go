@@ -7,15 +7,10 @@ import (
 	"strings"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-
+	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
@@ -47,6 +42,7 @@ type Checker struct {
 	availableContexts     []string
 	functionAvailability  map[string]exprfunctions.Availability
 	functionOverloads     map[string][]*exprfunctions.FuncSignature
+	narrowContext         func(exprsyntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool)
 	configVars            []string
 	configSecrets         []string
 	callFacts             map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts
@@ -63,8 +59,9 @@ func NewChecker(scope Scope, cfg *Options) *Checker {
 		functions[name] = function.Signatures
 	}
 	c := &Checker{
-		funcs:     functions,
-		nodeTypes: make(map[exprsyntax.Node]exprtypes.Type),
+		funcs:         functions,
+		nodeTypes:     make(map[exprsyntax.Node]exprtypes.Type),
+		narrowContext: scope.NarrowContext,
 	}
 	c.SetContextTypes(scope.ContextTypes())
 	c.SetAvailability(scope)
@@ -661,7 +658,7 @@ func (sema *Checker) checkCaseBranches(args []exprsyntax.Node, alternatives *[]e
 	}
 	check(args[0])
 	var valueArgument exprfunctions.CallArgument
-	valueType := sema.withEventGuard(args[0], true, func() exprtypes.Type {
+	valueType := sema.withBranchContext(args[0], true, func() exprtypes.Type {
 		valueArgument = check(args[1])
 		return valueArgument.Source
 	})
@@ -673,7 +670,7 @@ func (sema *Checker) checkCaseBranches(args []exprsyntax.Node, alternatives *[]e
 	// is false. Keep those guards nested so all earlier exclusions apply.
 	var restType exprtypes.Type
 	var restReachable bool
-	sema.withEventGuard(args[0], false, func() exprtypes.Type {
+	sema.withBranchContext(args[0], false, func() exprtypes.Type {
 		restType, restReachable = sema.checkCaseBranches(args[2:], alternatives, checked, count)
 		return restType
 	})
@@ -863,7 +860,7 @@ func (sema *Checker) checkWithNarrowing(n exprsyntax.Node, isTruthy bool) exprty
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
 				left := sema.check(n.Left)
-				right := sema.withEventGuard(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 				sema.nodeTypes[n] = left.Merge(right)
 				return right
 			}
@@ -871,7 +868,7 @@ func (sema *Checker) checkWithNarrowing(n exprsyntax.Node, isTruthy bool) exprty
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
 				left := sema.check(n.Left)
-				right := sema.withEventGuard(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 				sema.nodeTypes[n] = left.Merge(right)
 				return right
 			}
@@ -895,13 +892,13 @@ func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) (ty exprtypes.T
 		// When `l` is false in `l && r`, its type is `typeof(l)`. Otherwise `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is falsy.
 		left := sema.checkWithNarrowing(n.Left, false)
-		right := sema.withEventGuard(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+		right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 		return left.Merge(right)
 	case exprsyntax.LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
-		right := sema.withEventGuard(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+		right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
 		return left.Merge(right)
 	case exprsyntax.LogicalOpNodeKindInvalid:
 		// Invalid operators still check both operands.

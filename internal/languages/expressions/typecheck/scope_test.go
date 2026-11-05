@@ -18,6 +18,51 @@ type suppliedScope struct {
 	overloads    map[string][]*exprfunctions.FuncSignature
 }
 
+func (scope suppliedScope) NarrowContext(exprsyntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+	return nil, true
+}
+
+type branchScope struct{ suppliedScope }
+
+func (scope branchScope) NarrowContext(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+	if exprsyntax.DisplayReference(guard) != "flag" {
+		return nil, true
+	}
+	if _, found := lookup("subject"); !found {
+		return nil, true
+	}
+	fields := map[string]exprtypes.Type{"number": exprtypes.NumberType()}
+	if !truth {
+		fields = map[string]exprtypes.Type{"text": exprtypes.StringType()}
+	}
+	return map[string]exprtypes.Type{"SUBJECT": exprtypes.NewStrictObjectType(fields).Type()}, true
+}
+
+func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
+	original := exprtypes.NewEmptyStrictObjectType()
+	scope := branchScope{suppliedScope{
+		variables: map[string]exprtypes.Type{"flag": exprtypes.BoolType(), "subject": original.Type()},
+		names:     []string{"flag", "subject"},
+	}}
+	checker := NewChecker(scope, nil)
+	for _, input := range []string{"flag && subject.number > 0", "flag || subject.text != ''", "flag && (subject.number > 0 || subject.number == 0)"} {
+		node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
+		if node == nil {
+			t.Fatal("expression did not parse")
+		}
+		if result := checker.CheckResult(node); !result.Valid || result.Type.Kind() != exprtypes.KindBool {
+			t.Fatalf("%s: model refinement was not applied: %+v", input, result)
+		}
+		current, found := checker.ContextType("subject")
+		if !found || !current.Equal(original.Type()) {
+			t.Fatalf("branch refinement escaped its branch: %s", current)
+		}
+	}
+	if result := checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ subject.number }}")); result.Valid {
+		t.Fatal("branch-only property became globally available")
+	}
+}
+
 func (scope suppliedScope) ContextTypes() map[string]exprtypes.Type { return scope.variables }
 func (scope suppliedScope) ContextNames() []string                  { return scope.names }
 func (scope suppliedScope) FunctionAvailability() map[string]exprfunctions.Availability {
