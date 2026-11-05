@@ -72,7 +72,7 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 
 func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.UpdateMatrix(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"target": exprtypes.NumberType()}))
+	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"target": exprtypes.NumberType()}).Type())
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.if"))
 	call := exprsyntax.ParseAssignedExpression("${{ success('build') }}")
 	if result := checker.CheckResult(call); !result.Valid {
@@ -85,6 +85,26 @@ func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 	result := checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ matrix.target }}"))
 	if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("availability replacement changed inferred matrix type: %+v", result)
+	}
+}
+
+func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
+	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker.SetContextType("CuStOm", exprtypes.NumberType())
+	if value, found := checker.ContextType("CUSTOM"); !found || value.Kind() != exprtypes.KindNumber {
+		t.Fatalf("context binding=(%s,%t), want numeric type", value, found)
+	}
+	if _, found := checker.ContextType("missing"); found {
+		t.Fatal("missing context was reported as declared")
+	}
+	expression := exprsyntax.ParseAssignedExpression("${{ custom }}")
+	result := checker.CheckResult(expression)
+	if result.Valid || len(result.Findings) != 1 || result.Type.Kind() != exprtypes.KindNumber {
+		t.Fatalf("binding granted availability or lost its declared type: %+v", result)
+	}
+	checker.SetContextAvailability([]string{"custom"})
+	if result := checker.CheckResult(expression); !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
+		t.Fatalf("explicitly enabled context was rejected: %+v", result)
 	}
 }
 

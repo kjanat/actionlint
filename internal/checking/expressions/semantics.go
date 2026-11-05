@@ -121,16 +121,16 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 	c := exprlang.NewChecker(contextspec.DefaultExpressionScope(), &options)
 	if rule.eventTy != nil {
-		c.UpdateEvent(*rule.eventTy)
+		contextspec.SetEventPayloadType(c, *rule.eventTy)
 	}
 	if rule.matrixTy != nil {
-		c.UpdateMatrix(*rule.matrixTy)
+		c.SetContextType("matrix", (*rule.matrixTy).Type())
 	}
 	if rule.stepsTy != nil {
-		c.UpdateSteps(*rule.stepsTy)
+		c.SetContextType("steps", (*rule.stepsTy).Type())
 	}
 	if rule.needsTy != nil {
-		c.UpdateNeeds(*rule.needsTy)
+		c.SetContextType("needs", (*rule.needsTy).Type())
 	}
 	if rule.secretsTy != nil {
 		secrets := *rule.secretsTy
@@ -143,16 +143,16 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 				secrets = secrets.WithMapped(mapped)
 			}
 		}
-		c.UpdateSecrets(secrets)
+		contextspec.SetSecretTypes(c, secrets)
 	}
 	if rule.inputsTy != nil {
-		c.UpdateInputs(*rule.inputsTy)
+		contextspec.MergeInputTypes(c, *rule.inputsTy)
 	}
 	if rule.dispatchInputsTy != nil {
-		c.UpdateDispatchInputs(*rule.dispatchInputsTy)
+		contextspec.SetDispatchInputTypes(c, *rule.dispatchInputsTy)
 	}
 	if rule.jobsTy != nil {
-		c.UpdateJobs(*rule.jobsTy)
+		c.SetContextType("jobs", (*rule.jobsTy).Type())
 	}
 	if workflowKey != "" {
 		ctx, _ := contextspec.WorkflowKeyAvailability(workflowKey)

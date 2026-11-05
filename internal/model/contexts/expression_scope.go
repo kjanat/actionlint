@@ -12,8 +12,9 @@ import (
 // workflow field. Invocation-specific types can replace its initial types later.
 type ExpressionScope struct{ key string }
 
-// DefaultExpressionScope supplies context types with no field restriction and
-// marks location-restricted functions unavailable.
+// DefaultExpressionScope supplies initial types without enabling context
+// references or location-restricted functions. Select field availability before
+// checking references.
 func DefaultExpressionScope() ExpressionScope { return ExpressionScope{} }
 
 // WorkflowExpressionScope selects the names and overloads for a workflow field.

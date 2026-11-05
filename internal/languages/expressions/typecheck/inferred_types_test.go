@@ -18,9 +18,9 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 	}
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"matrix"})
-	checker.UpdateMatrix(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.NumberType()}))
+	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.NumberType()}).Type())
 	first := checker.CheckResult(node)
-	checker.UpdateMatrix(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.BoolType()}))
+	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.BoolType()}).Type())
 	second := checker.CheckResult(node)
 	if !first.Valid || !second.Valid {
 		t.Fatalf("invalid fixture: %v / %v", first.Findings, second.Findings)
@@ -62,7 +62,7 @@ func TestInferredTypesCoverNodesVisitedThroughNarrowing(t *testing.T) {
 			node := exprsyntax.ParseAssignedExpression("${{ " + source + " }}")
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetContextAvailability([]string{"inputs"})
-			checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType()}))
+			contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType()}))
 			result := checker.CheckResult(node)
 			if !result.Valid {
 				t.Fatal(result.Findings)

@@ -26,7 +26,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 		t.Run(tc.source, func(t *testing.T) {
 			root := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
+			contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
 			result := checker.CheckResult(root)
 			found := false
 			exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {

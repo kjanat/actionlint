@@ -47,7 +47,6 @@ type Checker struct {
 	availableContexts     []string
 	functionAvailability  map[string]exprfunctions.Availability
 	functionOverloads     map[string][]*exprfunctions.FuncSignature
-	baseSecrets           map[string]exprtypes.Type
 	configVars            []string
 	configSecrets         []string
 	callFacts             map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts
@@ -69,9 +68,6 @@ func NewChecker(scope Scope, cfg *Options) *Checker {
 	}
 	c.SetContextTypes(scope.ContextTypes())
 	c.SetAvailability(scope)
-	if secrets, ok := c.vars["secrets"].Object(); ok {
-		c.baseSecrets = maps.Collect(secrets.Properties())
-	}
 	if cfg != nil {
 		c.configVars = cfg.Variables
 		c.configSecrets = cfg.Secrets
@@ -136,97 +132,20 @@ func (sema *Checker) SetContextTypes(contexts map[string]exprtypes.Type) {
 	}
 }
 
-// UpdateMatrix updates matrix object to given object type. Since matrix values change according to
-// 'matrix' section of job configuration, the type needs to be updated.
-func (sema *Checker) UpdateMatrix(ty exprtypes.ObjectType) {
-	sema.vars["matrix"] = ty.Type()
+// ContextType returns a context's supplied type and whether it was declared.
+// Names are case-insensitive; returned type values are immutable.
+func (sema *Checker) ContextType(name string) (exprtypes.Type, bool) {
+	ty, found := sema.vars[strings.ToLower(name)]
+	return ty, found
 }
 
-// UpdateSteps updates 'steps' context object to given object type.
-func (sema *Checker) UpdateSteps(ty exprtypes.ObjectType) {
-	sema.vars["steps"] = ty.Type()
-}
-
-// UpdateNeeds updates 'needs' context object to given object type.
-func (sema *Checker) UpdateNeeds(ty exprtypes.ObjectType) {
-	sema.vars["needs"] = ty.Type()
-}
-
-// UpdateSecrets updates 'secrets' context object to given object type. The strictness of the
-// given type is preserved, so an open type keeps allowing unknown secret names.
-func (sema *Checker) UpdateSecrets(ty exprtypes.ObjectType) {
-	// Merges automatically supplied secrets with manually defined secrets.
-	var builder exprtypes.ObjectBuilder
-	for name, value := range sema.baseSecrets {
-		builder.Set(name, value)
-	}
-	for name, value := range ty.Properties() {
-		builder.SetProperty(ty.PropertyName(name), value)
-	}
-	if mapped, ok := ty.Mapped(); ok {
-		builder.SetMapped(mapped)
-	}
-	sema.vars["secrets"] = builder.Build().Type()
-}
-
-// UpdateInputs updates 'inputs' context object to given object type.
-func (sema *Checker) UpdateInputs(ty exprtypes.ObjectType) {
-	o, ok := sema.vars["inputs"].Object()
-	if !ok || o.Len() == 0 && o.IsStrict() {
-		sema.vars["inputs"] = ty.Type()
-		return
-	}
-	// When both `workflow_call` and `workflow_dispatch` are the triggers of the workflow, `inputs` context can be used
-	// by both events. To cover both cases, merge `inputs` contexts into one object type. (#263)
-	sema.vars["inputs"] = o.Type().Merge(ty.Type())
-}
-
-// UpdateDispatchInputs updates 'github.event.inputs' and 'inputs' objects to given object type.
-// https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
-func (sema *Checker) UpdateDispatchInputs(ty exprtypes.ObjectType) {
-	sema.UpdateInputs(ty)
-
-	// Update `github.event.inputs`.
-	// Unlike `inputs.*`, type of `github.event.inputs.*` is always String unlike `inputs.*`. We need
-	// to create a new type from `ty` (e.g. {foo: boolean, bar: number} -> {foo: String, bar: String})
-
-	var builder exprtypes.ObjectBuilder
-	for name := range ty.Properties() {
-		builder.SetProperty(ty.PropertyName(name), exprtypes.StringType())
-	}
-	inputs := builder.Build().Type()
-
-	gh, ok := sema.vars["github"].Object()
-	if !ok {
-		return
-	}
-	eventType, ok := gh.Property("event")
-	if !ok {
-		return
-	}
-	ev, ok := eventType.Object()
-	if !ok {
-		return
-	}
-	// Payload variants for workflow_dispatch receive the same inputs, so
-	// narrowing github.event by event name keeps them.
-	variants := ev.EventVariants()
-	for i, variant := range variants {
-		if variant.Event == "workflow_dispatch" {
-			variants[i].Payload = variant.Payload.With("inputs", inputs)
-		}
-	}
-	updated := ev.With("inputs", inputs).WithEventVariants(variants)
-	sema.vars["github"] = gh.With("event", updated.Type()).Type()
-}
-
-// UpdateJobs updates 'jobs' context object to given object type.
-func (sema *Checker) UpdateJobs(ty exprtypes.ObjectType) {
-	sema.vars["jobs"] = ty.Type()
+// SetContextType replaces one context type without changing name availability.
+func (sema *Checker) SetContextType(name string, ty exprtypes.Type) {
+	sema.vars[strings.ToLower(name)] = ty
 }
 
 // SetContextAvailability selects which supplied context names can be referenced.
-// An empty list permits every supplied context. Names must use lowercase.
+// An empty list rejects all context references. Names must use lowercase.
 // The checker copies the list.
 func (sema *Checker) SetContextAvailability(avail []string) {
 	sema.availableContexts = slices.Clone(avail)

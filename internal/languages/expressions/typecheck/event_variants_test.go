@@ -57,7 +57,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.UpdateEvent(event)
+			contextspec.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github", "env"})
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
@@ -95,7 +95,7 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.UpdateEvent(event)
+			contextspec.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github"})
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
 			if err != nil {
