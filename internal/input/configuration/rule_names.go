@@ -29,7 +29,7 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 	}
 	validate := func(policy *SuppressionsPolicy) error {
 		if policy != nil {
-			policy.ruleSet = ruleSet
+			policy.names = ruleSet.Names()
 		}
 		for _, name := range policy.Rules() {
 			if !ruleSet.Suppressible(name, additional...) {

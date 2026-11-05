@@ -51,9 +51,9 @@ func configureSuppressionsPolicy(c *Config, s Setting) {
 		return
 	}
 	if options := new(SuppressionsPolicy); loadOptions(s, options) {
-		options.ruleSet = c.Lint.Rules.ruleSet
+		options.names = c.Lint.Rules.ruleSet.Names()
 		c.Policy.DisallowSuppressions = options
 	} else if !c.Policy.DisallowSuppressions.Enabled() {
-		c.Policy.DisallowSuppressions = &SuppressionsPolicy{report: ReportAll, ruleSet: c.Lint.Rules.ruleSet}
+		c.Policy.DisallowSuppressions = &SuppressionsPolicy{report: ReportAll, names: c.Lint.Rules.ruleSet.Names()}
 	}
 }
