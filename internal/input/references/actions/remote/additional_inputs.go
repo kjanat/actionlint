@@ -6,16 +6,15 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 )
 
-// bindInputContract supplements a valid manifest with reviewed implementation
-// facts. Matching raw metadata as well as immutable identity prevents facts from
-// being applied to a different manifest supplied under the same identity.
-func bindInputContract(manifest actions.Manifest, definition actionmeta.Definition) actionmeta.Definition {
+// allowReviewedAdditionalInputs permits undeclared input names for an identified implementation.
+// Both the repository identity and manifest digest must match the reviewed source.
+func allowReviewedAdditionalInputs(manifest actions.Manifest, definition actionmeta.Definition) actionmeta.Definition {
 	identity := manifest.Identity()
 	// This implementation collects every INPUT_* variable and forwards the
 	// parameters beyond route to Octokit; it does not restrict them to inputs
-	// declared in action.yml. The declared route requirement remains checked.
-	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/index.js#L13-L24
-	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/index.js#L56-L67
+	// declared in action.yml. The declared route input is still required.
+	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/index.js#L14-L26
+	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/index.js#L61-L73
 	// https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/action.yml
 	if identity.Host() == "github.com" && identity.RepositoryID() == 213507602 &&
 		identity.Commit() == "3d6703deef41a82916a2e5ca87096f93035cef66" &&

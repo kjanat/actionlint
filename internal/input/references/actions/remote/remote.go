@@ -195,7 +195,7 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Resul
 
 func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspection) Result {
 	if definition, valid := inspection.Definition(); valid {
-		return Result{definition: bindInputContract(manifest, definition), availability: actions.AvailableMetadata(manifest)}
+		return Result{definition: allowReviewedAdditionalInputs(manifest, definition), availability: actions.AvailableMetadata(manifest)}
 	}
 	var problems []actions.ManifestProblem
 	manifestPath := manifest.Filename()

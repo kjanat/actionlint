@@ -75,13 +75,14 @@ type Options struct {
 	JobReferences           func(workflowdecl.JobView) ReferenceNames
 }
 
-// Dependencies supplies metadata for workflow expression inference.
+// Dependencies supplies runner facts and action/workflow definitions for expression inference.
 type Dependencies struct {
-	Runners      *runner.Knowledge
-	LocalAction  func(string) (*actionmeta.Metadata, error)
-	RemoteAction func(string) (actionmeta.Definition, error)
-	Workflow     func(string) (*calls.Metadata, error)
-	Log          func(string, ...any)
+	Runners *runner.Knowledge
+	// Action returns declared inputs, outputs and runtime for either reference origin.
+	// An absent definition means these declarations are unknown.
+	Action   func(string) (actionmeta.Definition, error)
+	Workflow func(string) (*calls.Metadata, error)
+	Log      func(string, ...any)
 }
 
 // New creates an expression checker with independent per-workflow context state.
@@ -152,11 +153,11 @@ func (rule *Checker) debug(format string, args ...any) {
 	}
 }
 
-func (rule *Checker) actionMetadata(spec string) (*actionmeta.Metadata, error) {
-	if rule.dependencies.LocalAction == nil {
-		return nil, nil
+func (rule *Checker) actionDefinition(spec string) (actionmeta.Definition, error) {
+	if rule.dependencies.Action == nil {
+		return actionmeta.Definition{}, nil
 	}
-	return rule.dependencies.LocalAction(spec)
+	return rule.dependencies.Action(spec)
 }
 
 func (rule *Checker) workflowMetadata(spec string) (*calls.Metadata, error) {
@@ -164,11 +165,4 @@ func (rule *Checker) workflowMetadata(spec string) (*calls.Metadata, error) {
 		return nil, nil
 	}
 	return rule.dependencies.Workflow(spec)
-}
-
-func (rule *Checker) remoteAction(spec string) (actionmeta.Definition, error) {
-	if rule.dependencies.RemoteAction == nil {
-		return actionmeta.Definition{}, nil
-	}
-	return rule.dependencies.RemoteAction(spec)
 }

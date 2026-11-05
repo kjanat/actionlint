@@ -5,9 +5,6 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -17,30 +14,18 @@ func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) exprtype
 		return exprtypes.NewMapObjectType(exprtypes.StringType())
 	}
 
-	localSpec := spec.Value()
-	if s, ok := references.SelfRepositoryLocal(localSpec); ok {
-		localSpec = s
+	definition, err := rule.actionDefinition(spec.Value())
+	if err != nil {
+		// Action validation reports lookup failures; unknown outputs stay open here.
+		rule.debug("Could not infer action outputs: %v", err)
+		return exprtypes.NewMapObjectType(exprtypes.StringType())
 	}
-	if strings.HasPrefix(localSpec, "./") {
-		meta, err := rule.actionMetadata(spec.Value())
-		if err != nil {
-			// The action rule reports metadata failures.
-			rule.debug("Could not infer action outputs: %v", err)
-			return exprtypes.NewMapObjectType(exprtypes.StringType())
-		}
-		if meta == nil {
-			return exprtypes.NewMapObjectType(exprtypes.StringType())
-		}
-
-		return typeOfActionOutputs(meta)
-	}
-
-	if meta, err := rule.remoteAction(spec.Value()); err == nil && meta.Present() {
-		if meta.SkipOutputs() {
+	if definition.Present() {
+		if definition.SkipOutputs() {
 			return exprtypes.NewEmptyObjectType()
 		}
 		var object exprtypes.ObjectBuilder
-		for _, name := range meta.OutputNames() {
+		for _, name := range definition.OutputNames() {
 			object.SetProperty(name, exprtypes.StringType())
 		}
 		return object.Build()
@@ -131,17 +116,4 @@ func (rule *Checker) checkWorkflowCallOutputs(call workflowdecl.WorkflowCallEven
 	for _, output := range call.Outputs() {
 		rule.checkString(output.Value(), "on.workflow_call.outputs.<output_id>.value")
 	}
-}
-
-func typeOfActionOutputs(meta *actionmeta.Metadata) exprtypes.ObjectType {
-	// Some action sets outputs dynamically. Such outputs are not defined in action.yml. actionlint
-	// cannot check such outputs statically so it allows any props (#18)
-	if meta.SkipOutputs {
-		return exprtypes.NewEmptyObjectType()
-	}
-	var object exprtypes.ObjectBuilder
-	for n := range meta.Outputs {
-		object.SetProperty(n, exprtypes.StringType())
-	}
-	return object.Build()
 }

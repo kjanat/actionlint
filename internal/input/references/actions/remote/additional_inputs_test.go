@@ -23,7 +23,7 @@ func requestActionSource(t *testing.T) string {
 	return content
 }
 
-func TestAdditionalInputContractRequiresReviewedManifest(t *testing.T) {
+func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 	content := requestActionSource(t)
 	const commit = "3d6703deef41a82916a2e5ca87096f93035cef66"
 	for _, test := range []struct {
@@ -86,7 +86,7 @@ func TestAdditionalInputContractRequiresReviewedManifest(t *testing.T) {
 				return
 			}
 			if result.Availability().State() != actions.MetadataAvailable || result.Definition().AllowsAdditionalInputs() != test.additional {
-				t.Fatalf("additional-input contract=%v availability=%s", result.Definition().AllowsAdditionalInputs(), result.Availability().State())
+				t.Fatalf("allows additional inputs=%t availability=%s", result.Definition().AllowsAdditionalInputs(), result.Availability().State())
 			}
 		})
 	}
