@@ -3,6 +3,7 @@ package typecheck
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -67,7 +68,39 @@ func TestCallEvaluationDemand(t *testing.T) {
 				t.Fatalf("valid=%v evaluation=%+v findings=%v; want valid=%v state=%v value=%v", got.Valid, got.Evaluation, got.Findings, tc.valid, tc.state, tc.value)
 			}
 			checkCallArgumentDemands(t, got, tc.demands)
+			if tc.failure != githubReferenceParseFailure {
+				node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
+				evaluated := expreval.Evaluate(node, nil)
+				if evaluated.State != tc.state || !cmp.Equal(evaluated.Value, tc.value) {
+					t.Fatalf("standalone evaluation=%+v, want state=%v value=%v", evaluated, tc.state, tc.value)
+				}
+			}
 			checkGitHubReferenceOutcome(t, tc.input, nil, githubReferenceExpectation{failure: tc.failure, value: tc.value, exceptionType: tc.error})
+		})
+	}
+}
+
+func TestRuntimeFailurePropagationAgainstRunner(t *testing.T) {
+	for _, input := range []string{
+		"!fromJSON(null)",
+		"fromJSON(null) || true",
+		"false || fromJSON(null)",
+		"true && fromJSON(null)",
+		"fromJSON(null) == false",
+		"false == fromJSON(null)",
+		"fromJSON(null).value",
+		"fromJSON(null)[0]",
+		"fromJSON('[1]')[fromJSON(null)]",
+	} {
+		t.Run(input, func(t *testing.T) {
+			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
+			if node == nil {
+				t.Fatal("expression did not parse")
+			}
+			if result := expreval.Evaluate(node, nil); result.State != exprvalues.EvaluationInvalid {
+				t.Fatalf("evaluation=%+v, want runtime failure", result)
+			}
+			checkGitHubReferenceOutcome(t, input, nil, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"})
 		})
 	}
 }
