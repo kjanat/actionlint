@@ -1382,24 +1382,19 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 		},
 		{
-			what:  "more arguments for format() builtin function call",
-			input: "format('format {0} {1} {2}', 'foo', 1, true, null)",
-			expected: []string{
-				"format string \"format {0} {1} {2}\" does not contain placeholder {3}. remove argument which is unused in the format string",
-			},
+			what:     "more arguments for format() builtin function call",
+			input:    "format('format {0} {1} {2}', 'foo', 1, true, null)",
+			expected: []string{},
 		},
 		{
-			what:  "unused placeholder in format string of format()",
-			input: "format('format {0} {2}', 1, 2, 3)",
-			expected: []string{
-				"format string \"format {0} {2}\" does not contain placeholder {1}. remove argument which is unused in the format string",
-			},
+			what:     "unused placeholder in format string of format()",
+			input:    "format('format {0} {2}', 1, 2, 3)",
+			expected: []string{},
 		},
 		{
 			what:  "missing placeholder and less argument at the same time in format string of format()",
 			input: "format('format {0} {2}', 1, 2)",
 			expected: []string{
-				"format string \"format {0} {2}\" does not contain placeholder {1}. remove argument which is unused in the format string",
 				"format string \"format {0} {2}\" contains placeholder {2} but only 2 arguments are given to format",
 			},
 		},
@@ -1411,25 +1406,19 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			},
 		},
 		{
-			what:  "function name of format() call check is case insensitive",
-			input: "Format('{0}', 1, 2)",
-			expected: []string{
-				`format string "{0}" does not contain placeholder {1}`,
-			},
+			what:     "function name of format() call check is case insensitive",
+			input:    "Format('{0}', 1, 2)",
+			expected: []string{},
 		},
 		{
-			what:  "format specifier is escaped",
-			input: "format('hello {{0}}', 'world')",
-			expected: []string{
-				"does not contain placeholder {0}",
-			},
+			what:     "format specifier is escaped",
+			input:    "format('hello {{0}}', 'world')",
+			expected: []string{},
 		},
 		{
-			what:  "format specifier is still escaped",
-			input: "format('hello {{{{0}}', 'world')", // First {{ is escaped. {{0}} is still escaped
-			expected: []string{
-				"does not contain placeholder {0}",
-			},
+			what:     "format specifier is still escaped",
+			input:    "format('hello {{{{0}}', 'world')", // First {{ is escaped. {{0}} is still escaped
+			expected: []string{},
 		},
 		{
 			what:  "undefined matrix value",

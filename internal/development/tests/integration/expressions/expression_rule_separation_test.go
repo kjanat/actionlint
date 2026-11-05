@@ -69,3 +69,38 @@ func TestPayloadSuppressionDoesNotSuppressInjection(t *testing.T) {
 		t.Fatal("payload suppression disabled script injection")
 	}
 }
+
+func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
+	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ format('{0}', 'used', 'unused') }}%s\n    steps: []\n"
+	for _, tc := range []struct{ level, comment, severity string }{
+		{"warn", "", "warning"},
+		{"error", "", "error"},
+		{"off", "", ""},
+		{"warn", " # ignore[expression-call]", ""},
+	} {
+		t.Run(tc.level+tc.comment, func(t *testing.T) {
+			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {preset: none, correctness: {expression-call: %s}}}", tc.level))
+			if err != nil {
+				t.Fatal(err)
+			}
+			content := fmt.Sprintf(source, tc.comment)
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if tc.severity != "" {
+				want = 1
+			}
+			if len(result.Diagnostics) != want {
+				t.Fatalf("diagnostics=%+v, want %d", result.Diagnostics, want)
+			}
+			if want == 1 {
+				finding := result.Diagnostics[0]
+				if finding.Rule != "expression-call" || finding.Code != "format-placeholder" || finding.Severity != tc.severity || finding.Start.Line != 6 || !strings.Contains(finding.Message, "unused in the format string") {
+					t.Fatalf("wrong finding: %+v", finding)
+				}
+			}
+		})
+	}
+}

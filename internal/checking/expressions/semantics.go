@@ -167,6 +167,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 	result := c.CheckResult(expr)
 	ty, errs := result.Type, result.Findings
+	errs = append(errs, correctness.UnusedFormatArguments(expr, result.Calls)...)
 	if rule.options.SuspiciousCoercion {
 		errs = append(errs, suspicious.SuspiciousCoercion(expr, result.Types, result.Calls)...)
 	}

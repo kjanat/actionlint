@@ -842,13 +842,6 @@ func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match sign
 		}
 		l := len(n.Args) - 1 // -1 means removing first format string argument
 		plan, _ := exprfunctions.ArgumentFormatPlan(&match.arguments[0].Argument, l)
-		for i := range l {
-			if !plan.References(i) {
-				finding := errorfAtCallee(formatPlaceholder, n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", format, i)
-				finding.Advisory = true
-				sema.errs = append(sema.errs, finding)
-			}
-		}
 		missing := false
 		for part := range plan.Parts() {
 			if part.Index >= l {
