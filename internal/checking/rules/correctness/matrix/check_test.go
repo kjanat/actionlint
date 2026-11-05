@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -63,7 +65,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			errs := Resolve(w.Jobs["test"].Strategy).Check(false)
+			errs := Check(matrixmodel.Resolve(w.Jobs["test"].Strategy), false)
 			if tc.want == "" {
 				if len(errs) != 0 {
 					t.Fatal(errs)
@@ -108,24 +110,24 @@ func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	resolution := Resolve(workflow.Jobs["test"].Strategy)
-	findings := resolution.Check(false)
+	resolution := matrixmodel.Resolve(workflow.Jobs["test"].Strategy)
+	findings := Check(resolution, false)
 	wantPosition := results.Position{Line: 10, Column: 13}
 	wantMessage := `"missing" in "exclude" section does not exist in matrix. available matrix configurations are "arch", "os"`
 	if len(findings) != 1 || findings[0].Start != wantPosition || findings[0].Message != wantMessage {
 		t.Fatalf("unknown axis diagnostic=%v, want %v: %s", findings, wantPosition, wantMessage)
 	}
-	original := resolution.exclude[0]
+	original := resolution.Exclusions()[0]
 	newOrigin := value.Origin{Span: value.Span{Start: results.Position{Line: 25, Column: 30}}}
 	derived := original.With("extra", value.YAMLScalar("new", "!!str", newOrigin))
 	replaced := derived.With("MISSING", value.YAMLScalar("replacement", "!!str", newOrigin))
-	if original.keyOrigin("missing").Span.Start != wantPosition || derived.keyOrigin("missing").Span.Start != wantPosition || replaced.keyOrigin("missing").Span.Start != wantPosition || derived.keyOrigin("extra") != newOrigin {
+	if original.KeyOrigin("missing").Span.Start != wantPosition || derived.KeyOrigin("missing").Span.Start != wantPosition || replaced.KeyOrigin("missing").Span.Start != wantPosition || derived.KeyOrigin("extra") != newOrigin {
 		t.Fatal("Combination.With lost declaration origins")
 	}
 	if _, changed := original.Get("extra"); changed {
 		t.Fatal("Combination.With mutated original values")
 	}
-	if _, changed := original.keyOrigins["extra"]; changed {
+	if original.KeyOrigin("extra") != (value.Origin{}) {
 		t.Fatal("Combination.With mutated original key origins")
 	}
 }
@@ -147,7 +149,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 		if source == nil || source.Pos == nil {
 			t.Fatal("missing filter expression source")
 		}
-		findings := Resolve(workflow.Jobs["test"].Strategy).Check(false)
+		findings := Check(matrixmodel.Resolve(workflow.Jobs["test"].Strategy), false)
 		if len(findings) != 1 || findings[0].Start.Line != source.Pos.Line || findings[0].Start.Column != source.Pos.Col {
 			t.Fatalf("expression object fabricated key position: %v", findings)
 		}
@@ -159,7 +161,7 @@ func TestNestedMatrixMismatchDiagnosticKeepsValues(t *testing.T) {
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	findings := Resolve(workflow.Jobs["test"].Strategy).Check(false)
+	findings := Check(matrixmodel.Resolve(workflow.Jobs["test"].Strategy), false)
 	want := `value {"z": [null, {"a": true, "b": "new"}]} in "exclude" does not match in matrix "item" combinations. possible values are {"a": 1, "z": [null, {"a": true, "b": "old"}]}`
 	if len(findings) != 1 || findings[0].Message != want {
 		t.Fatalf("nested mismatch diagnostic=%v, want %s", findings, want)

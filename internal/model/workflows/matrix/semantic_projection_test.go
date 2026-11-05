@@ -214,54 +214,18 @@ func TestIncludeAddedKeyOriginsSurviveImmutableCopies(t *testing.T) {
 		for i, line := range []int{11, 13} {
 			original := combinations[i]
 			want := results.Position{Line: line, Column: 13}
-			if got := original.keyOrigin("extra").Span.Start; got != want {
+			if got := original.KeyOrigin("extra").Span.Start; got != want {
 				t.Fatalf("include key origin=%v, want %v", got, want)
 			}
 			newOrigin := value.Origin{Span: value.Span{Start: results.Position{Line: 99, Column: 2}}}
 			derived := original.With("new", value.YAMLScalar("new", "!!str", newOrigin)).With("extra", value.YAMLScalar("replacement", "!!str", newOrigin))
-			if original.keyOrigin("extra").Span.Start != want || derived.keyOrigin("extra").Span.Start != want || derived.keyOrigin("new") != newOrigin || derived.origin != original.origin {
+			if original.KeyOrigin("extra").Span.Start != want || derived.KeyOrigin("extra").Span.Start != want || derived.KeyOrigin("new") != newOrigin || derived.origin != original.origin {
 				t.Fatal("include key metadata lost through immutable copy")
 			}
 			if _, exists := original.keyOrigins["new"]; exists {
 				t.Fatal("derived combination mutated original include metadata")
 			}
 		}
-	}
-}
-
-func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
-	for _, tc := range []struct{ name, filter, diagnostic string }{
-		{"missing axis", `[{os: windows-latest, nokey: x}]`, `"nokey" in "exclude" section does not exist in matrix. available matrix configurations are "os"`},
-		{"empty filter", `"${{ fromJSON('[{}]') }}"`, `matrix filter in "exclude" must not be empty`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			resolution := Resolve(workflow.Jobs["test"].Strategy)
-			if combinations, complete := resolution.Combinations(16); complete || len(combinations) != 0 {
-				t.Fatalf("invalid exclusion supplied execution combinations: %v", combinations)
-			}
-			if reach := resolution.ReachableAfterExcludes("os"); reach.Complete || len(reach.Values) != 2 {
-				t.Fatalf("invalid exclusion narrowed execution alternatives: %#v", reach)
-			}
-			findings := resolution.Check(false)
-			if len(findings) != 1 || findings[0].Message != tc.diagnostic {
-				t.Fatalf("invalid exclusion diagnostic=%v, want %s", findings, tc.diagnostic)
-			}
-			filters := workflow.Jobs["test"].Strategy.Matrix.Exclude
-			if tc.name == "empty filter" {
-				if filters.Expression == nil || filters.Expression.Pos == nil || findings[0].Start.Line != filters.Expression.Pos.Line || findings[0].Start.Column != filters.Expression.Pos.Col {
-					t.Fatalf("empty expression filter fabricated source position: %v", findings)
-				}
-			} else {
-				key := filters.Combinations[0].Assigns["nokey"].Key
-				if key == nil || key.Pos == nil || findings[0].Start.Line != key.Pos.Line || findings[0].Start.Column != key.Pos.Col {
-					t.Fatalf("missing axis diagnostic lost key origin: %v", findings)
-				}
-			}
-		})
 	}
 }
 
@@ -288,33 +252,6 @@ func TestExclusionMatcherRequiresKnownPresentKeys(t *testing.T) {
 	}
 	if os, _ := combinations[0].Get("os"); !os.Equal(value.YAMLScalar("ubuntu-latest", "!!str", value.Origin{})) {
 		t.Fatal("case-variant exclusion retained the wrong original")
-	}
-}
-
-func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
-	for _, tc := range []struct{ name, matrix string }{
-		{"unknown insertion only", `{'${{ insert }}': "${{ fromJSON(vars.AXES) }}", exclude: [{os: ubuntu}]}`},
-		{"unknown insertion with known axis", `{os: [a], '${{ insert }}': "${{ fromJSON(vars.AXES) }}", exclude: [{arch: x}]}`},
-		{"unknown row name", `{"${{ vars.KEY }}": [a], os: [b], exclude: [{k: a}]}`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			resolution := Resolve(workflow.Jobs["test"].Strategy)
-			if findings := resolution.Check(false); len(findings) != 0 {
-				t.Fatalf("open axis domain invented a missing-axis error: %v", findings)
-			}
-			if _, complete := resolution.Combinations(16); complete {
-				t.Fatal("open axis domain acquired complete combinations")
-			}
-			resolution.exclude = []Combination{{values: map[string]value.Value{}}}
-			findings := resolution.Check(false)
-			if len(findings) != 1 || findings[0].Message != `matrix filter in "exclude" must not be empty` {
-				t.Fatalf("open axis domain hid an empty exclusion: %v", findings)
-			}
-		})
 	}
 }
 

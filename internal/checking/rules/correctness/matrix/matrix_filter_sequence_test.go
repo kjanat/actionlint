@@ -1,4 +1,4 @@
-package matrix_test
+package matrix
 
 import (
 	"fmt"
@@ -55,7 +55,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			findings := matrixcheck.Resolve(workflow.Jobs["test"].Strategy).Check(false)
+			findings := Check(matrixcheck.Resolve(workflow.Jobs["test"].Strategy), false)
 			count := 0
 			for _, finding := range findings {
 				if strings.Contains(finding.Message, "does not match in matrix") {

@@ -3,6 +3,8 @@ package correctness
 import (
 	"errors"
 
+	matrixcheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/matrix"
+
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -24,7 +26,7 @@ func (r *ruleMatrix) VisitJobPre(view workflowdecl.JobView) error {
 	if !view.Present() {
 		return errors.New("matrix rule requires a job declaration")
 	}
-	for _, diagnostic := range view.Strategy().MatrixResolution().Check(r.checkMixedTypeFilters) {
+	for _, diagnostic := range matrixcheck.Check(view.Strategy().MatrixResolution(), r.checkMixedTypeFilters) {
 		r.Report(findingmodel.FromDiagnostic(diagnostic))
 	}
 	return nil

@@ -18,7 +18,7 @@ func TestMatrixFilterTypeMismatchUsesSemanticValues(t *testing.T) {
 		{"dynamic string", value.Template("${{ inputs.value }}", value.Origin{}), value.YAMLScalar("", "!!str", value.Origin{}), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := typeMismatch(tc.axis, tc.filt); got != tc.want {
+			if got := FilterMayCompareDifferentTypes(tc.axis, tc.filt); got != tc.want {
 				t.Fatalf("mismatch=%v, want %v", got, tc.want)
 			}
 		})
