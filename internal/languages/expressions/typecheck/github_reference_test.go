@@ -253,11 +253,11 @@ func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...finding
 	}
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	checker.UpdateSteps(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+	checker.SetContextType("steps", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 		"demo": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 			"conclusion": exprtypes.StringType(), "outputs": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),
 		}).Type(),
-	}))
+	}).Type())
 	ty, diagnostics := checker.Check(node)
 	if len(diagnostics) != len(wantDiagnostics) {
 		t.Fatalf("diagnostics=%v, want %v", diagnostics, wantDiagnostics)

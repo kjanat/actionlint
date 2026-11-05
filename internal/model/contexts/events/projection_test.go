@@ -60,7 +60,7 @@ func TestPayloadExpressions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			c.UpdateEvent(FromTriggers(tc.triggers))
+			contextspec.SetEventPayloadType(c, FromTriggers(tc.triggers))
 			c.SetContextAvailability([]string{"github"})
 			n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
@@ -114,7 +114,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	c.UpdateEvent(Type(declaration.Publish("", w, false, "").Bind("unit-event-payload").Workflow()))
+	contextspec.SetEventPayloadType(c, Type(declaration.Publish("", w, false, "").Bind("unit-event-payload").Workflow()))
 	c.SetContextAvailability([]string{"github"})
 	n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
 	if err != nil {

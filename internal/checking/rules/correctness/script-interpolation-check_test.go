@@ -14,7 +14,7 @@ import (
 
 func TestScriptSafeScalarReferences(t *testing.T) {
 	checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
+	contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
 	for _, tc := range []struct {
 		input string
 		safe  bool

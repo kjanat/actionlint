@@ -55,7 +55,7 @@ func Complete(content string, offset int) []expr.Completion {
 	c.SetAvailability(contextspec.WorkflowExpressionScope(key))
 	parsed, _ := workflowparser.Parse([]byte(content))
 	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
-	c.UpdateEvent(events.Type(w))
+	contextspec.SetEventPayloadType(c, events.Type(w))
 	if w.Present() {
 		for event := range w.On() {
 			if dispatch, ok := event.WorkflowDispatchEvent(); ok {
@@ -74,7 +74,7 @@ func Complete(content string, offset int) []expr.Completion {
 					}
 					inputs.Set(strings.ToLower(name), ty)
 				}
-				c.UpdateDispatchInputs(inputs.Build())
+				contextspec.SetDispatchInputTypes(c, inputs.Build())
 			}
 		}
 	}

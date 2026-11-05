@@ -16,8 +16,8 @@ func expressionCoercionFindings(expressions []actionmeta.ParsedExpression, field
 	for _, expression := range expressions {
 		checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 		checker.SetContextAvailability(actionmeta.AllowedContexts(field))
-		checker.UpdateInputs(exprtypes.NewMapObjectType(exprtypes.StringType()))
-		checker.UpdateSteps(exprtypes.NewMapObjectType(exprtypes.AnyType()))
+		contextspec.MergeInputTypes(checker, exprtypes.NewMapObjectType(exprtypes.StringType()))
+		checker.SetContextType("steps", exprtypes.NewMapObjectType(exprtypes.AnyType()).Type())
 		result := checker.CheckResult(expression.Node)
 		for _, finding := range suspicious.SuspiciousCoercion(expression.Node, result.Types, result.Calls) {
 			problem := actionmeta.ExpressionProblem{Code: actionmeta.CodeCoercion, Message: finding.Message}

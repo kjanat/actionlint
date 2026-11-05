@@ -8,14 +8,6 @@ import (
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
-// UpdateEvent installs a payload projection as github.event. Types are
-// immutable, so the potentially large schema graph is shared, not copied.
-func (sema *Checker) UpdateEvent(event exprtypes.ObjectType) {
-	if gh, ok := sema.vars["github"].Object(); ok {
-		sema.vars["github"] = gh.With("event", event.Type()).Type()
-	}
-}
-
 // missingProperty gives a bounded diagnostic for dot, literal bracket and filtered access.
 func (sema *Checker) missingProperty(node, receiver exprsyntax.Node, name string, object exprtypes.ObjectType) {
 	path := exprsyntax.DisplayReference(receiver)

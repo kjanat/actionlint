@@ -96,7 +96,7 @@ func TestExprDeclaredInputSuggestions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.UpdateInputs(tc.inputs)
+			contextspec.MergeInputTypes(checker, tc.inputs)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
 			if tc.key == "" {
 				checker.SetContextAvailability([]string{"github"})
@@ -144,7 +144,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 					t.Fatal(err)
 				}
 				checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-				checker.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"always": exprtypes.BoolType()}))
+				contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"always": exprtypes.BoolType()}))
 				checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
 				_, errs := checker.Check(expr)
 				if tc.want == "" {
@@ -1146,22 +1146,22 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			}
 			// A zero ObjectType in the table means the context is not replaced.
 			if tc.matrix != (exprtypes.ObjectType{}) {
-				c.UpdateMatrix(tc.matrix)
+				c.SetContextType("matrix", tc.matrix.Type())
 			}
 			if tc.steps != (exprtypes.ObjectType{}) {
-				c.UpdateSteps(tc.steps)
+				c.SetContextType("steps", tc.steps.Type())
 			}
 			if tc.needs != (exprtypes.ObjectType{}) {
-				c.UpdateNeeds(tc.needs)
+				c.SetContextType("needs", tc.needs.Type())
 			}
 			if tc.inputs != (exprtypes.ObjectType{}) {
-				c.UpdateInputs(tc.inputs)
+				contextspec.MergeInputTypes(c, tc.inputs)
 			}
 			if tc.secrets != (exprtypes.ObjectType{}) {
-				c.UpdateSecrets(tc.secrets)
+				contextspec.SetSecretTypes(c, tc.secrets)
 			}
 			if tc.jobs != (exprtypes.ObjectType{}) {
-				c.UpdateJobs(tc.jobs)
+				c.SetContextType("jobs", tc.jobs.Type())
 			}
 			if len(tc.availContexts) > 0 {
 				c.SetContextAvailability(tc.availContexts)
@@ -1711,16 +1711,16 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			}
 			// A zero ObjectType in the table means the context is not replaced.
 			if tc.matrix != (exprtypes.ObjectType{}) {
-				c.UpdateMatrix(tc.matrix)
+				c.SetContextType("matrix", tc.matrix.Type())
 			}
 			if tc.steps != (exprtypes.ObjectType{}) {
-				c.UpdateSteps(tc.steps)
+				c.SetContextType("steps", tc.steps.Type())
 			}
 			if tc.needs != (exprtypes.ObjectType{}) {
-				c.UpdateNeeds(tc.needs)
+				c.SetContextType("needs", tc.needs.Type())
 			}
 			if tc.secrets != (exprtypes.ObjectType{}) {
-				c.UpdateSecrets(tc.secrets)
+				contextspec.SetSecretTypes(c, tc.secrets)
 			}
 			if tc.availCtx != nil {
 				c.SetContextAvailability(tc.availCtx)
@@ -1813,12 +1813,12 @@ func TestExprSemanticsCheckerUpdateMatrix(t *testing.T) {
 	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	ty := exprtypes.NewEmptyObjectType()
 	prev := c.vars["matrix"]
-	c.UpdateMatrix(ty)
+	c.SetContextType("matrix", ty.Type())
 	if c.vars["matrix"] == prev {
 		t.Fatalf("Global variables map was not copied")
 	}
 	prev = c.vars["matrix"]
-	c.UpdateMatrix(ty)
+	c.SetContextType("matrix", ty.Type())
 	if c.vars["matrix"] != prev {
 		t.Fatalf("Global variables map was copied when calling UpdateMatrix again")
 	}
@@ -1828,12 +1828,12 @@ func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
 	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	ty := exprtypes.NewEmptyObjectType()
 	prev := c.vars["steps"]
-	c.UpdateSteps(ty)
+	c.SetContextType("steps", ty.Type())
 	if c.vars["steps"] == prev {
 		t.Fatalf("Global variables map was not copied")
 	}
 	prev = c.vars["steps"]
-	c.UpdateSteps(ty)
+	c.SetContextType("steps", ty.Type())
 	if c.vars["steps"] != prev {
 		t.Fatalf("Global variables map was copied when calling UpdateSteps again")
 	}
@@ -1842,7 +1842,7 @@ func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
 func TestExprSematincsCheckerUpdateDispatchInputsVarType(t *testing.T) {
 	ty := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"foo": exprtypes.NullType()})
 	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	c.UpdateDispatchInputs(ty)
+	contextspec.SetDispatchInputTypes(c, ty)
 	o := objectPath(t, c.vars["github"], "event", "inputs")
 	if _, ok := o.Property("foo"); !ok {
 		t.Error("Local github.event.inputs is not updated", o)
@@ -1926,8 +1926,8 @@ func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
 		name := fmt.Sprintf("%v then %v", tc.first, tc.second)
 		t.Run(name, func(t *testing.T) {
 			c := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			c.UpdateInputs(tc.first)
-			c.UpdateDispatchInputs(tc.second)
+			contextspec.MergeInputTypes(c, tc.first)
+			contextspec.SetDispatchInputTypes(c, tc.second)
 			have := c.vars["inputs"]
 			if diff := cmp.Diff(have, tc.want.Type()); diff != "" {
 				t.Fatal(diff)
@@ -2225,7 +2225,7 @@ func TestContextReplacementDispatchInputs(t *testing.T) {
 			contexts["GITHUB"] = github.ty
 		}
 		checker.SetContextTypes(contexts)
-		checker.UpdateDispatchInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType()}))
+		contextspec.SetDispatchInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType()}))
 		if inputs, ok := checker.vars["inputs"].Object(); !ok {
 			t.Fatal("dispatch inputs were not installed")
 		} else if _, ok := inputs.Property("enabled"); !ok {
@@ -2244,7 +2244,7 @@ func TestContextReplacementDispatchInputs(t *testing.T) {
 			}
 		}
 		checker.SetContextTypes(nil)
-		checker.UpdateDispatchInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"again": exprtypes.StringType()}))
+		contextspec.SetDispatchInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"again": exprtypes.StringType()}))
 		if _, ok := checker.vars["github"]; ok {
 			t.Fatal("context replacement left github available")
 		}

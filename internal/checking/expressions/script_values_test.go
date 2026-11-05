@@ -335,9 +335,9 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			}
 			semantic := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			semantic.SetContextAvailability([]string{"steps", "needs", "inputs"})
-			semantic.UpdateSteps(steps)
-			semantic.UpdateNeeds(needs)
-			semantic.UpdateInputs(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+			semantic.SetContextType("steps", steps.Type())
+			semantic.SetContextType("needs", needs.Type())
+			contextspec.MergeInputTypes(semantic, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 				"step": exprtypes.StringType(), "job": exprtypes.StringType(),
 			}))
 			checked := semantic.CheckResult(node)
