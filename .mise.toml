@@ -112,7 +112,7 @@ run         = '''
 race="${RACE--race}"
 if [ "${NORACE:-}" = 1 ] || [ "${CLAUDECODE:-}" = 1 ]; then race=; fi
 if [ -n "$race" ]; then
-  if probe="$(go test "$race" -run '^$' -count=1 ./internal/projectpath 2>&1)"; then
+  if probe="$(go test "$race" -run '^$' -count=1 ./internal/input/discovery 2>&1)"; then
     :
   elif printf '%s\n' "$probe" | grep -Fq 'ThreadSanitizer: unsupported VMA range'; then
     printf '%s\n' 'Race detector unavailable on this kernel; running tests without -race.'
@@ -127,15 +127,12 @@ go test ${race:+$race} {{ vars.test_flags }} ./...
 '''
 run_windows = "go test {{ env.RACE | default(value='') }} {{ vars.test_flags }} ./..."
 
-[task_templates."analyzer-build"]
-sources = [".custom-gcl.yml", "analyzers/**/*.go", "!analyzers/**/*_test.go", "!analyzers/**/testdata/**", "analyzers/go.{mod,sum}"]
-
 [task_templates."plugin-contract"]
 sources = [
-  "crates/actionlint-extension-api/wit/**/*.wit",
-  "tools/plugin-contract/*.{go,mod,sum}",
+  "plugins/protocol/wit/**/*.wit",
+  "internal/development/generators/plugin-contract/*.go",
   "go.{mod,sum}",
-  "internal/plugins/component/generate.go"
+  "internal/plugins/execution/component/generate.go"
 ]
 
 [task_templates."manual"]
@@ -147,14 +144,15 @@ run     = "{{ env.PANDOC | default(value='pandoc --standalone --from=markdown-sm
 [task_templates."matcher"]
 depends     = ["build"]
 outputs     = ["tools/matcher/testdata/{{ vars.output }}"]
-run         = "./actionlint {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./testdata/err/one_error.yaml || [ \"$?\" -eq 1 ]"
+run         = "./actionlint {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml || [ \"$?\" -eq 1 ]"
 run_windows = '''
-./actionlint.exe {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./testdata/err/one_error.yaml
+./actionlint.exe {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml
 if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
 exit 0
 '''
 
 [task_templates."rust-plugin"]
+depends = ["protocol:sdk"]
 vars    = {
   target       = "wasm32-wasip2",
   profile      = "wasm",
@@ -163,48 +161,42 @@ vars    = {
   package      = "",
   artifact     = "",
   metadata     = "",
-  fixture_root = "internal/plugins/component/testdata/plugins"
+  fixture_root = "internal/plugins/execution/component/testdata/plugins"
 }
 sources = [
   "Cargo.{toml,lock}",
   "rust-toolchain.toml",
-  "crates/actionlint-extension-api/**",
-  "crates/*/Cargo.toml",
-  "testdata/plugins/**",
-  "examples/plugins/*.{rs,json}",
-  "tools/plugin-fixture-metadata/*.go"
+  "plugins/sdk/rust/**",
+  "internal/plugins/execution/{component,module}/testdata/sources/**",
+  "plugins/examples/**/{Cargo.toml,*.rs,*.json}",
+  "internal/development/tests/integration/plugins/package-fixture/*.go"
 ]
 outputs = ["{{ vars.fixture_root }}/{{ vars.fixture }}.wasm"]
 run     = [
-  "cargo build --locked --profile {{ vars.profile }} --target {{ vars.target }} --target-dir \"{{ vars.target_dir }}\" {% if vars.package %}-p {{ vars.package }}{% else %}--example {{ vars.example | default(value=vars.fixture) }}{% endif %}{% if vars.features %} --features {{ vars.features }}{% endif %}",
+  "cargo build --locked --profile {{ vars.profile }} --target {{ vars.target }} --target-dir \"{{ vars.target_dir }}\" {% if vars.package %}-p {{ vars.package }}{% else %}-p actionlint-example-{{ vars.example | default(value=vars.fixture) }}{% endif %}{% if vars.features %} --features {{ vars.features }}{% endif %}",
   '''
-{% if vars.artifact %}{% set artifact = vars.artifact %}{% elif vars.package %}{% set artifact = vars.package | replace(from="-", to="_") %}{% else %}{% set artifact = "examples/" ~ vars.fixture | replace(from="-", to="_") %}{% endif %}
+{% if vars.artifact %}{% set artifact = vars.artifact %}{% elif vars.package %}{% set artifact = vars.package | replace(from="-", to="_") %}{% else %}{% set artifact = vars.example | default(value=vars.fixture) | replace(from="-", to="_") %}{% endif %}
 {% set source = vars.target_dir ~ "/" ~ vars.target ~ "/" ~ vars.profile ~ "/" ~ artifact ~ ".wasm" %}
 {% set output = vars.fixture_root ~ "/" ~ vars.fixture ~ ".wasm" %}
-{% if vars.metadata %}go run ./tools/plugin-fixture-metadata "{{ source }}" "{{ vars.metadata }}" "{{ output }}"{% else %}mise run fixture:copy "{{ source }}" "{{ output }}"{% endif %}
+{% if vars.metadata %}go run ./internal/development/tests/integration/plugins/package-fixture "{{ source }}" "{{ vars.metadata }}" "{{ output }}"{% else %}mise run fixture:copy "{{ source }}" "{{ output }}"{% endif %}
 '''
 ]
 
 [task_templates."script-plugin"]
-sources = ["crates/actionlint-extension-api/wit/*.wit", "examples/plugins/{{ vars.fixture }}/**"]
-outputs = ["internal/plugins/component/testdata/plugins/{{ vars.fixture }}.wasm"]
-run     = "bash examples/plugins/{{ vars.fixture }}/build.sh \"{{ config_root }}/internal/plugins/component/testdata/plugins/{{ vars.fixture }}.wasm\""
+sources = ["plugins/protocol/wit/*.wit", "plugins/examples/{{ vars.fixture }}/**"]
+outputs = ["internal/plugins/execution/component/testdata/plugins/{{ vars.fixture }}.wasm"]
+run     = "bash plugins/examples/{{ vars.fixture }}/build.sh \"{{ config_root }}/internal/plugins/execution/component/testdata/plugins/{{ vars.fixture }}.wasm\""
 
 [vars]
 exe = "{% if os() == 'windows' %}.exe{% endif %}"
 
 [monorepo]
 config_roots = [
-  ".github/actions/comment-cop",
-  ".github/actions/setup-pandoc",
-  ".github/actions/setup-runner",
-  ".github/actions/setup-shellcheck",
-  ".github/actions/setup-wasm-toolchain",
+  ".github/actions/*",
   ".github/ci",
-  "distribution/docker",
-  "internal/expression/probe",
-  "tools/action",
-  "tools/matcher",
-  "tools/release",
-  "tools/toolchain",
+  "applications/github-action/tests",
+  "distribution/*",
+  "internal/development/tests/conformance/expressions",
+  "tools/*",
+  "tools/generate/*",
 ]

@@ -20,12 +20,12 @@ plugins     = [
 ]
 excludes    = [
   "**/testdata/**",
-  "internal/webhook/generate/sources/**",
+  "internal/development/generators/event-triggers/sources/**",
   "man/actionlint.1.md",
   ".claude/**",
   ".worktrees/**",
   "**/targets.json",
-  "schemas/ruff/0.17.0.schema.json",
+  "**/schemas/ruff/**",
   "docs/releases/**/*.md"
 ]
 

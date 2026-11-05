@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/network"
+	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type actionMetadataTransport func(*http.Request) (*http.Response, error)
@@ -56,7 +57,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("%s status=%d stderr=%s output=%s", mode, code, log.String(), out.String())
 		}
-		var result render.CheckResult
+		var result resultreport.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +77,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 			t.Fatal("credential leaked to diagnostics")
 		}
 		var statistics struct {
-			Network network.Statistics `json:"network"`
+			Network accounting.Statistics `json:"network"`
 		}
 		if err := json.Unmarshal(log.Bytes(), &statistics); err != nil {
 			t.Fatal(err)
@@ -84,7 +85,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		var attempts uint64
 		for _, group := range statistics.Network.Requests {
 			attempts += group.Attempts
-			if group.Host != "api.github.com" || group.Credentials != network.CredentialsProvided || group.RequestKind != network.REST {
+			if group.Host != "api.github.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.REST {
 				t.Fatalf("wrong accounting: %+v", group)
 			}
 		}

@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Render bare source permalink
         run: |
-          printf '%s\n' 'https://github.com/kjanat/actionlint/blob/55c999e33481bbabb53ea99d396892b681af12e4/testdata/err/one_error.yaml#L1-L6' >> "${GITHUB_STEP_SUMMARY}"
+          printf '%s\n' 'https://github.com/kjanat/actionlint/blob/55c999e33481bbabb53ea99d396892b681af12e4/internal/development/tests/integration/workflow/testdata/err/one_error.yaml#L1-L6' >> "${GITHUB_STEP_SUMMARY}"
   preview:
     if: ${{ !inputs.permalink-only }}
     name: ${{ matrix.title }} preview
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 15
     env:
       GOTOOLCHAIN: local
-      INPUT_FILES: testdata/err/one_error.yaml
+      INPUT_FILES: internal/development/tests/integration/workflow/testdata/err/one_error.yaml
       INPUT_ANNOTATIONS: "true"
       INPUT_FAIL-ON-ERROR: "false"
       INPUT_DISABLE-TOOLS: shellcheck,ruff

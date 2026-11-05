@@ -1,0 +1,17 @@
+[package]
+name              = "actionlint-example-source-annotations"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib"]
+name       = "source_annotations"
+
+[dependencies]
+actionlint-extension-api = { path = "../../sdk/rust" }
+wit-bindgen.workspace    = true
+
+[features]
+default                    = ["source-annotations-fixture"]
+source-annotations-fixture = ["actionlint-extension-api/source-annotations"]

@@ -3,12 +3,11 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 func TestPluginTestUsesHostPipelineAndReportsAssertions(t *testing.T) {
@@ -182,28 +181,9 @@ func TestPluginTestAcceptsExpectationWithoutTemplateEffect(t *testing.T) {
 	}
 }
 
-func TestPluginValidateBoundsLocalManifestRead(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "manifest.json")
-	if err := os.WriteFile(path, []byte(strings.Repeat(" ", authoringManifestLimit+1)), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	var stdout bytes.Buffer
-	command := Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &bytes.Buffer{}}
-	if status := command.Main([]string{"actionlint", "plugin", "validate", path, "--json"}); status != 1 {
-		t.Fatalf("status=%d stdout=%s", status, stdout.String())
-	}
-	var report authoringReport
-	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
-		t.Fatal(err)
-	}
-	if report.Valid || !strings.Contains(report.Error, "exceeds") {
-		t.Fatalf("report=%s", stdout.String())
-	}
-}
-
-func authoringTestManifest(t *testing.T) provider.Manifest {
+func authoringTestManifest(t *testing.T) pluginmanifests.Manifest {
 	t.Helper()
-	manifests, err := provider.Bundled()
+	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,16 +195,16 @@ func authoringTestManifest(t *testing.T) provider.Manifest {
 		manifest.ConfigSchema = nil
 		manifest.ConfigShorthands = nil
 		manifest.Process.ConfigSchema = nil
-		manifest.Process.Config.Transform = &provider.Transform{
-			Language: provider.LanguageJQ,
+		manifest.Process.Config.Transform = &pluginmanifests.Transform{
+			Language: pluginmanifests.LanguageJQ,
 			Inline:   `{config: (. + {defaulted:true}), vars:{added:"yes"}}`,
 		}
 		manifest.Process.Config.Forbidden = nil
-		manifest.Process.Output = provider.Output{Format: provider.FormatEnvelope}
+		manifest.Process.Output = pluginmanifests.Output{Format: pluginmanifests.FormatEnvelope}
 		return manifest
 	}
 	t.Fatal("bundled Ruff provider missing")
-	return provider.Manifest{}
+	return pluginmanifests.Manifest{}
 }
 
 func mustAbs(t *testing.T, path string) string {

@@ -1,0 +1,17 @@
+[package]
+name              = "actionlint-example-script-engine"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib"]
+name       = "script_engine"
+
+[dependencies]
+serde_json            = "1"
+wit-bindgen.workspace = true
+
+[features]
+action-input-fixture = []
+ruff-fixture         = []

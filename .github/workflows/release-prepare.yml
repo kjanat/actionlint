@@ -95,10 +95,10 @@ jobs:
       - name: Validate source and release helpers
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: |
-          go run ./tools/release/bump-version -check
-          go run ./tools/release/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
+          node tools/release/prepare-version.mjs --check
+          node tools/release/release-candidate.mjs notes --version "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
           go test ./...
-          runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test
+          runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test
       - name: Build the complete candidate tree
         id: candidate
         env:
@@ -111,7 +111,7 @@ jobs:
         env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
         run: git checkout --detach "${CANDIDATE}"
       - uses: $/.github/actions/setup-pandoc
-      - run: run make:man/actionlint.1
+      - run: mise run man:roff
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
       - name: Build archives and distribution manifests without publishing
@@ -188,7 +188,7 @@ jobs:
         id: smoke
         # ./ loads the candidate tree generated during this job.
         uses: ./.actionlint-action-candidate
-        with: { files: testdata/ok/minimal.yaml, format: json }
+        with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, format: json }
       - name: Verify runner outputs and exported actionlint
         env:
           EXIT_CODE: ${{ steps.smoke.outputs.exit-code }}
@@ -196,7 +196,7 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          node tools/action/check-action-outputs.mjs
+          node applications/github-action/tests/check-action-outputs.mjs
           actionlint -version
       - name: Verify Windows command resolution
         if: runner.os == 'Windows'
@@ -268,10 +268,10 @@ jobs:
               bash distribution/docker/test-docker-ruff.bash "${image}" "linux/${arch}"
               bash distribution/docker/test-docker-plugins.bash "${image}" "linux/${arch}"
               docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
-                "${image}" testdata/ok/minimal.yaml
+                "${image}" internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
               status=0
               docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
-                "${image}" testdata/err/one_error.yaml || status=$?
+                "${image}" internal/development/tests/integration/workflow/testdata/err/one_error.yaml || status=$?
               test "${status}" = 1
             fi
           done

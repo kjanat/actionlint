@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/knowledge"
+	"actionlint.kjanat.dev/v2/internal/model/availability"
+
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
@@ -17,11 +18,11 @@ func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
 	}
-	var result render.CheckResult
+	var result resultreport.CheckResult
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != knowledge.LookupDisabledReason {
+	if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != availability.LookupDisabledReason {
 		t.Fatalf("coverage=%v", result.ActionMetadata)
 	}
 }

@@ -54,15 +54,15 @@
 # no-roast = false
 # no-fail = false
 
-# The root Dockerfile defines separate CLI and GitHub Action targets.
+# The distribution Dockerfile defines separate CLI and GitHub Action targets.
 # Neither target listens on a port, and each intentionally has its own entrypoint.
 [[overrides]]
-paths = ["Dockerfile"]
+paths = ["distribution/docker/Dockerfile"]
 skip  = ["DF022", "DF039", "DF052"]
 
 # These Dockerfiles are parser fixtures rather than published images.
 [[overrides]]
-paths = ["testdata/**/Dockerfile"]
+paths = ["**/testdata/**/Dockerfile"]
 skip  = ["DF001", "DF020"]
 
 # Image label schema

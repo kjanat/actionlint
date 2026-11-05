@@ -20,11 +20,11 @@ on:
       - "**/*.bash"
       - "**/*.sh"
       - "**/*.ps1"
-      - "Dockerfile"
-      - "Dockerfile.*"
+      - "distribution/docker/Dockerfile"
+      - "distribution/docker/Dockerfile.*"
       - "go.mod"
       - "go.sum"
-      - "Makefile"
+      - "tasks.toml"
       - "!testdata/**"
       - "!**/testdata/**"
       - "!docs/releases/**"
@@ -66,7 +66,7 @@ jobs:
         run: bash tools/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
       - name: Regenerate the configuration schema
         id: schema
-        run: bash tools/ci/autofix-step.bash go generate -run generate-config-schema
+        run: bash tools/ci/autofix-step.bash mise run generate:config-schema
       - name: Keep mise metadata with cached tools
         if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
         shell: bash
@@ -78,8 +78,8 @@ jobs:
         if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
         uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
-          install: ${{ steps.inputs.outputs.tables == 'true' }}
-          env: ${{ steps.inputs.outputs.tables == 'true' }}
+          install: true
+          env: true
           add_shims_to_path: false
           working_directory: ${{ steps.inputs.outputs.tables == 'true' && github.workspace || runner.temp }}
           cache: true
@@ -96,12 +96,12 @@ jobs:
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'
-        run: bash tools/ci/autofix-step.bash go generate -skip generate-config-schema
+        run: bash tools/ci/autofix-step.bash mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'
-        run: bash tools/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
+        run: bash tools/ci/autofix-step.bash node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       # dprint runs rustfmt per file in parallel; each would install the
       # rust-toolchain.toml channel at once and the rustup installs collide.

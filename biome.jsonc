@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!!**/*.{yml,yaml}", "!!**/testdata", "!internal/webhook/payload/catalogue.json"]
+    "includes": ["**", "!!**/*.{yml,yaml}", "!!**/testdata", "!internal/model/contexts/events/payload/catalogue.json"]
   },
   "formatter": {
     "enabled": false,
@@ -34,13 +34,17 @@
   },
   "overrides": [
     {
-      "includes": ["internal/webhook/payload/catalogue.json"],
+      "includes": ["internal/model/contexts/events/payload/catalogue.json"],
       "files": {
         "maxSize": 3145728
       }
     },
     {
-      "includes": ["playground/src/test.ts", "playground/src/**/*.test.ts", "playground/src/**/*.spec.ts"],
+      "includes": [
+        "applications/playground/src/test.ts",
+        "applications/playground/src/**/*.test.ts",
+        "applications/playground/src/**/*.spec.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {

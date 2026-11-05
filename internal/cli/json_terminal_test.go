@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"golang.org/x/sys/execabs"
 )

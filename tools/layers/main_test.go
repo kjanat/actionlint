@@ -11,7 +11,7 @@ func TestGlobMatchAnchorsDirectoriesAtPathElements(t *testing.T) {
 		want          bool
 	}{
 		{"**/config/*.go", "/m/config/a.go", true},
-		{"**/config/*.go", "/m/internal/config/a.go", true},
+		{"**/config/*.go", "/m/internal/input/configuration/a.go", true},
 		{"**/config/*.go", "/m/internal/repoconfig/a.go", false},
 		{"**/config/*.go", "/m/config/sub/a.go", false},
 		{"**/config/*_test.go", "/m/config/a.go", false},
@@ -64,9 +64,9 @@ func TestMatchPattern(t *testing.T) {
 		{".", "config", false},
 		{"config", "config", true},
 		{"config", "config/report", false},
-		{"internal/semantics/...", "internal/semantics", true},
-		{"internal/semantics/...", "internal/semantics/glob", true},
-		{"internal/semantics/...", "internal/semanticsx", false},
+		{"internal/checking/constraints/...", "internal/checking/constraints", true},
+		{"internal/checking/constraints/...", "internal/checking/constraints/glob", true},
+		{"internal/checking/constraints/...", "internal/semanticsx", false},
 	} {
 		if got := matchPattern(tc.pattern, tc.rel); got != tc.want {
 			t.Errorf("matchPattern(%q, %q) = %v, want %v", tc.pattern, tc.rel, got, tc.want)

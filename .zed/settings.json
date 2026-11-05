@@ -100,18 +100,6 @@
         "env": { "NO_COLOR": "true" },
       }
     },
-    "json-language-server": {
-      "settings": {
-        "json": {
-          "schemas": [
-            {
-              "fileMatch": ["internal/actioncatalog/popular_actions.json"],
-              "url": "internal/actioncatalog/popular_actions.schema.json"
-            },
-          ]
-        }
-      }
-    },
     "yaml-language-server": {
       "binary": {
         "path": "npx",

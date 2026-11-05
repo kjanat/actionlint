@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test webhook payload conversion"
+run         = 'node --test "*.test.mts"'

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/internal/analyzerhost/executor"
+	"actionlint.kjanat.dev/v2/internal/checking/executor"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -75,7 +75,7 @@ func executionEnvironment(goos, goarch string) []string {
 func TestAnalyzerExecutorRejectsBypasses(t *testing.T) {
 	owner := runtime.FuncForPC(reflect.ValueOf(executor.RunOne).Pointer()).Name()
 	ownerPackage := owner[:strings.LastIndexByte(owner, '.')]
-	contractType := reflect.TypeFor[analyzer.Checker]()
+	contractType := reflect.TypeFor[checkinputs.Checker]()
 	loaded, err := packages.Load(&packages.Config{
 		Context: t.Context(), Dir: "../..", Mode: executionPackageMode,
 	}, ownerPackage, contractType.PkgPath())
@@ -101,12 +101,12 @@ func TestAnalyzerExecutorRejectsBypasses(t *testing.T) {
 import (
  "context"
  renamed %q
- "actionlint.kjanat.dev/v2/diagnostic"
+ "actionlint.kjanat.dev/v2/internal/results"
 )
 type analyzerExecutionProbe = renamed.%s
 var escapedAnalyzerProbe = analyzerExecutionProbe.Analyze
 type analyzerExecutionOnly interface {
- Analyze(context.Context, renamed.Input) ([]diagnostic.Diagnostic, error)
+ Analyze(context.Context, renamed.Input) ([]results.Diagnostic, error)
 }
 func narrowAnalyzerProbe(a renamed.Analyzer, ctx context.Context, in renamed.Input) {
  var narrow analyzerExecutionOnly = a
@@ -247,7 +247,7 @@ func platformExecutorProbe(a renamed.Analyzer, ctx context.Context, in renamed.I
 
 func executionContract(t *testing.T, loaded []*packages.Package) *types.Signature {
 	t.Helper()
-	contractType := reflect.TypeFor[analyzer.Checker]()
+	contractType := reflect.TypeFor[checkinputs.Checker]()
 	var contract *types.Interface
 	for _, pkg := range loaded {
 		for _, err := range pkg.Errors {

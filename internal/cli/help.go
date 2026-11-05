@@ -8,8 +8,10 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/buildinfo"
-	"actionlint.kjanat.dev/v2/internal/render"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
@@ -104,7 +106,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		if a.inv.Render.PrettyJSON {
 			out = &prettyJSONOutput{Writer: out, ctx: a.ctx, color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
 		}
-		if err := writeCommandJSON(out, describeCommand(c)); err != nil {
+		if err := commandstreams.WriteJSON(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)
 		}
 		return

@@ -8,19 +8,21 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/pluginref"
-	"actionlint.kjanat.dev/v2/internal/pluginregistry"
-	"actionlint.kjanat.dev/v2/internal/testutil"
+	checking "actionlint.kjanat.dev/v2/internal/checking"
+	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+
+	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
 func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
-	r := testutil.NewPluginRegistry(t)
+	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const mirror = "https://mirror.example/"
 	for url, data := range r.Files() {
-		if relative, ok := strings.CutPrefix(url, testutil.FixtureRegistryURL); ok {
+		if relative, ok := strings.CutPrefix(url, fixtureregistry.FixtureRegistryURL); ok {
 			r.SetFile(mirror+relative, data)
 		}
 	}
@@ -31,13 +33,13 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(".github", "actionlint.yaml")
-	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", testutil.FixtureRegistryURL)
+	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	installed := pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin", "--registry", mirror, "--json")
-	var selected pluginregistry.Lock
+	var selected plugininstall.Lock
 	if err := json.Unmarshal([]byte(installed), &selected); err != nil || len(selected.Plugins) != 1 {
 		t.Fatalf("invalid installed lock selection: %s: %v", installed, err)
 	}
-	cfg, err := repoconfig.Load(configPath)
+	cfg, err := checking.ConfigurationRules().Load(configPath)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry() != mirror || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("registry declaration: %#v, %v", cfg, err)
 	}
@@ -51,7 +53,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 		t.Fatal("repeated installation contacted network")
 	}
 	r.SetOffline(false)
-	lockPath := filepath.Join(".github", pluginregistry.LockName)
+	lockPath := filepath.Join(".github", plugininstall.LockName)
 	legacyLock := bytes.ReplaceAll([]byte(installed), []byte(`"owner_id":"5"`), []byte(`"owner_id":"6"`))
 	if bytes.Equal(legacyLock, []byte(installed)) {
 		t.Fatal("installed selection has no publisher identity to vary")
@@ -63,7 +65,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", testutil.FixtureRegistryURL, "--plugin-lock", lockPath)
+	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", fixtureregistry.FixtureRegistryURL, "--plugin-lock", lockPath)
 	lockAfter, err := os.ReadFile(lockPath)
 	if err != nil || !bytes.Equal(legacyLock, lockAfter) {
 		t.Fatalf("rejected publisher changed legacy lock: %v", err)
@@ -102,7 +104,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 			}
 			two := testReference(t, test.name, "v2", second)
 			refs := []pluginref.Reference{one, two}[:test.count]
-			ref, err := requestedPlugin(test.name, pluginInvocation{Registry: test.registry}, refs)
+			ref, err := plugincmd.RequestedPlugin(test.name, plugincmd.RegistryOptions{Registry: test.registry}, refs)
 			if test.invalid {
 				if err == nil {
 					t.Fatal("ambiguous declaration selected")
@@ -112,7 +114,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 			if err != nil || ref.Version() != test.version || ref.Registry() != test.registry {
 				t.Fatalf("selection: %+v, %v", ref, err)
 			}
-			index, err := requestedPluginIndex(ref, test.registry, refs)
+			index, err := plugincmd.RequestedPluginIndex(ref, test.registry, refs)
 			if err != nil || index != test.index {
 				t.Fatalf("declaration index=%d, error=%v; want %d", index, err, test.index)
 			}
@@ -121,7 +123,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 }
 
 func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
-	r := testutil.NewPluginRegistry(t)
+	r := fixtureregistry.NewPluginRegistry(t)
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
 		for _, args := range [][]string{{"plugin", "search"}, {"plugin", "versions", "publisher/plugin"}} {
 			pluginCommandTest(t, 2, append(args, "--registry", registry)...)
@@ -139,11 +141,11 @@ func TestRegistryInstallDirectURLDeclarationSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	updated := source + strings.Repeat("2", 64)
-	ref, err := requestedPlugin(updated, pluginInvocation{}, []pluginref.Reference{old})
+	ref, err := plugincmd.RequestedPlugin(updated, plugincmd.RegistryOptions{}, []pluginref.Reference{old})
 	if err != nil || ref.DirectSource() != updated {
 		t.Fatalf("direct selection: %+v, %v", ref, err)
 	}
-	index, err := requestedPluginIndex(ref, "", []pluginref.Reference{old})
+	index, err := plugincmd.RequestedPluginIndex(ref, "", []pluginref.Reference{old})
 	if err != nil || index != 0 {
 		t.Fatalf("direct replacement index=%d, error=%v", index, err)
 	}

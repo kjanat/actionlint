@@ -1,18 +1,11 @@
 **
-!Dockerfile
+!distribution/docker/Dockerfile
 !.dockerignore
 !go.mod
 !go.sum
-!*.go
 !actionlint.schema.json
 !schemas
 !schemas/**
-!actions
-!actions/**
-!knowledge
-!knowledge/**
-!repository
-!repository/**
 !cmd
 !cmd/**
 !internal
@@ -20,28 +13,6 @@
 !distribution
 !distribution/docker
 !distribution/docker/docker-action.sh
-!analysis
-!analysis/**
-!config
-!config/**
-!diagnostic
-!diagnostic/**
-!syntax
-!syntax/**
 
-!analyzer/
-!analyzer/**
 
-!document
-!document/**
 
-!rule
-!rule/**
-!runner
-!runner/**
-!source
-!source/**
-!resolver
-!resolver/**
-!runner
-!runner/**

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/testutil"
+	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 )
 
 func TestMain(m *testing.M) {

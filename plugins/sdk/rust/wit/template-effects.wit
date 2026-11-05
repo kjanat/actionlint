@@ -1,0 +1,78 @@
+package kjanat:actionlint@0.2.0;
+
+/// Optional provenance semantics for diagnostics on expression-masked snippets.
+/// Engines classify findings semantically; hosts must never infer an effect from
+/// a rule code, diagnostic message, engine name, or package identity.
+interface template-effects {
+    /// One-based Unicode scalar coordinates; range ends are exclusive.
+    /// LF, CRLF, and lone CR delimit lines.
+    record position {
+        row: u32,
+        column: u32,
+    }
+
+    enum severity {
+        info,
+        warning,
+        error,
+        fatal,
+    }
+
+    record diagnostic {
+        filename: string,
+        code: string,
+        name: string,
+        message: string,
+        severity: severity,
+        location: position,
+        end-location: position,
+        url: option<string>,
+    }
+
+    /// Source is already sanitized. Filename is virtual. Config is a JSON object
+    /// containing only engine options, with no inherited environment or files.
+    record request {
+        source: string,
+        filename: string,
+        config: string,
+    }
+    enum effect {
+        /// The finding is valid regardless of template substitution.
+        none,
+        /// Line width is uncertain when that line contains a substitution.
+        line-length,
+        /// Depends on a complete set of references in the snippet.
+        complete-references,
+        /// Targets an identifier synthesized for a substitution.
+        opaque-name,
+        /// Targets parentheses synthesized for a substitution.
+        opaque-parentheses,
+        /// Depends on the contents of a string containing a substitution.
+        string-contents,
+        /// Depends on the first paragraph of a docstring containing a substitution.
+        docstring-summary,
+        /// Targets an exported string name; the range identifies that exact name.
+        exported-name,
+        /// Depends on a percent conversion slot occupied by a substitution.
+        percent-conversion,
+    }
+
+    record finding {
+        diagnostic: diagnostic,
+        effect: effect,
+    }
+
+    record outcome {
+        diagnostics: list<finding>,
+        error: option<string>,
+    }
+
+    /// Returns "kjanat:actionlint/template-effects@0.1.0" exactly.
+    contract: func() -> string;
+    check: func(request: request) -> outcome;
+}
+
+world template-script-engine-plugin {
+    export script-engine;
+    export template-effects;
+}

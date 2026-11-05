@@ -7,6 +7,55 @@ name = "actionlint-engine-echo"
 version = "0.1.0"
 
 [[package]]
+name = "actionlint-example-buildkite-runners"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-example-managed-no-sudo"
+version = "0.1.0"
+dependencies = [
+ "actionlint-extension-api",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-example-pinned-actions"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-example-pipe-to-shell"
+version = "0.1.0"
+dependencies = [
+ "actionlint-extension-api",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-example-script-engine"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-example-source-annotations"
+version = "0.1.0"
+dependencies = [
+ "actionlint-extension-api",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "actionlint-extension-api"
 version = "0.1.0"
 dependencies = [
@@ -15,17 +64,6 @@ dependencies = [
  "sha2",
  "wasm-encoder",
  "wasmparser",
- "wit-bindgen",
-]
-
-[[package]]
-name = "actionlint-plugin-examples"
-version = "0.1.0"
-dependencies = [
- "actionlint-extension-api",
- "serde",
- "serde_json",
- "sha2",
  "wit-bindgen",
 ]
 

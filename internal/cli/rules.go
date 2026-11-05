@@ -7,28 +7,31 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	checking "actionlint.kjanat.dev/v2/internal/checking"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+
+	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
 
-func commandRules() []repoconfig.RuleInfo {
-	rules := repoconfig.RuleInfos()
-	slices.SortFunc(rules, func(a, b repoconfig.RuleInfo) int { return strings.Compare(a.Name, b.Name) })
+func commandRules() []rulemetadata.Descriptor {
+	rules := checking.ConfigurationRules().RuleInfos()
+	slices.SortFunc(rules, func(a, b rulemetadata.Descriptor) int { return strings.Compare(a.Name, b.Name) })
 	return rules
 }
 
-func writeRules(out io.Writer, name string, asJSON bool, rules []repoconfig.RuleInfo) error {
+func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.Descriptor) error {
 	if name != "" {
 		for _, rule := range rules {
 			if rule.Name == name {
 				if asJSON {
-					return writeCommandJSON(out, rule)
+					return commandstreams.WriteJSON(out, rule)
 				}
 				_, err := fmt.Fprintf(out, "%s (%s/%s)\n\n%s\n\n%s\n\nProvider: %s; Maturity: %s\n%s\n", rule.Name, rule.Category, rule.Subcategory, rule.Explanation, rule.Help, rule.Provider, rule.Maturity, rule.DocumentationURL)
 				if err != nil {
 					return err
 				}
-				group := rulecatalog.ConfigGroup(rule.Name)
+				group := checking.RuleCategory(rule.Name)
 				if group == "" {
 					group = "plugins"
 				}
@@ -44,13 +47,13 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []repoconfig.Rule
 				return nil
 			}
 		}
-		return commandUsageError{fmt.Errorf("unknown rule %q; run actionlint rules to list checks", name)}
+		return commandargs.UsageError{Cause: fmt.Errorf("unknown rule %q; run actionlint rules to list checks", name)}
 	}
 	if asJSON {
-		return writeCommandJSON(out, rules)
+		return commandstreams.WriteJSON(out, rules)
 	}
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	groups := map[string][]repoconfig.RuleInfo{}
+	groups := map[string][]rulemetadata.Descriptor{}
 	for _, rule := range rules {
 		category := rule.Category
 		if category == "" {
@@ -58,8 +61,7 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []repoconfig.Rule
 		}
 		groups[category] = append(groups[category], rule)
 	}
-	order := make([]string, 0, 6+len(groups))
-	order = append(order, "correctness", "security", "suspicious", "style", "policy", "external")
+	order := rulemetadata.Categories()
 	var other []string
 	for category := range groups {
 		if !slices.Contains(order, category) {

@@ -4,7 +4,7 @@
 excludes = ["**/testdata/**"]
 
 [local-actions]
-"./.published-action-test" = "./tools/action/testdata/published-action"
+"./.published-action-test" = "./applications/github-action/tests/testdata/published-action"
 
 [[ignores]]
 rule   = "missing-local-action"

@@ -1,2 +1,0 @@
-stdin:1:1: [warning] missing document start "---" (document-start)
-stdin:2:1: [warning] truthy value should be one of [false, true] (truthy)

@@ -8,15 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/runner"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 )
 
 func TestRunnerProviderCLI(t *testing.T) {
-	artifact, err := filepath.Abs("internal/plugins/component/testdata/plugins/buildkite-runners.wasm")
+	artifact, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	catalogue, err := os.ReadFile("testdata/runner-provider/snapshot.json")
+	catalogue, err := os.ReadFile("internal/model/runners/testdata/provider/snapshot.json")
 	if err != nil {
 		t.Fatal(err)
 	}

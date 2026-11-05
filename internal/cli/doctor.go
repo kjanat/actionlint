@@ -10,12 +10,14 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/analyzerhost"
-	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/provider"
-	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
-	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
+	checking "actionlint.kjanat.dev/v2/internal/checking"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 type doctorTool struct {
@@ -35,7 +37,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if err != nil {
 		return err
 	}
-	config, configErr := localapp.InspectConfig(ctx, req.Config, req.Plugins, false)
+	config, configErr := checking.InspectConfig(ctx, req.Config, req.Plugins, false)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -50,7 +52,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	manifests, err := provider.Bundled()
+	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		return err
 	}
@@ -60,7 +62,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	type doctorItem struct {
 		name, command string
 		options       *processconfig.Options
-		manifest      *provider.Manifest
+		manifest      *pluginmanifests.Manifest
 	}
 	items := make([]doctorItem, 0, len(manifests)+1)
 	for i := range manifests {
@@ -91,7 +93,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 		report.Tools = append(report.Tools, tool)
 	}
 	if req.JSON {
-		err = writeCommandJSON(out, report)
+		err = commandstreams.WriteJSON(out, report)
 	} else {
 		file, terminal := terminalFile(out)
 		links := req.Hyperlinks.enabled(terminal, os.Getenv)
@@ -127,7 +129,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 
 // checkDoctorTools rejects tool ids named by --tool or --no-tool that no
 // bundled provider has. Doctor loads no plugins, so only bundled tools count.
-func checkDoctorTools(manifests []provider.Manifest, named []string) error {
+func checkDoctorTools(manifests []pluginmanifests.Manifest, named []string) error {
 	known := make([]string, len(manifests))
 	for i, manifest := range manifests {
 		known[i] = manifest.Rule.Name
@@ -141,19 +143,19 @@ func checkDoctorTools(manifests []provider.Manifest, named []string) error {
 	if len(unknown) == 0 {
 		return nil
 	}
-	return commandUsageError{localapp.NewUnknownToolError(unknown, known)}
+	return commandargs.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
 }
 
 // probeDoctorVersion runs the manifest's version probe against command, as
 // analysis does before it uses an automatically discovered tool. A provider
 // without a version probe passes.
-func probeDoctorVersion(ctx context.Context, manifest provider.Manifest, command string, options *processconfig.Options) error {
+func probeDoctorVersion(ctx context.Context, manifest pluginmanifests.Manifest, command string, options *processconfig.Options) error {
 	if manifest.Process == nil || manifest.Process.Version == nil {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	processes := analyzerhost.NewProcessPool(ctx, 1)
+	processes := hostprocess.NewProcessPool(ctx, 1)
 	defer processes.Wait()
 	resolved, err := processes.ConfiguredCommandRunner(command, options, false)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestPluginSelectionFailureExitStatus(t *testing.T) {
@@ -27,7 +27,7 @@ func TestPluginSelectionFailureExitStatus(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "lock":
-				if err := os.WriteFile(filepath.Join(".github", pluginregistry.LockName), []byte("{"), 0o600); err != nil {
+				if err := os.WriteFile(filepath.Join(".github", plugininstall.LockName), []byte("{"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			case "missing-lock":

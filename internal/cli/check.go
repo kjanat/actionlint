@@ -8,16 +8,22 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/tools/registry"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
-	"actionlint.kjanat.dev/v2/internal/application"
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/fix"
-	"actionlint.kjanat.dev/v2/internal/fsread"
-	"actionlint.kjanat.dev/v2/internal/localapp"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
-	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/resolution"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+
+	"actionlint.kjanat.dev/v2/internal/checking"
+	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/files"
+	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
+	render "actionlint.kjanat.dev/v2/internal/output"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/results/edits"
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
@@ -52,7 +58,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
-	options := application.Options{
+	options := checking.Options{
 		NoIgnore:             c.NoIgnore,
 		AllowConfigProcesses: c.AllowConfigProcesses,
 		WorkingDir:           workingDir, ConfigFile: c.Config.Path,
@@ -63,7 +69,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
 	}
 	if c.ResolverCommand != "" {
-		options.Resolver = resolution.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
+		options.Resolver = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 	}
 	options.RemoteActions, err = c.actionMetadata()
 	if err != nil {
@@ -80,22 +86,22 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
-	input := application.Input{Kind: application.Files, Paths: c.Paths}
+	input := inputmodel.Request{Kind: inputmodel.Files, Paths: c.Paths}
 	if len(c.Paths) == 0 {
-		input.Kind, input.AllowEmptyRepository = application.Repository, c.PreCommit
+		input.Kind, input.AllowEmptyRepository = inputmodel.Repository, c.PreCommit
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
-		input.Kind, input.Reader, input.Name, input.NormalizePath = application.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
+		input.Kind, input.Reader, input.Name, input.NormalizePath = inputmodel.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
-		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
+		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	result, err := localapp.CheckProjects(ctx, options, input, c.pluginSelection())
+	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection())
 	if err != nil {
-		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok && len(c.Plugins) != 0 {
-			return 0, commandUsageError{err}
+		if _, ok := errors.AsType[*pluginexec.LoadError](err); ok && len(c.Plugins) != 0 {
+			return 0, commandargs.UsageError{Cause: err}
 		}
-		if _, ok := errors.AsType[*localapp.UnknownToolError](err); ok {
-			return 0, commandUsageError{err}
+		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
+			return 0, commandargs.UsageError{Cause: err}
 		}
 		if result != nil {
 			err = &checkAnalysisError{result: result, err: err}
@@ -106,7 +112,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	for _, source := range c.Plugins {
 		_, local, err := pluginartifact.NormalizeSource(source, workingDir)
 		if err != nil {
-			return 0, commandUsageError{err}
+			return 0, commandargs.UsageError{Cause: err}
 		}
 		if local != "" {
 			inputs = append(inputs, local)
@@ -127,8 +133,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, errors.New("no workflow or action files were selected; check files.includes and files.excludes")
 	}
 	if c.Fix {
-		if input.Kind == application.Stdin {
-			return 0, commandUsageError{errors.New("fix requires files; stdin is read-only")}
+		if input.Kind == inputmodel.Stdin {
+			return 0, commandargs.UsageError{Cause: errors.New("fix requires files; stdin is read-only")}
 		}
 		allowed := map[string]bool{}
 		for _, path := range result.Inputs {
@@ -138,42 +144,42 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			}
 			allowed[absolute] = true
 		}
-		disk := fsread.New(ctx, nil, nil)
-		reader := fsread.New(ctx, func(path string) ([]byte, error) {
+		disk := files.New(ctx, nil, nil)
+		reader := files.New(ctx, func(path string) ([]byte, error) {
 			if !allowed[path] {
 				return nil, fmt.Errorf("fix target %s was not an analysis input", path)
 			}
 			return disk.ReadFile(path)
 		}, nil)
-		plan, planErr := fix.Build(ctx, result.Diagnostics, reader, c.IncludeSuggestedFixes)
+		plan, planErr := edits.Build(ctx, result.Diagnostics, reader, c.IncludeSuggestedFixes)
 		if planErr != nil {
 			return 0, planErr
 		}
 		if !c.ApplyFixes {
-			return 0, writeCommandJSON(out, plan)
+			return 0, commandstreams.WriteJSON(out, plan)
 		}
-		written, applyErr := fix.Apply(ctx, plan, reader)
+		written, applyErr := render.ApplyEdits(ctx, plan, reader)
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = localapp.CheckProjects(ctx, options, input, c.pluginSelection())
+		result, err = checking.CheckProjects(ctx, options, input, c.pluginSelection())
 		if err != nil {
 			return 0, err
 		}
 	}
-	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, render.FromAnalysis(*result)); err != nil {
+	presentation := render.FromAnalysis(*result)
+	presentation.CheckResult = commandstatus.AnalysisResult(*result)
+	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, presentation); err != nil {
 		return 0, err
 	}
 	if inv.Legacy && options.Verbose && result.FileCount > 1 {
 		_, _ = fmt.Fprintf(log, "verbose: Found %d errors in %d files\n", len(result.Diagnostics), result.FileCount)
 	}
-	if len(result.Diagnostics) > 0 {
-		status = render.ExitSuccessProblemFound
-	}
+	status = presentation.ExitCode
 	if r.Summary && !r.Quiet {
-		summary := render.NewCheckSummary(result.FileCount, result.Diagnostics)
+		summary := resultreport.NewCheckSummary(result.FileCount, result.Diagnostics)
 		if inv.JSON {
-			err = writeCommandJSON(streams.Stderr, map[string]render.CheckSummary{"summary": summary})
+			err = commandstreams.WriteJSON(streams.Stderr, map[string]resultreport.CheckSummary{"summary": summary})
 		} else {
 			err = writeCheckSummary(streams.Stderr, inv.Render.Color, summary)
 		}
@@ -183,7 +189,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 
 // checkAnalysisError carries collected findings to the existing failure report.
 type checkAnalysisError struct {
-	result *application.Result
+	result *checking.Result
 	err    error
 }
 

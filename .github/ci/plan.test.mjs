@@ -109,13 +109,16 @@ test('PR comparison uses the merge-base and latest head message, not the merge c
 	const repo = repository(t);
 	repo.git(['checkout', '--quiet', '-b', 'pr']);
 	repo.commit('internal/cli/check.go', 'First PR change\n\nCI-Skip: conformance');
-	const head = repo.commit('internal/integration/cli/check_test.go', 'Latest PR change\n\nCI-Skip: nix');
+	const head = repo.commit(
+		'internal/development/tests/integration/cli/check_test.go',
+		'Latest PR change\n\nCI-Skip: nix',
+	);
 	repo.git(['checkout', '--quiet', 'base']);
 	const base = repo.commit('unrelated.go', 'Base advanced');
 	repo.git(['merge', '--quiet', '--no-ff', 'pr', '-m', 'Synthetic merge\n\nCI: full']);
 	repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
 	assert.deepEqual(changedInputs(repo.environment, repo.cwd), {
-		paths: ['internal/cli/check.go', 'internal/integration/cli/check_test.go'],
+		paths: ['internal/cli/check.go', 'internal/development/tests/integration/cli/check_test.go'],
 		trailers: { full: false, skip: ['nix'] },
 	});
 });
@@ -233,24 +236,24 @@ test('plugin sources and Cargo inputs select the plugin checks', () => {
 			'Cargo.toml',
 			'Cargo.lock',
 			'rust-toolchain.toml',
-			'examples/plugins/pipe-to-shell.rs',
-			'crates/actionlint-extension-api/Cargo.toml',
-			'crates/actionlint-extension-api/build.rs',
-			'crates/actionlint-extension-api/src/lib.rs',
-			'crates/actionlint-extension-api/src/package.rs',
-			'crates/actionlint-extension-api/wit/analyzer.wit',
-			'crates/actionlint-extension-api/wit/source-annotations.wit',
-			'testdata/plugins/misbehave/src/lib.rs',
-			'testdata/runner-provider/snapshot.json',
-			'tools/runner-host/src/main.rs',
-			'tools/runner-host/Cargo.toml',
-			'tools/runner-host/Cargo.lock',
-			'tools/plugin-contract/main.go',
-			'tools/plugin-contract/go.mod',
-			'analysis/analysis.go',
-			'internal/application/analysis_document.go',
-			'internal/localapp/plugins.go',
-			'internal/localapp/plugins_test.go',
+			'plugins/examples/pipe-to-shell/src/lib.rs',
+			'plugins/sdk/rust/Cargo.toml',
+			'plugins/sdk/rust/build.rs',
+			'plugins/sdk/rust/src/lib.rs',
+			'plugins/sdk/rust/src/package.rs',
+			'plugins/sdk/rust/wit/analyzer.wit',
+			'plugins/sdk/rust/wit/source-annotations.wit',
+			'internal/plugins/execution/component/testdata/sources/misbehave/src/lib.rs',
+			'internal/model/runners/testdata/provider/snapshot.json',
+			'internal/development/tests/conformance/wasm/runner-host/src/main.rs',
+			'internal/development/tests/conformance/wasm/runner-host/Cargo.toml',
+			'internal/development/tests/conformance/wasm/runner-host/Cargo.lock',
+			'internal/development/generators/plugin-contract/main.go',
+			'internal/development/generators/plugin-contract/bindings.go',
+			'internal/checking/execute.go',
+			'internal/checking/session_document.go',
+			'internal/plugins/execution/load.go',
+			'internal/development/tests/integration/checking/plugins_test.go',
 		]
 	) {
 		assert.equal(selectJobs(ci, [path]).plugins, true, path);
@@ -259,7 +262,7 @@ test('plugin sources and Cargo inputs select the plugin checks', () => {
 
 test('runner sources select every Go consumer and provider tests select their test jobs', () => {
 	const ci = workflowFilters('ci');
-	const jobs = selectJobs(ci, ['runner/resolve.go']);
+	const jobs = selectJobs(ci, ['internal/model/runners/knowledge.go']);
 	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), [
 		'unit',
 		'race',
@@ -271,18 +274,18 @@ test('runner sources select every Go consumer and provider tests select their te
 		'action',
 		'plugins',
 	]);
-	const tests = selectJobs(ci, ['runner/resolve_test.go']);
+	const tests = selectJobs(ci, ['internal/model/runners/knowledge_test.go']);
 	assert.deepEqual(Object.keys(tests).filter(job => tests[job]), ['unit', 'race', 'nix', 'lint', 'plugins']);
 });
 
 test('test-only CLI changes select Go and Nix tests without release builds or unrelated suites', () => {
-	const jobs = selectJobs(workflowFilters('ci'), ['internal/integration/cli/usability_test.go']);
+	const jobs = selectJobs(workflowFilters('ci'), ['internal/development/tests/integration/cli/usability_test.go']);
 	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'nix', 'lint']);
 	for (const workflow of ['codeql', 'conformance', 'expression-probe-tests', 'matcher']) {
 		assert.ok(
-			Object.values(selectJobs(workflowFilters(workflow), ['internal/integration/cli/usability_test.go'])).every(run =>
-				!run
-			),
+			Object.values(
+				selectJobs(workflowFilters(workflow), ['internal/development/tests/integration/cli/usability_test.go']),
+			).every(run => !run),
 		);
 	}
 });
@@ -291,12 +294,12 @@ test('Nix checks include test sources and fixtures used by its Go suite', () => 
 	const ci = workflowFilters('ci');
 	for (
 		const path of [
-			'internal/localapp/plugins_test.go',
-			'internal/plugins/core/testdata/engines/echo.wasm',
-			'tools/config/main_test.go',
-			'tools/config/testdata/example.yaml',
-			'fuzz/fuzz_test.go',
-			'testdata/ok/minimal.yaml',
+			'internal/development/tests/integration/checking/plugins_test.go',
+			'internal/plugins/execution/module/testdata/engines/echo.wasm',
+			'internal/development/generators/config-schema/main_test.go',
+			'internal/development/generators/config-schema/testdata/example.yaml',
+			'internal/development/tests/integration/fuzz/fuzz_test.go',
+			'internal/development/tests/integration/workflow/testdata/ok/minimal.yaml',
 		]
 	) {
 		assert.equal(selectJobs(ci, [path]).nix, true, path);
@@ -305,14 +308,14 @@ test('Nix checks include test sources and fixtures used by its Go suite', () => 
 
 test('action tests, probe results, mixed documentation and source changes select their owners', () => {
 	const ci = workflowFilters('ci');
-	const action = selectJobs(ci, ['packages/github-action/tests/reporters.test.ts']);
+	const action = selectJobs(ci, ['applications/github-action/tests/reporters.test.ts']);
 	assert.deepEqual(Object.keys(action).filter(job => action[job]), ['javascript', 'action', 'action-tests']);
 	const documentation = selectJobs(ci, ['docs/usage.md']);
 	assert.deepEqual(Object.keys(documentation).filter(job => documentation[job]), ['release']);
 	assert.equal(selectJobs(ci, ['docs/usage.md', 'config.go']).unit, true);
 	assert.equal(
 		selectJobs(workflowFilters('expression-probe-tests'), [
-			'internal/expression/probe/results/run.json',
+			'internal/development/tests/conformance/expressions/results/run.json',
 		])['expression-probe'],
 		false,
 	);
@@ -320,33 +323,41 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(workflowFilters('conformance'), ['rule_expression.go']).conformance, true);
 	for (
 		const file of [
-			'internal/conformance/conformance_test.go',
-			'internal/conformance/conformance_adapters_test.go',
-			'internal/conformance/conformance_score_test.go',
-			'internal/conformance/conformance_assessments_test.go',
-			'internal/conformance/testdata/assessments.json',
-			'internal/conformance/testdata/differences.json',
+			'internal/development/tests/conformance/conformance_test.go',
+			'internal/development/tests/conformance/conformance_adapters_test.go',
+			'internal/development/tests/conformance/conformance_score_test.go',
+			'internal/development/tests/conformance/conformance_assessments_test.go',
+			'internal/development/tests/conformance/testdata/assessments.json',
+			'internal/development/tests/conformance/testdata/differences.json',
 		]
 	) {
 		assert.equal(selectJobs(workflowFilters('conformance'), [file]).conformance, true, file);
 	}
 	assert.equal(selectJobs(workflowFilters('matcher'), ['internal/cli/check.go']).matcher, true);
 	assert.equal(selectJobs(ci, ['internal/cli/check.go'])['action-tests'], false);
-	assert.equal(selectJobs(ci, ['Dockerfile'])['action-tests'], false);
-	assert.equal(selectJobs(ci, ['tools/action/check-action-outputs.mjs'])['action-tests'], true);
-	assert.equal(selectJobs(ci, ['tools/config/main.go']).unit, true);
-	assert.equal(selectJobs(ci, ['tools/config/main.go']).lint, true);
-	assert.equal(selectJobs(ci, ['internal/webhook/payload/generate/main.mts']).javascript, true);
+	assert.equal(selectJobs(ci, ['distribution/docker/Dockerfile'])['action-tests'], false);
+	assert.equal(selectJobs(ci, ['applications/github-action/tests/check-action-outputs.mjs'])['action-tests'], true);
+	assert.equal(selectJobs(ci, ['internal/development/generators/config-schema/main.go']).unit, true);
+	assert.equal(selectJobs(ci, ['internal/development/generators/config-schema/main.go']).lint, true);
+	assert.equal(selectJobs(ci, ['tools/generate/webhook-payloads/main.mts']).javascript, true);
 	assert.equal(selectJobs(ci, ['.github/workflows/upkeep.yml']).unit, true);
 	assert.ok(Object.values(selectJobs(ci, ['.github/workflows/ci.yml'])).every(Boolean));
 });
 
 test('Action smoke fixtures are re-included after the general testdata exclusion', () => {
 	const ci = workflowFilters('ci');
-	for (const path of ['testdata/ok/minimal.yaml', 'testdata/err/one_error.yaml']) {
+	for (
+		const path of [
+			'internal/development/tests/integration/workflow/testdata/ok/minimal.yaml',
+			'internal/development/tests/integration/workflow/testdata/err/one_error.yaml',
+		]
+	) {
 		assert.equal(selectJobs(ci, [path]).action, true, path);
 	}
-	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
+	assert.equal(
+		selectJobs(ci, ['internal/development/tests/integration/workflow/testdata/ok/other.yaml']).action,
+		false,
+	);
 });
 
 test('Pandoc pins and installer select both consumers and installation regression tests', () => {
@@ -387,6 +398,29 @@ test('release snapshots cover every archived documentation input', () => {
 	assert.equal(selectJobs(ci, ['CONTRIBUTING.md']).release, false);
 });
 
+test('Go module checks follow the guest SDK and Go example locations', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of [
+			'plugins/sdk/go/go.mod',
+			'plugins/sdk/go/bindings/generated.go',
+			'plugins/examples/insecure-download/main.go',
+			'go.mod',
+		]
+	) {
+		assert.equal(selectJobs(ci, [path])['guest-modules'], true, path);
+	}
+	for (
+		const path of [
+			'distribution/npm/src/build.ts',
+			'.github/actions/npm-packages/action.yml',
+			'internal/checking/session.go',
+		]
+	) {
+		assert.equal(selectJobs(ci, [path])['guest-modules'], false, path);
+	}
+});
+
 test('Windows matrix jobs serialize setup to avoid shared event payload writes', () => {
 	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
 	for (const job of ['unit-tests', 'action']) {
@@ -417,9 +451,9 @@ test('browser server changes select browser tests and Pages preserves ordered ex
 	const ci = workflowFilters('ci');
 	for (
 		const path of [
-			'packages/language-server/src/worker.ts',
+			'libraries/browser-lsp/src/worker.ts',
 			'cmd/actionlint-lsp-wasm/main.go',
-			'playground/src/client.ts',
+			'applications/playground/src/client.ts',
 		]
 	) {
 		assert.equal(selectJobs(ci, [path]).wasm, true, path);
@@ -433,7 +467,7 @@ test('browser server changes select browser tests and Pages preserves ordered ex
 	const paths = push.paths;
 	assert.ok(Array.isArray(paths) && paths.every((path) => typeof path === 'string'));
 	for (
-		const path of ['packages/language-server/src/worker.ts', 'cmd/actionlint-lsp-wasm/main.go', 'man/actionlint.1.md']
+		const path of ['libraries/browser-lsp/src/worker.ts', 'cmd/actionlint-lsp-wasm/main.go', 'man/actionlint.1.md']
 	) {
 		assert.equal(matchesPaths(path, paths), true, path);
 	}
@@ -441,15 +475,15 @@ test('browser server changes select browser tests and Pages preserves ordered ex
 		const path of [
 			'cmd/actionlint/main.go',
 			'internal/cli/app.go',
-			'internal/localapp/lsp_test.go',
-			'playground/README.md',
+			'internal/lsp/lsp_test.go',
+			'applications/playground/README.md',
 		]
 	) {
 		assert.equal(matchesPaths(path, paths), false, path);
 	}
 });
 
-test('autofix bootstraps mise for README and installs Node.js only for tables', () => {
+test('autofix installs the Node.js tools for table and README generation', () => {
 	const workflow = readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8');
 	const steps = workflow.split(/\n {6}- /);
 	const bootstraps = steps.filter(step => /uses: jdx\/mise-action@/.test(step));
@@ -457,8 +491,8 @@ test('autofix bootstraps mise for README and installs Node.js only for tables', 
 	const [bootstrap] = bootstraps;
 	assert.ok(bootstrap);
 	assert.match(bootstrap, /if: steps\.inputs\.outputs\.tables == 'true' \|\| steps\.inputs\.outputs\.readme == 'true'/);
-	assert.match(bootstrap, /install: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \}\}/);
-	assert.match(bootstrap, /env: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \}\}/);
+	assert.match(bootstrap, /install: true/);
+	assert.match(bootstrap, /env: true/);
 	assert.match(bootstrap, /add_shims_to_path: false/);
 	assert.match(
 		bootstrap,
@@ -472,47 +506,59 @@ test('autofix bootstraps mise for README and installs Node.js only for tables', 
 	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');
 });
 
+/** @param {unknown} value @returns {Generator<Record<string, unknown>>} */
+function* yamlObjects(value) {
+	if (Array.isArray(value)) {
+		for (const item of value) yield* yamlObjects(item);
+	} else if (value !== null && typeof value === 'object') {
+		/** @type {Record<string, unknown>} */
+		const fields = Object.fromEntries(Object.entries(value));
+		yield fields;
+		for (const item of Object.values(fields)) yield* yamlObjects(item);
+	}
+}
+
+/** @param {unknown} value */
+function yamlMapping(value) {
+	assert.ok(value !== null && typeof value === 'object' && !Array.isArray(value));
+	/** @type {Record<string, unknown>} */
+	const fields = Object.fromEntries(Object.entries(value));
+	return fields;
+}
+
 test('mise setup limits environment resolution to explicitly installed tools', () => {
 	const directory = new URL('../workflows/', import.meta.url);
 	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
-		const lines = readFileSync(new URL(name, directory), 'utf8').split('\n');
-		for (const [index, line] of lines.entries()) {
-			if (!/uses: (?:&SetupMise )?(?:jdx\/mise-action@|\*SetupMise)/.test(line)) continue;
-			if (/with: \*NodeTools/.test(line)) {
-				assert.match(line, /env: \*NodeToolsEnv/, `${name} shared Node.js setup must retain its tool scope`);
-				continue;
-			}
-			const indentation = line.indexOf('uses:');
-			const body = [];
-			for (const following of lines.slice(index + 1)) {
-				if (following.trim() && following.search(/\S/) < indentation) break;
-				body.push(following);
-			}
-			const step = body.join('\n');
-			const args = /install_args: ([^,}\n]+)/.exec(step)?.[1];
-			if (args) {
-				const enabled = /MISE_ENABLE_TOOLS: "([^"]+)"/.exec(step)?.[1];
-				assert.equal(enabled, args.trim().replaceAll(/\s+/g, ','), `${name} selected tool environment`);
-				assert.match(step, /add_shims_to_path: false/, `${name} must export concrete tool paths`);
-			} else {
-				assert.match(step, /install: false/, `${name} bootstrap must not install configured tools`);
-				assert.match(step, /env: false/, `${name} bootstrap must not resolve the project environment`);
-				assert.match(step, /add_shims_to_path: false/, `${name} bootstrap must not shadow installed tools`);
-				assert.match(
-					step,
-					/working_directory: ["']?\$\{\{ runner\.temp \}\}/,
-					`${name} bootstrap must not list project tools`,
+		/** @type {unknown} */
+		const workflow = YAML.parse(readFileSync(new URL(name, directory), 'utf8'));
+		for (const step of yamlObjects(workflow)) {
+			if (typeof step.uses !== 'string' || !step.uses.startsWith('jdx/mise-action@')) continue;
+			const options = yamlMapping(step.with);
+			const args = options.install_args;
+			assert.equal(options.add_shims_to_path, false, `${name} must export concrete tool paths`);
+			if (typeof args === 'string' && args.trim()) {
+				const environment = yamlMapping(step.env);
+				assert.equal(
+					environment.MISE_ENABLE_TOOLS,
+					args.trim().replaceAll(/\s+/g, ','),
+					`${name} selected tool environment`,
 				);
+			} else {
+				assert.equal(options.install, false, `${name} bootstrap must not install configured tools`);
+				assert.equal(options.env, false, `${name} bootstrap must not resolve the project environment`);
+				assert.equal(options.working_directory, '${{ runner.temp }}', `${name} bootstrap must not list project tools`);
 			}
 		}
 	}
 });
 
-test('preview and npm builds select the go.mod toolchain', () => {
+test('preview selects the Go toolchain and npm assembly uses Node and Bun', () => {
 	const preview = readFileSync(new URL('../workflows/annotation-preview.yml', import.meta.url), 'utf8');
 	assert.match(preview, /GOTOOLCHAIN: local/);
 	assert.match(preview, /with: \{ go-version-file: go.mod \}\n\s*#[^\n]*\n\s*env: \{ GOTOOLCHAIN: auto \}/);
 	const npm = readFileSync(new URL('../workflows/npm-release.yml', import.meta.url), 'utf8');
-	assert.match(npm, /with: \{ go-version-file: go.mod \}/);
-	assert.doesNotMatch(npm, /env\.GO|GO: "1\.27"/);
+	assert.doesNotMatch(npm, /uses: actions\/setup-go@/);
+	assert.match(npm, /node-version-file: \.node-version/);
+	assert.match(npm, /install_args: bun/);
+	assert.match(npm, /bun install --filter @kjanat\/actionlint-npm --frozen-lockfile --ignore-scripts/);
 });

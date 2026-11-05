@@ -9,7 +9,7 @@ on:
       - ".mise.toml"
       - ".node-version"
       - ".tool-versions"
-      - "Makefile"
+      - "tasks.toml"
       - "analysis/**"
       - "analyzer/**"
       - "bun.lock"
@@ -20,12 +20,12 @@ on:
       - "go.mod"
       - "go.sum"
       - "internal/**"
-      - "internal/config/config_default.yaml"
+      - "internal/input/configuration/config_default.yaml"
       - "man/**"
       - "package.json"
-      - "packages/changelog-feed/**"
-      - "packages/language-server/**"
-      - "playground/**"
+      - "libraries/github-changelog/**"
+      - "libraries/browser-lsp/**"
+      - "applications/playground/**"
       - "runner/**"
       - "syntax/**"
       - "tasks.toml"
@@ -35,7 +35,7 @@ on:
       - "!cmd/**"
       - "cmd/actionlint-lsp-wasm/**"
       - "!internal/cli/**"
-      - "!internal/githubaction/**"
+      - "!internal/cli/action/**"
       - "!**/*_test.go"
       - "!**/*.md"
       - "man/actionlint.1.md"
@@ -75,9 +75,9 @@ jobs:
           - name: Install JavaScript dependencies
             run: runner install --pm bun --no-tools --frozen
           - name: Build command manual
-            run: run make:man
+            run: mise run man
       - name: Install browser test runtime
-        working-directory: packages/language-server
+        working-directory: libraries/browser-lsp
         run: bunx playwright install --with-deps chromium
       - name: Build and test playground
         env: { GH_TOKEN: "${{ github.token }}" }
@@ -88,7 +88,7 @@ jobs:
           run -s actionlint-playground:build actionlint-playground:test
           run -s @kjanat-actionlint/language-server:test actionlint-playground:test:browser
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with: { path: playground/dist }
+        with: { path: applications/playground/dist }
 
   deploy:
     needs: build

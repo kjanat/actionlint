@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: SDK version from crates/actionlint-extension-api/Cargo.toml
+        description: SDK version from plugins/sdk/rust/Cargo.toml
         type: string
         required: true
       dry-run:

@@ -1,0 +1,398 @@
+package artifacts
+
+import (
+	"bytes"
+	"compress/gzip"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
+	"time"
+
+	"actionlint.kjanat.dev/v2/internal/input/files"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+)
+
+// Options bounds artifact acquisition independently of runtime execution limits.
+type Options struct {
+	// Network grants private access only to an invocation-selected authority.
+	// The zero value confines automatic acquisition to public destinations.
+	Network acquisitionhttp.Grant
+	// CacheDir stores verified downloads pinned by SHA256. Empty disables caching.
+	CacheDir string
+	// Timeout defaults to 30 seconds, including redirects and response reading.
+	Timeout time.Duration
+	// MaxBytes bounds both distributed and decompressed bytes; defaults to 128 MiB.
+	MaxBytes int64
+	// PullOCI pulls oci:// sources; the oci subpackage's Pull is the
+	// implementation. Nil refuses oci:// sources.
+	PullOCI PullOCI
+}
+
+// NormalizeSource roots filesystem paths in directory while preserving URI
+// identity, including queries and digest pins. local is empty for remote URLs;
+// otherwise it identifies the local file consumed by the artifact resolver.
+// It validates the location without reading files or making network requests.
+func NormalizeSource(source, directory string) (reference, local string, err error) {
+	if IsOCI(source) {
+		ref, err := ParseOCI(source)
+		if err != nil {
+			return "", "", err
+		}
+		return ref.String(), "", nil
+	}
+	u, local, _, err := parseSource(source)
+	if err != nil {
+		return "", "", err
+	}
+	if u != nil {
+		return source, local, nil
+	}
+	if !filepath.IsAbs(local) {
+		local = filepath.Join(directory, local)
+	} else {
+		local = filepath.Clean(local)
+	}
+	return local, local, nil
+}
+
+// RequireRemotePin checks execution inputs without fetching their bytes.
+// Inspection may acquire unpinned URLs to discover their digest; execution may not.
+func RequireRemotePin(source string) error {
+	if IsOCI(source) {
+		_, err := ParseOCI(source)
+		return err
+	}
+	u, local, pin, err := parseSource(source)
+	if err != nil {
+		return err
+	}
+	if u != nil && local == "" && pin == "" {
+		return errors.New("remote plugin execution requires #sha256=<64 hex digits>")
+	}
+	return nil
+}
+
+// The bounds an Options value without Timeout or MaxBytes gets.
+const (
+	DefaultTimeout  = 30 * time.Second
+	DefaultMaxBytes = 128 << 20
+)
+
+// withDefaults returns options with the default Timeout and MaxBytes set.
+func (o Options) withDefaults() Options {
+	if o.Timeout <= 0 {
+		o.Timeout = DefaultTimeout
+	}
+	if o.MaxBytes <= 0 {
+		o.MaxBytes = DefaultMaxBytes
+	}
+	return o
+}
+
+// Resolve accepts paths, absolute file URIs, HTTP(S) URLs and oci:// digest
+// references, which Options.PullOCI pulls. A URI fragment of #sha256=<hex>
+// pins the distributed bytes. Unpinned URLs are always fetched.
+// Options.Timeout bounds the whole pull.
+func Resolve(ctx context.Context, source string, options Options) (*Artifact, error) {
+	options = options.withDefaults()
+	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
+	defer cancel()
+	if IsOCI(source) {
+		ref, err := ParseOCI(source)
+		if err != nil {
+			return nil, err
+		}
+		if options.PullOCI == nil {
+			return nil, fmt.Errorf("plugin artifact %s: this caller cannot pull oci:// sources", ref)
+		}
+		artifact, err := options.PullOCI(ctx, ref, options)
+		if err != nil {
+			return nil, fmt.Errorf("plugin artifact %s: %w", ref, err)
+		}
+		if artifact == nil {
+			return nil, fmt.Errorf("plugin artifact %s: OCI pull returned no artifact", ref)
+		}
+		snapshot := *artifact
+		snapshot.Bytes = bytes.Clone(artifact.Bytes)
+		snapshot.Info.Metadata = bytes.Clone(artifact.Info.Metadata)
+		snapshot.Info.Blobs = slices.Clone(artifact.Info.Blobs)
+		return &snapshot, nil
+	}
+	u, local, pin, err := parseSource(source)
+	if err != nil {
+		return nil, err
+	}
+	display := source
+	if u != nil {
+		redacted := *u
+		redacted.RawQuery, redacted.Fragment, redacted.RawFragment = "", "", ""
+		display = redacted.String()
+	}
+	var data []byte
+	switch {
+	case u != nil && u.Scheme == "sha256":
+		if options.CacheDir == "" {
+			return nil, errors.New("candidate execution requires an artifact cache")
+		}
+		data, err = readFile(ctx, filepath.Join(options.CacheDir, pin), options.MaxBytes)
+	case local != "":
+		data, err = readFile(ctx, local, options.MaxBytes)
+	default:
+		data, err = download(ctx, u, pin, options)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("plugin artifact %s: %w", display, err)
+	}
+	digest := fmt.Sprintf("%x", sha256.Sum256(data))
+	if pin != "" && pin != digest {
+		return nil, fmt.Errorf("plugin artifact %s: SHA256 mismatch: expected %s, got %s", display, pin, digest)
+	}
+	info := Info{Source: display, SHA256: digest, Size: len(data)}
+	if bytes.HasPrefix(data, []byte{0x1f, 0x8b}) {
+		gz, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			return nil, fmt.Errorf("plugin gzip: %w", err)
+		}
+		data, err = readBounded(gz, options.MaxBytes)
+		_ = gz.Close()
+		if err != nil {
+			return nil, fmt.Errorf("plugin gzip: %w", err)
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	info.Kind, info.Metadata, err = SniffPackage(data)
+	if err != nil {
+		return nil, fmt.Errorf("plugin artifact %s: %w", display, err)
+	}
+	info.ModuleSize = len(data)
+	return &Artifact{Info: info, Bytes: data}, nil
+}
+
+func parseSource(source string) (*url.URL, string, string, error) {
+	// Drive paths (including forward slashes) are paths on every host. Only
+	// explicit :// locations are URIs, preserving colons in ordinary filenames.
+	if !strings.Contains(source, "://") {
+		if source == "" {
+			return nil, "", "", errors.New("empty plugin location")
+		}
+		return nil, source, "", nil
+	}
+	u, err := url.Parse(source)
+	if err != nil {
+		return nil, "", "", errors.New("invalid plugin URI")
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	if u.User != nil {
+		return nil, "", "", errors.New("plugin URIs cannot contain credentials")
+	}
+	pin := ""
+	if u.Fragment != "" {
+		pin = strings.TrimPrefix(u.Fragment, "sha256=")
+		decoded, err := hex.DecodeString(pin)
+		if !strings.HasPrefix(u.Fragment, "sha256=") || err != nil || len(decoded) != sha256.Size {
+			return nil, "", "", errors.New("plugin URI fragment must be sha256=<64 hex digits>")
+		}
+		pin = strings.ToLower(pin)
+	}
+	u.Fragment, u.RawFragment = "", ""
+	switch u.Scheme {
+	case "sha256":
+		decoded, err := hex.DecodeString(u.Host)
+		if err != nil || len(decoded) != sha256.Size || u.Host != strings.ToLower(u.Host) || u.Path != "" || u.RawQuery != "" || u.ForceQuery || pin != "" {
+			return nil, "", "", errors.New("invalid cached artifact digest")
+		}
+		return u, "", u.Host, nil
+	case "http", "https":
+		if u.Host == "" {
+			return nil, "", "", errors.New("plugin URL requires a host")
+		}
+		return u, "", pin, nil
+	case "file":
+		if (u.Host != "" && !strings.EqualFold(u.Host, "localhost")) || u.RawQuery != "" {
+			return nil, "", "", errors.New("file plugin URI requires a local absolute path without a query")
+		}
+		path := u.Path
+		if runtime.GOOS == "windows" && len(path) >= 3 && path[0] == '/' && path[2] == ':' {
+			path = path[1:]
+		}
+		path = filepath.FromSlash(path)
+		if !filepath.IsAbs(path) {
+			return nil, "", "", errors.New("file plugin URI requires an absolute path")
+		}
+		return u, path, pin, nil
+	default:
+		return nil, "", "", errors.New("plugin URI scheme must be file, http, https or oci")
+	}
+}
+
+// Import verifies candidate bytes before adding them to the download cache.
+// Callers open local inputs within their selected catalogue root.
+func Import(ctx context.Context, input io.Reader, digest string, options Options) error {
+	decoded, err := hex.DecodeString(digest)
+	if err != nil || len(decoded) != sha256.Size || options.CacheDir == "" {
+		return errors.New("candidate import requires a digest and cache directory")
+	}
+	limit := options.MaxBytes
+	if limit <= 0 {
+		limit = DefaultMaxBytes
+	}
+	data, err := readBounded(input, limit)
+	if err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if fmt.Sprintf("%x", sha256.Sum256(data)) != digest {
+		return errors.New("candidate artifact SHA256 mismatch")
+	}
+	return cacheFile(ctx, filepath.Join(options.CacheDir, digest), data)
+}
+
+func readBounded(r io.Reader, limit int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, limit))
+	if err != nil {
+		return nil, err
+	}
+	var extra [1]byte
+	n, err := io.ReadFull(r, extra[:])
+	if n != 0 {
+		return nil, fmt.Errorf("artifact exceeds %d byte limit", limit)
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	return data, nil
+}
+
+func readFile(ctx context.Context, path string, limit int64) ([]byte, error) {
+	f, err := files.New(ctx, nil, nil).Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	stop := context.AfterFunc(ctx, func() { _ = f.Close() })
+	defer stop()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, errors.Join(err, ctx.Err())
+	}
+	if info.Size() > limit {
+		return nil, fmt.Errorf("artifact exceeds %d byte limit", limit)
+	}
+	data, err := readBounded(f, limit)
+	if err = errors.Join(err, ctx.Err()); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func download(ctx context.Context, u *url.URL, pin string, options Options) ([]byte, error) {
+	cachePath := ""
+	if pin != "" && options.CacheDir != "" {
+		cachePath = filepath.Join(options.CacheDir, pin)
+		data, err := readFile(ctx, cachePath, options.MaxBytes)
+		if err == nil {
+			if fmt.Sprintf("%x", sha256.Sum256(data)) != pin {
+				return nil, errors.New("cached plugin artifact SHA256 mismatch")
+			}
+			return data, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+	}
+	transport, err := acquisitionhttp.Transport(u, options.Network)
+	if err != nil {
+		return nil, acquisitionError(err)
+	}
+	client := &http.Client{Transport: transport, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return errors.New("too many plugin redirects")
+		}
+		if req.URL.User != nil || (req.URL.Scheme != "http" && req.URL.Scheme != "https") {
+			return errors.New("invalid plugin redirect")
+		}
+		if via[len(via)-1].URL.Scheme == "https" && req.URL.Scheme != "https" {
+			return errors.New("plugin redirect downgrades HTTPS")
+		}
+		return nil
+	}}
+	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "plugin-artifact", Priority: accounting.Required})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, errors.New("invalid plugin request")
+	}
+	// Verify checksums against the published bytes by disabling HTTP decoding.
+	req.Header.Set("Accept-Encoding", "identity")
+	resp, err := client.Do(req)
+	if err != nil {
+		// Transport errors may still embed a signed redirect URL. Preserve context
+		// errors but keep arbitrary transport details out of diagnostics.
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if _, known := acquisitionhttp.Classify(err); known {
+			return nil, acquisitionError(err)
+		}
+		return nil, errors.New("plugin HTTP request failed (connection or redirect rejected)")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("plugin server returned HTTP %d", resp.StatusCode)
+	}
+	if resp.ContentLength > options.MaxBytes {
+		return nil, fmt.Errorf("artifact exceeds %d byte limit", options.MaxBytes)
+	}
+	data, err := readBounded(resp.Body, options.MaxBytes)
+	if err != nil {
+		return nil, err
+	}
+	if pin != "" && fmt.Sprintf("%x", sha256.Sum256(data)) != pin {
+		return nil, errors.New("downloaded plugin artifact SHA256 mismatch")
+	}
+	if cachePath != "" {
+		if err := cacheFile(ctx, cachePath, data); err != nil {
+			return nil, fmt.Errorf("plugin artifact cache: %w", err)
+		}
+	}
+	return data, nil
+}
+
+func cacheFile(ctx context.Context, path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".download-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	_, writeErr := f.Write(data)
+	if err := errors.Join(writeErr, f.Close()); err != nil {
+		return err
+	}
+	if err := os.Rename(f.Name(), path); err != nil {
+		// Another process may have published the same pinned artifact on a platform
+		// where rename cannot replace an existing file. Accept only identical bytes.
+		existing, readErr := readFile(ctx, path, int64(len(data)))
+		if readErr == nil && bytes.Equal(existing, data) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}

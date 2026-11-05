@@ -8,17 +8,17 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/pluginregistry"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
-	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/testutil/ocitest"
+	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/ocitest"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 // plugin install resolves an oci:// tag once, declares the digest and caches
 // the blobs needed by this host; inspect reads the package without running it;
 // sync restores it offline from the store.
 func TestPluginInstallAndInspectOCI(t *testing.T) {
-	testutil.IsolateUserCache(t)
+	fixtureenvironment.IsolateUserCache(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -38,7 +38,7 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	if err != nil || !strings.Contains(string(config), reference) {
 		t.Fatalf("configuration does not declare the digest %s: %q, %v", reference, config, err)
 	}
-	if _, err := os.Stat(filepath.Join(".github", pluginregistry.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
 		t.Fatalf("OCI install created a project lock: %v", err)
 	}
 	output := pluginCommandTest(t, 0, "plugin", "inspect", reference)
@@ -80,7 +80,7 @@ func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 // config schema adds tools.<rule.name> for a provider the --plugin flag
 // installs, without downloading its executable.
 func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
-	testutil.IsolateUserCache(t)
+	fixtureenvironment.IsolateUserCache(t)
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "1")
@@ -119,7 +119,7 @@ func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 // plugin install refuses an OCI package whose provider manifest layer is not
 // a valid tool provider manifest, and declares nothing.
 func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
-	testutil.IsolateUserCache(t)
+	fixtureenvironment.IsolateUserCache(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -140,7 +140,7 @@ func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 }
 
 func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
-	testutil.IsolateUserCache(t)
+	fixtureenvironment.IsolateUserCache(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -171,13 +171,13 @@ func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("failed install changed config: %s, %v", actual, err)
 	}
-	if _, err := os.Stat(filepath.Join(".github", pluginregistry.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
 		t.Fatalf("failed install wrote a lock: %v", err)
 	}
 }
 
 func TestPluginInstallDoesNotResolveProcessEntry(t *testing.T) {
-	testutil.IsolateUserCache(t)
+	fixtureenvironment.IsolateUserCache(t)
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
