@@ -27,11 +27,12 @@ export function updateToolchain(version, { root = process.cwd(), run, write = wr
 		if (!/^[a-f0-9]{40}$/.test(candidate)) throw new Error('Invalid nixpkgs commit ID');
 		let source = '';
 		try {
-			source = run('gh', [
-				'api',
-				`repos/NixOS/nixpkgs/contents/${compilerPath}?ref=${candidate}`,
-				'-H',
-				'Accept: application/vnd.github.raw+json',
+			source = run('curl', [
+				'--fail',
+				'--silent',
+				'--show-error',
+				'--location',
+				`https://raw.githubusercontent.com/NixOS/nixpkgs/${candidate}/${compilerPath}`,
 			]);
 		} catch {
 			// A new Go family can be absent from the currently locked revision.
