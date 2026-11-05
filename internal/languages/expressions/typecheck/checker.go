@@ -190,6 +190,7 @@ type Checker struct {
 	vars                  map[string]exprtypes.Type
 	errs                  []*Error
 	varsCopied            bool
+	nodeTypes             map[exprsyntax.Node]exprtypes.Type
 	availableContexts     []string
 	availableSpecialFuncs []string
 	jobCondition          bool
@@ -210,6 +211,7 @@ func NewChecker(cfg *Options) *Checker {
 		funcs:      exprfunctions.BuiltinFuncSignatures,
 		vars:       BuiltinGlobalVariableTypes,
 		varsCopied: false,
+		nodeTypes:  make(map[exprsyntax.Node]exprtypes.Type),
 	}
 	if cfg != nil {
 		c.checks = cfg.Checks
@@ -1235,27 +1237,34 @@ func (sema *Checker) checkWithNarrowing(n exprsyntax.Node, isTruthy bool) exprty
 		case exprsyntax.LogicalOpNodeKindAnd:
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
-				sema.check(n.Left)
-				return sema.withEventGuard(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				left := sema.check(n.Left)
+				right := sema.withEventGuard(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				sema.nodeTypes[n] = left.Merge(right)
+				return right
 			}
 		case exprsyntax.LogicalOpNodeKindOr:
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
-				sema.check(n.Left)
-				return sema.withEventGuard(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				left := sema.check(n.Left)
+				right := sema.withEventGuard(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				sema.nodeTypes[n] = left.Merge(right)
+				return right
 			}
 		case exprsyntax.LogicalOpNodeKindInvalid:
 			// Invalid operators are not narrowed.
 		}
 		return sema.checkLogicalOp(n)
 	case *exprsyntax.NotOpNode:
+		sema.nodeTypes[n] = exprtypes.BoolType()
 		return sema.checkWithNarrowing(n.Operand, !isTruthy)
 	default:
 		return sema.check(n)
 	}
 }
 
-func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) exprtypes.Type {
+func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) (ty exprtypes.Type) {
+	defer func() { sema.nodeTypes[n] = ty }()
+
 	switch n.Kind {
 	case exprsyntax.LogicalOpNodeKindAnd:
 		// When `l` is false in `l && r`, its type is `typeof(l)`. Otherwise `typeof(r)`.
@@ -1279,7 +1288,9 @@ func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) exprtypes.Type 
 	}
 }
 
-func (sema *Checker) check(expr exprsyntax.Node) exprtypes.Type {
+func (sema *Checker) check(expr exprsyntax.Node) (ty exprtypes.Type) {
+	defer func() { sema.nodeTypes[expr] = ty }()
+
 	switch e := expr.(type) {
 	case *exprsyntax.VariableNode:
 		return sema.checkVariable(e)
@@ -1314,6 +1325,7 @@ func (sema *Checker) check(expr exprsyntax.Node) exprtypes.Type {
 // separate. An invalid call can still have a declared return type.
 type ExpressionCheckResult struct {
 	Type       exprtypes.Type
+	Types      InferredTypes
 	Valid      bool
 	Findings   []*Error
 	Evaluation exprvalues.EvaluationResult
@@ -1336,6 +1348,7 @@ const (
 func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.errs = []*Error{}
 	sema.callFacts = make(map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts)
+	sema.nodeTypes = make(map[exprsyntax.Node]exprtypes.Type)
 	sema.evaluationInvalid = false
 	sema.validationFailed = false
 	sema.staticInvalid = false
@@ -1356,7 +1369,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	} else if value, known := expreval.ConditionConstantValue(expr); known {
 		evaluation = exprvalues.EvaluationResult{State: exprvalues.EvaluationKnown, Value: value}
 	}
-	result := ExpressionCheckResult{Type: ty, Valid: !sema.validationFailed, Findings: errs, Evaluation: evaluation, FailurePhase: phase}
+	result := ExpressionCheckResult{Type: ty, Types: InferredTypes{byNode: sema.nodeTypes}, Valid: !sema.validationFailed, Findings: errs, Evaluation: evaluation, FailurePhase: phase}
 	if call, ok := expr.(*exprsyntax.FuncCallNode); ok {
 		if facts, found := sema.callFacts[call]; found {
 			if evaluation.State == exprvalues.EvaluationKnown {

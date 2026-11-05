@@ -10,8 +10,6 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-
 	yamlSchema "actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
@@ -440,22 +438,22 @@ func (rule *Checker) checkScriptString(str workflowdecl.StringView, workflowKey 
 		return
 	}
 
-	previous, previousLists, previousPosition := rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptPosition
+	previous, previousLists, previousPosition := rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptInsertion
 	previousEnvironment := rule.scriptEnvironment
 	rule.scriptScalarArgs = nil
 	rule.scriptWordLists = nil
 	rule.scriptEnvironment = nil
-	rule.scriptPosition = exprlang.ScriptUnknownPosition
+	rule.scriptInsertion = unknownScriptInsertion
 	if len(shell) > 0 {
 		proofs := proveScriptArguments(str.Value(), shell[0])
 		rule.scriptScalarArgs, rule.scriptWordLists = proofs.scalars, proofs.wordLists
 		rule.scriptEnvironment = proofs.environment
 		if _, ok := scriptShellVariant(shell[0]); ok {
-			rule.scriptPosition = exprlang.ScriptShellWord
+			rule.scriptInsertion = shellWordInsertion
 		}
 	}
 	defer func() {
-		rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptPosition = previous, previousLists, previousPosition
+		rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptInsertion = previous, previousLists, previousPosition
 		rule.scriptEnvironment = previousEnvironment
 	}()
 	ts, ok := rule.checkExprsIn(str.Value(), viewPosition(str), str.Quoted(), true, workflowKey)

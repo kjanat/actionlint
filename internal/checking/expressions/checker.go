@@ -55,7 +55,7 @@ type Checker struct {
 	scriptScalarArgs  map[int]bool
 	scriptWordLists   map[int]bool
 	scriptEnvironment map[int]scriptEnvironmentReplacement
-	scriptPosition    exprlang.ScriptPosition
+	scriptInsertion   scriptInsertionKind
 	scriptJob         workflowdecl.JobView
 	compositeScript   bool
 	jobReferences     *ReferenceNames
