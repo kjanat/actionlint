@@ -1,8 +1,10 @@
-package typecheck
+package expressions
 
 import (
 	"strings"
 	"testing"
+
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
@@ -51,7 +53,7 @@ func TestSecretInterpolationValueFlow(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := CheckSecretInterpolations(node)
+			findings := checkSecretInterpolations(node, nil)
 			if len(findings) != tc.count {
 				t.Fatalf("got %v, want %d secret interpolations", findings, tc.count)
 			}
@@ -69,7 +71,7 @@ func TestSecretInterpolationPreservesName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := CheckSecretInterpolations(node)
+	findings := checkSecretInterpolations(node, nil)
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "secrets.MixedCaseToken") {
 		t.Fatalf("source spelling lost: %v", findings)
 	}
@@ -95,9 +97,10 @@ func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(true, nil)
+			checker := exprlang.NewChecker(false, nil)
 			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
 			_, findings := checker.Check(node)
+			findings = append(findings, checkSecretInterpolations(node, findings)...)
 			secrets, errors := 0, 0
 			for _, finding := range findings {
 				if finding.Code == "secret-interpolation" {

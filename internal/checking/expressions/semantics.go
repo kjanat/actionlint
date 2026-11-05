@@ -162,7 +162,10 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 	result := c.CheckResult(expr)
 	ty, errs := result.Type, result.Findings
-	for _, finding := range exprlang.PermissiveJSONCalls(expr) {
+	if checkUntrusted {
+		errs = append(errs, checkSecretInterpolations(expr, result.Findings)...)
+	}
+	for _, finding := range permissiveJSONCalls(expr) {
 		rule.exprFinding(finding, line, col, "info")
 	}
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule == "script-injection" }))
@@ -199,7 +202,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 		rule.exprError(err, line, col)
 	}
 	if rule.options.UnsoundTernary {
-		for _, finding := range exprlang.CheckUnsoundTernaries(expr) {
+		for _, finding := range checkUnsoundTernaries(expr) {
 			rule.exprError(finding, line, col)
 		}
 	}

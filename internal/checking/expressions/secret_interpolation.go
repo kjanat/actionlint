@@ -1,7 +1,12 @@
-package typecheck
+package expressions
 
 import (
+	"fmt"
+	"slices"
 	"strings"
+
+	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
@@ -10,20 +15,29 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// CheckSecretInterpolations reports secret values used to generate script text.
+// checkSecretInterpolations reports secret values used to generate script text.
 // Quotes in the script are not a boundary: interpolation precedes shell parsing.
 // Conditions and predicates are safe because they do not emit the secret value.
-func CheckSecretInterpolations(expr exprsyntax.Node) []*Error {
-	var findings []*Error
+func checkSecretInterpolations(expr exprsyntax.Node, semanticErrors []*exprlang.Error) []*exprlang.Error {
+	var findings []*exprlang.Error
 	var visit func(exprsyntax.Node)
 	visit = func(node exprsyntax.Node) {
 		if secretValue(node) {
-			name := eventReference(node)
+			name := exprsyntax.DisplayReference(node)
 			if name == "" {
 				name = "secrets"
 			}
-			findings = append(findings, errorfAtExpr(findingKind{"script-injection", "secret-interpolation"}, node,
-				"secret %q is interpolated directly into script text; pass it through an environment variable and read that variable as data instead", name))
+			span := exprsyntax.ExpressionSpan(node)
+			invalid := slices.ContainsFunc(semanticErrors, func(issue *exprlang.Error) bool {
+				return issue.Offset < span.End && span.Start < issue.EndOffset
+			})
+			if !invalid {
+				findings = append(findings, &exprlang.Error{
+					Rule: "script-injection", Code: "secret-interpolation",
+					Message: fmt.Sprintf("secret %q is interpolated directly into script text; pass it through an environment variable and read that variable as data instead", name),
+					Offset:  span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column,
+				})
+			}
 			return
 		}
 		switch n := node.(type) {
@@ -39,7 +53,7 @@ func CheckSecretInterpolations(expr exprsyntax.Node) []*Error {
 			}
 			visit(n.Right)
 		case *exprsyntax.FuncCallNode:
-			if isSafeFuncCall(n) || strings.EqualFold(n.Callee, "hashFiles") {
+			if exprfunctions.IsStringPredicate(n.Callee) || strings.EqualFold(n.Callee, "hashFiles") {
 				return
 			}
 			if strings.EqualFold(n.Callee, "case") && len(n.Args) >= 3 && len(n.Args)%2 == 1 {

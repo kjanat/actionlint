@@ -473,18 +473,6 @@ func (sema *Checker) checkSpecialFunctionAvailability(n *exprsyntax.FuncCallNode
 	)
 }
 
-func (sema *Checker) visitUntrustedCheckerOnEnterNode(n exprsyntax.Node) {
-	if sema.untrusted != nil {
-		sema.untrusted.OnVisitNodeEnter(n)
-	}
-}
-
-func (sema *Checker) visitUntrustedCheckerOnLeaveNode(n exprsyntax.Node) {
-	if sema.untrusted != nil {
-		sema.untrusted.OnVisitNodeLeave(n)
-	}
-}
-
 func (sema *Checker) checkVariable(n *exprsyntax.VariableNode) exprtypes.Type {
 	v, ok := sema.vars[n.Name]
 	if !ok {
@@ -730,7 +718,7 @@ func (sema *Checker) checkArrayDeref(n *exprsyntax.ArrayDerefNode) exprtypes.Typ
 		}
 
 		// Payload object filters select scalar members as well as object members.
-		if path := strings.ToLower(eventReference(n.Receiver)); path == "github.event" || strings.HasPrefix(path, "github.event.") || strings.HasPrefix(path, "github.event[") {
+		if path := strings.ToLower(exprsyntax.DisplayReference(n.Receiver)); path == "github.event" || strings.HasPrefix(path, "github.event.") || strings.HasPrefix(path, "github.event[") {
 			return exprtypes.NewFilteredArrayType(exprtypes.AnyType()).Type()
 		}
 		// For strict object at receiver of .*
@@ -754,10 +742,6 @@ func (sema *Checker) checkArrayDeref(n *exprsyntax.ArrayDerefNode) exprtypes.Typ
 }
 
 func (sema *Checker) checkIndexAccess(n *exprsyntax.IndexAccessNode) exprtypes.Type {
-	// Note: Index must be visited before Index to make UntrustedInputChecker work correctly even if
-	// the expression has some nest like foo[aaa.bbb].bar. Nest happens in top-down order and
-	// properties/indices access Check is done in bottom-up order. So, as far as we visit nested
-	// index nodes before visiting operand, the index is recursively checked first.
 	idx := sema.check(n.Index)
 
 	ty := sema.check(n.Operand)
@@ -1301,9 +1285,6 @@ func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) exprtypes.Type 
 }
 
 func (sema *Checker) check(expr exprsyntax.Node) exprtypes.Type {
-	sema.visitUntrustedCheckerOnEnterNode(expr)
-	defer sema.visitUntrustedCheckerOnLeaveNode(expr) // Call this method in bottom-up order
-
 	switch e := expr.(type) {
 	case *exprsyntax.VariableNode:
 		return sema.checkVariable(e)
@@ -1363,27 +1344,23 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.evaluationInvalid = false
 	sema.validationFailed = false
 	sema.staticInvalid = false
-	if sema.untrusted != nil {
-		sema.untrusted.Init()
-	}
 	ty := sema.check(expr)
 	if sema.condition && sema.checks.StringConditions && conditionStringReference(expr, ty) {
 		sema.ruleError(expr, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")
 	}
 	errs := detachErrors(sema.errs)
 	if sema.untrusted != nil {
+		sema.untrusted.Init()
+		exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
+			if entering {
+				sema.untrusted.OnVisitNodeEnter(node)
+			} else {
+				sema.untrusted.OnVisitNodeLeave(node)
+			}
+		})
 		sema.untrusted.OnVisitEnd()
 		errs = append(errs, sema.untrusted.Errs()...)
-		for _, finding := range CheckSecretInterpolations(expr) {
-			// Invalid selectors do not prove that a secret value is emitted.
-			// Errors in a separate expression branch must not hide valid ones.
-			invalid := slices.ContainsFunc(sema.errs, func(err *Error) bool {
-				return err.Offset < finding.EndOffset && finding.Offset < err.EndOffset
-			})
-			if !invalid {
-				errs = append(errs, finding)
-			}
-		}
+
 	}
 	evaluation := exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 	phase := FailureNone

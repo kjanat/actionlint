@@ -3,6 +3,8 @@ package typecheck
 import (
 	"strings"
 
+	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -51,7 +53,7 @@ func (sema *Checker) scriptReferenceType(node exprsyntax.Node) (ty exprtypes.Typ
 	case *exprsyntax.NullNode:
 		return exprtypes.NullType(), true
 	case *exprsyntax.FuncCallNode:
-		if isSafeFuncCall(n) {
+		if exprfunctions.IsStringPredicate(n.Callee) {
 			return exprtypes.BoolType(), true
 		}
 		switch strings.ToLower(n.Callee) {
@@ -204,7 +206,7 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 	}
 	// Numeric identifiers and hashes need data-argument proofs. Actor names
 	// may contain glob characters.
-	switch strings.ToLower(eventReference(expr)) {
+	switch strings.ToLower(exprsyntax.DisplayReference(expr)) {
 	case "github.repository_owner":
 		return scalarArgument
 	case "github.sha", "github.run_id", "github.run_number", "github.run_attempt",
@@ -230,7 +232,7 @@ func safeScriptExpression(expr exprsyntax.Node, scalarArgument bool, safeReferen
 		}
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeScriptExpression(n.Right, scalarArgument, safeReference)
 	case *exprsyntax.FuncCallNode:
-		if isSafeFuncCall(n) {
+		if exprfunctions.IsStringPredicate(n.Callee) {
 			return scalarArgument
 		}
 		if strings.EqualFold(n.Callee, "hashFiles") {

@@ -3,6 +3,8 @@ package typecheck
 import (
 	"strings"
 
+	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -10,11 +12,6 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
-
-func isSafeFuncCall(call *exprsyntax.FuncCallNode) bool {
-	c := strings.ToLower(call.Callee)
-	return c == "contains" || c == "startswith" || c == "endswith"
-}
 
 // UntrustedInputMap is a recursive map to match context object property dereferences.
 // Root of this map represents each context names and their ancestors represent recursive properties.
@@ -478,7 +475,7 @@ func (u *UntrustedInputChecker) OnVisitNodeEnter(n exprsyntax.Node) {
 	if boolean {
 		u.booleanContexts++
 	}
-	if f, ok := n.(*exprsyntax.FuncCallNode); ok && isSafeFuncCall(f) {
+	if f, ok := n.(*exprsyntax.FuncCallNode); ok && exprfunctions.IsStringPredicate(f.Callee) {
 		u.safeCalls++
 	}
 }
@@ -496,7 +493,7 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n exprsyntax.Node) {
 	}()
 	// Skip unsafe checks if we are inside of safe function call expression
 	if u.safeCalls > 0 {
-		if f, ok := n.(*exprsyntax.FuncCallNode); ok && isSafeFuncCall(f) {
+		if f, ok := n.(*exprsyntax.FuncCallNode); ok && exprfunctions.IsStringPredicate(f.Callee) {
 			u.safeCalls--
 		}
 		return

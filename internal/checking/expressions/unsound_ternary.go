@@ -1,7 +1,9 @@
-package typecheck
+package expressions
 
 import (
 	"strings"
+
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
@@ -10,10 +12,10 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// CheckUnsoundTernaries uses the shared Actions evaluator to identify falsy middle
+// checkUnsoundTernaries uses the shared Actions evaluator to identify falsy middle
 // operands. Unknown middle operands are left alone to allow conditional fallbacks.
-func CheckUnsoundTernaries(expr exprsyntax.Node) []*Error {
-	var findings []*Error
+func checkUnsoundTernaries(expr exprsyntax.Node) []*exprlang.Error {
+	var findings []*exprlang.Error
 	exprsyntax.Visit(expr, func(node, _ exprsyntax.Node, entering bool) {
 		if !entering {
 			return
@@ -30,7 +32,12 @@ func CheckUnsoundTernaries(expr exprsyntax.Node) []*Error {
 		if !known || truthy {
 			return
 		}
-		err := errorAtExpr(findingKind{"unsound-ternary", "falsy-middle-operand"}, and.Right, "falsy middle operand in a && b || c always selects the fallback; this expression cannot select the middle value")
+		span := exprsyntax.ExpressionSpan(and.Right)
+		err := &exprlang.Error{
+			Rule: "unsound-ternary", Code: "falsy-middle-operand",
+			Message: "falsy middle operand in a && b || c always selects the fallback; this expression cannot select the middle value",
+			Offset:  span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column,
+		}
 		findings = append(findings, err)
 	})
 	return findings
