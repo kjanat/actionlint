@@ -32,7 +32,7 @@ func ExpressionValue(expr exprsyntax.Node, variables func(string) (any, bool)) (
 // Evaluate reports a known value, missing runtime knowledge, a runtime failure,
 // or a call rejected before evaluation. It does not perform name or type checks.
 func Evaluate(expr exprsyntax.Node, variables func(string) (any, bool)) exprvalues.EvaluationResult {
-	return expressionResult(expr, variables, nil)
+	return expressionResult(expr, variables, nil, nil)
 }
 
 // ExpressionValueWithLookup also asks for qualified context paths, such as
@@ -45,7 +45,7 @@ func ExpressionValueWithLookup(expr exprsyntax.Node, lookup func(string) (any, b
 
 // EvaluateWithLookup accepts known qualified paths as well as root variables.
 func EvaluateWithLookup(expr exprsyntax.Node, lookup func(string) (any, bool)) exprvalues.EvaluationResult {
-	return expressionResult(expr, lookup, lookup)
+	return expressionResult(expr, lookup, lookup, nil)
 }
 
 func knownResult(value any) exprvalues.EvaluationResult {
@@ -63,7 +63,13 @@ func observedResult(value any, known bool) exprvalues.EvaluationResult {
 	return unknownResult()
 }
 
-func expressionResult(expr exprsyntax.Node, variables, properties func(string) (any, bool)) exprvalues.EvaluationResult {
+func expressionResult(expr exprsyntax.Node, variables, properties func(string) (any, bool), constants map[exprsyntax.Node]exprvalues.EvaluationResult) (result exprvalues.EvaluationResult) {
+	if constants != nil {
+		if cached, exists := constants[expr]; exists {
+			return cached
+		}
+		defer func() { constants[expr] = result }()
+	}
 	if properties != nil {
 		if reference := exprsyntax.StaticReference(expr); strings.Contains(reference, ".") {
 			if result, known := properties(reference); known {
@@ -78,17 +84,17 @@ func expressionResult(expr exprsyntax.Node, variables, properties func(string) (
 		}
 		return observedResult(variables(n.Name))
 	case *exprsyntax.ObjectDerefNode:
-		receiver := expressionResult(n.Receiver, variables, properties)
+		receiver := expressionResult(n.Receiver, variables, properties, constants)
 		if receiver.State != exprvalues.EvaluationKnown {
 			return receiver
 		}
 		return observedResult(constantProperty(receiver.Value, n.Property))
 	case *exprsyntax.IndexAccessNode:
-		receiver := expressionResult(n.Operand, variables, properties)
+		receiver := expressionResult(n.Operand, variables, properties, constants)
 		if receiver.State != exprvalues.EvaluationKnown {
 			return receiver
 		}
-		index := expressionResult(n.Index, variables, properties)
+		index := expressionResult(n.Index, variables, properties, constants)
 		if index.State != exprvalues.EvaluationKnown {
 			return index
 		}
@@ -123,26 +129,26 @@ func expressionResult(expr exprsyntax.Node, variables, properties func(string) (
 	case *exprsyntax.StringNode:
 		return knownResult(n.Value)
 	case *exprsyntax.NotOpNode:
-		value := expressionResult(n.Operand, variables, properties)
+		value := expressionResult(n.Operand, variables, properties, constants)
 		if value.State != exprvalues.EvaluationKnown {
 			return value
 		}
 		return knownResult(!exprvalues.ExpressionTruthy(value.Value))
 	case *exprsyntax.LogicalOpNode:
-		left := expressionResult(n.Left, variables, properties)
+		left := expressionResult(n.Left, variables, properties, constants)
 		if left.State != exprvalues.EvaluationKnown {
 			return left
 		}
 		if exprvalues.ExpressionTruthy(left.Value) == (n.Kind == exprsyntax.LogicalOpNodeKindOr) {
 			return left
 		}
-		return expressionResult(n.Right, variables, properties)
+		return expressionResult(n.Right, variables, properties, constants)
 	case *exprsyntax.CompareOpNode:
-		left := expressionResult(n.Left, variables, properties)
+		left := expressionResult(n.Left, variables, properties, constants)
 		if left.State != exprvalues.EvaluationKnown {
 			return left
 		}
-		right := expressionResult(n.Right, variables, properties)
+		right := expressionResult(n.Right, variables, properties, constants)
 		if right.State != exprvalues.EvaluationKnown {
 			return right
 		}
@@ -152,7 +158,7 @@ func expressionResult(expr exprsyntax.Node, variables, properties func(string) (
 		if !found {
 			return unknownResult()
 		}
-		context := &functionContext{call: n, variables: variables, properties: properties, results: make([]exprvalues.EvaluationResult, len(n.Args)), observed: make([]bool, len(n.Args))}
+		context := &functionContext{call: n, variables: variables, properties: properties, constants: constants, results: make([]exprvalues.EvaluationResult, len(n.Args)), observed: make([]bool, len(n.Args))}
 		return function.Evaluate(context)
 	}
 	return unknownResult()
@@ -183,6 +189,7 @@ type functionContext struct {
 	call       *exprsyntax.FuncCallNode
 	variables  func(string) (any, bool)
 	properties func(string) (any, bool)
+	constants  map[exprsyntax.Node]exprvalues.EvaluationResult
 	results    []exprvalues.EvaluationResult
 	observed   []bool
 }
@@ -190,7 +197,7 @@ type functionContext struct {
 func (context *functionContext) ArgumentCount() int { return len(context.call.Args) }
 func (context *functionContext) Argument(index int) exprvalues.EvaluationResult {
 	if !context.observed[index] {
-		context.results[index] = expressionResult(context.call.Args[index], context.variables, context.properties)
+		context.results[index] = expressionResult(context.call.Args[index], context.variables, context.properties, context.constants)
 		context.observed[index] = true
 	}
 	return context.results[index]
