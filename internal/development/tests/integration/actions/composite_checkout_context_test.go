@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
@@ -74,11 +76,11 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		paths := execution.Paths{Workspace: root, Analysis: root, Placements: execution.NewCheckoutPlacement(execution.Checkout{
 			Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: checkout}, CaseInsensitive: true,
 		}, execution.CheckoutPlacement{})}
-		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"), reader)
+		mapped, known := runnerpaths.AnalysisPath(paths, execution.JoinPath(checkout, "SCRIPTS/nested"), reader)
 		if !known || mapped != filepath.Join(root, "scripts", "Nested") {
 			t.Fatalf("checkout %q: mapped=%q, known=%v", checkout, mapped, known)
 		}
-		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")}, reader)
+		got := runnerpaths.ResolveDirectory(paths, execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")}, reader)
 		if got.Kind != execution.DirectoryKnown || got.Path != want {
 			t.Fatalf("checkout %q: directory=%+v, want %q", checkout, got, want)
 		}

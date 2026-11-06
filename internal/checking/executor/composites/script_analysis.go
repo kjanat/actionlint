@@ -5,6 +5,8 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
@@ -67,7 +69,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 		}
 		request.Execution = scriptexecution.Execution{
 			Shell:     execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell),
-			Directory: paths.Resolve(paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir), analysis.reader),
+			Directory: runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir), analysis.reader),
 		}
 	}
 	analysis.scripts = append(analysis.scripts, request)
