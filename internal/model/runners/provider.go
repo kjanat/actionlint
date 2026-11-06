@@ -13,6 +13,9 @@ import (
 
 type builtinProvider struct{ custom LabelSet }
 
+// GitHubProvider evaluates selectors using built-in labels and supplied custom labels.
+func GitHubProvider(custom LabelSet) runnerapi.Provider { return builtinProvider{custom: custom} }
+
 var builtinDataset = func() string {
 	data, _ := json.Marshal(struct {
 		Version                       string

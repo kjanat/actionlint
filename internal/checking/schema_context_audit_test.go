@@ -4,11 +4,12 @@ import (
 	"strings"
 	"testing"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/passes"
 	visit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -174,7 +175,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 	if err != nil {
 		t.Fatal(err)
 	}
-	runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	runners, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

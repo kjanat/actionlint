@@ -5,6 +5,8 @@ import (
 	"maps"
 	"testing"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -16,8 +18,6 @@ import (
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
@@ -172,7 +172,7 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	runners, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

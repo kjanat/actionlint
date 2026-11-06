@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
@@ -67,7 +69,7 @@ jobs:
 				for _, rejection := range rejections {
 					errs = append(errs, results.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason})
 				}
-				knowledge, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+				knowledge, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 				if err != nil {
 					t.Fatal(err)
 				}

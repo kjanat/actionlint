@@ -1,9 +1,11 @@
-package runner
+package runners
 
 import (
 	"reflect"
 	"strings"
 	"testing"
+
+	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
@@ -25,7 +27,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workflow := runnerWorkflow(t, "queue")
-			prepare := func(resolution runnerapi.Resolution) *Knowledge {
+			prepare := func(resolution runnerapi.Resolution) *runnermodel.Knowledge {
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 					return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 				}}
@@ -84,6 +86,7 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 }
 
 func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
+	var builtin *runnermodel.Knowledge
 	for _, tc := range []struct {
 		selector string
 		os       runnerapi.OS
@@ -110,10 +113,10 @@ func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
 			candidate := resolved.Candidates[0]
 			known := tc.caseMode != runnerapi.UnknownCase
 			job := w.Views["test"]
-			if candidate.OS != tc.os || candidate.CaseSensitivity != tc.caseMode || k.Job(job).PathsKnown != known || builtinJob(job).PathsKnown != known {
-				t.Fatalf("case guarantee incorrect: candidate=%+v knowledge=%+v direct=%+v", candidate, k.Job(job), builtinJob(job))
+			if candidate.OS != tc.os || candidate.CaseSensitivity != tc.caseMode || k.Job(job).PathsKnown != known || builtin.Job(job).PathsKnown != known {
+				t.Fatalf("case guarantee incorrect: candidate=%+v knowledge=%+v direct=%+v", candidate, k.Job(job), builtin.Job(job))
 			}
-			if tc.os == runnerapi.MacOS && (candidate.DefaultShell != "bash" || k.Job(job).Platform != MacOrLinux) {
+			if tc.os == runnerapi.MacOS && (candidate.DefaultShell != "bash" || k.Job(job).Platform != runnermodel.MacOrLinux) {
 				t.Fatalf("unknown filesystem case lost OS/shell: %+v", candidate)
 			}
 		})

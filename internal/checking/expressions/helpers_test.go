@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -30,7 +30,7 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdec
 	if !ok {
 		t.Fatal("workflow snapshot unavailable")
 	}
-	runners, err := runner.Prepare(context.Background(), snapshot, nil, runnerapi.Options{}, "test.yml")
+	runners, err := runnerinput.Prepare(context.Background(), snapshot, nil, runnerapi.Options{}, "test.yml")
 	if err != nil {
 		t.Fatal(err)
 	}

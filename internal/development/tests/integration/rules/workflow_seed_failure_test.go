@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+
 	"actionlint.kjanat.dev/v2/internal/checking/passes"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
 
@@ -11,8 +13,6 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 )
@@ -62,7 +62,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				if !available {
 					t.Fatal("workflow is unavailable")
 				}
-				runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+				runners, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 				if err != nil {
 					t.Fatal(err)
 				}

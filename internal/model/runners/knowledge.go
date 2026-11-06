@@ -1,18 +1,12 @@
 package runner
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -111,176 +105,6 @@ func detachResolution(resolution runnerapi.Resolution) runnerapi.Resolution {
 		return value
 	}
 	return nil
-}
-
-// Prepare resolves a document against the session's selected, immutable evidence.
-// Failed resolution leaves unknown facts while independent checks can continue.
-func Prepare(ctx context.Context, snapshot parsing.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
-	return PrepareWithLabels(ctx, snapshot, KnownLabels(custom), options, scope)
-}
-
-// PrepareWithLabels keeps unavailable repository labels distinct from a known
-// empty set while sharing the same provider and trait resolution path.
-func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, custom LabelSet, options runnerapi.Options, scope string) (*Knowledge, error) {
-	if options.Target == "" {
-		options.Target = "github"
-	}
-	k := &Knowledge{jobs: make(map[workflowdecl.JobView]jobRecord), target: options.Target}
-	if !snapshot.Present() {
-		return k, nil
-	}
-	workflow, available := snapshot.WorkflowView()
-	if !available {
-		return k, nil
-	}
-	hasSnapshot := options.Snapshot != (runnerapi.Snapshot{})
-	switch options.Snapshot.Freshness {
-	case "":
-		options.Snapshot.Freshness = runnerapi.Missing
-	case runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing:
-	default:
-		return k, errors.New("invalid runner snapshot freshness")
-	}
-	var selected runnerapi.Provider
-	builtinLabels := false
-	identity := ""
-	if options.Scope != "" {
-		scope = options.Scope
-	}
-	if hasSnapshot && options.Snapshot.Scope != scope {
-		return k, errors.New("runner snapshot scope does not match requested scope")
-	}
-	if options.Target == "github" && (options.Provider == "" || options.Provider == "github") {
-		selected = builtinProvider{custom: custom}
-		builtinLabels = true
-		identity = "builtin-github"
-	}
-	if options.Target == "github" && options.Provider == "snapshot" {
-		selected = snapshotProvider{}
-		identity = "builtin-github-snapshot-v1"
-	}
-	for _, registration := range options.Providers {
-		if registration.Provider == nil {
-			return k, errors.New("nil runner provider")
-		}
-		d := registration.Provider.RunnerDescriptor()
-		if options.Target == "github" && options.Provider == "" {
-			continue
-		}
-		if !slices.Contains(d.Targets, options.Target) || options.Provider != "" && d.Name != options.Provider {
-			continue
-		}
-		if selected != nil {
-			return k, fmt.Errorf("conflicting runner providers for target %q; select one explicitly", options.Target)
-		}
-		selected = registration.Provider
-		identity = registration.ImplementationID
-	}
-	var selectors []runnerapi.Selector
-	type jobRange struct {
-		job        workflowdecl.JobView
-		start, end int
-	}
-	var ranges []jobRange
-	workflowJobs := maps.Collect(workflow.Jobs())
-	for _, id := range slices.Sorted(maps.Keys(workflowJobs)) {
-		job := workflowJobs[id]
-		if !job.RunsOn().Present() {
-			continue
-		}
-		start := len(selectors)
-		selectors = append(selectors, Selectors(job)...)
-		ranges = append(ranges, jobRange{job, start, len(selectors)})
-	}
-	if len(selectors) == 0 {
-		return k, nil
-	}
-	if selected == nil {
-		return k, fmt.Errorf("no runner provider %q for target %q", options.Provider, options.Target)
-	}
-	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot, Selectors: selectors}
-	descriptor := selected.RunnerDescriptor()
-	dependency, err := json.Marshal(struct {
-		Request     runnerapi.Request
-		Descriptor  runnerapi.Descriptor
-		Artifact    string
-		Custom      []string
-		CustomKnown bool
-	}{request, descriptor, identity, custom.patterns, custom.known})
-	if err != nil {
-		return k, err
-	}
-	k.report = runnerapi.Report{CacheKey: fmt.Sprintf("%x", sha256.Sum256(dependency)), Provider: descriptor, ImplementationID: identity, Target: options.Target, Scope: scope, SnapshotDigest: options.Snapshot.Digest()}
-	answers, err := selected.ResolveRunners(ctx, request)
-	if err != nil {
-		return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
-	}
-	if len(answers) != len(selectors) {
-		return k, fmt.Errorf("runner provider returned %d answers for %d selectors", len(answers), len(selectors))
-	}
-	for i := range answers {
-		a := &answers[i]
-		resolution, err := resolutionValue(a.Resolution)
-		if err != nil {
-			return k, err
-		}
-		a.Resolution = resolution
-		if a.DatasetStatus.Scope != scope {
-			return k, errors.New("runner answer scope does not match requested scope")
-		}
-		if a.DatasetStatus.DatasetID == "" {
-			return k, errors.New("runner answer has no dataset identity")
-		}
-		if hasSnapshot {
-			freshness := options.Snapshot.Freshness
-			if freshness != runnerapi.Fresh {
-				a.DatasetStatus.Freshness = freshness
-			}
-			a.DatasetStatus.Complete = a.DatasetStatus.Complete && options.Snapshot.Complete
-		}
-		if selectors[i].Incomplete {
-			if _, resolved := a.Resolution.(runnerapi.Resolved); resolved {
-				a.Resolution = runnerapi.Unknown{Reason: "selector alternatives are incomplete"}
-			}
-		}
-		if noMatch, ok := a.Resolution.(runnerapi.NoMatch); ok {
-			for _, rejection := range noMatch.Rejections {
-				valid := rejection.Position.Line == 0 && rejection.Position.Column == 0
-				for _, label := range selectors[i].Labels {
-					valid = valid || label.Position == rejection.Position
-				}
-				if selectors[i].Group != nil {
-					valid = valid || selectors[i].Group.Position == rejection.Position
-				}
-				if !valid {
-					return k, errors.New("runner rejection refers to an unrelated source position")
-				}
-			}
-		}
-	}
-	k.report.Answers = answers
-	evidence, err := json.Marshal(answers)
-	if err != nil {
-		return k, err
-	}
-	k.report.CacheKey = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
-	jobs := make(map[workflowdecl.JobView]jobRecord, len(ranges))
-	for _, span := range ranges {
-		record, err := joinAnswers(span.job, answers[span.start:span.end])
-		if err != nil {
-			return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
-		}
-		// Supplied snapshots gate label rejections with the same freshness and
-		// completeness policy as their answers. No snapshot uses the fresh catalog.
-		if builtinLabels && (!hasSnapshot || options.Snapshot.Freshness == runnerapi.Fresh && options.Snapshot.Complete) {
-			// Provider answers describe execution alternatives. Built-in rejections
-			// also describe spelling errors in declared but excluded alternatives.
-			record.rejections = LabelRejections(span.job, custom)
-		}
-		jobs[span.job] = record
-	}
-	k.jobs = jobs
-	return k, nil
 }
 
 // Value-receiver markers permit native providers to return pointers too. Keep
