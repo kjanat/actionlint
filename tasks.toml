@@ -325,25 +325,25 @@ extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm"]
 vars    = { fixture = "buildkite-runners" }
 
-["plugin:example:script-engine"]
+["plugin:fixture:script-engine"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/script-engine.wasm"]
-vars    = { fixture = "script-engine" }
+vars    = { fixture = "script-engine", package = "actionlint-fixture-script-engine", artifact = "script_engine" }
 
-["plugin:example:ruff-script-engine"]
+["plugin:fixture:ruff-script-engine"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/ruff-script-engine.wasm"]
-vars    = { fixture = "ruff-script-engine", example = "script-engine", features = "ruff-fixture", target_dir = "target/plugin-fixtures/ruff-script-engine", artifact = "script_engine" }
+vars    = { fixture = "ruff-script-engine", package = "actionlint-fixture-script-engine", features = "ruff-fixture", target_dir = "target/plugin-fixtures/ruff-script-engine", artifact = "script_engine" }
 
-["plugin:example:action-input"]
+["plugin:fixture:action-input"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/action-input.wasm"]
-vars    = { fixture = "action-input", example = "script-engine", features = "action-input-fixture", target_dir = "target/plugin-fixtures/action-input", artifact = "script_engine", metadata = "plugins/examples/script-engine/action-input.metadata.json" }
+vars    = { fixture = "action-input", package = "actionlint-fixture-script-engine", features = "action-input-fixture", target_dir = "target/plugin-fixtures/action-input", artifact = "script_engine", metadata = "internal/plugins/execution/component/testdata/sources/script-engine/action-input.metadata.json" }
 
-["plugin:example:ruff-action-input"]
+["plugin:fixture:ruff-action-input"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/ruff-action-input.wasm"]
-vars    = { fixture = "ruff-action-input", example = "script-engine", features = "action-input-fixture,ruff-fixture", target_dir = "target/plugin-fixtures/ruff-action-input", artifact = "script_engine", metadata = "plugins/examples/script-engine/ruff-action-input.metadata.json" }
+vars    = { fixture = "ruff-action-input", package = "actionlint-fixture-script-engine", features = "action-input-fixture,ruff-fixture", target_dir = "target/plugin-fixtures/ruff-action-input", artifact = "script_engine", metadata = "internal/plugins/execution/component/testdata/sources/script-engine/ruff-action-input.metadata.json" }
 
 ["plugin:fixture:misbehave"]
 extends = "rust-plugin"

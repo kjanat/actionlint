@@ -6,7 +6,6 @@ members  = [
   "plugins/examples/buildkite-runners",
   "plugins/examples/pinned-actions",
   "plugins/examples/pipe-to-shell",
-  "plugins/examples/script-engine",
   "plugins/examples/source-annotations",
   "plugins/sdk/rust"
 ]

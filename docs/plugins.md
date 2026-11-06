@@ -1013,9 +1013,10 @@ Selectors use lowercase owner/repository names and case-sensitive subpaths witho
 matching; wildcard selectors are rejected. Duplicate targets, conflicting languages and malformed selectors are
 rejected. Up to 256 selectors are allowed per engine. These declarations route snippets; they do not prove the
 guest understands a language. Input-only components may return an empty `shells` list from `describe`, but must
-provide valid input selectors in their root `actionlint.plugin` section. [`action-input.metadata.json`](../plugins/examples/script-engine/action-input.metadata.json) and its
-Makefile target demonstrate packaging metadata at the component root. Metadata inside embedded core modules is
-ignored.
+provide valid input selectors in their root `actionlint.plugin` section. The host's
+[`action-input.metadata.json` test fixture](../internal/plugins/execution/component/testdata/sources/script-engine/action-input.metadata.json)
+and `mise run plugin:fixture:action-input` exercise metadata at the component root.
+Metadata inside embedded core modules is ignored.
 
 The host recognizes `actions/github-script`'s `script` input as JavaScript. Other sites come from registered engine
 declarations. Input requests use the virtual filename
