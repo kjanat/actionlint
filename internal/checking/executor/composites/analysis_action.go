@@ -35,7 +35,7 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 	if err := analysis.beginAction(deployment); err != nil {
 		return err
 	}
-	files, err := actionfiles.Inspect(analysis.ctx, meta)
+	files, err := actionfiles.Inspect(analysis.ctx, meta, analysis.reader)
 	if err != nil {
 		return err
 	}
