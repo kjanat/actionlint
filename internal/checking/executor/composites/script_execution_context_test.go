@@ -20,8 +20,15 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 		runner   string // Runner name at 'runs-on' in Job node
 	}{
 		{
-			what: "no default shell",
-			want: "bash",
+			what: "missing runner leaves shell unknown",
+		},
+		{
+			what:   "self-hosted runner without OS leaves shell unknown",
+			runner: "self-hosted",
+		},
+		{
+			what:   "dynamic runner leaves shell unknown",
+			runner: "${{ inputs.runner }}",
 		},
 		{
 			what:     "workflow default",
@@ -75,7 +82,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			runner: "windows-latest",
 		},
 		{
-			what:   "no shell is detected from Ubuntu runner",
+			what:   "Ubuntu runner supplies Bash",
 			want:   "bash",
 			runner: "ubuntu-latest",
 		},

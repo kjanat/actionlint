@@ -6,6 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -54,13 +55,7 @@ func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Val
 	c.checkoutEnvUnknown = !knowledge.PathsKnown || execution.CheckoutEnvironmentUnknown(workflowEnv, c.platform) || execution.CheckoutEnvironmentUnknown(jobEnv, c.platform)
 	c.persistentEnvUnknown = false
 	c.shellEnvUnknown = c.shellEnvironmentUnknown(workflowEnv) || c.shellEnvironmentUnknown(jobEnv)
-	runnerShell := value.DynamicValue("", value.KindUnknown, value.Origin{})
-	if knowledge.Shell != "" && (c.runners != nil || c.platform != runnerlang.Any) {
-		runnerShell = value.YAMLScalar(knowledge.Shell, "!!str", value.Origin{})
-	}
-	if container := execution.ContainerShell(job.Container().Semantic()); container.State() != value.Missing {
-		runnerShell = container
-	}
+	runnerShell := scriptmodel.DefaultShell(job.Container().Semantic(), knowledge.Shell)
 	c.checkoutShell = execution.ResolveShell(value.Value{}, execution.DefaultShell(job.Defaults().Run().Semantic()), workflowShell, runnerShell)
 }
 

@@ -25,9 +25,9 @@ import (
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -130,16 +130,7 @@ func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.JobView) er
 	analysis.scriptJobShell = execution.DefaultShell(defaults)
 	analysis.scriptJobDir = execution.DefaultDirectory(defaults)
 	knowledge := analysis.runners.Job(declaration)
-	analysis.scriptRunnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
-	if analysis.runners == nil {
-		analysis.scriptRunnerShell = value.YAMLScalar("bash", workflowlang.YamlTagStr, value.Origin{})
-	}
-	if knowledge.Shell != "" {
-		analysis.scriptRunnerShell = value.YAMLScalar(knowledge.Shell, workflowlang.YamlTagStr, value.Origin{})
-	}
-	if container := execution.ContainerShell(declaration.Container().Semantic()); container.State() != value.Missing {
-		analysis.scriptRunnerShell = container
-	}
+	analysis.scriptRunnerShell = scriptmodel.DefaultShell(declaration.Container().Semantic(), knowledge.Shell)
 	analysis.jobID = ""
 	if id := declaration.ID(); id.Present() {
 		analysis.jobID = id.Value()
