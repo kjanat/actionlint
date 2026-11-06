@@ -12,24 +12,32 @@ shell control structures can produce incorrect or missed findings. It does not
 determine whether a runner actually provides `sudo`. Use it to learn the plugin
 interface, not to enforce a privilege policy.
 
-From the repository root, build the component with the configured WASI SDK,
-`wit-bindgen` and `wasm-tools`:
+From the repository root, build and package the component with the configured
+WASI SDK, `wit-bindgen`, `wasm-tools` and `jq`:
 
 ```sh
 mise exec -- bash plugins/examples/no-sudo/build.sh
+mise exec -- bash plugins/examples/no-sudo/package.sh
 ```
 
-The build generates C bindings from `plugins/protocol/wit` and writes
-`plugins/examples/no-sudo/no-sudo.wasm`. The `describe` export in
-[`no_sudo.c`](no_sudo.c) declares the rule and its required inputs. This example
-does not yet produce a registry distribution with discovery metadata and
-checksums.
+The build generates C bindings from `plugins/protocol/wit`. Packaging writes
+`plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS` under
+`plugins/examples/no-sudo/dist/`.
+
+The component and discovery metadata use the same declarations in
+[`descriptor.h`](descriptor.h). String values in that header must be valid C
+and JSON string literals. Edit package identity and release information in
+[`metadata.json.in`](metadata.json.in).
+
+The packager derives the interface version and contract digest from the WIT
+used to build the component. Set `ACTIONLINT_WIT` for both commands when using
+another copy of that contract.
 
 Run it using actionlint v2:
 
 ```sh
 actionlint check --no-config --no-tool shellcheck --no-tool ruff \
-  --plugin plugins/examples/no-sudo/no-sudo.wasm plugins/examples/no-sudo/example.yml
+  --plugin plugins/examples/no-sudo/dist/plugin.wasm plugins/examples/no-sudo/example.yml
 ```
 
 The supplied workflow produces one warning highlighting `sudo`. A finding makes
@@ -41,7 +49,7 @@ Build and run the example's tests in one command:
 mise run test:example:no-sudo
 ```
 
-This builds a native CLI and the component before running the tests. The tests
+This builds a native CLI and packages the component before running the tests. The tests
 invoke the CLI and inspect its JSON report. They check clean
 commands, command-name boundaries, assignments, Unicode columns, multiline
 scripts, captured revisions and exit status. Set `ACTIONLINT_TEST_BINARY` to the

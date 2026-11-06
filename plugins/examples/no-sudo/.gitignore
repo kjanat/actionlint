@@ -1,3 +1,4 @@
 /gen/
+/dist/
 /test-bin/
 /*.wasm

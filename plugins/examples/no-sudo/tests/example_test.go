@@ -24,14 +24,14 @@ func TestComponentThroughCLI(t *testing.T) {
 	}
 	component := os.Getenv("ACTIONLINT_TEST_COMPONENT")
 	if component == "" {
-		component = "../no-sudo.wasm"
+		component = "../dist/plugin.wasm"
 	}
 	component, err = filepath.Abs(component)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(component); err != nil {
-		t.Fatalf("build the component with build.sh before testing: %v", err)
+		t.Fatalf("build and package the component before testing; see ../README.md: %v", err)
 	}
 	for _, tc := range []struct {
 		name, script string
