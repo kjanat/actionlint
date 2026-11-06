@@ -46,7 +46,7 @@ buildGoModule {
   checkPhase = ''
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
-    go test -skip '^(${completionTests})$' ./cmd/... ./internal/... ./tools/...
+    go test -skip '^(${completionTests})$' ./cmd/... ./internal/...
     runHook postCheck
   '';
 

@@ -1,3 +1,4 @@
+// Package conditions checks whether job and step conditions can run under known statuses.
 package conditions
 
 import (

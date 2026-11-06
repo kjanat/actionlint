@@ -21,15 +21,15 @@ import (
 
 var testReusableWorkflowWantedMetadata *calls.Metadata = &calls.Metadata{
 	Inputs: calls.Inputs{
-		"input1": {"input1", false, calls.InputTypeString},
-		"input2": {"input2", true, calls.InputTypeBoolean},
+		"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
+		"input2": {Name: "input2", Required: true, Type: calls.InputTypeBoolean},
 	},
 	Outputs: calls.Outputs{
-		"output1": {"output1"},
+		"output1": {Name: "output1"},
 	},
 	Secrets: calls.Secrets{
-		"secret1": {"secret1", false},
-		"secret2": {"secret2", true},
+		"secret1": {Name: "secret1", Required: false},
+		"secret2": {Name: "secret2", Required: true},
 	},
 }
 
@@ -244,10 +244,10 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"unknown_input": {},
 			},
 			want: calls.Inputs{
-				"string_input":  {"string_input", false, calls.InputTypeString},
-				"number_input":  {"number_input", false, calls.InputTypeNumber},
-				"bool_input":    {"bool_input", false, calls.InputTypeBoolean},
-				"unknown_input": {"unknown_input", false, calls.InputTypeAny},
+				"string_input":  {Name: "string_input", Required: false, Type: calls.InputTypeString},
+				"number_input":  {Name: "number_input", Required: false, Type: calls.InputTypeNumber},
+				"bool_input":    {Name: "bool_input", Required: false, Type: calls.InputTypeBoolean},
+				"unknown_input": {Name: "unknown_input", Required: false, Type: calls.InputTypeAny},
 			},
 		},
 		{
@@ -268,11 +268,11 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				},
 			},
 			want: calls.Inputs{
-				"unspecified":          {"unspecified", false, calls.InputTypeAny},
-				"not_required":         {"not_required", false, calls.InputTypeAny},
-				"required":             {"required", true, calls.InputTypeAny},
-				"required_but_default": {"required_but_default", false, calls.InputTypeAny},
-				"expression":           {"expression", false, calls.InputTypeAny},
+				"unspecified":          {Name: "unspecified", Required: false, Type: calls.InputTypeAny},
+				"not_required":         {Name: "not_required", Required: false, Type: calls.InputTypeAny},
+				"required":             {Name: "required", Required: true, Type: calls.InputTypeAny},
+				"required_but_default": {Name: "required_but_default", Required: false, Type: calls.InputTypeAny},
+				"expression":           {Name: "expression", Required: false, Type: calls.InputTypeAny},
 			},
 		},
 		{
@@ -286,7 +286,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"MY_INPUT": {Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			want: calls.Inputs{
-				"my_input": {"MY_INPUT", false, calls.InputTypeString},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: calls.InputTypeString},
 			},
 		},
 		{
@@ -295,7 +295,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"MY_INPUT": {},
 			},
 			want: calls.Inputs{
-				"my_input": {"MY_INPUT", false, calls.InputTypeAny},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: calls.InputTypeAny},
 			},
 		},
 	}
@@ -360,7 +360,7 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 
 			want := calls.Outputs{}
 			for _, o := range outputs {
-				want[strings.ToLower(o)] = calls.Output{o}
+				want[strings.ToLower(o)] = calls.Output{Name: o}
 			}
 
 			if diff := cmp.Diff(m.Outputs, want); diff != "" {

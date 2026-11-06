@@ -24,7 +24,7 @@ func WriteSummaryDetails(out io.Writer, s report.CheckSummary) error {
 			return err
 		}
 		for _, check := range s.IncompleteChecks {
-			label := terminalText(string(check.Source.Document))
+			label := terminalText(check.Source.Document)
 			if check.Rule != "" {
 				label += " [" + terminalText(check.Rule) + "]"
 			}

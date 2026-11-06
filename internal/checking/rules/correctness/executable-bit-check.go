@@ -27,7 +27,6 @@ type ruleExecutableBit struct {
 func NewRuleExecutableBit(input ExecutableContext) workflowvisit.Rule {
 	descriptor := ExecutableBitDeclaration()
 	r := &ruleExecutableBit{Tag: descriptor.Name}
-	input.Log = r.Debug
 	input.Report = func(finding *findingmodel.Finding) { r.findings.Report(finding) }
 	r.ExecutableChecker = NewExecutableChecker(input)
 	return r

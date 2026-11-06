@@ -1,3 +1,4 @@
+// Package calls models reusable-workflow metadata and argument bindings.
 package calls
 
 import (

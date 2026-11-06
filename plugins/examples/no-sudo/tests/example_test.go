@@ -81,7 +81,10 @@ func TestComponentThroughCLI(t *testing.T) {
 				t.Fatalf("expected one finding and exit 1: status=%v report=%s", err, &stdout)
 			}
 			finding := report.Diagnostics[0]
-			before := text[:strings.Index(text, "sudo")]
+			before, _, found := strings.Cut(text, "sudo")
+			if !found {
+				t.Fatal("workflow fixture does not contain sudo")
+			}
 			line := strings.Count(before, "\n") + 1
 			column := utf8.RuneCountInString(before[strings.LastIndex(before, "\n")+1:]) + 1
 			if finding.Rule != "no-sudo" || finding.Severity != "warning" || finding.Path != "workflow.yml" || finding.Start.Line != line || finding.Start.Column != column || finding.End.Line != line || finding.End.Column != column+4 || finding.Reference == nil || filepath.FromSlash(finding.Reference.Document) != path || finding.Reference.Revision == "" {

@@ -72,7 +72,10 @@ jobs:
 			}
 			finding := result.Diagnostics[0]
 			const access = "jobs.call.outputs.missing"
-			before := caller[:strings.Index(caller, access)]
+			before, _, found := strings.Cut(caller, access)
+			if !found {
+				t.Fatal("caller fixture does not contain the expected output access")
+			}
 			line, column := strings.Count(before, "\n")+1, len(before)-strings.LastIndex(before, "\n")
 			if finding.Rule != "expression-reference" || finding.Code != "unknown-property" || finding.Start.Line != line || finding.Start.Column != column || finding.End.Line != line || finding.End.Column != column+len(access) || finding.Reference == nil || finding.Reference.Revision == "" || finding.Path != path {
 				t.Fatalf("output finding lost its rule or captured member-access range: %+v reference=%+v", finding, finding.Reference)
