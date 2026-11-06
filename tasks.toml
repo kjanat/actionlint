@@ -22,7 +22,7 @@ depends     = ["build", "test", "lint"]
 ["format"]
 alias       = ["f", "fmt"]
 description = "Format code"
-run         = "kfmt"
+run         = "kprint fmt"
 
 ["go-modernize"]
 description = "Modernize Go code"
