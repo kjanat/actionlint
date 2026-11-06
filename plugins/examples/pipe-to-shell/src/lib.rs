@@ -10,14 +10,16 @@ pub struct Plugin;
 impl Guest for Plugin {
     fn describe() -> Descriptor {
         Descriptor {
-            description: "Component analyzer".into(),
+            description: "Detect download commands piped directly into shells".into(),
             category: "security".into(),
             subcategory: "scripts".into(),
             maturity: "stable".into(),
             provider: "example".into(),
             recommended: false,
-            explanation: "Checks script invocations.".into(),
-            help: "Review the indicated command.".into(),
+            explanation:
+                "A shell reading a download executes its contents before they can be reviewed."
+                    .into(),
+            help: "Save the script, review it, and execute the reviewed file.".into(),
             documentation_url: String::new(),
             fix_availability: String::new(), // Legacy ABI field; ignored by the host.
             options_schema: "{}".into(),

@@ -161,6 +161,7 @@ vars    = {
   package      = "",
   artifact     = "",
   metadata     = "",
+  packager     = "",
   fixture_root = "internal/plugins/execution/component/testdata/plugins"
 }
 sources = [
@@ -178,7 +179,12 @@ run     = [
 {% if vars.artifact %}{% set artifact = vars.artifact %}{% elif vars.package %}{% set artifact = vars.package | replace(from="-", to="_") %}{% else %}{% set artifact = vars.example | default(value=vars.fixture) | replace(from="-", to="_") %}{% endif %}
 {% set source = vars.target_dir ~ "/" ~ vars.target ~ "/" ~ vars.profile ~ "/" ~ artifact ~ ".wasm" %}
 {% set output = vars.fixture_root ~ "/" ~ vars.fixture ~ ".wasm" %}
-{% if vars.metadata %}go run ./internal/development/tests/integration/plugins/package-fixture "{{ source }}" "{{ vars.metadata }}" "{{ output }}"{% else %}mise run fixture:copy "{{ source }}" "{{ output }}"{% endif %}
+{% if vars.packager %}
+{% set distribution = vars.target_dir ~ "/plugin-packages/" ~ vars.fixture %}
+cargo run --locked -p {{ vars.package }} --features package --bin {{ vars.packager }} -- "{{ source }}" "{{ distribution }}"
+wasm-tools validate "{{ distribution }}/plugin.wasm"
+mise run fixture:copy "{{ distribution }}/plugin.wasm" "{{ output }}"
+{% elif vars.metadata %}go run ./internal/development/tests/integration/plugins/package-fixture "{{ source }}" "{{ vars.metadata }}" "{{ output }}"{% else %}mise run fixture:copy "{{ source }}" "{{ output }}"{% endif %}
 '''
 ]
 
