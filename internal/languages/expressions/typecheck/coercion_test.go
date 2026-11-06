@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
@@ -57,7 +59,7 @@ func TestFunctionCallFacts(t *testing.T) {
 				t.Fatalf("got type %s, valid %v, evaluation %+v, findings %v; want %s, %v, %v, %v", got.Type, got.Valid, got.Evaluation, got.Findings, tc.kind, tc.valid, tc.state, tc.value)
 			}
 			if tc.valid && tc.state == exprvalues.EvaluationKnown {
-				checkGitHubReferenceLive(t, tc.input, nil, tc.value)
+				runnerreference.CheckValue(t, tc.input, nil, tc.value)
 			}
 		})
 	}

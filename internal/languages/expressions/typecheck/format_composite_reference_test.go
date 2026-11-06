@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
@@ -16,7 +18,7 @@ func TestFormatCompositeReference(t *testing.T) {
 			if !got.Valid || got.Evaluation.State != exprvalues.EvaluationKnown || got.Evaluation.Value != tc.want {
 				t.Fatalf("wrong composite formatting: %+v", got)
 			}
-			checkGitHubReferenceLive(t, tc.input, nil, tc.want)
+			runnerreference.CheckValue(t, tc.input, nil, tc.want)
 		})
 	}
 }

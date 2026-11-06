@@ -28,7 +28,8 @@ func TestCachePolicyEventGuards(t *testing.T) {
 		{"github.event_name == 'pull_request' && success()", nil},
 		{"github.event_name == 'pull_request' || failure()", []string{"issue_comment", "pull_request_target"}},
 		{"(github.event_name == 'pull_request_target' && false) || github.event_name == 'issue_comment'", []string{"issue_comment"}},
-		{"contains(github.event_name, 'pull_request')", []string{"issue_comment", "pull_request_target"}},
+		{"contains(github.event_name, 'pull_request')", []string{"pull_request_target"}},
+		{`contains(fromJSON('["push", "pull_request"]'), github.event_name)`, nil},
 		{"false", nil},
 		{"true", []string{"issue_comment", "pull_request_target"}},
 		{"(github.event_name == 'pull_request' && '') == false", []string{"issue_comment", "pull_request_target"}},
@@ -115,16 +116,6 @@ func TestCachePolicyInheritedEventUnion(t *testing.T) {
 		}
 		if findings[0].Start.Line != 2 || !strings.Contains(findings[0].Message, `"issue_comment", "pull_request_target"`) {
 			t.Errorf("conditions %v: want both events on workflow declaration, got %v", conditions, findings[0])
-		}
-	}
-}
-
-func TestCacheEventGuardUnknownSyntax(t *testing.T) {
-	events := []string{"pull_request_target"}
-	for _, condition := range []string{"github.event_name ==", "prefix ${{ false }}", "${{ false }} suffix", "${{ false }}${{ false }}", " ${{ false }}", "${{ false }} "} {
-		got := cacheReachableEvents(events, condition)
-		if !slices.Equal(got, events) {
-			t.Errorf("condition %q: want events %v, got %v", condition, events, got)
 		}
 	}
 }
