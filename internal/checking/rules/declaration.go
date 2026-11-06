@@ -54,9 +54,8 @@ type Descriptor struct {
 	DocumentationURL string          `json:"documentation_url"`
 	OptionsSchema    json.RawMessage `json:"options_schema,omitempty"`
 	Examples         []Example       `json:"examples,omitempty"`
-	// RequiredInputs names host facts needed before execution. Plugin protocols
-	// serialize these through their own request and descriptor definitions.
-	RequiredInputs []InputKind `json:"-"`
+	// RequiredInputs names host facts needed before execution.
+	RequiredInputs []InputKind `json:"required_inputs,omitempty"`
 }
 
 type Example struct {

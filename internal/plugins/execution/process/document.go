@@ -41,7 +41,7 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 		return nil, err
 	}
 	requires := []rulemeta.InputKind{rulemeta.Source}
-	for _, fact := range manifest.RequiredInputs {
+	for _, fact := range manifest.Rule.RequiredInputs {
 		if fact != rulemeta.Source && fact != rulemeta.Dependencies {
 			return nil, fmt.Errorf("unsupported document input kind %q", fact)
 		}

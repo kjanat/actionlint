@@ -681,6 +681,17 @@
         "recommended": {
           "type": "boolean"
         },
+        "required_inputs": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "source",
+              "dependencies"
+            ]
+          }
+        },
         "subcategory": {
           "$ref": "#/$defs/name"
         }
@@ -931,17 +942,6 @@
     },
     "process": {
       "$ref": "#/$defs/process"
-    },
-    "required_inputs": {
-      "type": "array",
-      "maxItems": 2,
-      "uniqueItems": true,
-      "items": {
-        "enum": [
-          "source",
-          "dependencies"
-        ]
-      }
     },
     "role": {
       "enum": [
