@@ -115,7 +115,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"job-needs":      declarationImplementation(correctness.JobNeedsCheck()),
 		"parallel-steps": declarationImplementation(correctness.ParallelStepsCheck()),
 		"action": {Build: func(c Inputs) workflowvisit.Rule {
-			return correctness.NewRuleAction(c.Context, c.Actions, c.RemoteActions)
+			return correctness.NewRuleAction(c.Context, c.Actions.Prepared(), c.RemoteActions)
 		}},
 		"executable-bit": {Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleExecutableBit(correctness.ExecutableContext{
@@ -134,7 +134,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
 		}},
 		"expression": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
-			return expressionchecks.New(c.Context, c.Actions, c.Workflows, c.Runners, c.RemoteActions)
+			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 		}},
 		"deprecated-commands":     {Script: workflowcommands.Checker{}},
 		"if-cond":                 declarationImplementation(correctness.IfCondCheck()),

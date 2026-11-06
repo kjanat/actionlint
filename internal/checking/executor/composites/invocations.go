@@ -106,7 +106,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference has invalid syntax")
 		return nil, workspaceactions.SourceDocument{}, outcome, err
 	}
-	lookup, _ := analysis.actions.LookupMetadata(spec)
+	lookup, _ := analysis.actions.Prepared().LookupMetadata(spec)
 	if errors.Is(lookup.Err(), context.Canceled) || errors.Is(lookup.Err(), context.DeadlineExceeded) {
 		return nil, workspaceactions.SourceDocument{}, invocation.Outcome{}, lookup.Err()
 	}
