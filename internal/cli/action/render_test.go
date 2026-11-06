@@ -193,7 +193,7 @@ func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
 func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 	analysis := analysisForRender(t, "")
 	for _, serialized := range []string{"workflow.yaml:4:14: finding\n", "{\"runs\":[{\"results\":[{}]}]}\n"} {
-		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", commandstatus.ExitSuccessProblemFound}, diagnostics: analysis.Diagnostics}
+		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", commandstatus.ExitSuccessProblemFound}, report: commandstatus.AnalysisResult(*analysis)}
 		o, count, rendered := renderOutcome(result)
 		if o.code != commandstatus.ExitSuccessProblemFound || count != "1" || rendered != serialized {
 			t.Fatalf("typed finding count/rendered output changed: %+v, %q, %q", o, count, rendered)

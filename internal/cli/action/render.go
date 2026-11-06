@@ -72,5 +72,5 @@ func renderOutcome(result *lintResult) (*lintOutcome, string, string) {
 	if o.code != commandstatus.ExitSuccessNoProblem && o.code != commandstatus.ExitSuccessProblemFound {
 		return o, "", o.stderr + o.stdout
 	}
-	return o, strconv.Itoa(len(result.diagnostics)), o.stdout
+	return o, strconv.Itoa(len(result.report.Diagnostics)), o.stdout
 }

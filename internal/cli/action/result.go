@@ -27,30 +27,13 @@ func (a *action) checkResult(code int, failure error) resultreport.CheckResult {
 	if a.result != nil && failure == nil {
 		code = a.result.code
 	}
-	r := commandstatus.NewCheckResult(code)
+	completion := commandstatus.NewCheckResult(code)
+	r := completion
 	if a.result != nil {
-		lint := a.result
-		r.Documents = lint.documents
-		if lint.actionMetadata != nil {
-			r.ActionMetadata = lint.actionMetadata
-		}
-		if lint.fileCountKnown {
-			r.FileCount = &lint.fileCount
-		}
-		if lint.diagnostics != nil {
-			r.Diagnostics = lint.diagnostics
-		}
-		for _, config := range lint.configs {
-			r.AddConfiguration(config)
-		}
-		if lint.hints != nil {
-			r.Hints = lint.hints
-		}
-		if lint.sarif != "" {
-			r.SARIF = json.RawMessage(lint.sarif)
-		}
-		if lint.code >= commandstatus.ExitInvalidCommandOption {
-			r.Error = lint.stderr
+		r = a.result.report
+		r.Status, r.Completed, r.ExitCode = completion.Status, completion.Completed, completion.ExitCode
+		if a.result.code >= commandstatus.ExitInvalidCommandOption {
+			r.Error = a.result.stderr
 		}
 	}
 	if failure != nil {

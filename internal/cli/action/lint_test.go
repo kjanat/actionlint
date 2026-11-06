@@ -148,7 +148,7 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 				}
 				req := buildRequest(in, workspace, workingRel)
 				got := runLinter(req)
-				if got.code != commandstatus.ExitSuccessNoProblem || got.fileCount != 1 {
+				if got.code != commandstatus.ExitSuccessNoProblem || got.selectedFileCount() != 1 {
 					t.Fatalf("linked workflow failed: %#v, %s", got, got.stderr)
 				}
 			})
@@ -164,10 +164,10 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 	if got.code != commandstatus.ExitSuccessNoProblem {
 		t.Fatalf("wanted exit code 0 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	if len(got.diagnostics) != 0 || got.stdout != "" {
+	if len(got.report.Diagnostics) != 0 || got.stdout != "" {
 		t.Errorf("wanted empty typed diagnostics without intermediate JSON: %#v", got)
 	}
-	if !got.fileCountKnown || got.fileCount != 1 {
+	if got.report.FileCount == nil || got.selectedFileCount() != 1 {
 		t.Errorf("wanted the selected file count to be 1 but got %#v", got)
 	}
 }
@@ -182,7 +182,7 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 	if got.code != commandstatus.ExitFailure || !strings.Contains(got.stderr, "no workflow or action files were found") {
 		t.Fatalf("wanted empty discovery to fail linting; code=%d stderr=%q", got.code, got.stderr)
 	}
-	if !got.fileCountKnown || got.fileCount != 0 {
+	if got.report.FileCount == nil || got.selectedFileCount() != 0 {
 		t.Errorf("wanted a known zero file count but got %#v", got)
 	}
 }
@@ -205,8 +205,8 @@ func TestRunLinterCountsIncludedFiles(t *testing.T) {
 				"config.yml":                  "files: {excludes: ['" + tc.excluded + "']}\n",
 			})
 			got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: tc.files, configFile: filepath.Join(dir, "config.yml")})
-			if got.code != commandstatus.ExitSuccessNoProblem || !got.fileCountKnown || got.fileCount != tc.count || len(got.diagnostics) != 0 {
-				t.Fatalf("included-file count=%d known=%v exit=%d diagnostics=%+v stderr=%s", got.fileCount, got.fileCountKnown, got.code, got.diagnostics, got.stderr)
+			if got.code != commandstatus.ExitSuccessNoProblem || got.report.FileCount == nil || got.selectedFileCount() != tc.count || len(got.report.Diagnostics) != 0 {
+				t.Fatalf("included-file count=%d known=%v exit=%d diagnostics=%+v stderr=%s", got.selectedFileCount(), (got.report.FileCount != nil), got.code, got.report.Diagnostics, got.stderr)
 			}
 		})
 	}
@@ -221,7 +221,7 @@ func TestRunLinterFindsProblems(t *testing.T) {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
 
-	problems := got.diagnostics
+	problems := got.report.Diagnostics
 	if len(problems) != 1 {
 		t.Fatalf("wanted one problem but got %#v", problems)
 	}
@@ -253,7 +253,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	if len(document.Runs) != 1 || len(document.Runs[0].Results) != 1 {
 		t.Errorf("wanted one SARIF result: %s", got.stdout)
 	}
-	if got.stdout != got.sarif {
+	if got.stdout != string(got.report.SARIF) {
 		t.Error("selected SARIF differs from the persisted native SARIF document")
 	}
 }
@@ -321,7 +321,7 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 		if !strings.Contains(got.stderr, tc.want) {
 			t.Errorf("%s: wanted %q in %q", tc.name, tc.want, got.stderr)
 		}
-		if got.fileCountKnown != tc.countKnown || got.fileCount != tc.count {
+		if (got.report.FileCount != nil) != tc.countKnown || got.selectedFileCount() != tc.count {
 			t.Errorf("%s: wanted file count %d (known %t) but got %#v", tc.name, tc.count, tc.countKnown, got)
 		}
 	}
@@ -339,11 +339,11 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	if got.code != commandstatus.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	problems := got.diagnostics
+	problems := got.report.Diagnostics
 	if len(problems) != 1 {
 		t.Fatalf("wanted one problem but got %#v", problems)
 	}
-	if !got.fileCountKnown || got.fileCount != 2 {
+	if got.report.FileCount == nil || got.selectedFileCount() != 2 {
 		t.Errorf("wanted the two linted repository files counted but got %#v", got)
 	}
 	if want := filepath.Join(".github", "workflows", "broken.yaml"); problems[0].Path != want {
@@ -553,7 +553,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 	if got.code != commandstatus.ExitSuccessProblemFound {
 		t.Fatalf("wanted the workflow in the requested directory linted but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
-	problems := got.diagnostics
+	problems := got.report.Diagnostics
 	if len(problems) != 1 || problems[0].Path != "broken.yaml" {
 		t.Errorf("wanted the diagnostic path relative to the requested directory but got %#v", problems)
 	}
@@ -601,7 +601,7 @@ func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
 		if got.code != commandstatus.ExitFailure || !strings.Contains(got.stderr, "actionlint timed out after") {
 			t.Errorf("wanted an independent timeout result but got %#v", got)
 		}
-		if got.stdout != "" || got.fileCountKnown {
+		if got.stdout != "" || (got.report.FileCount != nil) {
 			t.Errorf("timeout result must not expose the unfinished analysis: %#v", got)
 		}
 	case <-time.After(lintCancellationGrace + time.Second):
