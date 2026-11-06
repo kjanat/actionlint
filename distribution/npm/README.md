@@ -44,7 +44,7 @@ detect the host libc and choose between a gnu and a musl build; this does not.
 
 ## Where the binaries come from
 
-They are not rebuilt. The builder under `distribution/npm/src/` downloads the GoReleaser
+For releases, the builder under `distribution/npm/src/` downloads the GoReleaser
 archives already attached to the GitHub release, checks each one against the
 release's own published checksums manifest, and unpacks the executable. What
 npm serves is byte-for-byte what the release attested, and a truncated download
