@@ -529,6 +529,7 @@ shell declarations override the inventory; a job container supplies its own `sh`
 
 [`plugins/examples/buildkite-runners/src/lib.rs`](../plugins/examples/buildkite-runners/src/lib.rs) resolves an explicit queue mapping
 snapshot. This offline example uses supplied queue data without live Agent API calls or guarantees of GitHub image/toolchain parity.
+Its [README](../plugins/examples/buildkite-runners/README.md) includes tests, SDK packaging and a command using the supplied workflow and snapshot.
 Each queue declares its name, labels, optional group, OS, architecture and default shell. All labels and the requested
 group must match the same queue. The catalogue's completeness refers to the selected scope.
 

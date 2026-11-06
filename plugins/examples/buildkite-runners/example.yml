@@ -1,0 +1,7 @@
+on: push
+permissions: {}
+jobs:
+  test:
+    runs-on: [buildkite-windows, x64]
+    steps:
+      - run: Write-Output 'hello'

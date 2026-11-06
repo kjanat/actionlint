@@ -11,7 +11,10 @@ use sha2::{Digest, Sha256};
 use wasm_encoder::{Component, CustomSection, RawSection};
 use wasmparser::{Encoding, Parser, Payload, Validator};
 
-use crate::{ANALYZER_CONTRACT_SHA256, ANALYZER_INTERFACE, Descriptor, InputKind};
+use crate::{
+    ANALYZER_CONTRACT_SHA256, ANALYZER_INTERFACE, Descriptor, InputKind,
+    RUNNER_PROVIDER_CONTRACT_SHA256, RUNNER_PROVIDER_INTERFACE,
+};
 
 /// Discovery section read by actionlint without starting a guest.
 pub const METADATA_SECTION: &str = "actionlint.plugin";
@@ -55,6 +58,21 @@ pub struct Package<'a> {
     pub license_text: &'a str,
 }
 
+/// Distribution of a snapshot-based runner provider. Supply the provider fields
+/// from its `describe()` result; package identity and version are independent.
+pub struct RunnerPackage<'a> {
+    /// Package release metadata used by registry discovery.
+    pub identity: Identity<'a>,
+    /// Name returned by `describe()` and selected by `--runner-provider`.
+    pub provider_name: &'a str,
+    /// Implementation version from `describe()`, independent of the package release version.
+    pub provider_version: &'a str,
+    /// Execution platforms advertised by `describe()`, such as `buildkite`.
+    pub targets: &'a [String],
+    /// License file contents; CRLF line endings are converted to LF.
+    pub license_text: &'a str,
+}
+
 fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
@@ -72,20 +90,40 @@ fn options_schema(raw: &str) -> Result<Option<serde_json::Value>> {
     Ok(Some(serde_json::from_str(raw)?))
 }
 
+fn component_metadata(
+    identity: &Identity<'_>,
+    interface: &str,
+    contract: &str,
+) -> Result<serde_json::Value> {
+    let id = identity.id;
+    if !(1..=128).contains(&id.len())
+        || !id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'/' | b'-'))
+    {
+        return Err(
+            "package id must contain 1 to 128 ASCII letters, digits, '.', '_', '/' or '-'".into(),
+        );
+    }
+    Ok(json!({
+        "metadata_version": 1,
+        "id": id,
+        "name": identity.name,
+        "description": identity.description,
+        "license": identity.license,
+        "repository": identity.repository,
+        "plugin_version": identity.version,
+        "transport": "wasm-component",
+        "interface": interface,
+        "contract_sha256": contract,
+    }))
+}
+
 impl Package<'_> {
     /// Serialize discovery metadata from the same descriptor the guest exports.
     pub fn metadata(&self) -> Result<Vec<u8>> {
-        let id = self.identity.id;
-        if !(1..=128).contains(&id.len())
-            || !id.bytes().all(|byte| {
-                byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'/' | b'-')
-            })
-        {
-            return Err(
-                "package id must contain 1 to 128 ASCII letters, digits, '.', '_', '/' or '-'"
-                    .into(),
-            );
-        }
+        let mut metadata =
+            component_metadata(&self.identity, ANALYZER_INTERFACE, ANALYZER_CONTRACT_SHA256)?;
         let rule = self.descriptor;
         let required_inputs: Vec<_> = rule
             .required_inputs
@@ -129,51 +167,76 @@ impl Package<'_> {
         if !examples.is_empty() {
             descriptor["examples"] = json!(examples);
         }
-        pretty_json(&json!({
-            "metadata_version": 1,
-            "id": id,
-            "name": self.identity.name,
-            "description": self.identity.description,
-            "license": self.identity.license,
-            "repository": self.identity.repository,
-            "plugin_version": self.identity.version,
-            "transport": "wasm-component",
-            "interface": ANALYZER_INTERFACE,
-            "contract_sha256": ANALYZER_CONTRACT_SHA256,
-            "engine": self.engine,
-            "languages": self.languages,
-            "capabilities": self.capabilities,
-            "descriptor": descriptor,
-        }))
+        metadata["engine"] = serde_json::to_value(&self.engine)?;
+        metadata["languages"] = json!(self.languages);
+        metadata["capabilities"] = serde_json::to_value(&self.capabilities)?;
+        metadata["descriptor"] = descriptor;
+        pretty_json(&metadata)
     }
 
     /// Write the component, discovery/schema sidecars, license and SHA256SUMS.
     pub fn write(&self, input: &Path, output: &Path) -> Result<()> {
         let metadata = self.metadata()?;
-        let wasm = with_metadata(&fs::read(input)?, &metadata)?;
         let schema = pretty_json(
             &options_schema(&self.descriptor.options_schema)?.unwrap_or_else(|| json!({})),
         )?;
-        let files = [
-            ("plugin.wasm", wasm),
-            ("metadata.json", metadata),
-            ("schema.json", schema),
-            (
-                "LICENSE",
-                self.license_text.replace("\r\n", "\n").into_bytes(),
-            ),
-        ];
-        let checksums = files
-            .iter()
-            .map(|(name, bytes)| format!("{}  {name}\n", digest(bytes)))
-            .collect::<String>();
-        fs::create_dir_all(output)?;
-        for (name, bytes) in files {
-            fs::write(output.join(name), bytes)?;
-        }
-        fs::write(output.join("SHA256SUMS"), checksums)?;
-        Ok(())
+        write_distribution(input, output, metadata, schema, self.license_text)
     }
+}
+
+impl RunnerPackage<'_> {
+    /// Serialize the provider role and descriptor without starting the component.
+    pub fn metadata(&self) -> Result<Vec<u8>> {
+        let mut metadata = component_metadata(
+            &self.identity,
+            RUNNER_PROVIDER_INTERFACE,
+            RUNNER_PROVIDER_CONTRACT_SHA256,
+        )?;
+        metadata["descriptor"] = json!({
+            "name": self.provider_name,
+            "version": self.provider_version,
+            "targets": self.targets,
+        });
+        pretty_json(&metadata)
+    }
+
+    /// Write the component, discovery manifest, empty option schema, license and
+    /// checksums. Runner snapshots are supplied by the host, not package options.
+    pub fn write(&self, input: &Path, output: &Path) -> Result<()> {
+        write_distribution(
+            input,
+            output,
+            self.metadata()?,
+            pretty_json(&json!({}))?,
+            self.license_text,
+        )
+    }
+}
+
+fn write_distribution(
+    input: &Path,
+    output: &Path,
+    metadata: Vec<u8>,
+    schema: Vec<u8>,
+    license_text: &str,
+) -> Result<()> {
+    let wasm = with_metadata(&fs::read(input)?, &metadata)?;
+    let files = [
+        ("plugin.wasm", wasm),
+        ("metadata.json", metadata),
+        ("schema.json", schema),
+        ("LICENSE", license_text.replace("\r\n", "\n").into_bytes()),
+    ];
+    let checksums = files
+        .iter()
+        .map(|(name, bytes)| format!("{}  {name}\n", digest(bytes)))
+        .collect::<String>();
+    fs::create_dir_all(output)?;
+    for (name, bytes) in files {
+        fs::write(output.join(name), bytes)?;
+    }
+    fs::write(output.join("SHA256SUMS"), checksums)?;
+    Ok(())
 }
 
 /// Replace only the outer component's discovery section, preserving nested modules.
@@ -339,6 +402,57 @@ mod tests {
             package.identity.id = &id;
             assert!(package.metadata().is_ok(), "{id:?}");
         }
+        Ok(())
+    }
+
+    #[test]
+    fn runner_packaging_preserves_provider_and_package_identity() -> Result<()> {
+        let temporary = TestDirectory::new()?;
+        let input = temporary.0.join("runner.wasm");
+        let output = temporary.0.join("package");
+        fs::write(&input, Component::new().finish())?;
+        let targets = vec!["buildkite".to_string()];
+        let package = RunnerPackage {
+            identity: Identity {
+                id: "example/queue-package",
+                name: "Queue package",
+                description: "Offline queue provider",
+                license: "MIT",
+                repository: "https://example.com/queue-package",
+                version: "2.0.0",
+            },
+            provider_name: "queue-provider",
+            provider_version: "1.0.0",
+            targets: &targets,
+            license_text: "Example license\r\n",
+        };
+        package.write(&input, &output)?;
+        let metadata: serde_json::Value =
+            serde_json::from_slice(&fs::read(output.join("metadata.json"))?)?;
+        assert_eq!(metadata["id"], "example/queue-package");
+        assert_eq!(metadata["plugin_version"], "2.0.0");
+        assert_eq!(metadata["interface"], RUNNER_PROVIDER_INTERFACE);
+        assert_eq!(metadata["contract_sha256"], RUNNER_PROVIDER_CONTRACT_SHA256);
+        assert_eq!(
+            metadata["descriptor"],
+            json!({"name": "queue-provider", "version": "1.0.0", "targets": ["buildkite"]})
+        );
+        assert_eq!(metadata["transport"], "wasm-component");
+        assert!(metadata.get("engine").is_none());
+        assert!(metadata["descriptor"].get("required_inputs").is_none());
+        assert_eq!(
+            fs::read_to_string(output.join("LICENSE"))?,
+            "Example license\n"
+        );
+        assert_eq!(fs::read(output.join("metadata.json"))?, package.metadata()?);
+        for line in fs::read_to_string(output.join("SHA256SUMS"))?.lines() {
+            let (checksum, name) = line.split_once("  ").ok_or("invalid checksum entry")?;
+            assert_eq!(checksum, digest(&fs::read(output.join(name))?));
+        }
+        let mut invalid = package;
+        invalid.identity.id = "invalid package id";
+        assert!(invalid.write(&input, &temporary.0.join("invalid")).is_err());
+        assert!(!temporary.0.join("invalid").exists());
         Ok(())
     }
 

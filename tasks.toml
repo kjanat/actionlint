@@ -328,7 +328,7 @@ vars    = { fixture = "pinned-actions", package = "actionlint-example-pinned-act
 ["plugin:example:buildkite-runners"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm"]
-vars    = { fixture = "buildkite-runners" }
+vars    = { fixture = "buildkite-runners", package = "actionlint-example-buildkite-runners", artifact = "buildkite_runners", packager = "package-buildkite-runners" }
 
 ["plugin:fixture:script-engine"]
 extends = "rust-plugin"
