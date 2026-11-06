@@ -10,9 +10,9 @@ import (
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -64,7 +64,7 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: firstRegistry, Actions: actionlocal.NewResolver(nil, nil)}
+	options := Options{Context: t.Context(), SourceSnapshots: firstRegistry, Actions: workspaceactions.NewResolver(nil, nil)}
 	if _, err := Workflow(options, secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
 		t.Fatalf("different source registry was accepted: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+			options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
 			result, err := Workflow(options, snapshot)
 			if err != nil {
 				t.Fatal(err)
@@ -334,7 +334,7 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)

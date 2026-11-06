@@ -6,8 +6,8 @@ import (
 
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -51,7 +51,7 @@ func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, sn
 	return nil
 }
 
-func (r *preparationObserver) ForMetadata(*actionlocal.Resolver) workflowvisit.Rule { return r }
+func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule { return r }
 
 func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	metadata, err := actionmeta.Parse("action.yml", []byte("name: fixture\ndescription: fixture\nruns: {using: composite, steps: []}\n"))
@@ -60,7 +60,7 @@ func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	}
 	prepared := map[string]bool{}
 	observer := &preparationObserver{Base: workflowvisit.NewBase("preparation-observer", ""), t: t, prepared: prepared}
-	options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot) error {
+	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot) error {
 		prepared[snapshot.Reference().Document] = true
 		return nil
 	}}

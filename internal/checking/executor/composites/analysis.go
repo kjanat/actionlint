@@ -14,8 +14,8 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -34,7 +34,7 @@ type Options struct {
 	// ScriptInputsForConfig loads lazily once per immutable config, including nil.
 	ScriptInputsForConfig func(*repoconfig.Config) ([]checkinputs.ScriptInput, error)
 	Context               context.Context
-	Actions               *actionlocal.Resolver
+	Actions               *workspaceactions.Resolver
 	Rules                 []workflowvisit.Rule
 	Scripts               scriptexecution.Service
 	Paths                 execution.Paths
@@ -61,7 +61,7 @@ type Result struct {
 	Invocations      invocation.Graph
 	ResolveExecution bool
 	Sources          map[string][]byte
-	SourceDocuments  map[string]actionlocal.SourceDocument
+	SourceDocuments  map[string]workspaceactions.SourceDocument
 	// Configs is keyed by logical manifest path.
 	Configs map[string]*repoconfig.Config
 }

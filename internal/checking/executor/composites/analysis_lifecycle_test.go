@@ -12,8 +12,8 @@ import (
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -122,7 +122,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := standaloneActionForTest(t, Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}, meta)
+			result, err := standaloneActionForTest(t, Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}, meta)
 			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
@@ -160,7 +160,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			}
 			script := &phaseScriptAnalyzer{t: t, visited: &visited, failure: scriptFailure}
 			options := Options{
-				Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
+				Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
 				CollectScripts: true, Scripts: scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}, Join: func() error {
 					joined = true
 					pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "joined finding")

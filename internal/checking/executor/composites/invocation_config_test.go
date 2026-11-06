@@ -16,7 +16,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -43,7 +43,7 @@ func TestManifestConfigCacheKeepsLogicalPaths(t *testing.T) {
 	for _, paths := range [][]string{{first, second, first}, {second, first, second}} {
 		configs := map[string]*repoconfig.Config{first: {}, second: {}}
 		loads := map[string]int{}
-		options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(path string) (*repoconfig.Config, error) {
+		options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			loads[path]++
 			return configs[path], nil
 		}}
@@ -77,7 +77,7 @@ type configVisitProbe struct {
 func TestManifestConfigCacheRetriesFailuresAndCachesNil(t *testing.T) {
 	failure := errors.New("configuration unavailable")
 	loads := 0
-	options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
+	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
 		loads++
 		if loads == 1 {
 			return nil, failure

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -55,7 +55,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			if mappedFirst {
 				first, second = second, first
 			}
-			analysis := &compositeAnalyzer{compositionSession: &compositionSession{ctx: t.Context(), collectScripts: true}, actions: actionlocal.NewResolver(nil, nil)}
+			analysis := &compositeAnalyzer{compositionSession: &compositionSession{ctx: t.Context(), collectScripts: true}, actions: workspaceactions.NewResolver(nil, nil)}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/source\n      - uses: $/source\n")
 			document := parsing.Workflow(content)
 			if len(document.SyntaxErrors) != 0 {

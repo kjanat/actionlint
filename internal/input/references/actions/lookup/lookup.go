@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 )
 
@@ -16,13 +16,13 @@ import (
 // It projects both sources into the same immutable action definition.
 type Resolver struct {
 	ctx    context.Context
-	local  actionlocal.MetadataLookup
+	local  workspaceactions.MetadataLookup
 	remote *actionremote.ResolvedActions
 }
 
 // New binds action-definition lookup to one request and workspace execution scope.
 // A nil metadata source leaves its references unresolved.
-func New(ctx context.Context, local actionlocal.MetadataLookup, remote *actionremote.ResolvedActions) *Resolver {
+func New(ctx context.Context, local workspaceactions.MetadataLookup, remote *actionremote.ResolvedActions) *Resolver {
 	return &Resolver{ctx: ctx, local: local, remote: remote}
 }
 
@@ -44,10 +44,10 @@ func (r *Resolver) Lookup(spec string) (actionmeta.Definition, error) {
 		return actionmeta.Definition{}, nil
 	}
 	metadata, _, err := r.local.FindMetadata(spec)
-	if _, unresolved := errors.AsType[actionlocal.UnresolvedError](err); unresolved {
+	if _, unresolved := errors.AsType[workspaceactions.UnresolvedError](err); unresolved {
 		return actionmeta.Definition{}, nil
 	}
-	if _, mapping := errors.AsType[actionlocal.MappingError](err); mapping {
+	if _, mapping := errors.AsType[workspaceactions.MappingError](err); mapping {
 		return actionmeta.Definition{}, nil
 	}
 	if err != nil {

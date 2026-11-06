@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -22,7 +22,7 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -65,13 +65,13 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := actionlocal.NewCache(t.Context(), root, nil)
+	cache := workspaceactions.NewCache(t.Context(), root, nil)
 	actionCapture, err := snapshots.Capture(actionPath, actionContent, source.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
-	resolver := actionlocal.NewResolver(cache, map[string]string{"./generated": "./source"})
+	cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
+	resolver := workspaceactions.NewResolver(cache, map[string]string{"./generated": "./source"})
 	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: resolver, CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
@@ -63,7 +63,7 @@ type compositionSession struct {
 // but cannot replace their caller's source, configuration or invocation context.
 type compositeAnalyzer struct {
 	*compositionSession
-	actions                           *actionlocal.Resolver
+	actions                           *workspaceactions.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
 	scriptConfig                      *repoconfig.Config

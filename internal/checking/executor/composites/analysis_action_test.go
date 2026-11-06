@@ -17,7 +17,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -73,7 +73,7 @@ func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.
 	return nil
 }
 
-func (rule *mutatingStandaloneMetadata) ForMetadata(*actionlocal.Resolver) workflowvisit.Rule {
+func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule {
 	return rule
 }
 
@@ -95,7 +95,7 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	}
 	rule := &mutatingStandaloneMetadata{Base: workflowvisit.NewBase("mutate", "")}
 	options := Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry,
+		Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 	}
 	result, err := Action(options, snapshot, deployment, document.Metadata)
@@ -131,7 +131,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 			if metadata == nil {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
-			resolver := actionlocal.NewResolver(nil, nil)
+			resolver := workspaceactions.NewResolver(nil, nil)
 			options := Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
 			result, err := standaloneActionForTest(t, options, metadata)
 			if err != nil {
@@ -161,7 +161,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := actionlocal.NewResolver(nil, nil)
+	resolver := workspaceactions.NewResolver(nil, nil)
 	options := Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
 	result, err := standaloneActionForTest(t, options, metadata)
 	if err != nil {

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -35,7 +35,7 @@ jobs:
 	}
 	registry, snapshot := registeredWorkflowSnapshot(t, content, document)
 	workflow := workflowView(t, snapshot)
-	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: actionlocal.NewResolver(nil, nil)}
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: workspaceactions.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, registry, snapshot)
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)
