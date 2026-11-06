@@ -23,6 +23,7 @@ import (
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -399,7 +400,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			}
 			switch n := n.(type) {
 			case *exprsyntax.VariableNode:
-				_, errs := checker.Check(n)
+				_, errs := checker.Check(expreval.EvaluateSubexpressions(n))
 				diagnostics = append(diagnostics, errs...)
 			case *exprsyntax.FuncCallNode:
 				callChecker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
@@ -421,7 +422,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				}
 				call := *n
 				call.Args = args
-				_, errs := callChecker.Check(&call)
+				_, errs := callChecker.Check(expreval.EvaluateSubexpressions(&call))
 				diagnostics = append(diagnostics, errs...)
 			}
 		})

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -142,15 +143,15 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, errs := checker.Check(custom); len(errs) != 0 {
+	if _, errs := checker.Check(expreval.EvaluateSubexpressions(custom)); len(errs) != 0 {
 		t.Fatalf("scope was not normalized and copied: %v", errs)
 	}
 	other := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	if _, errs := other.Check(custom); len(errs) == 0 {
+	if _, errs := other.Check(expreval.EvaluateSubexpressions(custom)); len(errs) == 0 {
 		t.Fatal("custom scope leaked to another checker")
 	}
 	checker.SetContextTypes(nil)
-	if _, errs := checker.Check(custom); len(errs) == 0 {
+	if _, errs := checker.Check(expreval.EvaluateSubexpressions(custom)); len(errs) == 0 {
 		t.Fatal("empty scope reused an old context")
 	}
 }
