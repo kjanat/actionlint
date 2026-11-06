@@ -112,7 +112,7 @@ func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
 
 func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 	if r.stepCheck != nil {
-		r.collect(r.stepCheck(s), "")
+		r.collect(r.stepCheck(s), s.DeclaringJob())
 	}
 	return nil
 }

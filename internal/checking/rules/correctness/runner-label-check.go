@@ -1,40 +1,30 @@
 package correctness
 
 import (
-	"errors"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-type ruleRunnerLabel struct {
-	runners *runnerlang.Knowledge
-	workflowvisit.Base
-	labels runnerlang.LabelSet
-}
-
-// NewRuleRunnerLabel checks runner knowledge or the supplied repository labels.
-func NewRuleRunnerLabel(runners *runnerlang.Knowledge, labels runnerlang.LabelSet) workflowvisit.Rule {
-	descriptor := RunnerLabelDeclaration()
-	return &ruleRunnerLabel{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), runners: runners, labels: labels}
-}
-
-func (r *ruleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
-	if !declaration.Present() {
-		return errors.New("runner-label job declaration is unavailable")
+// RunnerLabelCheck reports prepared runner rejections. Without prepared knowledge,
+// it checks labels against the supplied repository label set.
+func RunnerLabelCheck(runners *runnerlang.Knowledge, labels runnerlang.LabelSet) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{
+		Declaration: RunnerLabelDeclaration(),
+		Job: func(job workflowdecl.JobView) []reporting.Finding {
+			var rejections []runnerapi.Rejection
+			if runners != nil {
+				rejections = runners.Job(job).Rejections
+			} else {
+				rejections = runnerlang.LabelRejections(job, labels)
+			}
+			findings := make([]reporting.Finding, 0, len(rejections))
+			for _, rejection := range rejections {
+				findings = append(findings, reporting.Finding{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason})
+			}
+			return findings
+		},
 	}
-	var rejections []runnerapi.Rejection
-	if r.runners != nil {
-		rejections = r.runners.Job(declaration).Rejections
-	} else {
-		rejections = runnerlang.LabelRejections(declaration, r.labels)
-	}
-	for _, rejection := range rejections {
-		r.Report(findingmodel.FromDiagnostic(results.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}))
-	}
-	return nil
 }

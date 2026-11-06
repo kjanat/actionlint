@@ -86,13 +86,15 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			return correctness.NewRuleMatrix(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off")
 		}},
 		"credentials": declarationImplementation(security.CredentialsCheck()),
-		"shell-name":  {Build: func(c Inputs) workflowvisit.Rule { return correctness.NewRuleShellName(c.Runners) }},
+		"shell-name": {Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.New(c.Rules, correctness.ShellNameCheck(c.Runners))
+		}},
 		"runner-label": {Build: func(c Inputs) workflowvisit.Rule {
 			labels := runnerlang.LabelSet{}
 			if known, available := repoconfig.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
 				labels = runnerlang.KnownLabels(known.Values())
 			}
-			return correctness.NewRuleRunnerLabel(c.Runners, labels)
+			return declarationchecks.New(c.Rules, correctness.RunnerLabelCheck(c.Runners, labels))
 		}},
 		"container-runner": {Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
