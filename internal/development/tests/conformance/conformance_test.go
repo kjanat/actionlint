@@ -515,9 +515,34 @@ func repositoryPath(t *testing.T, name string) string {
 	if filepath.IsAbs(name) {
 		return name
 	}
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(".")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return filepath.Join(root, name)
+	for {
+		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
+			return filepath.Join(root, name)
+		} else if !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		parent := filepath.Dir(root)
+		if parent == root {
+			t.Fatal("could not find repository go.mod")
+		}
+		root = parent
+	}
+}
+
+func TestRepositoryPathFindsModuleRoot(t *testing.T) {
+	name := repositoryPath(t, "go.mod")
+	data, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(data), "module actionlint.kjanat.dev/v2") {
+		t.Fatalf("resolved another module: %s", name)
+	}
+	if got := repositoryPath(t, name); got != name {
+		t.Fatalf("absolute path changed: %s", got)
+	}
 }

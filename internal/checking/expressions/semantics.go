@@ -124,13 +124,13 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 		contextspec.SetEventPayloadType(c, *rule.eventTy)
 	}
 	if rule.matrixTy != nil {
-		c.SetContextType("matrix", (*rule.matrixTy).Type())
+		c.SetContextType("matrix", rule.matrixTy.Type())
 	}
 	if rule.stepsTy != nil {
-		c.SetContextType("steps", (*rule.stepsTy).Type())
+		c.SetContextType("steps", rule.stepsTy.Type())
 	}
 	if rule.needsTy != nil {
-		c.SetContextType("needs", (*rule.needsTy).Type())
+		c.SetContextType("needs", rule.needsTy.Type())
 	}
 	if rule.secretsTy != nil {
 		secrets := *rule.secretsTy
@@ -152,7 +152,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 		contextspec.SetDispatchInputTypes(c, *rule.dispatchInputsTy)
 	}
 	if rule.jobsTy != nil {
-		c.SetContextType("jobs", (*rule.jobsTy).Type())
+		c.SetContextType("jobs", rule.jobsTy.Type())
 	}
 	if workflowKey != "" {
 		ctx, _ := contextspec.WorkflowKeyAvailability(workflowKey)

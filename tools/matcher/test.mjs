@@ -28,7 +28,11 @@ describe('problem matcher pattern', () => {
 	}
 
 	for (const parent of ['examples', 'err']) {
-		const dir = path.join(import.meta.dirname, '..', '..', 'testdata', parent);
+		const dir = path.join(
+			import.meta.dirname,
+			'../../internal/development/tests/integration/workflow/testdata',
+			parent,
+		);
 		for (const name of readdirSync(dir)) {
 			if (!name.endsWith('.out')) {
 				continue;

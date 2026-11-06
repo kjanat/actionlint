@@ -980,13 +980,14 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 
 	evaluation := exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
 	phase := FailureNone
-	if sema.staticInvalid {
+	switch {
+	case sema.staticInvalid:
 		evaluation.State = exprvalues.EvaluationNotAttempted
 		phase = FailureStaticValidation
-	} else if sema.evaluationInvalid {
+	case sema.evaluationInvalid:
 		evaluation.State = exprvalues.EvaluationInvalid
 		phase = FailureEvaluation
-	} else {
+	default:
 		evaluation = expreval.Evaluate(expr, nil)
 		if evaluation.State == exprvalues.EvaluationInvalid {
 			phase = FailureEvaluation

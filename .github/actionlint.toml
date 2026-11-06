@@ -26,4 +26,4 @@ reason = "Release bundle extracted from the candidate tag."
 
 [[plugins]]
 name    = "github.com/kjanat/actionlint-plugin-shellcheck"
-version = "v0.2.0"
+version = "v0.2.1"
