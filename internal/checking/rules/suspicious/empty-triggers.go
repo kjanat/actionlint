@@ -1,6 +1,9 @@
 package suspicious
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+)
 
 // EmptyTriggersDeclaration describes the empty-triggers rule.
 func EmptyTriggersDeclaration() rule.Declaration {
@@ -9,4 +12,9 @@ func EmptyTriggersDeclaration() rule.Declaration {
 		Before:      "on:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n",
 		After:       "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n",
 	}}}
+}
+
+// EmptyTriggersCheck binds the rule to workflow declarations.
+func EmptyTriggersCheck() inputs.DeclarationCheck {
+	return inputs.DeclarationCheck{Declaration: EmptyTriggersDeclaration(), Workflow: EmptyTriggers}
 }

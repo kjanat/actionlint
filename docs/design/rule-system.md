@@ -91,11 +91,13 @@ validated without implicit file or network access. The catalogue generates `docs
 
 `RuleBase` is an internal visitor adapter and finding accumulator. It no longer
 owns configuration or logging. Adapters opt into those capabilities explicitly.
-Environment names, conditions, permission declarations, identifiers and job dependency
-checks have stateless implementations in `internal/checking/constraints`; identifiers and dependencies
-receive complete scopes, without accumulating state through callback order.
-`internal/checking/executor/declarations` also owns events, credentials, glob validation, parallel
-steps and the commit-pinning, timeout and required-permissions checks.
+Source-local checks declare workflow, job and step callbacks through
+`inputs.DeclarationCheck`. Their metadata, bindings, implementations and semantic
+tests live under `internal/checking/rules/<category>`. Identifiers and dependencies
+receive complete scopes without accumulating state through callback order.
+`internal/checking/executor/declarations` invokes those callbacks and attaches
+finding ownership. It also projects options for the commit-pinning, timeout and
+required-permissions adapters.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.

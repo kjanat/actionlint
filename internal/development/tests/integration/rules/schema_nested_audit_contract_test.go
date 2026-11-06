@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 
@@ -30,7 +32,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := declarationchecks.New(checking.ConfigurationRules(), "events")
+	rule := declarationchecks.New(checking.ConfigurationRules(), correctness.EventsCheck())
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +61,7 @@ jobs:
 		if len(errs) != 0 {
 			t.Fatalf("schema-supported image filters rejected: %v", errs)
 		}
-		rule := declarationchecks.New(checking.ConfigurationRules(), "events")
+		rule := declarationchecks.New(checking.ConfigurationRules(), correctness.EventsCheck())
 		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +90,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := declarationchecks.New(checking.ConfigurationRules(), "events")
+			rule := declarationchecks.New(checking.ConfigurationRules(), correctness.EventsCheck())
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
@@ -123,7 +125,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := declarationchecks.New(checking.ConfigurationRules(), "events")
+			rule := declarationchecks.New(checking.ConfigurationRules(), correctness.EventsCheck())
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
@@ -155,7 +157,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := declarationchecks.New(checking.ConfigurationRules(), "id")
+			rule := declarationchecks.New(checking.ConfigurationRules(), correctness.IdCheck())
 			if err := rule.VisitJobPre(fixturedecl.Job(w.Jobs["test"])); err != nil {
 				t.Fatal(err)
 			}

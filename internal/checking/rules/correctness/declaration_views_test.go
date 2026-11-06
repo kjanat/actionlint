@@ -1,4 +1,4 @@
-package declarations
+package correctness_test
 
 import (
 	"reflect"
@@ -20,7 +20,10 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 		t.Fatal(errs)
 	}
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
-	check := Declaration("id")
+	check := correctness.IdCheck()
+	if check.Step != nil || check.Workflow != nil {
+		t.Fatal("ID checking requests more than job declarations")
+	}
 	want := check.Job(jobView(w, "build"))
 	if len(want) != 1 || want[0].Step.Reference() != slices.Collect(jobView(w, "build").Steps())[1].Reference() {
 		t.Fatalf("missing duplicate owner: %+v", want)
@@ -28,8 +31,6 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	var workers sync.WaitGroup
 	for range 8 {
 		workers.Go(func() {
-			check.Step(slices.Collect(jobView(w, "build").Steps())[1])
-			check.Workflow(w)
 			if got := check.Job(jobView(w, "build")); !reflect.DeepEqual(got, want) {
 				t.Errorf("result depends on callback order: %+v", got)
 			}
@@ -44,7 +45,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 		t.Fatal(errs)
 	}
 	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
-	findings := Declaration("env-var").Job(jobView(w, "test"))
+	findings := correctness.EnvVarCheck().Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
 	}

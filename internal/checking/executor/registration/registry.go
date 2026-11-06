@@ -3,6 +3,9 @@ package registration
 import (
 	"context"
 	"path/filepath"
+	"sync"
+
+	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
 	expressionchecks "actionlint.kjanat.dev/v2/internal/checking/executor/expressions"
 
@@ -69,7 +72,7 @@ type implementation struct {
 	Enabled func(Inputs) bool
 }
 
-func ruleImplementations() map[string]implementation {
+var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 	return map[string]implementation{
 		"missing-action-metadata": {Build: func(c Inputs) workflowvisit.Rule {
 			return conventions.NewRuleRequireActionMetadata(c.Context, c.RemoteActions)
@@ -82,7 +85,7 @@ func ruleImplementations() map[string]implementation {
 		"matrix": {Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleMatrix(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off")
 		}},
-		"credentials": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "credentials") }},
+		"credentials": declarationImplementation(security.CredentialsCheck()),
 		"shell-name":  {Build: func(c Inputs) workflowvisit.Rule { return correctness.NewRuleShellName(c.Runners) }},
 		"runner-label": {Build: func(c Inputs) workflowvisit.Rule {
 			labels := runnerlang.LabelSet{}
@@ -95,9 +98,9 @@ func ruleImplementations() map[string]implementation {
 			return correctness.NewRuleContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
 		}},
 		"vendor-lock-in": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.NewVendorLockIn(c.Rules, c.Runners) }},
-		"events":         {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "events") }},
-		"job-needs":      {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "job-needs") }},
-		"parallel-steps": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "parallel-steps") }},
+		"events":         declarationImplementation(correctness.EventsCheck()),
+		"job-needs":      declarationImplementation(correctness.JobNeedsCheck()),
+		"parallel-steps": declarationImplementation(correctness.ParallelStepsCheck()),
 		"action": {Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleAction(c.Context, c.Actions, c.RemoteActions)
 		}},
@@ -107,28 +110,24 @@ func ruleImplementations() map[string]implementation {
 				Reader: c.Reader, Index: c.Index, Runners: c.Runners,
 			})
 		}, Enabled: func(c Inputs) bool { return c.ProjectRoot != "" && c.Index != nil }},
-		"env-var":     {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "env-var") }},
-		"id":          {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "id") }},
-		"glob":        {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "glob") }},
-		"permissions": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "permissions") }},
-		"missing-workflow-permissions": {Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.New(c.Rules, "missing-workflow-permissions")
-		}},
+		"env-var":                      declarationImplementation(correctness.EnvVarCheck()),
+		"id":                           declarationImplementation(correctness.IdCheck()),
+		"glob":                         declarationImplementation(correctness.GlobCheck()),
+		"permissions":                  declarationImplementation(correctness.PermissionsCheck()),
+		"missing-workflow-permissions": declarationImplementation(security.MissingWorkflowPermissionsCheck()),
 		"workflow-call": {Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleWorkflowCall(c.SourceSnapshot, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository))
 		}},
 		"expression": {Build: func(c Inputs) workflowvisit.Rule {
 			return expressionchecks.New(c.Context, c.Actions, c.Workflows, c.Runners, c.RemoteActions)
 		}},
-		"deprecated-commands": {Script: workflowcommands.Checker{}},
-		"if-cond":             {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "if-cond") }},
-		"uncancellable-condition": {Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.New(c.Rules, "uncancellable-condition")
-		}},
-		"numeric-values": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "numeric-values") }},
-		"empty-triggers": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "empty-triggers") }},
-		"empty-job":      {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "empty-job") }},
-		"empty-run":      {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, "empty-run") }},
+		"deprecated-commands":     {Script: workflowcommands.Checker{}},
+		"if-cond":                 declarationImplementation(correctness.IfCondCheck()),
+		"uncancellable-condition": declarationImplementation(suspicious.UncancellableConditionCheck()),
+		"numeric-values":          declarationImplementation(correctness.NumericValuesCheck()),
+		"empty-triggers":          declarationImplementation(suspicious.EmptyTriggersCheck()),
+		"empty-job":               declarationImplementation(suspicious.EmptyJobCheck()),
+		"empty-run":               declarationImplementation(suspicious.EmptyRunCheck()),
 		"unpinned-reference": {Build: func(c Inputs) workflowvisit.Rule {
 			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {
@@ -151,6 +150,10 @@ func ruleImplementations() map[string]implementation {
 		"cache-call-unrestricted": {Build: func(c Inputs) workflowvisit.Rule { return security.NewRuleCacheCallUnrestricted() }, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }},
 		"cache-operation":         {Build: func(c Inputs) workflowvisit.Rule { return correctness.NewRuleCacheOperation(c.Workflows) }, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") }},
 	}
+})
+
+func declarationImplementation(check checkinputs.DeclarationCheck) implementation {
+	return implementation{Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.New(c.Rules, check) }}
 }
 
 // Registrations returns check implementations in rule-declaration order.

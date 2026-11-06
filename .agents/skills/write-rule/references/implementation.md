@@ -7,22 +7,26 @@ before editing; search by the named symbol if a file has moved.
 
 For a declaration check, trace `missing-workflow-permissions` as a worked example:
 
-| Responsibility                                           | Entry point                                                                                                         |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Rule metadata and examples                               | `internal/checking/rules/security/missing-workflow-permissions.go`                                                  |
-| Selection, defaults, option type and configuration scope | `internal/input/configuration/catalog.go`                                                                           |
-| Execution registration                                   | `internal/checking/executor/registration/registry.go`                                                               |
-| Declaration adapter                                      | `internal/checking/executor/declarations/visitor.go`                                                                |
-| Check dispatch and semantic implementation               | `internal/checking/executor/declarations/declarations.go`, `internal/checking/rules/security/permissions-checks.go` |
-| Semantic regression cases                                | `internal/checking/executor/declarations/missing_permissions_test.go`                                               |
-| Configured host and suppression cases                    | `internal/development/tests/integration/workflow/rule_missing_permissions_test.go`                                  |
+| Responsibility                                          | Entry point                                                                           |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Rule metadata, examples and requested declaration views | `internal/checking/rules/security/missing-workflow-permissions.go`                    |
+| Configuration projection                                | `internal/input/configuration/registry.go`, `internal/input/configuration/catalog.go` |
+| Execution registration                                  | `internal/checking/executor/registration/registry.go`                                 |
+| Declaration adapter                                     | `internal/checking/executor/declarations/visitor.go`                                  |
+| Typed workflow, job and step inputs                     | `internal/checking/inputs/declarations.go`                                            |
+| Semantic implementation                                 | `internal/checking/rules/security/permissions-checks.go`                              |
+| Semantic regression cases                               | `internal/checking/rules/security/missing_workflow_permissions_test.go`               |
+| Configured host and suppression cases                   | `internal/development/tests/integration/workflow/rule_missing_permissions_test.go`    |
 
 This example separates absent permissions from explicit `{}` and distinguishes a
 reusable-only workflow from one with another trigger. Follow its registration,
 configuration, and diagnostic flow. Choose severity and compatibility behavior
 for the new rule based on the problem it detects.
 
-Use declaration views for source-local checks. For reasoning across calls, inspect
+For source-local checks, return a `DeclarationCheck` with callbacks for the
+workflow, job or step views the rule consumes. Leave other callbacks nil. Define
+that binding beside the rule's metadata and implementation; the traversal adapter
+does not select implementations by rule name. For reasoning across calls, inspect
 `internal/model/workflows/facts` and `internal/model/workflows/execution` and an existing consumer.
 Shared semantic predicates live under `internal/checking/constraints`. Adapters supply facts
 and attach findings; they should not each reconstruct the same analysis.
@@ -79,7 +83,7 @@ through actionlint; recorded-output tests do not perform those operations.
 ## Renames and settings changes
 
 Search the old ID across code, schemas, docs, fixtures, and examples. Inspect
-`rule/names.go`, `internal/input/configuration/migration.go`, `internal/input/configuration/category_migration.go`,
+`internal/checking/rules/aliases.go`, `internal/input/configuration/migration.go`, `internal/input/configuration/category_migration.go`,
 `internal/results/suppression`, and `internal/results/policy`. Check structured ignores,
 inline selectors, unused-suppression accounting, CLI lookup, and emitted codes.
 

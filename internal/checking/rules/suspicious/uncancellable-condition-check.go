@@ -55,3 +55,7 @@ func decodedConditionPosition(value string, offset int) (line, column int) {
 	prefix := value[:offset]
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 }
+
+func checkJobCancellationCondition(job declaration.JobView) []reporting.Finding {
+	return UncancellableCondition(job.If())
+}

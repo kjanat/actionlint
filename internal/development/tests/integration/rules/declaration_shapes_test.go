@@ -1,4 +1,4 @@
-package declarations
+package rules_test
 
 import (
 	"slices"

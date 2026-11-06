@@ -18,7 +18,7 @@ test an unknown value too and identify the information needed to decide whether
 that input violates the rule.
 
 For example, a cancellation check must distinguish job and step conditions and
-intentional cleanup. See `internal/checking/executor/declarations/uncancellable_condition_test.go`:
+intentional cleanup. See `internal/checking/rules/suspicious/uncancellable_condition_test.go`:
 it exercises compound conditions and classifies behavior-changing fixes as unsafe.
 The existence of that test is not independent proof of GitHub's behavior.
 
