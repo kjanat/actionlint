@@ -400,9 +400,10 @@ func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
 				wantPhase := FailureNone
 				var wantValue any
 				wantFindings := 0
-				if predicate == "true" {
+				switch predicate {
+				case "true":
 					wantState, wantPhase, wantFindings = exprvalues.EvaluationInvalid, FailureEvaluation, 1
-				} else if predicate == "false" {
+				case "false":
 					wantState, wantValue = exprvalues.EvaluationKnown, "fallback"
 				}
 				if got.Valid != (wantPhase == FailureNone) || got.FailurePhase != wantPhase || got.Evaluation.State != wantState || !cmp.Equal(got.Evaluation.Value, wantValue) || len(got.Findings) != wantFindings {

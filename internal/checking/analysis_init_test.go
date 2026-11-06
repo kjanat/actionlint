@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -114,109 +115,111 @@ func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *test
 			name = "joined"
 		}
 		t.Run(name, func(t *testing.T) {
-			type contextKey struct{}
-			parent, cancel := context.WithCancel(context.WithValue(t.Context(), contextKey{}, "caller value"))
-			pool := process.NewProcessPool(parent, 1)
-			t.Cleanup(pool.Wait)
-			started, joinStarted, release, finished := make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})
-			unblock := sync.OnceFunc(func() { close(release) })
-			signalJoin := sync.OnceFunc(func() { close(joinStarted) })
-			failure := &blockedAnalysisInitError{cause: context.Canceled}
-			constructorErr := fmt.Errorf("capture constructor: %w", failure)
-			lifetimeError := parent.Err
-			var joinBudget time.Duration
-			var lifetimeCancelled, cleanupUncancelled, valuesPreserved bool
-			joinFailure := errors.New("metadata join timed out")
-			failure.join = func(cleanup context.Context) error {
-				lifetimeCancelled = errors.Is(lifetimeError(), context.Canceled)
-				cleanupUncancelled = cleanup.Err() == nil
-				valuesPreserved = cleanup.Value(contextKey{}) == "caller value"
-				deadline, ok := cleanup.Deadline()
-				if ok {
-					joinBudget = time.Until(deadline)
+			synctest.Test(t, func(t *testing.T) {
+				type contextKey struct{}
+				parent, cancel := context.WithCancel(context.WithValue(t.Context(), contextKey{}, "caller value"))
+				pool := process.NewProcessPool(parent, 1)
+				t.Cleanup(pool.Wait)
+				started, joinStarted, release, finished := make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})
+				unblock := sync.OnceFunc(func() { close(release) })
+				signalJoin := sync.OnceFunc(func() { close(joinStarted) })
+				failure := &blockedAnalysisInitError{cause: context.Canceled}
+				constructorErr := fmt.Errorf("capture constructor: %w", failure)
+				lifetimeError := parent.Err
+				var joinBudget time.Duration
+				var lifetimeCancelled, cleanupUncancelled, valuesPreserved bool
+				joinFailure := errors.New("metadata join timed out")
+				failure.join = func(cleanup context.Context) error {
+					lifetimeCancelled = errors.Is(lifetimeError(), context.Canceled)
+					cleanupUncancelled = cleanup.Err() == nil
+					valuesPreserved = cleanup.Value(contextKey{}) == "caller value"
+					deadline, ok := cleanup.Deadline()
+					if ok {
+						joinBudget = time.Until(deadline)
+					}
+					signalJoin()
+					select {
+					case <-release:
+						return nil
+					case <-cleanup.Done():
+						return errors.Join(joinFailure, cleanup.Err())
+					}
 				}
-				signalJoin()
-				select {
-				case <-release:
-					return nil
-				case <-cleanup.Done():
-					return errors.Join(joinFailure, cleanup.Err())
+				t.Cleanup(func() {
+					cancel()
+					unblock()
+					select {
+					case <-finished:
+					case <-time.After(time.Second):
+						t.Error("application did not exit after releasing initialization")
+						return
+					}
+					cleanup, stop := context.WithTimeout(context.Background(), time.Second)
+					defer stop()
+					if err := failure.Join(cleanup); err != nil {
+						t.Errorf("test initialization cleanup: %v", err)
+					}
+				})
+				budget := 5 * time.Millisecond
+				if complete {
+					budget = time.Second
 				}
-			}
-			t.Cleanup(func() {
-				cancel()
-				unblock()
+				var reads atomic.Int32
+				request := analysisRequest{
+					Processes: pool, WorkingDir: t.TempDir(), captureJoinTimeout: budget,
+					SourceOverlays: []SourceOverlay{{Path: "first.yml"}, {Path: "later.yml"}},
+					ReadFile:       func(string) ([]byte, error) { reads.Add(1); return nil, nil },
+				}
+				type outcome struct {
+					result *analysisResult
+					err    error
+				}
+				returned := make(chan outcome, 1)
+				go func() {
+					defer close(finished)
+					result, err := runWithSourceCaptureConstructor(parent, request, io.Discard, LogLevelNone,
+						func(ctx context.Context, _ []capture.Overlay, _ capture.Reader) (*capture.Store, error) {
+							lifetimeError = ctx.Err
+							close(started)
+							<-ctx.Done()
+							return nil, constructorErr
+						})
+					returned <- outcome{result, err}
+				}()
 				select {
-				case <-finished:
+				case <-started:
 				case <-time.After(time.Second):
-					t.Error("application did not exit after releasing initialization")
-					return
+					t.Fatal("application did not start capture constructor")
 				}
-				cleanup, stop := context.WithTimeout(context.Background(), time.Second)
-				defer stop()
-				if err := failure.Join(cleanup); err != nil {
-					t.Errorf("test initialization cleanup: %v", err)
-				}
-			})
-			budget := 5 * time.Millisecond
-			if complete {
-				budget = time.Second
-			}
-			var reads atomic.Int32
-			request := analysisRequest{
-				Processes: pool, WorkingDir: t.TempDir(), captureJoinTimeout: budget,
-				SourceOverlays: []SourceOverlay{{Path: "first.yml"}, {Path: "later.yml"}},
-				ReadFile:       func(string) ([]byte, error) { reads.Add(1); return nil, nil },
-			}
-			type outcome struct {
-				result *analysisResult
-				err    error
-			}
-			returned := make(chan outcome, 1)
-			go func() {
-				defer close(finished)
-				result, err := runWithSourceCaptureConstructor(parent, request, io.Discard, LogLevelNone,
-					func(ctx context.Context, _ []capture.Overlay, _ capture.Reader) (*capture.Store, error) {
-						lifetimeError = ctx.Err
-						close(started)
-						<-ctx.Done()
-						return nil, constructorErr
-					})
-				returned <- outcome{result, err}
-			}()
-			select {
-			case <-started:
-			case <-time.After(time.Second):
-				t.Fatal("application did not start capture constructor")
-			}
-			cancel()
-			select {
-			case <-joinStarted:
-			case <-time.After(time.Second):
-				t.Fatal("application did not join pending initialization")
-			}
-			if complete {
-				unblock()
-			}
-			select {
-			case result := <-returned:
-				underlying, ok := errors.AsType[*blockedAnalysisInitError](result.err)
-				if result.result != nil || !ok || underlying != failure || !errors.Is(result.err, constructorErr) || !errors.Is(result.err, context.Canceled) || reads.Load() != 0 {
-					t.Fatalf("pending initialization published or lost cause: result=%v error=%v reads=%d", result.result, result.err, reads.Load())
-				}
-				if !lifetimeCancelled || !cleanupUncancelled || !valuesPreserved || joinBudget <= 0 || joinBudget > budget {
-					t.Fatalf("application join context: lifetime-cancelled=%t cleanup-uncancelled=%t values=%t budget=%v", lifetimeCancelled, cleanupUncancelled, valuesPreserved, joinBudget)
+				cancel()
+				select {
+				case <-joinStarted:
+				case <-time.After(time.Second):
+					t.Fatal("application did not join pending initialization")
 				}
 				if complete {
-					if failure.Pending() || errors.Is(result.err, joinFailure) {
-						t.Fatalf("successful initialization join: pending=%t error=%v", failure.Pending(), result.err)
-					}
-				} else if !failure.Pending() || !errors.Is(result.err, joinFailure) || !errors.Is(result.err, context.DeadlineExceeded) {
-					t.Fatalf("bounded application join lost pending work/error: pending=%t error=%v", failure.Pending(), result.err)
+					unblock()
 				}
-			case <-time.After(time.Second):
-				t.Fatal("application waited beyond initialization join budget")
-			}
+				select {
+				case result := <-returned:
+					underlying, ok := errors.AsType[*blockedAnalysisInitError](result.err)
+					if result.result != nil || !ok || underlying != failure || !errors.Is(result.err, constructorErr) || !errors.Is(result.err, context.Canceled) || reads.Load() != 0 {
+						t.Fatalf("pending initialization published or lost cause: result=%v error=%v reads=%d", result.result, result.err, reads.Load())
+					}
+					if !lifetimeCancelled || !cleanupUncancelled || !valuesPreserved || joinBudget <= 0 || joinBudget > budget {
+						t.Fatalf("application join context: lifetime-cancelled=%t cleanup-uncancelled=%t values=%t budget=%v", lifetimeCancelled, cleanupUncancelled, valuesPreserved, joinBudget)
+					}
+					if complete {
+						if failure.Pending() || errors.Is(result.err, joinFailure) {
+							t.Fatalf("successful initialization join: pending=%t error=%v", failure.Pending(), result.err)
+						}
+					} else if !failure.Pending() || !errors.Is(result.err, joinFailure) || !errors.Is(result.err, context.DeadlineExceeded) {
+						t.Fatalf("bounded application join lost pending work/error: pending=%t error=%v", failure.Pending(), result.err)
+					}
+				case <-time.After(time.Second):
+					t.Fatal("application waited beyond initialization join budget")
+				}
+			})
 		})
 	}
 }

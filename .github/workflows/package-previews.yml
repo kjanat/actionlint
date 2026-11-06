@@ -58,8 +58,9 @@ jobs:
           mkdir -p "${sources}"
           jq '.targets |= map(select(.tier == 1))' distribution/npm/targets.json > "${sources}/targets.json"
           ln -s "${GITHUB_WORKSPACE}/distribution/npm/facade" "${sources}/facade"
+          version="$(jq -er .version dist/metadata.json)"
           bun distribution/npm/src/cli.ts build \
-            --version "$(jq -er .version dist/metadata.json)" \
+            --version "${version}" \
             --downloads dist --npm-dir "${sources}" --out distribution/npm/dist
       - name: Verify the packed plugin SDK
         env: *a
