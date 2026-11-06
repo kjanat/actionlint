@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
@@ -347,7 +348,7 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 
 // ObserveCheckout updates action resolution after a checkout step.
 func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
-	enabled, known := execution.Condition(step.Condition())
+	enabled, known := workflowconditions.Condition(step.Condition())
 	if known && !enabled {
 		return
 	}
@@ -383,7 +384,7 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
 			return
 		}
 	}
-	certain := known && !execution.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !execution.BoolMayBeTrue(step.Background().Semantic())
+	certain := known && !workflowconditions.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !workflowconditions.BoolMayBeTrue(step.Background().Semantic())
 	if !certain {
 		checkout.Kind = execution.DirectoryUnknown
 	}
@@ -401,7 +402,7 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
 		}
 	}
 	previous := c.CheckoutState()
-	if self && !known && !execution.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !execution.BoolMayBeTrue(step.Background().Semantic()) && !execution.CanRunAfterFailure(step.Condition()) {
+	if self && !known && !workflowconditions.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !workflowconditions.BoolMayBeTrue(step.Background().Semantic()) && !workflowconditions.CanRunAfterFailure(step.Condition()) {
 		// Skipping or successfully refreshing the same self checkout both
 		// preserve its placement. A failed refresh cannot reach ordinary steps.
 		if previous.SameSelfCheckout(checkout.Path) {

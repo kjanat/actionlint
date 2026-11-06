@@ -5,6 +5,7 @@ import (
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
@@ -13,7 +14,7 @@ import (
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
 func (c *Resolver) ObserveExecution(step workflowdecl.StepView) {
-	if enabled, known := execution.Condition(step.Condition()); known && !enabled {
+	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
 	run, ok := step.Run()
@@ -86,7 +87,7 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
 func (c *Resolver) ObserveOpaqueAction(step workflowdecl.StepView, action workflowdecl.ExecActionView) {
-	if enabled, known := execution.Condition(step.Condition()); known && !enabled {
+	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
 	uses := action.Uses()

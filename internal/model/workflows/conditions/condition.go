@@ -1,4 +1,4 @@
-package execution
+package conditions
 
 import (
 	"strings"
@@ -348,6 +348,3 @@ func BoolMayBeTrue(semantic value.Value) bool {
 	}
 	return true
 }
-
-// A known self checkout establishes which index is represented in the workspace.
-// Opaque actions may change permissions or replace files, so invalidate that state.
