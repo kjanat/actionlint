@@ -14,10 +14,10 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
@@ -44,7 +44,7 @@ jobs:
 // checkWithCaches analyzes with the same registry and store, so the cache and
 // the analysis see one capture of each document.
 type capturedWorkflowCache struct {
-	*calls.Cache
+	*workflowinputs.Cache
 	registry  *parsing.SourceSnapshots
 	captures  *capture.Store
 	snapshots *capturedSnapshots
@@ -56,7 +56,7 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 		cwd = sourceFixtureBase(tb)
 	}
 	registry, captures, snapshots := newCapturedSnapshots(tb, cwd)
-	cache := calls.NewCache(root, cwd, debug)
+	cache := workflowinputs.NewCache(root, debug)
 	cache.SetSources(tb.Context(), captures, cwd)
 	return &capturedWorkflowCache{Cache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
@@ -73,7 +73,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		session.workingDir = sourceFixtureBase(tb)
 	}
 	var declarations *capturedSnapshots
-	var workflowCache *calls.Cache
+	var workflowCache *workflowinputs.Cache
 	if workflows != nil {
 		session.snapshots, session.captures, declarations = workflows.registry, workflows.captures, workflows.snapshots
 		workflowCache = workflows.Cache

@@ -1,15 +1,11 @@
-// Package calls parses and caches reusable-workflow contracts and permissions.
-package calls
+package workflows
 
 import (
 	"context"
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 )
-
-var allPermissionScopes = permission.Scopes()
 
 // SetSources installs the result-owned source capture before any cache lookups.
 func (c *Cache) SetSources(ctx context.Context, captures *capture.Store, workingDir string) {

@@ -6,8 +6,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
 func sourceFixtureBase(tb testing.TB) string {
@@ -15,15 +15,15 @@ func sourceFixtureBase(tb testing.TB) string {
 	return capturefixture.CurrentDir(tb)
 }
 
-func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *calls.Cache {
+func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *workflowinputs.Cache {
 	tb.Helper()
 	cache, _ := newCapturedWorkflowCacheAndSnapshots(tb, root, cwd, debug)
 	return cache
 }
 
-func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*calls.Cache, *capturedSnapshots) {
+func newCapturedWorkflowCacheAndSnapshots(tb testing.TB, root, cwd string, debug io.Writer) (*workflowinputs.Cache, *capturedSnapshots) {
 	tb.Helper()
-	cache := calls.NewCache(root, cwd, debug)
+	cache := workflowinputs.NewCache(root, debug)
 	store, snapshots := newCapturedSnapshots(tb, sourceFixtureBase(tb))
 	cache.SetSources(tb.Context(), store, sourceFixtureBase(tb))
 	return cache, snapshots

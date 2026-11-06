@@ -13,6 +13,7 @@ import (
 
 	cachepolicy "actionlint.kjanat.dev/v2/internal/checking/cache"
 
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 
@@ -24,14 +25,14 @@ type workflowCallCheck struct {
 	defaultPermissions  calls.ResolvedPermissions
 	workflowPermissions workflowdecl.PermissionsView
 	workflowCacheMode   workflowdecl.CacheModeView
-	cache               *calls.Cache
+	cache               *workflowinputs.Cache
 	log                 func(string, ...any)
 }
 
 // WorkflowCallCheck validates each reusable call against supplied workflow
 // defaults, repository facts and loaded dependency metadata. Source preparation
 // seeds the metadata cache before callbacks run. A nil log disables debug output.
-func WorkflowCallCheck(workflow workflowdecl.WorkflowView, cache *calls.Cache, facts repository.Snapshot, log func(string, ...any)) checkinputs.DeclarationCheck {
+func WorkflowCallCheck(workflow workflowdecl.WorkflowView, cache *workflowinputs.Cache, facts repository.Snapshot, log func(string, ...any)) checkinputs.DeclarationCheck {
 	descriptor := WorkflowCallDeclaration()
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {

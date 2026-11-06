@@ -1,4 +1,4 @@
-package calls_test
+package workflows_test
 
 import (
 	"testing"

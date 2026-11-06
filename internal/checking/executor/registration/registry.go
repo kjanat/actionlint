@@ -33,7 +33,7 @@ import (
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
@@ -57,7 +57,7 @@ type Inputs struct {
 	Repository                    repository.Snapshot
 	Actions                       *workspaceactions.Resolver
 	RemoteActions                 *actionremote.ResolvedActions
-	Workflows                     *calls.Cache
+	Workflows                     *workflowinputs.Cache
 	WorkflowNames                 *workflownames.Index
 	WorkflowNameInventory         namemodel.Inventory
 	Reader                        *files.Reader

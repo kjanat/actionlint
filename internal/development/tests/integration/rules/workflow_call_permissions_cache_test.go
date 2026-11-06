@@ -13,6 +13,7 @@ import (
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -45,9 +46,9 @@ jobs:
 }
 
 func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "..", "model", "calls", "testdata", "reusable-workflows")
+	root := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
 
-	run := func(t *testing.T, cache *calls.Cache) []string {
+	run := func(t *testing.T, cache *workflowinputs.Cache) []string {
 		t.Helper()
 		r := workflowCallVisitor(fixturedecl.Workflow(&workflowlang.Workflow{}), cache, repofacts.Snapshot{})
 		if err := r.VisitWorkflowPre(fixturedecl.Workflow(&workflowlang.Workflow{})); err != nil {

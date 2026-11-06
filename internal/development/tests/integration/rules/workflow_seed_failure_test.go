@@ -8,6 +8,7 @@ import (
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -53,7 +54,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := calls.NewCache(root, root, nil)
+			cache := workflowinputs.NewCache(root, nil)
 			cache.SetSources(t.Context(), store, root)
 			visit := func(snapshot parsing.SourceSnapshot) (int, int) {
 				t.Helper()

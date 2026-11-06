@@ -1,1 +1,3 @@
-Reusable workflows are separate in [`reusable`](./reusable) otherwise errors are not deterministic. When some broken workflow is parsed first, it causes parse error `ReusableWorkflowMetadata` is created from `WorkflowCallEvent` AST node. But when `test.yaml` is parsed first, `ReusableWorkflowMetadata` instance is parsed in `reusable_workflow.go` and causes its own parse error.
+Workflows under [`reusable`](./reusable) have invalid metadata.
+[`workflows/test.yaml`](./workflows/test.yaml) calls them so the integration suite
+checks diagnostics at each caller.
