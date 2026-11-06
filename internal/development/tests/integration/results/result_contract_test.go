@@ -15,12 +15,22 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 func TestCheckResultSchema(t *testing.T) {
 	data, err := os.ReadFile("schemas/results/v1.schema.json")
 	if err != nil {
+		t.Fatal(err)
+	}
+	partial := report.Analysis{IncompleteChecks: []report.IncompleteCheck{{Source: sourcepos.Reference{Document: "/work/ci.yml", Revision: "abc"}, Rule: "workflow-run-names", Reason: "producer names unavailable"}}}
+	encoded, err := json.Marshal(commandstatus.AnalysisResult(partial))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projected map[string]any
+	if err := json.Unmarshal(encoded, &projected); err != nil {
 		t.Fatal(err)
 	}
 	var document any
@@ -35,6 +45,9 @@ func TestCheckResultSchema(t *testing.T) {
 	schema, err := compiler.Compile(location)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if err := schema.Validate(projected); err != nil {
+		t.Fatalf("incomplete-check result violates its schema: %v\n%s", err, encoded)
 	}
 	for _, runtime := range []string{
 		`using: composite

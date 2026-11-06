@@ -8,17 +8,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type suppressionUse struct {
 	document, revision, rule string
 	position                 sourcepos.Position
 }
-
-type (
-	suppressionRevision struct{ document, revision string }
-	suppressionRule     struct{ document, revision, rule string }
-)
 
 // addUnusedSuppressionFixes shares one edit across all unused selectors in a
 // comment. This keeps fix-all transactions disjoint and retains selectors used
@@ -77,10 +73,8 @@ func addUnusedSuppressionFixes(files []analyzedFile, allowed []string) {
 // mixing documents or revisions. Absence of findings proves a selector unused
 // only when every invocation of that source completed the relevant check.
 type suppressionUses struct {
-	mu          sync.Mutex
-	seen        map[suppressionUse]bool
-	incomplete  map[suppressionRevision]bool
-	unavailable map[suppressionRule]bool
+	mu   sync.Mutex
+	seen map[suppressionUse]bool
 }
 
 func (u *suppressionUses) observe(ref sourcepos.Reference, position sourcepos.Position, rule string) {
@@ -92,34 +86,28 @@ func (u *suppressionUses) observe(ref sourcepos.Reference, position sourcepos.Po
 	u.seen[suppressionUse{ref.Document, ref.Revision, rule, position}] = true
 }
 
-func (u *suppressionUses) markIncomplete(ref sourcepos.Reference) {
+func (u *suppressionUses) discardUnproven(files []analyzedFile, checks []report.IncompleteCheck) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	if u.incomplete == nil {
-		u.incomplete = make(map[suppressionRevision]bool)
+	incomplete := make(map[checkRevision]bool)
+	unavailable := make(map[checkRule]bool)
+	for _, check := range checks {
+		if check.Rule == "" {
+			incomplete[checkRevision{check.Source.Document, check.Source.Revision}] = true
+		} else {
+			unavailable[checkRule{check.Source.Document, check.Source.Revision, check.Rule}] = true
+		}
 	}
-	u.incomplete[suppressionRevision{ref.Document, ref.Revision}] = true
-}
-
-func (u *suppressionUses) markUnavailable(ref sourcepos.Reference, rule string) {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	if u.unavailable == nil {
-		u.unavailable = make(map[suppressionRule]bool)
-	}
-	u.unavailable[suppressionRule{ref.Document, ref.Revision, rule}] = true
-}
-
-func (u *suppressionUses) discardUnproven(files []analyzedFile) {
-	u.mu.Lock()
-	defer u.mu.Unlock()
 	for index := range files {
 		files[index].errors = slices.DeleteFunc(files[index].errors, func(finding *findingmodel.Finding) bool {
 			ref := finding.Reference
-			return finding.UnusedSuppressionRule != "" && ref != nil &&
-				(u.incomplete[suppressionRevision{ref.Document, ref.Revision}] ||
-					u.unavailable[suppressionRule{ref.Document, ref.Revision, finding.UnusedSuppressionRule}] ||
-					u.seen[suppressionUse{ref.Document, ref.Revision, finding.UnusedSuppressionRule, finding.Start}])
+			if finding.UnusedSuppressionRule == "" || ref == nil {
+				return false
+			}
+			skipped := unavailable[checkRule{ref.Document, ref.Revision, finding.UnusedSuppressionRule}]
+			return (incomplete[checkRevision{ref.Document, ref.Revision}] ||
+				skipped ||
+				u.seen[suppressionUse{ref.Document, ref.Revision, finding.UnusedSuppressionRule, finding.Start}])
 		})
 	}
 }

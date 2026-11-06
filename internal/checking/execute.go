@@ -431,7 +431,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 				documents.add(captured.Revision().Document(), documentmodel.FromAction(path, meta, parseErr))
 				if parseErr != nil || meta == nil {
 					revision := captured.Revision()
-					session.suppressionUses.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
+					session.checkCompletion.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
 				}
 			},
 		})
@@ -459,7 +459,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			}
 			if err != nil {
 				if revision := file.captured.Revision(); revision.Valid() {
-					session.suppressionUses.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
+					session.checkCompletion.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
 				}
 				entryErrors[i] = &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
 			}
@@ -503,7 +503,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	if completionErr := documents.complete(captures, readAliases); completionErr != nil {
 		err = errors.Join(err, completionErr)
 	}
-	session.suppressionUses.discardUnproven(result.files)
+	result.IncompleteChecks = session.checkCompletion.incompleteChecks()
+	session.suppressionUses.discardUnproven(result.files, result.IncompleteChecks)
 	additionalRules := selection.RuleNames(session.analyzers)
 	for _, registration := range session.ruleRegistrations {
 		additionalRules = append(additionalRules, registration.Descriptor.Name)

@@ -12,6 +12,7 @@ import type {
 	Edit,
 	Fix,
 	JobOutline,
+	IncompleteCheck,
 	Position,
 	ResultConfig,
 	ResultData,
@@ -231,6 +232,15 @@ function actionMetadata(value: unknown): value is ActionMetadata {
 		&& value.problems.every(actionMetadataProblem);
 }
 
+function incompleteCheck(value: unknown): value is IncompleteCheck {
+	return object(value) && object(value.source)
+		&& typeof value.source.document === 'string' && value.source.document.length > 0
+		&& typeof value.source.revision === 'string' && value.source.revision.length > 0
+		&& typeof value.source.node === 'string' && typeof value.source.address === 'string'
+		&& (value.rule === undefined || typeof value.rule === 'string' && value.rule.length > 0)
+		&& typeof value.reason === 'string' && value.reason.length > 0;
+}
+
 export function parseResult(value: unknown): ActionResult {
 	if (
 		!object(value) || value.schema_version !== 1
@@ -243,6 +253,8 @@ export function parseResult(value: unknown): ActionResult {
 		|| (value.documents !== undefined && (!Array.isArray(value.documents) || !value.documents.every(documentOutline)))
 		|| (value.action_metadata !== undefined
 			&& (!Array.isArray(value.action_metadata) || !value.action_metadata.every(actionMetadata)))
+		|| (value.incomplete_checks !== undefined
+			&& (!Array.isArray(value.incomplete_checks) || !value.incomplete_checks.every(incompleteCheck)))
 	) throw new Error('actionlint returned an invalid or unsupported persisted result');
 	const data: ResultData = {
 		// Forward additive schema fields to reporters.
@@ -257,6 +269,7 @@ export function parseResult(value: unknown): ActionResult {
 	if (value.error !== undefined) data.error = value.error;
 	if (value.documents !== undefined) data.documents = value.documents;
 	if (value.action_metadata !== undefined) data.action_metadata = value.action_metadata;
+	if (value.incomplete_checks !== undefined) data.incomplete_checks = value.incomplete_checks;
 	if (
 		value.completed === true && value.status === 'success' && value.exit_code === 0 && value.diagnostics.length === 0
 	) {

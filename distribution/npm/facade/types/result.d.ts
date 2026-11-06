@@ -177,7 +177,11 @@ export type ActionMetadata =
 		| (ActionMetadataSelection & { state: 'invalid'; reason?: never; problems: ActionMetadataProblem[] })
 	);
 
+export type IncompleteCheck = { source: SourceReference; rule?: string; reason: string };
+
 export type ResultData = {
+	/** Checks that could not finish in at least one invocation of a source revision. */
+	incomplete_checks?: IncompleteCheck[];
 	schema_version: 1;
 	file_count: number | null;
 	diagnostics: Diagnostic[];

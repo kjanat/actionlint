@@ -13,18 +13,19 @@ import (
 // ExitCode describes analysis, even when a caller chooses not to fail on findings.
 // Consumers should tolerate unknown fields within a supported schema version.
 type CheckResult struct {
-	ActionMetadata []ActionMetadataResult `json:"action_metadata"`
-	SchemaVersion  int                    `json:"schema_version"`
-	Status         string                 `json:"status"`
-	Completed      bool                   `json:"completed"`
-	ExitCode       int                    `json:"exit_code"`
-	FileCount      *int                   `json:"file_count"`
-	Diagnostics    []results.Diagnostic   `json:"diagnostics"`
-	Documents      documentmodel.Outlines `json:"documents"`
-	Configs        []ResultConfig         `json:"configurations"`
-	Hints          []string               `json:"hints"`
-	SARIF          json.RawMessage        `json:"sarif,omitempty"`
-	Error          string                 `json:"error,omitempty"`
+	IncompleteChecks []IncompleteCheck      `json:"incomplete_checks,omitempty"`
+	ActionMetadata   []ActionMetadataResult `json:"action_metadata"`
+	SchemaVersion    int                    `json:"schema_version"`
+	Status           string                 `json:"status"`
+	Completed        bool                   `json:"completed"`
+	ExitCode         int                    `json:"exit_code"`
+	FileCount        *int                   `json:"file_count"`
+	Diagnostics      []results.Diagnostic   `json:"diagnostics"`
+	Documents        documentmodel.Outlines `json:"documents"`
+	Configs          []ResultConfig         `json:"configurations"`
+	Hints            []string               `json:"hints"`
+	SARIF            json.RawMessage        `json:"sarif,omitempty"`
+	Error            string                 `json:"error,omitempty"`
 }
 
 // ActionMetadataResult describes inspected evidence for one distinct requested
@@ -46,6 +47,7 @@ func FromAnalysis(analysis Analysis) CheckResult {
 	count := analysis.FileCount
 	r.FileCount = &count
 	r.Documents = analysis.Documents
+	r.IncompleteChecks = append([]IncompleteCheck(nil), analysis.IncompleteChecks...)
 	if analysis.Diagnostics != nil {
 		r.Diagnostics = analysis.Diagnostics
 	}
