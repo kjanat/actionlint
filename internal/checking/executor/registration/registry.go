@@ -13,6 +13,7 @@ import (
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	namecheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-run-names"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
@@ -39,6 +40,7 @@ import (
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
 // Inputs supplies captured sources, resolved settings and model facts to rule constructors.
@@ -57,6 +59,7 @@ type Inputs struct {
 	RemoteActions                 *actionremote.ResolvedActions
 	Workflows                     *calls.Cache
 	WorkflowNames                 *workflownames.Index
+	WorkflowNameInventory         namemodel.Inventory
 	Reader                        *files.Reader
 	Index                         func(context.Context, string) *execution.IndexSnapshot
 }
@@ -64,12 +67,16 @@ type Inputs struct {
 // Registration pairs a rule declaration with its constructor and execution conditions.
 type Registration struct {
 	repoconfig.Rule
+	// Prepare loads inputs before constructing the check. Failures are operation
+	// failures, not lint findings. Nil means no preparation is needed.
+	Prepare func(Inputs) (Inputs, error)
 	Build   func(Inputs) workflowvisit.Rule
 	Script  checkinputs.Checker
 	Enabled func(Inputs) bool
 }
 
 type implementation struct {
+	Prepare func(Inputs) (Inputs, error)
 	Build   func(Inputs) workflowvisit.Rule
 	Script  checkinputs.Checker
 	Enabled func(Inputs) bool
@@ -82,8 +89,8 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		}, Enabled: func(c Inputs) bool {
 			return c.Config != nil && c.Config.Policy.RequireActionMetadata != nil && *c.Config.Policy.RequireActionMetadata
 		}},
-		"workflow-run-names": {Build: func(c Inputs) workflowvisit.Rule {
-			return correctness.NewRuleWorkflowRunNames(absolutePath(c.ProjectRoot), c.WorkflowNames, c.Config.RuleSet().DiagnosticLevel(c.Config, "workflow-run-names") != "off")
+		"workflow-run-names": {Prepare: prepareWorkflowRunNames, Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.New(c.Rules, correctness.WorkflowRunNamesCheck(c.WorkflowNameInventory))
 		}, Enabled: workflowRunNamesAvailable},
 		"matrix": {Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.New(c.Rules, correctness.MatrixCheck(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off"))
@@ -184,7 +191,7 @@ func Registrations(rules repoconfig.RuleSet) []Registration {
 	out := make([]Registration, len(catalog))
 	for i, metadata := range catalog {
 		behavior := behaviors[metadata.Name]
-		out[i] = Registration{Rule: metadata, Build: behavior.Build, Script: behavior.Script, Enabled: behavior.Enabled}
+		out[i] = Registration{Rule: metadata, Prepare: behavior.Prepare, Build: behavior.Build, Script: behavior.Script, Enabled: behavior.Enabled}
 	}
 	return out
 }
@@ -211,4 +218,20 @@ func workflowRunNamesAvailable(c Inputs) bool {
 		path = filepath.Join(c.WorkingDir, path)
 	}
 	return workflownames.SamePath(filepath.Dir(path), filepath.Join(absolutePath(c.ProjectRoot), ".github", "workflows"))
+}
+
+func prepareWorkflowRunNames(c Inputs) (Inputs, error) {
+	if c.Rules.DiagnosticLevel(c.Config, "workflow-run-names") == "off" {
+		return c, nil
+	}
+	workflow, available := c.SourceSnapshot.WorkflowView()
+	if !available || len(namecheck.WorkflowRunFilters(workflow)) == 0 {
+		return c, nil
+	}
+	inventory, err := c.WorkflowNames.ForRoot(absolutePath(c.ProjectRoot))
+	if err != nil {
+		return c, err
+	}
+	c.WorkflowNameInventory = inventory
+	return c, nil
 }

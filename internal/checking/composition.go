@@ -20,7 +20,11 @@ type documentChecks struct {
 }
 
 func (s *analysisSession) buildChecks(context ruleexec.Inputs, toolContext tools.Context, action bool) (documentChecks, error) {
-	selected := documentChecks{Selection: selection.CreateRules(ConfigurationRules(), context, action)}
+	rules, err := selection.CreateRules(ConfigurationRules(), context, action)
+	selected := documentChecks{Selection: rules}
+	if err != nil {
+		return selected, err
+	}
 	for _, a := range selected.Scripts {
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a})
 	}
