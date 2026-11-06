@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -47,7 +46,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
 			c := newCapturedWorkflowCache(t, "", "", nil)
-			r := correctness.NewRuleWorkflowCall(parsing.SourceSnapshot{}, c, repofacts.Snapshot{})
+			r := workflowCallVisitor(fixturedecl.Workflow(&workflowlang.Workflow{}), c, repofacts.Snapshot{})
 			j := &workflowlang.Job{
 				WorkflowCall: &workflowlang.WorkflowCall{
 					Uses: &workflowlang.String{
@@ -92,7 +91,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	}
 
 	c := newCapturedWorkflowCache(t, "", "", nil)
-	r := correctness.NewRuleWorkflowCall(parsing.SourceSnapshot{}, c, repofacts.Snapshot{})
+	r := workflowCallVisitor(fixturedecl.Workflow(w), c, repofacts.Snapshot{})
 
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
@@ -108,7 +107,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	}
 }
 
-func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
+func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 	cwd := filepath.Join(sourceFixtureBase(t), "path", "to", "project")
 	path := filepath.Join(cwd, "test-workflow.yaml")
 	content := []byte("on:\n  workflow_call:\n    inputs:\n      input1: {type: string}\n    outputs:\n      output1: {value: '${{ jobs.test.outputs.value }}'}\n    secrets:\n      secret1: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
@@ -124,7 +123,10 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	}
 	c := calls.NewCache(cwd, cwd, nil)
 	c.SetSources(t.Context(), store, cwd)
-	r := correctness.NewRuleWorkflowCall(snapshot, c, repofacts.Snapshot{})
+	if err := c.Seed(snapshot); err != nil {
+		t.Fatal(err)
+	}
+	r := workflowCallVisitor(w, c, repofacts.Snapshot{})
 
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)

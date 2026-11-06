@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -51,7 +50,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := correctness.NewRuleWorkflowCall(parsing.SourceSnapshot{}, cache, repofacts.Snapshot{})
+	rule := workflowCallVisitor(fixturedecl.Workflow(w), cache, repofacts.Snapshot{})
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}

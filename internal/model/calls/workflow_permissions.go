@@ -1,6 +1,7 @@
 package calls
 
 import (
+	"maps"
 	"slices"
 	"strings"
 
@@ -76,6 +77,19 @@ const (
 type ResolvedPermissions struct {
 	Kind   permissionsKind
 	Levels PermissionScopeLevels
+}
+
+// EffectivePermissions applies job, workflow and repository defaults in that
+// order. An explicit invalid declaration stops inheritance. The returned map
+// does not share storage with defaults or the published declarations.
+func EffectivePermissions(workflow, job declaration.PermissionsView, defaults ResolvedPermissions) ResolvedPermissions {
+	if job.Present() {
+		return ResolvePermissions(job)
+	}
+	if workflow.Present() {
+		return ResolvePermissions(workflow)
+	}
+	return ResolvedPermissions{Kind: defaults.Kind, Levels: maps.Clone(defaults.Levels)}
 }
 
 // permissionsSource is the raw shape of a "permissions:" value. Exactly one of the two forms is

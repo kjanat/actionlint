@@ -2,6 +2,7 @@ package registration
 
 import (
 	"context"
+	"io"
 	"path/filepath"
 	"sync"
 
@@ -12,6 +13,7 @@ import (
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
 	workflowcommands "actionlint.kjanat.dev/v2/internal/checking/commands"
@@ -43,6 +45,7 @@ import (
 // It contains no process pool, application session or engine implementation.
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
+	Debug                         io.Writer
 	Rules                         repoconfig.RuleSet
 	SourceSnapshot                parsing.SourceSnapshot
 	Runners                       *runnerlang.Knowledge
@@ -118,7 +121,9 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"permissions":                  declarationImplementation(correctness.PermissionsCheck()),
 		"missing-workflow-permissions": declarationImplementation(security.MissingWorkflowPermissionsCheck()),
 		"workflow-call": {Build: func(c Inputs) workflowvisit.Rule {
-			return correctness.NewRuleWorkflowCall(c.SourceSnapshot, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository))
+			workflow, _ := c.SourceSnapshot.WorkflowView()
+			logger := reporting.Logger{Tag: "workflow-call", Writer: c.Debug}
+			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
 		}},
 		"expression": {Build: func(c Inputs) workflowvisit.Rule {
 			return expressionchecks.New(c.Context, c.Actions, c.Workflows, c.Runners, c.RemoteActions)
