@@ -114,7 +114,7 @@ for (const override of [false, true]) {
 	) {
 		if (override && selector === 'ignore') continue; // Ignores are declared at the root.
 		const text = override
-			? 'overrides:\n  - includes: ["**"]\n' + entry.split('\n').map(line => '    ' + line).join('\n')
+			? `overrides:\n  - includes: ["**"]\n${entry.split('\n').map(line => `    ${line}`).join('\n')}`
 			: entry;
 		const doc = document(text);
 		const result = await service.doComplete(doc, doc.positionAt(text.length), false);

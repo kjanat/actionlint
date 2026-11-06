@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
+
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import test from 'node:test';
 
 import { findNix, wslDistributions } from '#release/nix-command.mjs';
 import { checkRepository, commandExecutor, prepareVersion } from '#release/prepare-version.mjs';

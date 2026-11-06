@@ -5,8 +5,8 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
 import { archiveMembers, readBounded } from '#archives';
-import { jsonObject, loadTargets, packageName, selectTargets } from '#targets';
 import type { Target, Targets } from '#targets';
+import { jsonObject, loadTargets, packageName, selectTargets } from '#targets';
 
 export interface BuildOptions {
 	version: string;

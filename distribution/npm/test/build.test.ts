@@ -1,21 +1,22 @@
 import assert from 'node:assert/strict';
+import type { TestContext } from 'node:test';
+import test from 'node:test';
+
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import test from 'node:test';
-import type { TestContext } from 'node:test';
 import { gzipSync } from 'node:zlib';
 
 import { Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } from '@zip.js/zip.js';
 import { pack } from 'tar-stream';
 
 import { archiveMembers, readBounded } from '#archives';
-import { assetName, buildPackages, parseChecksums, releaseVersion } from '#build';
 import type { BuildOptions } from '#build';
-import { jsonObject, loadTargets, packageName, parseTargets, selectTargets } from '#targets';
+import { assetName, buildPackages, parseChecksums, releaseVersion } from '#build';
 import type { ArchiveFormat, Target } from '#targets';
+import { jsonObject, loadTargets, packageName, parseTargets, selectTargets } from '#targets';
 
 const sourceRoot = resolve(import.meta.dirname, '../../..');
 const npmSources = join(sourceRoot, 'distribution/npm');
