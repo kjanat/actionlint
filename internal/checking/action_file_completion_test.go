@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 )
 
 func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
@@ -37,6 +38,11 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 				}
 				if err := os.WriteFile(filepath.Join(dir, "index.js"), nil, 0o600); err != nil {
 					t.Fatal(err)
+				}
+				for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", "local"}} {
+					if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+						t.Fatalf("prepare repository index: %v: %s", err, output)
+					}
 				}
 				input := workspace.Source{Path: path, Content: []byte(metadata), Project: workspace.Identity(root)}
 				if tc.disabled {
