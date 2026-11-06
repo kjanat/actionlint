@@ -1087,6 +1087,30 @@
         "type": "string"
       }
     },
+    "incomplete_checks": {
+      "description": "Checks that could not finish in at least one invocation of a source revision. An omitted rule identifies an interruption affecting the source's analysis. This list does not enumerate successful or disabled checks.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "reason",
+          "source"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "$ref": "#/definitions/sourceReference"
+          }
+        }
+      }
+    },
     "sarif": {
       "description": "Optional SARIF report. Availability depends on the producer.",
       "type": "object",
