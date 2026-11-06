@@ -1,7 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 #:tombi toml-version = "v1.1.0"
 
-min_version   = { soft = "2026.10.13" }
+min_version   = { soft = "2026.11.3" }
 monorepo_root = true
 
 [wrappers.actionlint]
@@ -45,7 +45,7 @@ kprint                     = "0.60.6-kjanat"
 runner-run                 = "0.28.0"
 typescript                 = "7.0.2"
 biome                      = {
-  version        = "2.6.5",
+  version        = "2.6.6",
   version_prefix = "@biomejs/biome@",
 }
 rust                       = {

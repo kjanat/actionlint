@@ -11,6 +11,9 @@ concurrency:
 
 permissions: { contents: read }
 
+env:
+  hasToken: "${{ secrets.UPKEEP_TOKEN != null }}"
+
 jobs:
   generate:
     name: Regenerate the Go tables
@@ -18,26 +21,26 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - &Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - &SetupGo
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - &SetupNode
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with: { bun-version: "1.4.4" }
       - uses: kjanat/install-dprint@7dafce0e5019151901bae232b12cf8b7bd330b2a # v2
       - name: Install catalogue generator dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Refresh upstream action and workflow metadata
         run: mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
-      - name: Warn when the pull request will carry no CI
-        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
-        run: |
-          if [[ -z "${UPKEEP_TOKEN}" ]]; then
-            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
-          fi
+      - &warnToken
+        name: Warn when the pull request will carry no CI
+        if: ${{ !fromJSON(env.hasToken) }}
+        run: echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}
@@ -56,23 +59,22 @@ jobs:
             area:codegen
             type:maintenance
           assignees: ${{ github.repository_owner }}
+
   readme:
     name: Refresh the README demo section
     if: github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: { node-version-file: .node-version, package-manager-cache: false }
+      - *Checkout
+      - *SetupNode
       - uses: $/.github/actions/setup-shellcheck
       - name: Keep mise metadata with cached tools
         shell: bash
         run: mise_dir="${HOME//\\//}/.local/share/actionlint-mise";
           if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi;
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache: true
           auto_update: true
@@ -82,7 +84,7 @@ jobs:
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
           install_args: github:kjanat/actionlint github:rhysd/actionlint
           add_shims_to_path: false
-        # The verified helper already supplies this transitive dependency.
+          minimum_release_age: 0s
         env:
           MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint"
           MISE_DISABLE_TOOLS: "shellcheck,github:koalaman/shellcheck,rshellcheck,github:kjanat/shellcheck-rs"
@@ -90,21 +92,13 @@ jobs:
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
         id: versions
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
           fork="$(awk '/^\*\*This fork / { print $3; exit }' README.md)"
           upstream="$(awk '/^\*\*Upstream actionlint / { print $3; exit }' README.md)"
           test -n "${fork}" && test -n "${upstream}"
-          {
-            echo "fork=${fork}"
-            echo "upstream=${upstream}"
-          } >> "${GITHUB_OUTPUT}"
-      - name: Warn when the pull request will carry no CI
-        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
-        run: |
-          if [[ -z "${UPKEEP_TOKEN}" ]]; then
-            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
-          fi
+          { echo "fork=${fork}"; echo "upstream=${upstream}"; } >> "${GITHUB_OUTPUT}"
+      - *warnToken
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}
@@ -121,22 +115,20 @@ jobs:
             documentation
             type:maintenance
           assignees: ${{ github.repository_owner }}
+
   go-toolchain:
     name: Bump Go toolchain
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: { node-version-file: .node-version, package-manager-cache: false }
+      - *Checkout
+      - *SetupGo
+      - *SetupNode
       - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # 31.11.3
       - uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
@@ -144,8 +136,8 @@ jobs:
       - name: Check the latest stable Go toolchain
         id: version
         env: { GH_TOKEN: "${{ github.token }}" }
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
           version="$(curl --fail --silent --show-error --location 'https://go.dev/VERSION?m=text' | sed -n '1p')"
           if [[ ! "${version}" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error title=Invalid Go version::go.dev returned '${version}'"
@@ -153,12 +145,7 @@ jobs:
           fi
           node tools/toolchain/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
-      - name: Warn when the pull request will carry no CI
-        env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
-        run: |
-          if [[ -z "${UPKEEP_TOKEN}" ]]; then
-            echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
-          fi
+      - *warnToken
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}

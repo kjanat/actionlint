@@ -8,7 +8,8 @@ import { arg, cli, command, flag } from '@kjanat/dreamcli';
 import { compileProvider } from './authoring.ts';
 import type { JSONValue } from './index.ts';
 import { isJSONValue } from './index.ts';
-import { type AuthoringOptions, testManifest, validateManifest } from './testing.ts';
+import type { AuthoringOptions } from './testing.ts';
+import { testManifest, validateManifest } from './testing.ts';
 
 export const initCommand = command('init')
 	.description('Create a typed manifest, jq transform and fixtures while preserving existing project settings')
