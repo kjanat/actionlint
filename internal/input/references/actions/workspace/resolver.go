@@ -69,6 +69,7 @@ type SourceDocument struct {
 	address    string
 	captured   capture.Snapshot
 	provenance parsing.Provenance
+	files      actionmeta.ReferencedFiles
 }
 
 func (d SourceDocument) Path() string { return d.path }
@@ -78,6 +79,8 @@ func (d SourceDocument) Path() string { return d.path }
 func (d SourceDocument) Address() string { return d.address }
 
 func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
+
+func (d SourceDocument) ReferencedFiles() actionmeta.ReferencedFiles { return d.files }
 
 func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
 

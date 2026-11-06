@@ -1,9 +1,7 @@
 package action
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -32,18 +30,19 @@ type validator struct {
 	standalone *actionmeta.Metadata
 	errs       []*findingmodel.Finding
 	advisories bool
+	files      actionmeta.ReferencedFiles
 }
 
 // CheckWithAdvisories includes optional expression findings for host policy.
-func CheckWithAdvisories(meta *actionmeta.Metadata, caller *workflowlang.Pos) []*findingmodel.Finding {
-	rule := validator{advisories: true}
+func CheckWithAdvisories(meta *actionmeta.Metadata, caller *workflowlang.Pos, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
+	rule := validator{advisories: true, files: files}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
 }
 
 // StandaloneWithAdvisories includes optional expression findings for host policy.
-func StandaloneWithAdvisories(meta *actionmeta.Metadata) []*findingmodel.Finding {
-	rule := validator{standalone: meta, advisories: true}
+func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
+	rule := validator{files: files, standalone: meta, advisories: true}
 	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
 	return rule.errs
 }
@@ -69,15 +68,15 @@ func (rule *validator) Errorf(pos *workflowlang.Pos, code actionmeta.ProblemCode
 
 // Check validates a manifest reached from a workflow call site. Findings which
 // cannot point inside the manifest point to the caller's uses position.
-func Check(meta *actionmeta.Metadata, caller *workflowlang.Pos) []*findingmodel.Finding {
-	rule := validator{}
+func Check(meta *actionmeta.Metadata, caller *workflowlang.Pos, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
+	rule := validator{files: files}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
 }
 
 // Standalone validates a manifest's declarations at their own source positions.
-func Standalone(meta *actionmeta.Metadata) []*findingmodel.Finding {
-	rule := validator{standalone: meta}
+func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
+	rule := validator{files: files, standalone: meta}
 	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
 	return rule.errs
 }
@@ -87,24 +86,6 @@ func Inputs(meta *actionmeta.Metadata, exec workflowdecl.ExecActionView, describ
 	rule := validator{}
 	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
-}
-
-// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runsimage
-// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-//
-// Required! The Docker image to use as the container to run the action.
-// The value can be the Docker base image name, a local `Dockerfile` in your repository,
-// or a public image in Docker Hub or another registry.
-//
-// To reference a `Dockerfile` local to your repository, the file must be named `Dockerfile`
-// and you must use a path relative to your action metadata file.
-// The `docker` application will execute this file.
-func isImageOnDockerRegistry(image string) bool {
-	return strings.HasPrefix(image, "docker://") ||
-		strings.HasPrefix(image, "gcr.io/") ||
-		strings.HasPrefix(image, "pkg.dev/") ||
-		strings.HasPrefix(image, "ghcr.io/") ||
-		strings.HasPrefix(image, "docker.io/")
 }
 
 func (rule *validator) missingRunsProp(pos *workflowlang.Pos, prop, ty, action, path string) {
@@ -140,8 +121,7 @@ func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *wo
 	if f == "" {
 		return
 	}
-	p := filepath.Join(dir, f)
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+	if rule.files.Lookup(file) == actionmeta.FileMissing {
 		rule.Errorf(pos, actionmeta.CodeMissingFile, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
 	}
 }
@@ -151,7 +131,7 @@ func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *wo
 func (rule *validator) checkLocalDockerActionRuns(r *actionmeta.Runs, dir, name string, pos *workflowlang.Pos) {
 	if r.Image == "" {
 		rule.missingRunsProp(pos, "image", "Docker", name, dir)
-	} else if !isImageOnDockerRegistry(r.Image) {
+	} else if !actionmeta.ImageOnRegistry(r.Image) {
 		rule.checkRunsFileExists(r.Image, dir, "image", name, pos)
 		if filepath.Base(filepath.FromSlash(r.Image)) != "Dockerfile" {
 			pos := rule.metadataFieldPosition(pos, "runs", "image")

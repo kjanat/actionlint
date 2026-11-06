@@ -26,7 +26,7 @@ runs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
+	findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, `did you mean "github.repository"?`) || findings[0].Path != "action.yml" || findings[0].Start.Line != 6 {
 		t.Fatalf("metadata suggestion lost diagnostic or position: %v", findings)
 	}

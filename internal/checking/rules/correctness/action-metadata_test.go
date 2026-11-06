@@ -100,17 +100,17 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	rule := NewRuleAction(t.Context(), nil, nil)
-	if err := rule.CheckStandaloneMetadata(metadata, parsing.SourceSnapshot{}); err == nil {
+	if err := rule.CheckStandaloneMetadata(metadata, parsing.SourceSnapshot{}, actionmeta.ReferencedFiles{}); err == nil {
 		t.Fatal("missing source was accepted")
 	}
 	other, err := actionmeta.Parse(path, append([]byte("# another revision\n"), content...))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := rule.CheckStandaloneMetadata(other, snapshot); err == nil || len(rule.Errs()) != 0 {
+	if err := rule.CheckStandaloneMetadata(other, snapshot, actionmeta.ReferencedFiles{}); err == nil || len(rule.Errs()) != 0 {
 		t.Fatalf("mismatching parse source was accepted: %v", err)
 	}
-	if err := rule.CheckStandaloneMetadata(metadata, snapshot); err != nil {
+	if err := rule.CheckStandaloneMetadata(metadata, snapshot, actionmeta.ReferencedFiles{}); err != nil {
 		t.Fatal(err)
 	}
 	if len(rule.Errs()) != 1 || rule.Errs()[0].MetadataIdentity == nil || rule.Errs()[0].MetadataIdentity.Key.Path != snapshot.Reference().Document {

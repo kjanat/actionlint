@@ -38,7 +38,7 @@ type CheckoutParticipant interface {
 type (
 	MetadataParticipant interface {
 		workflowvisit.Rule
-		CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot) error
+		CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot, actionmeta.ReferencedFiles) error
 		ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule
 	}
 )
