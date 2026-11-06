@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -119,10 +120,13 @@ func TestConfigurationSelectedEnginesThroughPublicAPI(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			root, paths, cfg := configuredEngineFixture(t)
 			loaded := map[string]*configuredBackend{}
+			var loadedMu sync.Mutex
 			options := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 				if path != filepath.Join(root, "first.wasm") && path != filepath.Join(root, "second.wasm") {
 					t.Errorf("unresolved path: %s", path)
 				}
+				loadedMu.Lock()
+				defer loadedMu.Unlock()
 				if _, ok := loaded[path]; ok {
 					t.Errorf("loaded twice: %s", path)
 				}
