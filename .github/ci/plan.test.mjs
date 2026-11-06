@@ -490,8 +490,11 @@ test('autofix installs the Node.js tools for table and README generation', () =>
 	assert.equal(bootstraps.length, 1, 'README generation requires one explicit mise bootstrap');
 	const [bootstrap] = bootstraps;
 	assert.ok(bootstrap);
-	assert.match(bootstrap, /if: steps\.inputs\.outputs\.tables == 'true' \|\| steps\.inputs\.outputs\.readme == 'true'/);
-	assert.match(bootstrap, /install: true/);
+	assert.doesNotMatch(bootstrap, /\n\s+if:/);
+	assert.match(
+		bootstrap,
+		/install: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \|\| steps\.inputs\.outputs\.readme == 'true' \}\}/,
+	);
 	assert.match(bootstrap, /env: true/);
 	assert.match(bootstrap, /add_shims_to_path: false/);
 	assert.match(
