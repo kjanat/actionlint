@@ -7,7 +7,7 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -45,7 +45,7 @@ func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*findingmod
 }
 func (rule *ruleExecutableBit) VisitWorkflowPost(workflowdecl.WorkflowView) error { return nil }
 func (rule *ruleExecutableBit) VisitJobPost(workflowdecl.JobView) error           { return nil }
-func (rule *ruleExecutableBit) ApplyCheckout(actions *actionlocal.Resolver) {
+func (rule *ruleExecutableBit) ApplyCheckout(actions *workspaceactions.Resolver) {
 	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
 }
 

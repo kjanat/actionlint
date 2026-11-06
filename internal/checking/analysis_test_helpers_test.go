@@ -13,10 +13,10 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -62,7 +62,7 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *actionlocal.Cache, workflows *capturedWorkflowCache) ([]*findingmodel.Finding, error) {
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *workspaceactions.Cache, workflows *capturedWorkflowCache) ([]*findingmodel.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
@@ -90,7 +90,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		return nil, err
 	}
 	if actions != nil {
-		actions.Configure(actionlocal.Options{Captures: session.captures, Context: ctx, WorkingDir: session.workingDir, Reader: session.reader, CustomReader: request.ReadFile != nil})
+		actions.Configure(workspaceactions.Options{Captures: session.captures, Context: ctx, WorkingDir: session.workingDir, Reader: session.reader, CustomReader: request.ReadFile != nil})
 	}
 	if proc == nil {
 		proc = process.NewProcessPool(ctx, 1)

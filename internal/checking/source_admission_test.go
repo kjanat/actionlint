@@ -13,8 +13,8 @@ import (
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -214,16 +214,16 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := actionlocal.NewCache(t.Context(), root, nil)
-			cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: root})
+			cache := workspaceactions.NewCache(t.Context(), root, nil)
+			cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)
-			if !exists || lookup.Status() != actionlocal.MetadataParseFailed {
+			if !exists || lookup.Status() != workspaceactions.MetadataParseFailed {
 				t.Fatal("fixture metadata lost its captured parse failure")
 			}
 			composed := composites.Result{
 				Sources:         map[string][]byte{metadataPath: metadata.Bytes()},
-				SourceDocuments: map[string]actionlocal.SourceDocument{metadataPath: document},
+				SourceDocuments: map[string]workspaceactions.SourceDocument{metadataPath: document},
 			}
 			target := metadata.Revision()
 			rejected := map[string]bool{}

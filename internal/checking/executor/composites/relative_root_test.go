@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -27,9 +27,9 @@ func TestCompositeCarriesCaptureAcrossRelativeDisplayPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := actionlocal.NewCache(t.Context(), "repository", nil)
-	cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: base})
-	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: actionlocal.NewResolver(cache, nil), CollectScripts: true, Paths: execution.Paths{Workspace: root, Analysis: base}}
+	cache := workspaceactions.NewCache(t.Context(), "repository", nil)
+	cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: base})
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(cache, nil), CollectScripts: true, Paths: execution.Paths{Workspace: root, Analysis: base}}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)

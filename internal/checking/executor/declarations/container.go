@@ -11,7 +11,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -32,7 +32,7 @@ type containerAdapter struct {
 	workflowvisit.Base
 	ctx        context.Context
 	runners    *runnerlang.Knowledge
-	actions    *actionlocal.Resolver
+	actions    *workspaceactions.Resolver
 	remote     *actionremote.ResolvedActions
 	targets    []runnerlang.ContainerTarget
 	guards     []string
@@ -42,7 +42,7 @@ type containerAdapter struct {
 
 // NewContainerRunner supplies container facts to the rule and tracks enclosing
 // composite conditions. Metadata acquisition belongs to this executor adapter.
-func NewContainerRunner(ctx context.Context, runners *runnerlang.Knowledge, actions *actionlocal.Resolver, remote *actionremote.ResolvedActions) workflowvisit.Rule {
+func NewContainerRunner(ctx context.Context, runners *runnerlang.Knowledge, actions *workspaceactions.Resolver, remote *actionremote.ResolvedActions) workflowvisit.Rule {
 	descriptor := correctness.ContainerRunnerDeclaration()
 	return &containerAdapter{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), ctx: ctx, runners: runners, actions: actions, remote: remote, conditions: map[source.Reference]string{}}
 }
@@ -77,7 +77,7 @@ func (r *containerAdapter) checkStep(step workflowdecl.StepView) error {
 	docker := strings.HasPrefix(spec, "docker://")
 	if !docker && (strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/")) {
 		result, _ := r.actions.LookupMetadata(spec)
-		docker = result.Status() == actionlocal.MetadataDockerfileOnly
+		docker = result.Status() == workspaceactions.MetadataDockerfileOnly
 		if meta := result.Metadata(); meta != nil {
 			docker = strings.EqualFold(meta.Runs.Using, "docker")
 		}
@@ -94,7 +94,7 @@ func (r *containerAdapter) checkStep(step workflowdecl.StepView) error {
 	return nil
 }
 
-func (r *containerAdapter) ApplyCheckout(actions *actionlocal.Resolver) { r.actions = actions }
+func (r *containerAdapter) ApplyCheckout(actions *workspaceactions.Resolver) { r.actions = actions }
 
 func (r *containerAdapter) EnterInvocation(scope checkcalls.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {

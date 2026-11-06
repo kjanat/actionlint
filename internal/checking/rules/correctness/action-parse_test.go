@@ -14,7 +14,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -32,10 +32,10 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				return content, nil
 			}, nil)
 			cache := actionfixture.NewCache(t, root, nil, reader)
-			var lookup actionlocal.MetadataDocumentLookup = cache
+			var lookup workspaceactions.MetadataDocumentLookup = cache
 			spec := "./broken"
 			if mapped {
-				lookup = actionlocal.NewResolver(cache, map[string]string{"./generated": "./broken"})
+				lookup = workspaceactions.NewResolver(cache, map[string]string{"./generated": "./broken"})
 				spec = "./generated"
 			}
 			rule := NewRuleAction(t.Context(), lookup, nil)
@@ -58,8 +58,8 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 
 type metadataParseFailureLookup struct{ cause error }
 
-func (lookup metadataParseFailureLookup) FindMetadataDocument(string) (*actionmeta.Metadata, bool, actionlocal.SourceDocument, error) {
-	return nil, false, actionlocal.SourceDocument{}, actionlocal.NewParseError("broken/action.yml", lookup.cause)
+func (lookup metadataParseFailureLookup) FindMetadataDocument(string) (*actionmeta.Metadata, bool, workspaceactions.SourceDocument, error) {
+	return nil, false, workspaceactions.SourceDocument{}, workspaceactions.NewParseError("broken/action.yml", lookup.cause)
 }
 
 func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) {

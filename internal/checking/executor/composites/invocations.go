@@ -12,7 +12,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -61,57 +61,57 @@ func (analysis *compositeAnalyzer) interrupt(err error) error {
 	return errors.Join(err, interruptionErr)
 }
 
-func metadataOutcome(result actionlocal.MetadataResult) (invocation.Outcome, error) {
+func metadataOutcome(result workspaceactions.MetadataResult) (invocation.Outcome, error) {
 	detail := ""
 	if result.Err() != nil {
 		detail = result.Err().Error()
 	}
 	switch result.Status() {
-	case actionlocal.MetadataDockerfileOnly:
+	case workspaceactions.MetadataDockerfileOnly:
 		return invocation.Opaque(invocation.ReasonDockerfileOnly, detail)
-	case actionlocal.MetadataLookupDisabled:
+	case workspaceactions.MetadataLookupDisabled:
 		return invocation.Unavailable(invocation.ReasonLookupDisabled, detail)
-	case actionlocal.MetadataNonLocal:
+	case workspaceactions.MetadataNonLocal:
 		return invocation.Unavailable(invocation.ReasonNonLocal, detail)
-	case actionlocal.MetadataNotFetched:
+	case workspaceactions.MetadataNotFetched:
 		return invocation.Unavailable(invocation.ReasonNotFetched, detail)
-	case actionlocal.MetadataPlacementUncertain:
+	case workspaceactions.MetadataPlacementUncertain:
 		return invocation.Unavailable(invocation.ReasonPlacementUncertain, detail)
-	case actionlocal.MetadataMissingManifest:
+	case workspaceactions.MetadataMissingManifest:
 		return invocation.Unresolved(invocation.ReasonMissingManifest, detail)
-	case actionlocal.MetadataReadFailed:
+	case workspaceactions.MetadataReadFailed:
 		return invocation.Unresolved(invocation.ReasonReadFailed, detail)
-	case actionlocal.MetadataParseFailed:
+	case workspaceactions.MetadataParseFailed:
 		return invocation.Unresolved(invocation.ReasonParseFailed, detail)
-	case actionlocal.MetadataMappingFailed:
+	case workspaceactions.MetadataMappingFailed:
 		return invocation.Unresolved(invocation.ReasonMappingFailed, detail)
-	case actionlocal.MetadataInvalid, actionlocal.MetadataResolved:
+	case workspaceactions.MetadataInvalid, workspaceactions.MetadataResolved:
 	}
 	return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionView) (*actionmeta.Metadata, actionlocal.SourceDocument, invocation.Outcome, error) {
+func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionView) (*actionmeta.Metadata, workspaceactions.SourceDocument, invocation.Outcome, error) {
 	uses := action.Uses()
 	if !uses.Present() || uses.Value() == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
-		return nil, actionlocal.SourceDocument{}, outcome, err
+		return nil, workspaceactions.SourceDocument{}, outcome, err
 	}
 	spec := uses.Value()
 	if exprsyntax.ContainsExpression(spec) {
 		outcome, err := invocation.Dynamic(spec)
-		return nil, actionlocal.SourceDocument{}, outcome, err
+		return nil, workspaceactions.SourceDocument{}, outcome, err
 	}
 	position, hasPosition := uses.Pos()
 	if invalidActionReference(spec, position, hasPosition) {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference has invalid syntax")
-		return nil, actionlocal.SourceDocument{}, outcome, err
+		return nil, workspaceactions.SourceDocument{}, outcome, err
 	}
 	lookup, _ := analysis.actions.LookupMetadata(spec)
 	if errors.Is(lookup.Err(), context.Canceled) || errors.Is(lookup.Err(), context.DeadlineExceeded) {
-		return nil, actionlocal.SourceDocument{}, invocation.Outcome{}, lookup.Err()
+		return nil, workspaceactions.SourceDocument{}, invocation.Outcome{}, lookup.Err()
 	}
 	if err := analysis.cancelled(); err != nil {
-		return nil, actionlocal.SourceDocument{}, invocation.Outcome{}, err
+		return nil, workspaceactions.SourceDocument{}, invocation.Outcome{}, err
 	}
 	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
 	var snapshot parsing.SourceSnapshot
@@ -122,7 +122,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 		}
 		snapshot = admitted
 	}
-	if lookup.Status() != actionlocal.MetadataResolved {
+	if lookup.Status() != workspaceactions.MetadataResolved {
 		outcome, err := metadataOutcome(lookup)
 		return nil, sourceDocument, outcome, err
 	}

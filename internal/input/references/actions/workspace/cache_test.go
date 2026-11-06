@@ -1,4 +1,4 @@
-package local
+package workspace
 
 import (
 	"bytes"
@@ -49,7 +49,7 @@ func testCheckActionMetadataPath(t *testing.T, dir string, m *actionmeta.Metadat
 	t.Helper()
 
 	var want string
-	d := filepath.Join("..", "testdata", "metadata", dir)
+	d := filepath.Join("testdata", dir)
 	for _, f := range []string{"action.yml", "action.yaml"} {
 		p := filepath.Join(d, f)
 		if _, err := os.Stat(p); err == nil {
@@ -85,7 +85,7 @@ func testCheckCachedFlag(t *testing.T, want, have bool) {
 // Normal cases
 
 func TestLocalActionsFindMetadataOK(t *testing.T) {
-	testdir := filepath.Join("..", "testdata", "metadata")
+	testdir := "testdata"
 	root := testdir
 	c := newCapturedActionCache(t, root, nil)
 
@@ -204,7 +204,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 
 func TestLocalActionsFindConcurrently(t *testing.T) {
 	n := 10
-	root := filepath.Join("..", "testdata", "metadata")
+	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 	ret := make(chan *actionmeta.Metadata)
 	err := make(chan error)
@@ -342,7 +342,7 @@ func TestLocalActionsCaseCollision(t *testing.T) {
 }
 
 func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
-	root := filepath.Join("..", "testdata", "metadata")
+	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 	for _, spec := range []string{"actions/checkout@v2", "docker://example.com/foo/bar"} {
 		m, cached, err := c.FindMetadata(spec)
@@ -358,7 +358,7 @@ func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
 
 func TestLocalActionsLogCacheHit(t *testing.T) {
 	dbg := &bytes.Buffer{}
-	testdir := filepath.Join("..", "testdata", "metadata")
+	testdir := "testdata"
 	root := testdir
 	c := newCapturedActionCache(t, root, dbg)
 
@@ -409,7 +409,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 		},
 	}
 
-	root := filepath.Join("..", "testdata", "metadata")
+	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 
 	for _, tc := range tests {
@@ -438,7 +438,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 }
 
 func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
-	root := filepath.Join("..", "testdata", "metadata")
+	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 
 	for _, tc := range []struct {
@@ -470,7 +470,7 @@ func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
 
 func TestLocalActionsConcurrentFailures(t *testing.T) {
 	n := 10
-	root := filepath.Join("..", "testdata", "metadata")
+	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 	errC := make(chan error)
 
@@ -504,7 +504,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 }
 
 func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
-	root := filepath.Join("..", "testdata", "metadata")
+	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 
 	inputs := []string{

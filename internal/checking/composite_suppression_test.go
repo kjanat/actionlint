@@ -9,9 +9,9 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
@@ -39,13 +39,13 @@ jobs:
       - run: echo ok
 `)
 	project := workspace.Identity(root)
-	actions := actionlocal.NewCache(t.Context(), projectRoot(project), nil)
+	actions := workspaceactions.NewCache(t.Context(), projectRoot(project), nil)
 	workflows := calls.NewCache(project.RootDir(), root, nil)
 	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	var declarations *capturedSnapshots
 	session.snapshots, session.captures, declarations = newCapturedSnapshots(t, root)
-	actions.Configure(actionlocal.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
+	actions.Configure(workspaceactions.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
 	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {
 		source, err := os.ReadFile(workflow)

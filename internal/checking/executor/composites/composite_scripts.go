@@ -17,7 +17,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -244,7 +244,7 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepVi
 	return nil
 }
 
-func compositeCheckoutPaths(rule workflowvisit.Pass, actions *actionlocal.Resolver) {
+func compositeCheckoutPaths(rule workflowvisit.Pass, actions *workspaceactions.Resolver) {
 	participant, ok := rule.(checkcalls.CheckoutParticipant)
 	if !ok {
 		return

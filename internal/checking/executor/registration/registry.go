@@ -30,7 +30,7 @@ import (
 
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -55,7 +55,7 @@ type Inputs struct {
 	Path, WorkingDir, ProjectRoot string
 	Config                        *repoconfig.Config
 	Repository                    repository.Snapshot
-	Actions                       *actionlocal.Resolver
+	Actions                       *workspaceactions.Resolver
 	RemoteActions                 *actionremote.ResolvedActions
 	Workflows                     *calls.Cache
 	WorkflowNames                 *workflownames.Index

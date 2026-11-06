@@ -45,7 +45,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -368,7 +368,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 
 	documents := &actionDocuments{byPath: map[string]documentmodel.Action{}}
 	proc := request.Processes
-	actions := actionlocal.NewFactory(session.debugWriter())
+	actions := workspaceactions.NewFactory(session.debugWriter())
 	cwd := request.WorkingDir
 	if cwd == "" {
 		var err error
@@ -420,7 +420,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			workflows[root] = wc
 		}
 		ac := actions.GetCache(lifetime, root)
-		ac.Configure(actionlocal.Options{
+		ac.Configure(workspaceactions.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
 			OnManifestRequest: documents.request,
 			OnDocument: func(captured capture.Snapshot, path string, meta *actionmeta.Metadata, parseErr error) {

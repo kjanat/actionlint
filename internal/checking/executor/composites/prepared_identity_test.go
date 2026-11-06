@@ -19,7 +19,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -227,7 +227,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 					t.Fatal(err)
 				}
 				registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-				options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
+				options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
 				result, err := standaloneActionForTest(t, options, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
@@ -265,7 +265,7 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	joined := false
 	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
 	options := Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: registry,
+		Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 		Join: func() error { joined = true; return joinFailure },
 	}

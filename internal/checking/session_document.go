@@ -24,11 +24,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -74,7 +74,7 @@ type analysisSession struct {
 
 // check dispatches the two document languages at the application input boundary.
 func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config, provenance repoconfig.Provenance,
-	processes *hostprocess.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rulemeta.Descriptor,
+	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *calls.Cache, usedRules *[]rulemeta.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, errors.New("analysis requires result-owned source captures")
@@ -93,7 +93,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Snapsh
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *repoconfig.Config, provenance repoconfig.Provenance, processes *hostprocess.ProcessPool,
-	actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rulemeta.Descriptor,
+	actions *workspaceactions.Cache, workflows *calls.Cache, usedRules *[]rulemeta.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
@@ -255,7 +255,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, settings *ruleConfigurations, provenance repoconfig.Provenance, processes *hostprocess.ProcessPool,
-	actions *actionlocal.Cache, workflows *calls.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
+	actions *workspaceactions.Cache, workflows *calls.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
 ) (result composites.Result, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -287,7 +287,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if cfg != nil {
 		mappings = cfg.LocalActions
 	}
-	resolvedActions := actionlocal.NewResolver(actions, mappings)
+	resolvedActions := workspaceactions.NewResolver(actions, mappings)
 	host := s.repositories[projectRoot(project)]
 	facts := repoconfig.RepositoryFacts(cfg, host)
 	customLabels := runnerlang.LabelSet{}

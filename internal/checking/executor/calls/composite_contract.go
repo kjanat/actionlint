@@ -3,8 +3,8 @@ package calls
 import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -31,12 +31,14 @@ type InvocationParticipant interface {
 
 // CheckoutParticipant adapts its own script paths to the checkout placement
 // that actions resolved for the current invocation.
-type CheckoutParticipant interface{ ApplyCheckout(*actionlocal.Resolver) }
+type CheckoutParticipant interface {
+	ApplyCheckout(*workspaceactions.Resolver)
+}
 
 type (
 	MetadataParticipant interface {
 		workflowvisit.Rule
 		CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot) error
-		ForMetadata(*actionlocal.Resolver) workflowvisit.Rule
+		ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule
 	}
 )
