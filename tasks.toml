@@ -305,10 +305,10 @@ extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm"]
 vars    = { fixture = "pipe-to-shell" }
 
-["plugin:example:managed-no-sudo"]
+["plugin:fixture:managed-no-sudo"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm"]
-vars    = { fixture = "managed-no-sudo" }
+vars    = { fixture = "managed-no-sudo", package = "actionlint-fixture-managed-no-sudo", artifact = "managed_no_sudo" }
 
 ["plugin:example:source-annotations"]
 extends = "rust-plugin"

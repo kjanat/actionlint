@@ -1,5 +1,5 @@
 [package]
-name              = "actionlint-example-managed-no-sudo"
+name              = "actionlint-fixture-managed-no-sudo"
 version           = "0.1.0"
 edition.workspace = true
 publish           = false
@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 name       = "managed_no_sudo"
 
 [dependencies]
-actionlint-extension-api = { path = "../../sdk/rust" }
+actionlint-extension-api = { path = "../../../../../../../plugins/sdk/rust" }
 wit-bindgen.workspace    = true
 
 [features]

@@ -4,7 +4,6 @@ members  = [
   "internal/plugins/execution/component/testdata/sources/*",
   "internal/plugins/execution/module/testdata/sources/*",
   "plugins/examples/buildkite-runners",
-  "plugins/examples/managed-no-sudo",
   "plugins/examples/pinned-actions",
   "plugins/examples/pipe-to-shell",
   "plugins/examples/script-engine",

@@ -17,14 +17,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actionlint-example-managed-no-sudo"
-version = "0.1.0"
-dependencies = [
- "actionlint-extension-api",
- "wit-bindgen",
-]
-
-[[package]]
 name = "actionlint-example-pinned-actions"
 version = "0.1.0"
 dependencies = [
@@ -64,6 +56,14 @@ dependencies = [
  "sha2",
  "wasm-encoder",
  "wasmparser",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-fixture-managed-no-sudo"
+version = "0.1.0"
+dependencies = [
+ "actionlint-extension-api",
  "wit-bindgen",
 ]
 
