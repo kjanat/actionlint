@@ -90,6 +90,9 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			if !errors.Is(err, want) || !errors.Is(err, joinFailure) || !joined || script.calls != 0 || result.Batch.Valid() || len(result.Findings) != 1 || result.Findings[0].Message != "reported finding" {
 				t.Fatalf("invalid preparation escaped: error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)
 			}
+			if !unfinished && (!result.Invocations.Has(result.Invocations.RootID()) || result.Invocations.Entry().Reference != f.root.Reference()) {
+				t.Fatal("batch preparation failure discarded the published entry graph")
+			}
 		})
 	}
 }

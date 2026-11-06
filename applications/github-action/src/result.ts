@@ -17,6 +17,7 @@ import type {
 	ResultConfig,
 	ResultData,
 	StepOutline,
+	SourceReference,
 	UsesReference,
 } from '../../../distribution/npm/facade/types/result.d.ts';
 
@@ -232,11 +233,18 @@ function actionMetadata(value: unknown): value is ActionMetadata {
 		&& value.problems.every(actionMetadataProblem);
 }
 
+function capturedReference(value: unknown): value is SourceReference {
+	return object(value)
+		&& typeof value.document === 'string' && value.document.length > 0
+		&& typeof value.revision === 'string' && value.revision.length > 0
+		&& typeof value.node === 'string' && typeof value.address === 'string';
+}
+
 function incompleteCheck(value: unknown): value is IncompleteCheck {
-	return object(value) && object(value.source)
-		&& typeof value.source.document === 'string' && value.source.document.length > 0
-		&& typeof value.source.revision === 'string' && value.source.revision.length > 0
-		&& typeof value.source.node === 'string' && typeof value.source.address === 'string'
+	return object(value) && capturedReference(value.source)
+		&& (value.invocation === undefined || object(value.invocation)
+				&& typeof value.invocation.id === 'string' && /^[0-9a-f]{64}$/.test(value.invocation.id)
+				&& capturedReference(value.invocation.entry))
 		&& (value.rule === undefined || typeof value.rule === 'string' && value.rule.length > 0)
 		&& typeof value.reason === 'string' && value.reason.length > 0;
 }

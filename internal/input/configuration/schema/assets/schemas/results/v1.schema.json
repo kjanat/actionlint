@@ -399,6 +399,23 @@
         }
       ]
     },
+    "capturedSourceReference": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/sourceReference"
+        },
+        {
+          "properties": {
+            "document": {
+              "minLength": 1
+            },
+            "revision": {
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "required": [
@@ -1088,7 +1105,7 @@
       }
     },
     "incomplete_checks": {
-      "description": "Checks that could not finish in at least one invocation of a source revision. An omitted rule identifies an interruption affecting the source's analysis. This list does not enumerate successful or disabled checks.",
+      "description": "Checks that could not finish for a source revision. Invocation identifies the call and its captured entry revision when known. An omitted rule identifies an interruption affecting the source's analysis. This list does not enumerate successful or disabled checks.",
       "type": "array",
       "items": {
         "type": "object",
@@ -1097,6 +1114,22 @@
           "source"
         ],
         "properties": {
+          "invocation": {
+            "type": "object",
+            "required": [
+              "entry",
+              "id"
+            ],
+            "properties": {
+              "entry": {
+                "$ref": "#/definitions/capturedSourceReference"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
           "reason": {
             "type": "string",
             "minLength": 1
@@ -1106,7 +1139,7 @@
             "minLength": 1
           },
           "source": {
-            "$ref": "#/definitions/sourceReference"
+            "$ref": "#/definitions/capturedSourceReference"
           }
         }
       }

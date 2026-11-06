@@ -14,6 +14,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -131,6 +132,35 @@ func TestUnavailableToolRetainsNestedActionSuppression(t *testing.T) {
 	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
 	if err != nil || result == nil {
 		t.Fatalf("optional tool became a fatal error: %v", err)
+	}
+	seen := make(map[invocation.ID]bool)
+	var entryDocument, entryRevision, actionDocument, actionRevision string
+	for _, check := range result.IncompleteChecks {
+		if check.Rule != "shellcheck" {
+			continue
+		}
+		if check.Invocation.ID == "" || check.Invocation.Entry.Document == "" || check.Invocation.Entry.Revision == "" {
+			t.Fatalf("known invocation lost its entry identity: %+v", check)
+		}
+		if entryDocument == "" {
+			entryDocument, entryRevision = check.Invocation.Entry.Document, check.Invocation.Entry.Revision
+		}
+		if check.Invocation.Entry.Document != entryDocument || check.Invocation.Entry.Revision != entryRevision {
+			t.Fatalf("calls were assigned to different entry revisions: %+v", result.IncompleteChecks)
+		}
+		if check.Source.Document == entryDocument {
+			continue
+		}
+		if actionDocument == "" {
+			actionDocument, actionRevision = check.Source.Document, check.Source.Revision
+		}
+		if check.Source.Document != actionDocument || check.Source.Revision != actionRevision || seen[check.Invocation.ID] {
+			t.Fatalf("repeated calls lost their shared source or distinct IDs: %+v", result.IncompleteChecks)
+		}
+		seen[check.Invocation.ID] = true
+	}
+	if len(seen) != 2 {
+		t.Fatalf("want two incomplete action invocations, got %+v", result.IncompleteChecks)
 	}
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("repeated action lost scoped cleanup: %+v", result.Diagnostics)

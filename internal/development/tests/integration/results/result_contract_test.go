@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
@@ -25,6 +26,12 @@ func TestCheckResultSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	partial := report.Analysis{IncompleteChecks: []report.IncompleteCheck{{Source: sourcepos.Reference{Document: "/work/ci.yml", Revision: "abc"}, Rule: "workflow-run-names", Reason: "producer names unavailable"}}}
+	entry := sourcepos.Reference{Document: "/work/ci.yml", Revision: "abc", Node: "root"}
+	partial.IncompleteChecks = append(partial.IncompleteChecks, report.IncompleteCheck{
+		Source:     sourcepos.Reference{Document: "/work/action.yml", Revision: "def"},
+		Invocation: report.CheckInvocation{Entry: entry, ID: invocation.ID(strings.Repeat("a", 64))},
+		Rule:       "shellcheck", Reason: "tool unavailable",
+	})
 	encoded, err := json.Marshal(commandstatus.AnalysisResult(partial))
 	if err != nil {
 		t.Fatal(err)
@@ -48,6 +55,33 @@ func TestCheckResultSchema(t *testing.T) {
 	}
 	if err := schema.Validate(projected); err != nil {
 		t.Fatalf("incomplete-check result violates its schema: %v\n%s", err, encoded)
+	}
+	var records struct {
+		Checks []map[string]json.RawMessage `json:"incomplete_checks"`
+	}
+	if err := json.Unmarshal(encoded, &records); err != nil {
+		t.Fatal(err)
+	}
+	if len(records.Checks) != 2 || records.Checks[0]["invocation"] != nil || records.Checks[1]["invocation"] == nil {
+		t.Fatalf("unknown invocation was invented or known invocation lost: %s", encoded)
+	}
+	for _, invalid := range []string{
+		`null`, `{}`, `{"id":"` + strings.Repeat("a", 64) + `"}`,
+		`{"entry":{"document":"ci.yml","revision":"abc","node":"root","address":""}}`,
+		`{"entry":{"document":"ci.yml","revision":"abc","node":"root","address":""},"id":"bad"}`,
+		`{"entry":{"document":"ci.yml","revision":"","node":"root","address":""},"id":"` + strings.Repeat("a", 64) + `"}`,
+	} {
+		var identity any
+		if err := json.Unmarshal([]byte(invalid), &identity); err != nil {
+			t.Fatal(err)
+		}
+		projected["incomplete_checks"] = []any{map[string]any{
+			"source": map[string]any{"document": "action.yml", "revision": "def", "node": "", "address": ""},
+			"reason": "tool unavailable", "invocation": identity,
+		}}
+		if err := schema.Validate(projected); err == nil {
+			t.Errorf("schema accepted malformed invocation: %s", invalid)
+		}
 	}
 	for _, runtime := range []string{
 		`using: composite

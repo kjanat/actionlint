@@ -56,6 +56,12 @@ jobs:
 			} else if len(result.IncompleteChecks) != 1 || result.IncompleteChecks[0].Rule != "workflow-run-names" || result.IncompleteChecks[0].Source.Document == "" || result.IncompleteChecks[0].Source.Revision == "" || result.IncompleteChecks[0].Reason == "" {
 				t.Fatalf("result lost the incomplete check and its captured source: %+v", result.IncompleteChecks)
 			}
+			if tc.name != "complete" {
+				check := result.IncompleteChecks[0]
+				if check.Invocation.ID == "" || check.Invocation.Entry.Document != check.Source.Document || check.Invocation.Entry.Revision != check.Source.Revision {
+					t.Fatalf("preparation failure lost the entry invocation: %+v", check)
+				}
+			}
 			want := 0
 			if tc.wantUnused {
 				want = 1

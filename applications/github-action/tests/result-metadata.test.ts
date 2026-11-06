@@ -27,6 +27,26 @@ test('persisted incomplete checks preserve source revision and reject malformed 
 	}
 });
 
+test('persisted incomplete checks identify calls and reject incomplete invocation identities', () => {
+	const entry = { document: '/work/ci.yml', revision: 'abc', node: 'root', address: '' };
+	const record = {
+		source: { document: '/work/action.yml', revision: 'def', node: '', address: '' },
+		invocation: { entry, id: 'a'.repeat(64) },
+		rule: 'shellcheck',
+		reason: 'tool unavailable',
+	};
+	const value = { ...base, incomplete_checks: [record, { ...record, invocation: { entry, id: 'b'.repeat(64) } }] };
+	assert.deepEqual(parseResult(value), value);
+	for (
+		const invocation of [null, {}, { entry }, { id: 'a'.repeat(64) }, { entry, id: 'invalid' }, {
+			entry: { ...entry, revision: '' },
+			id: 'a'.repeat(64),
+		}]
+	) {
+		assert.throws(() => parseResult({ ...base, incomplete_checks: [{ ...record, invocation }] }));
+	}
+});
+
 const selection = {
 	host: 'github.com',
 	repository: 'owner/repository',

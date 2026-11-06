@@ -54,9 +54,11 @@ type Options struct {
 // Result is a plain record of one composition run. It holds no invariants of
 // its own; CheckInput validates its batch against the entry snapshot.
 type Result struct {
-	Findings         []*findingmodel.Finding
-	EntrySnapshot    parsing.SourceSnapshot
-	Batch            scriptexecution.Batch
+	Findings      []*findingmodel.Finding
+	EntrySnapshot parsing.SourceSnapshot
+	Batch         scriptexecution.Batch
+	// Invocations is available after graph publication even if batch preparation fails.
+	Invocations      invocation.Graph
 	ResolveExecution bool
 	Sources          map[string][]byte
 	SourceDocuments  map[string]actionlocal.SourceDocument
@@ -189,7 +191,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 		findings = append(findings, r.Errs()...)
 	}
 	findings = append(findings, c.metadataFindings...)
-	return Result{Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), SourceDocuments: options.Actions.SourceDocuments(), Configs: configs}, err
+	return Result{Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), SourceDocuments: options.Actions.SourceDocuments(), Configs: configs}, err
 }
 
 func scriptInputCatalogue(additional []checkinputs.ScriptInput) ([]checkinputs.ScriptInput, error) {
