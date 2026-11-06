@@ -85,7 +85,7 @@ type implementation struct {
 var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 	return map[string]implementation{
 		"missing-action-metadata": {Build: func(c Inputs) workflowvisit.Rule {
-			return conventions.NewRuleRequireActionMetadata(c.Context, c.RemoteActions)
+			return declarationchecks.New(c.Rules, conventions.MissingActionMetadataCheck(c.RemoteActions))
 		}, Enabled: func(c Inputs) bool {
 			return c.Config != nil && c.Config.Policy.RequireActionMetadata != nil && *c.Config.Policy.RequireActionMetadata
 		}},

@@ -35,6 +35,19 @@ func SplitAction(spec string) (owner, repo, ref, problem string) {
 	return owner, repo, ref, ""
 }
 
+// ActionReferenceProblem validates repository-action syntax without acquiring
+// metadata. An empty result means the owner, repository and ref are present.
+func ActionReferenceProblem(spec string) string {
+	owner, repo, ref, problem := SplitAction(spec)
+	if problem != "" {
+		return problem
+	}
+	if owner == "" || repo == "" || ref == "" {
+		return "owner and repo and ref should not be empty"
+	}
+	return ""
+}
+
 func SelfRepositoryLocal(spec string) (string, bool) {
 	p, ok := strings.CutPrefix(spec, "$/")
 	if !ok || strings.ContainsRune(p, '@') {

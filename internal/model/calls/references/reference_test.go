@@ -4,6 +4,24 @@ import (
 	"testing"
 )
 
+func TestActionReferenceProblem(t *testing.T) {
+	for _, tc := range []struct{ spec, problem string }{
+		{"owner/repo@v1", ""},
+		{"owner/repo/path/to/action@refs/heads/master", ""},
+		{"owner/repo", "ref is missing"},
+		{"repo@v1", "owner is missing"},
+		{"/repo@v1", "owner and repo and ref should not be empty"},
+		{"owner/@v1", "owner and repo and ref should not be empty"},
+		{"owner/repo@", "owner and repo and ref should not be empty"},
+	} {
+		t.Run(tc.spec, func(t *testing.T) {
+			if got := ActionReferenceProblem(tc.spec); got != tc.problem {
+				t.Fatalf("problem=%q, want %q", got, tc.problem)
+			}
+		})
+	}
+}
+
 func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
 	tests := []struct {
 		spec string
