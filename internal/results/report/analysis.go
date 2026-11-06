@@ -6,6 +6,7 @@ import (
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	"actionlint.kjanat.dev/v2/internal/results"
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
@@ -30,13 +31,21 @@ type Analysis struct {
 	Rules           []rule.Descriptor
 }
 
-// IncompleteCheck records a source revision whose checks could not finish in at
-// least one invocation. An empty Rule means the source's analysis was interrupted
-// before completion could be established for individual rules.
+// IncompleteCheck identifies work that could not finish for a captured source.
+// Invocation identifies the call when known. An empty Rule means the source's
+// analysis was interrupted before individual rules' completion was established.
 type IncompleteCheck struct {
-	Source source.Reference `json:"source"`
-	Rule   string           `json:"rule,omitempty"`
-	Reason string           `json:"reason"`
+	Source     source.Reference `json:"source"`
+	Invocation CheckInvocation  `json:"invocation,omitzero"`
+	Rule       string           `json:"rule,omitempty"`
+	Reason     string           `json:"reason"`
+}
+
+// CheckInvocation identifies one call within a captured entry revision. Its zero
+// value means the failure occurred before an invocation could be identified.
+type CheckInvocation struct {
+	Entry source.Reference `json:"entry"`
+	ID    invocation.ID    `json:"id"`
 }
 
 type CapturedSource struct {

@@ -16,6 +16,8 @@ type suppressionUse struct {
 	position                 sourcepos.Position
 }
 
+type checkRule struct{ document, revision, rule string }
+
 // addUnusedSuppressionFixes shares one edit across all unused selectors in a
 // comment. This keeps fix-all transactions disjoint and retains selectors used
 // by another invocation of the same action or workflow.

@@ -30,6 +30,7 @@ import (
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	actionlocal "actionlint.kjanat.dev/v2/internal/model/actions/local"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -39,6 +40,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // analysisSession holds invocation resources assembled by the application.
@@ -174,8 +176,11 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
 	defer func() {
 		if resultErr != nil {
+			invocations := indexCheckInvocations(composed.Invocations)
 			for _, index := range references {
-				s.checkCompletion.markIncomplete(index.Document)
+				for _, context := range invocations.forSource(index.Document) {
+					s.checkCompletion.markIncompleteInvocation(index.Document, context)
+				}
 			}
 		}
 	}()
@@ -264,11 +269,17 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		}
 		skippedMu.Lock()
 		defer skippedMu.Unlock()
+		invocations := indexCheckInvocations(result.Invocations)
 		for name := range skipped {
-			s.checkCompletion.markUnavailable(snapshot.Reference(), name, "tool was unavailable for this analysis")
+			markUnavailable := func(ref sourcepos.Reference) {
+				for _, context := range invocations.forSource(ref) {
+					s.checkCompletion.markUnavailableInvocation(ref, context, name, "tool was unavailable for this analysis")
+				}
+			}
+			markUnavailable(snapshot.Reference())
 			for _, document := range result.SourceDocuments {
 				revision := document.Capture().Revision()
-				s.checkCompletion.markUnavailable(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}, name, "tool was unavailable for this analysis")
+				markUnavailable(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()})
 			}
 		}
 	}()
@@ -312,8 +323,16 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	toolContext.Document = executor.SourceInput(document, path, content, snapshot.Reference())
 	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
+	entryKind := invocation.EntryWorkflow
+	if action {
+		entryKind = invocation.EntryAction
+	}
+	entryContext := report.CheckInvocation{}
+	if id, idErr := invocation.NewRootID(entryKind, snapshot.Reference()); idErr == nil {
+		entryContext = report.CheckInvocation{Entry: snapshot.Reference(), ID: id}
+	}
 	for _, unavailable := range selected.Unavailable {
-		s.checkCompletion.markUnavailable(snapshot.Reference(), unavailable.Name, unavailable.Reason)
+		s.checkCompletion.markUnavailableInvocation(snapshot.Reference(), entryContext, unavailable.Name, unavailable.Reason)
 		s.debug("Skipped %s: %s", unavailable.Name, unavailable.Reason)
 	}
 	if err != nil {
