@@ -1,33 +1,20 @@
 package correctness
 
 import (
-	"errors"
-
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/matrix"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// ruleMatrix reports the matrix diagnostics attached to each job.
-type ruleMatrix struct {
-	workflowvisit.Base
-	checkMixedTypeFilters bool
-}
-
-// NewRuleMatrix reports matrix diagnostics of each job's strategy.
-func NewRuleMatrix(checkMixedTypeFilters bool) workflowvisit.Rule {
-	descriptor := MatrixDeclaration()
-	return &ruleMatrix{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), checkMixedTypeFilters: checkMixedTypeFilters}
-}
-
-func (r *ruleMatrix) VisitJobPre(view workflowdecl.JobView) error {
-	if !view.Present() {
-		return errors.New("matrix rule requires a job declaration")
+// MatrixCheck reports problems in a job's resolved matrix declarations. The
+// caller supplies whether the mixed-type filter rule is enabled; callbacks do
+// not load configuration or depend on earlier jobs.
+func MatrixCheck(checkMixedTypeFilters bool) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{
+		Declaration: MatrixDeclaration(),
+		Job: func(job workflowdecl.JobView) []reporting.Finding {
+			return reporting.FromDiagnostics(matrixcheck.Check(job.Strategy().MatrixResolution(), checkMixedTypeFilters))
+		},
 	}
-	for _, diagnostic := range matrixcheck.Check(view.Strategy().MatrixResolution(), r.checkMixedTypeFilters) {
-		r.Report(findingmodel.FromDiagnostic(diagnostic))
-	}
-	return nil
 }

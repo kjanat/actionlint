@@ -45,7 +45,7 @@ func (rule *Checker) expressionType(text string, evaluation exprvalues.Evaluatio
 			}
 			continue
 		}
-		inferred := matrixValueType(resolved, exprtypes.AnyType())
+		inferred := resolved.TypeWithFallback(exprtypes.AnyType())
 		switch inferred.Kind() {
 		case exprtypes.KindObject, exprtypes.KindArray:
 			result.templateInvalid, result.hasTemplateInvalid = inferred, true
