@@ -318,7 +318,7 @@ vars    = { fixture = "source-annotations", features = "source-annotations-fixtu
 ["plugin:example:pinned-actions"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/pinned-actions.wasm"]
-vars    = { fixture = "pinned-actions" }
+vars    = { fixture = "pinned-actions", package = "actionlint-example-pinned-actions", artifact = "pinned_actions", packager = "package-pinned-actions" }
 
 ["plugin:example:buildkite-runners"]
 extends = "rust-plugin"
