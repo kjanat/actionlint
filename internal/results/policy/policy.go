@@ -114,11 +114,6 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 		}
 		findings = slices.DeleteFunc(findings, func(e *findingmodel.Finding) bool {
 			level := diagnosticLevel(e.Rule)
-			if level == "on" {
-				if descriptor, ok := processor.RuleSet.FindRule(e.Rule); ok && descriptor.DefaultLevel != "" {
-					level = descriptor.DefaultLevel
-				}
-			}
 			switch level {
 			case "off":
 				return true

@@ -122,6 +122,9 @@ func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool)
 	if ruleSet.disabled(rules.Disable, d.Name) || cfg != nil && cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
 		level = "off"
 	}
+	if level == "on" {
+		level = defaultLevel(d)
+	}
 	return explicit.WithLevel(level)
 }
 
