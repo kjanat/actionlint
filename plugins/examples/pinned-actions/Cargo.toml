@@ -5,10 +5,16 @@ edition.workspace = true
 publish           = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 name       = "pinned_actions"
 
+[[bin]]
+name              = "package-pinned-actions"
+path              = "src/bin/package.rs"
+required-features = ["package"]
+
 [dependencies]
-wit-bindgen.workspace = true
+actionlint-extension-api = { path = "../../sdk/rust" }
 
 [features]
+package = ["actionlint-extension-api/package"]

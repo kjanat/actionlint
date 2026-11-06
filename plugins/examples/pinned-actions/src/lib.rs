@@ -1,15 +1,8 @@
 //! Checks dependency facts supplied by the host. Source text
 //! is intentionally unused: the host owns parsing and declaration provenance.
-wit_bindgen::generate!({
-    path: "../../protocol/wit",
-    world: "plugin",
-});
+use actionlint_extension_api::{Descriptor, Diagnostic, Guest, Input, InputKind, Outcome};
 
-use exports::kjanat::actionlint::analyzer::{
-    Descriptor, Diagnostic, Guest, Input, InputKind, Outcome,
-};
-
-struct Plugin;
+pub struct Plugin;
 
 impl Guest for Plugin {
     fn describe() -> Descriptor {
@@ -73,4 +66,4 @@ impl Guest for Plugin {
 }
 
 #[cfg(target_arch = "wasm32")]
-export!(Plugin);
+actionlint_extension_api::export_plugin!(Plugin);

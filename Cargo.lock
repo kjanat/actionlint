@@ -20,7 +20,7 @@ dependencies = [
 name = "actionlint-example-pinned-actions"
 version = "0.1.0"
 dependencies = [
- "wit-bindgen",
+ "actionlint-extension-api",
 ]
 
 [[package]]
