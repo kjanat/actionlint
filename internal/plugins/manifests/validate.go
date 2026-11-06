@@ -72,13 +72,13 @@ func validate(m Manifest) error {
 		return fmt.Errorf("rule %q has invalid category %q; expected one of %s", m.Rule.Name, m.Rule.Category, strings.Join(rulemeta.Categories(), ", "))
 	}
 	seenFacts := map[rulemeta.InputKind]bool{}
-	for _, fact := range m.RequiredInputs {
+	for _, fact := range m.Rule.RequiredInputs {
 		if fact != rulemeta.Source && fact != rulemeta.Dependencies || seenFacts[fact] {
 			return fmt.Errorf("unsupported or duplicate document input kind %q", fact)
 		}
 		seenFacts[fact] = true
 	}
-	if m.Role != RoleDocument && (len(m.RequiredInputs) != 0 || len(m.Selectors.Documents) != 0) {
+	if m.Role != RoleDocument && (len(m.Rule.RequiredInputs) != 0 || len(m.Selectors.Documents) != 0) {
 		return errors.New("document input kinds and selectors require the document role")
 	}
 	if m.Role == RoleDocument && (len(m.Selectors.Inputs) != 0 || len(m.Selectors.Shells) != 0) {

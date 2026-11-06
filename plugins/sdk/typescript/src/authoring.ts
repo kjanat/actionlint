@@ -68,7 +68,10 @@ export async function compileProvider(definition: string | URL): Promise<Record<
 			scope: 'source',
 			transport: 'process',
 			preparation: documentProvider ? 'generic' : 'kjanat:actionlint/expression-mask@0.1.0',
-			rule: { ...provider.rule },
+			rule: {
+				...provider.rule,
+				...(documentProvider ? { required_inputs: documentProvider.requiredInputs ?? ['source'] } : {}),
+			},
 			selectors: selectorsFor(provider),
 			capabilities: {
 				fixes: provider.fixes ?? false,
@@ -78,7 +81,6 @@ export async function compileProvider(definition: string | URL): Promise<Record<
 				...(provider.severities ? { severities: { ...provider.severities } } : {}),
 			},
 			...(provider.configSchema ? { config_schema: { ...provider.configSchema } } : {}),
-			...(documentProvider ? { required_inputs: documentProvider.requiredInputs ?? ['source'] } : {}),
 			process: processSpec,
 		};
 

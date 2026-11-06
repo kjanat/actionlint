@@ -60,15 +60,13 @@ type Manifest struct {
 	SchemaVersion int `json:"schema_version"`
 	// Metadata declares publisher identity for registry admission. It does not
 	// grant capabilities or change the provider's execution contract.
-	Metadata json.RawMessage `json:"metadata,omitempty"`
-	ID       string          `json:"id"`
-	Version  string          `json:"version"`
-	Role     Role            `json:"role"`
-	// RequiredInputs lists input sections requested by document providers. Source is implicit.
-	RequiredInputs []rulemeta.InputKind `json:"required_inputs,omitempty"`
-	Rule           rulemeta.Descriptor  `json:"rule"`
-	Scope          Scope                `json:"scope"`
-	Transport      Transport            `json:"transport"`
+	Metadata  json.RawMessage     `json:"metadata,omitempty"`
+	ID        string              `json:"id"`
+	Version   string              `json:"version"`
+	Role      Role                `json:"role"`
+	Rule      rulemeta.Descriptor `json:"rule"`
+	Scope     Scope               `json:"scope"`
+	Transport Transport           `json:"transport"`
 	// Artifacts lists per-platform executables or modules; empty means the
 	// process entry is discovered on PATH.
 	Artifacts []Artifact `json:"artifacts,omitempty"`

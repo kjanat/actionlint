@@ -242,13 +242,15 @@ test('raw document recipes preserve selectors and requirements', async () => {
 		`import {defineProcessProvider} from ${sdkSource};
 export default defineProcessProvider({${identity},role:'document',documentKinds:['action'],requiredInputs:['source','dependencies'],entry:'linter',stdin:'request',config:{render:'json-stdin'},output:{format:'script-diagnostics@1'}});`,
 		async (root) => {
-			expect(await pack(root)).toMatchObject({
+			const manifest = await pack(root);
+			expect(manifest).toMatchObject({
 				role: 'document',
 				preparation: 'generic',
 				selectors: { documents: ['action'] },
-				required_inputs: ['source', 'dependencies'],
+				rule: { required_inputs: ['source', 'dependencies'] },
 				process: { entry: 'linter' },
 			});
+			expect(manifest).not.toHaveProperty('required_inputs');
 			expect(await Bun.file(join(root, 'actionlint.js')).exists()).toBe(false);
 		},
 	);

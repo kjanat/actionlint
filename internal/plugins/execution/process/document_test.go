@@ -71,7 +71,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
 			input.Dependencies = []workflowfacts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 2, Column: 5}}, {Reference: sourcepos.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
 			manifest := documentManifest(manifests.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: manifests.ConfigRendering{Render: manifests.RenderNone}})
-			manifest.RequiredInputs = []rulemeta.InputKind{rulemeta.Dependencies}
+			manifest.Rule.RequiredInputs = []rulemeta.InputKind{rulemeta.Dependencies}
 			manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
 			checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
 			if err != nil {
