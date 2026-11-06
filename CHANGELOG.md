@@ -4,6 +4,8 @@
 
 *See the [v2 release and migration notes](docs/releases/v2.0.0.md) before upgrading.*
 
+- Remove the retired GitHub-hosted `macos-14`, `macos-14-large`, and `macos-14-xlarge` labels. Custom self-hosted labels can still be configured explicitly. (kjanat/actionlint#216)
+
 - **Breaking:** Remove the `required-actions` rule and configuration. Remove its entries before migrating configuration.
 - Show help on stdout and exit 0 when `actionlint` is launched without arguments. Use `actionlint check` for repository discovery; it exits 3 when no workflow or action inputs are found.
 - **Breaking:** Move Go imports and source installation to `actionlint.kjanat.dev/v2`; replace the former flat library API with the focused public packages described in the [API migration](docs/api.md#migration-from-the-flat-api).
