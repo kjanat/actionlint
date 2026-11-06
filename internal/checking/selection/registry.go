@@ -14,9 +14,15 @@ import (
 )
 
 type Selection struct {
-	Rules      []workflowvisit.Rule
-	Scripts    []checkinputs.Checker
-	ScriptInfo []rule.Descriptor
+	Unavailable []UnavailableCheck
+	Rules       []workflowvisit.Rule
+	Scripts     []checkinputs.Checker
+	ScriptInfo  []rule.Descriptor
+}
+
+// UnavailableCheck identifies a selected check whose required inputs are unknown.
+type UnavailableCheck struct {
+	Name, Reason string
 }
 
 func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool) (Selection, error) {
@@ -31,10 +37,18 @@ func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool
 		}
 		prepared := inputs
 		if descriptor.Prepare != nil {
-			var err error
-			prepared, err = descriptor.Prepare(inputs)
+			outcome, err := descriptor.Prepare(inputs)
 			if err != nil {
 				return selected, fmt.Errorf("prepare %s inputs: %w", descriptor.Name, err)
+			}
+			switch outcome := outcome.(type) {
+			case ruleexec.PreparedInputs:
+				prepared = outcome.Inputs
+			case ruleexec.UnavailableInputs:
+				selected.Unavailable = append(selected.Unavailable, UnavailableCheck{Name: descriptor.Name, Reason: outcome.Reason})
+				continue
+			default:
+				return selected, fmt.Errorf("prepare %s inputs: unsupported preparation result %T", descriptor.Name, outcome)
 			}
 		}
 		if descriptor.Build != nil {

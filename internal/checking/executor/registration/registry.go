@@ -67,16 +67,16 @@ type Inputs struct {
 // Registration pairs a rule declaration with its constructor and execution conditions.
 type Registration struct {
 	repoconfig.Rule
-	// Prepare loads inputs before constructing the check. Failures are operation
-	// failures, not lint findings. Nil means no preparation is needed.
-	Prepare func(Inputs) (Inputs, error)
+	// Prepare distinguishes usable inputs, unavailable knowledge and operation
+	// failures before construction. Nil means no preparation is needed.
+	Prepare func(Inputs) (InputPreparation, error)
 	Build   func(Inputs) workflowvisit.Rule
 	Script  checkinputs.Checker
 	Enabled func(Inputs) bool
 }
 
 type implementation struct {
-	Prepare func(Inputs) (Inputs, error)
+	Prepare func(Inputs) (InputPreparation, error)
 	Build   func(Inputs) workflowvisit.Rule
 	Script  checkinputs.Checker
 	Enabled func(Inputs) bool
@@ -220,18 +220,21 @@ func workflowRunNamesAvailable(c Inputs) bool {
 	return workflownames.SamePath(filepath.Dir(path), filepath.Join(absolutePath(c.ProjectRoot), ".github", "workflows"))
 }
 
-func prepareWorkflowRunNames(c Inputs) (Inputs, error) {
+func prepareWorkflowRunNames(c Inputs) (InputPreparation, error) {
 	if c.Rules.DiagnosticLevel(c.Config, "workflow-run-names") == "off" {
-		return c, nil
+		return PreparedInputs{Inputs: c}, nil
 	}
 	workflow, available := c.SourceSnapshot.WorkflowView()
 	if !available || len(namecheck.WorkflowRunFilters(workflow)) == 0 {
-		return c, nil
+		return PreparedInputs{Inputs: c}, nil
 	}
 	inventory, err := c.WorkflowNames.ForRoot(absolutePath(c.ProjectRoot))
 	if err != nil {
-		return c, err
+		return nil, err
+	}
+	if !inventory.Complete() {
+		return UnavailableInputs{Reason: "not every repository workflow name could be determined"}, nil
 	}
 	c.WorkflowNameInventory = inventory
-	return c, nil
+	return PreparedInputs{Inputs: c}, nil
 }

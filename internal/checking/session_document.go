@@ -311,6 +311,10 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	toolContext.Document = executor.SourceInput(document, path, content, snapshot.Reference())
 	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
+	for _, unavailable := range selected.Unavailable {
+		s.suppressionUses.markUnavailable(snapshot.Reference(), unavailable.Name)
+		s.debug("Skipped %s: %s", unavailable.Name, unavailable.Reason)
+	}
 	if err != nil {
 		return result, err
 	}
