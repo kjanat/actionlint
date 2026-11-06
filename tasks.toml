@@ -382,6 +382,7 @@ vars    = { fixture = "no-sudo" }
 
 ["plugin:example:insecure-download"]
 extends = "script-plugin"
+sources = ["plugins/protocol/wit/**", "plugins/sdk/go/**", "plugins/examples/insecure-download/**"]
 alias   = ["internal/plugins/execution/component/testdata/plugins/insecure-download.wasm"]
 vars    = { fixture = "insecure-download" }
 

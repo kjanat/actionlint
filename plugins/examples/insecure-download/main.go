@@ -13,8 +13,6 @@ func init() {
 	analyzer.Exports.Analyze = analyze
 }
 
-func main() {}
-
 func describe() analyzer.Descriptor {
 	return analyzer.Descriptor{
 		Name: "insecure-download", Description: "Detect disabled TLS verification", Category: "security", Subcategory: "scripts", Maturity: "stable", Provider: "example", Explanation: "Disabling TLS verification permits an intercepted download.", Help: "Remove the insecure flag and configure trusted certificates.", OptionsSchema: "{}",

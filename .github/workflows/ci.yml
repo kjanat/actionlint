@@ -225,12 +225,13 @@ jobs:
       - *ActCheckNocred
       - uses: *SetupGo
         with: { go-version: stable, check-latest: true }
-      - name: Verify Go guest module dependencies
+      - name: Check Go guest module dependencies and tests
         shell: bash -euo pipefail {0}
         run: |
           for dir in plugins/sdk/go plugins/examples/insecure-download; do
             echo "::group::${dir}"
             go -C "${dir}" mod tidy -diff
+            go -C "${dir}" test ./...
             echo "::endgroup::"
           done
   lint:

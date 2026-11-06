@@ -404,7 +404,10 @@ test('Go module checks follow the guest SDK and Go example locations', () => {
 		const path of [
 			'plugins/sdk/go/go.mod',
 			'plugins/sdk/go/bindings/generated.go',
+			'plugins/sdk/go/packaging/package.go',
+			'plugins/sdk/go/packaging/analyzer.wit',
 			'plugins/examples/insecure-download/main.go',
+			'plugins/examples/insecure-download/main_native.go',
 			'go.mod',
 		]
 	) {

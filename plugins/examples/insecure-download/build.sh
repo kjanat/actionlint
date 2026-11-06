@@ -23,6 +23,8 @@ world insecure-download {
 }
 WIT
 
-tinygo build -target=wasip2 -trimpath -buildvcs=false -wit-package "${compose}" -wit-world insecure-download -o "${output}" .
-wasm-tools validate "${output}"
+tinygo build -target=wasip2 -trimpath -buildvcs=false -wit-package "${compose}" -wit-world insecure-download -o "${compose}/component.wasm" .
+go run . "${compose}/component.wasm" "${compose}/package"
+wasm-tools validate "${compose}/package/plugin.wasm"
+cp "${compose}/package/plugin.wasm" "${output}"
 chmod 644 "${output}"
