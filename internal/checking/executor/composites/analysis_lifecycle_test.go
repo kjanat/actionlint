@@ -5,6 +5,11 @@ import (
 	"errors"
 	"testing"
 
+	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
+	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
@@ -21,6 +26,33 @@ type phaseScriptAnalyzer struct {
 	visited *bool
 	calls   int
 	failure error
+}
+
+type cancelBeforeStep struct {
+	workflowvisit.Base
+	cancel context.CancelFunc
+}
+
+func (r *cancelBeforeStep) VisitWorkflowPre(workflowdecl.WorkflowView) error {
+	r.cancel()
+	return nil
+}
+
+func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
+	check := conventions.MissingActionMetadataCheck(nil)
+	rules, err := repoconfig.NewRuleSet([]rulemeta.Declaration{check.Declaration})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata := declarationchecks.New(rules, check)
+	f.options.Rules = []workflowvisit.Rule{&cancelBeforeStep{Base: workflowvisit.NewBase("cancel", ""), cancel: cancel}, metadata}
+	_, err = Workflow(f.options, f.root)
+	if !errors.Is(err, context.Canceled) || len(metadata.Errs()) != 0 {
+		t.Fatalf("canceled execution reached the metadata callback: error=%v findings=%+v", err, metadata.Errs())
+	}
 }
 
 func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T) {

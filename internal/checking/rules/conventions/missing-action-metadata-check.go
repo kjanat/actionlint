@@ -1,50 +1,39 @@
 package conventions
 
 import (
-	"context"
 	"strings"
+
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-type ruleRequireActionMetadata struct {
-	workflowvisit.Base
-	remote *actionremote.ResolvedActions
-	ctx    context.Context
+// MissingActionMetadataCheck reads acquisition outcomes prepared by the host.
+// It does not start provider requests or depend on preceding step callbacks.
+func MissingActionMetadataCheck(remote *actionremote.ResolvedActions) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{Declaration: MissingActionMetadataDeclaration(), Step: func(step workflowdecl.StepView) []reporting.Finding {
+		return missingActionMetadata(step, remote)
+	}}
 }
 
-// NewRuleRequireActionMetadata reports remote action metadata that could not be inspected.
-func NewRuleRequireActionMetadata(ctx context.Context, remote *actionremote.ResolvedActions) workflowvisit.Rule {
-	descriptor := MissingActionMetadataDeclaration()
-	return &ruleRequireActionMetadata{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), remote: remote, ctx: ctx}
-}
-
-func (r *ruleRequireActionMetadata) VisitStep(step workflowdecl.StepView) error {
+func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.ResolvedActions) []reporting.Finding {
 	action, ok := step.Action()
 	if !ok || !action.Uses().Present() || action.Uses().ContainsExpression() {
 		return nil
 	}
 	spec := action.Uses().Value()
-	if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") || strings.HasPrefix(spec, "docker://") || len(actioncheck.RepositoryReference(spec, reporting.ViewPosition(action.Uses().Pos()))) != 0 {
+	if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") || strings.HasPrefix(spec, "docker://") || references.ActionReferenceProblem(spec) != "" {
 		return nil
 	}
-	if r.ctx != nil {
-		if err := r.ctx.Err(); err != nil {
-			return err
-		}
-	}
-	result := r.remote.Inspect(spec)
+	result := remote.Inspect(spec)
 	availability := result.Availability()
 	if availability.State() == actions.MetadataAvailable {
 		return nil
@@ -53,6 +42,7 @@ func (r *ruleRequireActionMetadata) VisitStep(step workflowdecl.StepView) error 
 	if availability.State() == actions.MetadataInvalid {
 		reason = "invalid parse/schema metadata"
 	}
-	r.Report(findingmodel.At(reporting.ViewPosition(action.Uses().Pos()), "missing-action-metadata", "remote action metadata for "+spec+" is unavailable ("+reason+"); use --action-metadata=online with a full SHA-1, or provide the required action-profile selection and warm the offline cache"))
-	return nil
+	collector := reporting.Collector{Rule: "missing-action-metadata", Step: step}
+	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "remote action metadata for "+spec+" is unavailable ("+reason+"); use --action-metadata=online with a full SHA-1, or provide the required action-profile selection and warm the offline cache")
+	return collector.Findings
 }

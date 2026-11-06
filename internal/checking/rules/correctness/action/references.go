@@ -107,13 +107,9 @@ func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecAction
 }
 
 func (rule *validator) checkRepositoryReference(spec string, pos *workflowlang.Pos) bool {
-	owner, repo, ref, problem := references.SplitAction(spec)
+	problem := references.ActionReferenceProblem(spec)
 	if problem != "" {
 		rule.invalidActionFormat(pos, spec, problem)
-		return false
-	}
-	if owner == "" || repo == "" || ref == "" {
-		rule.invalidActionFormat(pos, spec, "owner and repo and ref should not be empty")
 		return false
 	}
 	return true
