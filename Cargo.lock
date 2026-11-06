@@ -36,7 +36,6 @@ name = "actionlint-example-source-annotations"
 version = "0.1.0"
 dependencies = [
  "actionlint-extension-api",
- "wit-bindgen",
 ]
 
 [[package]]
@@ -65,6 +64,13 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-fixture-source-annotations"
+version = "0.1.0"
+dependencies = [
+ "actionlint-extension-api",
 ]
 
 [[package]]

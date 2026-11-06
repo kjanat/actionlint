@@ -16,10 +16,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 )
 
-// Exercise the actual optional import through canonical lowering and lifting.
-// The guest also probes an unauthorized revision before its legitimate queries.
+// Both the author example and host-boundary fixture use the real optional import.
+// The fixture additionally queries an unauthorized revision.
 func TestGuestReadsOnlyCurrentScriptAnnotations(t *testing.T) {
-	guest := loadPlugin(t, "source-annotations", component.Options{})
+	for _, fixture := range []string{"source-annotations", "source-annotations-example"} {
+		t.Run(fixture, func(t *testing.T) { checkGuestScriptAnnotations(t, fixture) })
+	}
+}
+
+func checkGuestScriptAnnotations(t *testing.T, fixture string) {
+	t.Helper()
+	guest := loadPlugin(t, fixture, component.Options{})
 	root := sourcepos.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
 	action := sourcepos.Reference{Document: "action.yml", Revision: "action", Node: "step", Address: "runs.steps[0]"}
 	input := checkinputs.Input{

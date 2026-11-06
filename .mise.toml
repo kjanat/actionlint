@@ -169,7 +169,7 @@ sources = [
   "rust-toolchain.toml",
   "plugins/sdk/rust/**",
   "internal/plugins/execution/{component,module}/testdata/sources/**",
-  "plugins/examples/**/{Cargo.toml,*.rs,*.json}",
+  "plugins/examples/**/{Cargo.toml,*.rs,*.json,LICENSE*}",
   "internal/development/tests/integration/plugins/package-fixture/*.go"
 ]
 outputs = ["{{ vars.fixture_root }}/{{ vars.fixture }}.wasm"]
