@@ -2,7 +2,6 @@ package typecheck
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
@@ -172,65 +171,11 @@ func (sema *Checker) checkAvailableContext(n *exprsyntax.VariableNode) {
 	)
 }
 
-func (sema *Checker) checkFunctionAvailability(n *exprsyntax.FuncCallNode) {
-	availability, denied := sema.functionRestriction(n.Callee)
-	if !denied {
-		return
-	}
-
-	sema.calleeErrorf(unavailableFunction,
-		n,
-		"calling function %q is not allowed here. %q is only available in %s. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details",
-		n.Callee,
-		n.Callee,
-		messages.Quotes(availability.AvailableAt),
-	)
-}
-
 func (sema *Checker) checkVariable(n *exprsyntax.VariableNode) exprtypes.Type {
-	v, ok := sema.vars[n.Name]
-	if !ok {
-		if sigs, known := sema.funcs[n.Name]; known && len(sigs) > 0 {
-			name := n.Token().Value
-			for _, sig := range sigs {
-				if len(sig.Params) == 0 {
-					sema.errorf(missingCall, n, "function %q must be called with parentheses; did you mean %q?", name, name+"()")
-					return exprtypes.AnyType()
-				}
-			}
-			sema.errorf(missingCall, n, "function %q must be called with parentheses and arguments", name)
-			return exprtypes.AnyType()
-		}
-		if inputs, ok := sema.vars["inputs"].Object(); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
-			if _, declared := inputs.Property(n.Name); declared {
-				sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
-				return exprtypes.AnyType()
-			}
-		}
-		if suggestion := sema.contextPropertySuggestion(n.Name); suggestion != "" {
-			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
-			return exprtypes.AnyType()
-		}
-		available := make([]string, 0, len(sema.availableContexts))
-		for _, name := range sema.availableContexts {
-			if _, exists := sema.vars[name]; exists {
-				available = append(available, name)
-			}
-		}
-		if suggestion := CloseName(n.Name, available); suggestion != "" {
-			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
-			return exprtypes.AnyType()
-		}
-		ss := make([]string, 0, len(sema.vars))
-		for n := range sema.vars {
-			ss = append(ss, n)
-		}
-		sema.errorf(unknownVariable, n, "undefined variable %q. available variables are %s", n.Token().Value, messages.SortedQuotes(ss))
-		return exprtypes.AnyType()
+	if value, found := sema.vars[n.Name]; found {
+		return value
 	}
-
-	sema.checkAvailableContext(n)
-	return v
+	return exprtypes.AnyType()
 }
 
 func (sema *Checker) checkObjectDeref(n *exprsyntax.ObjectDerefNode) exprtypes.Type {
@@ -515,26 +460,6 @@ type signatureMatch struct {
 	err        *Error
 }
 
-func checkCallArity(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature) *Error {
-	lp, la := len(sig.Params), len(n.Args)
-	if sig.MaxParams > 0 && la > sig.MaxParams {
-		return errorfAtCallee(argumentCount, n, "function %q takes at most %d arguments but %d arguments are given", n.Callee, sig.MaxParams, la)
-	}
-	if sig.VariableLengthParams && (lp > la) || !sig.VariableLengthParams && lp != la {
-		atLeast := ""
-		if sig.VariableLengthParams {
-			atLeast = "at least "
-		}
-		return errorfAtCallee(argumentCount, n,
-			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
-			sig.String(), atLeast, lp, la)
-	}
-	if sig.EvaluationPolicy == exprfunctions.EvaluateCase && la%2 == 0 {
-		return errorfAtCallee(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", la)
-	}
-	return nil
-}
-
 func checkFuncSignature(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature, args []exprfunctions.CallArgument) signatureMatch {
 	match := signatureMatch{signature: sig}
 	if err := checkCallArity(n, sig); err != nil {
@@ -689,40 +614,6 @@ func (sema *Checker) checkCaseBranches(args []exprsyntax.Node, alternatives *[]e
 	default:
 		return restType, restReachable
 	}
-}
-
-func (sema *Checker) resolveFunction(n *exprsyntax.FuncCallNode) []*exprfunctions.FuncSignature {
-	// Check function name in case insensitive. For example, toJson and toJSON are the same function.
-	callee := strings.ToLower(n.Callee)
-	sigs, ok := sema.funcs[callee]
-	if overloads, overridden := sema.functionOverloads[callee]; overridden {
-		sigs, ok = overloads, true
-	}
-	if !ok {
-		functions := maps.Clone(sema.funcs)
-		maps.Copy(functions, sema.functionOverloads)
-		candidates := make([]string, 0, len(functions))
-		for name, signatures := range functions {
-			if _, denied := sema.functionRestriction(name); denied {
-				continue
-			}
-			if len(signatures) > 0 {
-				candidates = append(candidates, signatures[0].Name)
-			}
-		}
-		if suggestion := CloseName(callee, candidates); suggestion != "" {
-			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
-			return nil
-		}
-		ss := make([]string, 0, len(functions))
-		for n := range functions {
-			ss = append(ss, n)
-		}
-		sema.calleeErrorf(unknownFunction, n, "undefined function %q. available functions are %s", n.Callee, messages.SortedQuotes(ss))
-		return nil
-	}
-
-	return sigs
 }
 
 func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
@@ -984,7 +875,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.evaluationInvalid = false
 	sema.validationFailed = false
 	sema.staticInvalid = false
-	sema.validateCallDeclarations(expr)
+	sema.validateReferences(expr)
 	ty := sema.check(expr)
 	errs := detachErrors(sema.errs)
 
