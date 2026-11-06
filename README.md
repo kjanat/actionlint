@@ -3,6 +3,7 @@
 [![CI Status][ci-badge]][ci]
 [![Latest release][release-badge]][releases]
 [![NPM Version][npm-badge]][npm-package]
+[![pkg.pr.new][preview-badge]][previews]
 [![Docker image version][docker-badge]][dockerhub]
 [![Sponsor this project][sponsor-badge]][sponsor]
 
@@ -243,6 +244,8 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
 [npm-package]: https://npm.im/@kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
+[preview-badge]: https://pkg.pr.new/badge/kjanat/actionlint
+[previews]: https://pkg.pr.new/~/kjanat/actionlint
 [pre-commit]: https://pre-commit.com
 [release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
 [releases]: https://github.com/kjanat/actionlint/releases
