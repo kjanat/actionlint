@@ -32,7 +32,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -334,18 +333,17 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	toolContext.Document = executor.SourceInput(document, path, content, snapshot.Reference())
 	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
-	entryKind := invocation.EntryWorkflow
-	if action {
-		entryKind = invocation.EntryAction
-	}
-	entryContext := report.CheckInvocation{}
-	if id, idErr := invocation.NewRootID(entryKind, snapshot.Reference()); idErr == nil {
-		entryContext = report.CheckInvocation{Entry: snapshot.Reference(), ID: id}
-	}
-	for _, unavailable := range selected.Unavailable {
-		s.checkCompletion.markUnavailableInvocation(snapshot.Reference(), entryContext, unavailable.Name, unavailable.Reason)
-		s.debug("Skipped %s: %s", unavailable.Name, unavailable.Reason)
-	}
+	defer func() {
+		entryContext := report.CheckInvocation{}
+		graph := result.Invocations
+		if graph.Has(graph.RootID()) {
+			entryContext = report.CheckInvocation{Entry: graph.Entry().Reference, ID: graph.RootID()}
+		}
+		for _, unavailable := range selected.Unavailable {
+			s.checkCompletion.markUnavailableInvocation(snapshot.Reference(), entryContext, unavailable.Name, unavailable.Reason)
+			s.debug("Skipped %s: %s", unavailable.Name, unavailable.Reason)
+		}
+	}()
 	if err != nil {
 		return result, err
 	}
