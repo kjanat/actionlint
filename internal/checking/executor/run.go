@@ -46,6 +46,7 @@ type PreparedRegistration struct {
 
 type preparedRegistration struct {
 	analyzer        checkinputs.Checker
+	prepare         func(context.Context, checkinputs.Input) (checkinputs.Input, error)
 	descriptor      checkinputs.Descriptor
 	options         []byte
 	availableInputs []rulemeta.InputKind
@@ -78,7 +79,7 @@ func Prepare(registration checkinputs.Registration, available []rulemeta.InputKi
 			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unavailable input kind %q", descriptor.Name, requirement)
 		}
 	}
-	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Checker, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
+	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Checker, prepare: registration.Prepare, descriptor: descriptor, options: options, availableInputs: inputKinds}}, nil
 }
 
 // PrepareForwarding admits a transparent adapter's implementation through the
@@ -147,6 +148,7 @@ func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedR
 		supplied.ActionInputs[i].Script = cloneScripts([]checkinputs.Script{input.Script})[0]
 	}
 	supplied.Dependencies = slices.Clone(input.Dependencies)
+	supplied.ResolvedDependencies = slices.Clone(input.ResolvedDependencies)
 	supplied.Files = slices.Clone(input.Files)
 	supplied.SourceRoots = slices.Clone(input.SourceRoots)
 	supplied.Mappings = slices.Clone(input.Mappings)
@@ -156,9 +158,16 @@ func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedR
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	var preparationErr error
+	if registration.data.prepare != nil {
+		supplied, preparationErr = registration.data.prepare(ctx, supplied)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(preparationErr, err)
+	}
 	findings, err := registration.data.analyzer.CheckDocument(ctx, supplied)
 	findings = slices.Clone(findings)
-	err = errors.Join(err, related.BindDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
+	err = errors.Join(preparationErr, err, related.BindDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
 	if canceled := ctx.Err(); canceled != nil && !errors.Is(err, canceled) {
 		err = errors.Join(err, canceled)
 	}

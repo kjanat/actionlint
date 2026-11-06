@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 )
 
 // UsesReference identifies the declared source of an action or reusable workflow.
@@ -141,16 +143,11 @@ func ParseReference(raw string) UsesReference {
 	} else if r.Ref == "" {
 		return UnknownReference{}
 	}
-	parts := strings.Split(location, "/")
-	if len(parts) < 2 || strings.ContainsAny(location, "@: \\\t\r\n") {
+	target, known := callrefs.ParseRepositoryPath(location)
+	if !known {
 		return UnknownReference{}
 	}
-	for _, part := range parts {
-		if part == "" || part == "." || part == ".." {
-			return UnknownReference{}
-		}
-	}
-	r.Owner, r.Repo, r.Subpath = parts[0], parts[1], strings.Join(parts[2:], "/")
+	r.Owner, r.Repo, r.Subpath = target.Owner, target.Repo, target.Subpath
 	return r
 }
 
