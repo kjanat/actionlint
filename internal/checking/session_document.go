@@ -196,6 +196,15 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			return all, outline, errors.Join(analysisErr, err)
 		}
 	}
+	for _, check := range composed.IncompleteChecks {
+		config, err := settings.action(check.Source.Document)
+		if err != nil {
+			return all, outline, errors.Join(analysisErr, err)
+		}
+		if settings.rules.DiagnosticLevel(config, check.Rule) != "off" {
+			s.checkCompletion.markUnavailableInvocation(check.Source, check.Invocation, check.Rule, check.Reason)
+		}
+	}
 	if len(registrations) != 0 {
 		input, inputErr := composites.CheckInput(composed, path, sourcePath, content, document, references)
 		input.Directory = root
