@@ -11,6 +11,7 @@ import (
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -27,15 +28,11 @@ func (rule *Checker) scriptShell(step workflowdecl.StepView) string {
 			workflowShell = execution.DefaultShell(rule.workflow.Defaults().Run().Semantic())
 			if job := rule.scriptJob; job.Present() {
 				jobShell = execution.DefaultShell(job.Defaults().Run().Semantic())
-				runnerShell = execution.ContainerShell(job.Container().Semantic())
-				if runnerShell.State() == value.Missing {
-					runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
-					if rule.dependencies.Runners != nil {
-						if shell := rule.dependencies.Runners.Job(job).Shell; shell != "" {
-							runnerShell = value.YAMLScalar(shell, "!!str", value.Origin{})
-						}
-					}
+				knownShell := ""
+				if rule.dependencies.Runners != nil {
+					knownShell = rule.dependencies.Runners.Job(job).Shell
 				}
+				runnerShell = scriptmodel.DefaultShell(job.Container().Semantic(), knownShell)
 			}
 		} else {
 			runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})

@@ -16,6 +16,7 @@ import (
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -110,10 +111,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.JobView) err
 	rule.jobDir, rule.jobShell = execution.DefaultDirectory(defaults), execution.DefaultShell(defaults)
 	rule.jobEnv = rule.workflowEnv || execution.ShellEnvironmentUnknown(jobEnv)
 	knowledge := rule.context.Runners.Job(declaration)
-	rule.runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
-	if knowledge.Shell != "" {
-		rule.runnerShell = value.YAMLScalar(knowledge.Shell, "!!str", value.Origin{})
-	}
+	rule.runnerShell = scriptmodel.DefaultShell(declaration.Container().Semantic(), knowledge.Shell)
 	platform := knowledge.Platform
 	rule.jobGitEnv = execution.CheckoutEnvironmentUnknown(rule.workflowGitEnv, platform) || execution.CheckoutEnvironmentUnknown(jobEnv, platform)
 	rule.jobPathUnknown = rule.workflowPathUnknown || execution.ShellPathUnknown(jobEnv)

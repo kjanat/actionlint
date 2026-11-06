@@ -76,29 +76,3 @@ func DefaultShell(semantic value.Value) value.Value {
 	}
 	return shell
 }
-
-// ContainerShell resolves the known job container's default shell.
-func ContainerShell(container value.Value) value.Value {
-	if container.State() == value.Missing {
-		return value.Value{}
-	}
-	if !container.Known() {
-		return value.DynamicValue(container.Source(), value.KindUnknown, container.Origin())
-	}
-	image := container
-	if container.Kind() == value.Object {
-		var ok bool
-		image, ok = container.Prop("image")
-		if !ok {
-			return value.DynamicValue("", value.KindUnknown, container.Origin())
-		}
-	}
-	text, known := image.ScalarString()
-	if !known {
-		return value.DynamicValue(image.Source(), value.KindUnknown, image.Origin())
-	}
-	if strings.TrimSpace(text) == "" {
-		return value.Value{}
-	}
-	return value.YAMLScalar("sh", "!!str", image.Origin())
-}
