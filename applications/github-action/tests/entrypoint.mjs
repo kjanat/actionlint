@@ -177,7 +177,7 @@ try {
 	) {
 		const destination = join(workspace, 'testdata', name);
 		await mkdir(dirname(destination), { recursive: true });
-		await copyFile(join(source, 'testdata', name), destination);
+		await copyFile(join(source, 'internal/development/tests/integration/workflow/testdata', name), destination);
 	}
 	const clean = await run({});
 	assert.equal(clean.analysis.sarif, undefined);
@@ -264,7 +264,7 @@ try {
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
-	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.0'], {
+	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.1'], {
 		cwd: workspace,
 		env: { ...process.env, ...shellEnvironment },
 		encoding: 'utf8',
@@ -386,7 +386,10 @@ try {
 	assert.equal(saved.outputs.get('output-file'), 'actionlint-results.jsonl', saved.log);
 	assert.match(await readFile(join(workspace, 'actionlint-results.jsonl'), 'utf8'), /"message"/);
 	await run({ files: 'testdata/err/one_error.yaml' }, 1);
-	await copyFile(join(source, 'testdata/ok/minimal.yaml'), join(shared, 'workflow.yml'));
+	await copyFile(
+		join(source, 'internal/development/tests/integration/workflow/testdata/ok/minimal.yaml'),
+		join(shared, 'workflow.yml'),
+	);
 	await writeFile(join(shared, 'actionlint.yaml'), '{}\n');
 	/** @type {Record<string, string>[]} */
 	const externalInputs = [
@@ -436,8 +439,8 @@ try {
 	}
 	// Exercise released component bytes through the actual bundled launcher.
 	// The second URL cannot download: success proves reuse of the digest cache.
-	const pluginDigest = '4fd3d4a82a5e7808b96b2c303a9ca753219c657a8fe08ec3a07b84c0b453c5d5';
-	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.2.0/plugin.wasm';
+	const pluginDigest = 'a3d7d7c0b1cc3d67ad6d94a7fec5ebc7974de18600372e1ae0a8f65ffb7b7c77';
+	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.2.1/plugin.wasm';
 	const pluginCache = join(workspace, 'plugin-cache');
 	const pluginEnvironment = { HOME: pluginCache, XDG_CACHE_HOME: pluginCache, LOCALAPPDATA: pluginCache };
 	await mkdir(pluginCache, { recursive: true });
@@ -475,7 +478,7 @@ try {
 		pluginEnvironment,
 	);
 	assert.deepEqual(warm.analysis.diagnostics, cold.analysis.diagnostics);
-	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.0'], {
+	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.1'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
