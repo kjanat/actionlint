@@ -14,7 +14,7 @@ import (
 )
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
-	cwd := filepath.Join("..", "..", "..", "..", "model", "calls", "testdata", "reusable-workflows")
+	cwd := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
 	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{
@@ -114,13 +114,13 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		},
 		{
 			what:    "read workflow",
-			uses:    "./ok.yaml", // Defined in internal/model/calls/testdata/reusable-workflows/ok.yaml
+			uses:    "./ok.yaml", // Defined in the workflow loader's testdata/reusable-workflows/ok.yaml.
 			inputs:  []string{"input2"},
 			secrets: []string{"secret2"},
 		},
 		{
 			what: "read broken workflow",
-			uses: "./broken.yaml", // Defined in internal/model/calls/testdata/reusable-workflows/broken.yaml
+			uses: "./broken.yaml", // Defined in the workflow loader's testdata/reusable-workflows/broken.yaml.
 			errs: []string{
 				"error while parsing reusable workflow \"./broken.yaml\"",
 			},

@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -104,7 +104,7 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 }
 
 // New connects expression checking to the supplied dependency lookups and runner facts.
-func New(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+func New(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.Cache, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: "expression"}
 	r.invocationActions = lookup.New(ctx, nil, remote).Lookup
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{

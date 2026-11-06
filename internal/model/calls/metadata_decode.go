@@ -40,7 +40,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 		return nil, err
 	}
 	parsed, _ := workflowparser.Parse(src)
-	metadata.JobPermissions, metadata.JobCacheAccess = jobFacts(parsed)
+	metadata.JobPermissions, metadata.JobCacheAccess = JobPermissionsAndCacheAccess(parsed)
 	return metadata, nil
 }
 
@@ -230,21 +230,21 @@ func (d metadataDecoder) outputs(root codec.Entered, out *Metadata) error {
 	return nil
 }
 
-// jobFacts collects the permissions and cache access each job of w requires.
-// Jobs without either have no entry; a map without entries is nil.
-func jobFacts(w *workflowlang.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
-	if w == nil {
+// JobPermissionsAndCacheAccess collects effective permissions and cache declarations by job ID.
+// Jobs without either have no entry. A map without entries is nil.
+func JobPermissionsAndCacheAccess(workflow *workflowlang.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
+	if workflow == nil {
 		return nil, nil
 	}
 	var permissionsByJob map[string]PermissionScopeLevels
 	var cacheByJob map[string]CacheAccess
-	permissions := resolvePermissionsModel(w.Permissions)
-	for _, job := range w.Jobs {
+	permissions := resolvePermissionsModel(workflow.Permissions)
+	for _, job := range workflow.Jobs {
 		uses := ""
 		if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
 			uses = job.WorkflowCall.Uses.Value
 		}
-		if access, ok := jobCacheAccess(workflowlang.EffectiveCacheMode(w.CacheMode, job.CacheMode), uses, job.Steps); ok {
+		if access, ok := jobCacheAccess(workflowlang.EffectiveCacheMode(workflow.CacheMode, job.CacheMode), uses, job.Steps); ok {
 			if cacheByJob == nil {
 				cacheByJob = map[string]CacheAccess{}
 			}

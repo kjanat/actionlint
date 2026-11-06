@@ -48,7 +48,7 @@ import (
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
@@ -378,7 +378,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	// Local dependencies use the project root or an explicitly supplied dependency root.
-	workflows := map[string]*calls.Cache{}
+	workflows := map[string]*workflowinputs.Cache{}
 	session.workingDir = absPath(cwd)
 	session.repositories = make(map[string]repository.Snapshot)
 	for _, source := range request.Sources {
@@ -416,7 +416,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
 		wc, configured := workflows[root]
 		if !configured {
-			wc = calls.NewCache(root, cwd, session.debugWriter())
+			wc = workflowinputs.NewCache(root, session.debugWriter())
 			workflows[root] = wc
 		}
 		ac := actions.GetCache(lifetime, root)

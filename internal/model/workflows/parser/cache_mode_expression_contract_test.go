@@ -9,8 +9,8 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -51,7 +51,7 @@ jobs:
 				}
 				project := workspace.Identity(root)
 				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
-				fileCache := calls.NewCache(project.RootDir(), root, nil)
+				fileCache := workflowinputs.NewCache(project.RootDir(), nil)
 				fileCache.SetSources(t.Context(), store, root)
 				fromFile, err := fileCache.FindMetadata("./callee.yaml")
 				if err != nil {
@@ -61,7 +61,7 @@ jobs:
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
-				astCache := calls.NewCache(project.RootDir(), root, nil)
+				astCache := workflowinputs.NewCache(project.RootDir(), nil)
 				astCache.SetSources(t.Context(), store, root)
 				path := filepath.Join(root, "callee.yaml")
 				snapshot, err := snapshots.Document(path, []byte(source), parsing.Workflow([]byte(source)))

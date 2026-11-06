@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -30,7 +31,7 @@ jobs:
 	allowed, _ := workflow.Job("allowed")
 	inherited, _ := workflow.Job("inherited")
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
+	cache := workflowinputs.NewCache(root, nil)
 	cache.Store("./callee.yml", &calls.Metadata{JobPermissions: map[string]calls.PermissionScopeLevels{
 		"nested": {"contents": calls.PermissionLevelWrite},
 	}})

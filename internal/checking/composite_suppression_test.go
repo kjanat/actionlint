@@ -10,9 +10,9 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
 func TestLocalActionSuppressionSourcesStayWorkflowScoped(t *testing.T) {
@@ -40,7 +40,7 @@ jobs:
 `)
 	project := workspace.Identity(root)
 	actions := workspaceactions.NewCache(t.Context(), projectRoot(project), nil)
-	workflows := calls.NewCache(project.RootDir(), root, nil)
+	workflows := workflowinputs.NewCache(project.RootDir(), nil)
 	process := hostprocess.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: files.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	var declarations *capturedSnapshots

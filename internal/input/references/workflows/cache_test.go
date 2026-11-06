@@ -1,4 +1,4 @@
-package calls
+package workflows
 
 import (
 	"errors"
@@ -10,352 +10,24 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/calls"
+	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestReusableWorkflowUnmarshalOK(t *testing.T) {
-	tests := []struct {
-		what string
-		src  string
-		want *Metadata
-	}{
-		{
-			what: "minimal",
-			src: `
-			on:
-			  workflow_call:
-			    inputs:
-			      i:
-			        type: string
-			    outputs:
-			      o:
-			        value: foo
-			    secrets:
-			      x:
-			`,
-			want: &Metadata{
-				Inputs: Inputs{
-					"i": {"i", false, InputTypeString},
-				},
-				Outputs: Outputs{
-					"o": {"o"},
-				},
-				Secrets: Secrets{
-					"x": {"x", false},
-				},
-			},
-		},
-		{
-			what: "empty",
-			src: `
-			on:
-			  workflow_call:
-			`,
-			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: nil,
-			},
-		},
-		{
-			what: "empty values",
-			src: `
-			on:
-			  workflow_call:
-			    inputs:
-			    outputs:
-			    secrets:
-			`,
-			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: nil,
-			},
-		},
-		{
-			what: "inputs",
-			src: `
-			on:
-			  workflow_call:
-			    inputs:
-			      a:
-			        type: string
-			      b:
-			        type: number
-			      c:
-			        type: boolean
-			      d:
-			      e:
-			        type: string
-			        required: false
-			      f:
-			        type: string
-			        required: true
-			      g:
-			        type: string
-			        default: abc
-			      h:
-			        type: string
-			        default: abc
-			        required: true
-			      i:
-			        required: true
-			`,
-			want: &Metadata{
-				Inputs: Inputs{
-					"a": {"a", false, InputTypeString},
-					"b": {"b", false, InputTypeNumber},
-					"c": {"c", false, InputTypeBoolean},
-					"d": {"d", false, InputTypeAny},
-					"e": {"e", false, InputTypeString},
-					"f": {"f", true, InputTypeString},
-					"g": {"g", false, InputTypeString},
-					"h": {"h", false, InputTypeString},
-					"i": {"i", true, InputTypeAny},
-				},
-				Outputs: nil,
-				Secrets: nil,
-			},
-		},
-		{
-			what: "outputs",
-			src: `
-			on:
-			  workflow_call:
-			    inputs:
-			      i:
-			        type: string
-			    outputs:
-			      o:
-			        value: foo
-			    secrets:
-			      x:
-			`,
-			want: &Metadata{
-				Inputs: Inputs{
-					"i": {"i", false, InputTypeString},
-				},
-				Outputs: Outputs{
-					"o": {"o"},
-				},
-				Secrets: Secrets{
-					"x": {"x", false},
-				},
-			},
-		},
-		{
-			what: "secrets",
-			src: `
-			on:
-			  workflow_call:
-			    secrets:
-			      x:
-			      y:
-			        required: false
-			      z:
-			        required: true
-			`,
-			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: Secrets{
-					"x": {"x", false},
-					"y": {"y", false},
-					"z": {"z", true},
-				},
-			},
-		},
-		{
-			what: "empty event in scalar node",
-			src: `
-			on: workflow_call
-			`,
-			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: nil,
-			},
-		},
-		{
-			what: "empty event in sequence node",
-			src: `
-			on: [workflow_call]
-			`,
-			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: nil,
-			},
-		},
-		{
-			what: "empty event in sequence node with other events",
-			src: `
-			on: [pull_request, workflow_call, push]
-			`,
-			want: &Metadata{
-				Inputs:  nil,
-				Outputs: nil,
-				Secrets: nil,
-			},
-		},
-		{
-			what: "upper case",
-			src: `
-			on:
-			  workflow_call:
-			    inputs:
-			      MY_INPUT1:
-			        type: string
-			      MY_INPUT2:
-			        type: number
-			    outputs:
-			      MY_OUTPUT1:
-			        value: foo
-			      MY_OUTPUT2:
-			        value: foo
-			    secrets:
-			      MY_SECRET1:
-			      MY_SECRET2:
-			        required: true
-			`,
-			want: &Metadata{
-				Inputs: Inputs{
-					"my_input1": {"MY_INPUT1", false, InputTypeString},
-					"my_input2": {"MY_INPUT2", false, InputTypeNumber},
-				},
-				Outputs: Outputs{
-					"my_output1": {"MY_OUTPUT1"},
-					"my_output2": {"MY_OUTPUT2"},
-				},
-				Secrets: Secrets{
-					"my_secret1": {"MY_SECRET1", false},
-					"my_secret2": {"MY_SECRET2", true},
-				},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.what, func(t *testing.T) {
-			src := strings.TrimSpace(tc.src)
-			src = strings.ReplaceAll(src, "\t", "")
-
-			m, err := ParseMetadata([]byte(src))
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(m, tc.want); diff != "" {
-				t.Fatal("Parse result is unexpected. diff:\n" + diff)
-			}
-		})
-	}
-}
-
-func TestReusableWorkflowUnmarshalOnNodeNotFound(t *testing.T) {
-	src := "hello: world"
-	_, err := ParseMetadata([]byte(src))
-	if err == nil {
-		t.Fatal("Error did not happen")
-	}
-	if msg := err.Error(); msg != "\"on:\" is not found" {
-		t.Fatal("Unexpected error:", msg)
-	}
-}
-
-func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
-	tests := []struct {
-		what string
-		src  string
-		line int
-		col  int
-	}{
-		{
-			what: "scalar",
-			src: `
-			on: push
-			`,
-			line: 1,
-			col:  5,
-		},
-		{
-			what: "sequence",
-			src: `
-			on: [push, pull_request]
-			`,
-			line: 1,
-			col:  5,
-		},
-		{
-			what: "empty sequence",
-			src: `
-			on: []
-			`,
-			line: 1,
-			col:  5,
-		},
-		{
-			what: "mapping",
-			src: `
-			on:
-			  push:
-			  pull_request:
-			`,
-			line: 2,
-			col:  3,
-		},
-		{
-			what: "empty mapping",
-			src: `
-			on: {}
-			`,
-			line: 1,
-			col:  5,
-		},
-		{
-			what: "null",
-			src: `
-			on:
-			`,
-			line: 1,
-			col:  4,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.what, func(t *testing.T) {
-			src := strings.TrimSpace(tc.src)
-			src = strings.ReplaceAll(src, "\t", "")
-
-			_, err := ParseMetadata([]byte(src))
-			if err == nil {
-				t.Fatal("Error did not happen")
-			}
-
-			msg := err.Error()
-			if !strings.Contains(msg, "\"workflow_call\" event trigger is not found in \"on:\"") {
-				t.Fatal("Unexpected error:", msg)
-			}
-			loc := fmt.Sprintf("line:%d, column:%d", tc.line, tc.col)
-			if !strings.Contains(msg, loc) {
-				t.Fatalf("location is not %q: %s", loc, msg)
-			}
-		})
-	}
-}
-
-var testReusableWorkflowWantedMetadata *Metadata = &Metadata{
-	Inputs: Inputs{
-		"input1": {"input1", false, InputTypeString},
-		"input2": {"input2", true, InputTypeBoolean},
+var testReusableWorkflowWantedMetadata *calls.Metadata = &calls.Metadata{
+	Inputs: calls.Inputs{
+		"input1": {"input1", false, calls.InputTypeString},
+		"input2": {"input2", true, calls.InputTypeBoolean},
 	},
-	Outputs: Outputs{
+	Outputs: calls.Outputs{
 		"output1": {"output1"},
 	},
-	Secrets: Secrets{
+	Secrets: calls.Secrets{
 		"secret1": {"secret1", false},
 		"secret2": {"secret2", true},
 	},
@@ -561,7 +233,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 	tests := []struct {
 		what   string
 		inputs map[string]*workflowlang.WorkflowCallEventInput
-		want   Inputs
+		want   calls.Inputs
 	}{
 		{
 			what: "type of inputs",
@@ -571,11 +243,11 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"bool_input":    {Type: workflowlang.WorkflowCallEventInputTypeBoolean},
 				"unknown_input": {},
 			},
-			want: Inputs{
-				"string_input":  {"string_input", false, InputTypeString},
-				"number_input":  {"number_input", false, InputTypeNumber},
-				"bool_input":    {"bool_input", false, InputTypeBoolean},
-				"unknown_input": {"unknown_input", false, InputTypeAny},
+			want: calls.Inputs{
+				"string_input":  {"string_input", false, calls.InputTypeString},
+				"number_input":  {"number_input", false, calls.InputTypeNumber},
+				"bool_input":    {"bool_input", false, calls.InputTypeBoolean},
+				"unknown_input": {"unknown_input", false, calls.InputTypeAny},
 			},
 		},
 		{
@@ -595,26 +267,26 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 					},
 				},
 			},
-			want: Inputs{
-				"unspecified":          {"unspecified", false, InputTypeAny},
-				"not_required":         {"not_required", false, InputTypeAny},
-				"required":             {"required", true, InputTypeAny},
-				"required_but_default": {"required_but_default", false, InputTypeAny},
-				"expression":           {"expression", false, InputTypeAny},
+			want: calls.Inputs{
+				"unspecified":          {"unspecified", false, calls.InputTypeAny},
+				"not_required":         {"not_required", false, calls.InputTypeAny},
+				"required":             {"required", true, calls.InputTypeAny},
+				"required_but_default": {"required_but_default", false, calls.InputTypeAny},
+				"expression":           {"expression", false, calls.InputTypeAny},
 			},
 		},
 		{
 			what:   "empty",
 			inputs: map[string]*workflowlang.WorkflowCallEventInput{},
-			want:   Inputs{},
+			want:   calls.Inputs{},
 		},
 		{
 			what: "upper case input",
 			inputs: map[string]*workflowlang.WorkflowCallEventInput{
 				"MY_INPUT": {Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
-			want: Inputs{
-				"my_input": {"MY_INPUT", false, InputTypeString},
+			want: calls.Inputs{
+				"my_input": {"MY_INPUT", false, calls.InputTypeString},
 			},
 		},
 		{
@@ -622,8 +294,8 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 			inputs: map[string]*workflowlang.WorkflowCallEventInput{
 				"MY_INPUT": {},
 			},
-			want: Inputs{
-				"my_input": {"MY_INPUT", false, InputTypeAny},
+			want: calls.Inputs{
+				"my_input": {"MY_INPUT", false, calls.InputTypeAny},
 			},
 		},
 	}
@@ -686,9 +358,9 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 				t.Fatal("Event was not converted to event")
 			}
 
-			want := Outputs{}
+			want := calls.Outputs{}
 			for _, o := range outputs {
-				want[strings.ToLower(o)] = Output{o}
+				want[strings.ToLower(o)] = calls.Output{o}
 			}
 
 			if diff := cmp.Diff(m.Outputs, want); diff != "" {
@@ -742,9 +414,9 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 				t.Fatal("Event was not converted to event")
 			}
 
-			want := Secrets{}
+			want := calls.Secrets{}
 			for n, r := range secrets {
-				want[strings.ToLower(n)] = Secret{
+				want[strings.ToLower(n)] = calls.Secret{
 					Name:     n,
 					Required: r != nil && r.Value,
 				}
@@ -780,7 +452,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 		t.Fatal("Metadata created:", m)
 	}
 
-	m1 := &Metadata{}
+	m1 := &calls.Metadata{}
 	c = newCapturedWorkflowCache(t, proj, cwd, nil)
 	c.Store("./dir/workflow.yaml", m1)
 	c.WriteWorkflowCallEvent(filepath.Join("dir", "workflow.yaml"), &workflowlang.WorkflowCallEvent{})
@@ -798,7 +470,7 @@ func TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently(t *testing.T) 
 	cwd := filepath.Join("testdata", "reusable-workflows")
 	proj := cwd
 	c := newCapturedWorkflowCache(t, proj, cwd, nil)
-	ret := make(chan *Metadata)
+	ret := make(chan *calls.Metadata)
 	err := make(chan error)
 
 	for range n {
@@ -812,7 +484,7 @@ func TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently(t *testing.T) 
 		}()
 	}
 
-	ms := []*Metadata{}
+	ms := []*calls.Metadata{}
 	errs := []error{}
 	for range n {
 		select {
@@ -899,7 +571,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 }
 
 func TestReusableWorkflowNullCache(t *testing.T) {
-	c := NewCache("", "", io.Discard)
+	c := &ASTComparisonCache{Cache: NewCache("", io.Discard)}
 	e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
 
 	// This should do nothing
@@ -917,19 +589,19 @@ func TestReusableWorkflowNullCache(t *testing.T) {
 func TestReusableWorkflowCacheDetachesMetadata(t *testing.T) {
 	cwd := filepath.Join("path", "to", "project")
 	c := newCapturedWorkflowCache(t, cwd, cwd, nil)
-	want := func() *Metadata {
-		return &Metadata{
-			Inputs:         Inputs{"in": {Name: "in", Required: true, Type: InputTypeString}},
-			Outputs:        Outputs{"out": {Name: "out"}},
-			Secrets:        Secrets{"token": {Name: "token", Required: true}},
-			JobPermissions: map[string]PermissionScopeLevels{"build": {"contents": PermissionLevelRead}},
-			JobCacheAccess: map[string]CacheAccess{"build": {Mode: DeclaredCacheMode(workflowlang.CacheModeRead), Operations: []string{"actions/cache"}}},
+	want := func() *calls.Metadata {
+		return &calls.Metadata{
+			Inputs:         calls.Inputs{"in": {Name: "in", Required: true, Type: calls.InputTypeString}},
+			Outputs:        calls.Outputs{"out": {Name: "out"}},
+			Secrets:        calls.Secrets{"token": {Name: "token", Required: true}},
+			JobPermissions: map[string]calls.PermissionScopeLevels{"build": {"contents": calls.PermissionLevelRead}},
+			JobCacheAccess: map[string]calls.CacheAccess{"build": {Mode: calls.DeclaredCacheMode(workflowlang.CacheModeRead), Operations: []string{"actions/cache"}}},
 		}
 	}
 	stored := want()
 	c.Store("./callee.yaml", stored)
-	stored.Inputs["in"] = Input{Name: "changed"}
-	stored.JobPermissions["build"]["contents"] = PermissionLevelWrite
+	stored.Inputs["in"] = calls.Input{Name: "changed"}
+	stored.JobPermissions["build"]["contents"] = calls.PermissionLevelWrite
 
 	first, _, ok := c.Lookup("./callee.yaml")
 	if !ok {
@@ -939,8 +611,8 @@ func TestReusableWorkflowCacheDetachesMetadata(t *testing.T) {
 		t.Fatalf("Store kept the caller's storage: %s", diff)
 	}
 	delete(first.Outputs, "out")
-	first.Secrets["token"] = Secret{Name: "token"}
-	first.JobPermissions["build"]["contents"] = PermissionLevelWrite
+	first.Secrets["token"] = calls.Secret{Name: "token"}
+	first.JobPermissions["build"]["contents"] = calls.PermissionLevelWrite
 	first.JobCacheAccess["build"].Operations[0] = "changed"
 
 	second, _, _ := c.Lookup("./callee.yaml")
@@ -961,20 +633,20 @@ func TestReusableWorkflowCacheFailureNamesCallSpelling(t *testing.T) {
 }
 
 func TestReusableWorkflowMetadataJobPermissions(t *testing.T) {
-	readAll := PermissionScopeLevels{}
-	for s, vs := range allPermissionScopes {
+	readAll := calls.PermissionScopeLevels{}
+	for s, vs := range permission.Scopes() {
 		if slices.Contains(vs, "read") {
-			readAll[s] = PermissionLevelRead
+			readAll[s] = calls.PermissionLevelRead
 		}
 	}
 
-	want := map[string]PermissionScopeLevels{
-		"inherits":      {"contents": PermissionLevelRead},
-		"Override":      {"pull-requests": PermissionLevelWrite},
+	want := map[string]calls.PermissionScopeLevels{
+		"inherits":      {"contents": calls.PermissionLevelRead},
+		"Override":      {"pull-requests": calls.PermissionLevelWrite},
 		"all-read":      readAll,
-		"aliased-perms": {"contents": PermissionLevelRead},
-		"base":          {"id-token": PermissionLevelWrite},
-		"duplicate":     {"id-token": PermissionLevelWrite},
+		"aliased-perms": {"contents": calls.PermissionLevelRead},
+		"base":          {"id-token": calls.PermissionLevelWrite},
+		"duplicate":     {"id-token": calls.PermissionLevelWrite},
 	}
 
 	proj := filepath.Join("testdata", "reusable-workflows")
@@ -999,7 +671,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 		t.Fatal("workflow was not parsed:", errs)
 	}
 
-	fromFile, err := ParseMetadata(src)
+	fromFile, err := calls.ParseMetadata(src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1064,7 +736,7 @@ jobs:
 					t.Fatal("AST metadata was not cached")
 				}
 				fileCache := newCapturedWorkflowCache(t, project, root, nil)
-				for _, cache := range []*Cache{fileCache, astCache} {
+				for _, cache := range []*ASTComparisonCache{fileCache, astCache} {
 					for pass := range 2 {
 						metadata, err := cache.FindMetadata("./callee.yaml")
 						if err != nil {
@@ -1080,21 +752,6 @@ jobs:
 				}
 			})
 		}
-	}
-}
-
-func TestReusableWorkflowMetadataInvalidAnchorName(t *testing.T) {
-	src := []byte(`on: workflow_call
-jobs:
-  first: &build+job
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo test
-  second: *build+job
-`)
-	_, err := ParseMetadata(src)
-	if err == nil || !strings.Contains(err.Error(), `line:3, column:10: anchor name "build+job"`) {
-		t.Fatalf("wanted the invalid anchor diagnostic, got %v", err)
 	}
 }
 
@@ -1132,7 +789,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 		t.Fatal("metadata was not created from the AST")
 	}
 
-	want := map[string]PermissionScopeLevels{"attest": {"contents": PermissionLevelRead}}
+	want := map[string]calls.PermissionScopeLevels{"attest": {"contents": calls.PermissionLevelRead}}
 	if diff := cmp.Diff(want, fromFile.JobPermissions); diff != "" {
 		t.Fatal("metadata from disk is unexpected. diff:\n" + diff)
 	}
@@ -1157,7 +814,7 @@ func TestCacheDoesNotRegisterSiblingRepository(t *testing.T) {
 }
 
 func TestCacheWithoutRepositoryIgnoresInvalidReference(t *testing.T) {
-	cache := NewCache("", t.TempDir(), nil)
+	cache := NewCache("", nil)
 	cache.IgnoreInvalid("./")
 	if _, _, found := cache.Lookup("./"); found {
 		t.Fatal("a cache without a repository must not retain metadata")
