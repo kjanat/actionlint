@@ -72,7 +72,7 @@ jobs:
 
 type fixedMetadata struct{ metadata *calls.Metadata }
 
-func (m fixedMetadata) FindMetadataForCall(string) (*calls.Metadata, error) {
+func (m fixedMetadata) LookupForCall(string) (*calls.Metadata, error) {
 	return m.metadata, nil
 }
 

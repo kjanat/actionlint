@@ -50,7 +50,10 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 	run := func(t *testing.T, cache *workflowinputs.Cache) []string {
 		t.Helper()
-		r := workflowCallVisitor(fixturedecl.Workflow(&workflowlang.Workflow{}), cache, repofacts.Snapshot{})
+		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
+			t.Fatal(err)
+		}
+		r := workflowCallVisitor(t, fixturedecl.Workflow(&workflowlang.Workflow{}), cache, repofacts.Snapshot{})
 		if err := r.VisitWorkflowPre(fixturedecl.Workflow(&workflowlang.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
@@ -313,7 +316,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			r := workflowCallVisitor(fixturedecl.Workflow(w), cache, repoconfig.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
+			r := workflowCallVisitor(t, fixturedecl.Workflow(w), cache, repoconfig.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
 			if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}

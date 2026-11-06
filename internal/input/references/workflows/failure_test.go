@@ -16,7 +16,7 @@ func TestCachedWorkflowFailuresPreserveCauses(t *testing.T) {
 		cache := NewCache(t.TempDir(), nil)
 		cache.store("./callee.yml", reusableWorkflowMetadataResult{failure: failure})
 		for _, spec := range []string{"./callee.yml", "$/callee.yml"} {
-			metadata, err := cache.FindMetadataForCall(spec)
+			metadata, err := cache.LoadForCall(t.Context(), spec)
 			if metadata != nil || !errors.Is(err, context.Canceled) {
 				t.Errorf("cached failure lost cancellation: metadata=%v error=%v", metadata, err)
 			}
@@ -42,7 +42,7 @@ func TestWorkflowReadFailurePreservesCauseThroughCapture(t *testing.T) {
 	cache := NewCache(root, nil)
 	cache.SetSources(t.Context(), store, root)
 	for _, spec := range []string{"./callee.yml", "$/callee.yml"} {
-		metadata, err := cache.FindMetadataForCall(spec)
+		metadata, err := cache.LoadForCall(t.Context(), spec)
 		if metadata != nil || !errors.Is(err, context.Canceled) {
 			t.Fatalf("captured read failure lost cancellation: metadata=%v error=%v", metadata, err)
 		}

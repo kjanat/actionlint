@@ -104,13 +104,13 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 }
 
 // New connects expression checking to the supplied dependency lookups and runner facts.
-func New(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.Cache, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+func New(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: "expression"}
 	r.invocationActions = lookup.New(ctx, nil, remote).Lookup
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
 		Runners:  runners,
 		Action:   lookup.New(ctx, actionsCache, remote).Lookup,
-		Workflow: workflowCache.FindMetadataForCall,
+		Workflow: workflowCache.LookupForCall,
 		Log:      r.Debug,
 	}, workflowExpressionOptions(nil))
 	return r

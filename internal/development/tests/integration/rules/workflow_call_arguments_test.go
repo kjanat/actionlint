@@ -196,7 +196,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				}
 			}
 
-			metadata, err := cache.FindMetadataForCall(tc.uses)
+			metadata, err := cache.LoadForCall(t.Context(), tc.uses)
 			if err != nil {
 				if len(tc.errs) != 1 || !strings.Contains(err.Error(), tc.errs[0]) {
 					t.Fatalf("unexpected lookup error: %v; want %v", err, tc.errs)

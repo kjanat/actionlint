@@ -1,8 +1,6 @@
 package correctness
 
 import (
-	"strings"
-
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
@@ -25,14 +23,14 @@ type workflowCallCheck struct {
 	defaultPermissions  calls.ResolvedPermissions
 	workflowPermissions workflowdecl.PermissionsView
 	workflowCacheMode   workflowdecl.CacheModeView
-	cache               *workflowinputs.Cache
+	cache               *workflowinputs.ResolvedWorkflows
 	log                 func(string, ...any)
 }
 
 // WorkflowCallCheck validates each reusable call against supplied workflow
 // defaults, repository facts and loaded dependency metadata. Source preparation
 // seeds the metadata cache before callbacks run. A nil log disables debug output.
-func WorkflowCallCheck(workflow workflowdecl.WorkflowView, cache *workflowinputs.Cache, facts repository.Snapshot, log func(string, ...any)) checkinputs.DeclarationCheck {
+func WorkflowCallCheck(workflow workflowdecl.WorkflowView, cache *workflowinputs.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) checkinputs.DeclarationCheck {
 	descriptor := WorkflowCallDeclaration()
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {
@@ -80,12 +78,6 @@ func (rule *workflowCallCheck) checkJob(n workflowdecl.JobView) {
 		return
 	}
 
-	if strings.HasPrefix(u.Value(), "./") || strings.HasPrefix(u.Value(), "$/") {
-		// Prevent metadata consumers from reporting a second lookup failure for
-		// this invalid local reference.
-		rule.cache.IgnoreInvalid(u.Value())
-	}
-
 	rule.Errorf(
 		reporting.SourcePosition(u),
 		"reusable workflow call %q at \"uses\" is not following the format \"owner/repo/path/to/workflow.yml@ref\", \"./path/to/workflow.yml\", nor \"$/path/to/workflow.yml\". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details",
@@ -95,7 +87,7 @@ func (rule *workflowCallCheck) checkJob(n workflowdecl.JobView) {
 
 func (rule *workflowCallCheck) checkWorkflowCallUsesLocal(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, jobCacheMode workflowdecl.CacheModeView) {
 	u := call.Uses()
-	m, err := rule.cache.FindMetadataForCall(u.Value())
+	m, err := rule.cache.LookupForCall(u.Value())
 	if err != nil {
 		// Lookup failures belong to this rule even if inference loaded them first.
 		rule.Error(reporting.SourcePosition(u), err.Error())

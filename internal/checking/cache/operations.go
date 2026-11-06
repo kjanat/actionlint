@@ -16,7 +16,7 @@ import (
 
 // MetadataLookup provides reusable workflow metadata without owning discovery or policy.
 type MetadataLookup interface {
-	FindMetadataForCall(string) (*calls.Metadata, error)
+	LookupForCall(string) (*calls.Metadata, error)
 }
 
 type cacheModeVisit struct {
@@ -64,7 +64,7 @@ func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec st
 		return
 	}
 	checked[visit] = true
-	m, err := r.cache.FindMetadataForCall(sourceSpec)
+	m, err := r.cache.LookupForCall(sourceSpec)
 	if err != nil || m == nil {
 		// The workflow-call rule reports lookup errors.
 		return

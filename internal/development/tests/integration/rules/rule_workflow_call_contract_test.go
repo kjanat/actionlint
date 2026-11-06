@@ -47,7 +47,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
 			c := newCapturedWorkflowCache(t, "", "", nil)
-			r := workflowCallVisitor(fixturedecl.Workflow(&workflowlang.Workflow{}), c, repofacts.Snapshot{})
+			r := workflowCallVisitor(t, fixturedecl.Workflow(&workflowlang.Workflow{}), c, repofacts.Snapshot{})
 			j := &workflowlang.Job{
 				WorkflowCall: &workflowlang.WorkflowCall{
 					Uses: &workflowlang.String{
@@ -92,7 +92,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	}
 
 	c := newCapturedWorkflowCache(t, "", "", nil)
-	r := workflowCallVisitor(fixturedecl.Workflow(w), c, repofacts.Snapshot{})
+	r := workflowCallVisitor(t, fixturedecl.Workflow(w), c, repofacts.Snapshot{})
 
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 	if err := c.Seed(snapshot); err != nil {
 		t.Fatal(err)
 	}
-	r := workflowCallVisitor(w, c, repofacts.Snapshot{})
+	r := workflowCallVisitor(t, w, c, repofacts.Snapshot{})
 
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
