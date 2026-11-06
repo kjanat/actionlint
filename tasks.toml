@@ -303,7 +303,7 @@ run_windows = "Copy-Item -LiteralPath '{{ usage.source }}' -Destination '{{ usag
 ["plugin:example:pipe-to-shell"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm"]
-vars    = { fixture = "pipe-to-shell" }
+vars    = { fixture = "pipe-to-shell", package = "actionlint-example-pipe-to-shell", artifact = "pipe_to_shell", packager = "package-pipe-to-shell" }
 
 ["plugin:fixture:managed-no-sudo"]
 extends = "rust-plugin"

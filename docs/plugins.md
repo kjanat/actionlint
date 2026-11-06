@@ -672,16 +672,16 @@ WASI_SDK_PATH=/opt/wasi-sdk ./build.sh no-sudo.wasm
 ### TinyGo
 
 [`plugins/examples/insecure-download`](../plugins/examples/insecure-download) flags `curl -k` and
-`wget --no-check-certificate`. It is a Go module that depends on `go.bytecodealliance.org/cm`, with `wit-bindgen-go`
-pinned as a Go tool. TinyGo needs the WASI imports in the compiled world, so `build.sh` composes a world from the
-contract and TinyGo's bundled WASI definitions, then builds with:
+`wget --no-check-certificate`. It uses the Go SDK's guest bindings. Its build script combines the plugin contract
+with TinyGo's WASI definitions, builds the component and adds discovery metadata from the guest's own descriptor.
+From the repository root, run:
 
 ```sh
-./build.sh insecure-download.wasm
+mise exec -- bash plugins/examples/insecure-download/build.sh
 ```
 
-TinyGo's `cabi_realloc` returns null for a zero-size request, which the canonical ABI allows. wacogo accepts it since
-https://github.com/partite-ai/wacogo/pull/12. The fork's runtime includes this fix.
+The [example README](../plugins/examples/insecure-download/README.md) shows its tests, release packaging and use
+with actionlint.
 
 ### Other toolchains
 
@@ -689,8 +689,8 @@ Any toolchain that emits a component for the `plugin` world works.
 
 ### Build the examples
 
-Run `make plugin-examples` from the repository root to build the Rust, C and TinyGo examples.
-The Rust components are Cargo `[[example]]` targets. The C and TinyGo builds use their language toolchains.
+Run `mise run plugin-examples` from the repository root to build the Rust, C and TinyGo examples.
+The Rust components are Cargo workspace packages. The C and TinyGo builds use their language toolchains.
 Tests load the components through the plugin interface.
 
 For an independent Rust analyzer, create a package with its own manifest and lockfile and depend on the SDK.
@@ -702,7 +702,7 @@ at that copy. The host's fixture workspace is not a dependency of external plugi
 Run it against a workflow:
 
 ```sh
-actionlint --no-config --plugin ./plugin.wasm .github/workflows/ci.yml
+actionlint check --no-config --plugin ./plugin.wasm .github/workflows/ci.yml
 ```
 
 The host loads the component and registers its declared rules before validating
