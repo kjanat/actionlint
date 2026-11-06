@@ -12,7 +12,7 @@ import (
 // ResolveDirectory finds an existing local directory for the runner directory.
 // Case-insensitive checkout lookup records directory listings through reader.
 func ResolveDirectory(paths execution.Paths, directory execution.Directory, reader *files.Reader) execution.Directory {
-	unknown := execution.Directory{execution.DirectoryUnknown, paths.Analysis}
+	unknown := execution.Directory{Kind: execution.DirectoryUnknown, Path: paths.Analysis}
 	if directory.Kind == execution.DirectoryUnknown {
 		return unknown
 	}
@@ -29,7 +29,7 @@ func ResolveDirectory(paths execution.Paths, directory execution.Directory, read
 	if err != nil || !info.IsDir() {
 		return unknown
 	}
-	return execution.Directory{execution.DirectoryKnown, local}
+	return execution.Directory{Kind: execution.DirectoryKnown, Path: local}
 }
 
 // AnalysisPath resolves available files, including those outside the indexed

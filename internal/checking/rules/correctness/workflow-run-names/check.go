@@ -1,3 +1,4 @@
+// Package workflownames checks workflow_run filters against known workflow names.
 package workflownames
 
 import (

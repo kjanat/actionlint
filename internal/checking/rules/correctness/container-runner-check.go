@@ -10,7 +10,7 @@ import (
 // ContainerRunnerFindings reports established container limitations. Source
 // acquisition, condition evaluation and invocation state belong to the host.
 func ContainerRunnerFindings(uses []runnerlang.ContainerUse) []reporting.Finding {
-	var findings []reporting.Finding
+	findings := make([]reporting.Finding, 0, len(uses))
 	for _, use := range uses {
 		var description string
 		switch use.Kind {

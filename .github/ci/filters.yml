@@ -17,7 +17,6 @@ workflows:
     jobs:
       unit: &go-tests
         - *go
-        - "tools/**/*.go"
         - "tools/**/testdata/**"
         - "schemas/**"
         - actionlint.schema.json
@@ -31,7 +30,6 @@ workflows:
       nix:
         - *go
         - "{distribution/nix,man,schemas}/**"
-        - "tools/**/*.go"
         - "tools/**/testdata/**"
         - "flake.{nix,lock}"
         - actionlint.schema.json

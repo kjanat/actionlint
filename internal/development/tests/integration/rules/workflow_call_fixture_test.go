@@ -13,16 +13,16 @@ import (
 )
 
 // workflowCallVisitor exercises the production adapter with prepared workflow inputs.
-func workflowCallVisitor(t testing.TB, workflow declaration.WorkflowView, cache *workflowinputs.Cache, facts repository.Snapshot) workflowvisit.Rule {
-	t.Helper()
+func workflowCallVisitor(tb testing.TB, workflow declaration.WorkflowView, cache *workflowinputs.Cache, facts repository.Snapshot) workflowvisit.Rule {
+	tb.Helper()
 	var uses []string
 	for _, job := range workflow.Jobs() {
 		if call := job.WorkflowCall(); call.Present() && call.Uses().Present() {
 			uses = append(uses, call.Uses().Value())
 		}
 	}
-	if err := cache.LoadCalls(t.Context(), uses); err != nil {
-		t.Fatal(err)
+	if err := cache.LoadCalls(tb.Context(), uses); err != nil {
+		tb.Fatal(err)
 	}
 	return declarationchecks.New(checking.ConfigurationRules(), correctness.WorkflowCallCheck(workflow, cache.Resolved(), facts, nil))
 }

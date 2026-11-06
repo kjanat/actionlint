@@ -2,6 +2,7 @@ package runner
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -149,10 +150,10 @@ func (plan *ResolutionPlan) Complete(supplied []runnerapi.Answer) (*Knowledge, e
 	if err != nil {
 		return k, err
 	}
-	identity := sha256.New()
-	identity.Write(plan.dependency)
-	identity.Write(encodedAnswers)
-	k.report.CacheKey = fmt.Sprintf("%x", identity.Sum(nil))
+	cacheKeyHash := sha256.New()
+	cacheKeyHash.Write(plan.dependency)
+	cacheKeyHash.Write(encodedAnswers)
+	k.report.CacheKey = hex.EncodeToString(cacheKeyHash.Sum(nil))
 	jobs := make(map[workflowdecl.JobView]jobRecord, len(plan.ranges))
 	for _, span := range plan.ranges {
 		record, err := joinAnswers(span.job, answers[span.start:span.end])

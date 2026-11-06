@@ -51,7 +51,6 @@ type ExecutableContext struct {
 	Runners                 *runnerlang.Knowledge
 	ProjectRoot, WorkingDir string
 	Index                   *execution.IndexSnapshot
-	Log                     func(string, ...any)
 	Report                  func(*findingmodel.Finding)
 }
 
@@ -69,12 +68,6 @@ func (rule *ExecutableChecker) SetPaths(paths execution.Paths) { rule.paths = pa
 func (rule *ExecutableChecker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
 	if rule.context.Report != nil {
 		rule.context.Report(findingmodel.Errorf(pos, "executable-bit", format, args...))
-	}
-}
-
-func (rule *ExecutableChecker) debug(format string, args ...any) {
-	if rule.context.Log != nil {
-		rule.context.Log(format, args...)
 	}
 }
 

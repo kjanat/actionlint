@@ -55,17 +55,15 @@ enable  = [
 [linters.settings.forbidigo]
 analyze-types = true
 forbid        = [
-  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through fsread.Reader" },
-  { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through fsread.Reader" },
-  { pattern = '^fsread\.(Disk|ProbeDir)$', msg = "fsread.Disk and fsread.ProbeDir skip recording; read through fsread.Reader" },
-  { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/workflows/definition/invocation$', msg = "only the invocation owner registers occurrence IDs" },
+  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through files.Reader" },
+  { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through files.Reader" },
+  { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/input/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
+  { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only the invocation owner registers occurrence IDs" },
 ]
 
 # Import direction. Each rule applies to every file its globs match, so a
 # file must satisfy all matching rules. Deny entries match import-path prefixes.
-# Package layering lives in the generated layer table below. The hand-written
-# rules here confine external modules and standard packages more narrowly
-# than a layer does.
+# The rules below restrict which packages can import specific dependencies.
 
 [linters.settings.depguard.rules.yaml-types]
 files = [
@@ -121,7 +119,7 @@ paths     = [
 
 [[linters.exclusions.rules]]
 path    = '_test\.go$|^(\.github|cmd|fuzz|tools)/|^internal/(cli|input/files)/|^internal/development/(generators|tests/(conformance|integration/(documentation|plugins/package-fixture)))/'
-text    = "fsread"
+text    = "files\\.(Reader|Disk|ProbeDir)"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
@@ -130,13 +128,8 @@ text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/(workspace/(project|session)|config/(config|inspection))\.go$'
-text    = "fsread\\.Disk"
-linters = ["forbidigo"]
-
-[[linters.exclusions.rules]]
 path    = '^internal/input/files/names/index\.go$'
-text    = "fsread\\.ProbeDir"
+text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
