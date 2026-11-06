@@ -29,7 +29,7 @@ mise exec go -- go -C plugins/examples/insecure-download run . insecure-download
 ```
 
 The packaging entry point is in [main_native.go](main_native.go), excluded from
-the Wasm build. [main_wasm.go](main_wasm.go) supplies the guest's empty main
+the Wasm build. [main_guest.go](main_guest.go) supplies the guest's empty main
 function. The checking implementation and descriptor are in [main.go](main.go).
 
 To try the component from this repository:
