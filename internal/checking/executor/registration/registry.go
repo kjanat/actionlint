@@ -107,7 +107,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			return declarationchecks.New(c.Rules, correctness.RunnerLabelCheck(c.Runners, labels))
 		}},
 		"container-runner": {Build: func(c Inputs) workflowvisit.Rule {
-			return correctness.NewRuleContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
+			return declarationchecks.NewContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
 		}},
 		"vendor-lock-in": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.NewVendorLockIn(c.Rules, c.Runners) }},
 		"events":         declarationImplementation(correctness.EventsCheck()),

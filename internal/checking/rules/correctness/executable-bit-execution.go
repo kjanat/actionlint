@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -127,7 +128,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.JobView) err
 		hasNeeds = true
 		break
 	}
-	if enabled, known := execution.JobCondition(declaration.If().Semantic(), hasNeeds); known && !enabled {
+	if enabled, known := workflowconditions.JobCondition(declaration.If().Semantic(), hasNeeds); known && !enabled {
 		rule.unix = false
 	}
 	rule.executableState = newExecutableState(knowledge.Ephemeral, rule.callerRepositoryUnknown)
@@ -142,14 +143,14 @@ func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.StepView) erro
 	if !rule.unix || !rule.sequential {
 		return nil
 	}
-	enabled, conditionKnown := execution.Condition(declaration.Condition())
+	enabled, conditionKnown := workflowconditions.Condition(declaration.Condition())
 	if conditionKnown && !enabled {
 		return nil
 	}
-	if execution.CanRunAfterFailure(declaration.Condition()) {
+	if workflowconditions.CanRunAfterFailure(declaration.Condition()) {
 		rule.afterPossibleFailure()
 	}
-	if execution.BoolMayBeTrue(declaration.Background().Semantic()) {
+	if workflowconditions.BoolMayBeTrue(declaration.Background().Semantic()) {
 		rule.afterConcurrentExecution()
 		return nil
 	}
@@ -171,7 +172,7 @@ func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.StepView) erro
 		} else if name, _, versioned := strings.Cut(action.Uses().Value(), "@"); !versioned || !strings.EqualFold(name, "actions/checkout") {
 			rule.actionPristine = false
 		}
-		rule.checkout(action, !conditionKnown || execution.BoolMayBeTrue(declaration.ContinueOnError().Semantic()))
+		rule.checkout(action, !conditionKnown || workflowconditions.BoolMayBeTrue(declaration.ContinueOnError().Semantic()))
 	case workflowlang.ExecKindRun:
 		runView, ok := declaration.Run()
 		if !ok {

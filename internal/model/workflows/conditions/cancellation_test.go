@@ -1,4 +1,4 @@
-package execution
+package conditions
 
 import (
 	"testing"

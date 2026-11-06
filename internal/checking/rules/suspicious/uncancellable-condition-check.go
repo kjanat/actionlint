@@ -9,7 +9,8 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+
+	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -18,7 +19,7 @@ func UncancellableCondition(value declaration.StringView) []reporting.Finding {
 		return nil
 	}
 	expr, err, offset := exprsyntax.ParseConditionExpression(value.Value())
-	if err != nil || expr == nil || !execution.AlwaysIgnoresCancellation(expr) {
+	if err != nil || expr == nil || !workflowconditions.AlwaysIgnoresCancellation(expr) {
 		return nil
 	}
 	finding := reporting.Warning("uncancellable-condition", "", reporting.ViewPosition(value.Pos()),

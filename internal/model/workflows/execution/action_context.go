@@ -3,6 +3,8 @@ package execution
 import (
 	"errors"
 
+	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -29,9 +31,9 @@ func CallFacts(view workflowdecl.StepView, platform runnerlang.Platform) (invoca
 		HasUses:                    uses.Present(),
 		Step:                       position,
 		Condition:                  invocation.ConditionRuntimeDependent,
-		AfterFailure:               CanRunAfterFailure(view.Condition()),
-		ContinueOnError:            BoolMayBeTrue(view.ContinueOnError().Semantic()),
-		Background:                 BoolMayBeTrue(view.Background().Semantic()),
+		AfterFailure:               workflowconditions.CanRunAfterFailure(view.Condition()),
+		ContinueOnError:            workflowconditions.BoolMayBeTrue(view.ContinueOnError().Semantic()),
+		Background:                 workflowconditions.BoolMayBeTrue(view.Background().Semantic()),
 		ShellEnvironmentUnknown:    ShellEnvironmentUnknown(view.Env().Mapping()),
 		ShellPathUnknown:           ShellPathUnknown(view.Env().Mapping()),
 		CheckoutEnvironmentUnknown: CheckoutEnvironmentUnknown(view.Env().Mapping(), platform),
@@ -40,7 +42,7 @@ func CallFacts(view workflowdecl.StepView, platform runnerlang.Platform) (invoca
 	if uses.Present() {
 		effects.Uses = uses.Value()
 	}
-	if enabled, known := Condition(view.Condition()); known {
+	if enabled, known := workflowconditions.Condition(view.Condition()); known {
 		effects.Condition = invocation.ConditionSkipped
 		if enabled {
 			effects.Condition = invocation.ConditionEnabled
