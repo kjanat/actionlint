@@ -16,7 +16,6 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
 )
 
@@ -149,7 +148,7 @@ func (v Value) StringAlternatives() ([]string, bool) {
 	if v.State() != Dynamic || !v.Origin().FromExpression || !strings.Contains(v.Source(), "${{") {
 		return nil, false
 	}
-	return exprlang.TemplateStringAlternatives(v.Source())
+	return expreval.TemplateStringAlternatives(v.Source())
 }
 
 // Spelling returns the source text a YAML literal scalar was written with,

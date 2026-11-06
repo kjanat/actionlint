@@ -1,10 +1,8 @@
-package typecheck
+package evaluate
 
 import (
 	"slices"
 	"strings"
-
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
@@ -27,7 +25,7 @@ func stringAlternatives(expr exprsyntax.Node, depth int) ([]string, bool) {
 	if depth > maxAlternativeDepth {
 		return nil, false
 	}
-	if value, known := expreval.ConditionConstantValue(expr); known {
+	if value, known := ConditionConstantValue(expr); known {
 		text, ok := value.(string)
 		if !ok || len(text) > maxAlternativeBytes {
 			return nil, false
@@ -40,7 +38,7 @@ func stringAlternatives(expr exprsyntax.Node, depth int) ([]string, bool) {
 	}
 	var results []string
 	for index := 0; index < len(call.Args)-1; index += 2 {
-		predicate, known := expreval.ConditionConstantValue(call.Args[index])
+		predicate, known := ConditionConstantValue(call.Args[index])
 		if known {
 			condition, boolean := predicate.(bool)
 			if !boolean {

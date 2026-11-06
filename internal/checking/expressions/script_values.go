@@ -8,7 +8,7 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 
@@ -57,7 +57,7 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 		}
 		values, complete = rule.scriptEnv.Mapping().Lookup(name).StringAlternatives()
 	} else {
-		values, complete = exprlang.StringAlternatives(node)
+		values, complete = expreval.StringAlternatives(node)
 	}
 	if !complete || len(values) == 0 {
 		return false
