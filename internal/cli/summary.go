@@ -30,6 +30,14 @@ func writeCheckSummary(out io.Writer, mode render.Color, summary resultreport.Ch
 		text = fmt.Sprintf("! Checked %d %s, %d %s.", summary.Files, files, summary.Findings, findings)
 		attribute = color.FgYellow
 	}
+	if count := len(summary.IncompleteChecks); count > 0 {
+		checks := "checks"
+		if count == 1 {
+			checks = "check"
+		}
+		text = fmt.Sprintf("! Checked %d %s. Findings: %d. %d %s could not finish.", summary.Files, files, summary.Findings, count, checks)
+		attribute = color.FgYellow
+	}
 	file, terminal := terminalFile(out)
 	colored := mode == render.ColorAlways || mode == render.ColorAuto &&
 		(githubActionsColor(out) || terminal && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")

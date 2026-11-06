@@ -177,7 +177,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	status = presentation.ExitCode
 	if r.Summary && !r.Quiet {
-		summary := resultreport.NewCheckSummary(result.FileCount, result.Diagnostics)
+		summary := resultreport.NewCheckSummary(*result)
 		if inv.JSON {
 			err = commandstreams.WriteJSON(streams.Stderr, map[string]resultreport.CheckSummary{"summary": summary})
 		} else {
