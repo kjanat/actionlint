@@ -100,17 +100,6 @@ depend on that leaf contract, independently of configuration loading and resolut
 Metadata parse findings carry their captured source revision when created; source
 admission never reconstructs that provenance from a display path.
 
-The architecture analyzer enforces public API boundaries and rejects public
-exported structs mixing private representation with writable fields. Its default
-field check covers packages outside `internal` whose name is not `main`; all
-packages still contribute flow summaries. Mutable DTOs, parser borrows,
-operational handles and error chains do not imply exclusive ownership or deep
-immutability. Immutable domain projections retain their semantic detachment
-contracts and regression tests. From the repository root, the built checker
-`.bin/actionlintarch -strict-state -strict-borrows ./...` enables independent
-all-package state and borrowed-result audits, including unresolved mutation and
-intentional borrows.
-
 Script producers snapshot ownership before execution, independently of suppression
 selectors. Reference inference consumes explicit owners and source indexes; it does
 not reconstruct owners from ignore state.
