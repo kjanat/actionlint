@@ -1,16 +1,65 @@
 package checking
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	scripttools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 )
+
+func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, ".github", "workflows")
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "producer.yml"), []byte("name: [broken\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", ".github"}} {
+		if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+			t.Fatalf("prepare repository index: %v: %s", err, output)
+		}
+	}
+	cause := errors.New("script checker initialization failed")
+	tools := registry.Registrations(registry.Selections{
+		"shellcheck": {Process: &processconfig.Options{Executable: new("")}},
+		"ruff":       {Process: &processconfig.Options{Executable: new("")}},
+	})
+	for i := range tools {
+		if tools[i].Descriptor.Name == "shellcheck" {
+			tools[i].Enabled, tools[i].Required = nil, nil
+			tools[i].Build = func(scripttools.Context) (scripttools.Runner, error) { return nil, cause }
+		}
+	}
+	const source = "on: {workflow_run: {workflows: [Missing], types: [completed]}}\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Tools: tools}, []workspace.Source{{
+		Path: filepath.Join(directory, "consumer.yml"), Content: []byte(source), Project: workspace.Identity(root),
+	}})
+	if !errors.Is(err, cause) || result == nil {
+		t.Fatalf("lost initialization failure or partial report: result=%v error=%v", result, err)
+	}
+	for _, check := range result.IncompleteChecks {
+		if check.Rule != "workflow-run-names" {
+			continue
+		}
+		if check.Source.Document == "" || check.Source.Revision == "" {
+			t.Fatalf("unavailable rule lost its captured source: %+v", check)
+		}
+		if check.Invocation.ID != "" || check.Invocation.Entry.Document != "" {
+			t.Fatalf("preparation failure invented an invocation before graph construction: %+v", check)
+		}
+		return
+	}
+	t.Fatalf("unavailable rule was dropped after initialization failed: %+v", result.IncompleteChecks)
+}
 
 func TestIncompleteWorkflowNamesDoNotProveUnusedSuppression(t *testing.T) {
 	for _, tc := range []struct {
