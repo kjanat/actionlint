@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
@@ -238,9 +240,9 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 		return MetadataResult{status: MetadataReadFailed, cause: err}, false
 	}
 	if c.caseInsensitive && c.base.root != "" && !c.base.customReader && !explicit {
-		local, err := execution.CaseInsensitiveRepositoryPath(c.base.sourceRoot, spec, c.base.reader)
+		local, err := runnerpaths.CaseInsensitiveRepositoryPath(c.base.sourceRoot, spec, c.base.reader)
 		if err != nil {
-			_, ambiguous := errors.AsType[execution.AmbiguousPathError](err)
+			_, ambiguous := errors.AsType[runnerpaths.AmbiguousPathError](err)
 			if !errors.Is(err, os.ErrNotExist) && !ambiguous {
 				return MetadataResult{status: MetadataReadFailed, cause: fmt.Errorf("resolve local action %q: %w", original, err)}, false
 			}

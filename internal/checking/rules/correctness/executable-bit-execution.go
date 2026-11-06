@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -593,7 +595,7 @@ func (rule *ExecutableChecker) scriptPath(directory execution.Directory, script 
 	if !ok {
 		return executableLocation{}, false
 	}
-	file, ok := paths.Local(runnerPath, rule.context.Reader)
+	file, ok := runnerpaths.LocalPath(paths, runnerPath, rule.context.Reader)
 	if !ok {
 		return executableLocation{}, false
 	}

@@ -1,12 +1,10 @@
 package execution
 
 import (
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 )
@@ -26,8 +24,8 @@ type Directory struct {
 }
 
 // Paths is the checkout geometry of one execution scope: a plain value record
-// relating runner paths to local analysis paths. Filesystem lookups take the
-// recording reader as an argument, so copies of Paths never share I/O state.
+// relating runner paths to local analysis paths. Input acquisition resolves
+// these paths against the filesystem separately.
 type Paths struct {
 	Platform          runnerlang.Platform
 	Workspace         string
@@ -129,29 +127,6 @@ func (paths Paths) WorkingDirectory(semantic value.Value) Directory {
 	return Directory{DirectoryKnown, base + suffix}
 }
 
-// Resolve maps directory to an existing local directory, reading case-insensitive
-// checkouts through reader.
-func (paths Paths) Resolve(directory Directory, reader *files.Reader) Directory {
-	unknown := Directory{DirectoryUnknown, paths.Analysis}
-	if directory.Kind == DirectoryUnknown {
-		return unknown
-	}
-	paths = paths.DirectoryOrigin(directory)
-	local, ok := paths.AnalysisPath(directory.Path, reader)
-	if !ok {
-		return unknown
-	}
-	local, err := filepath.EvalSymlinks(local)
-	if err != nil {
-		return unknown
-	}
-	info, err := os.Stat(local)
-	if err != nil || !info.IsDir() {
-		return unknown
-	}
-	return Directory{DirectoryKnown, local}
-}
-
 func (paths Paths) DirectoryOrigin(directory Directory) Paths {
 	if directory.Kind == DirectoryActionKnown {
 		paths.Checkout, paths.CheckoutUnknown, paths.Placements = "", false, CheckoutPlacement{}
@@ -176,59 +151,6 @@ func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
 		return placement.Details().Directory.Path, true
 	}
 	return paths.Checkout, !paths.CheckoutUnknown
-}
-
-// Local translates a workspace-relative runner path to the local self checkout.
-func (paths Paths) Local(relativePath string, reader *files.Reader) (string, bool) {
-	relativePath, representable := RunnerRelativePath(relativePath, paths.Platform)
-	if !representable {
-		return "", false
-	}
-	path, known := paths.AnalysisPath(relativePath, reader)
-	if !known {
-		return "", false
-	}
-	relative, err := filepath.Rel(paths.Workspace, path)
-	return path, err == nil && filepath.IsLocal(relative)
-}
-
-// AnalysisPath resolves available files, including those outside the indexed
-// repository. Case-insensitive checkouts are canonicalized through reader.
-func (paths Paths) AnalysisPath(value string, reader *files.Reader) (string, bool) {
-	relativePath, known := LocalDirectoryPath(value, paths.Platform)
-	if !known {
-		return "", false
-	}
-	if filepath.IsAbs(relativePath) {
-		return relativePath, true
-	}
-	if strings.HasPrefix(relativePath, "/") || strings.ContainsRune(relativePath, '\x00') {
-		return "", false
-	}
-	checkout, known := paths.CheckoutFor(relativePath)
-	if !known {
-		return "", false
-	}
-	caseInsensitive := paths.CaseInsensitive
-	if placement := paths.Placements.Matching(relativePath); placement.Present() {
-		caseInsensitive = placement.Details().CaseInsensitive
-	}
-	relativePath = filepath.FromSlash(relativePath)
-	if checkout != "" {
-		var err error
-		relativePath, err = filepath.Rel(filepath.FromSlash(checkout), filepath.Clean(relativePath))
-		if err != nil {
-			return "", false
-		}
-	}
-	if caseInsensitive && filepath.IsLocal(relativePath) {
-		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), reader)
-		if !known {
-			return "", false
-		}
-		relativePath = filepath.FromSlash(canonical)
-	}
-	return filepath.Join(paths.Workspace, relativePath), true
 }
 
 func RunnerRelativePath(value string, platform runnerlang.Platform) (string, bool) {

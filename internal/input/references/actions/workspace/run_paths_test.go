@@ -5,6 +5,8 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -59,7 +61,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			if paths.ActionRunnerPath != tc.want {
 				t.Fatalf("runner action path=%q, want %q", paths.ActionRunnerPath, tc.want)
 			}
-			directory := paths.Resolve(paths.WorkingDirectory(value.Template("${{ github.action_path }}", value.Origin{})), files.New(t.Context(), nil, nil))
+			directory := runnerpaths.ResolveDirectory(paths, paths.WorkingDirectory(value.Template("${{ github.action_path }}", value.Origin{})), files.New(t.Context(), nil, nil))
 			if directory.Kind != execution.DirectoryKnown || directory.Path != wantDirectory {
 				t.Fatalf("action source directory unresolved: %+v", directory)
 			}

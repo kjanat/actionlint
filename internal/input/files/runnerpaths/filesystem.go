@@ -1,4 +1,4 @@
-package execution
+package runnerpaths
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 // AmbiguousPathError identifies multiple filesystem entries matching one runner path.
@@ -37,7 +38,7 @@ func CaseInsensitiveRepositoryPath(root, spec string, reader *files.Reader) (str
 		match := ""
 		for _, entry := range entries {
 			name := entry.Name()
-			if name != component && (!ASCIIPath(name) || !ASCIIPath(component) || !strings.EqualFold(name, component)) {
+			if name != component && (!execution.ASCIIPath(name) || !execution.ASCIIPath(component) || !strings.EqualFold(name, component)) {
 				continue
 			}
 			if match != "" {

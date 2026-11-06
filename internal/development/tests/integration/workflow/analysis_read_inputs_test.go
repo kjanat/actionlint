@@ -7,6 +7,8 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
@@ -52,7 +54,7 @@ func TestCaseInsensitiveRepositoryPathRecordsListings(t *testing.T) {
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
 	var listed []string
-	local, err := execution.CaseInsensitiveRepositoryPath(root, "./SCRIPTS/nested", files.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) }))
+	local, err := runnerpaths.CaseInsensitiveRepositoryPath(root, "./SCRIPTS/nested", files.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) }))
 	if err != nil || local != "./scripts/Nested" {
 		t.Fatalf("resolved %q, %v", local, err)
 	}
@@ -60,12 +62,12 @@ func TestCaseInsensitiveRepositoryPathRecordsListings(t *testing.T) {
 		t.Fatalf("listed %q, want %q", listed, want)
 	}
 	listed = nil
-	if _, err := execution.CaseInsensitiveRepositoryPath(filepath.Join(root, "absent"), "./x", files.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })); err == nil || listed != nil {
+	if _, err := runnerpaths.CaseInsensitiveRepositoryPath(filepath.Join(root, "absent"), "./x", files.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })); err == nil || listed != nil {
 		t.Fatalf("absent root resolved with %v, listed %q", err, listed)
 	}
 	paths := execution.Paths{Workspace: root, Analysis: root, CaseInsensitive: true}
 	reader := files.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })
-	if mapped, known := paths.AnalysisPath("SCRIPTS/nested", reader); !known || mapped != filepath.Join(root, "scripts", "Nested") {
+	if mapped, known := runnerpaths.AnalysisPath(paths, "SCRIPTS/nested", reader); !known || mapped != filepath.Join(root, "scripts", "Nested") {
 		t.Fatalf("analysisPath = %q, %v", mapped, known)
 	}
 	if want := []string{root, filepath.Join(root, "scripts")}; !slices.Equal(listed, want) {
