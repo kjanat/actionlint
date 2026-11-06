@@ -294,6 +294,19 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 }
 
 func (ruleSet RuleSet) bindSettings(config *Config, descriptors []Rule, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {
+	// Binding writes name indexes into policies and override lint structs.
+	// Detach those structs from configurations shared by workflow checks.
+	if policy := config.Policy.DisallowSuppressions; policy != nil {
+		owned := *policy
+		config.Policy.DisallowSuppressions = &owned
+	}
+	config.Overrides = slices.Clone(config.Overrides)
+	for i := range config.Overrides {
+		if lint := config.Overrides[i].Lint; lint != nil {
+			owned := *lint
+			config.Overrides[i].Lint = &owned
+		}
+	}
 	for _, source := range config.Lint.Rules.bindingSources {
 		settings := Config{Lint: LintConfig{Rules: source.rules}}
 		if err := ruleSet.bindSettings(&settings, descriptors, registered, optionOverrides); err != nil {
