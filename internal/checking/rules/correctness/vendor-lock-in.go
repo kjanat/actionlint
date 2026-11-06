@@ -3,12 +3,34 @@ package correctness
 import (
 	"fmt"
 
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
+
+// VendorLockInCheck binds the execution target to job and step reference checks.
+func VendorLockInCheck(target string) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{
+		Declaration: VendorLockInDeclaration(),
+		Job: func(job declaration.JobView) []reporting.Finding {
+			return reporting.FromDiagnostics(VendorLockIn(job.WorkflowCall().Uses(), target))
+		},
+		Step: func(step declaration.StepView) []reporting.Finding {
+			if action, present := step.Action(); present {
+				findings := reporting.FromDiagnostics(VendorLockIn(action.Uses(), target))
+				for i := range findings {
+					findings[i].Step = step
+				}
+				return findings
+			}
+			return nil
+		},
+	}
+}
 
 // VendorLockInDeclaration describes the vendor-lock-in rule.
 func VendorLockInDeclaration() rule.Declaration {
