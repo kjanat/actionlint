@@ -1,6 +1,7 @@
 package correctness
 
 import (
+	namecheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-run-names"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -24,7 +25,7 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w workflowdecl.WorkflowView) err
 	if !r.enabled {
 		return nil
 	}
-	references := workflownames.WorkflowRunFilters(w)
+	references := namecheck.WorkflowRunFilters(w)
 	if len(references) == 0 {
 		return nil
 	}
@@ -32,7 +33,7 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w workflowdecl.WorkflowView) err
 	if err != nil {
 		return err
 	}
-	for _, d := range names.CheckWorkflowRun(references) {
+	for _, d := range namecheck.Check(names, references) {
 		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil

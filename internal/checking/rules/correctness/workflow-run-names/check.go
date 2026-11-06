@@ -1,7 +1,9 @@
-package names
+package workflownames
 
 import (
 	"fmt"
+
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -26,9 +28,9 @@ func WorkflowRunFilters(w workflowdecl.WorkflowView) []workflowdecl.StringView {
 	return references
 }
 
-// CheckWorkflowRun verifies name filters against a complete repository inventory.
+// Check verifies name filters against a complete repository inventory.
 // Unknown expressions and incomplete inventories cannot establish missing producers.
-func (n Names) CheckWorkflowRun(references []workflowdecl.StringView) []results.Diagnostic {
+func Check(n namemodel.Inventory, references []workflowdecl.StringView) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if len(references) == 0 {
 		return findings
@@ -36,7 +38,7 @@ func (n Names) CheckWorkflowRun(references []workflowdecl.StringView) []results.
 	report := func(pos *workflowlang.Pos, format string, args ...any) {
 		findings = append(findings, results.Diagnostic{Rule: "workflow-run-names", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}})
 	}
-	if !n.complete {
+	if !n.Complete() {
 		return findings
 	}
 	var patterns []string

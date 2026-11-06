@@ -14,7 +14,7 @@ import (
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
+	workflownames "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
