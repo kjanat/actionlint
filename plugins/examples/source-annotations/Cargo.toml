@@ -5,13 +5,16 @@ edition.workspace = true
 publish           = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 name       = "source_annotations"
 
+[[bin]]
+name              = "package-source-annotations"
+path              = "src/bin/package.rs"
+required-features = ["package"]
+
 [dependencies]
-actionlint-extension-api = { path = "../../sdk/rust" }
-wit-bindgen.workspace    = true
+actionlint-extension-api = { path = "../../sdk/rust", features = ["source-annotations"] }
 
 [features]
-default                    = ["source-annotations-fixture"]
-source-annotations-fixture = ["actionlint-extension-api/source-annotations"]
+package = ["actionlint-extension-api/package"]

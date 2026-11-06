@@ -637,8 +637,10 @@ cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-example
 
 The component is `target/wasm32-wasip2/wasm/pipe_to_shell.wasm` at the repository root.
 
-Enable the SDK's `source-annotations` feature to opt into the additional comment import. The default feature set
-continues to use the original analyzer world. The SDK's native `package` feature provides `package::Package`:
+Enable the SDK's `source-annotations` feature to import attached YAML comments.
+The [source-annotations example](../plugins/examples/source-annotations/README.md) includes native tests,
+component packaging and a workflow command. Without that feature, the SDK does not import comments.
+The SDK's native `package` feature provides `package::Package`:
 pass the plugin's descriptor, Cargo identity, engine, capabilities, languages and license text, then call `write`
 with the component path and output directory. The SDK writes discovery metadata, schema and license sidecars,
 and checksums. Plugins do not implement their own Wasm section traversal or vendor the SDK's WIT contracts.

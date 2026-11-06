@@ -310,10 +310,15 @@ extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm"]
 vars    = { fixture = "managed-no-sudo", package = "actionlint-fixture-managed-no-sudo", artifact = "managed_no_sudo" }
 
-["plugin:example:source-annotations"]
+["plugin:fixture:source-annotations"]
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/source-annotations.wasm"]
-vars    = { fixture = "source-annotations", features = "source-annotations-fixture", target_dir = "target/plugin-fixtures/source-annotations" }
+vars    = { fixture = "source-annotations", package = "actionlint-fixture-source-annotations", artifact = "source_annotations_fixture" }
+
+["plugin:example:source-annotations"]
+extends = "rust-plugin"
+alias   = ["internal/plugins/execution/component/testdata/plugins/source-annotations-example.wasm"]
+vars    = { fixture = "source-annotations-example", package = "actionlint-example-source-annotations", artifact = "source_annotations", packager = "package-source-annotations" }
 
 ["plugin:example:pinned-actions"]
 extends = "rust-plugin"
