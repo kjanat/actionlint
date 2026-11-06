@@ -200,6 +200,30 @@ test('closed action metadata is read through the virtual workspace host', async 
 	expect(await page.evaluate(() => window.browserSession?.reads)).toContain(`${root}/local/action.yml`);
 });
 
+test('reusable workflow inputs and permission ceilings use virtual workspace metadata', async ({ page }) => {
+	const root = 'vscode-vfs://github/owner/repository';
+	const callee = `${root}/.github/workflows/callee.yml`;
+	await start(page, root, {
+		[callee]: 'on: {workflow_call: {inputs: {valid: {type: string}}}}\n'
+			+ 'jobs:\n  build:\n    runs-on: ubuntu-latest\n    permissions: {contents: write}\n    steps: [{run: echo ok}]\n',
+	});
+	const source =
+		'on: push\npermissions: {}\njobs:\n  call:\n    uses: ./.github/workflows/callee.yml\n    with: {invalid: value}\n';
+	const diagnostics = await check(page, source);
+	const callMessages = diagnostics.filter(d => d.code === 'workflow-call')
+		.map(d => typeof d.message === 'string' ? d.message : d.message.value);
+	expect(callMessages.some(message => message.includes('input "invalid"'))).toBe(true);
+	expect(callMessages.some(message => message.includes('contents: none'))).toBe(true);
+	expect(await page.evaluate(() => window.browserSession?.reads)).toContain(callee);
+	expect(
+		await check(
+			page,
+			source.replace('permissions: {}', 'permissions: write-all').replace('invalid: value', 'valid: value'),
+		),
+	)
+		.toEqual([]);
+});
+
 test('new edits cancel outstanding host reads and cannot publish old findings', async ({ page }) => {
 	await start(page);
 	await page.evaluate(async () => {

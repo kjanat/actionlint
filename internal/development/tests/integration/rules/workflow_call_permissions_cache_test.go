@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -50,7 +49,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
-		r := correctness.NewRuleWorkflowCall(parsing.SourceSnapshot{}, cache, repofacts.Snapshot{})
+		r := workflowCallVisitor(fixturedecl.Workflow(&workflowlang.Workflow{}), cache, repofacts.Snapshot{})
 		if err := r.VisitWorkflowPre(fixturedecl.Workflow(&workflowlang.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
@@ -312,9 +311,8 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
-			r := correctness.NewRuleWorkflowCall(parsing.SourceSnapshot{}, cache, repoconfig.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
-
 			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
+			r := workflowCallVisitor(fixturedecl.Workflow(w), cache, repoconfig.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
 			if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}

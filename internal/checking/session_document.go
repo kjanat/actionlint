@@ -293,6 +293,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	resolvedActions.SetRunners(runners)
 	context := ruleexec.Inputs{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
+	context.Debug = s.debugWriter()
 	context.Repository = host
 	context.RemoteActions = s.remoteActions.Resolved()
 	if s.gitModes != nil {
@@ -322,6 +323,11 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	options := composites.Options{
 		SourceSnapshots: s.snapshots,
 		PrepareSource: func(snapshot parsing.SourceSnapshot) error {
+			if snapshot.Kind() == parsing.KindWorkflow {
+				if err := workflows.Seed(snapshot); err != nil {
+					return err
+				}
+			}
 			_, dependencies := snapshot.Declarations()
 			for _, dependency := range dependencies {
 				if dependency.Kind != "action" {

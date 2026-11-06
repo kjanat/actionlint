@@ -101,7 +101,7 @@ required-permissions adapters.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.
-Checks of expressions, action metadata, workflow calls, workflow run names,
+Checks of expressions, action metadata, workflow run names,
 missing action metadata, executable bits and container runners use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
 alone does not complete that work. Plugin checks do not implement host visitor callbacks.
@@ -128,6 +128,13 @@ callbacks run. Shared write grants have a reporting job assigned in source order
 the assignment includes all reachable restricted events and does not change when
 callbacks run in another order. Step checks read their declaring job's grant,
 not a grant stored by an earlier job callback.
+
+Each admitted workflow source seeds its own reusable-workflow metadata before
+checks run, including when no lint rules are selected. Metadata parse failures are cached for callers
+to report; capture failures follow the operation-failure path. The workflow-call
+check receives workflow defaults and checks each job independently. Permission
+inheritance uses `calls.EffectivePermissions`, which distinguishes absent,
+invalid and explicit declarations and copies repository default maps.
 
 `actionlint fix` previews revision-bound edits; `--apply` writes and reanalyzes them.
 `actionlint lsp` uses versioned buffers, UTF-16 positions, cancellation, stale-publication
