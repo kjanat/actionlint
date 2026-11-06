@@ -129,6 +129,8 @@ npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<branch-name>' chec
 
 Replace `343` with the pull request number or commit SHA.
 
+Previews support macOS, Linux and Windows on x64 and ARM64.
+
 ## Supported platforms
 
 Your package manager installs the binary for your operating system and CPU:
