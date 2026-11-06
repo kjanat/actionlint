@@ -12,6 +12,7 @@ import (
 	"time"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type recordedLint struct {
@@ -25,11 +26,13 @@ func (r *recordedLint) run(req *lintRequest) *lintResult {
 }
 
 func knownFiles(outcome *lintOutcome, count int) *lintResult {
-	return &lintResult{lintOutcome: outcome, fileCount: count, fileCountKnown: true}
+	report := commandstatus.NewCheckResult(outcome.code)
+	report.FileCount = new(count)
+	return &lintResult{lintOutcome: outcome, report: report}
 }
 
 func unknownFiles(outcome *lintOutcome) *lintResult {
-	return &lintResult{lintOutcome: outcome}
+	return &lintResult{lintOutcome: outcome, report: commandstatus.NewCheckResult(outcome.code)}
 }
 
 type actionRun struct {
@@ -104,7 +107,7 @@ func problemResult(t *testing.T, format outputFormat) *lintResult {
 	}
 	return &lintResult{
 		lintOutcome: &lintOutcome{rendered, "", commandstatus.ExitSuccessProblemFound},
-		diagnostics: analysis.Diagnostics, fileCount: 1, fileCountKnown: true,
+		report:      resultreport.FromAnalysis(*analysis),
 	}
 }
 

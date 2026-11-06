@@ -3,6 +3,7 @@ package githubaction
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,12 +14,11 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	results1 "actionlint.kjanat.dev/v2/internal/results"
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -60,14 +60,15 @@ type lintOutcome struct {
 
 type lintResult struct {
 	*lintOutcome
-	diagnostics    []results1.Diagnostic
-	actionMetadata []actions.MetadataReport
-	documents      documentmodel.Outlines
-	sarif          string
-	fileCount      int
-	fileCountKnown bool
-	configs        []configreport.Report
-	hints          []string
+	report  resultreport.CheckResult
+	configs []configreport.Report
+}
+
+func (r *lintResult) selectedFileCount() int {
+	if r.report.FileCount != nil {
+		return *r.report.FileCount
+	}
+	return 0
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
@@ -99,7 +100,8 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 
 func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
-	result := &lintResult{hints: slices.Clone(req.hints)}
+	result := &lintResult{report: commandstatus.NewCheckResult(commandstatus.ExitSuccessNoProblem)}
+	result.report.Hints = append(result.report.Hints, req.hints...)
 	workspace := req.workspaceDir
 	if workspace == "" {
 		workspace = req.workingDir
@@ -112,10 +114,10 @@ func runLinter(req *lintRequest) *lintResult {
 		LogWriter:      &logs,
 		OnConfigLoaded: func(report configreport.Report) {
 			result.configs = append(result.configs, report)
+			result.report.AddConfiguration(report)
 		},
 		OnFilesSelected: func(files []string) {
-			result.fileCount = len(files)
-			result.fileCountKnown = true
+			result.report.FileCount = new(len(files))
 		}, Tools: registry.Registrations(req.toolSelections()),
 	}
 
@@ -157,16 +159,12 @@ func runLinter(req *lintRequest) *lintResult {
 				analysis.Documents[i] = analysis.Documents[i].WithPath(path)
 			}
 		}
-		result.documents = analysis.Documents
-		for _, coverage := range analysis.ActionMetadata {
-			result.actionMetadata = append(result.actionMetadata, coverage.Report())
-		}
-		result.fileCount = analysis.FileCount
-		result.fileCountKnown = true
 		for i := range analysis.Diagnostics {
 			analysis.Diagnostics[i] = diagnosticPaths(analysis.Diagnostics[i], restorePath)
 		}
-		result.diagnostics = analysis.Diagnostics
+		hints := result.report.Hints
+		result.report = resultreport.FromAnalysis(*analysis)
+		result.report.Hints = hints
 	}
 	if err != nil {
 		code := commandstatus.ExitFailure
@@ -189,10 +187,10 @@ func runLinter(req *lintRequest) *lintResult {
 			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", commandstatus.ExitFailure}
 			return result
 		}
-		result.sarif = sarif.String()
+		result.report.SARIF = json.RawMessage(sarif.Bytes())
 	}
 	if req.format == formatSARIF {
-		out.WriteString(result.sarif)
+		out.Write(result.report.SARIF)
 	} else if req.format != formatJSON && req.format != formatJSONLines {
 		rendered, err := renderAnalysis(req.format, analysis, req.workingDir, workspace)
 		if err != nil {
@@ -203,7 +201,7 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	code := commandstatus.AnalysisResult(*analysis).ExitCode
 	if code == commandstatus.ExitSuccessProblemFound {
-		result.hints = append(result.hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
+		result.report.Hints = append(result.report.Hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
 	}
 	result.lintOutcome = &lintOutcome{out.String(), logs.String(), code}
 	return result

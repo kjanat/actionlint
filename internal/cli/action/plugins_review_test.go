@@ -40,10 +40,10 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := runLinter(req)
-	if result.code != commandstatus.ExitSuccessProblemFound || len(result.diagnostics) != 1 {
-		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)
+	if result.code != commandstatus.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 {
+		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 	}
-	for _, finding := range result.diagnostics {
+	for _, finding := range result.report.Diagnostics {
 		if finding.Code != "F821" {
 			t.Fatalf("finding=%+v", finding)
 		}
@@ -128,8 +128,8 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			}
 			req.ctx = t.Context()
 			result := runLinter(req)
-			if result.code != commandstatus.ExitSuccessProblemFound || len(result.diagnostics) != 1 || result.diagnostics[0].Code != tc.code {
-				t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)
+			if result.code != commandstatus.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != tc.code {
+				t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 			}
 		})
 	}
@@ -185,10 +185,10 @@ func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 	})
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	result := runLinter(req)
-	if result.code != commandstatus.ExitSuccessProblemFound || len(result.diagnostics) != 1 || result.diagnostics[0].Code != "ECHO001" {
-		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)
+	if result.code != commandstatus.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != "ECHO001" {
+		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 	}
-	if result.diagnostics[0].Start.Line != 6 || result.diagnostics[0].Start.Column != 20 {
-		t.Fatalf("component finding lost source location: %+v", result.diagnostics[0])
+	if result.report.Diagnostics[0].Start.Line != 6 || result.report.Diagnostics[0].Start.Column != 20 {
+		t.Fatalf("component finding lost source location: %+v", result.report.Diagnostics[0])
 	}
 }

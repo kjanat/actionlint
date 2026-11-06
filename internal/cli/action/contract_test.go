@@ -73,6 +73,7 @@ func TestCLIAndActionResultContract(t *testing.T) {
 		code         int
 		symlink      bool
 	}{
+		{"malformed YAML", "on: [\n", 1, false},
 		{"clean", `on: push
 jobs:
   test:

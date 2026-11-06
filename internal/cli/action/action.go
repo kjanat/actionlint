@@ -104,13 +104,13 @@ func (a *action) execute() (int, error) {
 		}
 		rendered = output.String()
 		if outcome.code == commandstatus.ExitSuccessNoProblem || outcome.code == commandstatus.ExitSuccessProblemFound {
-			count = strconv.Itoa(len(lint.diagnostics))
+			count = strconv.Itoa(len(lint.report.Diagnostics))
 		}
 	} else {
 		outcome, count, rendered = renderOutcome(lint)
 	}
 	lint.lintOutcome = outcome
-	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, req)
+	a.emitStatus(outcome.code, count, lint.selectedFileCount(), lint.report.FileCount != nil, req)
 	result, ok := results[outcome.code]
 	if !ok {
 		result = "failure"
