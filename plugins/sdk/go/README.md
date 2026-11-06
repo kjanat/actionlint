@@ -20,5 +20,32 @@ func init() {
 returns `analyzer.Outcome`. The example implements both functions and maps script
 positions back to the supplied source.
 
+## Package a component
+
+Use `packaging.Package` from a native entry point excluded from the Wasm build:
+
+```go
+import "actionlint.kjanat.dev/v2/plugins/sdk/go/packaging"
+```
+
+Supply the plugin's release identity, engine, supported languages, capabilities,
+license text and the descriptor returned by `describe()`. Call
+`Package.Write(componentPath, outputDirectory)` to write `plugin.wasm`,
+`metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`. It replaces only the
+outer component's discovery section; nested component and module bytes are
+copied unchanged. Run `wasm-tools validate` on the result before publishing it.
+
+The [example's native entry point](../../examples/insecure-download/main_native.go)
+shows the complete call. Its [build script](../../examples/insecure-download/build.sh)
+builds the guest, packages it and validates the result.
+
+`WithMetadata` is the lower-level operation for an existing JSON metadata object.
+It checks the component header and section lengths. It does not validate Wasm
+instructions or replace registry validation.
+
+## Update the bindings
+
 From the repository root, run `mise run protocol:go` after changing
-`plugins/protocol/wit`. This regenerates the bindings with `wit-bindgen-go`.
+`plugins/protocol/wit`. This refreshes the SDK's contract source and regenerates
+the bindings with `wit-bindgen-go`. Packaging derives the interface version and
+contract checksum from that copied source.

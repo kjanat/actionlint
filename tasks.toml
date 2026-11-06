@@ -2,17 +2,23 @@
 
 ["protocol:go"]
 description = "Generate Go guest bindings from the plugin protocol"
+depends     = ["protocol:sdk"]
 sources     = ["plugins/protocol/wit/**", "go.mod", "go.sum"]
 outputs     = ["plugins/sdk/go/bindings/**"]
 run         = "wasm-tools component wit plugins/protocol/wit --json | go tool wit-bindgen-go generate --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings"
 
 ["protocol:sdk"]
 sources     = ["plugins/protocol/**"]
-outputs     = ["plugins/sdk/rust/wit/**", "plugins/sdk/rust/json/**"]
-run         = ["cp -R plugins/protocol/wit/. plugins/sdk/rust/wit/", "cp -R plugins/protocol/json/. plugins/sdk/rust/json/"]
+outputs     = ["plugins/sdk/rust/wit/**", "plugins/sdk/rust/json/**", "plugins/sdk/go/packaging/analyzer.wit"]
+run         = [
+  "cp -R plugins/protocol/wit/. plugins/sdk/rust/wit/",
+  "cp -R plugins/protocol/json/. plugins/sdk/rust/json/",
+  "cp plugins/protocol/wit/analyzer.wit plugins/sdk/go/packaging/analyzer.wit"
+]
 run_windows = '''
 Copy-Item -Path plugins/protocol/wit/* -Destination plugins/sdk/rust/wit -Recurse -Force
 Copy-Item -Path plugins/protocol/json/* -Destination plugins/sdk/rust/json -Recurse -Force
+Copy-Item -LiteralPath plugins/protocol/wit/analyzer.wit -Destination plugins/sdk/go/packaging/analyzer.wit -Force
 '''
 
 ["all"]
