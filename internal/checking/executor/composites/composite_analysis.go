@@ -33,6 +33,7 @@ import (
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // compositionSession owns the graph and accumulated results shared by invocations.
@@ -50,6 +51,7 @@ type compositionSession struct {
 	ctx                    context.Context
 	passes                 []workflowvisit.Pass
 	metadataFindings       []*findingmodel.Finding
+	incompleteChecks       []report.IncompleteCheck
 	configForFile          func(string) (*repoconfig.Config, error)
 	configProvenance       repoconfig.Provenance
 	sourceSnapshots        *parsing.SourceSnapshots

@@ -74,6 +74,11 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	if err := analysis.actions.PrepareMetadata(analysis.ctx, actionView.Uses().Value()); err != nil {
 		return err
 	}
+	prepared, _ := analysis.actions.Prepared().LookupMetadata(actionView.Uses().Value())
+	if document, found := analysis.actions.SourceDocument(prepared); found {
+		revision := document.Capture().Revision()
+		analysis.recordUncheckedFiles(prepared.Metadata(), document.ReferencedFiles(), source.Reference{Document: revision.Document(), Revision: revision.Digest()}, callContext)
+	}
 	if validate != nil {
 		if err := validate(); err != nil {
 			return err
