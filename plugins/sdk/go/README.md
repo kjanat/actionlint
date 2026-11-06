@@ -8,7 +8,7 @@ The [insecure-download example](../../examples/insecure-download/main.go) assign
 its descriptor and check functions to `analyzer.Exports`:
 
 ```go
-import "actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/analyzer"
+import "actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/analyzer"
 
 func init() {
     analyzer.Exports.Describe = describe
@@ -42,6 +42,35 @@ builds the guest, packages it and validates the result.
 `WithMetadata` is the lower-level operation for an existing JSON metadata object.
 It checks the component header and section lengths. It does not validate Wasm
 instructions or replace registry validation.
+
+## Read script environment names
+
+Import `bindings/kjanat/actionlint-script/v0.3.0/environments` to query names for an
+occurrence supplied to the current check. `ForScript` returns each OS
+alternative separately. `Current` is for a snippet-engine check. The results
+contain declaration scopes and name comparisons, without values or secrets.
+They do not enumerate ambient runner variables or changes through `GITHUB_ENV`.
+
+```go
+import (
+    "errors"
+    "actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint-script/v0.3.0/environments"
+)
+
+func environmentsFor(id string) ([]environments.Environment, error) {
+    result := environments.ForScript(id)
+    if environments := result.OK(); environments != nil {
+        return environments.Slice(), nil
+    }
+    if message := result.Err(); message != nil {
+        return nil, errors.New(*message)
+    }
+    return nil, errors.New("environment query returned no result")
+}
+```
+
+Compare names using each alternative's `LookupComparison`.
+`MergeComparison` describes how the runner combines declarations.
 
 ## Update the bindings
 

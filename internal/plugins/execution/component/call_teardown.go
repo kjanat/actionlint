@@ -22,6 +22,8 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	c.invocations = nil
 	prepared := c.prepared
 	c.prepared = nil
+	environments := c.environments
+	c.environments = nil
 	guestFailed := false
 	defer func() {
 		if guestFailed {
@@ -57,6 +59,9 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	}
 	if prepared != nil {
 		defer c.closeResource(cleanup, "prepared scripts", prepared, result)
+	}
+	if environments != nil {
+		defer c.closeResource(cleanup, "script environments", environments, result)
 	}
 	if guest != nil {
 		guestFailed = c.closeResource(cleanup, "component", guest, result)

@@ -19,7 +19,7 @@ const minimal = `{
   "scope": "source",
   "transport": "process",
   "rule": {"name": "lint", "description": "Lint", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "lint"},
-  "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
+  "preparation": "kjanat:actionlint/shell-preparation@0.3.0",
   "selectors": {"filename": "actionlint.sh"},
   "capabilities": {"fixes": false, "reported_sources": false},
   "process": {

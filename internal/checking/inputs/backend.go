@@ -139,12 +139,13 @@ func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
 // Directory as a path, and only when the engine requested the directory
 // resource. The caller keeps it open until Check returns.
 type ScriptRequest struct {
-	Source      string          `json:"source"`
-	Filename    string          `json:"filename"`
-	Config      json.RawMessage `json:"config,omitempty"`
-	Directory   string          `json:"directory,omitempty"`
-	Excluded    []string        `json:"excluded,omitempty"`
-	DirectoryFS fs.FS           `json:"-"`
+	Source      string              `json:"source"`
+	Filename    string              `json:"filename"`
+	Config      json.RawMessage     `json:"config,omitempty"`
+	Directory   string              `json:"directory,omitempty"`
+	Excluded    []string            `json:"excluded,omitempty"`
+	Environment []ScriptEnvironment `json:"environment,omitempty"`
+	DirectoryFS fs.FS               `json:"-"`
 }
 
 // ScriptTemplateValidator checks runtime support before template filtering.

@@ -6,12 +6,13 @@
 package shell
 
 import (
-	"path"
 	"strings"
+
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 // ID names this profile in tool provider manifests.
-const ID = "kjanat:actionlint/shell-preparation@0.2.0"
+const ID = "kjanat:actionlint/shell-preparation@0.3.0"
 
 // Shell is the shell command a run block executes under. Implicit marks the
 // runner's default shell, which omits pipefail.
@@ -26,7 +27,7 @@ type Shell struct {
 func (s Shell) Analysis() (dialect, startup string) {
 	// Split at the first space to match the runner's executable/argument boundary.
 	command, arguments, _ := strings.Cut(s.Name, " ")
-	dialect = strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
+	dialect = scriptmodel.ShellExecutableName(s.Name)
 	switch dialect {
 	case "bash", "sh", "dash", "ksh":
 	default:

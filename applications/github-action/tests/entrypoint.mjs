@@ -26,7 +26,7 @@ async function installManagedShell(environment) {
 	const registry = join(workspace, 'managed-catalogue');
 	const manifestDirectory = join(registry, 'plugins/shellcheck');
 	await mkdir(join(manifestDirectory, 'versions'), { recursive: true });
-	const contractDigest = createHash('sha256')
+	const witSHA256 = createHash('sha256')
 		.update(await readFile(join(source, 'plugins/protocol/wit/analyzer.wit')))
 		.digest('hex');
 	const metadata = {
@@ -39,7 +39,7 @@ async function installManagedShell(environment) {
 		repository: 'https://github.com/publisher/managed-shellcheck',
 		transport: 'wasm-component',
 		interface: 'kjanat:actionlint/analyzer@0.1.0',
-		contract_sha256: contractDigest,
+		wit_sha256: witSHA256,
 	};
 	const metadataFile = join(registry, 'metadata.json');
 	const moduleFile = join(registry, 'plugin.wasm');
@@ -62,7 +62,7 @@ async function installManagedShell(environment) {
 		plugin_id: metadata.id,
 		plugin_version: metadata.plugin_version,
 		repository: metadata.repository,
-		contract: `${metadata.interface}#sha256=${contractDigest}`,
+		contract: `${metadata.interface}#sha256=${witSHA256}`,
 		metadata,
 	};
 	await writeFile(

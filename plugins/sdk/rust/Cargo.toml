@@ -21,6 +21,7 @@ wit-bindgen  = "0.63"
 sha2 = "0.10"
 
 [features]
-package            = ["dep:serde", "dep:serde_json", "dep:sha2", "dep:wasm-encoder", "dep:wasmparser"]
-source-annotations = []
-tool-integration   = ["source-annotations"]
+package             = ["dep:serde", "dep:serde_json", "dep:sha2", "dep:wasm-encoder", "dep:wasmparser"]
+script-environments = []
+source-annotations  = []
+tool-integration    = ["source-annotations"]

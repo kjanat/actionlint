@@ -28,6 +28,7 @@ func generateBindings(ctx context.Context) error {
 	}()
 	for _, world := range []struct{ name, source string }{
 		{"managed-plugin", "."},
+		{"environment-managed-plugin", "."},
 		// Preserve the host interface's canonical analyzer.wit source header.
 		{"plugin", "analyzer.wit"},
 	} {

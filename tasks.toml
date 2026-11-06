@@ -5,7 +5,10 @@ description = "Generate Go guest bindings from the plugin protocol"
 depends     = ["protocol:sdk"]
 sources     = ["plugins/protocol/wit/**", "go.mod", "go.sum"]
 outputs     = ["plugins/sdk/go/bindings/**"]
-run         = "wasm-tools component wit plugins/protocol/wit --json | go tool wit-bindgen-go generate --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings"
+run         = [
+  "go tool wit-bindgen-go generate --versioned --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --versioned --world environment-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit"
+]
 
 ["protocol:sdk"]
 sources     = ["plugins/protocol/**"]

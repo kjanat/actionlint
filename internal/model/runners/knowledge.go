@@ -28,6 +28,40 @@ type JobKnowledge struct {
 	Answers    []runnerapi.Answer
 }
 
+// OperatingSystems lists every supported OS alternative. Unknown or incomplete
+// provider answers add UnknownOS rather than guessing from their labels.
+func (k JobKnowledge) OperatingSystems() []runnerapi.OS {
+	var systems []runnerapi.OS
+	add := func(system runnerapi.OS) {
+		if !slices.Contains(systems, system) {
+			systems = append(systems, system)
+		}
+	}
+	if len(k.Answers) == 0 {
+		switch k.Platform {
+		case Windows:
+			return []runnerapi.OS{runnerapi.Windows}
+		case MacOrLinux:
+			return []runnerapi.OS{runnerapi.Linux, runnerapi.MacOS}
+		case Any:
+			return []runnerapi.OS{runnerapi.UnknownOS}
+		default:
+			return []runnerapi.OS{runnerapi.UnknownOS}
+		}
+	}
+	for _, answer := range k.Answers {
+		resolved, ok := answer.Resolution.(runnerapi.Resolved)
+		if !ok || len(resolved.Candidates) == 0 || !answer.DatasetStatus.Complete || answer.DatasetStatus.Freshness != runnerapi.Fresh {
+			add(runnerapi.UnknownOS)
+			continue
+		}
+		for _, candidate := range resolved.Candidates {
+			add(candidate.OS)
+		}
+	}
+	return systems
+}
+
 // jobRecord stores runner traits, rejections and answers. Each query returns
 // detached slices so readers cannot change the stored knowledge.
 type jobRecord struct {

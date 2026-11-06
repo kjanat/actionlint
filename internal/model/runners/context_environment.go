@@ -1,6 +1,9 @@
 package runner
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // ContextEnvironment describes a runner-exported equivalent of a context value.
 // It says nothing about assignments made later inside a user script.
@@ -22,6 +25,20 @@ func (e ContextEnvironment) Available(composite bool) bool {
 // Source: actions/runner src/Runner.Worker/{GitHubContext,RunnerContext}.cs.
 func ContextEnvironmentFor(reference string) ContextEnvironment {
 	return contextEnvironments[strings.ToLower(reference)]
+}
+
+// RuntimeEnvironmentNames lists predefined names recognized by the runner.
+// Some, such as RUNNER_DEBUG, are populated only under particular conditions;
+// this list supplies no value or guarantee that a variable is nonempty.
+func RuntimeEnvironmentNames(composite bool) []string {
+	names := []string{"CI", "GITHUB_ACTIONS", "GITHUB_REF_PROTECTED"}
+	for _, environment := range contextEnvironments {
+		if environment.Available(composite) {
+			names = append(names, environment.Name())
+		}
+	}
+	slices.Sort(names)
+	return slices.Compact(names)
 }
 
 var contextEnvironments = map[string]ContextEnvironment{

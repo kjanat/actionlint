@@ -5,7 +5,7 @@
 //! option also reports a finding, with effect none, in a file of the granted
 //! directory.
 wit_bindgen::generate!({
-    path: "../../../../../../../plugins/protocol/wit/0.3.0",
+    path: "../../../../../../../plugins/protocol/wit/deps/actionlint-0.3.0",
     world: "template-script-engine-plugin",
 });
 

@@ -54,26 +54,26 @@ type SourceRoot struct {
 	Guest string
 }
 
-type PreparedLineKind string
+type ShellScriptLineKind string
 
 const (
-	PreparedScriptLine  PreparedLineKind = "script"
-	PreparedCommentLine PreparedLineKind = "comment"
-	PreparedStartupLine PreparedLineKind = "startup"
+	ShellScriptSourceLine    ShellScriptLineKind = "source"
+	ShellScriptCommentLine   ShellScriptLineKind = "comment"
+	ShellScriptGeneratedLine ShellScriptLineKind = "generated"
 )
 
-type PreparedLine struct {
-	Kind     PreparedLineKind
+type ShellScriptLine struct {
+	Kind     ShellScriptLineKind
 	Line     int
 	Position sourcepos.Position
 }
-type PreparedScript struct {
-	Text      string
-	Sanitized string
-	Dialect   *string
-	Shell     string
-	Startup   string
-	Lines     []PreparedLine
-	Excluded  []uint32
+type ShellScriptInput struct {
+	Text       string
+	MaskedText string
+	Dialect    *string
+	Shell      string
+	ShellSetup string
+	Lines      []ShellScriptLine
+	Excluded   []uint32
 }
-type ScriptPreparer func(context.Context, OccurrenceID, *string) (*PreparedScript, error)
+type ShellScriptInputBuilder func(context.Context, OccurrenceID, *string) (*ShellScriptInput, error)

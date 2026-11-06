@@ -251,6 +251,7 @@ func (p shellPreparation) batch(batch tools.Batch) (func(tools.Script) (scriptpr
 			Shell:      shellprofile.Shell{Name: script.Execution.Shell, Implicit: script.Execution.ImplicitShell},
 			Directives: resolved.directives, ConfigFile: resolved.configFile,
 			Sources: p.route == routeProcess && script.Execution.DirectoryKnown, Engine: p.route == routeEngine,
+			Environment: script.Fact.Environment,
 		}
 		return shellprofile.PrepareRun(run, script.Text)
 	}, failure
@@ -334,7 +335,7 @@ func (p shellPreparation) input(script tools.Script) (scriptpreparation.Prepared
 			return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config.%w", p.name, err)
 		}
 	}
-	prepared, err := shellprofile.EngineInput(script.Text, dialect, directives)
+	prepared, err := shellprofile.EngineInput(script.Text, dialect, directives, script.Fact.Environment)
 	if err != nil {
 		return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}

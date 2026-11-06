@@ -4,11 +4,11 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	RunnerInterface      = "kjanat:actionlint/runner-provider@0.2.0"
-	runnerContractDigest = "2a995ebe267d4d5df5664c0f6f48b40cc770116ef9375935f26f3a648652df9f"
+	RunnerInterface = "kjanat:actionlint/runner-provider@0.2.0"
+	runnerWITSHA256 = "2a995ebe267d4d5df5664c0f6f48b40cc770116ef9375935f26f3a648652df9f"
 )
 
-func expectedRunnerContract() *wp.ComponentType {
+func expectedRunnerInterface() *wp.ComponentType {
 	b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()
 	t0 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindVariant, Variant: &wp.VariantTypeDesc{Cases: []wp.VariantCaseDesc{{Name: "literal", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}, {Name: "expression", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}}}})}
 	t1 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "line", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}, {Name: "column", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}}}})}

@@ -117,7 +117,8 @@ type importRequirements struct {
 	invocations       bool
 	sourceAnnotations bool
 	sourceFiles       bool
-	preparedScripts   bool
+	shellScriptInputs bool
+	environments      bool
 }
 
 // validateImports checks grants and records optional host features in one pass.
@@ -127,6 +128,13 @@ func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
 	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
 	for _, imported := range imports {
 		canonical := wasmparser.CanonicalizeImportName(imported.Name)
+		if canonical == wasmparser.CanonicalizeImportName(ScriptEnvironmentsInterface) {
+			required.environments = true
+			continue
+		}
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint-script/environments@") {
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, ScriptEnvironmentsInterface)
+		}
 		if canonical == wasmparser.CanonicalizeImportName(InvocationContextInterface) {
 			required.invocations = true
 			continue
@@ -134,12 +142,12 @@ func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
 		if strings.HasPrefix(imported.Name, "kjanat:actionlint/invocation-context@") {
 			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, InvocationContextInterface)
 		}
-		if canonical == wasmparser.CanonicalizeImportName(PreparedScriptsInterface) {
-			required.preparedScripts = true
+		if canonical == wasmparser.CanonicalizeImportName(ShellScriptInputsInterface) {
+			required.shellScriptInputs = true
 			continue
 		}
-		if strings.HasPrefix(imported.Name, "kjanat:actionlint/prepared-scripts@") {
-			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, PreparedScriptsInterface)
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint-script/shell-script-inputs@") {
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, ShellScriptInputsInterface)
 		}
 		if canonical == wasmparser.CanonicalizeImportName(SourceFilesInterface) {
 			required.sourceFiles = true

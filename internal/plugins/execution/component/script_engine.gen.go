@@ -4,11 +4,11 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	ScriptEngineInterface      = "kjanat:actionlint/script-engine@0.2.0"
-	scriptEngineContractDigest = "c20d7e9e516166576fdf19bfd86e0843838179b12ad55350c33db8d04c2eaa9b"
+	ScriptEngineInterface = "kjanat:actionlint/script-engine@0.2.0"
+	scriptEngineWITSHA256 = "c20d7e9e516166576fdf19bfd86e0843838179b12ad55350c33db8d04c2eaa9b"
 )
 
-func expectedScriptEngineContract() *wp.ComponentType {
+func expectedScriptEngineInterface() *wp.ComponentType {
 	b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()
 	t0 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "row", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}, {Name: "column", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}}}})}
 	t1 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindEnum, Enum: []string{"info", "warning", "error", "fatal"}})}

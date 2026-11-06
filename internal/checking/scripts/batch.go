@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -34,6 +35,7 @@ type Unit struct {
 	Owner       *findingmodel.Owner
 	Scope       *Scope
 	Execution   Execution
+	Environment []scriptmodel.EnvironmentNames
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
@@ -48,6 +50,7 @@ type ScriptRequest struct {
 	DefaultShell *string
 	Input        *checkinputs.ScriptInput
 	Execution    Execution
+	Environment  []scriptmodel.EnvironmentNames
 }
 
 type Collection struct {

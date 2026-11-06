@@ -17,7 +17,7 @@
     "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
     "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck"
   },
-  "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
+  "preparation": "kjanat:actionlint/shell-preparation@0.3.0",
   "integration": { "tool": "shellcheck", "contract": "kjanat:actionlint/shellcheck-config@0.1.0" },
   "deprecated_flags": [{ "name": "shellcheck", "value": "command" }],
   "selectors": { "filename": "actionlint.sh" },

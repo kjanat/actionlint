@@ -20,6 +20,6 @@ interface source-files {
 world managed-plugin {
     include annotated-plugin;
     import source-files;
-    import prepared-scripts;
+    import kjanat:actionlint-script/shell-script-inputs@0.3.0;
     export tool-integration;
 }

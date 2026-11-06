@@ -9,9 +9,10 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
+	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/preparedscripts"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 	"github.com/kjanat/wacogo"
@@ -52,8 +53,9 @@ type Plugin struct {
 	hostFactory        *hostbind.Factory
 	annotationsFactory *annotationsbind.Factory
 	filesFactory       *filesbind.Factory
-	preparedFactory    *preparedbind.Factory
+	shellInputFactory  *shellinputbind.Factory
 	invocationFactory  *invocationbind.Factory
+	environmentFactory *environmentbind.Factory
 
 	gate   *semaphore.Weighted
 	memory *memoryBudget
@@ -75,9 +77,13 @@ func (p *Plugin) Close(ctx context.Context) error {
 	}
 	defer p.gate.Release(1)
 	var errs []error
-	if p.preparedFactory != nil {
-		errs = append(errs, p.preparedFactory.Close(ctx))
-		p.preparedFactory = nil
+	if p.environmentFactory != nil {
+		errs = append(errs, p.environmentFactory.Close(ctx))
+		p.environmentFactory = nil
+	}
+	if p.shellInputFactory != nil {
+		errs = append(errs, p.shellInputFactory.Close(ctx))
+		p.shellInputFactory = nil
 	}
 	if p.filesFactory != nil {
 		errs = append(errs, p.filesFactory.Close(ctx))

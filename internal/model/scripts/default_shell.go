@@ -1,10 +1,19 @@
 package scripts
 
 import (
+	"path"
 	"strings"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 )
+
+// ShellExecutableName extracts the runner's executable before its first space.
+// It recognizes both path separators and a Windows .exe suffix. A wrapper such
+// as "env bash" identifies env, not the program that wrapper may execute.
+func ShellExecutableName(shell string) string {
+	command, _, _ := strings.Cut(shell, " ")
+	return strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
+}
 
 // DefaultShell returns the shell supplied by a job container or its runner.
 // Step, job and workflow shell declarations override this default through

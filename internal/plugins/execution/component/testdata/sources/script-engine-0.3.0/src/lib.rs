@@ -3,7 +3,7 @@
 //! output program does, so the host can compare it with the process route.
 //! The `read` option reports a finding in a file of the granted directory.
 wit_bindgen::generate!({
-    path: "../../../../../../../plugins/protocol/wit/0.3.0",
+    path: "../../../../../../../plugins/protocol/wit/deps/actionlint-0.3.0",
     world: "script-engine-plugin",
 });
 

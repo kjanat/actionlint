@@ -31,6 +31,7 @@ func requestsFromUnits(units []scriptexecution.Unit) []scriptexecution.ScriptReq
 			Occurrence:   unit.Occurrence,
 			DefaultShell: unit.Shell,
 			Execution:    unit.Execution,
+			Environment:  unit.Environment,
 		}
 		if unit.Input != nil {
 			site := unit.Input.Site

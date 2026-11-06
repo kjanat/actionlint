@@ -267,6 +267,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 			}
 		}
 		request := checkinputs.ScriptRequest{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
+		request.Environment = checkinputs.ScriptEnvironments(script.Fact.Environment)
 		// Process backends and engines that requested the directory resource
 		// receive the directory.
 		if (reporting || r.directory) && script.Execution.DirectoryKnown {

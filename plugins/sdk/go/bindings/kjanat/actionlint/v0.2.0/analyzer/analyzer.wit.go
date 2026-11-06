@@ -9,7 +9,7 @@
 package analyzer
 
 import (
-	invocationcontext "actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/invocation-context"
+	invocationcontext "actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/invocation-context"
 	"go.bytecodealliance.org/cm"
 )
 

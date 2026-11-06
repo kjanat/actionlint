@@ -7,9 +7,10 @@ import (
 	"fmt"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
+	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/preparedscripts"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 	"github.com/kjanat/wacogo"
@@ -83,15 +84,21 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := checkRoleContracts(data, roles); err != nil {
+	if err := validatePluginInterfaces(data, roles); err != nil {
 		return err
 	}
 	p.component = component
+	if required.environments {
+		p.environmentFactory, err = environmentbind.NewFactory(ctx, p.engine)
+		if err != nil {
+			return err
+		}
+	}
 	p.hostFactory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
 	}
-	if required.invocations || required.preparedScripts || required.sourceAnnotations {
+	if required.invocations || required.sourceAnnotations {
 		p.invocationFactory, err = invocationbind.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
@@ -109,8 +116,8 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 			return err
 		}
 	}
-	if required.preparedScripts {
-		p.preparedFactory, err = preparedbind.NewFactory(ctx, p.engine)
+	if required.shellScriptInputs {
+		p.shellInputFactory, err = shellinputbind.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}

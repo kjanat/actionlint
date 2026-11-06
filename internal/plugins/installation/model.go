@@ -275,7 +275,7 @@ func (p Pin) verifyMetadata(data []byte) error {
 	if p.Kind == artifacts.Component && m.Transport == "wasm-component" {
 		var component struct {
 			Interface string `json:"interface"`
-			Digest    string `json:"contract_sha256"`
+			Digest    string `json:"wit_sha256"`
 		}
 		if err := jsonv2.Unmarshal(data, &component); err != nil {
 			return err

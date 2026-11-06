@@ -13,17 +13,17 @@ import (
 )
 
 func generateRunner() error {
-	return generateRoleContract("runner", "runner-provider", "RunnerInterface", "runnerContractDigest", "expectedRunnerContract")
+	return generateRoleContract("runner", "runner-provider", "RunnerInterface", "runnerWITSHA256", "expectedRunnerInterface")
 }
 
 // generateScriptEngine generates every script-engine version the host accepts.
 func generateScriptEngine() error {
-	if err := generateRoleContract("script-engine", "script-engine", "ScriptEngineInterface", "scriptEngineContractDigest", "expectedScriptEngineContract"); err != nil {
+	if err := generateRoleContract("script-engine", "script-engine", "ScriptEngineInterface", "scriptEngineWITSHA256", "expectedScriptEngineInterface"); err != nil {
 		return err
 	}
 	return generateContract(roleContract{
-		source: "0.3.0/script-engine.wit", role: "script-engine", interfaceName: "ScriptEngine03Interface",
-		digestName: "scriptEngine03ContractDigest", functionName: "expectedScriptEngine03Contract",
+		source: "deps/actionlint-0.3.0/script-engine.wit", role: "script-engine", interfaceName: "ScriptEngine03Interface",
+		digestName: "scriptEngine03WITSHA256", functionName: "expectedScriptEngine03Interface",
 		prefix: "script_engine_03", output: "script_engine_03.gen.go",
 	})
 }
@@ -34,15 +34,15 @@ func generateScriptEngine() error {
 func generateTemplateEffects() error {
 	if err := generateContract(roleContract{
 		source: "template-effects.wit", dependency: "script-engine.wit", role: "template-effects",
-		interfaceName: "TemplateEffectsInterface", digestName: "templateEffectsContractDigest",
-		functionName: "expectedTemplateEffectsContract", prefix: "template_effects", output: "template_effects.gen.go",
+		interfaceName: "TemplateEffectsInterface", digestName: "templateEffectsWITSHA256",
+		functionName: "expectedTemplateEffectsInterface", prefix: "template_effects", output: "template_effects.gen.go",
 	}); err != nil {
 		return err
 	}
 	return generateContract(roleContract{
-		source: "0.3.0/template-effects.wit", dependency: "0.3.0/script-engine.wit", role: "template-effects",
-		interfaceName: "TemplateEffects03Interface", digestName: "templateEffects03ContractDigest",
-		functionName: "expectedTemplateEffects03Contract", prefix: "template_effects_03", output: "template_effects_03.gen.go",
+		source: "deps/actionlint-0.3.0/template-effects.wit", dependency: "deps/actionlint-0.3.0/script-engine.wit", role: "template-effects",
+		interfaceName: "TemplateEffects03Interface", digestName: "templateEffects03WITSHA256",
+		functionName: "expectedTemplateEffects03Interface", prefix: "template_effects_03", output: "template_effects_03.gen.go",
 	})
 }
 

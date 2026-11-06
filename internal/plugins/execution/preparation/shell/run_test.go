@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
 
@@ -44,6 +47,7 @@ func TestPrepareRunVariables(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			tc.run.Environment = scriptmodel.EnvironmentAlternatives(tc.run.Shell.Name, []runnerapi.OS{runnerapi.Linux})
 			prepared, err := PrepareRun(tc.run, tc.text)
 			if err != nil {
 				t.Fatal(err)
@@ -95,7 +99,7 @@ func TestPrepareRunForEngines(t *testing.T) {
 
 func TestEngineInputRefusesSources(t *testing.T) {
 	yes := true
-	if _, err := EngineInput("echo $1", "bash", &Directives{ExternalSources: &yes}); !errors.Is(err, ErrNoSourceAccess) {
+	if _, err := EngineInput("echo $1", "bash", &Directives{ExternalSources: &yes}, nil); !errors.Is(err, ErrNoSourceAccess) {
 		t.Fatalf("got %v", err)
 	}
 }

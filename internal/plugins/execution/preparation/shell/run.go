@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 )
@@ -41,7 +43,8 @@ type Run struct {
 	Sources bool
 	// Engine prepares for a snippet engine, which receives its dialect and
 	// exclusions as configuration and follows no sources.
-	Engine bool
+	Engine      bool
+	Environment []scriptmodel.EnvironmentNames
 }
 
 // PrepareRun masks templates in a run block and inserts the inline directives
@@ -76,13 +79,15 @@ func PrepareRun(r Run, text string) (preparation.Prepared, error) {
 	if !sources {
 		directives += "# shellcheck external-sources=false\n"
 	}
+	setup, environmentExcluded := environmentStartup(setup, r.Environment)
+	excluded := Excluded(environmentExcluded)
 	script := Prepare(mask.Expressions(text), directives, setup)
-	prepared := preparation.Prepared{Source: script.Text(), LineMap: script.Line, Excluded: Excluded(nil)}
+	prepared := preparation.Prepared{Source: script.Text(), LineMap: script.Line, Excluded: excluded}
 	if r.Engine {
-		prepared.Config, err = EngineConfig(dialect)
+		prepared.Config, err = EngineConfig(dialect, excluded)
 		return prepared, err
 	}
-	prepared.Vars = map[string]string{VarExclude: strings.Join(Excluded(nil), "\n")}
+	prepared.Vars = map[string]string{VarExclude: strings.Join(excluded, "\n")}
 	if !directiveShell && dialect != "" {
 		prepared.Vars[VarDialect] = dialect
 	}
@@ -100,7 +105,7 @@ func PrepareRun(r Run, text string) (preparation.Prepared, error) {
 // select the dialect over the declared one and inserts the inline
 // directives. The engine configuration names the dialect and the excluded
 // checks.
-func EngineInput(text, dialect string, directives *Directives) (preparation.Prepared, error) {
+func EngineInput(text, dialect string, directives *Directives, environment []scriptmodel.EnvironmentNames) (preparation.Prepared, error) {
 	if directives != nil {
 		if len(directives.SourcePath) != 0 || directives.ExternalSources != nil && *directives.ExternalSources {
 			return preparation.Prepared{}, ErrNoSourceAccess
@@ -113,14 +118,15 @@ func EngineInput(text, dialect string, directives *Directives) (preparation.Prep
 	if err != nil {
 		return preparation.Prepared{}, err
 	}
-	prepared, dialect := Input(text, dialect, rendered)
-	prepared.Excluded = Excluded(nil)
-	prepared.Config, err = EngineConfig(dialect)
+	startup, environmentExcluded := environmentStartup("", environment)
+	prepared, dialect := Input(text, dialect, rendered, startup)
+	prepared.Excluded = Excluded(environmentExcluded)
+	prepared.Config, err = EngineConfig(dialect, prepared.Excluded)
 	return prepared, err
 }
 
 // EngineConfig is a snippet engine's configuration: the dialect, the
 // excluded checks and no source following.
-func EngineConfig(dialect string) (json.RawMessage, error) {
-	return json.Marshal(map[string]any{"shell": dialect, "exclude": Excluded(nil), "external-sources": false})
+func EngineConfig(dialect string, excluded []string) (json.RawMessage, error) {
+	return json.Marshal(map[string]any{"shell": dialect, "exclude": excluded, "external-sources": false})
 }

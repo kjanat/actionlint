@@ -5,10 +5,10 @@ import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
 	canonicalAnalyzerInterface = "kjanat:actionlint/analyzer@0.2.0"
-	canonicalContractDigest    = "287f569cb6587a23f2195f9d8398f370c32a2b21deed1fac42f3b56fd03c7c23"
+	analyzerWITSHA256          = "287f569cb6587a23f2195f9d8398f370c32a2b21deed1fac42f3b56fd03c7c23"
 )
 
-func expectedAnalyzerContract() *wp.ComponentType {
+func expectedAnalyzerInterface() *wp.ComponentType {
 	b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()
 	t0 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "document", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "revision", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "node", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "address", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}}}})}
 	t1 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "line", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}, {Name: "column", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}}}})}
