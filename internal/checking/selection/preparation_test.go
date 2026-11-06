@@ -67,16 +67,20 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 				if registration.Prepare == nil || !registration.Enabled(inputs) {
 					t.Fatal("workflow-name preparation is unavailable")
 				}
-				prepared, err := registration.Prepare(inputs)
+				outcome, err := registration.Prepare(inputs)
 				if err != nil {
 					t.Fatal(err)
+				}
+				prepared, ready := outcome.(ruleexec.PreparedInputs)
+				if !ready {
+					t.Fatalf("preparation did not supply inputs: %T", outcome)
 				}
 				wantLoads := tc.loads
 				if loads != wantLoads || inputs.WorkflowNameInventory.Complete() {
 					t.Fatalf("loads=%d, want %d; preparation mutated its input", loads, wantLoads)
 				}
 				workflow, _ := inputs.SourceSnapshot.WorkflowView()
-				rule := registration.Build(prepared)
+				rule := registration.Build(prepared.Inputs)
 				if err := rule.VisitWorkflowPre(workflow); err != nil {
 					t.Fatal(err)
 				}
@@ -116,6 +120,24 @@ func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
 	for _, script := range selected.ScriptInfo {
 		if !earlier[script.Name] {
 			t.Fatalf("selected %s after failed input preparation", script.Name)
+		}
+	}
+}
+
+func TestWorkflowNamePreparationReportsUnavailableKnowledge(t *testing.T) {
+	inputs := workflowNameInputs(t, "on", true, func(string) (string, bool, error) {
+		return "", false, nil
+	})
+	selected, err := selection.CreateRules(inputs.Rules, inputs, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected.Unavailable) != 1 || selected.Unavailable[0].Name != "workflow-run-names" || selected.Unavailable[0].Reason == "" {
+		t.Fatalf("missing unavailable-check outcome: %+v", selected.Unavailable)
+	}
+	for _, check := range selected.Rules {
+		if check.Name() == "workflow-run-names" {
+			t.Fatal("constructed a check without its required knowledge")
 		}
 	}
 }
