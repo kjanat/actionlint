@@ -13,6 +13,9 @@ import (
 // snapshotProvider resolves GitHub selectors against an explicitly selected inventory.
 type snapshotProvider struct{}
 
+// SnapshotProvider evaluates selectors against the inventory in each request.
+func SnapshotProvider() runnerapi.Provider { return snapshotProvider{} }
+
 type runnerInventory struct {
 	Runners []inventoryRunner `json:"runners"`
 }

@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -78,7 +79,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			knowledge, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
+			knowledge, err := runnerinput.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}

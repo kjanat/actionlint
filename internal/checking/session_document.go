@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
@@ -303,7 +305,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if known, available := facts.RunnerLabels.Value(); available {
 		customLabels = runnerlang.KnownLabels(known.Values())
 	}
-	runners, runnerErr := runnerlang.PrepareWithLabels(s.ctx, snapshot, customLabels, s.runners, root)
+	runners, runnerErr := runnerinput.PrepareWithLabels(s.ctx, snapshot, customLabels, s.runners, root)
 	if report := runners.Report(); report.CacheKey != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
