@@ -9,8 +9,8 @@ import { expect, test } from 'bun:test';
 import { compileProvider } from '#authoring';
 import { createPluginTester, ProviderTestError } from '#testing';
 
-const sdk = pathToFileURL(resolve(import.meta.dirname, '../src/index.ts')).href;
-const cli = resolve(import.meta.dirname, '../src/cli.ts');
+const sdk = pathToFileURL(resolve(import.meta.dirname, '#index')).href;
+const cli = resolve(import.meta.dirname, '#cli');
 const mapping =
 	'map({filename:$vars.filename,code:.rule,message:.message,severity:"warning",location:{row:.line,column:.column}})';
 
@@ -29,7 +29,8 @@ async function fixture(
 		await writeFile(join(directory, 'output.jq'), transform);
 		await writeFile(
 			definition,
-			`import {defineProcessProvider,jqOutput} from ${JSON.stringify(sdk)};
+			`\
+import {defineProcessProvider,jqOutput} from ${JSON.stringify(sdk)};
 export default defineProcessProvider({
  id:'example/scanner',version:'1.0.0',name:'Scanner',description:'Recorded-output fixture',license:'MIT',repository:'https://github.com/example/scanner',
  rule:{name:'scanner',description:'Scanner findings',category:'correctness',subcategory:'shell',maturity:'stable',provider:'example/scanner'},
@@ -59,7 +60,7 @@ test('authoring rejects rule categories outside the SDK union', async () => {
 		const path = fileURLToPath(definition);
 		const source = await readFile(path, 'utf8');
 		await writeFile(path, source.replace("category:'correctness'", "category:'style'"));
-		await expect(compileProvider(definition)).rejects.toThrow('manifest must default-export a valid SDK provider');
+		expect(await compileProvider(definition)).rejects.toThrow('manifest must default-export a valid SDK provider');
 	});
 });
 
@@ -67,7 +68,8 @@ test('callback manifests are reproducible without staging paths and retain legal
 	await fixture(mapping, async (_directory, definition) => {
 		await writeFile(
 			fileURLToPath(definition),
-			`/*! @license Example license */
+			`\
+/*! @license Example license */
 import { defineScriptProvider } from ${JSON.stringify(sdk)};
 export default defineScriptProvider({
  id:'example/deterministic',version:'1.0.0',name:'Deterministic',description:'Repeatable bundle',license:'MIT',repository:'https://github.com/example/plugin',

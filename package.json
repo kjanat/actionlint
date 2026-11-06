@@ -52,6 +52,7 @@
     "vscode-languageserver-textdocument": "^1",
     "yaml-language-server": "^2"
   },
+  "packageManager": "bun@1.4.4",
   "devEngines": {
     "packageManager": [
       {
