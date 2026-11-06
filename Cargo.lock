@@ -10,6 +10,7 @@ version = "0.1.0"
 name = "actionlint-example-buildkite-runners"
 version = "0.1.0"
 dependencies = [
+ "actionlint-extension-api",
  "serde",
  "serde_json",
  "sha2",

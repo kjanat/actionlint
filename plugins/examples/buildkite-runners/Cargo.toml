@@ -5,13 +5,20 @@ edition.workspace = true
 publish           = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 name       = "buildkite_runners"
 
+[[bin]]
+name              = "package-buildkite-runners"
+path              = "src/bin/package.rs"
+required-features = ["package"]
+
 [dependencies]
-serde                 = { version = "1", features = ["derive"] }
-serde_json            = "1"
-sha2                  = "0.10"
-wit-bindgen.workspace = true
+actionlint-extension-api = { path = "../../sdk/rust", optional = true }
+serde                    = { version = "1", features = ["derive"] }
+serde_json               = "1"
+sha2                     = "0.10"
+wit-bindgen.workspace    = true
 
 [features]
+package = ["actionlint-extension-api/package", "dep:actionlint-extension-api"]

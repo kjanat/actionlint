@@ -37,6 +37,13 @@ pub const ANALYZER_WIT: &str = include_str!("../wit/analyzer.wit");
 /// SHA-256 of the analyzer contract with LF line endings.
 pub const ANALYZER_CONTRACT_SHA256: &str = env!("ACTIONLINT_ANALYZER_CONTRACT_SHA256");
 
+/// Runner-provider interface used by snapshot-based runner extensions.
+pub const RUNNER_PROVIDER_INTERFACE: &str = "kjanat:actionlint/runner-provider@0.2.0";
+/// Runner-provider contract source for guest binding generation.
+pub const RUNNER_PROVIDER_WIT: &str = include_str!("../wit/runner.wit");
+/// SHA-256 of the runner-provider contract with LF line endings.
+pub const RUNNER_PROVIDER_CONTRACT_SHA256: &str = env!("ACTIONLINT_RUNNER_CONTRACT_SHA256");
+
 /// Export the component using this crate's generated bindings.
 #[macro_export]
 macro_rules! export_plugin {

@@ -1,6 +1,6 @@
 # actionlint-extension-api
 
-Rust guest bindings and native packaging for actionlint analyzer components.
+Rust analyzer bindings and native packaging for actionlint components.
 Implement `actionlint_extension_api::Guest`, then export the implementation with
 `actionlint_extension_api::export_plugin!(Plugin)` on `wasm32`.
 
@@ -46,13 +46,13 @@ actionlint_extension_api::export_plugin!(Plugin);
 See [`pipe-to-shell.rs`](https://github.com/kjanat/actionlint/blob/master/plugins/examples/pipe-to-shell/src/lib.rs)
 for an analyzer that reports findings.
 
-Build extensions for `wasm32-wasip2`. The default API imports only the original
-host logging interface. Enable `source-annotations` to import source comments
-through the optional `kjanat:actionlint/source-annotations@0.1.0` interface.
+Build extensions for `wasm32-wasip2`. The default analyzer API imports host logging.
+Enable `source-annotations` to import source comments through the optional
+`kjanat:actionlint/source-annotations@0.2.0` interface.
 This requires a host implementing that additional interface.
 
 Enable `tool-integration` to implement the `managed-plugin` world. Its optional
-`tool-integration@0.1.0` export advertises a tool identity and versioned
+`tool-integration@0.2.0` export advertises a tool identity and versioned
 configuration profile, then accepts or rejects the host configuration. The
 analyzer descriptor name must equal that tool identity. Distribution names,
 repository names and engine names do not participate in replacement selection.
@@ -63,8 +63,8 @@ requests. The [shell configuration profile](json/shellcheck-config-0.1.0.md)
 and its [JSON Schema](json/shellcheck-config-0.1.0.json) are part of the public
 contract and ship in this package.
 
-That world imports `source-files@0.1.0` for explicit source/WASI mount mappings
-and `prepared-scripts@0.1.0` for host-prepared shell text, masking, source lines
+That world imports `source-files@0.2.0` for explicit source/WASI mount mappings
+and `prepared-scripts@0.2.0` for host-prepared shell text, masking, source lines
 and exclusions. Preparation is restricted to script references supplied in the
 current analysis. Unknown references fail; unsupported shell scripts return
 `none`. Guests must not infer mounts from host path conventions, prepare a
@@ -82,6 +82,14 @@ from the extension's own descriptor, Cargo identity, engine, languages,
 capabilities and license text, then call `write(input, output)`. It writes
 `plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`.
 Only the outer discovery section is replaced; nested components/modules survive.
+
+For a `runner-provider@0.2.0` component, use `package::RunnerPackage`. Generate
+guest bindings from `wit/runner.wit` with world `runner-plugin`; the analyzer
+`Guest` trait does not implement that role. Supply the provider name, version and
+targets from the runner's `describe()` result. Package identity, display name and
+release version are separate from those provider fields. The
+[Buildkite example](https://github.com/kjanat/actionlint/tree/master/plugins/examples/buildkite-runners)
+contains native tests, a packaging entry point, snapshot data and a workflow command.
 
 Set `package::Identity.id` to the stable published package identifier. This is
 the registry and lockfile identity; it can differ from the analyzer's rule name
