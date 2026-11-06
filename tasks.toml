@@ -236,7 +236,7 @@ depends = ["matcher:escape", "matcher:no-escape", "matcher:json"]
 depends = ["protocol:sdk"]
 run     = [
   "cargo check --workspace --locked --all-targets",
-  "cargo test --locked -p actionlint-example-pipe-to-shell",
+  "cargo test --locked -p 'actionlint-example-*' --all-features",
   "cargo test --locked -p actionlint-extension-api",
   "cargo test --locked -p actionlint-extension-api --all-features"
 ]
