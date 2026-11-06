@@ -3,8 +3,11 @@ package checking
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -128,7 +131,22 @@ func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.
 }
 
 func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
-	result, err := Analyze(t.Context(), Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: relatedAdmissionProbe{}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	t.Run("directory", func(t *testing.T) { testRelatedBridgeAndSeal(t, t.TempDir()) })
+	t.Run("symlinked directory", func(t *testing.T) {
+		root := filepath.Join(t.TempDir(), "root-alias")
+		if err := os.Symlink(t.TempDir(), root); err != nil {
+			if errors.Is(err, os.ErrPermission) || errors.Is(err, errors.ErrUnsupported) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {
+				t.Skipf("symlink privilege unavailable: %v", err)
+			}
+			t.Fatal(err)
+		}
+		testRelatedBridgeAndSeal(t, root)
+	})
+}
+
+func testRelatedBridgeAndSeal(t *testing.T, root string) {
+	t.Helper()
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: relatedAdmissionProbe{}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejected, ok := errors.AsType[*related.RejectedError](err)
 	if !ok || rejected.Count() != 3 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "primary" || len(result.Diagnostics[0].Related) != 1 || !result.Diagnostics[0].Related[0].Revision.Valid() {
 		t.Fatalf("result=%+v error=%v", result, err)

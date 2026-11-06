@@ -29,7 +29,7 @@ func admitRelated(locations []results.Related, captures *capture.Store, rows map
 			withheld++
 			continue
 		}
-		alias := false
+		alias := address(location.Path) == filepath.FromSlash(row.Document)
 		for _, path := range row.Aliases {
 			if address(path) == address(location.Path) {
 				alias = true
