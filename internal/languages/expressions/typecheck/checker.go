@@ -46,6 +46,7 @@ type Checker struct {
 	configVars            []string
 	configSecrets         []string
 	callFacts             map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts
+	callSignatures        map[*exprsyntax.FuncCallNode][]*exprfunctions.FuncSignature
 	evaluationInvalid     bool
 	validationFailed      bool
 	staticInvalid         bool
@@ -514,27 +515,33 @@ type signatureMatch struct {
 	err        *Error
 }
 
-func checkFuncSignature(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature, args []exprfunctions.CallArgument) signatureMatch {
-	match := signatureMatch{signature: sig}
-	lp, la := len(sig.Params), len(args)
+func checkCallArity(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature) *Error {
+	lp, la := len(sig.Params), len(n.Args)
 	if sig.MaxParams > 0 && la > sig.MaxParams {
-		match.err = errorfAtCallee(argumentCount, n, "function %q takes at most %d arguments but %d arguments are given", n.Callee, sig.MaxParams, la)
-		return match
+		return errorfAtCallee(argumentCount, n, "function %q takes at most %d arguments but %d arguments are given", n.Callee, sig.MaxParams, la)
 	}
 	if sig.VariableLengthParams && (lp > la) || !sig.VariableLengthParams && lp != la {
 		atLeast := ""
 		if sig.VariableLengthParams {
 			atLeast = "at least "
 		}
-		match.err = errorfAtCallee(argumentCount, n,
+		return errorfAtCallee(argumentCount, n,
 			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
 			sig.String(), atLeast, lp, la)
-		return match
 	}
 	if sig.EvaluationPolicy == exprfunctions.EvaluateCase && la%2 == 0 {
-		match.err = errorfAtCallee(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", la)
+		return errorfAtCallee(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", la)
+	}
+	return nil
+}
+
+func checkFuncSignature(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature, args []exprfunctions.CallArgument) signatureMatch {
+	match := signatureMatch{signature: sig}
+	if err := checkCallArity(n, sig); err != nil {
+		match.err = err
 		return match
 	}
+	la := len(args)
 	match.arityValid = true
 	for i, arg := range args {
 		p := sig.ParameterAt(i, la)
@@ -567,7 +574,6 @@ func commonReturn(matches []signatureMatch) (exprtypes.Type, bool) {
 
 func (sema *Checker) checkBuiltinFuncCall(n *exprsyntax.FuncCallNode, match signatureMatch) exprtypes.Type {
 	sig := match.signature
-	sema.checkFunctionAvailability(n)
 	if sema.skipEvaluation {
 		return sig.Ret
 	}
@@ -619,7 +625,6 @@ func (sema *Checker) checkCallArgument(node exprsyntax.Node, demand exprfunction
 }
 
 func (sema *Checker) checkCaseCall(n *exprsyntax.FuncCallNode, sig *exprfunctions.FuncSignature) exprtypes.Type {
-	sema.checkFunctionAvailability(n)
 	var alternatives []exprtypes.Type
 	args := make([]exprfunctions.CallArgument, 0, len(n.Args))
 	ty, _ := sema.checkCaseBranches(n.Args, &alternatives, &args, len(n.Args))
@@ -686,7 +691,7 @@ func (sema *Checker) checkCaseBranches(args []exprsyntax.Node, alternatives *[]e
 	}
 }
 
-func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
+func (sema *Checker) resolveFunction(n *exprsyntax.FuncCallNode) []*exprfunctions.FuncSignature {
 	// Check function name in case insensitive. For example, toJson and toJSON are the same function.
 	callee := strings.ToLower(n.Callee)
 	sigs, ok := sema.funcs[callee]
@@ -707,13 +712,22 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 		}
 		if suggestion := CloseName(callee, candidates); suggestion != "" {
 			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
-			return exprtypes.AnyType()
+			return nil
 		}
 		ss := make([]string, 0, len(functions))
 		for n := range functions {
 			ss = append(ss, n)
 		}
 		sema.calleeErrorf(unknownFunction, n, "undefined function %q. available functions are %s", n.Callee, messages.SortedQuotes(ss))
+		return nil
+	}
+
+	return sigs
+}
+
+func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
+	sigs := sema.callSignatures[n]
+	if len(sigs) == 0 {
 		return exprtypes.AnyType()
 	}
 
@@ -767,9 +781,6 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 			}
 			sema.recordCallArguments(n, matchingArity[0])
 		} else {
-			for _, candidate := range candidates {
-				sema.validationError(candidate.err)
-			}
 			if len(candidates) > 0 {
 				sema.recordCallArguments(n, candidates[0])
 			}
@@ -975,6 +986,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.evaluationInvalid = false
 	sema.validationFailed = false
 	sema.staticInvalid = false
+	sema.validateCallDeclarations(expr)
 	ty := sema.check(expr)
 	errs := detachErrors(sema.errs)
 
