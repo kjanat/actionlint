@@ -83,7 +83,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			return correctness.NewRuleWorkflowRunNames(absolutePath(c.ProjectRoot), c.WorkflowNames, c.Config.RuleSet().DiagnosticLevel(c.Config, "workflow-run-names") != "off")
 		}, Enabled: workflowRunNamesAvailable},
 		"matrix": {Build: func(c Inputs) workflowvisit.Rule {
-			return correctness.NewRuleMatrix(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off")
+			return declarationchecks.New(c.Rules, correctness.MatrixCheck(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off"))
 		}},
 		"credentials": declarationImplementation(security.CredentialsCheck()),
 		"shell-name": {Build: func(c Inputs) workflowvisit.Rule {

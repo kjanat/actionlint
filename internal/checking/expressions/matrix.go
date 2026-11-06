@@ -6,8 +6,6 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
@@ -109,38 +107,7 @@ func (rule *Checker) checkMatrix(m workflowdecl.MatrixView, resolution matrixche
 		}
 	}
 
-	return matrixTypeFromResolutionWithInferredRows(resolution, inferred)
-}
-
-func matrixTypeFromResolution(resolution matrixcheck.Resolution) exprtypes.ObjectType {
-	return matrixTypeFromResolutionWithInferredRows(resolution, nil)
-}
-
-func matrixTypeFromResolutionWithInferredRows(resolution matrixcheck.Resolution, inferred map[sourcepos.Position]exprtypes.Type) exprtypes.ObjectType {
-	if !resolution.IncludesComplete() || resolution.Open() {
-		inferred = nil
-	}
-	var object exprtypes.ObjectBuilder
-	for name := range resolution.ReachableNames() {
-		reach := resolution.Reachable(name)
-		var values elementTypes
-		for _, candidate := range reach.Values {
-			// Only row declarations supply this inference. An unknown include
-			// assignment must not inherit an axis's more specific element type.
-			values.add(matrixValueType(candidate, inferred[candidate.Origin().Span.Start]))
-		}
-		ty := values.merged()
-		if !resolution.IncludesComplete() {
-			ty = exprtypes.AnyType()
-		}
-		object.Set(name, ty)
-	}
-	// Rows from an include expression are only known at runtime and may add
-	// any property, as with include: ${{ fromJSON(inputs.targets) }}.
-	if resolution.Open() || !resolution.IncludesComplete() {
-		object.SetMapped(exprtypes.AnyType())
-	}
-	return object.Build()
+	return resolution.ContextType(inferred)
 }
 
 func (rule *Checker) checkMatrixCombination(combination workflowdecl.MatrixCombinationView, section string) {
@@ -158,42 +125,6 @@ func (rule *Checker) checkMatrixCombination(combination workflowdecl.MatrixCombi
 		rule.checkMatrixSourceKey(assignment.Key(), combination.Evaluated())
 		rule.checkRawYAMLValue(assignment.Value())
 	}
-}
-
-// matrixValueType types a matrix value. inferred is the type a row expression
-// gave the value; any means nothing was inferred.
-func matrixValueType(item value.Value, inferred exprtypes.Type) exprtypes.Type {
-	if !item.Known() {
-		return inferred
-	}
-	switch item.Kind() {
-	case value.Null:
-		return exprtypes.NullType()
-	case value.Bool:
-		return exprtypes.BoolType()
-	case value.Number:
-		return exprtypes.NumberType()
-	case value.String:
-		return exprtypes.StringType()
-	case value.Object:
-		object, _ := inferred.Object()
-		properties := map[string]exprtypes.Type{}
-		for name, property := range item.Props() {
-			// An undeclared property reads as any: nothing was inferred.
-			propertyType, _ := object.Property(name)
-			properties[name] = matrixValueType(property, propertyType)
-		}
-		return exprtypes.NewStrictObjectType(properties).Type()
-	case value.Array:
-		array, _ := inferred.Array()
-		var elements elementTypes
-		for child := range item.Items() {
-			elements.add(matrixValueType(child, array.Elem()))
-		}
-		return exprtypes.NewArrayType(elements.merged()).Type()
-	case value.KindUnknown:
-	}
-	return exprtypes.AnyType()
 }
 
 // checkMatrixRow returns the element type of a matrix row, or any when no

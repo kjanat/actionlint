@@ -101,7 +101,7 @@ required-permissions adapters.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.
-Expression, action-metadata, matrix and cache checks use visitor implementations.
+Expression, action-metadata and cache checks use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
 alone does not complete that work. Plugin checks do not implement host visitor callbacks.
 
@@ -113,6 +113,13 @@ names open while preserving the string value type described by
 [GitHub's context reference](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#jobs-context).
 The expression checker loads metadata, supplies it to that model and checks uses
 of the resulting types. `needs` includes direct prerequisites only.
+
+`internal/model/workflows/matrix` derives the `matrix` context type from reachable
+rows. Unknown includes can add values and property names; unknown excludes only
+remove rows. The expression checker supplies inferred row element types and
+reports expression problems. Recursive value-to-type conversion belongs to
+`internal/model/contexts/values`, which uses inferred types only for unknown
+parts and does not change evaluation state.
 
 `actionlint fix` previews revision-bound edits; `--apply` writes and reanalyzes them.
 `actionlint lsp` uses versioned buffers, UTF-16 positions, cancellation, stale-publication

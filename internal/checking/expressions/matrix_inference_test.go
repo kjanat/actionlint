@@ -18,6 +18,8 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 		{"unknown include does not inherit row type", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: [{item: "${{ github.head_ref }}"}]`, `echo '${{ matrix.item }}'`, "any", true},
 		{"unknown include array does not inherit row type", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", include: "${{ fromJSON(vars.INCLUDE) }}"`, `echo '${{ matrix.item }}'`, "any", true},
 		{"unknown excludes preserve numeric row type", `item: "${{ github.event.workflow_run.pull_requests.*.number }}", exclude: "${{ fromJSON(vars.EXCLUDE) }}"`, `echo '${{ matrix.item }}'`, "number", false},
+		{"definite excludes remove string alternatives", `item: [42, text], exclude: [{item: text}]`, `echo '${{ matrix.item }}'`, "number", false},
+		{"include reintroduces excluded strings", `item: [42, text], exclude: [{item: text}], include: [{item: text}]`, `echo '${{ matrix.item }}'`, "any", false},
 		{"unknown includes can add string rows", `item: [42], include: "${{ fromJSON(vars.INCLUDE) }}"`, `echo '${{ matrix.item }}'`, "any", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

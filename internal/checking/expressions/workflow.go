@@ -151,7 +151,7 @@ func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
 		resolution := rule.matrixResolution(strategy)
 		if strategy.Expression().Present() {
 			rule.checkWorkflowExpression(strategy.Expression(), "strategy", "jobs.<job_id>.strategy", schema.Strategy)
-			rule.matrixTy = new(matrixTypeFromResolution(resolution))
+			rule.matrixTy = new(resolution.ContextType(nil))
 			rule.matrixScriptSafe = safeMatrixScriptReferences(resolution)
 		} else if strategy.Matrix().Present() {
 			rule.matrixTy = new(rule.checkMatrix(strategy.Matrix(), resolution))
