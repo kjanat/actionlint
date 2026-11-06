@@ -15,11 +15,12 @@ import (
 // values only: no live rules, parser nodes, process handles, or rendering policy.
 // Sources aligns with Diagnostics and contains the analyzed text for each finding.
 type Analysis struct {
-	ActionMetadata []actions.Coverage
-	RunnerResults  []runner.Report
-	FileCount      int
-	Diagnostics    []results.Diagnostic
-	Sources        []DiagnosticSource
+	IncompleteChecks []IncompleteCheck
+	ActionMetadata   []actions.Coverage
+	RunnerResults    []runner.Report
+	FileCount        int
+	Diagnostics      []results.Diagnostic
+	Sources          []DiagnosticSource
 	// CapturedSources projects only admitted rows after capture teardown joins.
 	// Keys are captured aliases; values and byte slices belong to this result.
 	CapturedSources map[string]CapturedSource
@@ -27,6 +28,15 @@ type Analysis struct {
 	Configurations  []configreport.Report
 	Inputs          []string
 	Rules           []rule.Descriptor
+}
+
+// IncompleteCheck records a source revision whose checks could not finish in at
+// least one invocation. An empty Rule means the source's analysis was interrupted
+// before completion could be established for individual rules.
+type IncompleteCheck struct {
+	Source source.Reference `json:"source"`
+	Rule   string           `json:"rule,omitempty"`
+	Reason string           `json:"reason"`
 }
 
 type CapturedSource struct {

@@ -29,7 +29,7 @@ func TestSuppressionUseAcrossInvocations(t *testing.T) {
 			candidate("shared-action", "revision-two", "shellcheck"),
 		}},
 	}
-	usage.discardUnproven(files)
+	usage.discardUnproven(files, nil)
 	if len(files[0].errors) != 0 || len(files[1].errors) != 3 {
 		t.Fatalf("usage crossed selector, document or revision boundaries: %+v", files)
 	}
@@ -47,7 +47,7 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 			Rule: "unused-suppression", Start: position, Reference: &ref, Path: "alias/action.yml", UnusedSuppressionRule: name,
 		})
 	}
-	usage.discardUnproven(files)
+	usage.discardUnproven(files, nil)
 	addUnusedSuppressionFixes(files, []string{"shellcheck", "expression-reference"})
 	if len(files[0].errors) != 1 || len(files[0].errors[0].Fixes) != 1 {
 		t.Fatalf("lost reconciled cleanup: %+v", files)
@@ -61,7 +61,8 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 func TestIncompleteSuppressionInvocationInvalidatesOnlyItsRevision(t *testing.T) {
 	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
 	var usage suppressionUses
-	usage.markIncomplete(ref)
+	var completion checkCompletion
+	completion.markIncomplete(ref)
 	candidate := func(document, revision string) *findingmodel.Finding {
 		return &findingmodel.Finding{
 			Rule: "unused-suppression", Reference: &sourcepos.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
@@ -75,7 +76,7 @@ func TestIncompleteSuppressionInvocationInvalidatesOnlyItsRevision(t *testing.T)
 			candidate("shared-action", "revision-two"),
 		}},
 	}
-	usage.discardUnproven(files)
+	usage.discardUnproven(files, completion.incompleteChecks())
 	if len(files[0].errors) != 0 || len(files[1].errors) != 2 || files[1].errors[0].Reference.Document != "other-action" || files[1].errors[1].Reference.Revision != "revision-two" {
 		t.Fatalf("incomplete invocation leaked cleanup or crossed source revisions: %+v", files)
 	}

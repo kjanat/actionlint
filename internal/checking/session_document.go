@@ -45,6 +45,7 @@ import (
 // The workflow engine receives only prepared passes from the composition service.
 type analysisSession struct {
 	suppressionUses suppressionUses
+	checkCompletion checkCompletion
 	runnerReportsMu sync.Mutex
 	runnerReports   []runner.Report
 	runners         runner.Options
@@ -148,7 +149,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		return all, outline, err
 	}
 	if !document.CanAnalyze() || len(document.SyntaxErrors) != 0 || document.ParseError != nil {
-		s.suppressionUses.markIncomplete(snapshot.Reference())
+		s.checkCompletion.markIncomplete(snapshot.Reference())
 	}
 	// The request's display spelling is an authorized entry address. Resolve it
 	// through this capture owner before sealing, so metadata aliases (including
@@ -174,7 +175,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	defer func() {
 		if resultErr != nil {
 			for _, index := range references {
-				s.suppressionUses.markIncomplete(index.Document)
+				s.checkCompletion.markIncomplete(index.Document)
 			}
 		}
 	}()
@@ -264,10 +265,10 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		skippedMu.Lock()
 		defer skippedMu.Unlock()
 		for name := range skipped {
-			s.suppressionUses.markUnavailable(snapshot.Reference(), name)
+			s.checkCompletion.markUnavailable(snapshot.Reference(), name, "tool was unavailable for this analysis")
 			for _, document := range result.SourceDocuments {
 				revision := document.Capture().Revision()
-				s.suppressionUses.markUnavailable(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}, name)
+				s.checkCompletion.markUnavailable(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}, name, "tool was unavailable for this analysis")
 			}
 		}
 	}()
@@ -312,7 +313,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
 	for _, unavailable := range selected.Unavailable {
-		s.suppressionUses.markUnavailable(snapshot.Reference(), unavailable.Name)
+		s.checkCompletion.markUnavailable(snapshot.Reference(), unavailable.Name, unavailable.Reason)
 		s.debug("Skipped %s: %s", unavailable.Name, unavailable.Reason)
 	}
 	if err != nil {

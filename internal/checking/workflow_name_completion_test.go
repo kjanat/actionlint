@@ -49,6 +49,13 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
+			if tc.name == "complete" {
+				if len(result.IncompleteChecks) != 0 {
+					t.Fatalf("complete inventory reported incomplete checks: %+v", result.IncompleteChecks)
+				}
+			} else if len(result.IncompleteChecks) != 1 || result.IncompleteChecks[0].Rule != "workflow-run-names" || result.IncompleteChecks[0].Source.Document == "" || result.IncompleteChecks[0].Source.Revision == "" || result.IncompleteChecks[0].Reason == "" {
+				t.Fatalf("result lost the incomplete check and its captured source: %+v", result.IncompleteChecks)
+			}
 			want := 0
 			if tc.wantUnused {
 				want = 1

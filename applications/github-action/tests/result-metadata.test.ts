@@ -14,6 +14,19 @@ const base = {
 	hints: [],
 };
 
+test('persisted incomplete checks preserve source revision and reject malformed records', () => {
+	const record = {
+		source: { document: '/work/ci.yml', revision: 'abc', node: '', address: '' },
+		rule: 'workflow-run-names',
+		reason: 'producer names unavailable',
+	};
+	const value = { ...base, incomplete_checks: [record] };
+	assert.deepEqual(parseResult(value), value);
+	for (const invalid of [null, { ...record, source: null }, { ...record, reason: '' }, { ...record, rule: '' }]) {
+		assert.throws(() => parseResult({ ...base, incomplete_checks: [invalid] }));
+	}
+});
+
 const selection = {
 	host: 'github.com',
 	repository: 'owner/repository',
