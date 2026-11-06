@@ -3,6 +3,7 @@ package checking
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -32,7 +33,26 @@ func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input chec
 }
 
 func TestResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {
+	for _, aliasedRoot := range []bool{false, true} {
+		t.Run(fmt.Sprintf("aliased-root=%t", aliasedRoot), func(t *testing.T) {
+			testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t, aliasedRoot)
+		})
+	}
+}
+
+func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliasedRoot bool) {
+	t.Helper()
 	root := t.TempDir()
+	if aliasedRoot {
+		alias := filepath.Join(t.TempDir(), "root-alias")
+		if err := os.Symlink(root, alias); err != nil {
+			if errors.Is(err, os.ErrPermission) || errors.Is(err, errors.ErrUnsupported) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {
+				t.Skipf("symlink privilege unavailable: %v", err)
+			}
+			t.Fatal(err)
+		}
+		root = alias
+	}
 	first, second := filepath.Join(root, "ci.yml"), filepath.Join(t.TempDir(), "other.yml")
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	for _, path := range []string{first, second} {
@@ -47,6 +67,10 @@ func TestResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
+	physicalFirst, err := filepath.EvalSymlinks(first)
+	if err != nil {
+		t.Fatal(err)
+	}
 	checker := pathRetargetChecker{retarget: func() error {
 		if err := os.Remove(alias); err != nil {
 			return err
@@ -54,10 +78,13 @@ func TestResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {
 		return os.Symlink(second, alias)
 	}}
 	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: checker}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{alias}})
-	if err != nil || result == nil || len(result.Diagnostics) != 1 {
-		t.Fatalf("result=%+v error=%v", result, err)
+	if err != nil || result == nil {
+		t.Fatalf("result available=%t error=%v", result != nil, err)
 	}
-	if got := result.Diagnostics[0]; got.Path != "ci.yml" || got.Reference == nil || filepath.FromSlash(got.Reference.Document) != first {
+	if len(result.Diagnostics) != 1 {
+		t.Fatalf("diagnostics=%v", result.Diagnostics)
+	}
+	if got := result.Diagnostics[0]; got.Path != "ci.yml" || got.Reference == nil || filepath.FromSlash(got.Reference.Document) != physicalFirst {
 		t.Fatalf("result followed the retargeted filesystem path: %+v", got)
 	}
 }
