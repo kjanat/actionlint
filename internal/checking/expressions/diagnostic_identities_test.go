@@ -3,6 +3,8 @@ package expressions
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
@@ -34,7 +36,7 @@ func TestDiagnosticIdentities(t *testing.T) {
 			} else {
 				checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 				checker.SetContextAvailability([]string{"github"})
-				_, findings = checker.Check(node)
+				_, findings = checker.Check(expreval.EvaluateSubexpressions(node))
 				if tc.script {
 					findings = append(findings, security.ScriptInjection(node, findings)...)
 				}

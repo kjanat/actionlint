@@ -3,6 +3,8 @@ package suspicious
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -29,7 +31,7 @@ func TestConditionValuesUseCheckedTypes(t *testing.T) {
 			}
 			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			checked := checker.CheckResult(node)
+			checked := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 			if !checked.Valid {
 				t.Fatal(checked.Findings)
 			}

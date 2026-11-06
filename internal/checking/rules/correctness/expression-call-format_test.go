@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -37,7 +39,7 @@ func TestUnusedFormatArgumentsUseCheckedCall(t *testing.T) {
 			}
 			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			result := checker.CheckResult(node)
+			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 			if result.Valid != (tc.failures == 0) || len(result.Findings) != tc.failures {
 				t.Fatalf("language findings=%v, want %d", result.Findings, tc.failures)
 			}
@@ -64,7 +66,7 @@ func TestUnusedFormatArgumentRangeExcludesResultAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checked := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(root)
+	checked := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(root))
 	findings := UnusedFormatArguments(root, checked.Calls)
 	if len(findings) != 1 || source[findings[0].Offset:findings[0].EndOffset] != "format" {
 		t.Fatalf("wrong callee range: %+v", findings)
@@ -81,7 +83,7 @@ func TestGroupedUnusedFormatArgumentRanges(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		checked := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(root)
+		checked := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(root))
 		findings := UnusedFormatArguments(root, checked.Calls)
 		if len(findings) != 1 || source[findings[0].Offset:findings[0].EndOffset] != "format" {
 			t.Fatalf("%s: wrong range %+v", source, findings)

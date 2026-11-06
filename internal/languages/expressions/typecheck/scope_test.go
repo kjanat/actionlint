@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -50,7 +52,7 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 		if node == nil {
 			t.Fatal("expression did not parse")
 		}
-		if result := checker.CheckResult(node); !result.Valid || result.Type.Kind() != exprtypes.KindBool {
+		if result := checker.CheckResult(expreval.EvaluateSubexpressions(node)); !result.Valid || result.Type.Kind() != exprtypes.KindBool {
 			t.Fatalf("%s: model refinement was not applied: %+v", input, result)
 		}
 		current, found := checker.ContextType("subject")
@@ -58,7 +60,7 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 			t.Fatalf("branch refinement escaped its branch: %s", current)
 		}
 	}
-	if result := checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ subject.number }}")); result.Valid {
+	if result := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ subject.number }}"))); result.Valid {
 		t.Fatal("branch-only property became globally available")
 	}
 }
@@ -96,20 +98,20 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 	scope.overloads["echo"][0].Params[0] = exprtypes.BoolType()
 	for _, input := range []string{"counter", "shape()", "echo('value')"} {
 		node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
-		result := checker.CheckResult(node)
+		result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 		if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 			t.Fatalf("%s: %+v, want caller-supplied numeric type", input, result)
 		}
 	}
-	typo := checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ shap() }}"))
+	typo := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ shap() }}")))
 	if len(typo.Findings) != 1 || !strings.Contains(typo.Findings[0].Message, `did you mean "shape"?`) {
 		t.Fatalf("scope function missing from name suggestions: %+v", typo)
 	}
-	result := checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ always() }}"))
+	result := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ always() }}")))
 	if result.Valid || len(result.Findings) != 1 || !strings.Contains(result.Findings[0].Message, "caller-selected location") || strings.Contains(result.Findings[0].Message, "changed location") {
 		t.Fatalf("function restriction changed with the caller's map: %+v", result)
 	}
-	result = checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ github }}"))
+	result = checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ github }}")))
 	if result.Valid {
 		t.Fatal("checker invented a GitHub context absent from its supplied scope")
 	}
@@ -120,14 +122,14 @@ func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"target": exprtypes.NumberType()}).Type())
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.if"))
 	call := exprsyntax.ParseAssignedExpression("${{ success('build') }}")
-	if result := checker.CheckResult(call); !result.Valid {
+	if result := checker.CheckResult(expreval.EvaluateSubexpressions(call)); !result.Valid {
 		t.Fatalf("job overload rejected job argument: %+v", result)
 	}
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	if result := checker.CheckResult(call); result.Valid {
+	if result := checker.CheckResult(expreval.EvaluateSubexpressions(call)); result.Valid {
 		t.Fatal("job-only overload leaked into step availability")
 	}
-	result := checker.CheckResult(exprsyntax.ParseAssignedExpression("${{ matrix.target }}"))
+	result := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ matrix.target }}")))
 	if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("availability replacement changed inferred matrix type: %+v", result)
 	}
@@ -143,12 +145,12 @@ func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
 		t.Fatal("missing context was reported as declared")
 	}
 	expression := exprsyntax.ParseAssignedExpression("${{ custom }}")
-	result := checker.CheckResult(expression)
+	result := checker.CheckResult(expreval.EvaluateSubexpressions(expression))
 	if result.Valid || len(result.Findings) != 1 || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("binding granted availability or lost its declared type: %+v", result)
 	}
 	checker.SetContextAvailability([]string{"custom"})
-	if result := checker.CheckResult(expression); !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
+	if result := checker.CheckResult(expreval.EvaluateSubexpressions(expression)); !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("explicitly enabled context was rejected: %+v", result)
 	}
 }
@@ -169,12 +171,26 @@ func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
 			if expression == nil {
 				t.Fatal("expression did not parse")
 			}
-			result := checker.CheckResult(expression)
+			result := checker.CheckResult(expreval.EvaluateSubexpressions(expression))
 			if result.Valid != tc.valid {
 				t.Fatalf("valid=%t findings=%v, want %t", result.Valid, result.Findings, tc.valid)
 			}
 			workflow := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n%s\n", tc.condition)
 			checkGitHubWorkflowReference(t, workflow, tc.valid)
 		})
+	}
+}
+
+func TestAvailableContextsDetachSnapshot(t *testing.T) {
+	checker := NewChecker(suppliedScope{variables: map[string]exprtypes.Type{"subject": exprtypes.NewEmptyObjectType().Type()}, names: []string{"subject"}}, nil)
+	contexts := checker.AvailableContexts()
+	contexts["subject"] = exprtypes.StringType()
+	if current, _ := checker.ContextType("subject"); current.Kind() != exprtypes.KindObject {
+		t.Fatal("caller changed the checker's context")
+	}
+	snapshot := checker.AvailableContexts()
+	checker.SetContextType("subject", exprtypes.NumberType())
+	if snapshot["subject"].Kind() != exprtypes.KindObject {
+		t.Fatal("scope update changed a published context snapshot")
 	}
 }

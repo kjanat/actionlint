@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -32,7 +31,7 @@ func parseFormatFuncSpecifiers(format string, capacity int) map[int]struct{} {
 // Checker checks names and types in a caller-supplied scope and records
 // function-call facts, evaluation outcomes and language issues.
 type Checker struct {
-	constants             expreval.SubexpressionResults
+	constants             EvaluationResults
 	skipEvaluation        bool
 	conditionalEvaluation bool
 	funcs                 map[string][]*exprfunctions.FuncSignature
@@ -868,8 +867,9 @@ const (
 	FailureEvaluation
 )
 
-// CheckResult checks an expression and returns its independent semantic facts.
-func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
+// CheckResult validates names and infers types using the supplied value results.
+func (sema *Checker) CheckResult(input EvaluationResults) ExpressionCheckResult {
+	expr := input.Expression()
 	sema.errs = []*Error{}
 	sema.callFacts = make(map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts)
 	sema.nodeTypes = make(map[exprsyntax.Node]exprtypes.Type)
@@ -877,7 +877,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.validationFailed = false
 	sema.staticInvalid = false
 	sema.validateReferences(expr)
-	sema.constants = expreval.EvaluateSubexpressions(expr)
+	sema.constants = input
 	ty := sema.check(expr)
 	errs := detachErrors(sema.errs)
 
@@ -972,9 +972,9 @@ func returnContainsValue(declared exprtypes.Type, value any) bool {
 	}
 }
 
-// Check returns the inferred type and findings for compatibility.
-func (sema *Checker) Check(expr exprsyntax.Node) (exprtypes.Type, []*Error) {
-	result := sema.CheckResult(expr)
+// Check returns the inferred type and findings using precomputed value results.
+func (sema *Checker) Check(input EvaluationResults) (exprtypes.Type, []*Error) {
+	result := sema.CheckResult(input)
 	return result.Type, result.Findings
 }
 

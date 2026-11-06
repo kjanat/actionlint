@@ -34,7 +34,7 @@ func Check(value string, start sourcepos.Position) []results.Diagnostic {
 	if !checker.IsConstant(expr) {
 		return nil
 	}
-	if _, errs := checker.Check(expr); len(errs) != 0 {
+	if _, errs := checker.Check(expreval.EvaluateSubexpressions(expr)); len(errs) != 0 {
 		return nil
 	}
 	if constant, known := expreval.ConditionConstantValue(expr); known {

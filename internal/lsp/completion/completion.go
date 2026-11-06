@@ -23,7 +23,7 @@ import (
 )
 
 // Complete returns expression property edits against the supplied buffer.
-func Complete(content string, offset int) []expr.Completion {
+func Complete(content string, offset int) []Item {
 	if offset < 0 || offset > len(content) {
 		return nil
 	}
@@ -78,7 +78,7 @@ func Complete(content string, offset int) []expr.Completion {
 			}
 		}
 	}
-	result := c.Complete(content[start:], offset-start)
+	result := completeExpression(c, content[start:], offset-start)
 	for i := range result {
 		result[i].Start += start
 		result[i].End += start

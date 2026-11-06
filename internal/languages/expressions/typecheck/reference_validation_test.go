@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	contexts "actionlint.kjanat.dev/v2/internal/model/contexts"
@@ -23,7 +25,7 @@ func TestStaticReferencesInUnreachableEventBranches(t *testing.T) {
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
-			result := checker.CheckResult(node)
+			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 			if result.Valid || result.FailurePhase != FailureStaticValidation {
 				t.Errorf("reference error disappeared with an unreachable branch: %+v", result)
 			}
@@ -40,7 +42,7 @@ func TestUnavailableContextInUnreachableEventBranch(t *testing.T) {
 	if node == nil {
 		t.Fatal("expression did not parse")
 	}
-	result := checker.CheckResult(node)
+	result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	if result.Valid || result.FailurePhase != FailureStaticValidation {
 		t.Fatalf("unavailable context survived validation: %+v", result)
 	}

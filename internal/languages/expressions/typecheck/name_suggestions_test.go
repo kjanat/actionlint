@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
@@ -40,7 +42,7 @@ func TestCloseExpressionNames(t *testing.T) {
 			}
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
-			_, errors := checker.Check(node)
+			_, errors := checker.Check(expreval.EvaluateSubexpressions(node))
 			if len(errors) != 1 {
 				t.Fatalf("expected one undefined-name finding, got %v", errors)
 			}
@@ -72,7 +74,7 @@ func TestAmbiguousExpressionNames(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, errors := checker.Check(node)
+		_, errors := checker.Check(expreval.EvaluateSubexpressions(node))
 		if len(errors) != 1 || strings.Contains(errors[0].Message, "did you mean") {
 			t.Fatalf("ambiguous name must not choose a winner: %v", errors)
 		}

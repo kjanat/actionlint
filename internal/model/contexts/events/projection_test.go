@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -66,7 +68,7 @@ func TestPayloadExpressions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, errors := c.Check(n)
+			_, errors := c.Check(expreval.EvaluateSubexpressions(n))
 			if tc.want == "" {
 				if len(errors) != 0 {
 					t.Fatalf("unexpected: %v", errors)
@@ -120,7 +122,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, errors := c.Check(n)
+	_, errors := c.Check(expreval.EvaluateSubexpressions(n))
 	if len(errors) != 1 || !strings.Contains(errors[0].Message, `property "client_payload"`) {
 		t.Fatalf("dispatch type was not narrowed away: %v", errors)
 	}

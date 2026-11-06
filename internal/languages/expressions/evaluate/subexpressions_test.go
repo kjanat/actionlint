@@ -69,6 +69,9 @@ func TestSubexpressionResultsDetachCompositeValues(t *testing.T) {
 		t.Fatalf("unexpected node %T", root)
 	}
 	results := EvaluateSubexpressions(root)
+	if results.Expression() != root {
+		t.Fatal("recorded results identify another syntax tree")
+	}
 	objectResult, _ := results.Result(property.Receiver)
 	object, ok := objectResult.Value.(map[string]any)
 	if !ok {

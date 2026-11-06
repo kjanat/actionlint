@@ -3,6 +3,8 @@ package correctness
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -37,7 +39,7 @@ func TestScriptSafeScalarReferences(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if safe := IsScalarInterpolation(node, checker.CheckResult(node).Types); safe != tc.safe {
+		if safe := IsScalarInterpolation(node, checker.CheckResult(expreval.EvaluateSubexpressions(node)).Types); safe != tc.safe {
 			t.Errorf("%s: safe=%t, want %t", tc.input, safe, tc.safe)
 		}
 	}
@@ -104,7 +106,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := ScriptInterpolation(node, tc.typeOf, exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(node).Types, ShellArgumentInsertion, func(ref exprsyntax.Node) bool {
+			findings := ScriptInterpolation(node, tc.typeOf, exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, func(ref exprsyntax.Node) bool {
 				name := exprsyntax.StaticReference(ref)
 				return name == "matrix.target" || name == "steps.test" || name == "needs.build"
 			})
@@ -137,7 +139,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(node).Types, ShellWordInsertion, func(ref exprsyntax.Node) bool {
+			findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node)).Types, ShellWordInsertion, func(ref exprsyntax.Node) bool {
 				name := exprsyntax.StaticReference(ref)
 				return tc.known && (name == "steps.test" || name == "needs.build")
 			})
@@ -151,7 +153,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(node).Types, ShellArgumentInsertion, nil)
+		findings := ScriptInterpolation(node, exprtypes.StringType(), exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, nil)
 		if len(findings) != 0 {
 			t.Errorf("data argument rejected for %s: %v", expression, findings)
 		}

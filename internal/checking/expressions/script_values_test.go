@@ -5,6 +5,8 @@ import (
 	"maps"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
@@ -340,7 +342,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			contextspec.MergeInputTypes(semantic, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 				"step": exprtypes.StringType(), "job": exprtypes.StringType(),
 			}))
-			checked := semantic.CheckResult(node)
+			checked := semantic.CheckResult(expreval.EvaluateSubexpressions(node))
 			typeOf, errs := checked.Type, checked.Findings
 			if len(errs) != 0 {
 				t.Fatalf("expression did not typecheck: %v", errs)

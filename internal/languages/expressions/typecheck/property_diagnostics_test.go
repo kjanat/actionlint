@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -35,7 +37,7 @@ func TestPropertyDiagnostics(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := checker.Check(node)
+			_, findings := checker.Check(expreval.EvaluateSubexpressions(node))
 			if tc.want == "" {
 				if len(findings) != 0 {
 					t.Fatal(findings)

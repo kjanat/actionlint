@@ -4,6 +4,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -29,6 +31,6 @@ func FuzzExprParse(f *testing.F) {
 		}
 
 		c := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-		c.Check(e)
+		c.Check(expreval.EvaluateSubexpressions(e))
 	})
 }

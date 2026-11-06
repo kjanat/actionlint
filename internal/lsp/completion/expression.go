@@ -1,4 +1,4 @@
-package typecheck
+package completion
 
 import (
 	"maps"
@@ -6,13 +6,14 @@ import (
 	"slices"
 	"strings"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-
+	exprcheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
-// Completion describes a property replacement in expression source byte offsets.
-type Completion struct {
+// Item describes a property replacement in expression source byte offsets.
+type Item struct {
 	Label      string
 	Detail     string
 	Start, End int
@@ -23,9 +24,9 @@ var (
 	completionRoot   = regexp.MustCompile(`(?i)[a-z_][a-z0-9_-]*$`)
 )
 
-// Complete suggests names from the checker's scope for unfinished dot/bracket
+// completeExpression suggests names from the checker's scope for unfinished dot/bracket
 // access. The offset and returned edit positions count UTF-8 bytes.
-func (sema *Checker) Complete(source string, offset int) []Completion {
+func completeExpression(sema *exprcheck.Checker, source string, offset int) []Item {
 	if offset < 0 || offset > len(source) {
 		return nil
 	}
@@ -51,7 +52,7 @@ func (sema *Checker) Complete(source string, offset int) []Completion {
 		if err != nil {
 			return nil
 		}
-		ty, errs := sema.Check(node)
+		ty, errs := sema.Check(expreval.EvaluateSubexpressions(node))
 		if len(errs) != 0 {
 			return nil
 		}
@@ -75,18 +76,13 @@ func (sema *Checker) Complete(source string, offset int) []Completion {
 		if prior != "" && !strings.ContainsAny(prior[len(prior)-1:], "(&|!,<>=") {
 			return nil
 		}
-		properties = map[string]exprtypes.Type{}
-		for _, name := range sema.availableContexts {
-			if ty, ok := sema.vars[name]; ok {
-				properties[name] = ty
-			}
-		}
+		properties = sema.AvailableContexts()
 	}
 	end := offset
 	for end < len(source) && identifierByte(source[end]) {
 		end++
 	}
-	result := []Completion{}
+	result := []Item{}
 	for _, name := range slices.Sorted(maps.Keys(properties)) {
 		if !bracket && completionRoot.FindString(name) != name {
 			continue
@@ -94,7 +90,7 @@ func (sema *Checker) Complete(source string, offset int) []Completion {
 		if !strings.HasPrefix(strings.ToLower(name), strings.ToLower(prefix)) {
 			continue
 		}
-		result = append(result, Completion{Label: name, Detail: typeLabel(properties[name]), Start: start, End: end})
+		result = append(result, Item{Label: name, Detail: typeLabel(properties[name]), Start: start, End: end})
 	}
 	return result
 }

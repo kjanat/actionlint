@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -54,7 +56,7 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					_, errs := checker.Check(expr)
+					_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
 					if (len(errs) == 0) != slices.Contains(contexts, context) {
 						t.Fatalf("context %s: %v", context, errs)
 					}
@@ -97,7 +99,7 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 			}
 			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
-			_, errs := checker.Check(expr)
+			_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
 			if (len(errs) == 0) != tc.valid {
 				t.Fatalf("valid=%v, diagnostics=%v", tc.valid, errs)
 			}

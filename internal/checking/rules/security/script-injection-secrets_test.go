@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -101,7 +103,7 @@ func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
 			}
 			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
-			_, findings := checker.Check(node)
+			_, findings := checker.Check(expreval.EvaluateSubexpressions(node))
 			findings = append(findings, checkSecretInterpolations(node, findings)...)
 			secrets, errors := 0, 0
 			for _, finding := range findings {
