@@ -333,6 +333,7 @@ jobs:
               - < distribution/docker/Dockerfile
           - name: Lint Dockerfile with droast
             uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
+            with: { files: distribution/docker/Dockerfile }
   action:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) }}
