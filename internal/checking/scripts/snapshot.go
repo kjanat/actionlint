@@ -25,6 +25,7 @@ func cloneInputs(scopes []*Scope, units []Unit) ([]*Scope, []Unit) {
 	contents := make(map[*byte][]byte)
 	for i := range clonedUnits {
 		unit := &clonedUnits[i]
+		unit.Environment = slices.Clone(unit.Environment)
 		unit.Scope = byScope[unit.Scope]
 		unit.Shell = copyValue(unit.Shell)
 		unit.Owner = copyValue(unit.Owner)

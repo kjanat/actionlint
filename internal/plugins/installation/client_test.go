@@ -259,7 +259,7 @@ func TestGitLabCorePin(t *testing.T) {
 	}
 	// Future ABI admission is independent of this host's support; unrelated
 	// component-field names can carry arbitrary vendor metadata in a core file.
-	info := artifacts.Info{Kind: artifacts.Core, SHA256: p.SHA256, Metadata: json.RawMessage(`{"metadata_version":1,"id":"vendor/engine","plugin_version":"1.0.0","repository":"https://gitlab.com/backend.services/team.tools/plugin","transport":"wasm-core-json","abi_version":9,"interface":{"vendor":"extension"},"contract_sha256":false}`)}
+	info := artifacts.Info{Kind: artifacts.Core, SHA256: p.SHA256, Metadata: json.RawMessage(`{"metadata_version":1,"id":"vendor/engine","plugin_version":"1.0.0","repository":"https://gitlab.com/backend.services/team.tools/plugin","transport":"wasm-core-json","abi_version":9,"interface":{"vendor":"extension"},"wit_sha256":false}`)}
 	if err := p.Verify(info); err != nil {
 		t.Fatal(err)
 	}

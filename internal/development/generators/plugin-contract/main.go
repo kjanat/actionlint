@@ -44,7 +44,7 @@ func run() error {
 	if err := generateScriptEngine(); err != nil {
 		return err
 	}
-	if err := generateRoleContract("tool-integration", "tool-integration", "ToolIntegrationInterface", "toolIntegrationContractDigest", "expectedToolIntegrationContract"); err != nil {
+	if err := generateRoleContract("tool-integration", "tool-integration", "ToolIntegrationInterface", "toolIntegrationWITSHA256", "expectedToolIntegrationInterface"); err != nil {
 		return err
 	}
 	if err := generateTemplateEffects(); err != nil {
@@ -90,9 +90,9 @@ func generate() error {
 	identity.Extension = *analyzer.Name
 	fmt.Fprintln(&g.output, "const (")
 	fmt.Fprintf(&g.output, "canonicalAnalyzerInterface = %q\n", identity.String())
-	fmt.Fprintf(&g.output, "canonicalContractDigest = %q\n", fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))))
+	fmt.Fprintf(&g.output, "analyzerWITSHA256 = %q\n", fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))))
 	fmt.Fprintln(&g.output, ")")
-	fmt.Fprintln(&g.output, "func expectedAnalyzerContract() *wp.ComponentType {")
+	fmt.Fprintln(&g.output, "func expectedAnalyzerInterface() *wp.ComponentType {")
 	fmt.Fprintln(&g.output, "b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()")
 	var exports []string
 	for name, td := range analyzer.TypeDefs.All() {

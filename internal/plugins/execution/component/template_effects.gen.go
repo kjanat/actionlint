@@ -4,11 +4,11 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	TemplateEffectsInterface      = "kjanat:actionlint/template-effects@0.2.0"
-	templateEffectsContractDigest = "90722c112a92ba8e098609c2bf11170892504477d5526f62ae7f3a4cdf270fba"
+	TemplateEffectsInterface = "kjanat:actionlint/template-effects@0.2.0"
+	templateEffectsWITSHA256 = "90722c112a92ba8e098609c2bf11170892504477d5526f62ae7f3a4cdf270fba"
 )
 
-func expectedTemplateEffectsContract() *wp.ComponentType {
+func expectedTemplateEffectsInterface() *wp.ComponentType {
 	b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()
 	t0 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "row", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}, {Name: "column", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU32}}}}})}
 	t1 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindEnum, Enum: []string{"info", "warning", "error", "fatal"}})}

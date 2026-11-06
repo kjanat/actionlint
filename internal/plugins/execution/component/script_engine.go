@@ -153,7 +153,7 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 		!utf8.ValidString(request.Source) || !utf8.ValidString(request.Filename) || !validExcluded(request.Excluded) {
 		return nil, errors.New("script engine needs UTF-8 source, a nonempty virtual filename and excluded codes without NUL")
 	}
-	size := uint64(len(request.Source)) + uint64(len(request.Filename)) + uint64(len(request.Config))
+	size := uint64(len(request.Source)) + uint64(len(request.Filename)) + uint64(len(request.Config)) + scriptEnvironmentBytes(request.Environment)
 	for _, code := range request.Excluded {
 		size += uint64(len(code))
 	}
@@ -175,6 +175,7 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 			field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
 	}
 	contract := p.scriptInterface
+	ctx = context.WithValue(ctx, environmentContextKey{}, snippetEnvironmentNames(request.Environment))
 	effects := template_effects_effect
 	if p.scriptDescriptor.TemplateContract != "" {
 		contract = p.templateInterface

@@ -95,6 +95,12 @@ map({
 
 `entry` names a host-installed executable. `args` are separate tokens without shell interpolation. `stdin: 'request'` sends JSON containing captured `source`, `filename`, and transformed `config`; `stdin: 'source'` sends only source text. `config.render` supports `none`, `json-stdin`, `json-file`, `toml-file`, and `toml-pairs`; `forbidden` rejects selected dotted config keys after transformation. A jq config transform typically returns `{config, vars}`. Output formats are `script-diagnostics@1`, `json`, `text`, and `sarif@2.1.0`. Arbitrary JSON uses an output jq transform; SARIF and tool JSON can declare coordinate rows, columns, and exclusive/inclusive ends when they differ from the default.
 
+Script requests also carry `environment`: one record per possible OS, with scoped
+names and separate comparisons for runner merging and shell lookup. No values
+or secrets are included. Windows runner merging ignores case; Bash lookup does
+not. `unknown_names` marks unresolved declarations. A name missing from the list
+could still come from the runner or an earlier command through `GITHUB_ENV`.
+
 The process manifest can also declare fixed `env`, removed `env_unset`, accepted `exit_codes`, serial `concurrency`, and a `versionProbe` with literal arguments and one captured version group. `env_passthrough` selects host environment names; it does not install tools. Declare only what the command needs (for example PATH, or `PSModulePath` for PowerShell modules). Native processes are not sandboxed by this SDK. Repository-selected native processes require `actionlint --allow-config-processes`; explicit invocation uses `--plugin`.
 
 For a complete real-world wrapper, see [`plugins/examples/psscriptanalyzer/actionlint.plugin.ts`](../../examples/psscriptanalyzer/actionlint.plugin.ts), its [`output.jq`](../../examples/psscriptanalyzer/output.jq), and its [`manifest.test.ts`](../../examples/psscriptanalyzer/manifest.test.ts). That example shows config schema, a PowerShell version probe, UTF-16 coordinates, suggested fixes, and captured output. Run its host-backed tests from the repository root with `bun run --filter @kjanat-actionlint/plugin-psscriptanalyzer test`; set `ACTIONLINT` to a compatible host binary.

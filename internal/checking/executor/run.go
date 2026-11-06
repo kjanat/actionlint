@@ -203,6 +203,7 @@ func cloneScripts(scripts []checkinputs.Script) []checkinputs.Script {
 		script.Occurrence.Ancestry = slices.Clone(script.Occurrence.Ancestry)
 		script.Spans = slices.Clone(script.Spans)
 		script.Comments = slices.Clone(script.Comments)
+		script.Environment = slices.Clone(script.Environment)
 		if script.Runtime != nil {
 			runtime := *script.Runtime
 			script.Runtime = &runtime

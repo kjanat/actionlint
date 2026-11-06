@@ -16,6 +16,8 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 type recordingEngine struct {
@@ -23,6 +25,45 @@ type recordingEngine struct {
 	requests []checkinputs.ScriptRequest
 	closed   bool
 	code     string
+}
+
+func TestScriptEngineReceivesEnvironmentNamesWithoutValues(t *testing.T) {
+	root := t.TempDir()
+	workflow := writeFixture(t, root, ".github/workflows/ci.yml", `on: push
+env: { lowercase: a-secret-value, UPPERCASE: upper, miXedCase: mixed }
+jobs:
+  test:
+    runs-on: windows-latest
+    env: { LOWERCASE: another-secret-value }
+    steps:
+      - shell: bash
+        env: { step_name: secret-step-value }
+        run: echo missing
+`)
+	engine := &recordingEngine{code: "SC2086"}
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: engine}})}
+	if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(engine.requests) != 1 || len(engine.requests[0].Environment) != 1 {
+		t.Fatalf("script requests lost environment alternatives: %+v", engine.requests)
+	}
+	environment := engine.requests[0].Environment[0]
+	if environment.OperatingSystem != runnerapi.Windows || environment.MergeComparison != scriptmodel.NameInsensitive || environment.LookupComparison != scriptmodel.NameSensitive {
+		t.Fatalf("runner merging and Bash lookup were conflated: %+v", environment)
+	}
+	if len(environment.Names) < 4 || environment.Names[0].Name != "lowercase" || environment.Names[3].Name != "step_name" {
+		t.Fatalf("scope ordering or original key spelling was lost: %+v", environment)
+	}
+	encoded, err := json.Marshal(engine.requests[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"a-secret-value", "another-secret-value", "secret-step-value"} {
+		if strings.Contains(string(encoded), secret) {
+			t.Fatalf("script request exposed environment value %q", secret)
+		}
+	}
 }
 
 func (e *recordingEngine) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {

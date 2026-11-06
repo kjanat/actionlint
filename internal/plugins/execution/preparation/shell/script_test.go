@@ -32,14 +32,14 @@ func TestPrepareMapsGeneratedLines(t *testing.T) {
 }
 
 func TestInputKeepsDeclaredLanguageAndDirectiveCoordinates(t *testing.T) {
-	prepared, dialect := Input("#!/bin/sh\n# shellcheck shell=ksh\necho ${{ '}}' }}\n", "sh", "# shellcheck disable=SC2086\n")
+	prepared, dialect := Input("#!/bin/sh\n# shellcheck shell=ksh\necho ${{ '}}' }}\n", "sh", "# shellcheck disable=SC2086\n", "")
 	if dialect != "ksh" || prepared.Source != "#!/bin/sh\n# shellcheck disable=SC2086\n# shellcheck shell=ksh\necho ___________\n" {
 		t.Fatalf("prepared %q as %q", prepared.Source, dialect)
 	}
 	if prepared.LineMap == nil || prepared.LineMap(2) != (preparation.Line{Origin: preparation.LineDirective}) || prepared.LineMap(4) != (preparation.Line{Line: 3, Origin: preparation.LineScript}) {
 		t.Fatal("directive prefix changed source line ownership")
 	}
-	plain, dialect := Input("echo input", LanguageDialect("sh"), "")
+	plain, dialect := Input("echo input", LanguageDialect("sh"), "", "")
 	if dialect != "sh" || plain.Source != "echo input" || plain.LineMap != nil {
 		t.Fatalf("unconfigured input changed: %+v as %q", plain, dialect)
 	}

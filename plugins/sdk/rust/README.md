@@ -64,15 +64,38 @@ and its [JSON Schema](json/shellcheck-config-0.1.0.json) are part of the public
 contract and ship in this package.
 
 That world imports `source-files@0.2.0` for explicit source/WASI mount mappings
-and `prepared-scripts@0.2.0` for host-prepared shell text, masking, source lines
+and `kjanat:actionlint-script/shell-script-inputs@0.3.0` for host-prepared shell text, masking, source lines
 and exclusions. Preparation is restricted to script references supplied in the
 current analysis. Unknown references fail; unsupported shell scripts return
 `none`. Guests must not infer mounts from host path conventions, prepare a
 second copy of the same script, or infer behavior from diagnostic wording.
 
+Enable `script-environments` to query scoped environment names without their
+values. Call `kjanat::actionlint_script::environments::for_script` with an
+occurrence supplied in the current analysis. Each OS alternative has its own
+runner merge comparison, shell lookup comparison and names. An unresolved name
+is not proof that a variable is missing. Snippet-engine components can import
+the same interface and call `current` during their check.
+
+```rust
+#[cfg(feature = "script-environments")]
+fn environments_for(
+    script: &actionlint_extension_api::Script,
+) -> Result<
+    Vec<actionlint_extension_api::kjanat::actionlint_script::environments::Environment>,
+    String,
+> {
+    let occurrence = script
+        .occurrence
+        .as_deref()
+        .ok_or("missing script occurrence")?;
+    actionlint_extension_api::kjanat::actionlint_script::environments::for_script(occurrence)
+}
+```
+
 Script engines implement the `script-engine-plugin` world of
 [`wit/script-engine.wit`](wit/script-engine.wit) (0.2.0) or
-[`wit/0.3.0/script-engine.wit`](wit/0.3.0/script-engine.wit) (0.3.0, adding fixes,
+[`wit/deps/actionlint-0.3.0/script-engine.wit`](wit/deps/actionlint-0.3.0/script-engine.wit) (0.3.0, adding fixes,
 reported sources, excluded codes and the directory resource). Each version is its
 own WIT package directory; generate bindings from the directory of the version
 the engine exports. This crate's `bindings` module covers the analyzer worlds only.

@@ -13,6 +13,8 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -55,6 +57,12 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 		shell = workflowShell
 	}
 	request := scriptexecution.ScriptRequest{Occurrence: occurrence, DefaultShell: shell}
+	jobDefault, workflowDefault, runnerDefault := analysis.scriptJobShell, analysis.workflowShell, analysis.scriptRunnerShell
+	if analysis.scriptScope != nil && analysis.scriptScope.Composite {
+		jobDefault, workflowDefault, runnerDefault = value.Value{}, value.Value{}, value.Value{}
+	}
+	resolvedShell := execution.ResolveShell(run.Shell().Semantic(), jobDefault, workflowDefault, runnerDefault)
+	request.Environment = analysis.scriptEnvironment(declaration, resolvedShell.Name)
 	if analysis.scriptScope != nil && analysis.resolveScriptExecution {
 		paths := analysis.scriptScope.Paths
 		if analysis.actions != nil {
@@ -116,9 +124,19 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepVie
 		if !analysis.collectScripts {
 			continue
 		}
-		analysis.scripts = append(analysis.scripts, scriptexecution.ScriptRequest{Occurrence: occurrence, Input: &site})
+		analysis.scripts = append(analysis.scripts, scriptexecution.ScriptRequest{Occurrence: occurrence, Input: &site, Environment: analysis.scriptEnvironment(step, site.Language)})
 	}
 	return nil
+}
+
+func (analysis *compositeAnalyzer) scriptEnvironment(step workflowdecl.StepView, shell string) []scriptmodel.EnvironmentNames {
+	layers := append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentStep, step.Env().Mapping()))
+	if target := analysis.runners.Target(); target == "" || target == "github" {
+		composite := analysis.scriptScope != nil && analysis.scriptScope.Composite
+		// ScriptHandler exports runtime contexts after the step environment.
+		layers = append(layers, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentRuntime, Names: runnerlang.RuntimeEnvironmentNames(composite)})
+	}
+	return scriptmodel.EnvironmentAlternatives(shell, analysis.operatingSystems, layers...)
 }
 
 func (analysis *compositeAnalyzer) actionInputCatalogue(cfg *repoconfig.Config) ([]checkinputs.ScriptInput, error) {

@@ -13,7 +13,7 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 	document := strings.Replace(minimal, `"role": "script"`, `"role": "document"`, 1)
 	document = strings.Replace(document, `"rule": {`, `"rule": {"required_inputs":["source","dependencies"],`, 1)
 	document = strings.Replace(document, `"selectors": {"filename": "actionlint.sh"}`, `"selectors":{"documents":["workflow","action"]}`, 1)
-	document = strings.Replace(document, `"preparation": "kjanat:actionlint/shell-preparation@0.2.0"`, `"preparation":"generic"`, 1)
+	document = strings.Replace(document, `"preparation": "kjanat:actionlint/shell-preparation@0.3.0"`, `"preparation":"generic"`, 1)
 	manifest, err := manifests.Parse([]byte(document))
 	if err != nil {
 		t.Fatal(err)

@@ -20,6 +20,7 @@ import (
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -62,6 +63,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	}
 	callFrame := *analysis
 	callFrame.context = callContext
+	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentCaller, call.Env().Mapping()))
 	opened := false
 	defer func() {
 		err = analysis.interrupt(err)

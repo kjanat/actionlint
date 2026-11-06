@@ -9,14 +9,14 @@ import (
 	"github.com/kjanat/wacogo/wasmparser"
 )
 
-// checkContract rejects incompatible analyzer interfaces before guest startup.
+// validateAnalyzerInterface rejects incompatible analyzer interfaces before guest startup.
 // The generated consumer asks for the complete canonical interface, including
 // named types and nested record/enum shapes, rather than only its export name.
-func checkContract(data []byte) error {
-	return checkRoleContracts(data, extensionRoleSet{analyzer: true})
+func validateAnalyzerInterface(data []byte) error {
+	return validatePluginInterfaces(data, extensionRoleSet{analyzer: true})
 }
 
-func checkRoleContracts(data []byte, roles extensionRoleSet) error {
+func validatePluginInterfaces(data []byte, roles extensionRoleSet) error {
 	parser := wasmparser.NewValidatingParser(bytes.NewReader(data), wasmparser.DefaultFeatures())
 	for {
 		_, err := parser.Next()
@@ -32,33 +32,33 @@ func checkRoleContracts(data []byte, roles extensionRoleSet) error {
 		return errors.New("missing component type")
 	}
 	if roles.analyzer {
-		if err := expectedAnalyzerContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := expectedAnalyzerInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible analyzer contract: %w", err)
 		}
 	}
 	if roles.toolIntegration {
-		if err := expectedToolIntegrationContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := expectedToolIntegrationInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible tool integration contract: %w", err)
 		}
 	}
 	if roles.templateEffects != "" {
-		expected := expectedTemplateEffectsContract
+		expected := expectedTemplateEffectsInterface
 		if roles.templateEffects == TemplateEffects03Interface {
-			expected = expectedTemplateEffects03Contract
+			expected = expectedTemplateEffects03Interface
 		}
 		if err := expected().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible %s contract: %w", roles.templateEffects, err)
 		}
 	}
 	if roles.runner {
-		if err := expectedRunnerContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+		if err := expectedRunnerInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible runner contract: %w", err)
 		}
 	}
 	if roles.script != "" {
-		expected := expectedScriptEngineContract
+		expected := expectedScriptEngineInterface
 		if roles.script == ScriptEngine03Interface {
-			expected = expectedScriptEngine03Contract
+			expected = expectedScriptEngine03Interface
 		}
 		if err := expected().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible %s contract: %w", roles.script, err)

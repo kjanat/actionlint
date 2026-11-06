@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/analyzer"
+	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/analyzer"
 	"go.bytecodealliance.org/cm"
 )
 

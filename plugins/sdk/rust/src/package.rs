@@ -12,8 +12,8 @@ use wasm_encoder::{Component, CustomSection, RawSection};
 use wasmparser::{Encoding, Parser, Payload, Validator};
 
 use crate::{
-    ANALYZER_CONTRACT_SHA256, ANALYZER_INTERFACE, Descriptor, InputKind,
-    RUNNER_PROVIDER_CONTRACT_SHA256, RUNNER_PROVIDER_INTERFACE,
+    ANALYZER_INTERFACE, ANALYZER_WIT_SHA256, Descriptor, InputKind, RUNNER_PROVIDER_INTERFACE,
+    RUNNER_PROVIDER_WIT_SHA256,
 };
 
 /// Discovery section read by actionlint without starting a guest.
@@ -93,7 +93,7 @@ fn options_schema(raw: &str) -> Result<Option<serde_json::Value>> {
 fn component_metadata(
     identity: &Identity<'_>,
     interface: &str,
-    contract: &str,
+    wit_sha256: &str,
 ) -> Result<serde_json::Value> {
     let id = identity.id;
     if !(1..=128).contains(&id.len())
@@ -115,7 +115,7 @@ fn component_metadata(
         "plugin_version": identity.version,
         "transport": "wasm-component",
         "interface": interface,
-        "contract_sha256": contract,
+        "wit_sha256": wit_sha256,
     }))
 }
 
@@ -123,7 +123,7 @@ impl Package<'_> {
     /// Serialize discovery metadata from the same descriptor the guest exports.
     pub fn metadata(&self) -> Result<Vec<u8>> {
         let mut metadata =
-            component_metadata(&self.identity, ANALYZER_INTERFACE, ANALYZER_CONTRACT_SHA256)?;
+            component_metadata(&self.identity, ANALYZER_INTERFACE, ANALYZER_WIT_SHA256)?;
         let rule = self.descriptor;
         let required_inputs: Vec<_> = rule
             .required_inputs
@@ -190,7 +190,7 @@ impl RunnerPackage<'_> {
         let mut metadata = component_metadata(
             &self.identity,
             RUNNER_PROVIDER_INTERFACE,
-            RUNNER_PROVIDER_CONTRACT_SHA256,
+            RUNNER_PROVIDER_WIT_SHA256,
         )?;
         metadata["descriptor"] = json!({
             "name": self.provider_name,
@@ -432,7 +432,7 @@ mod tests {
         assert_eq!(metadata["id"], "example/queue-package");
         assert_eq!(metadata["plugin_version"], "2.0.0");
         assert_eq!(metadata["interface"], RUNNER_PROVIDER_INTERFACE);
-        assert_eq!(metadata["contract_sha256"], RUNNER_PROVIDER_CONTRACT_SHA256);
+        assert_eq!(metadata["wit_sha256"], RUNNER_PROVIDER_WIT_SHA256);
         assert_eq!(
             metadata["descriptor"],
             json!({"name": "queue-provider", "version": "1.0.0", "targets": ["buildkite"]})

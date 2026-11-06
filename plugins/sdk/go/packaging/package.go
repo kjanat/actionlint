@@ -13,11 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/analyzer"
+	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/analyzer"
 )
 
 //go:embed analyzer.wit
-var analyzerContract string
+var analyzerWIT string
 
 // Identity identifies the distributed plugin independently of its diagnostic rule.
 type Identity struct {
@@ -105,7 +105,7 @@ func (p Package) Metadata() ([]byte, error) {
 	if examples := d.Examples.Slice(); len(examples) != 0 {
 		descriptor["examples"] = examples
 	}
-	contract := strings.ReplaceAll(analyzerContract, "\r\n", "\n")
+	contract := strings.ReplaceAll(analyzerWIT, "\r\n", "\n")
 	declaration, _, _ := strings.Cut(contract, ";")
 	packageName, version, found := strings.Cut(strings.TrimPrefix(declaration, "package "), "@")
 	if !found {
@@ -116,7 +116,7 @@ func (p Package) Metadata() ([]byte, error) {
 		MetadataVersion int            `json:"metadata_version"`
 		Transport       string         `json:"transport"`
 		Interface       string         `json:"interface"`
-		ContractSHA256  string         `json:"contract_sha256"`
+		WITSHA256       string         `json:"wit_sha256"`
 		Engine          Engine         `json:"engine"`
 		Languages       []string       `json:"languages"`
 		Capabilities    Capabilities   `json:"capabilities"`

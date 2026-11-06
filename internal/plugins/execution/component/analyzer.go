@@ -49,7 +49,8 @@ func (p *Plugin) CheckDocument(ctx context.Context, input checkinputs.Input) ([]
 		return nil, err
 	}
 	ctx = context.WithValue(ctx, invocationGraphKey{}, input.CallGraph)
-	ctx = context.WithValue(ctx, preparedScriptsKey{}, preparationScope{prepare: input.PrepareScript, occurrences: suppliedOccurrences(input)})
+	ctx = context.WithValue(ctx, environmentContextKey{}, documentEnvironments(input))
+	ctx = context.WithValue(ctx, shellScriptInputsKey{}, shellScriptInputScope{prepare: input.BuildShellScriptInput, occurrences: suppliedOccurrences(input)})
 	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
 	value, err := p.callAnalyzer(ctx, "analyze", lowerInput(input))
 	if err != nil {

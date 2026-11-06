@@ -270,7 +270,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 		if !r.enabled(cfg) {
 			continue
 		}
-		prepared, err := shellprofile.PrepareScript(script.Fact, nil)
+		prepared, err := shellprofile.BuildShellScriptInput(script.Fact, nil)
 		if err != nil {
 			failure = errors.Join(failure, err)
 			continue
@@ -401,6 +401,6 @@ func (r documentRunner) input(script tools.Script, graph checkinputs.CallGraph) 
 	} else {
 		input.Invoked = []checkinputs.Script{script.Fact}
 	}
-	input.PrepareScript = shellprofile.Preparer([]checkinputs.Script{script.Fact})
+	input.BuildShellScriptInput = shellprofile.NewShellScriptInputBuilder([]checkinputs.Script{script.Fact})
 	return input
 }

@@ -64,7 +64,7 @@ func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
 		contract = "wasm-core-json/99"
 		data = []byte{0, 97, 115, 109, 1, 0, 0, 0}
 	case artifacts.Component:
-		metadata = fmt.Appendf(metadata, `,"transport":"wasm-component","interface":"publisher:check/analyzer@9.0.0","contract_sha256":%q}`, strings.Repeat("b", 64))
+		metadata = fmt.Appendf(metadata, `,"transport":"wasm-component","interface":"publisher:check/analyzer@9.0.0","wit_sha256":%q}`, strings.Repeat("b", 64))
 		contract = "publisher:check/analyzer@9.0.0#sha256=" + strings.Repeat("b", 64)
 		data = []byte{0, 97, 115, 109, 13, 0, 1, 0}
 	case artifacts.ProviderManifest:

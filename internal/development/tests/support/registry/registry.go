@@ -59,10 +59,10 @@ type PluginRegistry struct {
 }
 
 const (
-	FixtureRegistryURL    = "https://catalogue.example/"
-	FixturePluginName     = "github.com/publisher/plugin"
-	fixtureContractDigest = "a0096f562ab3da46b30d0f025ad1c6ed0d46e5b7ea1a53660b3214e3270fcbee"
-	emptyStatuses         = `{"schema_version":1,"releases":[]}`
+	FixtureRegistryURL = "https://catalogue.example/"
+	FixturePluginName  = "github.com/publisher/plugin"
+	fixtureWITSHA256   = "a0096f562ab3da46b30d0f025ad1c6ed0d46e5b7ea1a53660b3214e3270fcbee"
+	emptyStatuses      = `{"schema_version":1,"releases":[]}`
 )
 
 // NewPluginRegistry installs a registry for FixturePluginName at
@@ -389,8 +389,8 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 		t.Fatalf("registry fixture artifact: %v", err)
 	}
 	repository := strings.TrimPrefix(publisher.Name, "github.com/")
-	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":"kjanat:actionlint/analyzer@0.1.0","contract_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, fixtureContractDigest)
-	kind, contract := "component", "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureContractDigest
+	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":"kjanat:actionlint/analyzer@0.1.0","wit_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, fixtureWITSHA256)
+	kind, contract := "component", "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureWITSHA256
 	if format == artifacts.Core {
 		kind, contract = "core", "wasm-core-json/1"
 		metadata = fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-core-json","abi_version":1}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name)

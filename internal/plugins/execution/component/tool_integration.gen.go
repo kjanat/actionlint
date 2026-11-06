@@ -4,11 +4,11 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	ToolIntegrationInterface      = "kjanat:actionlint/tool-integration@0.2.0"
-	toolIntegrationContractDigest = "08fd146bce1b1fcebccf01d2de1a785776bda122c8245befe21d0d901f8de9ea"
+	ToolIntegrationInterface = "kjanat:actionlint/tool-integration@0.2.0"
+	toolIntegrationWITSHA256 = "08fd146bce1b1fcebccf01d2de1a785776bda122c8245befe21d0d901f8de9ea"
 )
 
-func expectedToolIntegrationContract() *wp.ComponentType {
+func expectedToolIntegrationInterface() *wp.ComponentType {
 	b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()
 	t0 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "tool", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "contract", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "configuration-schema", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}}}})}
 	t1 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindVariant, Variant: &wp.VariantTypeDesc{Cases: []wp.VariantCaseDesc{{Name: "workspace", Type: wp.None[wp.ValTypeDesc]()}, {Name: "directory", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}}}})}

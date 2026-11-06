@@ -144,14 +144,14 @@ func (script Script) Line(line int) preparation.Line {
 // masks templates, lets a leading `# shellcheck shell=` directive select the
 // dialect over the declared one and inserts directives. It returns the
 // selected dialect.
-func Input(text, dialect, directives string) (preparation.Prepared, string) {
+func Input(text, dialect, directives, startup string) (preparation.Prepared, string) {
 	text = mask.Expressions(text)
 	if header, _, selected := Header(text); selected {
 		dialect = HeaderDialect(header)
 	}
-	if directives == "" {
+	if directives == "" && startup == "" {
 		return preparation.Prepared{Source: text}, dialect
 	}
-	prepared := Prepare(text, directives, "")
+	prepared := Prepare(text, directives, startup)
 	return preparation.Prepared{Source: prepared.Text(), LineMap: prepared.Line}, dialect
 }

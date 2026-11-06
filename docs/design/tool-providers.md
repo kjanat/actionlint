@@ -150,7 +150,7 @@ type Selection struct {              // replaces internal/checking/scripts/contr
 
 // internal/plugins/execution/preparation — preparation profiles
 type Profile interface {
-	ID() string                                            // "kjanat:actionlint/shell-preparation@0.2.0" | ".../python-preparation@0.1.0" | ".../expression-mask@0.1.0"
+	ID() string                                            // "kjanat:actionlint/shell-preparation@0.3.0" | ".../python-preparation@0.1.0" | ".../expression-mask@0.1.0"
 	Prepare(script tools.Script, config json.RawMessage) (Prepared, error)
 	Preparer() analyzer.ScriptPreparer                     // analyzer/tool_integration.go:79; nil when the profile has none
 }
@@ -197,7 +197,7 @@ func (s *Store) Materialize(ctx context.Context, digest, filename string) (strin
     "recommended": true,
     "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck"
   },
-  "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
+  "preparation": "kjanat:actionlint/shell-preparation@0.3.0",
   "selectors": { "shells": ["bash", "sh", "dash", "ksh"] },
   "capabilities": {
     "fixes": true,

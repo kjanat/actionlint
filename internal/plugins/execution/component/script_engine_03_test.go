@@ -41,11 +41,11 @@ func loadScriptFixture03(t *testing.T) *Plugin {
 }
 
 func TestScriptEngine03ContractCurrent(t *testing.T) {
-	data, err := os.ReadFile("../../../../plugins/protocol/wit/0.3.0/script-engine.wit")
+	data, err := os.ReadFile("../../../../plugins/protocol/wit/deps/actionlint-0.3.0/script-engine.wit")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != scriptEngine03ContractDigest {
+	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != scriptEngine03WITSHA256 {
 		t.Fatal("stale script-engine 0.3.0 contract; regenerate")
 	}
 }
@@ -293,11 +293,11 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 const templateFixture03 = "testdata/plugins/template-script-engine-0.3.0.wasm"
 
 func TestTemplateEffects03ContractCurrent(t *testing.T) {
-	data, err := os.ReadFile("../../../../plugins/protocol/wit/0.3.0/template-effects.wit")
+	data, err := os.ReadFile("../../../../plugins/protocol/wit/deps/actionlint-0.3.0/template-effects.wit")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != templateEffects03ContractDigest {
+	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != templateEffects03WITSHA256 {
 		t.Fatal("stale template-effects 0.3.0 contract; regenerate")
 	}
 }

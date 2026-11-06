@@ -16,6 +16,29 @@ type runnerFixture struct {
 	Views    map[string]workflowdecl.JobView
 }
 
+func TestJobOperatingSystemsPreserveUncertainty(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		knowledge JobKnowledge
+		want      []runnerapi.OS
+	}{
+		{"builtin Windows", JobKnowledge{Platform: Windows}, []runnerapi.OS{runnerapi.Windows}},
+		{"builtin Unix", JobKnowledge{Platform: MacOrLinux}, []runnerapi.OS{runnerapi.Linux, runnerapi.MacOS}},
+		{"unknown", JobKnowledge{}, []runnerapi.OS{runnerapi.UnknownOS}},
+		{"mixed", JobKnowledge{Answers: []runnerapi.Answer{
+			{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{OS: runnerapi.Linux}, {OS: runnerapi.Windows}}}, DatasetStatus: runnerapi.DatasetStatus{Complete: true, Freshness: runnerapi.Fresh}},
+			{Resolution: runnerapi.Unknown{Reason: "dynamic"}},
+		}}, []runnerapi.OS{runnerapi.Linux, runnerapi.Windows, runnerapi.UnknownOS}},
+		{"incomplete", JobKnowledge{Answers: []runnerapi.Answer{{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{OS: runnerapi.Windows}}}, DatasetStatus: runnerapi.DatasetStatus{Freshness: runnerapi.Fresh}}}}, []runnerapi.OS{runnerapi.UnknownOS}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.knowledge.OperatingSystems(); !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("operating systems = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func runnerWorkflow(t *testing.T, selection string) *runnerFixture {
 	t.Helper()
 	return runnerSource(t, "on: push\njobs:\n  test:\n    runs-on: "+selection+"\n    steps:\n      - run: echo ok\n")

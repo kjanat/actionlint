@@ -541,6 +541,7 @@ func (b *Backend) stdin(request checkinputs.ScriptRequest, config any) (string, 
 		return request.Source, nil
 	}
 	payload := checkinputs.ScriptRequest{Source: request.Source, Filename: request.Filename}
+	payload.Environment = request.Environment
 	if b.spec.Config.Render == manifests.RenderJSONStdin && config != nil {
 		encoded, err := json.Marshal(config)
 		if err != nil {

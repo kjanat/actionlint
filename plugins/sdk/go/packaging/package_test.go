@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/analyzer"
+	"actionlint.kjanat.dev/v2/plugins/sdk/go/bindings/kjanat/actionlint/v0.2.0/analyzer"
 	"go.bytecodealliance.org/cm"
 )
 
@@ -81,9 +81,9 @@ func TestPackageUsesExportedDescriptorAndWritesChecksums(t *testing.T) {
 		t.Fatal(err)
 	}
 	var metadata struct {
-		Interface      string `json:"interface"`
-		ContractSHA256 string `json:"contract_sha256"`
-		Descriptor     struct {
+		Interface  string `json:"interface"`
+		WITSHA256  string `json:"wit_sha256"`
+		Descriptor struct {
 			Name           string   `json:"name"`
 			RequiredInputs []string `json:"required_inputs"`
 		} `json:"descriptor"`
@@ -91,7 +91,7 @@ func TestPackageUsesExportedDescriptorAndWritesChecksums(t *testing.T) {
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		t.Fatal(err)
 	}
-	if metadata.Interface != "kjanat:actionlint/analyzer@0.2.0" || metadata.ContractSHA256 != fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ReplaceAll(analyzerContract, "\r\n", "\n")))) || metadata.Descriptor.Name != plugin.Descriptor.Name || len(metadata.Descriptor.RequiredInputs) != 1 || metadata.Descriptor.RequiredInputs[0] != "scripts" {
+	if metadata.Interface != "kjanat:actionlint/analyzer@0.2.0" || metadata.WITSHA256 != fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ReplaceAll(analyzerWIT, "\r\n", "\n")))) || metadata.Descriptor.Name != plugin.Descriptor.Name || len(metadata.Descriptor.RequiredInputs) != 1 || metadata.Descriptor.RequiredInputs[0] != "scripts" {
 		t.Fatalf("metadata does not match the SDK contract and descriptor: %+v", metadata)
 	}
 	checksums, err := os.ReadFile(filepath.Join(output, "SHA256SUMS"))

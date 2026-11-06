@@ -5,13 +5,52 @@ import { join, resolve } from 'node:path';
 
 import { expect, test } from 'bun:test';
 
-import { type DocumentRequest, executeDocumentCheck, executeScriptCheck, isDiagnostic, unicodeColumn } from '#index';
+import type { DocumentRequest, ScriptEnvironment } from '#index';
+import { executeDocumentCheck, executeScriptCheck, isDiagnostic, unicodeColumn } from '#index';
 
 const sdkRoot = resolve(import.meta.dirname, '..');
 const cli = join(sdkRoot, 'src', 'cli.ts');
 const sdkSource = JSON.stringify(join(sdkRoot, 'src', 'index.ts').replaceAll('\\', '/'));
 const identity =
 	`id:'test/example',version:'1.0.0',name:'Example',description:'Example',license:'MIT',repository:'https://github.com/example/plugin',rule:{name:'example',category:'correctness',subcategory:'workflow',maturity:'stable',description:'Example',provider:'test/example'}`;
+
+test('passes scoped environment names without normalizing their spelling', async () => {
+	const environment: ScriptEnvironment[] = [{
+		operating_system: 'windows',
+		merge_comparison: 'insensitive',
+		lookup_comparison: 'sensitive',
+		names: [{ name: 'miXedCase', scope: 'workflow', case_known: true }],
+		unknown_names: false,
+	}];
+	let called = false;
+	const result = await executeScriptCheck(request => {
+		called = true;
+		expect(request.environment).toEqual(environment);
+		return [];
+	}, JSON.stringify({ source: 'echo "$miXedCase"', filename: 'x.sh', environment }));
+	expect(called).toBe(true);
+	expect(result.ok).toBe(true);
+});
+
+test('rejects malformed environment facts before calling a plugin', async () => {
+	for (
+		const environment of [null, {}, [{ operating_system: 'windows' }], [{
+			operating_system: 'windows',
+			merge_comparison: 'insensitive',
+			lookup_comparison: 'sensitive',
+			names: [{ name: 42, scope: 'step', case_known: true }],
+			unknown_names: false,
+		}]]
+	) {
+		let called = false;
+		const result = await executeScriptCheck(() => {
+			called = true;
+			return [];
+		}, JSON.stringify({ source: 'echo ok', filename: 'x.sh', environment }));
+		expect(called).toBe(false);
+		expect(result.errors).toEqual(['invalid script environment']);
+	}
+});
 
 test('rejects malformed JSON requests without calling the check', async () => {
 	let called = false;

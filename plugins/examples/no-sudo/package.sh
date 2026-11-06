@@ -5,21 +5,21 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 component="${1:-no-sudo.wasm}"
 output="${2:-dist}"
-contract="${ACTIONLINT_WIT:-../../protocol/wit}"
+wit_directory="${ACTIONLINT_WIT:-../../protocol/wit}"
 sdk="${WASI_SDK_PATH:-/opt/wasi-sdk}"
 license="$(sed 's/\r$//' LICENSE)"
 
 wasm-tools validate "${component}"
 mkdir -p "${output}"
-package="$(head -n 1 "${contract}/analyzer.wit" | tr -d '\r;')"
+package="$(head -n 1 "${wit_directory}/analyzer.wit" | tr -d '\r;')"
 package="${package#package }"
 interface="${package%@*}/analyzer@${package##*@}"
-contract_hash="$(tr -d '\r' <"${contract}/analyzer.wit" | sha256sum)"
-contract_hash="${contract_hash%% *}"
+wit_sha256="$(tr -d '\r' <"${wit_directory}/analyzer.wit" | sha256sum)"
+wit_sha256="${wit_sha256%% *}"
 
 "${sdk}/bin/wasm32-wasip2-clang" -E -P -x c metadata.json.in \
-	| jq --arg interface "${interface}" --arg contract "${contract_hash}" '
-        .interface = $interface | .contract_sha256 = $contract |
+	| jq --arg interface "${interface}" --arg wit_sha256 "${wit_sha256}" '
+        .interface = $interface | .wit_sha256 = $wit_sha256 |
         .descriptor.required_inputs |= (with_entries(select(.value)) | keys_unsorted | map(ascii_downcase)) |
         .descriptor.options_schema |= fromjson |
         .description = .descriptor.description |

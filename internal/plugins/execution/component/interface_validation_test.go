@@ -16,7 +16,7 @@ func TestCanonicalContractIsCurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 	digest := fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))))
-	if digest != canonicalContractDigest {
+	if digest != analyzerWITSHA256 {
 		t.Fatal("canonical WIT changed: run go generate ./internal/plugins/execution/component")
 	}
 }
@@ -28,7 +28,7 @@ func TestCanonicalContractChecksCompleteShape(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = checkContract(data)
+			err = validateAnalyzerInterface(data)
 			if name == "compatible-contract" {
 				if err != nil {
 					t.Fatal(err)

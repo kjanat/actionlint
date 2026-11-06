@@ -36,21 +36,21 @@ func TestRunnerContractShapeAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != runnerContractDigest {
+	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != runnerWITSHA256 {
 		t.Fatal("stale runner contract; regenerate")
 	}
 	data, err = os.ReadFile("testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := checkRoleContracts(data, extensionRoleSet{runner: true}); err != nil {
+	if err := validatePluginInterfaces(data, extensionRoleSet{runner: true}); err != nil {
 		t.Fatal(err)
 	}
 	altered := bytes.ReplaceAll(data, []byte("case-sensitivity"), []byte("case-sensitivitx"))
 	if bytes.Equal(data, altered) {
 		t.Fatal("fixture contains no candidate field")
 	}
-	if err := checkRoleContracts(altered, extensionRoleSet{runner: true}); err == nil {
+	if err := validatePluginInterfaces(altered, extensionRoleSet{runner: true}); err == nil {
 		t.Fatal("changed nested provider contract accepted")
 	}
 }

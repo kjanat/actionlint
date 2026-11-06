@@ -24,6 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -77,6 +78,8 @@ type compositeAnalyzer struct {
 	workflowEnv                       mapping.Mapping
 	workflowShell                     value.Value
 	jobID                             string
+	environmentLayers                 []scriptmodel.EnvironmentLayer
+	operatingSystems                  []runnerapi.OS
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -98,6 +101,7 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults())
 	analysis.workflowEnv = declaration.Env().Mapping()
+	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv)}
 	analysis.workflowShell = execution.DefaultShell(defaults)
 	return nil
 }
@@ -111,6 +115,7 @@ func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deploy
 		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
 	}
 	analysis.beginEntryScope(deployment)
+	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentCaller, UnknownNames: true}}
 	return nil
 }
 
@@ -132,6 +137,17 @@ func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.JobView) er
 	analysis.scriptJobShell = execution.DefaultShell(defaults)
 	analysis.scriptJobDir = execution.DefaultDirectory(defaults)
 	knowledge := analysis.runners.Job(declaration)
+	analysis.operatingSystems = knowledge.OperatingSystems()
+	if container := scriptmodel.ContainerShell(declaration.Container().Semantic()); container.State() != value.Missing {
+		analysis.operatingSystems = []runnerapi.OS{runnerapi.UnknownOS}
+		if container.Known() {
+			analysis.operatingSystems = []runnerapi.OS{runnerapi.Linux}
+		}
+	}
+	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{
+		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv),
+		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentJob, declaration.Env().Mapping()),
+	}
 	analysis.scriptRunnerShell = scriptmodel.DefaultShell(declaration.Container().Semantic(), knowledge.Shell)
 	analysis.jobID = ""
 	if id := declaration.ID(); id.Present() {

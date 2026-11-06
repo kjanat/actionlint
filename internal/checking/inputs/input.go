@@ -73,9 +73,9 @@ type Input struct {
 	// Files grants read-only filesystems for this call. Nil grants no file access.
 	// Mount paths are absolute guest paths; filesystem directories must implement
 	// descriptor-relative read operations when used by a component host.
-	Files         []FileSystem
-	SourceRoots   []SourceRoot
-	PrepareScript ScriptPreparer
+	Files                 []FileSystem
+	SourceRoots           []SourceRoot
+	BuildShellScriptInput ShellScriptInputBuilder
 }
 
 // FileSystem mounts a read-only filesystem at a guest path for one Analyze call.
@@ -99,6 +99,7 @@ type ActionInput struct {
 // with the Execution input.
 type Script struct {
 	scriptmodel.Declaration
-	Occurrence ScriptOccurrence
-	Runtime    *scriptmodel.Execution
+	Occurrence  ScriptOccurrence
+	Runtime     *scriptmodel.Execution
+	Environment []scriptmodel.EnvironmentNames
 }

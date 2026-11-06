@@ -1,6 +1,8 @@
 package scripts
 
 import (
+	"slices"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -36,6 +38,7 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) checkinputs.
 		script.Path = unit.Path
 	}
 	script.Reference = unit.Reference
+	script.Environment = slices.Clone(unit.Environment)
 	if includeExecution && unit.Input == nil {
 		script.Runtime = &scriptmodel.Execution{
 			Shell: unit.Execution.Shell.Name, ShellKnown: unit.Execution.Shell.Name != "", ShellImplicit: unit.Execution.Shell.Implicit,

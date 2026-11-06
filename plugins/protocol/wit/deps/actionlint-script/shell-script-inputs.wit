@@ -1,25 +1,28 @@
-package kjanat:actionlint@0.2.0;
+package kjanat:actionlint-script@0.3.0;
 
-/// Shared preparation for shell analysis, scoped to supplied script occurrences.
-/// Normative profile: ../json/shell-preparation-0.2.0.md.
+/// Shell text, dialect and source mapping supplied to a checker for one occurrence.
+/// Normative profile: shell-preparation-0.3.0.md in the protocol JSON directory.
 /// The host owns this transformation; guests must not repeat it or infer its
 /// results from the host version, package name, or diagnostic messages.
-interface prepared-scripts {
-    use invocation-context.{occurrence-id, position};
-    variant line {
-        script(u32),
-        comment(position),
-        startup,
+interface shell-script-inputs {
+    record position {
+        line: u32,
+        column: u32,
     }
-    record prepared {
+    variant line {
+        source(u32),
+        comment(position),
+        generated,
+    }
+    record input {
         /// Engine input, including attached directives and synthesized startup.
         text: string,
         /// Original script text with substitutions masked, before inserted lines.
-        sanitized: string,
+        masked-text: string,
         /// Engine dialect override; none leaves selection to source directives.
         dialect: option<string>,
         shell: string,
-        startup: string,
+        shell-setup: string,
         /// One entry per physical input line; script indices refer to the raw
         /// input script and comment positions to its declaring document.
         lines: list<line>,
@@ -30,5 +33,5 @@ interface prepared-scripts {
     /// Every other ID returns an error, including known unselected occurrences,
     /// action inputs, calls and the entry. None means an unsupported profile.
     /// Line numbers and positions are one-based Unicode character coordinates.
-    prepare: func(occurrence: occurrence-id, dialect: option<string>) -> result<option<prepared>, string>;
+    for-script: func(occurrence: string, dialect: option<string>) -> result<option<input>, string>;
 }

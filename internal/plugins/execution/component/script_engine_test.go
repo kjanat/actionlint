@@ -300,7 +300,7 @@ func TestScriptEngineContractCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != scriptEngineContractDigest {
+	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != scriptEngineWITSHA256 {
 		t.Fatal("stale script engine contract; regenerate")
 	}
 }
@@ -320,7 +320,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	d := p.ScriptDescriptor()
 	metadata := map[string]any{
 		"metadata_version": 1, "id": d.ID, "name": d.Name, "plugin_version": d.Version,
-		"transport": "wasm-component", "interface": ScriptEngineInterface, "contract_sha256": scriptEngineContractDigest,
+		"transport": "wasm-component", "interface": ScriptEngineInterface, "wit_sha256": scriptEngineWITSHA256,
 		"engine":       map[string]string{"name": d.Engine, "version": d.EngineVersion},
 		"capabilities": map[string]any{"script_shells": d.Shells, "fixes": false, "format": false},
 		"rules":        []any{d.Rule}, "config_schema": d.Rule.OptionsSchema,
@@ -344,7 +344,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	}
 	// Structural WIT validation defines compatibility; source formatting hashes
 	// identify build inputs but cannot reject a conforming fork.
-	metadata["contract_sha256"] = "independent-wit-source"
+	metadata["wit_sha256"] = "independent-wit-source"
 	data, err := json.Marshal(metadata)
 	if err != nil {
 		t.Fatal(err)

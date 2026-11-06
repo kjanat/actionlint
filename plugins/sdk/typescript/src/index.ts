@@ -79,6 +79,44 @@ export interface ScriptRequest {
 	filename: string;
 	/** Repository tools.<rule-name>.config settings, if supplied; validate before use. */
 	config?: JSONValue;
+	/** Scoped names for each possible runner OS. No environment values or secrets are included. */
+	environment?: ScriptEnvironment[];
+}
+
+/**
+ * Environment-name behavior for one possible execution OS. Runner merging and
+ * script lookup can differ: Windows merges names without case, but Bash looks
+ * up their exported spelling exactly. Missing names may still be supplied by a
+ * runner or by an earlier command through GITHUB_ENV.
+ *
+ * @example
+ * ```ts
+ * const environments = request.environment ?? [];
+ * const namesByOS = environments.map(environment => ({
+ *   os: environment.operating_system,
+ *   comparison: environment.lookup_comparison,
+ *   names: environment.names.filter(variable => variable.case_known).map(variable => variable.name),
+ * }));
+ * ```
+ */
+export interface ScriptEnvironment {
+	/** Runtime OS alternative; several records mean the host cannot select one OS. */
+	operating_system: 'linux' | 'macos' | 'windows';
+	/** Comparison used when inner declarations override outer declarations. */
+	merge_comparison: 'sensitive' | 'insensitive';
+	/** Comparison used by the script; unknown means the shell has not been modeled. */
+	lookup_comparison: 'sensitive' | 'insensitive' | 'unknown';
+	/** Declared exported keys, in first-declaration order. This is not a complete process environment. */
+	names: {
+		/** Exported key spelling; never normalize it before a case-sensitive lookup. */
+		name: string;
+		/** Scope that first introduced this key. An override can supply its value without changing this spelling. */
+		scope: 'workflow' | 'job' | 'caller' | 'step' | 'runtime';
+		/** False when an unresolved earlier Windows declaration could have introduced another spelling. */
+		case_known: boolean;
+	}[];
+	/** Some declaration keys could not be resolved; absence from names does not prove absence at runtime. */
+	unknown_names: boolean;
 }
 /** Wire response used by the SDK runners; normal callbacks return diagnostics directly. */
 export interface ScriptOutput {
@@ -516,6 +554,12 @@ export async function executeScriptCheck(
 		) throw new Error('expected {source, filename, config?}');
 		request = { source: value.source, filename: value.filename };
 		if ('config' in value && isJSONValue(value.config)) request.config = value.config;
+		if ('environment' in value) {
+			if (!Array.isArray(value.environment) || !value.environment.every(isScriptEnvironment)) {
+				throw new Error('invalid script environment');
+			}
+			request.environment = value.environment;
+		}
 	} catch (error) {
 		return { ok: false, diagnostics: [], errors: [messageOf(error)] };
 	}
@@ -532,6 +576,20 @@ export async function executeScriptCheck(
 	} catch (error) {
 		return { ok: false, diagnostics: [], errors: [messageOf(error)] };
 	}
+}
+
+function isScriptEnvironment(value: unknown): value is ScriptEnvironment {
+	return isRecord(value)
+		&& ['linux', 'macos', 'windows'].some(os => os === value.operating_system)
+		&& ['sensitive', 'insensitive'].some(comparison => comparison === value.merge_comparison)
+		&& ['sensitive', 'insensitive', 'unknown'].some(comparison => comparison === value.lookup_comparison)
+		&& typeof value.unknown_names === 'boolean'
+		&& Array.isArray(value.names)
+		&& value.names.every((variable: unknown) =>
+			isRecord(variable) && typeof variable.name === 'string'
+			&& typeof variable.case_known === 'boolean'
+			&& ['workflow', 'job', 'caller', 'step', 'runtime'].some(scope => scope === variable.scope)
+		);
 }
 
 /**

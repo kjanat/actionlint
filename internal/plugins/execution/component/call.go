@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/preparedscripts"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 
 	"github.com/kjanat/wacogo"
@@ -51,16 +50,17 @@ func (p *Plugin) failure(ctx context.Context, err error) error {
 // callScope owns every instance created for a single invocation.
 // Each acquisition is recorded before another allocation can fail.
 type callScope struct {
-	host        *host.ComponentInstance
-	world       *wasi.World
-	output      *lineWriter
-	plugin      *Plugin
-	guest       *wacogo.ComponentInstance
-	stdin       *host.ComponentInstance
-	annotations *host.ComponentInstance
-	files       *host.ComponentInstance
-	prepared    *host.ComponentInstance
-	invocations *host.ComponentInstance
+	host         *host.ComponentInstance
+	world        *wasi.World
+	output       *lineWriter
+	plugin       *Plugin
+	guest        *wacogo.ComponentInstance
+	stdin        *host.ComponentInstance
+	annotations  *host.ComponentInstance
+	files        *host.ComponentInstance
+	prepared     *host.ComponentInstance
+	invocations  *host.ComponentInstance
+	environments *host.ComponentInstance
 }
 
 func (c *callScope) invoke(ctx context.Context, iface, name string, args ...wacogo.Val) (value wacogo.Val, err error) {
@@ -138,6 +138,14 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 	c.stdin = input
 	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, c.host.Core())}, c.world.Imports()...)
 	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
+	if p.environmentFactory != nil {
+		instance, err := p.environmentFactory.NewInstance(ctx, scriptEnvironments{}, nil)
+		if err != nil {
+			return err
+		}
+		c.environments = instance
+		imports = append(imports, wacogo.WithInstanceImport(ScriptEnvironmentsInterface, instance.Core()))
+	}
 	if p.invocationFactory != nil {
 		instance, err := p.invocationFactory.NewInstance(ctx, invocationContext{}, nil)
 		if err != nil {
@@ -147,9 +155,8 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		imports = append(imports, wacogo.WithInstanceImport(InvocationContextInterface, instance.Core()))
 	}
 	if p.annotationsFactory != nil {
-		// Source annotations and prepared scripts use invocation-context types,
-		// so their instances alias that call's invocation instance. Load creates
-		// the invocation factory whenever either is required.
+		// Source annotations use the types of this call's invocation instance.
+		// Load creates the invocation factory when annotations are required.
 		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, &annotationsbind.Deps{InvocationContext: c.invocations.Core()})
 		if err != nil {
 			return err
@@ -165,13 +172,13 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		c.files = files
 		imports = append(imports, wacogo.WithInstanceImport(SourceFilesInterface, files.Core()))
 	}
-	if p.preparedFactory != nil {
-		prepared, err := p.preparedFactory.NewInstance(ctx, preparedScripts{}, &preparedbind.Deps{InvocationContext: c.invocations.Core()})
+	if p.shellInputFactory != nil {
+		prepared, err := p.shellInputFactory.NewInstance(ctx, shellScriptInputs{}, nil)
 		if err != nil {
 			return err
 		}
 		c.prepared = prepared
-		imports = append(imports, wacogo.WithInstanceImport(PreparedScriptsInterface, prepared.Core()))
+		imports = append(imports, wacogo.WithInstanceImport(ShellScriptInputsInterface, prepared.Core()))
 	}
 	guest, err := p.component.Instantiate(ctx, imports...)
 	if err != nil {

@@ -19,13 +19,13 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 		{Reference: reference, Text: "echo same", Occurrence: checkinputs.ScriptOccurrence{ID: bashID}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}},
 		{Reference: reference, Text: "echo same", Occurrence: checkinputs.ScriptOccurrence{ID: shID}, Runtime: &scriptmodel.Execution{Shell: "sh", ShellKnown: true}},
 	}
-	prepare := Preparer(scripts)
+	prepare := NewShellScriptInputBuilder(scripts)
 	bash, err := prepare(t.Context(), bashID, nil)
-	if err != nil || bash == nil || bash.Shell != "bash" || bash.Startup != "set -e -o pipefail" {
+	if err != nil || bash == nil || bash.Shell != "bash" || bash.ShellSetup != "set -e -o pipefail" {
 		t.Fatalf("bash occurrence preparation: %+v, %v", bash, err)
 	}
 	sh, err := prepare(t.Context(), shID, nil)
-	if err != nil || sh == nil || sh.Shell != "sh" || sh.Startup != "set -e" {
+	if err != nil || sh == nil || sh.Shell != "sh" || sh.ShellSetup != "set -e" {
 		t.Fatalf("sh occurrence preparation: %+v, %v", sh, err)
 	}
 }
@@ -33,7 +33,7 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 	const id checkinputs.OccurrenceID = "known"
 	script := checkinputs.Script{Text: "echo hi", Occurrence: checkinputs.ScriptOccurrence{ID: id}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
-	prepare := Preparer([]checkinputs.Script{script})
+	prepare := NewShellScriptInputBuilder([]checkinputs.Script{script})
 	for name, occurrence := range map[string]checkinputs.OccurrenceID{"empty": "", "unknown": "foreign"} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := prepare(t.Context(), occurrence, nil); err == nil {
@@ -41,7 +41,7 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 			}
 		})
 	}
-	duplicate := Preparer([]checkinputs.Script{script, script})
+	duplicate := NewShellScriptInputBuilder([]checkinputs.Script{script, script})
 	if _, err := duplicate(t.Context(), id, nil); err == nil {
 		t.Fatal("ambiguous duplicate occurrence accepted")
 	}
@@ -54,14 +54,14 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 
 func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []workflowfacts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: sourcepos.Position{Line: 4, Column: 7}}}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
-	prepared, err := PrepareScript(script, nil)
+	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)
 	}
 	if !strings.HasPrefix(prepared.Text, "#!/bin/bash\n# shellcheck disable=SC2086\nset -e -o pipefail\n") || strings.Contains(prepared.Text, "${{") {
 		t.Fatalf("source: %q", prepared.Text)
 	}
-	want := []checkinputs.PreparedLine{{Kind: checkinputs.PreparedScriptLine, Line: 1}, {Kind: checkinputs.PreparedCommentLine, Position: script.Comments[0].Start}, {Kind: checkinputs.PreparedStartupLine}, {Kind: checkinputs.PreparedScriptLine, Line: 2}}
+	want := []checkinputs.ShellScriptLine{{Kind: checkinputs.ShellScriptSourceLine, Line: 1}, {Kind: checkinputs.ShellScriptCommentLine, Position: script.Comments[0].Start}, {Kind: checkinputs.ShellScriptGeneratedLine}, {Kind: checkinputs.ShellScriptSourceLine, Line: 2}}
 	if len(prepared.Lines) != len(want) {
 		t.Fatalf("lines: %+v", prepared.Lines)
 	}
@@ -74,13 +74,13 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 
 func TestPluginPreparationUsesDeclaredDialectWithoutRuntimeFlags(t *testing.T) {
 	script := checkinputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
-	prepared, err := PrepareScript(script, nil)
-	if err != nil || prepared == nil || prepared.Dialect != nil || prepared.Startup != "" {
+	prepared, err := BuildShellScriptInput(script, nil)
+	if err != nil || prepared == nil || prepared.Dialect != nil || prepared.ShellSetup != "" {
 		t.Fatalf("prepared=%+v err=%v", prepared, err)
 	}
 	script.Text = "echo hi"
 	script.Runtime.Shell = "python"
-	prepared, err = PrepareScript(script, nil)
+	prepared, err = BuildShellScriptInput(script, nil)
 	if err != nil || prepared != nil {
 		t.Fatalf("unsupported shell: %+v %v", prepared, err)
 	}
@@ -90,11 +90,11 @@ func TestPluginPreparationUsesDeclaredDialectWithoutRuntimeFlags(t *testing.T) {
 // template, so no part of it reaches the plugin.
 func TestPluginPreparationMasksWholeTemplates(t *testing.T) {
 	script := checkinputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
-	prepared, err := PrepareScript(script, nil)
+	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)
 	}
-	if prepared.Sanitized != "echo ___________\n" || strings.ContainsAny(prepared.Text, "'}") {
-		t.Fatalf("template partially exposed: %q / %q", prepared.Sanitized, prepared.Text)
+	if prepared.MaskedText != "echo ___________\n" || strings.ContainsAny(prepared.Text, "'}") {
+		t.Fatalf("template partially exposed: %q / %q", prepared.MaskedText, prepared.Text)
 	}
 }

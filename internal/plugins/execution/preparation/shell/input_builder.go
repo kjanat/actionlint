@@ -11,10 +11,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 )
 
-// Preparer exposes the profile's shell interpretation, template masking and
+// NewShellScriptInputBuilder exposes the profile's shell interpretation, template masking and
 // source preparation to plugins through the public WIT import. It prepares
 // only scripts whose occurrence is unique among scripts.
-func Preparer(scripts []checkinputs.Script) checkinputs.ScriptPreparer {
+func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellScriptInputBuilder {
 	byOccurrence := make(map[checkinputs.OccurrenceID]checkinputs.Script, len(scripts))
 	duplicates := make(map[checkinputs.OccurrenceID]struct{})
 	for _, script := range scripts {
@@ -25,7 +25,7 @@ func Preparer(scripts []checkinputs.Script) checkinputs.ScriptPreparer {
 		}
 		byOccurrence[id] = script
 	}
-	return func(ctx context.Context, id checkinputs.OccurrenceID, override *string) (*checkinputs.PreparedScript, error) {
+	return func(ctx context.Context, id checkinputs.OccurrenceID, override *string) (*checkinputs.ShellScriptInput, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -39,15 +39,15 @@ func Preparer(scripts []checkinputs.Script) checkinputs.ScriptPreparer {
 		if !exists {
 			return nil, errors.New("unknown script occurrence")
 		}
-		return PrepareScript(script, override)
+		return BuildShellScriptInput(script, override)
 	}
 }
 
-// PrepareScript prepares a run block for a plugin. Directive comments the
+// BuildShellScriptInput prepares a run block for a plugin. Directive comments the
 // workflow attaches to the step precede the script; override replaces an
 // inferred dialect. It returns nil when the script is not a supported shell
 // script and no directive selects one.
-func PrepareScript(script checkinputs.Script, override *string) (*checkinputs.PreparedScript, error) {
+func BuildShellScriptInput(script checkinputs.Script, override *string) (*checkinputs.ShellScriptInput, error) {
 	shell := Shell{Name: script.Shell}
 	if script.Runtime != nil && script.Runtime.ShellKnown {
 		shell = Shell{Name: script.Runtime.Shell, Implicit: script.Runtime.ShellImplicit}
@@ -77,9 +77,10 @@ func PrepareScript(script checkinputs.Script, override *string) (*checkinputs.Pr
 	if dialect != inferred {
 		setup = ""
 	}
+	setup, environmentExcluded := environmentStartup(setup, script.Environment)
 	masked := mask.Expressions(script.Text)
 	prepared := Prepare(masked, prefix.String(), setup)
-	result := &checkinputs.PreparedScript{Text: prepared.Text(), Sanitized: masked, Shell: shell.Name, Startup: setup}
+	result := &checkinputs.ShellScriptInput{Text: prepared.Text(), MaskedText: masked, Shell: shell.Name, ShellSetup: setup}
 	if !selected {
 		result.Dialect = &dialect
 	}
@@ -87,17 +88,17 @@ func PrepareScript(script checkinputs.Script, override *string) (*checkinputs.Pr
 	for index, line := range prepared.sourceLines {
 		switch {
 		case line > 0:
-			result.Lines = append(result.Lines, checkinputs.PreparedLine{Kind: checkinputs.PreparedScriptLine, Line: line})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptSourceLine, Line: line})
 		case index+1 == prepared.startupLine:
-			result.Lines = append(result.Lines, checkinputs.PreparedLine{Kind: checkinputs.PreparedStartupLine})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptGeneratedLine})
 		case commentIndex < len(comments):
-			result.Lines = append(result.Lines, checkinputs.PreparedLine{Kind: checkinputs.PreparedCommentLine, Position: comments[commentIndex].Start})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptCommentLine, Position: comments[commentIndex].Start})
 			commentIndex++
 		default:
-			result.Lines = append(result.Lines, checkinputs.PreparedLine{Kind: checkinputs.PreparedStartupLine})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptGeneratedLine})
 		}
 	}
-	for _, code := range Excluded(nil) {
+	for _, code := range Excluded(environmentExcluded) {
 		number, err := strconv.ParseUint(strings.TrimPrefix(code, "SC"), 10, 32)
 		if err != nil {
 			return nil, err

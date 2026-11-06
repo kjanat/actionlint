@@ -45,17 +45,13 @@ const (
 //   - SC2050: The expression is constant. This sometimes happens at `if`
 //     condition by replacing ${{ }} with underscores (#45). For example,
 //     `if [ "${{ matrix.foo }}" = "x" ]` -> `if [ "_________________" = "x" ]`.
-//   - SC2153: Same as SC2154.
-//   - SC2154: The var is referenced but not assigned. Script at `run:` can refer
-//     variables defined in `env:` section so this rule can cause false
-//     positives (#53).
 //   - SC2157: Argument to -z is always false due to literal strings. When the
 //     argument of -z is replaced from ${{ }}, this can happen. For example,
 //     `if [ -z ${{ env.FOO }} ]` -> `if [ -z ______________ ]` (#113).
 //   - SC2043: Loop can be detected as only running once when the target of
 //     iteration is a placeholder (#355), e.g. `for foo in ${{ inputs.foo }}; do`.
 func Excluded(extra []string) []string {
-	excluded := []string{"SC1091", "SC2194", "SC2050", "SC2153", "SC2154", "SC2157", "SC2043"}
+	excluded := []string{"SC1091", "SC2194", "SC2050", "SC2157", "SC2043"}
 	for _, code := range extra {
 		if !slices.Contains(excluded, code) {
 			excluded = append(excluded, code)
