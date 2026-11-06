@@ -2,6 +2,7 @@ package expressions
 
 import (
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	contextoutputs "actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
@@ -259,7 +260,7 @@ func (rule *Checker) VisitStep(n workflowdecl.StepView) error {
 			// An evaluated step ID can name any step, so steps.<id> stays open.
 			steps = steps.WithMapped(exprtypes.AnyType())
 		}
-		step := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"outputs": rule.getActionOutputsType(spec).Type(), "conclusion": exprtypes.StringType(), "outcome": exprtypes.StringType()})
+		step := contextoutputs.StepType(rule.getActionOutputsType(spec))
 		rule.stepsTy = new(steps.WithProperty(n.ID().Value(), step.Type()))
 	}
 	return nil

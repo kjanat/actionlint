@@ -84,13 +84,13 @@ contract. Both plugin types carry the shared rule descriptor.
 `source.Reference` accompanies document facts, scripts, mappings, invocation sites and
 findings. Nested composite callers have identities even when they contain no scripts.
 `rule.Descriptor` separates category/subcategory from provider and maturity.
-`analysis.Rules` and `actionlint rules --plugin PATH` combine built-ins and selected
+`checking.RulesWithPlugins` and `actionlint rules --plugin PATH` combine built-ins and selected
 plugins in one collision-checked namespace. Registered document analyzers use
 `lint.rules.plugins` for severity, options and presets; their option schemas are
 validated without implicit file or network access. The catalogue generates `docs/rules.md`.
 
-`RuleBase` is an internal visitor adapter and finding accumulator. It no longer
-owns configuration or logging. Adapters opt into those capabilities explicitly.
+`traversal.Base` accumulates findings and supplies empty visitor callbacks.
+Adapters request configuration and logging explicitly.
 Source-local checks declare workflow, job and step callbacks through
 `inputs.DeclarationCheck`. Their metadata, bindings, implementations and semantic
 tests live under `internal/checking/rules/<category>`. Identifiers and dependencies
@@ -101,9 +101,18 @@ required-permissions adapters.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.
-Expression, action-metadata, matrix, cache, runner and shell checks still use visitor implementations.
+Expression, action-metadata, matrix and cache checks use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
-alone does not complete that work. Public analyzers do not implement visitor callbacks.
+alone does not complete that work. Plugin checks do not implement host visitor callbacks.
+
+`internal/model/contexts/outputs` constructs the output types shared by `steps`,
+`needs` and `jobs`. It receives published declarations and loaded dependency
+metadata; it does not resolve references, read files or report findings. Known
+output declarations constrain names. Unavailable or incomplete declarations leave
+names open while preserving the string value type described by
+[GitHub's context reference](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#jobs-context).
+The expression checker loads metadata, supplies it to that model and checks uses
+of the resulting types. `needs` includes direct prerequisites only.
 
 `actionlint fix` previews revision-bound edits; `--apply` writes and reanalyzes them.
 `actionlint lsp` uses versioned buffers, UTF-16 positions, cancellation, stale-publication
@@ -111,9 +120,9 @@ rejection and versioned code actions. It reanalyzes open documents rather than c
 fine-grained incremental semantic graph. Related locations in closed documents are not
 published until those sources are available to the editor adapter.
 
-The component contract is `kjanat:actionlint/analyzer@0.1.0`. The Ruff repository advertises the shared rule
-metadata through its existing core-engine ABI 1, and its rebuilt artifact works through
-the CLI's sanitizer and source mapper.
+Document-check components export `kjanat:actionlint/analyzer@0.2.0`. Core-module
+plugins use their versioned JSON ABI. Script engines and runner providers implement
+their own interfaces defined in [`plugins/protocol/wit`](../../plugins/protocol/wit).
 The Go component host uses the maintained `github.com/kjanat/wacogo` fork.
 The [Go fork inventory](../go-forks.md) records selected tags, recursive dependencies
 and upstream origins.
