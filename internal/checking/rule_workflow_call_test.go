@@ -61,7 +61,7 @@ jobs:
 					t.Fatalf("Lint: want one failure using the source reference, got %v", errs)
 				}
 				// Rendering a caller's spelling must not alter the cached error.
-				_, err = cache.FindMetadata("./broken.yaml")
+				_, err = cache.Load(t.Context(), "./broken.yaml")
 				if err == nil || !strings.Contains(err.Error(), `"./broken.yaml"`) {
 					t.Fatalf("cache no longer retains its lookup failure: %v", err)
 				}

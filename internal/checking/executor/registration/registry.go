@@ -57,7 +57,8 @@ type Inputs struct {
 	Repository                    repository.Snapshot
 	Actions                       *workspaceactions.Resolver
 	RemoteActions                 *actionremote.ResolvedActions
-	Workflows                     *workflowinputs.Cache
+	WorkflowSources               *workflowinputs.Cache
+	Workflows                     *workflowinputs.ResolvedWorkflows
 	WorkflowNames                 *workflownames.Index
 	WorkflowNameInventory         namemodel.Inventory
 	Reader                        *files.Reader
@@ -127,12 +128,12 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"glob":                         declarationImplementation(correctness.GlobCheck()),
 		"permissions":                  declarationImplementation(correctness.PermissionsCheck()),
 		"missing-workflow-permissions": declarationImplementation(security.MissingWorkflowPermissionsCheck()),
-		"workflow-call": {Build: func(c Inputs) workflowvisit.Rule {
+		"workflow-call": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			logger := reporting.Logger{Tag: "workflow-call", Writer: c.Debug}
 			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
 		}},
-		"expression": {Build: func(c Inputs) workflowvisit.Rule {
+		"expression": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			return expressionchecks.New(c.Context, c.Actions, c.Workflows, c.Runners, c.RemoteActions)
 		}},
 		"deprecated-commands":     {Script: workflowcommands.Checker{}},
@@ -168,7 +169,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			return declarationchecks.New(c.Rules, security.CacheCallUnrestrictedCheck(workflow))
 		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }},
-		"cache-operation": {Build: func(c Inputs) workflowvisit.Rule {
+		"cache-operation": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			return declarationchecks.New(c.Rules, correctness.CacheOperationCheck(workflow, c.Workflows))
 		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") }},
@@ -236,5 +237,15 @@ func prepareWorkflowRunNames(c Inputs) (InputPreparation, error) {
 		return UnavailableInputs{Reason: "not every repository workflow name could be determined"}, nil
 	}
 	c.WorkflowNameInventory = inventory
+	return PreparedInputs{Inputs: c}, nil
+}
+
+func prepareWorkflowMetadata(c Inputs) (InputPreparation, error) {
+	if c.WorkflowSources != nil {
+		if err := c.WorkflowSources.Prepare(c.Context, c.SourceSnapshot); err != nil {
+			return nil, err
+		}
+		c.Workflows = c.WorkflowSources.Resolved()
+	}
 	return PreparedInputs{Inputs: c}, nil
 }

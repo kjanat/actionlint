@@ -11,7 +11,7 @@ import (
 
 // CacheOperationCheck checks action operations and reusable calls against their
 // effective cache grant. Each callback derives its job mode from its own input.
-func CacheOperationCheck(workflow workflowdecl.WorkflowView, lookup *workflowinputs.Cache) checkinputs.DeclarationCheck {
+func CacheOperationCheck(workflow workflowdecl.WorkflowView, lookup *workflowinputs.ResolvedWorkflows) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: CacheOperationDeclaration(),
 		Job: func(job workflowdecl.JobView) []reporting.Finding {

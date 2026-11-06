@@ -168,14 +168,14 @@ func (c *Cache) Seed(snapshot parsing.SourceSnapshot) error {
 	return nil
 }
 
-// FindMetadata finds/parses a reusable workflow metadata located by the 'spec' argument. When project
-// is not set to 'root' field or the spec does not start with "./", this method immediately returns with nil.
-//
-// Read and parse errors are cached alongside metadata and returned on every lookup. Each caller
-// can report the failure at its own source position, regardless of the order of concurrent checks.
-//
-// Calling this method is thread-safe.
-func (c *Cache) FindMetadata(spec string) (*calls.Metadata, error) {
+// Load reads and parses a repository-local workflow unless it is already cached.
+// Non-local references and a disabled repository scope return no metadata.
+// ctx cancels this caller's wait; the capture store owns backing IO.
+// Concurrent callers receive detached metadata or the cached failure.
+func (c *Cache) Load(ctx context.Context, spec string) (*calls.Metadata, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if c.root == "" || !strings.HasPrefix(spec, "./") || exprsyntax.ContainsExpression(spec) {
 		return nil, nil
 	}
@@ -189,7 +189,7 @@ func (c *Cache) FindMetadata(spec string) (*calls.Metadata, error) {
 	if c.captures == nil || c.ctx == nil {
 		return nil, errors.New("reusable workflow cache requires a capture store")
 	}
-	captured, err := c.captures.Read(c.ctx, file, source.YAML)
+	captured, err := c.captures.Read(ctx, file, source.YAML)
 	if err != nil {
 		failure := readFailure(spec, err)
 		c.store(spec, reusableWorkflowMetadataResult{failure: failure})
@@ -199,7 +199,7 @@ func (c *Cache) FindMetadata(spec string) (*calls.Metadata, error) {
 	m, err := calls.ParseMetadata(captured.Bytes())
 	if err != nil {
 		failure := parseFailure(spec, err)
-		c.store(spec, reusableWorkflowMetadataResult{failure: failure})
+		c.store(spec, reusableWorkflowMetadataResult{failure: failure, captured: captured})
 		return nil, failure
 	}
 
@@ -213,15 +213,15 @@ func (c *Cache) FindMetadata(spec string) (*calls.Metadata, error) {
 	return m, err
 }
 
-// FindMetadataForCall owns the source-reference boundary for diagnostic rules.
-// Lookups normalize cache keys to ./ paths and name failed workflows with the call's source spelling.
-// Invalid, remote, and expression references are handled by syntax validation.
-func (c *Cache) FindMetadataForCall(sourceSpec string) (*calls.Metadata, error) {
+// LoadForCall loads local metadata using a normalized ./ cache key and reports
+// failures with the caller's reference spelling. Syntax checks handle non-local
+// or invalid references; this loader returns no metadata for them.
+func (c *Cache) LoadForCall(ctx context.Context, sourceSpec string) (*calls.Metadata, error) {
 	localSpec, ok := references.LocalWorkflow(sourceSpec)
 	if !ok {
 		return nil, nil
 	}
-	m, err := c.FindMetadata(localSpec)
+	m, err := c.Load(ctx, localSpec)
 	if failure, ok := errors.AsType[metadataError](err); ok {
 		return nil, failure.at(sourceSpec)
 	}

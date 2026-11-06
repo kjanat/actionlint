@@ -53,7 +53,7 @@ jobs:
 				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
 				fileCache := workflowinputs.NewCache(project.RootDir(), nil)
 				fileCache.SetSources(t.Context(), store, root)
-				fromFile, err := fileCache.FindMetadata("./callee.yaml")
+				fromFile, err := fileCache.Load(t.Context(), "./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
 				}

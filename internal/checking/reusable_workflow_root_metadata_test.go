@@ -78,7 +78,7 @@ jobs:
 				if fromAST {
 					seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 				}
-				metadata, err := cache.FindMetadata("./callee.yaml")
+				metadata, err := cache.Load(t.Context(), "./callee.yaml")
 				if err != nil {
 					t.Fatalf("AST=%v: duplicate root declaration prevented metadata extraction: %v", fromAST, err)
 				}
@@ -218,7 +218,7 @@ jobs:
 						}
 						previousDiagnostics = errs
 					}
-					metadata, err := cache.FindMetadata("./callee.yaml")
+					metadata, err := cache.Load(t.Context(), "./callee.yaml")
 					if err != nil || metadata == nil {
 						t.Fatalf("AST=%v: invalid root key prevented metadata extraction: %v", fromAST, err)
 					}

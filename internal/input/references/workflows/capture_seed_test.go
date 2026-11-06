@@ -73,14 +73,14 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			if err != nil || !found || seeded == nil || !seeded.Inputs["message"].Required {
 				t.Fatalf("workflow was not seeded: metadata=%+v error=%v found=%v", seeded, err, found)
 			}
-			loaded, err := cache.FindMetadata(spec)
+			loaded, err := cache.Load(t.Context(), spec)
 			if err != nil || !cmp.Equal(loaded, seeded) || reads.Load() != 0 {
 				t.Fatalf("seed fell back to a second source path: metadata=%+v error=%v reads=%d", loaded, err, reads.Load())
 			}
 			if err := store.Quarantine(captured, "conflicting declaration kinds: action, workflow"); err == nil {
 				t.Fatal("quarantine did not report a conflict")
 			}
-			if metadata, err := cache.FindMetadata(spec); metadata != nil {
+			if metadata, err := cache.Load(t.Context(), spec); metadata != nil {
 				t.Fatal("cached callee metadata outlived its capture")
 			} else if _, ok := errors.AsType[capture.ConflictError](err); !ok {
 				t.Fatalf("cached capture conflict was lost: %v", err)

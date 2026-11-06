@@ -36,7 +36,7 @@ jobs:
 		"nested": {"contents": calls.PermissionLevelWrite},
 	}})
 	var messages []string
-	check := WorkflowCallCheck(workflow, cache, repository.Snapshot{}, func(format string, args ...any) {
+	check := WorkflowCallCheck(workflow, cache.Resolved(), repository.Snapshot{}, func(format string, args ...any) {
 		messages = append(messages, fmt.Sprintf(format, args...))
 	})
 	if check.Name != "workflow-call" || check.Workflow != nil || check.Step != nil {

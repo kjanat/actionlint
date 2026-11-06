@@ -72,7 +72,7 @@ func (r *ceilingCheck) check(pos workflowlang.Pos, spec, sourceSpec string, gran
 		if access.Uses == "" {
 			continue
 		}
-		next, err := r.cache.FindMetadataForCall(access.SourceUses)
+		next, err := r.cache.LookupForCall(access.SourceUses)
 		if err != nil {
 			r.Errorf(pos, "could not validate cache access through job %q of %q: %s", id, sourceSpec, err)
 			continue
