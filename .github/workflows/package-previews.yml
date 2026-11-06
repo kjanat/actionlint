@@ -39,6 +39,13 @@ jobs:
       - name: Build actionlint plugin host
         env: &a { ACTIONLINT: "${{ runner.temp }}/actionlint" }
         run: go build -o "${ACTIONLINT}" ./cmd/actionlint
+      - name: Install Pandoc for the packaged manual
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with: { install_args: pandoc, add_shims_to_path: false }
+        env: &manualTools { MISE_ENABLE_TOOLS: pandoc }
+      - name: Build the packaged manual
+        run: mise run man:roff
+        env: *manualTools
       - name: Build CLI preview archives
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
@@ -71,7 +78,7 @@ jobs:
           add_shims_to_path: false
         env: { MISE_ENABLE_TOOLS: "yamllint,zizmor" }
       - name: Check installed yamllint example
-        uses: kjanat/actionlint-registry/check@97cb7fdaf812e04b9e80929709e54448c4d78d99 # master
+        uses: kjanat/actionlint-registry/check@85bef8a6fba197f0e8933bdd812db19885b06527 # master
         with:
           artifact: plugins/examples/external-linters/yamllint/actionlint-provider.json
           fixture: plugins/examples/external-linters/yamllint/installation.ts
@@ -80,7 +87,7 @@ jobs:
           allow-config-processes: true
           report: ${{ runner.temp }}/yamllint-candidate.json
       - name: Check installed zizmor example
-        uses: kjanat/actionlint-registry/check@97cb7fdaf812e04b9e80929709e54448c4d78d99 # master
+        uses: kjanat/actionlint-registry/check@85bef8a6fba197f0e8933bdd812db19885b06527 # master
         with:
           artifact: plugins/examples/external-linters/zizmor/actionlint-provider.json
           fixture: plugins/examples/external-linters/zizmor/installation.ts

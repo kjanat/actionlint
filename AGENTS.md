@@ -22,7 +22,7 @@ Activate mise and run commands from the repository root. Tools are configured in
 - `go build ./cmd/actionlint`: build with checked-in generated sources.
 - `run actionlint -h` (runs `go run ./cmd/actionlint -h`): display CLI help.
 - `run generate`: regenerate sources; network access may be required.
-- `run fmt`: format with `kprint fmt` / `kfmt`, which uses the owner's kprint fork of dprint.
+- `run fmt`: format with `kprint fmt`, the owner's fork of dprint.
 - `run lint`: run Go, vulnerability and browser WebAssembly checks.
 - `run lint-docs`: run actionlint on documentation examples and compare the diagnostics with their documented output. ShellCheck analyzes shell scripts when available.
 - `run -s [TASK...]`: runs multiple tasks sequentially.

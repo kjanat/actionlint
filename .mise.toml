@@ -46,12 +46,6 @@ biome                      = {
   version        = "2.6.5",
   version_prefix = "@biomejs/biome@",
 }
-kfmt                       = {
-  version             = "latest",
-  minimum_release_age = "0s",
-  allow_low_downloads = true,
-  depends             = ["node"],
-}
 rust                       = {
   version    = "latest",
   components = ["clippy", "rustfmt"],
@@ -74,7 +68,6 @@ wasi-sdk                   = {
 wasi-sdk    = "github:WebAssembly/wasi-sdk"
 pandoc      = "github:jgm/pandoc"
 kprint      = "github:kjanat/kprint"
-kfmt        = "npm:@kjanat/fmt"
 runner-run  = "github:kjanat/runner"
 typescript  = "github:microsoft/TypeScript"
 biome       = "github:biomejs/biome"
