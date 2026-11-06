@@ -31,9 +31,6 @@ const (
 	compatUbuntu2604ARM
 	compatXcode270
 	compatXcode270XL
-	compatMacOS140
-	compatMacOS140L
-	compatMacOS140XL
 	compatMacOS150
 	compatMacOS150Intel
 	compatMacOS150L
@@ -51,7 +48,7 @@ const (
 var allGitHubHostedRunnerLabels = []string{
 	"windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm",
 	"ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm",
-	"xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14",
+	"xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15",
 }
 
 var (
@@ -84,9 +81,6 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"macos-15-xlarge":        compatMacOS150XL,
 	"macos-15-large":         compatMacOS150L,
 	"macos-15":               compatMacOS150,
-	"macos-14-xlarge":        compatMacOS140XL,
-	"macos-14-large":         compatMacOS140L,
-	"macos-14":               compatMacOS140,
 	"windows-latest":         compatWindows2025VS2026,
 	"windows-latest-8-cores": compatWindows2022,
 	"windows-2025":           compatWindows2025VS2026,
@@ -95,7 +89,7 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"windows-11-arm":         compatWindows11Arm | compatWindows11VS2026Arm,
 	"windows-11-vs2026-arm":  compatWindows11VS2026Arm,
 	"linux":                  compatUbuntu2604 | compatUbuntu2404 | compatUbuntu2204 | compatUbuntu2604ARM | compatUbuntu2404ARM | compatUbuntu2204ARM,
-	"macos":                  compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL | compatMacOS140 | compatMacOS140L | compatMacOS140XL,
+	"macos":                  compatXcode270 | compatXcode270XL | compatMacOS260 | compatMacOS260Intel | compatMacOS260L | compatMacOS260XL | compatMacOS150 | compatMacOS150Intel | compatMacOS150L | compatMacOS150XL,
 	"windows":                compatWindows2025VS2026 | compatWindows2022 | compatWindows11Arm | compatWindows11VS2026Arm,
 }
 
