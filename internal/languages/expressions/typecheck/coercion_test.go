@@ -148,8 +148,7 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		return node
 	}
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.callFacts = make(map[*exprsyntax.FuncCallNode]exprfunctions.FunctionCallFacts)
-	checker.check(parse("startsWith(true)"))
+	checker.CheckResult(parse("startsWith(true)"))
 	if !checker.validationFailed || len(checker.errs) == 0 {
 		t.Fatalf("missing validation failure: %+v", checker.errs)
 	}
