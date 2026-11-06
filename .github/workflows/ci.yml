@@ -143,6 +143,15 @@ jobs:
           actionlint-playground:test:browser
       - name: Lint playground
         run: run actionlint-playground:lint
+      - name: Upload browser test failures
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-test-failures
+          path: .review-artifacts/browser-lsp/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
   javascript:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['javascript']) }}
