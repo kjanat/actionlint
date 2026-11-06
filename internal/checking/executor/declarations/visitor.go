@@ -2,6 +2,7 @@ package declarations
 
 import (
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -22,7 +23,6 @@ import (
 // declarationRule is the traversal adapter for stateless declaration checks.
 type declarationRule struct {
 	workflowvisit.Base
-	check         Declaration
 	workflowCheck func(workflowdecl.WorkflowView) []reporting.Finding
 	jobCheck      func(workflowdecl.JobView) []reporting.Finding
 	stepCheck     func(workflowdecl.StepView) []reporting.Finding
@@ -63,13 +63,22 @@ func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView
 	return r.VisitStep(step)
 }
 
-// New adapts a registered stateless rule to workflow traversal.
-func New(rules repoconfig.RuleSet, name string) *declarationRule {
+// New invokes only the workflow, job and step checks supplied by the rule.
+func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) *declarationRule {
+	if check.Workflow == nil && check.Job == nil && check.Step == nil {
+		panic("rule " + check.Name + " supplies no declaration check")
+	}
+	r := newRule(rules, check.Name)
+	r.workflowCheck, r.jobCheck, r.stepCheck = check.Workflow, check.Job, check.Step
+	return r
+}
+
+func newRule(rules repoconfig.RuleSet, name string) *declarationRule {
 	metadata, found := rules.FindRule(name)
 	if !found {
 		panic("unregistered rule: " + name)
 	}
-	return &declarationRule{Base: workflowvisit.NewBase(metadata.Name, metadata.Description), check: Declaration(metadata.Name), rules: rules}
+	return &declarationRule{Base: workflowvisit.NewBase(metadata.Name, metadata.Description), rules: rules}
 }
 
 func (r *declarationRule) collect(input []reporting.Finding, job string) {
@@ -93,8 +102,6 @@ func (r *declarationRule) collect(input []reporting.Finding, job string) {
 func (r *declarationRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 	if r.workflowCheck != nil {
 		r.collect(r.workflowCheck(w), "")
-	} else {
-		r.collect(r.check.Workflow(w), "")
 	}
 	return nil
 }
@@ -102,8 +109,6 @@ func (r *declarationRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
 	if r.jobCheck != nil {
 		r.collect(r.jobCheck(j), declarationID(j.ID()))
-	} else {
-		r.collect(r.check.Job(j), declarationID(j.ID()))
 	}
 	return nil
 }
@@ -111,15 +116,13 @@ func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
 func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 	if r.stepCheck != nil {
 		r.collect(r.stepCheck(s), "")
-	} else {
-		r.collect(r.check.Step(s), "")
 	}
 	return nil
 }
 
 // NewVendorLockIn checks URL-form references in jobs, steps and called composites.
 func NewVendorLockIn(rules repoconfig.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
-	r := New(rules, "vendor-lock-in")
+	r := newRule(rules, "vendor-lock-in")
 	target := runners.Target()
 	r.jobCheck = func(job workflowdecl.JobView) []reporting.Finding {
 		return reporting.FromDiagnostics(correctness.VendorLockIn(job.WorkflowCall().Uses(), target))
@@ -145,14 +148,14 @@ func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTi
 	if upper, ok := policy.MaxMinutes(); ok {
 		options.Max = new(upper)
 	}
-	r := New(rules, "job-timeout")
+	r := newRule(rules, "job-timeout")
 	r.jobCheck = func(j workflowdecl.JobView) []reporting.Finding { return conventions.JobTimeout(j, options) }
 	return r
 }
 
 func NewRuleRequirePermissions(rules repoconfig.RuleSet, policy *repoconfig.PermissionsPolicy) workflowvisit.Rule {
 	scope := policy.Scope()
-	r := New(rules, "explicit-permissions")
+	r := newRule(rules, "explicit-permissions")
 	r.workflowCheck = func(w workflowdecl.WorkflowView) []reporting.Finding {
 		return security.RequiredWorkflowPermissions(w, scope)
 	}
@@ -161,7 +164,7 @@ func NewRuleRequirePermissions(rules repoconfig.RuleSet, policy *repoconfig.Perm
 }
 
 func NewRuleRequireCommitHash(rules repoconfig.RuleSet, excluded func(string) bool) workflowvisit.Rule {
-	r := New(rules, "unpinned-reference")
+	r := newRule(rules, "unpinned-reference")
 	r.jobCheck = func(j workflowdecl.JobView) []reporting.Finding { return security.CommitHashJob(j, excluded) }
 	r.stepCheck = func(s workflowdecl.StepView) []reporting.Finding { return security.CommitHashStep(s, excluded) }
 	return r

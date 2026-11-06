@@ -1,8 +1,11 @@
-package declarations
+package suspicious_test
 
 import (
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -48,7 +51,7 @@ func TestUncancellableCondition(t *testing.T) {
 				t.Fatal(errs)
 			}
 			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
-			check := Declaration("uncancellable-condition")
+			check := suspicious.UncancellableConditionCheck()
 			for _, job := range view.Jobs() {
 				got := check.Job(job)
 				if len(got) != tc.jobs {
@@ -60,7 +63,10 @@ func TestUncancellableCondition(t *testing.T) {
 					}
 				}
 				for step := range job.Steps() {
-					got := check.Step(step)
+					var got []reporting.Finding
+					if check.Step != nil {
+						got = check.Step(step)
+					}
 					if len(got) != tc.steps {
 						t.Fatalf("step findings: %+v", got)
 					}
@@ -90,7 +96,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 			}
 			view := declaration.Publish(content, ast, false, "").Bind("test").Workflow()
 			for _, job := range view.Jobs() {
-				findings := Declaration("uncancellable-condition").Job(job)
+				findings := suspicious.UncancellableConditionCheck().Job(job)
 				if len(findings) != 1 || len(findings[0].Fixes) != 1 {
 					t.Fatalf("missing fix: %+v", findings)
 				}
@@ -117,7 +123,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 				}
 				checked := declaration.Publish(fixed, updated, false, "").Bind("fixed").Workflow()
 				for _, fixedJob := range checked.Jobs() {
-					if got := Declaration("uncancellable-condition").Job(fixedJob); len(got) != 0 {
+					if got := suspicious.UncancellableConditionCheck().Job(fixedJob); len(got) != 0 {
 						t.Fatalf("fix leaves finding: %+v", got)
 					}
 					if !strings.Contains(fixedJob.If().Value(), "!cancelled()") {
@@ -159,7 +165,11 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 			view := declaration.Publish(content, ast, false, "").Bind("test").Workflow()
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
-					findings := Declaration("uncancellable-condition").Step(step)
+					check := suspicious.UncancellableConditionCheck()
+					var findings []reporting.Finding
+					if check.Step != nil {
+						findings = check.Step(step)
+					}
 					if len(findings) != 0 {
 						t.Fatalf("checkout needed for cleanup was classified by action name: %+v", findings)
 					}

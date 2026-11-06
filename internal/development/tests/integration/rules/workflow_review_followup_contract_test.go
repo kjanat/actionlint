@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 
@@ -27,7 +29,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 		if workflow == nil || len(errs) != 0 {
 			t.Fatalf("parse %q: %v", reference, errs)
 		}
-		rule := declarationchecks.New(checking.ConfigurationRules(), "glob")
+		rule := declarationchecks.New(checking.ConfigurationRules(), correctness.GlobCheck())
 		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
 			t.Fatal(err)
 		}

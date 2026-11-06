@@ -3,6 +3,8 @@ package rules
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 
@@ -22,7 +24,7 @@ func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {
 		},
 	}
 	w := &workflowlang.Workflow{Env: e}
-	r := declarationchecks.New(checking.ConfigurationRules(), "env-var")
+	r := declarationchecks.New(checking.ConfigurationRules(), correctness.EnvVarCheck())
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +67,7 @@ func TestRuleEnvVarCheckInvalidName(t *testing.T) {
 
 func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 	w := &workflowlang.Workflow{Env: nil}
-	r := declarationchecks.New(checking.ConfigurationRules(), "env-var")
+	r := declarationchecks.New(checking.ConfigurationRules(), correctness.EnvVarCheck())
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +80,7 @@ func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 			Expression: &workflowlang.String{Value: ""},
 		},
 	}
-	r = declarationchecks.New(checking.ConfigurationRules(), "env-var")
+	r = declarationchecks.New(checking.ConfigurationRules(), correctness.EnvVarCheck())
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}

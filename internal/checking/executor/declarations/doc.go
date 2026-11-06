@@ -1,2 +1,2 @@
-// Package declarations selects workflow, job and step checks from rule declarations.
+// Package declarations adapts checks of published workflow views to source traversal.
 package declarations
