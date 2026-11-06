@@ -39,6 +39,7 @@ type MetadataDocumentLookup interface {
 type Resolver struct {
 	runners              *runnerlang.Knowledge
 	base                 *Cache
+	prepared             preparedAction
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
 	documents            *resolverDocuments

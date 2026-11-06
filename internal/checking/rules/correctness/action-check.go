@@ -157,7 +157,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 }
 
 func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflowvisit.Rule {
-	child := NewRuleAction(rule.context, actions, rule.remote)
+	child := NewRuleAction(rule.context, actions.Prepared(), rule.remote)
 	child.validation = rule.validation
 	return child
 }

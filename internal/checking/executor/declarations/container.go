@@ -32,7 +32,7 @@ type containerAdapter struct {
 	workflowvisit.Base
 	ctx        context.Context
 	runners    *runnerlang.Knowledge
-	actions    *workspaceactions.Resolver
+	actions    *workspaceactions.PreparedActions
 	remote     *actionremote.ResolvedActions
 	targets    []runnerlang.ContainerTarget
 	guards     []string
@@ -41,10 +41,10 @@ type containerAdapter struct {
 }
 
 // NewContainerRunner supplies container facts to the rule and tracks enclosing
-// composite conditions. Metadata acquisition belongs to this executor adapter.
+// composite conditions. The composition coordinator acquires action metadata.
 func NewContainerRunner(ctx context.Context, runners *runnerlang.Knowledge, actions *workspaceactions.Resolver, remote *actionremote.ResolvedActions) workflowvisit.Rule {
 	descriptor := correctness.ContainerRunnerDeclaration()
-	return &containerAdapter{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), ctx: ctx, runners: runners, actions: actions, remote: remote, conditions: map[source.Reference]string{}}
+	return &containerAdapter{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
 }
 
 func (r *containerAdapter) VisitJobPre(job workflowdecl.JobView) error {
@@ -94,7 +94,9 @@ func (r *containerAdapter) checkStep(step workflowdecl.StepView) error {
 	return nil
 }
 
-func (r *containerAdapter) ApplyCheckout(actions *workspaceactions.Resolver) { r.actions = actions }
+func (r *containerAdapter) ApplyCheckout(actions *workspaceactions.Resolver) {
+	r.actions = actions.Prepared()
+}
 
 func (r *containerAdapter) EnterInvocation(scope checkcalls.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {

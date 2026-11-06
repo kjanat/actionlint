@@ -71,6 +71,9 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 			}
 		}
 	}()
+	if err := analysis.actions.PrepareMetadata(analysis.ctx, actionView.Uses().Value()); err != nil {
+		return err
+	}
 	if validate != nil {
 		if err := validate(); err != nil {
 			return err
