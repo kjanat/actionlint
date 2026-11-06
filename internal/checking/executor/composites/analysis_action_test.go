@@ -67,7 +67,7 @@ type mutatingStandaloneMetadata struct {
 	workflowvisit.Base
 }
 
-func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ parsing.SourceSnapshot) error {
+func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ parsing.SourceSnapshot, _ actionmeta.ReferencedFiles) error {
 	metadata.Runs.Using = "node24"
 	metadata.Source[0] = 'x'
 	return nil

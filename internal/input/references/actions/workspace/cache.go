@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -29,6 +30,7 @@ type metadataSource struct {
 	address    string
 	captured   capture.Snapshot
 	provenance parsing.Provenance
+	files      actionmeta.ReferencedFiles
 }
 
 // ParseError reports an action manifest that was read but could not be parsed.
@@ -238,6 +240,13 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 		loaded = MetadataResult{status: MetadataParseFailed, cause: cause}
 	} else {
 		c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
+	}
+	if parseErr == nil {
+		facts, err := actionfiles.Inspect(c.ctx, meta)
+		if err != nil {
+			return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, loadedSource)
+		}
+		loadedSource.files = facts
 	}
 	result, cached := c.writeCache(spec, loaded, loadedSource)
 	if !cached && c.onDocument != nil {

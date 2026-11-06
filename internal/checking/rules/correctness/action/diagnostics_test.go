@@ -28,7 +28,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 			}
 			meta.Directory = t.TempDir()
 			var codes []string
-			for _, finding := range actioncheck.Standalone(meta) {
+			for _, finding := range actioncheck.Standalone(meta, actionmeta.NewReferencedFiles(map[string]actionmeta.FileAvailability{"missing.js": actionmeta.FileMissing})) {
 				if finding.Rule != "action" || finding.Code == "" || finding.Code == "action" {
 					t.Fatalf("nonspecific action diagnostic: %+v", finding)
 				}
@@ -60,10 +60,10 @@ func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
 			if _, valid := inspection.Definition(); !valid || len(inspection.Problems()) != 0 {
 				t.Fatalf("supported coercion invalidated the definition: %+v", inspection.Problems())
 			}
-			if findings := actioncheck.Standalone(meta); len(findings) != 0 {
+			if findings := actioncheck.Standalone(meta, actionmeta.ReferencedFiles{}); len(findings) != 0 {
 				t.Fatalf("supported coercion became an action error: %+v", findings)
 			}
-			findings := actioncheck.StandaloneWithAdvisories(meta)
+			findings := actioncheck.StandaloneWithAdvisories(meta, actionmeta.ReferencedFiles{})
 			if len(findings) != 1 || findings[0].Rule != "coercion" || findings[0].Code != "" || findings[0].Start.Line == 0 || findings[0].Start.Column == 0 {
 				t.Fatalf("coercion problem lost its rule or source range: %+v", findings)
 			}

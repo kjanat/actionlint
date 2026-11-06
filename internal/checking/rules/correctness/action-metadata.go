@@ -50,7 +50,7 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 	templates, checked := store.templates[path]
 	if !checked {
 		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs.Using, meta.Name, displaySpec)
-		templates = actioncheck.CheckWithAdvisories(meta, reporting.SourcePosition(action.Uses()))
+		templates = actioncheck.CheckWithAdvisories(meta, reporting.SourcePosition(action.Uses()), source.ReferencedFiles())
 		store.templates[path] = templates
 	}
 	if len(templates) != 0 {

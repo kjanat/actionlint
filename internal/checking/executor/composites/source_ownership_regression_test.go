@@ -58,7 +58,7 @@ func (r *sourceMutationRule) ForMetadata(*workspaceactions.Resolver) workflowvis
 	return r
 }
 
-func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot) error {
+func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot, actionmeta.ReferencedFiles) error {
 	return nil
 }
 

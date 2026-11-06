@@ -173,7 +173,7 @@ runs:
 			var findings []*findingmodel.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
-				findings = actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
+				findings = actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
 			}
 			valid := err == nil && len(findings) == 0
 			if valid != tc.valid {
@@ -191,7 +191,7 @@ func TestActionStepValueShapes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
+			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
 			if len(findings) == 0 {
 				t.Fatal("invalid step value was accepted")
 			}

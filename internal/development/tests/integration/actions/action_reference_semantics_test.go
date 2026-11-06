@@ -41,7 +41,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
+			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
 			var diagnostics []diagmodel.Diagnostic
 			for _, finding := range findings {
 				diagnostics = append(diagnostics, finding.Diagnostic)

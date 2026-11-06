@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
+
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
@@ -33,10 +35,14 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 	if err := analysis.beginAction(deployment); err != nil {
 		return err
 	}
+	files, err := actionfiles.Inspect(analysis.ctx, meta)
+	if err != nil {
+		return err
+	}
 	var scripts []checkcalls.InvocationParticipant
 	for _, rule := range rules {
 		if participant, ok := rule.(checkcalls.MetadataParticipant); ok {
-			if err := participant.CheckStandaloneMetadata(meta, snapshot); err != nil {
+			if err := participant.CheckStandaloneMetadata(meta, snapshot, files); err != nil {
 				return err
 			}
 		}

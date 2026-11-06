@@ -43,7 +43,7 @@ func (*preparationObserver) LeaveInvocation(invocation.Context) error        { r
 func (*preparationObserver) VisitInvocationStep(workflowdecl.StepView) error { return nil }
 func (*preparationObserver) VisitOpaqueAction(workflowdecl.StepView) error   { return nil }
 
-func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, snapshot parsing.SourceSnapshot) error {
+func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, snapshot parsing.SourceSnapshot, _ actionmeta.ReferencedFiles) error {
 	if !r.prepared[snapshot.Reference().Document] {
 		r.t.Fatal("standalone metadata checks started before source preparation")
 	}

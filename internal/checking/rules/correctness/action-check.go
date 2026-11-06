@@ -162,14 +162,14 @@ func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflow
 	return child
 }
 
-func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot) error {
+func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, files actionmeta.ReferencedFiles) error {
 	if snapshot.Kind() != parsing.KindAction {
 		return errors.New("standalone metadata has no admitted source snapshot")
 	}
 	if original, parsed := meta.OriginalSource(); !parsed || original != string(snapshot.Content()) {
 		return errors.New("standalone metadata does not belong to its source snapshot")
 	}
-	rule.Report(actioncheck.StandaloneWithAdvisories(meta)...)
+	rule.Report(actioncheck.StandaloneWithAdvisories(meta, files)...)
 	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, snapshot.Reference().Document, finding), Declaration: true}
 	})

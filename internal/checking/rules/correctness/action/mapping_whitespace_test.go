@@ -34,7 +34,7 @@ runs:
 					t.Fatal(err)
 				}
 				meta.Filename, meta.Source = "action.yml", source
-				findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
+				findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
 				errs := findings
 				if tc.invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "expected a mapping") {
