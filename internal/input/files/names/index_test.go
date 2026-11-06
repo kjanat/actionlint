@@ -87,7 +87,7 @@ func TestIndexSymlinkCheckout(t *testing.T) {
 		return "", true, nil
 	})
 	names, err := index.ForRoot(root)
-	if err != nil || !names.complete || len(names.values) != 2 || !names.values[".github/workflows/build.yml"] || !names.values[".github/workflows/new.yml"] || loads != 2 {
+	if err != nil || !names.Complete() || names.Len() != 2 || !names.Contains(".github/workflows/build.yml") || !names.Contains(".github/workflows/new.yml") || loads != 2 {
 		t.Fatalf("names=%+v err=%v loads=%d", names, err, loads)
 	}
 	if _, err := index.ForRoot(alias); err != nil || loads != 2 {
@@ -121,7 +121,7 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 		return "", true, nil
 	})
 	names, err := index.ForRoot(root)
-	if err != nil || !names.complete || len(names.values) != 1 || !names.values[".github/workflows/build.yml"] || loads != 1 {
+	if err != nil || !names.Complete() || names.Len() != 1 || !names.Contains(".github/workflows/build.yml") || loads != 1 {
 		t.Fatalf("names=%+v err=%v loads=%d", names, err, loads)
 	}
 	if runtime.GOOS == "windows" {
@@ -244,13 +244,13 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 			return name, true, nil
 		})
 		got, err := index.ForRoot(root)
-		if err != nil || !got.complete || loads != 1 || len(got.values) != 1 {
+		if err != nil || !got.Complete() || loads != 1 || got.Len() != 1 {
 			t.Fatalf("case alias inventory=%+v err=%v loads=%d", got, err, loads)
 		}
-		if name != "" && !got.values[name] {
+		if name != "" && !got.Contains(name) {
 			t.Fatalf("missing overlay name: %+v", got)
 		}
-		if name == "" && !got.values[".github/workflows/build.yml"] {
+		if name == "" && !got.Contains(".github/workflows/build.yml") {
 			t.Fatalf("disk basename changed through overlay: %+v", got)
 		}
 		if _, err := index.ForRoot(strings.ToUpper(root)); err != nil || loads != 1 {

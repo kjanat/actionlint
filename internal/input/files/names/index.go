@@ -13,14 +13,8 @@ import (
 	"unicode"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
-
-// Names is an immutable workflow-name inventory handle shared by concurrent
-// checks. It is complete only when every workflow name could be read.
-type Names struct {
-	values   map[string]bool
-	complete bool
-}
 
 // Index shares immutable inventories across concurrent workflow checks.
 type Index struct {
@@ -29,7 +23,7 @@ type Index struct {
 	// paths includes in-memory source files which may not exist on disk yet.
 	paths []string
 	mu    sync.Mutex
-	cache map[string]func() (Names, error)
+	cache map[string]func() (namemodel.Inventory, error)
 }
 
 // NewIndex inventories workflow names under each root through reader, adding
@@ -178,10 +172,10 @@ func filenameKey(path string) string {
 
 // ForRoot includes only workflow files directly under .github/workflows.
 // Input-selection filters must not remove potential workflow_run producers.
-func (i *Index) ForRoot(root string) (Names, error) {
+func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 	i.mu.Lock()
 	if i.cache == nil {
-		i.cache = map[string]func() (Names, error){}
+		i.cache = map[string]func() (namemodel.Inventory, error){}
 	}
 	key := filepath.Clean(root)
 	load, exists := i.cache[key]
@@ -194,12 +188,13 @@ func (i *Index) ForRoot(root string) (Names, error) {
 		}
 	}
 	if !exists {
-		load = sync.OnceValues(func() (Names, error) {
-			names := Names{values: map[string]bool{}, complete: true}
+		load = sync.OnceValues(func() (namemodel.Inventory, error) {
+			var values []string
+			complete := true
 			dir := filepath.Join(root, ".github", "workflows")
 			entries, err := i.reader.ReadDir(dir)
 			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				names.complete = false
+				complete = false
 			}
 			var candidates []string
 			for _, entry := range entries {
@@ -218,13 +213,13 @@ func (i *Index) ForRoot(root string) (Names, error) {
 				name, known, err := i.load(path)
 				if err != nil {
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-						return names, err
+						return namemodel.NewInventory(values, false), err
 					}
-					names.complete = false
+					complete = false
 					continue
 				}
 				if !known {
-					names.complete = false
+					complete = false
 					continue
 				}
 				if name == "" {
@@ -237,9 +232,9 @@ func (i *Index) ForRoot(root string) (Names, error) {
 					}
 					name = ".github/workflows/" + filename
 				}
-				names.values[name] = true
+				values = append(values, name)
 			}
-			return names, nil
+			return namemodel.NewInventory(values, complete), nil
 		})
 		i.cache[key] = load
 	}

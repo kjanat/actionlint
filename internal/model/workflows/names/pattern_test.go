@@ -7,7 +7,7 @@ func TestPatternLineBreaks(t *testing.T) {
 		if ValidPattern(pattern) {
 			t.Errorf("accepted line break in %q", pattern)
 		}
-		names := Names{values: map[string]bool{"Build": true}, complete: true}
+		names := Inventory{values: map[string]bool{"Build": true}, complete: true}
 		if names.Missing(pattern) || names.ExcludesAll([]string{"Build", "!Build", pattern}) {
 			t.Errorf("invalid pattern produced a name finding: %q", pattern)
 		}
@@ -65,13 +65,13 @@ func TestMissingPattern(t *testing.T) {
 		{"Build*", "Pre Build CI", true},
 	} {
 		t.Run(tc.pattern+"/"+tc.name, func(t *testing.T) {
-			names := Names{values: map[string]bool{tc.name: true}, complete: true}
+			names := Inventory{values: map[string]bool{tc.name: true}, complete: true}
 			if got := names.Missing(tc.pattern); got != tc.missing {
 				t.Fatalf("Missing(%q) for %q = %v, want %v", tc.pattern, tc.name, got, tc.missing)
 			}
 		})
 	}
-	if (Names{values: map[string]bool{}, complete: false}).Missing("Missing") {
+	if (Inventory{values: map[string]bool{}, complete: false}).Missing("Missing") {
 		t.Fatal("incomplete inventory reported a missing name")
 	}
 }
@@ -107,7 +107,7 @@ func TestExcludesAllPatterns(t *testing.T) {
 		{nil, []string{"Build docs"}, false},
 		{[]string{"Build*", "!Build docs"}, nil, false},
 	} {
-		names := Names{complete: true, values: map[string]bool{}}
+		names := Inventory{complete: true, values: map[string]bool{}}
 		for _, name := range tc.names {
 			names.values[name] = true
 		}
