@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
@@ -93,7 +95,7 @@ func TestGitHubReferenceValues(t *testing.T) {
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatalf("value mismatch (-want +got):\n%s", diff)
 			}
-			checkGitHubReferenceLive(t, tc.input, nil, tc.want)
+			runnerreference.CheckValue(t, tc.input, nil, tc.want)
 		})
 	}
 }
@@ -119,7 +121,7 @@ func TestGitHubReferenceCoercions(t *testing.T) {
 			if ty.Kind() != tc.kind || !known || got != tc.want {
 				t.Fatalf("type=%s value=%v known=%t, want type=%s value=%t", ty, got, known, tc.kind, tc.want)
 			}
-			checkGitHubReferenceLive(t, tc.input, nil, tc.want)
+			runnerreference.CheckValue(t, tc.input, nil, tc.want)
 		})
 	}
 }
@@ -184,7 +186,7 @@ func TestGitHubReferenceContextScenarios(t *testing.T) {
 			if !known || got != tc.want {
 				t.Fatalf("value=%v known=%t, want %v", got, known, tc.want)
 			}
-			checkGitHubReferenceLive(t, tc.input, context, tc.want)
+			runnerreference.CheckValue(t, tc.input, context, tc.want)
 		})
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
@@ -27,42 +29,42 @@ func TestCallEvaluationDemand(t *testing.T) {
 		state   exprvalues.EvaluationState
 		value   any
 		demands []exprfunctions.ArgumentDemand
-		failure githubReferenceFailure
+		failure runnerreference.FailurePhase
 		error   string
 	}{
-		{"format(true, fromJSON(null))", true, exprvalues.EvaluationKnown, "true", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"format('{1}', fromJSON(null), true)", true, exprvalues.EvaluationKnown, "true", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandRequired}, githubReferenceSuccess, ""},
-		{"format('{0}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, githubReferenceRuntimeFailure, "System.Text.Json.JsonException"},
-		{"format('{1}', true)", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.FormatException"},
-		{"format('{+0}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.FormatException"},
-		{"format('{0}{1}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.FormatException"},
-		{"format('{0:N2}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, githubReferenceRuntimeFailure, "System.Text.Json.JsonException"},
-		{"format('{0:x}{1}', true, fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.FormatException"},
-		{"format('plain', startsWith(true))", false, exprvalues.EvaluationNotAttempted, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceParseFailure, "GitHub.Actions.Expressions.ParseException"},
-		{"format('plain', noSuchFunction())", false, exprvalues.EvaluationNotAttempted, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceParseFailure, "GitHub.Actions.Expressions.ParseException"},
-		{"case(1, 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.InvalidOperationException"},
-		{"case(false || 1, 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.InvalidOperationException"},
-		{"case(true && 'text', 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.InvalidOperationException"},
-		{"case(false || fromJSON('{}'), 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.InvalidOperationException"},
-		{"case(true, 'a', 'b')", true, exprvalues.EvaluationKnown, "a", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"case(false, fromJSON(null), 'b')", true, exprvalues.EvaluationKnown, "b", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandRequired}, githubReferenceSuccess, ""},
-		{"case(true, 'a', 1, fromJSON(null), 'c')", true, exprvalues.EvaluationKnown, "a", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"case(true, 'a', false || 1, fromJSON(null), 'c')", true, exprvalues.EvaluationKnown, "a", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"startsWith(fromJSON('{}'), fromJSON(null))", true, exprvalues.EvaluationKnown, false, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"startsWith(fromJSON(null), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceRuntimeFailure, "System.Text.Json.JsonException"},
-		{"contains(fromJSON('[]'), fromJSON(null))", true, exprvalues.EvaluationKnown, false, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"join(fromJSON('[true]'), fromJSON(null))", true, exprvalues.EvaluationKnown, "true", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, githubReferenceSuccess, ""},
-		{"join(fromJSON('[true,false]'), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, githubReferenceRuntimeFailure, "System.Text.Json.JsonException"},
+		{"format(true, fromJSON(null))", true, exprvalues.EvaluationKnown, "true", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"format('{1}', fromJSON(null), true)", true, exprvalues.EvaluationKnown, "true", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandRequired}, runnerreference.Success, ""},
+		{"format('{0}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, runnerreference.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"format('{1}', true)", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.FormatException"},
+		{"format('{+0}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.FormatException"},
+		{"format('{0}{1}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.FormatException"},
+		{"format('{0:N2}', fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, runnerreference.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"format('{0:x}{1}', true, fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.FormatException"},
+		{"format('plain', startsWith(true))", false, exprvalues.EvaluationNotAttempted, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.ParseFailure, "GitHub.Actions.Expressions.ParseException"},
+		{"format('plain', noSuchFunction())", false, exprvalues.EvaluationNotAttempted, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.ParseFailure, "GitHub.Actions.Expressions.ParseException"},
+		{"case(1, 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(false || 1, 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(true && 'text', 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(false || fromJSON('{}'), 'a', 'b')", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.InvalidOperationException"},
+		{"case(true, 'a', 'b')", true, exprvalues.EvaluationKnown, "a", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"case(false, fromJSON(null), 'b')", true, exprvalues.EvaluationKnown, "b", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandRequired}, runnerreference.Success, ""},
+		{"case(true, 'a', 1, fromJSON(null), 'c')", true, exprvalues.EvaluationKnown, "a", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"case(true, 'a', false || 1, fromJSON(null), 'c')", true, exprvalues.EvaluationKnown, "a", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"startsWith(fromJSON('{}'), fromJSON(null))", true, exprvalues.EvaluationKnown, false, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"startsWith(fromJSON(null), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.RuntimeFailure, "System.Text.Json.JsonException"},
+		{"contains(fromJSON('[]'), fromJSON(null))", true, exprvalues.EvaluationKnown, false, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"join(fromJSON('[true]'), fromJSON(null))", true, exprvalues.EvaluationKnown, "true", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped}, runnerreference.Success, ""},
+		{"join(fromJSON('[true,false]'), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, runnerreference.RuntimeFailure, "System.Text.Json.JsonException"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			got := checkCallDemandResult(t, tc.input)
 			var wantPhase FailurePhase
 			switch tc.failure {
-			case githubReferenceSuccess:
+			case runnerreference.Success:
 				wantPhase = FailureNone
-			case githubReferenceParseFailure:
+			case runnerreference.ParseFailure:
 				wantPhase = FailureStaticValidation
-			case githubReferenceRuntimeFailure:
+			case runnerreference.RuntimeFailure:
 				wantPhase = FailureEvaluation
 			}
 			if got.FailurePhase != wantPhase {
@@ -72,14 +74,14 @@ func TestCallEvaluationDemand(t *testing.T) {
 				t.Fatalf("valid=%v evaluation=%+v findings=%v; want valid=%v state=%v value=%v", got.Valid, got.Evaluation, got.Findings, tc.valid, tc.state, tc.value)
 			}
 			checkCallArgumentDemands(t, got, tc.demands)
-			if tc.failure != githubReferenceParseFailure {
+			if tc.failure != runnerreference.ParseFailure {
 				node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 				evaluated := expreval.Evaluate(node, nil)
 				if evaluated.State != tc.state || !cmp.Equal(evaluated.Value, tc.value) {
 					t.Fatalf("standalone evaluation=%+v, want state=%v value=%v", evaluated, tc.state, tc.value)
 				}
 			}
-			checkGitHubReferenceOutcome(t, tc.input, nil, githubReferenceExpectation{failure: tc.failure, value: tc.value, exceptionType: tc.error})
+			runnerreference.CheckOutcome(t, tc.input, nil, runnerreference.Expectation{Failure: tc.failure, Value: tc.value, ExceptionType: tc.error})
 		})
 	}
 }
@@ -104,7 +106,7 @@ func TestRuntimeFailurePropagationAgainstRunner(t *testing.T) {
 			if result := expreval.Evaluate(node, nil); result.State != exprvalues.EvaluationInvalid {
 				t.Fatalf("evaluation=%+v, want runtime failure", result)
 			}
-			checkGitHubReferenceOutcome(t, input, nil, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"})
+			runnerreference.CheckOutcome(t, input, nil, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
 		})
 	}
 }
@@ -132,19 +134,19 @@ func TestCallConditionalDemand(t *testing.T) {
 	for _, tc := range []struct {
 		input, name string
 		context     any
-		want        githubReferenceExpectation
+		want        runnerreference.Expectation
 	}{
-		{"format(github.event.unknown, fromJSON(null))", "unused", "plain", githubReferenceExpectation{value: "plain"}},
-		{"format(github.event.unknown, fromJSON(null))", "used", "{0}", githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}},
-		{"startsWith(github.event.unknown, fromJSON(null))", "object", map[string]any{}, githubReferenceExpectation{value: false}},
-		{"startsWith(github.event.unknown, fromJSON(null))", "primitive", "x", githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}},
-		{"case(github.event.unknown, 'a', fromJSON(null))", "selected", true, githubReferenceExpectation{value: "a"}},
-		{"case(github.event.unknown, 'a', fromJSON(null))", "default", false, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}},
-		{"case(github.event.unknown, 'a', fromJSON(null))", "invalid predicate", float64(1), githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.InvalidOperationException"}},
+		{"format(github.event.unknown, fromJSON(null))", "unused", "plain", runnerreference.Expectation{Value: "plain"}},
+		{"format(github.event.unknown, fromJSON(null))", "used", "{0}", runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}},
+		{"startsWith(github.event.unknown, fromJSON(null))", "object", map[string]any{}, runnerreference.Expectation{Value: false}},
+		{"startsWith(github.event.unknown, fromJSON(null))", "primitive", "x", runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}},
+		{"case(github.event.unknown, 'a', fromJSON(null))", "selected", true, runnerreference.Expectation{Value: "a"}},
+		{"case(github.event.unknown, 'a', fromJSON(null))", "default", false, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}},
+		{"case(github.event.unknown, 'a', fromJSON(null))", "invalid predicate", float64(1), runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.InvalidOperationException"}},
 	} {
 		t.Run(tc.input+"/"+tc.name, func(t *testing.T) {
 			variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": tc.context}}}
-			checkGitHubReferenceOutcome(t, tc.input, variables, tc.want)
+			runnerreference.CheckOutcome(t, tc.input, variables, tc.want)
 		})
 	}
 }
@@ -168,7 +170,7 @@ func TestFormatTemplateGrammar(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			got := checkCallDemandResult(t, tc.input)
-			want := githubReferenceExpectation{value: tc.value}
+			want := runnerreference.Expectation{Value: tc.value}
 			if tc.valid {
 				if !got.Valid || got.Evaluation.State != exprvalues.EvaluationKnown || got.Evaluation.Value != tc.value || got.FailurePhase != FailureNone {
 					t.Fatalf("valid format did not evaluate to %q: %+v", tc.value, got)
@@ -177,9 +179,9 @@ func TestFormatTemplateGrammar(t *testing.T) {
 				if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
 					t.Fatalf("invalid format was not rejected: %+v", got)
 				}
-				want = githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.FormatException"}
+				want = runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.FormatException"}
 			}
-			checkGitHubReferenceOutcome(t, tc.input, nil, want)
+			runnerreference.CheckOutcome(t, tc.input, nil, want)
 		})
 	}
 }
@@ -210,29 +212,29 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 			if tc.state == exprvalues.EvaluationUnknown {
 				return
 			}
-			var want githubReferenceExpectation
+			var want runnerreference.Expectation
 			switch tc.phase {
 			case FailureNone:
-				want = githubReferenceExpectation{value: tc.value}
+				want = runnerreference.Expectation{Value: tc.value}
 			case FailureStaticValidation:
-				want = githubReferenceExpectation{failure: githubReferenceParseFailure, exceptionType: "GitHub.Actions.Expressions.ParseException"}
+				want = runnerreference.Expectation{Failure: runnerreference.ParseFailure, ExceptionType: "GitHub.Actions.Expressions.ParseException"}
 			case FailureEvaluation:
-				want = githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}
+				want = runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}
 			}
-			checkGitHubReferenceOutcome(t, tc.input, nil, want)
+			runnerreference.CheckOutcome(t, tc.input, nil, want)
 		})
 	}
 	for _, tc := range []struct {
 		input string
 		left  bool
-		want  githubReferenceExpectation
+		want  runnerreference.Expectation
 	}{
-		{"github.event.unknown || fromJSON(null)", true, githubReferenceExpectation{value: true}},
-		{"github.event.unknown || fromJSON(null)", false, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}},
-		{"github.event.unknown && fromJSON(null)", false, githubReferenceExpectation{value: false}},
-		{"github.event.unknown && fromJSON(null)", true, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}},
-		{"!(github.event.unknown || fromJSON(null))", true, githubReferenceExpectation{value: false}},
-		{"!(github.event.unknown || fromJSON(null))", false, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}},
+		{"github.event.unknown || fromJSON(null)", true, runnerreference.Expectation{Value: true}},
+		{"github.event.unknown || fromJSON(null)", false, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}},
+		{"github.event.unknown && fromJSON(null)", false, runnerreference.Expectation{Value: false}},
+		{"github.event.unknown && fromJSON(null)", true, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}},
+		{"!(github.event.unknown || fromJSON(null))", true, runnerreference.Expectation{Value: false}},
+		{"!(github.event.unknown || fromJSON(null))", false, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}},
 	} {
 		name := tc.input + "/false"
 		if tc.left {
@@ -240,7 +242,7 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": tc.left}}}
-			checkGitHubReferenceOutcome(t, tc.input, variables, tc.want)
+			runnerreference.CheckOutcome(t, tc.input, variables, tc.want)
 		})
 	}
 }
@@ -265,7 +267,7 @@ func TestFormatReplacementExecutionOrder(t *testing.T) {
 			if len(got.Findings) != 1 || got.Findings[0].Code != tc.code {
 				t.Errorf("expected only the first replacement's %q finding: %v", tc.code, got.Findings)
 			}
-			checkGitHubReferenceOutcome(t, tc.input, nil, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: tc.exceptionType})
+			runnerreference.CheckOutcome(t, tc.input, nil, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: tc.exceptionType})
 		})
 	}
 }
@@ -287,7 +289,7 @@ func TestFormatUnknownReplacementOrder(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": left}}}
-			checkGitHubReferenceOutcome(t, input, variables, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"})
+			runnerreference.CheckOutcome(t, input, variables, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
 		})
 	}
 }
@@ -309,14 +311,14 @@ func TestNestedConditionalCallDemand(t *testing.T) {
 			checkCallArgumentDemands(t, got, tc.demands)
 			for _, left := range []bool{false, true} {
 				name := "false"
-				want := githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.Text.Json.JsonException"}
+				want := runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"}
 				if left {
 					name = "true"
-					want = githubReferenceExpectation{value: tc.value}
+					want = runnerreference.Expectation{Value: tc.value}
 				}
 				t.Run(name, func(t *testing.T) {
 					variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": left}}}
-					checkGitHubReferenceOutcome(t, tc.input, variables, want)
+					runnerreference.CheckOutcome(t, tc.input, variables, want)
 				})
 			}
 		})
@@ -335,7 +337,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		if finding.Code != "operand-type" || finding.Offset != start || finding.EndOffset != start+len("'text'") {
 			t.Fatalf("finding=%+v, want operand-type at [%d,%d)", finding, start, start+len("'text'"))
 		}
-		checkGitHubReferenceOutcome(t, input, nil, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.InvalidOperationException"})
+		runnerreference.CheckOutcome(t, input, nil, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.InvalidOperationException"})
 	})
 
 	t.Run("required predicate", func(t *testing.T) {
@@ -352,7 +354,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != exprvalues.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != exprvalues.EvaluationInvalid {
 			t.Fatalf("source evaluation and rejected predicate contract were mixed: %+v", predicate)
 		}
-		checkGitHubReferenceOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.InvalidOperationException"})
+		runnerreference.CheckOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.InvalidOperationException"})
 	})
 
 	t.Run("conditional predicate", func(t *testing.T) {
@@ -371,14 +373,14 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		}
 		for _, first := range []bool{false, true} {
 			name := "false"
-			want := githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: "System.InvalidOperationException"}
+			want := runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.InvalidOperationException"}
 			if first {
 				name = "true"
-				want = githubReferenceExpectation{value: []any{}}
+				want = runnerreference.Expectation{Value: []any{}}
 			}
 			t.Run(name, func(t *testing.T) {
 				variables := map[string]any{"github": map[string]any{"event_name": "push", "event": map[string]any{"unknown": first}}}
-				checkGitHubReferenceOutcome(t, input, variables, want)
+				runnerreference.CheckOutcome(t, input, variables, want)
 			})
 		}
 	})
@@ -409,13 +411,13 @@ func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
 				if got.Valid != (wantPhase == FailureNone) || got.FailurePhase != wantPhase || got.Evaluation.State != wantState || !cmp.Equal(got.Evaluation.Value, wantValue) || len(got.Findings) != wantFindings {
 					t.Fatalf("result=%+v, want phase=%v state=%v value=%v findings=%d", got, wantPhase, wantState, wantValue, wantFindings)
 				}
-				failure := githubReferenceExpectation{failure: githubReferenceRuntimeFailure, exceptionType: operation.exception}
-				success := githubReferenceExpectation{value: "fallback"}
+				failure := runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: operation.exception}
+				success := runnerreference.Expectation{Value: "fallback"}
 				switch predicate {
 				case "true":
-					checkGitHubReferenceOutcome(t, input, nil, failure)
+					runnerreference.CheckOutcome(t, input, nil, failure)
 				case "false":
-					checkGitHubReferenceOutcome(t, input, nil, success)
+					runnerreference.CheckOutcome(t, input, nil, success)
 				default:
 					for _, selected := range []bool{false, true} {
 						want := success
@@ -423,7 +425,7 @@ func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
 							want = failure
 						}
 						variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": selected}}}
-						checkGitHubReferenceOutcome(t, input, variables, want)
+						runnerreference.CheckOutcome(t, input, variables, want)
 					}
 				}
 			})
@@ -442,7 +444,7 @@ func TestCaseArityRejectsSkippedPaths(t *testing.T) {
 			if got.Valid || got.Evaluation.State != exprvalues.EvaluationNotAttempted || got.FailurePhase != FailureStaticValidation || len(got.Findings) == 0 {
 				t.Fatalf("invalid arity survived static validation: %+v", got)
 			}
-			checkGitHubReferenceOutcome(t, input, nil, githubReferenceExpectation{failure: githubReferenceParseFailure, exceptionType: "GitHub.Actions.Expressions.ParseException"})
+			runnerreference.CheckOutcome(t, input, nil, runnerreference.Expectation{Failure: runnerreference.ParseFailure, ExceptionType: "GitHub.Actions.Expressions.ParseException"})
 		})
 	}
 }
@@ -468,7 +470,7 @@ func TestJoinPreservesArrayArgumentFacts(t *testing.T) {
 	if diff := cmp.Diff(want, arg.Value); diff != "" {
 		t.Fatalf("consumed array (-want +got):\n%s", diff)
 	}
-	checkGitHubReferenceLive(t, input, nil, "true,false")
+	runnerreference.CheckValue(t, input, nil, "true,false")
 }
 
 func TestCaseArgumentContracts(t *testing.T) {

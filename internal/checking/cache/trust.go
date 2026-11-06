@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
@@ -132,7 +133,7 @@ func NewTrust(w declaration.WorkflowView) *Trust {
 		mode := cachemodel.EffectiveMode(r.workflow, job.CacheMode())
 		access, valid := cachemodel.FromDeclaration(mode).Capabilities()
 		if valid && access&2 != 0 {
-			events := cacheReachableEvents(r.events, job.If().Value())
+			events := workflowconditions.ReachableEvents(r.events, job.If().Value())
 			if len(events) != 0 {
 				declaration := r.declaration(mode, job)
 				declaration.reachable = append(declaration.reachable, events...)
@@ -169,7 +170,7 @@ func (r *Trust) CheckCall(job declaration.JobView) []results.Diagnostic {
 			return nil
 		}
 	}
-	events := cacheReachableEvents(r.events, job.If().Value())
+	events := workflowconditions.ReachableEvents(r.events, job.If().Value())
 	if len(events) == 0 {
 		return nil
 	}

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
@@ -176,7 +178,7 @@ func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
 				t.Fatalf("valid=%t findings=%v, want %t", result.Valid, result.Findings, tc.valid)
 			}
 			workflow := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n%s\n", tc.condition)
-			checkGitHubWorkflowReference(t, workflow, tc.valid)
+			runnerreference.CheckWorkflow(t, workflow, tc.valid)
 		})
 	}
 }

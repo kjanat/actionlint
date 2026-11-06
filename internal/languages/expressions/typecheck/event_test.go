@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
@@ -69,7 +71,7 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 			if !known || value != tc.want {
 				t.Fatalf("value=%v known=%t, want %v", value, known, tc.want)
 			}
-			checkGitHubReferenceLive(t, tc.input, variables, tc.want)
+			runnerreference.CheckValue(t, tc.input, variables, tc.want)
 		})
 	}
 }

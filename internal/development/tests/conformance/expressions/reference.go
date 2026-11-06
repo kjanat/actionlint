@@ -1,4 +1,5 @@
-package typecheck
+// Package expressions compares expression and workflow outcomes with pinned Runny.
+package expressions
 
 import (
 	"bytes"
@@ -53,25 +54,27 @@ var githubReferenceImage = sync.OnceValues(func() (string, error) {
 	return image, nil
 })
 
-// ACTIONLINT_REFERENCE_IMAGE also enables live reference checks elsewhere in
-// this repository. Without it, the documentation tests run entirely offline.
-func checkGitHubReferenceLive(t *testing.T, input string, variables map[string]any, want any) {
+// CheckValue compares a successful expression value when
+// ACTIONLINT_REFERENCE_IMAGE is set. Without it, no reference comparison runs.
+func CheckValue(t *testing.T, input string, variables map[string]any, want any) {
 	t.Helper()
-	checkGitHubReferenceOutcome(t, input, variables, githubReferenceExpectation{value: want})
+	CheckOutcome(t, input, variables, Expectation{Value: want})
 }
 
-type githubReferenceFailure uint8
+// FailurePhase identifies success or the stage that rejected an expression.
+type FailurePhase uint8
 
 const (
-	githubReferenceSuccess githubReferenceFailure = iota
-	githubReferenceParseFailure
-	githubReferenceRuntimeFailure
+	Success FailurePhase = iota
+	ParseFailure
+	RuntimeFailure
 )
 
-type githubReferenceExpectation struct {
-	failure       githubReferenceFailure
-	value         any
-	exceptionType string
+// Expectation describes the value or exception that Runny must report.
+type Expectation struct {
+	Failure       FailurePhase
+	Value         any
+	ExceptionType string
 }
 
 // runGitHubReference invokes a command in the pinned image after checking access.
@@ -110,9 +113,10 @@ func runGitHubReference(t *testing.T, operation, input string, variables map[str
 	return output, image
 }
 
-// Check parse and evaluation separately: Runny reports both failures as a
-// rejected result, while a skipped invalid expression can still return a value.
-func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[string]any, want githubReferenceExpectation) {
+// CheckOutcome compares parsing and evaluation separately. Runny reports both
+// failures as a rejected result, while an unevaluated invalid expression can
+// still occur inside an expression that returns a value.
+func CheckOutcome(t *testing.T, input string, variables map[string]any, want Expectation) {
 	t.Helper()
 	output, image := runGitHubReference(t, "eval-expr", input, variables)
 	if image == "" {
@@ -142,10 +146,10 @@ func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[strin
 	if engine.Engine != "next" || engine.Parsed == nil || engine.Evaluated == nil || engine.Accepted == nil || engine.Diagnosed == nil {
 		t.Fatalf("missing reference outcome fields: %s", output)
 	}
-	wantParsed := want.failure != githubReferenceParseFailure
-	wantEvaluated := want.failure == githubReferenceSuccess
+	wantParsed := want.Failure != ParseFailure
+	wantEvaluated := want.Failure == Success
 	if *engine.Parsed != wantParsed || *engine.Evaluated != wantEvaluated || *engine.Accepted != wantEvaluated || *engine.Diagnosed {
-		t.Fatalf("unexpected reference outcome for failure phase %d: %s", want.failure, output)
+		t.Fatalf("unexpected reference outcome for failure phase %d: %s", want.Failure, output)
 	}
 	if wantEvaluated {
 		if engine.Kind == "" || engine.ExceptionType != "" || engine.Exception != "" {
@@ -159,16 +163,17 @@ func checkGitHubReferenceOutcome(t *testing.T, input string, variables map[strin
 		} else if engine.Kind != "Null" {
 			t.Fatalf("missing Runny value: %s", output)
 		}
-		if diff := cmp.Diff(want.value, canonical); diff != "" {
+		if diff := cmp.Diff(want.Value, canonical); diff != "" {
 			t.Fatalf("Runny value mismatch (-want +got):\n%s\n%s", diff, output)
 		}
-	} else if engine.ExceptionType != want.exceptionType || engine.Exception == "" || engine.Kind != "" || len(engine.Canonical) != 0 {
-		t.Fatalf("unexpected reference failure details; want %q: %s", want.exceptionType, output)
+	} else if engine.ExceptionType != want.ExceptionType || engine.Exception == "" || engine.Kind != "" || len(engine.Canonical) != 0 {
+		t.Fatalf("unexpected reference failure details; want %q: %s", want.ExceptionType, output)
 	}
 	t.Logf("verified with %s, runner %s", image, report.RunnerSHA)
 }
 
-func checkGitHubWorkflowReference(t *testing.T, workflow string, wantAccepted bool) {
+// CheckWorkflow compares workflow acceptance when ACTIONLINT_REFERENCE_IMAGE is set.
+func CheckWorkflow(t *testing.T, workflow string, wantAccepted bool) {
 	t.Helper()
 	output, image := runGitHubReference(t, "parse-workflow", workflow, nil)
 	if image == "" {

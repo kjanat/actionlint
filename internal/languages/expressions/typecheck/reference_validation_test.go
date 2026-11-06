@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -29,7 +31,7 @@ func TestStaticReferencesInUnreachableEventBranches(t *testing.T) {
 			if result.Valid || result.FailurePhase != FailureStaticValidation {
 				t.Errorf("reference error disappeared with an unreachable branch: %+v", result)
 			}
-			checkGitHubReferenceOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, githubReferenceExpectation{failure: githubReferenceParseFailure, exceptionType: "GitHub.Actions.Expressions.ParseException"})
+			runnerreference.CheckOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, runnerreference.Expectation{Failure: runnerreference.ParseFailure, ExceptionType: "GitHub.Actions.Expressions.ParseException"})
 		})
 	}
 }
@@ -48,6 +50,6 @@ func TestUnavailableContextInUnreachableEventBranch(t *testing.T) {
 	}
 	// The standalone evaluator allows secrets. Workflow validation restricts the
 	// contexts accepted in a step condition, independently of its runtime branch.
-	checkGitHubReferenceOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, githubReferenceExpectation{value: "safe"})
-	checkGitHubWorkflowReference(t, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - if: ${{ "+input+" }}\n        run: echo ok\n", false)
+	runnerreference.CheckOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, runnerreference.Expectation{Value: "safe"})
+	runnerreference.CheckWorkflow(t, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - if: ${{ "+input+" }}\n        run: echo ok\n", false)
 }
