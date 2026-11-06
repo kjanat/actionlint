@@ -384,6 +384,13 @@ vars    = { fixture = "echo", package = "actionlint-engine-echo", target = "wasm
 extends = "script-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"]
 vars    = { fixture = "no-sudo" }
+sources = ["plugins/protocol/wit/*.wit", "plugins/examples/no-sudo/*.{c,h,sh,in}", "plugins/examples/no-sudo/LICENSE"]
+outputs = ["plugins/examples/no-sudo/dist/*", "internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"]
+run     = [
+  "bash plugins/examples/no-sudo/build.sh",
+  "bash plugins/examples/no-sudo/package.sh",
+  'mise run fixture:copy "{{ config_root }}/plugins/examples/no-sudo/dist/plugin.wasm" "{{ config_root }}/internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"'
+]
 
 ["test:example:no-sudo"]
 description = "Build and test the C component through actionlint's public CLI"

@@ -1,0 +1,27 @@
+#include "descriptor.h"
+#define STRING(field, value) #field: value,
+#define BOOL(field, value) #field: value,
+/* INPUT writes comma-terminated members. The false _end member closes the
+ * object; package.sh removes it when constructing the required-input array. */
+#define INPUT(kind) #kind: true,
+{
+  "metadata_version": 1,
+  "id": "example/no-sudo",
+  "name": "No sudo (C)",
+  "license": "MIT",
+  "repository": "https://github.com/kjanat/actionlint",
+  "plugin_version": "0.1.0",
+  "transport": "wasm-component",
+  "languages": [],
+  "capabilities": {
+    "filesystem": false,
+    "network": false,
+    "fixes": false,
+    "source_annotations": false,
+    "source_files": false
+  },
+  "descriptor": {
+    NO_SUDO_DESCRIPTOR(STRING, BOOL)
+    "required_inputs": {NO_SUDO_INPUTS(INPUT) "_end": false}
+  }
+}

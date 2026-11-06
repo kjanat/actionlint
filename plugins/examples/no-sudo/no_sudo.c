@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "gen/plugin.h"
+#include "descriptor.h"
 
 typedef exports_kjanat_actionlint_analyzer_position_t position_t;
 typedef exports_kjanat_actionlint_analyzer_script_t script_t;
@@ -164,23 +165,20 @@ static void check_script(const script_t *script, findings_t *findings) {
 
 void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analyzer_descriptor_t *ret) {
     memset(ret, 0, sizeof(*ret));
-    plugin_string_dup(&ret->name, "no-sudo");
-    plugin_string_dup(&ret->description, "Check runner privilege assumptions");
-    plugin_string_dup(&ret->category, "suspicious");
-    plugin_string_dup(&ret->subcategory, "scripts");
-    plugin_string_dup(&ret->maturity, "stable");
-    plugin_string_dup(&ret->provider, "example");
-    plugin_string_dup(&ret->explanation, "Self-hosted runners may not provide sudo.");
-    plugin_string_dup(&ret->help, "Run without privilege elevation or explicitly prepare the runner.");
-    plugin_string_dup(&ret->fix_availability, ""); // Legacy ABI field; ignored by the host.
-    plugin_string_dup(&ret->options_schema, "{}");
-    ret->required_inputs.ptr = malloc(2 * sizeof(exports_kjanat_actionlint_analyzer_input_kind_t));
+#define STRING(field, value) plugin_string_dup(&ret->field, value);
+#define BOOL(field, value) ret->field = value;
+    NO_SUDO_DESCRIPTOR(STRING, BOOL)
+#undef STRING
+#undef BOOL
+#define INPUT(kind) EXPORTS_KJANAT_ACTIONLINT_ANALYZER_INPUT_KIND_##kind,
+    const exports_kjanat_actionlint_analyzer_input_kind_t inputs[] = {NO_SUDO_INPUTS(INPUT)};
+#undef INPUT
+    ret->required_inputs.ptr = malloc(sizeof(inputs));
     if (!ret->required_inputs.ptr) {
         abort();
     }
-    ret->required_inputs.ptr[0] = EXPORTS_KJANAT_ACTIONLINT_ANALYZER_INPUT_KIND_SCRIPTS;
-    ret->required_inputs.ptr[1] = EXPORTS_KJANAT_ACTIONLINT_ANALYZER_INPUT_KIND_INVOCATIONS;
-    ret->required_inputs.len = 2;
+    memcpy(ret->required_inputs.ptr, inputs, sizeof(inputs));
+    ret->required_inputs.len = sizeof(inputs) / sizeof(inputs[0]);
 }
 
 void exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyzer_input_t *input,
