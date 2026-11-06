@@ -385,6 +385,12 @@ extends = "script-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"]
 vars    = { fixture = "no-sudo" }
 
+["test:example:no-sudo"]
+description = "Build and test the C component through actionlint's public CLI"
+depends     = ["plugin:example:no-sudo"]
+env         = { ACTIONLINT_TEST_BINARY = "{{ config_root }}/plugins/examples/no-sudo/test-bin/actionlint{{ vars.exe }}", ACTIONLINT_TEST_COMPONENT = "{{ config_root }}/internal/plugins/execution/component/testdata/plugins/no-sudo.wasm" }
+run         = ['go build -o "{{ env.ACTIONLINT_TEST_BINARY }}" ./cmd/actionlint', "go test ./plugins/examples/no-sudo/tests -count=1"]
+
 ["plugin:example:insecure-download"]
 extends = "script-plugin"
 sources = ["plugins/protocol/wit/**", "plugins/sdk/go/**", "plugins/examples/insecure-download/**"]

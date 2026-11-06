@@ -1,0 +1,62 @@
+# C component example
+
+This plugin demonstrates WIT bindings, script inputs and source-mapped findings
+in C. It reports `sudo` at the start of a command, including commands preceded
+by environment assignments. It checks workflow scripts and scripts supplied
+from called composite actions. It does not read files, access the network or
+offer fixes.
+
+The scanner recognizes whitespace, newlines and the separators `;`, `|` and `&`.
+It is not a Bash parser: quoted separators, comments, command substitutions and
+shell control structures can produce incorrect or missed findings. It does not
+determine whether a runner actually provides `sudo`. Use it to learn the plugin
+interface, not to enforce a privilege policy.
+
+From the repository root, build the component with the configured WASI SDK,
+`wit-bindgen` and `wasm-tools`:
+
+```sh
+mise exec -- bash plugins/examples/no-sudo/build.sh
+```
+
+The build generates C bindings from `plugins/protocol/wit` and writes
+`plugins/examples/no-sudo/no-sudo.wasm`. The `describe` export in
+[`no_sudo.c`](no_sudo.c) declares the rule and its required inputs. This example
+does not yet produce a registry distribution with discovery metadata and
+checksums.
+
+Run it using actionlint v2:
+
+```sh
+actionlint check --no-config --no-tool shellcheck --no-tool ruff \
+  --plugin plugins/examples/no-sudo/no-sudo.wasm plugins/examples/no-sudo/example.yml
+```
+
+The supplied workflow produces one warning highlighting `sudo`. A finding makes
+the CLI exit with status 1.
+
+Build and run the example's tests in one command:
+
+```sh
+mise run test:example:no-sudo
+```
+
+This builds a native CLI and the component before running the tests. The tests
+invoke the CLI and inspect its JSON report. They check clean
+commands, command-name boundaries, assignments, Unicode columns, multiline
+scripts, captured revisions and exit status. Set `ACTIONLINT_TEST_BINARY` to the
+executable you want to test:
+
+```sh
+ACTIONLINT_TEST_BINARY="$PWD/actionlint" mise exec go -- go test ./plugins/examples/no-sudo/tests -count=1
+```
+
+In PowerShell:
+
+```powershell
+$env:ACTIONLINT_TEST_BINARY = "$PWD/actionlint.exe"
+mise exec go -- go test ./plugins/examples/no-sudo/tests -count=1
+```
+
+Without that variable, a direct `go test` skips these execution tests. The host's component
+suite separately checks called composite actions against its owned fixture.
