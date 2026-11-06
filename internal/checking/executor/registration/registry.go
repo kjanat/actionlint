@@ -148,9 +148,18 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"explicit-permissions": {Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.NewRuleRequirePermissions(c.Rules, c.Config.RequiresPermissions())
 		}, Enabled: func(c Inputs) bool { return c.Config.RequiresPermissions().Enabled() }},
-		"cache-write-untrusted":   {Build: func(c Inputs) workflowvisit.Rule { return security.NewRuleCacheWriteUntrusted() }, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") }},
-		"cache-call-unrestricted": {Build: func(c Inputs) workflowvisit.Rule { return security.NewRuleCacheCallUnrestricted() }, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }},
-		"cache-operation":         {Build: func(c Inputs) workflowvisit.Rule { return correctness.NewRuleCacheOperation(c.Workflows) }, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") }},
+		"cache-write-untrusted": {Build: func(c Inputs) workflowvisit.Rule {
+			workflow, _ := c.SourceSnapshot.WorkflowView()
+			return declarationchecks.New(c.Rules, security.CacheWriteUntrustedCheck(workflow))
+		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") }},
+		"cache-call-unrestricted": {Build: func(c Inputs) workflowvisit.Rule {
+			workflow, _ := c.SourceSnapshot.WorkflowView()
+			return declarationchecks.New(c.Rules, security.CacheCallUnrestrictedCheck(workflow))
+		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }},
+		"cache-operation": {Build: func(c Inputs) workflowvisit.Rule {
+			workflow, _ := c.SourceSnapshot.WorkflowView()
+			return declarationchecks.New(c.Rules, correctness.CacheOperationCheck(workflow, c.Workflows))
+		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") }},
 	}
 })
 

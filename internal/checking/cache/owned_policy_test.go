@@ -1,6 +1,7 @@
 package cachepolicy
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -32,8 +33,40 @@ func TestTrustReadsPublishedDeclarations(t *testing.T) {
 	if len(findings) != 1 || findings[0].Start.Line != 2 || !strings.Contains(findings[0].Message, `"pull_request_target"`) {
 		t.Fatalf("published write grant changed with decoder model: %v", findings)
 	}
-	if findings := trust.CheckWrites(ownedJob); len(findings) != 0 {
-		t.Fatalf("shared declaration reported twice: %v", findings)
+	if repeated := trust.CheckWrites(ownedJob); !reflect.DeepEqual(findings, repeated) {
+		t.Fatalf("repeated inspection changed the prepared result: first=%v repeated=%v", findings, repeated)
+	}
+}
+
+func TestSharedWriteGrantHasStableSourceOrderOwnership(t *testing.T) {
+	const source = `on: [pull_request_target, issue_comment]
+cache-mode: write
+jobs:
+  z_first:
+    if: github.event_name == 'issue_comment'
+    runs-on: ubuntu-latest
+    steps: [{run: echo first}]
+  a_second:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps: [{run: echo second}]
+`
+	decoded, errors := workflowparser.Parse([]byte(source))
+	if len(errors) != 0 {
+		t.Fatal(errors)
+	}
+	workflow := policyWorkflowView(decoded)
+	first, _ := workflow.Job("z_first")
+	second, _ := workflow.Job("a_second")
+	access := NewTrust(workflow)
+	for range 2 {
+		if findings := access.CheckWrites(second); len(findings) != 0 {
+			t.Fatalf("later job claimed the shared declaration: %v", findings)
+		}
+		findings := access.CheckWrites(first)
+		if len(findings) != 1 || findings[0].Start.Line != 2 || !strings.Contains(findings[0].Message, `"issue_comment", "pull_request_target"`) {
+			t.Fatalf("shared declaration lost its source or event union: %v", findings)
+		}
 	}
 }
 

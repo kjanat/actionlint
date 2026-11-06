@@ -1,8 +1,11 @@
 package cachepolicy
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
+
+	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
@@ -85,7 +88,8 @@ func cacheRestrictedEvents(w declaration.WorkflowView) []string {
 }
 
 // Trust evaluates cache grants against the workflow's triggering events.
-// Each shared declaration is reported at its first reachable job.
+// Each shared declaration is assigned to its first reachable job in source order.
+// Construction prepares that assignment; checks do not mutate it.
 type Trust struct {
 	workflow     declaration.CacheModeView
 	events       []string
@@ -93,61 +97,71 @@ type Trust struct {
 }
 type cacheDeclaration struct {
 	mode      declaration.CacheModeView
-	reported  bool
+	job       declaration.JobView
 	reachable []string
 }
 
-func (r *Trust) declaration(mode declaration.CacheModeView) *cacheDeclaration {
+func (r *Trust) declaration(mode declaration.CacheModeView, job declaration.JobView) *cacheDeclaration {
 	for i := range r.declarations {
 		if r.declarations[i].mode.SameDeclaration(mode) {
 			return &r.declarations[i]
 		}
 	}
-	r.declarations = append(r.declarations, cacheDeclaration{mode: mode})
+	r.declarations = append(r.declarations, cacheDeclaration{mode: mode, job: job})
 	return &r.declarations[len(r.declarations)-1]
 }
 
 // NewTrust prepares event reachability and shared cache declarations for one workflow.
 func NewTrust(w declaration.WorkflowView) *Trust {
 	r := &Trust{workflow: w.CacheMode(), events: cacheRestrictedEvents(w)}
+	var jobs []declaration.JobView
 	for _, job := range w.Jobs() {
-		mode := EffectiveMode(r.workflow, job.CacheMode())
-		access, valid := grant(mode).capabilities()
-		if valid && access&2 != 0 {
-			declaration := r.declaration(mode)
-			declaration.reachable = append(declaration.reachable, cacheReachableEvents(r.events, job.If().Value())...)
+		jobs = append(jobs, job)
+	}
+	slices.SortFunc(jobs, func(a, b declaration.JobView) int {
+		left, right := position(a), position(b)
+		if order := cmp.Compare(left.Line, right.Line); order != 0 {
+			return order
 		}
+		if order := cmp.Compare(left.Col, right.Col); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.ID().Value(), b.ID().Value())
+	})
+	for _, job := range jobs {
+		mode := cachemodel.EffectiveMode(r.workflow, job.CacheMode())
+		access, valid := cachemodel.FromDeclaration(mode).Capabilities()
+		if valid && access&2 != 0 {
+			events := cacheReachableEvents(r.events, job.If().Value())
+			if len(events) != 0 {
+				declaration := r.declaration(mode, job)
+				declaration.reachable = append(declaration.reachable, events...)
+			}
+		}
+	}
+	for i := range r.declarations {
+		events := r.declarations[i].reachable
+		slices.Sort(events)
+		r.declarations[i].reachable = slices.Compact(events)
 	}
 	return r
 }
 
 // CheckWrites reports effective write grants reachable from low-trust events.
 func (r *Trust) CheckWrites(job declaration.JobView) []results.Diagnostic {
-	mode := EffectiveMode(r.workflow, job.CacheMode())
-	access, valid := grant(mode).capabilities()
-	if len(r.events) == 0 || !valid || access&2 == 0 {
-		return nil
+	for _, declaration := range r.declarations {
+		if declaration.job == job {
+			mode := declaration.mode
+			return []results.Diagnostic{report(position(mode), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind().String(), messages.SortedQuotes(declaration.reachable))}
+		}
 	}
-	declaration := r.declaration(mode)
-	if declaration.reported {
-		return nil
-	}
-	events := cacheReachableEvents(r.events, job.If().Value())
-	if len(events) == 0 {
-		return nil
-	}
-	// Include every reachable event sharing this declaration, even when another job is visited later.
-	events = append(events, declaration.reachable...)
-	slices.Sort(events)
-	events = slices.Compact(events)
-	declaration.reported = true
-	return []results.Diagnostic{report(position(mode), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind().String(), messages.SortedQuotes(events))}
+	return nil
 }
 
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
 func (r *Trust) CheckCall(job declaration.JobView) []results.Diagnostic {
 	call := job.WorkflowCall()
-	if len(r.events) == 0 || !call.Present() || !call.Uses().Present() || call.Uses().ContainsExpression() || EffectiveMode(r.workflow, job.CacheMode()).Present() {
+	if len(r.events) == 0 || !call.Present() || !call.Uses().Present() || call.Uses().ContainsExpression() || cachemodel.EffectiveMode(r.workflow, job.CacheMode()).Present() {
 		return nil
 	}
 	if _, local := references.LocalWorkflow(call.Uses().Value()); !local {

@@ -3,6 +3,8 @@ package correctness
 import (
 	"strings"
 
+	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+
 	workflowcall "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-call"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
@@ -113,7 +115,7 @@ func (rule *ruleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.Workf
 	}
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
-	for _, d := range cachepolicy.CheckCeiling(call, cachepolicy.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.Debug) {
+	for _, d := range cachepolicy.CheckCeiling(call, cachemodel.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.Debug) {
 		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 
