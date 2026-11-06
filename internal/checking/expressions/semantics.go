@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
@@ -165,7 +167,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	if rule.compositeScript {
 		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
 	}
-	result := c.CheckResult(expr)
+	result := c.CheckResult(expreval.EvaluateSubexpressions(expr))
 	ty, errs := result.Type, result.Findings
 	errs = append(errs, correctness.UnusedFormatArguments(expr, result.Calls)...)
 	if rule.options.SuspiciousCoercion {

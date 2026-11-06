@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -29,7 +31,7 @@ func TestExprSemanticsCheckRealWorld(t *testing.T) {
 			continue
 		}
 		c := NewChecker(contextspec.DefaultExpressionScope(), nil)
-		c.Check(root)
+		c.Check(expreval.EvaluateSubexpressions(root))
 	}
 	if err := s.Err(); err != nil {
 		t.Fatal(err)
@@ -86,7 +88,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 				if err != nil {
 					b.Fatalf("%q caused parse error: %v", expr, err)
 				}
-				NewChecker(contextspec.DefaultExpressionScope(), nil).Check(root)
+				NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(root))
 			}
 		}
 	})
@@ -105,7 +107,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("Typecheck", func(b *testing.B) {
 		for range b.N {
 			for _, t := range trees {
-				NewChecker(contextspec.DefaultExpressionScope(), nil).Check(t)
+				NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(t))
 			}
 		}
 	})

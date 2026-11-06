@@ -258,7 +258,7 @@ func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...finding
 			"conclusion": exprtypes.StringType(), "outputs": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),
 		}).Type(),
 	}).Type())
-	ty, diagnostics := checker.Check(node)
+	ty, diagnostics := checker.Check(expreval.EvaluateSubexpressions(node))
 	if len(diagnostics) != len(wantDiagnostics) {
 		t.Fatalf("diagnostics=%v, want %v", diagnostics, wantDiagnostics)
 	}

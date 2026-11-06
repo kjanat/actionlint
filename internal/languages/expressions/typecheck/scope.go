@@ -59,3 +59,15 @@ func (sema *Checker) functionRestriction(callName string) (exprfunctions.Availab
 	availability, restricted := sema.functionAvailability[strings.ToLower(callName)]
 	return availability, restricted && !availability.Allowed
 }
+
+// AvailableContexts returns permitted names and their current types. The caller
+// owns the map; later scope updates do not change the returned entries.
+func (sema *Checker) AvailableContexts() map[string]exprtypes.Type {
+	contexts := make(map[string]exprtypes.Type, len(sema.availableContexts))
+	for _, name := range sema.availableContexts {
+		if ty, found := sema.vars[name]; found {
+			contexts[name] = ty
+		}
+	}
+	return contexts
+}

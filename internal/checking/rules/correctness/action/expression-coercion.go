@@ -1,6 +1,8 @@
 package action
 
 import (
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
@@ -18,7 +20,7 @@ func expressionCoercionFindings(expressions []actionmeta.ParsedExpression, field
 		checker.SetContextAvailability(actionmeta.AllowedContexts(field))
 		contextspec.MergeInputTypes(checker, exprtypes.NewMapObjectType(exprtypes.StringType()))
 		checker.SetContextType("steps", exprtypes.NewMapObjectType(exprtypes.AnyType()).Type())
-		result := checker.CheckResult(expression.Node)
+		result := checker.CheckResult(expreval.EvaluateSubexpressions(expression.Node))
 		for _, finding := range suspicious.SuspiciousCoercion(expression.Node, result.Types, result.Calls) {
 			problem := actionmeta.ExpressionProblem{Code: actionmeta.CodeCoercion, Message: finding.Message}
 			if expression.Offset != 0 {

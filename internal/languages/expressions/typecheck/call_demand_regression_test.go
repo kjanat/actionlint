@@ -496,7 +496,7 @@ func checkCallDemandResult(t *testing.T, input string) ExpressionCheckResult {
 	}
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	return checker.CheckResult(node)
+	return checker.CheckResult(expreval.EvaluateSubexpressions(node))
 }
 
 func checkCallArgumentDemands(t *testing.T, got ExpressionCheckResult, want []exprfunctions.ArgumentDemand) {

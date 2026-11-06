@@ -14,6 +14,7 @@ import (
 // branches can have local failures without making their parent fail. Branches
 // proved unused are absent; unknown context values are not substituted.
 type SubexpressionResults struct {
+	root   exprsyntax.Node
 	byNode map[exprsyntax.Node]exprvalues.EvaluationResult
 }
 
@@ -41,7 +42,7 @@ func EvaluateSubexpressions(root exprsyntax.Node) SubexpressionResults {
 		}
 		expressionResult(node, nil, nil, results)
 	})
-	return SubexpressionResults{byNode: results}
+	return SubexpressionResults{root: root, byNode: results}
 }
 
 func argumentSkipped(parent, node exprsyntax.Node, results map[exprsyntax.Node]exprvalues.EvaluationResult) bool {
@@ -75,3 +76,6 @@ func (results SubexpressionResults) Result(node exprsyntax.Node) (exprvalues.Eva
 	result, found := results.byNode[node]
 	return result.Clone(), found
 }
+
+// Expression returns the syntax tree used to compute these results.
+func (results SubexpressionResults) Expression() exprsyntax.Node { return results.root }

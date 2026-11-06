@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -19,9 +21,9 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"matrix"})
 	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.NumberType()}).Type())
-	first := checker.CheckResult(node)
+	first := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"value": exprtypes.BoolType()}).Type())
-	second := checker.CheckResult(node)
+	second := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	if !first.Valid || !second.Valid {
 		t.Fatalf("invalid fixture: %v / %v", first.Findings, second.Findings)
 	}
@@ -49,7 +51,7 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 
 func TestInferredTypesPreserveInvalidCallReturnContract(t *testing.T) {
 	node := exprsyntax.ParseAssignedExpression("${{ startsWith(true) }}")
-	result := NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(node)
+	result := NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node))
 	got, known := result.Types.TypeOf(node)
 	if result.Valid || !known || got.Kind() != exprtypes.KindBool {
 		t.Fatalf("invalid call lost boolean return type: type=%v known=%t result=%+v", got, known, result)
@@ -63,7 +65,7 @@ func TestInferredTypesCoverNodesVisitedThroughNarrowing(t *testing.T) {
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetContextAvailability([]string{"inputs"})
 			contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType()}))
-			result := checker.CheckResult(node)
+			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 			if !result.Valid {
 				t.Fatal(result.Findings)
 			}

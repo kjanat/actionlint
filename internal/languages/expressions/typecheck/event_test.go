@@ -21,7 +21,7 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, errs := checker.Check(node); len(errs) != 0 {
+	if _, errs := checker.Check(expreval.EvaluateSubexpressions(node)); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	if array.Deref() {
@@ -58,7 +58,7 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
-			result := checker.CheckResult(node)
+			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 			if !result.Valid || result.Type.Kind() != tc.kind {
 				t.Fatalf("result=%+v, want type %v", result, tc.kind)
 			}

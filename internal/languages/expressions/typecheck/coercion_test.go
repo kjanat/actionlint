@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
@@ -50,7 +52,7 @@ func TestFunctionCallFacts(t *testing.T) {
 			}
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			got := checker.CheckResult(node)
+			got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 			if got.Type.Kind() != tc.kind || got.Valid != tc.valid || got.Evaluation.State != tc.state || got.Evaluation.Value != tc.value {
 				t.Fatalf("got type %s, valid %v, evaluation %+v, findings %v; want %s, %v, %v, %v", got.Type, got.Valid, got.Evaluation, got.Findings, tc.kind, tc.valid, tc.state, tc.value)
 			}
@@ -70,7 +72,7 @@ func TestFunctionContractFacts(t *testing.T) {
 		}
 		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 		checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-		return checker.CheckResult(node)
+		return checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	}
 	got := check("fromJSON(true)")
 	if got.Call == nil || len(got.Call.DeclaredReturns) != 1 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(got.Call.RefinedAlternatives) != 1 || got.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool {
@@ -103,7 +105,7 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	got := checker.CheckResult(node)
+	got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	if len(got.Findings) != 2 || got.Findings[0].Code != "argument-count" || got.Findings[1].Code != "operand-type" {
 		t.Fatalf("findings: %v", got.Findings)
 	}
@@ -119,7 +121,7 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := checker.CheckResult(node)
+	got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	if got.Call == nil || len(got.Call.DeclaredReturns) != 2 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || got.Call.DeclaredReturns[1].Kind() != exprtypes.KindBool || got.Type.Kind() != exprtypes.KindAny {
 		t.Fatalf("result: %+v", got)
 	}
@@ -132,7 +134,7 @@ func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := checker.CheckResult(node)
+	got := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	if got.Call == nil || got.Call.ReturnDomain != exprfunctions.ReturnDomainExcludesValue || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindNumber || got.Evaluation.Value != true {
 		t.Fatalf("result: %+v", got)
 	}
@@ -148,7 +150,7 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 		return node
 	}
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.CheckResult(parse("startsWith(true)"))
+	checker.CheckResult(expreval.EvaluateSubexpressions(parse("startsWith(true)")))
 	if !checker.validationFailed || len(checker.errs) == 0 {
 		t.Fatalf("missing validation failure: %+v", checker.errs)
 	}
@@ -159,11 +161,11 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 
 	checker = NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	result := checker.CheckResult(parse("startsWith(true, github.event.issue.title)"))
+	result := checker.CheckResult(expreval.EvaluateSubexpressions(parse("startsWith(true, github.event.issue.title)")))
 	if !result.Valid || len(result.Findings) != 0 {
 		t.Fatalf("type checking emitted a coercion policy finding: %+v", result)
 	}
-	result = checker.CheckResult(parse("github.event.issue.title"))
+	result = checker.CheckResult(expreval.EvaluateSubexpressions(parse("github.event.issue.title")))
 	if !result.Valid || len(result.Findings) != 0 {
 		t.Fatalf("type checking emitted a script security policy finding: %+v", result)
 	}
@@ -199,7 +201,7 @@ func TestKnownResultRefinesDeclaredAny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := checker.CheckResult(node)
+	result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
 	if result.Call == nil || result.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(result.Call.RefinedAlternatives) != 1 || result.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool || result.Call.ReturnDomain != exprfunctions.ReturnDomainContainsValue {
 		t.Fatalf("result: %+v", result)
 	}

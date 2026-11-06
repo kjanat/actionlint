@@ -3,6 +3,8 @@ package typecheck
 import (
 	"testing"
 
+	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -63,7 +65,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := checker.Check(node)
+			_, findings := checker.Check(expreval.EvaluateSubexpressions(node))
 			if len(findings) != tc.errors {
 				t.Fatalf("want %d errors; got %v", tc.errors, findings)
 			}
@@ -72,7 +74,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, findings := checker.Check(node); len(findings) != 0 {
+			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 0 {
 				t.Fatal(findings)
 			}
 			if len(event.EventVariants()) != 3 {
@@ -101,14 +103,14 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, findings := checker.Check(node); len(findings) != 0 {
+			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 0 {
 				t.Fatalf("unreachable event branch reported: %v", findings)
 			}
 			node, err = exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.issue.title}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, findings := checker.Check(node); len(findings) != 1 {
+			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 1 {
 				t.Fatalf("guard leaked to next expression: %v", findings)
 			}
 			if len(event.EventVariants()) != 1 {
