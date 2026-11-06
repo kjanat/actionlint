@@ -32,6 +32,7 @@ func parseFormatFuncSpecifiers(format string, capacity int) map[int]struct{} {
 // Checker checks names and types in a caller-supplied scope and records
 // function-call facts, evaluation outcomes and language issues.
 type Checker struct {
+	constants             expreval.SubexpressionResults
 	skipEvaluation        bool
 	conditionalEvaluation bool
 	funcs                 map[string][]*exprfunctions.FuncSignature
@@ -542,8 +543,8 @@ func (sema *Checker) checkCallArgument(node exprsyntax.Node, demand exprfunction
 	if invalid && demand != exprfunctions.DemandSkipped {
 		arg.State = exprfunctions.ArgumentInvalid
 	} else if demand != exprfunctions.DemandSkipped {
-		if value, known := expreval.ConditionConstantValue(node); known {
-			arg.Value, arg.State = value, exprfunctions.ArgumentKnown
+		if value, found := sema.constants.Result(node); found && value.State == exprvalues.EvaluationKnown {
+			arg.Value, arg.State = value.Value, exprfunctions.ArgumentKnown
 		}
 	}
 	return arg
@@ -760,7 +761,7 @@ func (sema *Checker) checkWithNarrowing(n exprsyntax.Node, isTruthy bool) exprty
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
 				left := sema.check(n.Left)
-				right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 				sema.nodeTypes[n] = left.Merge(right)
 				return right
 			}
@@ -768,7 +769,7 @@ func (sema *Checker) checkWithNarrowing(n exprsyntax.Node, isTruthy bool) exprty
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
 				left := sema.check(n.Left)
-				right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+				right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 				sema.nodeTypes[n] = left.Merge(right)
 				return right
 			}
@@ -792,13 +793,13 @@ func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) (ty exprtypes.T
 		// When `l` is false in `l && r`, its type is `typeof(l)`. Otherwise `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is falsy.
 		left := sema.checkWithNarrowing(n.Left, false)
-		right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+		right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 		return left.Merge(right)
 	case exprsyntax.LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
-		right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, logicalRightDemand(n)) })
+		right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 		return left.Merge(right)
 	case exprsyntax.LogicalOpNodeKindInvalid:
 		// Invalid operators still check both operands.
@@ -876,6 +877,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 	sema.validationFailed = false
 	sema.staticInvalid = false
 	sema.validateReferences(expr)
+	sema.constants = expreval.EvaluateSubexpressions(expr)
 	ty := sema.check(expr)
 	errs := detachErrors(sema.errs)
 
@@ -889,7 +891,7 @@ func (sema *Checker) CheckResult(expr exprsyntax.Node) ExpressionCheckResult {
 		evaluation.State = exprvalues.EvaluationInvalid
 		phase = FailureEvaluation
 	default:
-		evaluation = expreval.Evaluate(expr, nil)
+		evaluation, _ = sema.constants.Result(expr)
 		if evaluation.State == exprvalues.EvaluationInvalid {
 			phase = FailureEvaluation
 		}
