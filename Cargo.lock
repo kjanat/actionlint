@@ -32,14 +32,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actionlint-example-script-engine"
-version = "0.1.0"
-dependencies = [
- "serde_json",
- "wit-bindgen",
-]
-
-[[package]]
 name = "actionlint-example-source-annotations"
 version = "0.1.0"
 dependencies = [
@@ -64,6 +56,14 @@ name = "actionlint-fixture-managed-no-sudo"
 version = "0.1.0"
 dependencies = [
  "actionlint-extension-api",
+ "wit-bindgen",
+]
+
+[[package]]
+name = "actionlint-fixture-script-engine"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
  "wit-bindgen",
 ]
 
