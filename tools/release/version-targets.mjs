@@ -3,7 +3,7 @@ export const targets = [
 	{
 		path: 'flake.nix',
 		rules: [
-			{ description: 'Nix package version', pattern: /^      version = "(\d+\.\d+\.\d+)";\r?$/dgm, count: 1 },
+			{ description: 'Nix package version', pattern: /^ {6}version = "(\d+\.\d+\.\d+)";\r?$/dgm, count: 1 },
 		],
 	},
 	{
@@ -65,7 +65,7 @@ export const targets = [
 			},
 		],
 		generated: [
-			/uses: [\w.-]+\/[\w.\/-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$/dgm,
+			/uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$/dgm,
 		],
 	},
 	{
@@ -78,7 +78,7 @@ export const targets = [
 			},
 		],
 		generated: [
-			/uses: [\w.-]+\/[\w.\/-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$/dgm,
+			/uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$/dgm,
 		],
 	},
 	{
