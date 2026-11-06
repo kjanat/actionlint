@@ -1,9 +1,10 @@
 package expressions
 
 import (
-	"strings"
-
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
+	contextoutputs "actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -11,79 +12,40 @@ import (
 // Get type of `outputs.<output name>`
 func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) exprtypes.ObjectType {
 	if !spec.Present() {
-		return exprtypes.NewMapObjectType(exprtypes.StringType())
+		return contextoutputs.ActionType(actionmeta.Definition{})
 	}
 
 	definition, err := rule.actionDefinition(spec.Value())
 	if err != nil {
 		// Action validation reports lookup failures; unknown outputs stay open here.
 		rule.debug("Could not infer action outputs: %v", err)
-		return exprtypes.NewMapObjectType(exprtypes.StringType())
+		return contextoutputs.ActionType(actionmeta.Definition{})
 	}
-	if definition.Present() {
-		if definition.SkipOutputs() {
-			return exprtypes.NewEmptyObjectType()
-		}
-		var object exprtypes.ObjectBuilder
-		for _, name := range definition.OutputNames() {
-			object.SetProperty(name, exprtypes.StringType())
-		}
-		return object.Build()
-	}
-
-	return exprtypes.NewMapObjectType(exprtypes.StringType())
+	return contextoutputs.ActionType(definition)
 }
 
-func (rule *Checker) getWorkflowCallOutputsType(call workflowdecl.WorkflowCallView) exprtypes.ObjectType {
+func (rule *Checker) workflowCallMetadata(call workflowdecl.WorkflowCallView) *calls.Metadata {
 	if !call.Uses().Present() {
-		return exprtypes.NewMapObjectType(exprtypes.StringType())
+		return nil
 	}
 
 	m, err := rule.workflowMetadata(call.Uses().Value())
 	if err != nil {
 		// The workflow-call rule reports metadata failures.
 		rule.debug("Could not infer workflow outputs: %v", err)
-		return exprtypes.NewMapObjectType(exprtypes.StringType())
+		return nil
 	}
-	if m == nil {
-		return exprtypes.NewMapObjectType(exprtypes.StringType())
-	}
-
-	p := make(map[string]exprtypes.Type, len(m.Outputs))
-	for n := range m.Outputs {
-		p[n] = exprtypes.StringType()
-	}
-	return exprtypes.NewStrictObjectType(p)
+	return m
 }
 
 func (rule *Checker) calcNeedsType(job workflowdecl.JobView) exprtypes.ObjectType {
-	var object exprtypes.ObjectBuilder
-	for id := range job.Needs() {
-		name := strings.ToLower(id.Value())
-		if name == job.ID().Value() {
-			continue
-		}
-		if object.Has(name) {
-			continue
-		}
-		dependency, exists := rule.workflow.Job(name)
-		if !exists {
-			continue
-		}
-		var outputs exprtypes.ObjectType
+	resolved := map[workflowdecl.JobView]*calls.Metadata{}
+	for _, dependency := range contextoutputs.DirectDependencies(rule.workflow, job) {
 		if call := dependency.WorkflowCall(); call.Present() {
-			outputs = rule.getWorkflowCallOutputsType(call)
-		} else {
-			var declared exprtypes.ObjectBuilder
-			for name := range dependency.Outputs() {
-				declared.Set(name, exprtypes.StringType())
-			}
-			outputs = declared.Build()
+			resolved[dependency] = rule.workflowCallMetadata(call)
 		}
-		object.Set(name, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"outputs": outputs.Type(), "result": exprtypes.StringType()}).Type())
-		// Needs contains direct dependencies, not grandparents (#151).
 	}
-	return object.Build()
+	return contextoutputs.NeedsType(rule.workflow, job, resolved)
 }
 
 func (rule *Checker) checkWorkflowCallOutputs(call workflowdecl.WorkflowCallEventView, workflow workflowdecl.WorkflowView) {
@@ -95,24 +57,17 @@ func (rule *Checker) checkWorkflowCallOutputs(call workflowdecl.WorkflowCallEven
 	if !hasOutputs {
 		return
 	}
-	properties := map[string]exprtypes.Type{}
-	for name, job := range workflow.Jobs() {
-		var outputs exprtypes.ObjectType
-		if job.WorkflowCall().Present() {
-			outputs = exprtypes.NewEmptyObjectType()
-		} else {
-			values := map[string]exprtypes.Type{}
-			for name := range job.Outputs() {
-				values[name] = exprtypes.StringType()
-			}
-			outputs = exprtypes.NewStrictObjectType(values)
+	resolved := map[workflowdecl.JobView]*calls.Metadata{}
+	for _, job := range workflow.Jobs() {
+		if target := job.WorkflowCall(); target.Present() {
+			resolved[job] = rule.workflowCallMetadata(target)
 		}
-		properties[name] = exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"outputs": outputs.Type(), "result": exprtypes.StringType()}).Type()
 	}
-	if len(properties) == 0 {
+	jobs := contextoutputs.JobsType(workflow, resolved)
+	if jobs.Len() == 0 {
 		return
 	}
-	rule.jobsTy = new(exprtypes.NewStrictObjectType(properties))
+	rule.jobsTy = new(jobs)
 	for _, output := range call.Outputs() {
 		rule.checkString(output.Value(), "on.workflow_call.outputs.<output_id>.value")
 	}
