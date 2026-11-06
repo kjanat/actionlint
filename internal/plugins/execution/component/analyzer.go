@@ -34,7 +34,6 @@ func (p *Plugin) Descriptor() checkinputs.Descriptor {
 	}
 	descriptor := *p.analyzerDescriptor
 	descriptor.Descriptor = descriptor.Clone()
-	descriptor.RequiredInputs = append([]checkinputs.InputKind(nil), descriptor.RequiredInputs...)
 	return descriptor
 }
 

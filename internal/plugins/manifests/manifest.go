@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
@@ -65,10 +65,10 @@ type Manifest struct {
 	Version  string          `json:"version"`
 	Role     Role            `json:"role"`
 	// RequiredInputs lists input sections requested by document providers. Source is implicit.
-	RequiredInputs []checkinputs.InputKind `json:"required_inputs,omitempty"`
-	Rule           rule.Descriptor         `json:"rule"`
-	Scope          Scope                   `json:"scope"`
-	Transport      Transport               `json:"transport"`
+	RequiredInputs []rulemeta.InputKind `json:"required_inputs,omitempty"`
+	Rule           rulemeta.Descriptor  `json:"rule"`
+	Scope          Scope                `json:"scope"`
+	Transport      Transport            `json:"transport"`
 	// Artifacts lists per-platform executables or modules; empty means the
 	// process entry is discovered on PATH.
 	Artifacts []Artifact `json:"artifacts,omitempty"`

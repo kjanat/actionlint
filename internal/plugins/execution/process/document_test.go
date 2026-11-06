@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -33,7 +33,7 @@ func documentInput(t *testing.T, content string) checkinputs.Input {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return checkinputs.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcepos.YAML, Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Dependencies}}
+	return checkinputs.Input{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcepos.YAML, Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Dependencies}}
 }
 
 func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
@@ -46,8 +46,8 @@ func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
 func TestDocumentDescriptorConfigurationScope(t *testing.T) {
 	for _, tc := range []struct {
 		scope manifests.Scope
-		want  rule.ConfigurationScope
-	}{{manifests.ScopeSource, rule.SourceConfiguration}, {manifests.ScopeComposite, rule.CompositeConfiguration}} {
+		want  rulemeta.ConfigurationScope
+	}{{manifests.ScopeSource, rulemeta.SourceConfiguration}, {manifests.ScopeComposite, rulemeta.CompositeConfiguration}} {
 		for _, documents := range [][]string{nil, {"workflow"}, {"action"}, {"workflow", "action"}} {
 			manifest := documentManifest(manifests.ProcessSpec{Output: echoOutput})
 			manifest.Scope, manifest.Selectors.Documents = tc.scope, documents
@@ -71,7 +71,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
 			input.Dependencies = []workflowfacts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 2, Column: 5}}, {Reference: sourcepos.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
 			manifest := documentManifest(manifests.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: manifests.ConfigRendering{Render: manifests.RenderNone}})
-			manifest.RequiredInputs = []checkinputs.InputKind{checkinputs.Dependencies}
+			manifest.RequiredInputs = []rulemeta.InputKind{rulemeta.Dependencies}
 			manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
 			checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
 			if err != nil {

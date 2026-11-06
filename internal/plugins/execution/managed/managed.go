@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -391,7 +393,7 @@ func (r documentRunner) validateDocumentBatch(batch tools.Batch) error {
 
 func (r documentRunner) input(script tools.Script, graph checkinputs.CallGraph) checkinputs.Input {
 	input := r.context.Document
-	input.AvailableInputs = []checkinputs.InputKind{checkinputs.Source, checkinputs.Scripts, checkinputs.Invocations, checkinputs.Execution}
+	input.AvailableInputs = []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}
 	input.CallGraph = graph
 	input.SelectedScripts = []checkinputs.OccurrenceID{script.Fact.Occurrence.ID}
 	if graph.Valid() && script.Fact.Occurrence.Owner == graph.Entry().ID {

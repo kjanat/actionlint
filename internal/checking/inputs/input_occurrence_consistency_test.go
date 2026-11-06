@@ -3,6 +3,8 @@ package inputs
 import (
 	"errors"
 	"testing"
+
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
 
 func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
@@ -20,7 +22,7 @@ func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
 			occurrence := records.Scripts[0]
 			input := Input{
 				Reference: records.Entry.Reference, CallGraph: retainGraph(t, records),
-				AvailableInputs: []InputKind{Invocations, Scripts},
+				AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts},
 				Invoked:         []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}},
 			}
 			if err := input.ValidateInvocations(); err != nil {

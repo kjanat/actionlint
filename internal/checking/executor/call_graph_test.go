@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -30,7 +32,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := checkinputs.Input{Reference: ref, CallGraph: graph, AvailableInputs: []checkinputs.InputKind{checkinputs.Invocations, checkinputs.Scripts}, Invoked: []checkinputs.Script{{Reference: records.Scripts[0].Declaration, Occurrence: records.Scripts[0]}}}
+	input := checkinputs.Input{Reference: ref, CallGraph: graph, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, Invoked: []checkinputs.Script{{Reference: records.Scripts[0].Declaration, Occurrence: records.Scripts[0]}}}
 	input.SelectedScripts = []checkinputs.OccurrenceID{script}
 	want := graph.Export()
 	changed := make(chan struct{})

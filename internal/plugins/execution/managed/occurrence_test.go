@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -31,7 +31,7 @@ func (g *occurrenceGuest) CheckDocument(_ context.Context, input checkinputs.Inp
 type occurrenceObserver struct{ input checkinputs.Input }
 
 func (*occurrenceObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations, checkinputs.Execution}}
+	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
 }
 
 func (observer *occurrenceObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
@@ -139,7 +139,7 @@ func TestDocumentPluginSkipsOtherToolInputsAndUnsupportedShells(t *testing.T) {
 		t.Fatal(err)
 	}
 	route := tools.Registration{
-		Descriptor:   rulemetadata.Descriptor{Name: "input-observer", Category: "correctness", Recommended: true},
+		Descriptor:   rulemeta.Descriptor{Name: "input-observer", Category: "correctness", Recommended: true},
 		ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "javascript"}},
 		Build:        func(tools.Context) (tools.Runner, error) { return observer, nil },
 	}

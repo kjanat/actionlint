@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -97,7 +99,7 @@ func TestRunnerProviderComponent(t *testing.T) {
 type runtimeObserver struct{ scripts []checkinputs.Script }
 
 func (*runtimeObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Execution}}
+	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Execution}}
 }
 
 func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

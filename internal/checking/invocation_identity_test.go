@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -24,7 +26,7 @@ type invocationObservation struct {
 }
 
 func (*invocationCollector) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations, checkinputs.Execution}}
+	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
 }
 
 func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

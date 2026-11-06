@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	dependencypins "actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependency-pins"
@@ -17,7 +19,7 @@ import (
 
 func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 	plugin := loadPlugin(t, "pinned-actions", component.Options{})
-	if got := plugin.Descriptor().RequiredInputs; len(got) != 1 || got[0] != checkinputs.Dependencies {
+	if got := plugin.Descriptor().RequiredInputs; len(got) != 1 || got[0] != rulemeta.Dependencies {
 		t.Fatalf("requires=%v", got)
 	}
 	native := dependencypins.Checker{}
@@ -40,7 +42,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 		{"unknown kind", "future", "owner/repo@v1", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []checkinputs.InputKind{checkinputs.Dependencies}, Dependencies: []workflowfacts.Dependency{{
+			input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
 				Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 7, Column: 24},
 			}}}

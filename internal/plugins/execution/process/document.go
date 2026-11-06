@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
@@ -40,9 +40,9 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 	if err != nil {
 		return nil, err
 	}
-	requires := []checkinputs.InputKind{checkinputs.Source}
+	requires := []rulemeta.InputKind{rulemeta.Source}
 	for _, fact := range manifest.RequiredInputs {
-		if fact != checkinputs.Source && fact != checkinputs.Dependencies {
+		if fact != rulemeta.Source && fact != rulemeta.Dependencies {
 			return nil, fmt.Errorf("unsupported document input kind %q", fact)
 		}
 		if !slices.Contains(requires, fact) {
@@ -54,17 +54,18 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 			return nil, fmt.Errorf("unsupported document selector %q", kind)
 		}
 	}
-	scope := rule.SourceConfiguration
+	scope := rulemeta.SourceConfiguration
 	if manifest.Scope == manifests.ScopeComposite {
-		scope = rule.CompositeConfiguration
+		scope = rulemeta.CompositeConfiguration
 	}
-	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{Descriptor: manifest.Rule.Clone(), Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action"), RequiredInputs: requires}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
+	descriptor := manifest.Rule.Clone()
+	descriptor.RequiredInputs = requires
+	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
 }
 
 func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {
 	descriptor := d.descriptor
 	descriptor.Descriptor = descriptor.Clone()
-	descriptor.RequiredInputs = slices.Clone(descriptor.RequiredInputs)
 	return descriptor
 }
 
@@ -91,7 +92,7 @@ func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.I
 			return nil, err
 		}
 	}
-	if slices.Contains(d.descriptor.RequiredInputs, checkinputs.Dependencies) {
+	if slices.Contains(d.descriptor.RequiredInputs, rulemeta.Dependencies) {
 		request.Dependencies = make([]checkinputs.DocumentDependency, 0, len(input.Dependencies))
 		for _, dependency := range input.Dependencies {
 			if dependency.Reference.Document != input.Revision.Document() || dependency.Reference.Revision != input.Revision.Digest() {

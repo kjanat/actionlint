@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
@@ -20,7 +22,7 @@ import (
 type unrelatedPathAnalyzer struct{ path string }
 
 func (unrelatedPathAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Source}}
+	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
 func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {

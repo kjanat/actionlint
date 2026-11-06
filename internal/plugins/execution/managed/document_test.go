@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -146,7 +148,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 }
 
 func (*documentGuest) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "shellcheck", Category: "correctness", Recommended: true, RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Execution}}
+	return checkinputs.Descriptor{Name: "shellcheck", Category: "correctness", Recommended: true, RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Execution}}
 }
 
 func (*documentGuest) ToolIntegration() *checkinputs.ToolIntegration {

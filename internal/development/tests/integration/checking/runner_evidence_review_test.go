@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -43,7 +45,7 @@ type evidenceCompletionObserver struct {
 }
 
 func (*evidenceCompletionObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Source}}
+	return checkinputs.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
 func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

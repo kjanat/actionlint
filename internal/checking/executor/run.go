@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"slices"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -46,17 +48,16 @@ type preparedRegistration struct {
 	analyzer        checkinputs.Checker
 	descriptor      checkinputs.Descriptor
 	options         []byte
-	availableInputs []checkinputs.InputKind
+	availableInputs []rulemeta.InputKind
 	rawErrors       bool
 }
 
 // Prepare validates a registration once for an exact set of available input kinds.
-func Prepare(registration checkinputs.Registration, available []checkinputs.InputKind) (PreparedRegistration, error) {
+func Prepare(registration checkinputs.Registration, available []rulemeta.InputKind) (PreparedRegistration, error) {
 	if validation.IsNil(registration.Checker) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
 	descriptor := registration.Checker.Descriptor()
-	descriptor.RequiredInputs = slices.Clone(descriptor.RequiredInputs)
 	descriptor.Descriptor = descriptor.Clone()
 	options := slices.Clone(registration.Options)
 	if descriptor.Name == "" {
@@ -83,7 +84,7 @@ func Prepare(registration checkinputs.Registration, available []checkinputs.Inpu
 // PrepareForwarding admits a transparent adapter's implementation through the
 // same executor. Runtime errors use their existing text so an enclosing
 // invocation can add its own analyzer context exactly once.
-func PrepareForwarding(registration checkinputs.Registration, available []checkinputs.InputKind) (PreparedRegistration, error) {
+func PrepareForwarding(registration checkinputs.Registration, available []rulemeta.InputKind) (PreparedRegistration, error) {
 	prepared, err := Prepare(registration, available)
 	if err != nil {
 		return PreparedRegistration{}, err
@@ -92,16 +93,16 @@ func PrepareForwarding(registration checkinputs.Registration, available []checki
 	return prepared, nil
 }
 
-func supportedInputKind(kind checkinputs.InputKind) bool {
+func supportedInputKind(kind rulemeta.InputKind) bool {
 	switch kind {
-	case checkinputs.Source, checkinputs.Scripts, checkinputs.Mappings, checkinputs.Invocations, checkinputs.Execution, checkinputs.Dependencies:
+	case rulemeta.Source, rulemeta.Scripts, rulemeta.Mappings, rulemeta.Invocations, rulemeta.Execution, rulemeta.Dependencies:
 		return true
 	default:
 		return false
 	}
 }
 
-func validateAvailableInputs(available []checkinputs.InputKind) ([]checkinputs.InputKind, error) {
+func validateAvailableInputs(available []rulemeta.InputKind) ([]rulemeta.InputKind, error) {
 	inputKinds := slices.Clone(available)
 	slices.Sort(inputKinds)
 	for i, kind := range inputKinds {

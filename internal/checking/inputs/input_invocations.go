@@ -3,16 +3,18 @@ package inputs
 import (
 	"slices"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // ValidateInvocations checks supplied facts against the captured occurrence graph.
 func (input Input) ValidateInvocations() error {
-	available := slices.Contains(input.AvailableInputs, Invocations)
+	available := slices.Contains(input.AvailableInputs, rulemeta.Invocations)
 	if available != input.CallGraph.Valid() {
 		return invalidGraph("invocations availability disagrees with graph presence")
 	}
-	textsAvailable := slices.Contains(input.AvailableInputs, Scripts)
+	textsAvailable := slices.Contains(input.AvailableInputs, rulemeta.Scripts)
 	if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) > 0 && !textsAvailable {
 		return invalidGraph("script text supplied without the scripts input")
 	}

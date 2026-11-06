@@ -14,7 +14,7 @@ import (
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -71,7 +71,7 @@ type analysisSession struct {
 
 // check dispatches the two document languages at the application input boundary.
 func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config, provenance repoconfig.Provenance,
-	processes *hostprocess.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
+	processes *hostprocess.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rulemeta.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, errors.New("analysis requires result-owned source captures")
@@ -90,7 +90,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Snapsh
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *repoconfig.Config, provenance repoconfig.Provenance, processes *hostprocess.ProcessPool,
-	actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
+	actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rulemeta.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
@@ -249,7 +249,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, settings *ruleConfigurations, provenance repoconfig.Provenance, processes *hostprocess.ProcessPool,
-	actions *actionlocal.Cache, workflows *calls.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
+	actions *actionlocal.Cache, workflows *calls.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
 ) (result composites.Result, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -341,8 +341,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader, Config: cfg,
 		ConfigProvenance: provenance,
 		ConfigForFile:    settings.action,
-		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[checkinputs.Scripts] || requires[checkinputs.Invocations] || requires[checkinputs.Execution],
-		ResolveExecution: selected.resolveExecution || requires[checkinputs.Execution], Join: join, Debug: s.debugWriter(),
+		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[rulemeta.Scripts] || requires[rulemeta.Invocations] || requires[rulemeta.Execution],
+		ResolveExecution: selected.resolveExecution || requires[rulemeta.Execution], Join: join, Debug: s.debugWriter(),
 	}
 	if action {
 		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
