@@ -2,6 +2,7 @@
 package selection
 
 import (
+	"fmt"
 	"io"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
@@ -18,7 +19,7 @@ type Selection struct {
 	ScriptInfo []rule.Descriptor
 }
 
-func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool) Selection {
+func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool) (Selection, error) {
 	inputs.Rules = ruleSet
 	var selected Selection
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
@@ -28,10 +29,18 @@ func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool
 		if descriptor.Enabled != nil && !descriptor.Enabled(inputs) {
 			continue
 		}
+		prepared := inputs
+		if descriptor.Prepare != nil {
+			var err error
+			prepared, err = descriptor.Prepare(inputs)
+			if err != nil {
+				return selected, fmt.Errorf("prepare %s inputs: %w", descriptor.Name, err)
+			}
+		}
 		if descriptor.Build != nil {
-			r := descriptor.Build(inputs)
+			r := descriptor.Build(prepared)
 			if consumer, ok := r.(interface{ SetRepository(repository.Snapshot) }); ok {
-				consumer.SetRepository(inputs.Repository)
+				consumer.SetRepository(prepared.Repository)
 			}
 			selected.Rules = append(selected.Rules, r)
 		}
@@ -40,7 +49,7 @@ func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool
 			selected.ScriptInfo = append(selected.ScriptInfo, descriptor.Descriptor)
 		}
 	}
-	return selected
+	return selected, nil
 }
 
 // ConfigureRules binds invocation configuration and debug output after rule interception.

@@ -101,7 +101,7 @@ required-permissions adapters.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.
-Checks of expressions, action metadata, workflow run names,
+Checks of expressions, action metadata,
 missing action metadata, executable bits and container runners use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
 alone does not complete that work. Plugin checks do not implement host visitor callbacks.
@@ -142,6 +142,12 @@ and workflow-name filter grammar. The workflow-run-names rule produces findings
 under `internal/checking/rules/correctness/workflow-run-names`; the input loader
 does not produce lint diagnostics. Incomplete inventories cannot prove that a
 producer is absent or that filters exclude every producer.
+
+Check registrations can prepare inputs before constructing a check. Preparation
+runs after applicability checks, and failures preserve their error cause through
+the operation-failure path. Workflow-name preparation skips disabled checks and
+sources without workflow-run filters. Its rule callback receives an inventory
+and cannot load more repository files.
 
 `actionlint fix` previews revision-bound edits; `--apply` writes and reanalyzes them.
 `actionlint lsp` uses versioned buffers, UTF-16 positions, cancellation, stale-publication
