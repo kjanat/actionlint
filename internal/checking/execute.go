@@ -299,6 +299,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			}
 		}
 	}()
+	canonicalWorkingDir, err := captures.CanonicalIdentity(lifetime, request.WorkingDir)
+	if err != nil {
+		return nil, err
+	}
 	snapshots, err := parsing.NewSourceSnapshots(captures)
 	if err != nil {
 		return nil, err
@@ -505,7 +509,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		additionalRules = append(additionalRules, registration.Descriptor.Name)
 	}
 	addUnusedSuppressionFixes(result.files, (policy.Processor{RuleSet: ConfigurationRules()}).SuppressionRules(additionalRules...))
-	err = result.revalidateCaptures(captures, rows, session.workingDir, err)
+	err = result.revalidateCaptures(captures, rows, filepath.FromSlash(canonicalWorkingDir), err)
 	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
 			return order

@@ -10,7 +10,11 @@ import (
 )
 
 func TestEditorMemorySourcesReadClosedDependencies(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "does-not-exist")
+	directory, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(directory, "does-not-exist")
 	workflow := filepath.Join(root, ".github", "workflows", "test.yml")
 	metadata := filepath.Join(root, "local", "action.yml")
 	var reads []string
