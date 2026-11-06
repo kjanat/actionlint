@@ -19,6 +19,20 @@ func diagnosticLabel(d report.DiagnosticCount) string {
 
 // WriteSummaryDetails writes compact counts without repeating diagnostic messages.
 func WriteSummaryDetails(out io.Writer, s report.CheckSummary) error {
+	if len(s.IncompleteChecks) > 0 {
+		if _, err := fmt.Fprintln(out, "\nIncomplete checks:"); err != nil {
+			return err
+		}
+		for _, check := range s.IncompleteChecks {
+			label := terminalText(string(check.Source.Document))
+			if check.Rule != "" {
+				label += " [" + terminalText(check.Rule) + "]"
+			}
+			if _, err := fmt.Fprintf(out, "  %s: %s\n", label, terminalText(check.Reason)); err != nil {
+				return err
+			}
+		}
+	}
 	if len(s.ByFile) > 0 {
 		if _, err := fmt.Fprintln(out, "\nFiles:"); err != nil {
 			return err

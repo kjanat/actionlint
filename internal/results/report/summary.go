@@ -3,16 +3,16 @@ package report
 import (
 	"cmp"
 	"slices"
-
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// CheckSummary counts selected inputs and admitted, unsuppressed diagnostics.
+// CheckSummary counts selected inputs and admitted, unsuppressed diagnostics,
+// and identifies checks that could not finish.
 type CheckSummary struct {
-	Files        int                `json:"files"`
-	Findings     int                `json:"findings"`
-	ByFile       []FileFindingCount `json:"by_file,omitempty"`
-	ByDiagnostic []DiagnosticCount  `json:"by_diagnostic,omitempty"`
+	IncompleteChecks []IncompleteCheck  `json:"incomplete_checks,omitempty"`
+	Files            int                `json:"files"`
+	Findings         int                `json:"findings"`
+	ByFile           []FileFindingCount `json:"by_file,omitempty"`
+	ByDiagnostic     []DiagnosticCount  `json:"by_diagnostic,omitempty"`
 }
 
 // FileFindingCount counts findings at their displayed source path.
@@ -28,14 +28,14 @@ type DiagnosticCount struct {
 	Count int    `json:"count"`
 }
 
-// NewCheckSummary groups actual findings, independently of the number of
-// selected files. A finding can point into a referenced action or script.
-func NewCheckSummary(files int, diagnostics []results.Diagnostic) CheckSummary {
-	summary := CheckSummary{Files: files, Findings: len(diagnostics)}
+// NewCheckSummary groups findings and copies incomplete-check records. A finding
+// can point into a referenced action or script rather than a selected file.
+func NewCheckSummary(analysis Analysis) CheckSummary {
+	summary := CheckSummary{Files: analysis.FileCount, Findings: len(analysis.Diagnostics), IncompleteChecks: slices.Clone(analysis.IncompleteChecks)}
 	byFile := make(map[string]int)
 	type diagnosticKey struct{ rule, code string }
 	byDiagnostic := make(map[diagnosticKey]int)
-	for _, d := range diagnostics {
+	for _, d := range analysis.Diagnostics {
 		byFile[d.Path]++
 		code := d.Code
 		if code == d.Rule {
