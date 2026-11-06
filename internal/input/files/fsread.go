@@ -1,5 +1,5 @@
 // Package files is the only filesystem reader for analysis code. A Reader
-// records every path whose content or listing it returned.
+// records every path whose content, existence or listing it returned.
 package files
 
 import (
@@ -26,21 +26,47 @@ func ProbeDir(path string) ([]fs.DirEntry, error) {
 type Reader struct {
 	ctx      context.Context
 	contents Contents
+	exists   func(string) error
 	record   func(path string)
 }
 
 func New(ctx context.Context, contents Contents, record func(path string)) *Reader {
+	exists := func(path string) error {
+		_, err := os.Stat(path)
+		return err
+	}
 	if contents == nil {
 		contents = Disk
+	} else {
+		provider := contents
+		exists = func(path string) error {
+			_, err := provider(path)
+			return err
+		}
 	}
 	if record == nil {
 		record = func(string) {}
 	}
-	return &Reader{ctx: ctx, contents: contents, record: record}
+	return &Reader{ctx: ctx, contents: contents, exists: exists, record: record}
 }
 
 func (r *Reader) Mapped(name func(path string) string) *Reader {
-	return &Reader{ctx: r.ctx, contents: r.contents, record: func(path string) { r.record(name(path)) }}
+	return &Reader{ctx: r.ctx, contents: r.contents, exists: r.exists, record: func(path string) { r.record(name(path)) }}
+}
+
+// PathExists checks the configured provider and records both present and missing
+// paths. Disk readers inspect metadata; content providers can establish existence
+// by reading, including an empty file. Other failures do not establish absence.
+func (r *Reader) PathExists(path string) (bool, error) {
+	if err := r.ctx.Err(); err != nil {
+		return false, err
+	}
+	err := r.exists(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return false, err
+	}
+	r.record(path)
+	return err == nil, nil
 }
 
 func (r *Reader) Record(path string) {

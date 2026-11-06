@@ -200,6 +200,28 @@ test('closed action metadata is read through the virtual workspace host', async 
 	expect(await page.evaluate(() => window.browserSession?.reads)).toContain(`${root}/local/action.yml`);
 });
 
+test('JavaScript action entry files are checked through the virtual workspace host', async ({ page }) => {
+	const root = 'vscode-vfs://github/owner/repository';
+	const entry = `${root}/local/index.js`;
+	await start(page, root, {
+		[`${root}/local/action.yml`]: 'name: Local\ndescription: Fixture\nruns: {using: node24, main: index.js}\n',
+		[entry]: 'export {};\n',
+	});
+	const workflow = 'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n';
+	expect(await check(page, workflow)).toEqual([]);
+	expect(await page.evaluate(() => window.browserSession?.reads)).toContain(entry);
+	await page.evaluate(uri => {
+		const session = window.browserSession;
+		if (!session) throw new Error('The browser session was not started');
+		delete session.files[uri];
+	}, entry);
+	const missing = await check(page, workflow);
+	expect(missing.some(diagnostic => {
+		const message = typeof diagnostic.message === 'string' ? diagnostic.message : diagnostic.message.value;
+		return message.includes('index.js') && message.includes('does not exist');
+	})).toBe(true);
+});
+
 test('reusable workflow inputs and permission ceilings use virtual workspace metadata', async ({ page }) => {
 	const root = 'vscode-vfs://github/owner/repository';
 	const callee = `${root}/.github/workflows/callee.yml`;

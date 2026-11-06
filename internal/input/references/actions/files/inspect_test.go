@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 )
@@ -23,7 +24,7 @@ func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
 	if err := os.WriteFile(path, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	facts, err := actionfiles.Inspect(t.Context(), meta)
+	facts, err := actionfiles.Inspect(t.Context(), meta, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,17 @@ func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := actionfiles.Inspect(ctx, meta); !errors.Is(err, context.Canceled) {
+	if _, err := actionfiles.Inspect(ctx, meta, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation lost: %v", err)
+	}
+}
+
+func TestExecutionFileSharedByEntrypointsIsReadOnce(t *testing.T) {
+	meta := &actionmeta.Metadata{Directory: t.TempDir(), Runs: actionmeta.Runs{Using: "node24", Main: "shared.js", Pre: "shared.js", Post: "shared.js"}}
+	reads := 0
+	reader := inputfiles.New(t.Context(), func(string) ([]byte, error) { reads++; return nil, nil }, nil)
+	facts, err := actionfiles.Inspect(t.Context(), meta, reader)
+	if err != nil || reads != 1 || facts.Lookup("shared.js") != actionmeta.FilePresent {
+		t.Fatalf("entrypoint acquisition repeated or lost: reads=%d error=%v", reads, err)
 	}
 }
