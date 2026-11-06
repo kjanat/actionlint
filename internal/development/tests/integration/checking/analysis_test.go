@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -26,7 +28,7 @@ jobs:
 type scriptAnalyzer struct{ failure error }
 
 func (scriptAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts}}
+	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
 func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

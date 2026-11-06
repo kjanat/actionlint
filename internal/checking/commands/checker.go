@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -18,7 +19,8 @@ type Checker struct{}
 
 // Descriptor names the rule and the facts it consumes.
 func (Checker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "deprecated-commands", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations}}
+	declaration := correctness.DeprecatedCommandsDeclaration()
+	return checkinputs.Descriptor{Descriptor: declaration.Clone(), Scope: declaration.Scope, SupportsActions: declaration.SupportsActions}
 }
 
 // CheckDocument maps each command to its declaring document. A command whose text

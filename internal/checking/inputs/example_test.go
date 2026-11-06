@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -14,7 +16,7 @@ import (
 type sudoAnalyzer struct{}
 
 func (sudoAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts}}
+	return checkinputs.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
 func (sudoAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

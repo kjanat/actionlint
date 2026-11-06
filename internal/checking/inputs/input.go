@@ -7,31 +7,18 @@ import (
 	"encoding/json"
 	"io/fs"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// InputKind identifies shared information requested by an analyzer.
-type InputKind string
-
-const (
-	Source       InputKind = "source"
-	Scripts      InputKind = "scripts"
-	Mappings     InputKind = "mappings"
-	Invocations  InputKind = "invocations"
-	Execution    InputKind = "execution"
-	Dependencies InputKind = "dependencies"
-)
-
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
-	rule.Descriptor
-	Scope           rule.ConfigurationScope
+	rulemeta.Descriptor
+	Scope           rulemeta.ConfigurationScope
 	SupportsActions bool
-	RequiredInputs  []InputKind
 }
 
 // Checker completes all work before returning. The host may call CheckDocument
@@ -66,7 +53,7 @@ type Input struct {
 	Content         string
 	Kind            string
 	ParseStatus     string
-	AvailableInputs []InputKind
+	AvailableInputs []rulemeta.InputKind
 	Options         json.RawMessage
 	Scripts         []Script
 	Invoked         []Script

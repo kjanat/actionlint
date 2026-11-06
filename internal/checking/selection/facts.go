@@ -3,6 +3,7 @@ package selection
 import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
 
 func RuleNames(registrations []checkinputs.Registration) []string {
@@ -15,8 +16,8 @@ func RuleNames(registrations []checkinputs.Registration) []string {
 	return names
 }
 
-func RequiredFacts(registrations []checkinputs.Registration) map[checkinputs.InputKind]bool {
-	facts := map[checkinputs.InputKind]bool{}
+func RequiredFacts(registrations []checkinputs.Registration) map[rulemeta.InputKind]bool {
+	facts := map[rulemeta.InputKind]bool{}
 	for _, registration := range registrations {
 		if validation.IsNil(registration.Checker) {
 			continue

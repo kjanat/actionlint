@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -130,7 +132,7 @@ func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
 	}
 }
 
-func inputKindNames(facts []checkinputs.InputKind) []string {
+func inputKindNames(facts []rulemeta.InputKind) []string {
 	names := make([]string, len(facts))
 	for i, fact := range facts {
 		names[i] = string(fact)

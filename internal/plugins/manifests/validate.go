@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -51,7 +51,7 @@ func Parse(data []byte) (Manifest, error) {
 	var wire struct {
 		Manifest
 		Rule struct {
-			rule.Descriptor
+			rulemeta.Descriptor
 			LegacyFixAvailability string `json:"fix_availability,omitempty"`
 		} `json:"rule"`
 	}
@@ -68,12 +68,12 @@ func Parse(data []byte) (Manifest, error) {
 
 // validate checks what the schema cannot express.
 func validate(m Manifest) error {
-	if !rule.ValidCategory(m.Rule.Category) {
-		return fmt.Errorf("rule %q has invalid category %q; expected one of %s", m.Rule.Name, m.Rule.Category, strings.Join(rule.Categories(), ", "))
+	if !rulemeta.ValidCategory(m.Rule.Category) {
+		return fmt.Errorf("rule %q has invalid category %q; expected one of %s", m.Rule.Name, m.Rule.Category, strings.Join(rulemeta.Categories(), ", "))
 	}
-	seenFacts := map[checkinputs.InputKind]bool{}
+	seenFacts := map[rulemeta.InputKind]bool{}
 	for _, fact := range m.RequiredInputs {
-		if fact != checkinputs.Source && fact != checkinputs.Dependencies || seenFacts[fact] {
+		if fact != rulemeta.Source && fact != rulemeta.Dependencies || seenFacts[fact] {
 			return fmt.Errorf("unsupported or duplicate document input kind %q", fact)
 		}
 		seenFacts[fact] = true

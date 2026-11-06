@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -19,7 +21,7 @@ import (
 type suppressionAnalyzer struct{ name string }
 
 func (a suppressionAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts}}
+	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
 }
 
 func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

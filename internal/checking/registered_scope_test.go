@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -13,7 +13,7 @@ import (
 type sourceScopedChecker struct{}
 
 func (sourceScopedChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "source-check", Category: "correctness", Maturity: "stable", Recommended: true, Scope: rule.SourceConfiguration, SupportsActions: true, RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations}}
+	return checkinputs.Descriptor{Name: "source-check", Category: "correctness", Maturity: "stable", Recommended: true, Scope: rulemeta.SourceConfiguration, SupportsActions: true, RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}}
 }
 
 func (sourceScopedChecker) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

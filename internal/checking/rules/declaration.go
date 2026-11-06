@@ -6,6 +6,18 @@ import (
 	"slices"
 )
 
+// InputKind identifies shared information a check requires from the host.
+type InputKind string
+
+const (
+	Source       InputKind = "source"
+	Scripts      InputKind = "scripts"
+	Mappings     InputKind = "mappings"
+	Invocations  InputKind = "invocations"
+	Execution    InputKind = "execution"
+	Dependencies InputKind = "dependencies"
+)
+
 // ConfigurationScope selects which declaration supplies a rule's configuration.
 type ConfigurationScope uint8
 
@@ -42,6 +54,9 @@ type Descriptor struct {
 	DocumentationURL string          `json:"documentation_url"`
 	OptionsSchema    json.RawMessage `json:"options_schema,omitempty"`
 	Examples         []Example       `json:"examples,omitempty"`
+	// RequiredInputs names host facts needed before execution. Plugin protocols
+	// serialize these through their own request and descriptor definitions.
+	RequiredInputs []InputKind `json:"-"`
 }
 
 type Example struct {
@@ -55,5 +70,6 @@ func (d Descriptor) Clone() Descriptor {
 	d.OptionsSchema = slices.Clone(d.OptionsSchema)
 	d.Examples = slices.Clone(d.Examples)
 	d.Aliases = slices.Clone(d.Aliases)
+	d.RequiredInputs = slices.Clone(d.RequiredInputs)
 	return d
 }

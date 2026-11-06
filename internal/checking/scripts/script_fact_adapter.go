@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -21,7 +23,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if !batch.Valid() {
 		return nil, ErrInvalidBatch
 	}
-	available := []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations}
+	available := []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}
 	prepared, err := checkexecutor.Prepare(checkinputs.Registration{Checker: adapter.Analyzer, Options: adapter.Options}, available)
 	if err != nil {
 		return nil, err

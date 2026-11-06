@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
@@ -35,7 +37,7 @@ import (
 type metadataAdmissionAnalyzer struct{ inspect func() error }
 
 func (metadataAdmissionAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Source}}
+	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
 func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {

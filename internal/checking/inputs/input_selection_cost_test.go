@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
@@ -25,7 +27,7 @@ func selectedGraphInput(tb testing.TB, count int) Input {
 	}
 	selected := records.Scripts[0]
 	return Input{
-		Reference: entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: graph,
+		Reference: entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
 		SelectedScripts: []OccurrenceID{selected.ID}, Scripts: []Script{{Reference: selected.Declaration, Occurrence: selected}},
 	}
 }

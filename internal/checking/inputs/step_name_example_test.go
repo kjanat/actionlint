@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowmodel "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -18,7 +20,7 @@ import (
 type stepNameAnalyzer struct{}
 
 func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []checkinputs.InputKind{checkinputs.Source}}
+	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
 func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

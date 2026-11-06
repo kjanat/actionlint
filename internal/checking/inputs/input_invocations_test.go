@@ -5,14 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 	for name, change := range map[string]func(*Input){
 		"graph absent":             func(input *Input) { input.CallGraph = CallGraph{} },
-		"invocations input absent": func(input *Input) { input.AvailableInputs = []InputKind{Scripts} },
-		"scripts input absent":     func(input *Input) { input.AvailableInputs = []InputKind{Invocations} },
+		"invocations input absent": func(input *Input) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Scripts} },
+		"scripts input absent":     func(input *Input) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Invocations} },
 		"entry reference":          func(input *Input) { input.Reference.Node = "another" },
 		"unknown occurrence":       func(input *Input) { input.Invoked[0].Occurrence.ID = "unknown" },
 		"reference":                func(input *Input) { input.Invoked[0].Reference.Revision = "stale" },
@@ -25,7 +27,7 @@ func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			graph := graphFixture(t)
 			occurrence := graph.clone().Scripts[0]
-			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Scripts, Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
+			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
 			if err := input.ValidateInvocations(); err != nil {
 				t.Fatal(err)
 			}
@@ -61,13 +63,13 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 		{"unknown selection", []OccurrenceID{"unknown"}, nil, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
+			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
 			if err := input.ValidateInvocations(); (err == nil) != test.valid {
 				t.Fatalf("valid=%v: %v", test.valid, err)
 			}
 		})
 	}
-	input := Input{Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations}, CallGraph: retainGraph(t, graph)}
+	input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations}, CallGraph: retainGraph(t, graph)}
 	if err := input.ValidateInvocations(); err != nil {
 		t.Fatalf("graph without collected text: %v", err)
 	}
@@ -85,9 +87,9 @@ func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, input := range []Input{
-				{AvailableInputs: []InputKind{Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
-				{AvailableInputs: []InputKind{Scripts}, Invoked: []Script{{Occurrence: occurrence}}},
-				{AvailableInputs: []InputKind{Scripts}, ActionInputs: []ActionInput{{Occurrence: occurrence}}},
+				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
+				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Invoked: []Script{{Occurrence: occurrence}}},
+				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, ActionInputs: []ActionInput{{Occurrence: occurrence}}},
 			} {
 				if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 					t.Fatalf("orphan occurrence accepted: %v", err)

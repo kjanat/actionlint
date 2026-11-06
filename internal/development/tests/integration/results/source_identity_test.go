@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -15,7 +17,7 @@ import (
 type identityCapture struct{ input checkinputs.Input }
 
 func (*identityCapture) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "identity-capture", Category: "correctness", Maturity: "stable", RequiredInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Scripts, checkinputs.Mappings, checkinputs.Dependencies}}
+	return checkinputs.Descriptor{Name: "identity-capture", Category: "correctness", Maturity: "stable", RequiredInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Mappings, rulemeta.Dependencies}}
 }
 
 func (c *identityCapture) CheckDocument(_ context.Context, input checkinputs.Input) ([]diagmodel.Diagnostic, error) {

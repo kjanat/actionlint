@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
@@ -28,7 +30,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	inputText := Script{Reference: actionInput.Declaration, Text: "input", Occurrence: actionInput}
 	valid := func() Input {
 		return Input{
-			Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: retainGraph(t, graph),
+			Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph),
 			Scripts: []Script{rootText}, Invoked: []Script{invokedText},
 			ActionInputs: []ActionInput{{Script: inputText, Site: ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 		}
@@ -75,7 +77,7 @@ func TestCollectedInvocationGraphCanHaveZeroScripts(t *testing.T) {
 	graph := graphFixture(t)
 	graph.Scripts = nil
 	input := Input{
-		Reference: graph.Entry.Reference, AvailableInputs: []InputKind{Invocations, Scripts}, CallGraph: retainGraph(t, graph),
+		Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph),
 		SelectedScripts: []OccurrenceID{},
 	}
 	if err := input.ValidateInvocations(); err != nil {

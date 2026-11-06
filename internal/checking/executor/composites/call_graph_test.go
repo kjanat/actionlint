@@ -5,7 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -27,7 +28,7 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !slices.Contains(input.AvailableInputs, checkinputs.Invocations) || slices.Contains(input.AvailableInputs, checkinputs.Scripts) != collect || !input.CallGraph.Valid() {
+		if !slices.Contains(input.AvailableInputs, rulemeta.Invocations) || slices.Contains(input.AvailableInputs, rulemeta.Scripts) != collect || !input.CallGraph.Valid() {
 			t.Fatalf("fact availability disagrees with collection: %+v", input.AvailableInputs)
 		}
 		graph := input.CallGraph.Export()
@@ -69,7 +70,7 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 					t.Fatalf("mismatched identity accepted: %v", err)
 				}
-				if input.Content != string(content) || input.Path != "ci.yml" || input.Reference != test.reference || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != checkinputs.Source || input.CallGraph.Valid() {
+				if input.Content != string(content) || input.Path != "ci.yml" || input.Reference != test.reference || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != rulemeta.Source || input.CallGraph.Valid() {
 					t.Fatalf("invalid graph did not retain source-only input: %+v", input)
 				}
 				return
@@ -95,11 +96,11 @@ func TestAnalyzerEmptyCollectedGraphAndUnavailableGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(input.AvailableInputs, checkinputs.Scripts) || !slices.Contains(input.AvailableInputs, checkinputs.Invocations) || !input.CallGraph.Valid() || input.CallGraph.ScriptCount() != 0 {
+	if !slices.Contains(input.AvailableInputs, rulemeta.Scripts) || !slices.Contains(input.AvailableInputs, rulemeta.Invocations) || !input.CallGraph.Valid() || input.CallGraph.ScriptCount() != 0 {
 		t.Fatal("empty collected graph was treated as unavailable")
 	}
 	input, err = CheckInput(Result{}, "bad.yml", "bad.yml", nil, parsing.Document{}, nil)
-	if err != nil || input.CallGraph.Valid() || slices.Contains(input.AvailableInputs, checkinputs.Invocations) {
+	if err != nil || input.CallGraph.Valid() || slices.Contains(input.AvailableInputs, rulemeta.Invocations) {
 		t.Fatalf("unavailable graph: %+v %v", input, err)
 	}
 }

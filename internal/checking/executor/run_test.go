@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -25,16 +27,16 @@ func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.Input
 
 func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 	failure := errors.New("incomplete")
-	input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []checkinputs.InputKind{checkinputs.Source, checkinputs.Mappings}, Mappings: []workflowfacts.Mapping{{Entries: []workflowfacts.Entry{{Name: "original"}}}}}
+	input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}, Mappings: []workflowfacts.Mapping{{Entries: []workflowfacts.Entry{{Name: "original"}}}}}
 	changed := make(chan struct{})
 	input.SourceRoots = []checkinputs.SourceRoot{{Host: "/source", Guest: "/workspace"}}
-	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []checkinputs.InputKind{checkinputs.Mappings}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
 		in.Mappings[0].Entries[0].Name = "changed"
 		in.SourceRoots[0].Guest = "/changed"
 		close(changed)
 		return []results.Diagnostic{{Message: "partial"}}, failure
 	}}
-	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []checkinputs.InputKind{checkinputs.Mappings}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Mappings}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
 		<-changed
 		if in.Mappings[0].Entries[0].Name != "original" {
 			t.Error("shared mutable facts")
@@ -57,8 +59,8 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 }
 
 func TestRunRequirementsAndCancellation(t *testing.T) {
-	for _, requirement := range []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations, checkinputs.Execution, "future"} {
-		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []checkinputs.InputKind{requirement}}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+	for _, requirement := range []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution, "future"} {
+		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []rulemeta.InputKind{requirement}}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
 			t.Error("ran without required facts")
 			return nil, nil
 		}}
@@ -95,20 +97,20 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 	if !exists {
 		t.Fatal("action input occurrence missing")
 	}
-	input := checkinputs.Input{Reference: graph.Entry().Reference, AvailableInputs: []checkinputs.InputKind{checkinputs.Scripts, checkinputs.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
+	input := checkinputs.Input{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
 		Reference: declaration,
 		Spans:     []scriptmodel.Span{{Line: 1, Start: 1, End: 8}}, Occurrence: occurrence,
 		Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
 	}}}
 	changed := make(chan struct{})
-	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
 		in.ActionInputs[0].Site.Language = "python"
 		in.ActionInputs[0].Spans[0].End = 99
 		in.ActionInputs[0].Occurrence.Ancestry[0] = "changed"
 		close(changed)
 		return nil, nil
 	}}
-	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []checkinputs.InputKind{checkinputs.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
 		<-changed
 		got := in.ActionInputs[0]
 		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence.Ancestry[0] != root {

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -28,7 +30,7 @@ func NewResolvedReferenceCheck(provider references.Resolver) *ResolvedReferenceC
 }
 
 func (*ResolvedReferenceCheck) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "remote-resolution", Description: "Resolve action and workflow references with an explicit provider", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", Help: "Review the provider's resolved commit before pinning this dependency.", RequiredInputs: []checkinputs.InputKind{checkinputs.Dependencies}}
+	return checkinputs.Descriptor{Name: "remote-resolution", Description: "Resolve action and workflow references with an explicit provider", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", Help: "Review the provider's resolved commit before pinning this dependency.", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}
 }
 
 func (a *ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -168,7 +170,7 @@ func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
 type cancellingEditorAnalyzer struct{ started chan struct{} }
 
 func (*cancellingEditorAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Source}}
+	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
 func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinputs.Input) ([]results.Diagnostic, error) {

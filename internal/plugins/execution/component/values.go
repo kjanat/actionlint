@@ -6,7 +6,7 @@ import (
 	"math"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -16,16 +16,16 @@ import (
 )
 
 // WIT enum order comes from the generated canonical contract, not a second table.
-var inputKinds = func() []checkinputs.InputKind {
-	facts := make([]checkinputs.InputKind, len(canonical_input_kind))
+var inputKinds = func() []rulemeta.InputKind {
+	facts := make([]rulemeta.InputKind, len(canonical_input_kind))
 	for i, name := range canonical_input_kind {
-		facts[i] = checkinputs.InputKind(name)
+		facts[i] = rulemeta.InputKind(name)
 	}
 	return facts
 }()
 
-var inputKindDiscriminants = func() map[checkinputs.InputKind]uint32 {
-	values := make(map[checkinputs.InputKind]uint32, len(inputKinds))
+var inputKindDiscriminants = func() map[rulemeta.InputKind]uint32 {
+	values := make(map[rulemeta.InputKind]uint32, len(inputKinds))
 	for i, fact := range inputKinds {
 		values[fact] = uint32(i)
 	}
@@ -62,7 +62,7 @@ func lowerPosition(p sourcepos.Position) *wacogo.ValRecord {
 	return wacogo.NewValRecord(field("line", lowerU32(p.Line)), field("column", lowerU32(p.Column)))
 }
 
-func lowerInputKinds(facts []checkinputs.InputKind) *wacogo.ValList {
+func lowerInputKinds(facts []rulemeta.InputKind) *wacogo.ValList {
 	values := make([]wacogo.Val, 0, len(facts))
 	for _, fact := range facts {
 		if discriminant, ok := inputKindDiscriminants[fact]; ok {
@@ -232,7 +232,7 @@ func liftDescriptor(v wacogo.Val) (checkinputs.Descriptor, error) {
 	if err != nil {
 		return checkinputs.Descriptor{}, err
 	}
-	descriptor := checkinputs.Descriptor{Descriptor: rulemetadata.
+	descriptor := checkinputs.Descriptor{Descriptor: rulemeta.
 		// The versioned analyzer ABI includes fix-availability. Ignore that legacy
 		// claim: only the fixes on a diagnostic describe edits this host can offer.
 		Descriptor{Name: name}}
@@ -267,7 +267,7 @@ func liftDescriptor(v wacogo.Val) (checkinputs.Descriptor, error) {
 		if err != nil {
 			return checkinputs.Descriptor{}, err
 		}
-		example := rulemetadata.Example{}
+		example := rulemeta.Example{}
 		for name, dest := range map[string]*string{"description": &example.Description, "before": &example.Before, "after": &example.After} {
 			value, err := liftString(record, name)
 			if err != nil {

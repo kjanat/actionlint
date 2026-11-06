@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"testing"
 
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -112,7 +114,7 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 type relatedAdmissionProbe struct{}
 
 func (relatedAdmissionProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "related-admission-probe", Category: "correctness", RequiredInputs: []checkinputs.InputKind{checkinputs.Source}}
+	return checkinputs.Descriptor{Name: "related-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
 }
 
 func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
