@@ -5,49 +5,34 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
-// ResolvedReferenceCheck reports dependencies that provider resolves to a commit the
-// reference does not already pin. It remembers the repository ID each
-// repository first resolved to and rejects later results with another ID.
-type ResolvedReferenceCheck struct {
-	provider      references.Resolver
-	mu            sync.Mutex
-	repositoryIDs map[string]uint64
-}
+// ResolvedReferenceCheck reports commit pins from captured resolver observations.
+// It does not resolve references or acquire repository data.
+type ResolvedReferenceCheck struct{}
 
-// NewResolvedReferenceCheck returns an analyzer that resolves dependencies through provider.
-func NewResolvedReferenceCheck(provider references.Resolver) *ResolvedReferenceCheck {
-	return &ResolvedReferenceCheck{provider: provider}
+func NewResolvedReferenceCheck() *ResolvedReferenceCheck {
+	return &ResolvedReferenceCheck{}
 }
 
 func (*ResolvedReferenceCheck) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "remote-resolution", Description: "Resolve action and workflow references with an explicit provider", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", Help: "Review the provider's resolved commit before pinning this dependency.", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}
+	return checkinputs.Descriptor{Name: "remote-resolution", Description: "Report available commit pins from resolved action and workflow references", Category: "security", Subcategory: "dependencies", Provider: "resolver", Maturity: "stable", Help: "Review the provider's resolved commit before pinning this dependency.", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}
 }
 
-func (a *ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (*ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
-	for _, dep := range input.Dependencies {
-		target, ok := outline.ParseReference(dep.Uses).(outline.RepositoryReference)
-		if !ok || target.HostSource != "default" {
-			continue
+	for _, result := range input.ResolvedDependencies {
+		if err := ctx.Err(); err != nil {
+			return findings, err
 		}
-		name := strings.TrimSuffix(dep.Uses, "@"+target.Ref)
-		ref := target.Ref
-		request := references.Request{Version: 1, Repository: target.Owner + "/" + target.Repo, Ref: ref, Kind: dep.Kind}
-		result, err := a.resolve(ctx, request)
-		if err != nil {
-			return findings, fmt.Errorf("resolve %s: %w", dep.Uses, err)
-		}
-		if result.Commit == "" || ref == result.Commit {
+		dep := result.Dependency
+		name := strings.TrimSuffix(dep.Uses, "@"+result.Ref)
+		if result.Commit == "" || result.Ref == result.Commit {
 			continue
 		}
 		reference := dep.Reference
@@ -58,27 +43,4 @@ func (a *ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checki
 		findings = append(findings, d)
 	}
 	return findings, nil
-}
-
-func (a *ResolvedReferenceCheck) resolve(ctx context.Context, request references.Request) (references.Result, error) {
-	repository := strings.ToLower(request.Repository)
-	a.mu.Lock()
-	request.ExpectedRepositoryID = a.repositoryIDs[repository]
-	a.mu.Unlock()
-	result, err := a.provider.Resolve(ctx, request)
-	if err != nil {
-		return result, err
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	// Another document may have established the identity while this lookup ran.
-	request.ExpectedRepositoryID = a.repositoryIDs[repository]
-	if err := references.ValidateResult(request, result); err != nil {
-		return result, err
-	}
-	if a.repositoryIDs == nil {
-		a.repositoryIDs = make(map[string]uint64)
-	}
-	a.repositoryIDs[repository] = result.RepositoryID
-	return result, nil
 }

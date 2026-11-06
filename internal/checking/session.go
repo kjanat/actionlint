@@ -90,7 +90,15 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		if factory, ok := options.Resolver.(references.SessionFactory); ok {
 			options.Resolver = factory.NewSession()
 		}
-		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: security.NewResolvedReferenceCheck(options.Resolver)})
+		resolutions := references.NewResolutionSession(options.Resolver)
+		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
+			Checker: security.NewResolvedReferenceCheck(),
+			Prepare: func(ctx context.Context, input checkinputs.Input) (checkinputs.Input, error) {
+				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
+				input.ResolvedDependencies = resolved
+				return input, err
+			},
+		})
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err

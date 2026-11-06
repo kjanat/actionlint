@@ -35,6 +35,9 @@ type Checker interface {
 type Registration struct {
 	Checker Checker
 	Options json.RawMessage
+	// Prepare acquires additional facts before checking. On failure it returns
+	// the usable partial input, so completed observations can still yield findings.
+	Prepare func(context.Context, Input) (Input, error)
 }
 
 // Input is one document and its shared analysis facts. Each analyzer receives
@@ -64,6 +67,9 @@ type Input struct {
 	SelectedScripts []OccurrenceID
 	Mappings        []workflowfacts.Mapping
 	Dependencies    []workflowfacts.Dependency
+	// ResolvedDependencies contains successful, validated resolver observations.
+	// Absence does not establish that an unresolved dependency is unavailable.
+	ResolvedDependencies []workflowfacts.ResolvedDependency
 	// Files grants read-only filesystems for this call. Nil grants no file access.
 	// Mount paths are absolute guest paths; filesystem directories must implement
 	// descriptor-relative read operations when used by a component host.

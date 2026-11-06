@@ -12,3 +12,12 @@ type Dependency struct {
 	Kind       string
 	Start, End sourcepos.Position
 }
+
+// ResolvedDependency binds a successful lookup to its captured declaration.
+// Commit and Tree identify different object kinds; a tree is not a commit pin.
+type ResolvedDependency struct {
+	Dependency               Dependency
+	Ref                      string
+	RepositoryID             uint64
+	Commit, Tree, ObservedAt string
+}

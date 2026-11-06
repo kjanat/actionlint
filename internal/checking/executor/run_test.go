@@ -77,6 +77,49 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 	}
 }
 
+func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
+	failure := errors.New("second lookup failed")
+	input := checkinputs.Input{
+		Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies},
+		Dependencies:         []workflowfacts.Dependency{{Uses: "original/repo@v1"}},
+		ResolvedDependencies: []workflowfacts.ResolvedDependency{{Commit: "original"}},
+	}
+	checker := testAnalyzer{checkinputs.Descriptor{Name: "prepared", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies}}, func(_ context.Context, supplied checkinputs.Input) ([]results.Diagnostic, error) {
+		if supplied.Dependencies[0].Uses != "prepared/repo@v1" || supplied.ResolvedDependencies[0].Commit != "resolved" {
+			t.Fatal("checker ran without prepared facts")
+		}
+		return []results.Diagnostic{{Message: "resolved first dependency"}}, nil
+	}}
+	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, supplied checkinputs.Input) (checkinputs.Input, error) {
+		supplied.Dependencies[0].Uses = "prepared/repo@v1"
+		supplied.ResolvedDependencies[0].Commit = "resolved"
+		return supplied, failure
+	}}
+	findings, err := Run(t.Context(), input, []checkinputs.Registration{registration})
+	if !errors.Is(err, failure) || len(findings) != 1 {
+		t.Fatalf("partial preparation lost findings: %v %v", findings, err)
+	}
+	if input.Dependencies[0].Uses != "original/repo@v1" || input.ResolvedDependencies[0].Commit != "original" {
+		t.Fatal("preparation changed caller-owned facts")
+	}
+}
+
+func TestRunCancellationDuringPreparationDoesNotStartChecker(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	checker := testAnalyzer{checkinputs.Descriptor{Name: "cancelled"}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
+		t.Fatal("checker started after preparation was canceled")
+		return nil, nil
+	}}
+	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, input checkinputs.Input) (checkinputs.Input, error) {
+		cancel()
+		return input, nil
+	}}
+	if _, err := Run(ctx, checkinputs.Input{}, []checkinputs.Registration{registration}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation changed: %v", err)
+	}
+}
+
 func TestRunIsolatesActionInputFacts(t *testing.T) {
 	root, callID, scriptID := checkinputs.OccurrenceID(strings.Repeat("1", 64)), checkinputs.OccurrenceID(strings.Repeat("2", 64)), checkinputs.OccurrenceID(strings.Repeat("3", 64))
 	declaration := source.Reference{Document: "action.yml", Revision: "r", Node: "script"}
