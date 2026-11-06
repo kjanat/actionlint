@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 
+	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -38,18 +40,18 @@ func CheckCeiling(call declaration.WorkflowCallView, granted declaration.CacheMo
 		return nil
 	}
 	r := ceilingCheck{cache: lookup, debug: debug}
-	r.check(position(call.Uses()), spec, call.Uses().Value(), grant(granted), metadata, map[cacheModeVisit]bool{})
+	r.check(position(call.Uses()), spec, call.Uses().Value(), cachemodel.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
 	return r.findings
 }
 
-func (r *ceilingCheck) check(pos workflowlang.Pos, spec, sourceSpec string, granted modeGrant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
-	have, known := granted.capabilities()
-	if granted.present && !known {
+func (r *ceilingCheck) check(pos workflowlang.Pos, spec, sourceSpec string, granted cachemodel.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
+	have, known := granted.Capabilities()
+	if granted.Present() && !known {
 		return
 	}
 	visit := cacheModeVisit{spec: spec}
-	if granted.present {
-		visit.mode = granted.kind
+	if granted.Present() {
+		visit.mode = granted.Kind()
 	}
 	if checked[visit] {
 		return
@@ -58,13 +60,13 @@ func (r *ceilingCheck) check(pos workflowlang.Pos, spec, sourceSpec string, gran
 
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		access := m.JobCacheAccess[id]
-		mode := effectiveGrant(granted, metadataGrant(access.Mode))
-		want, valid := mode.capabilities()
-		if mode.present && !valid {
+		mode := granted.Override(cachemodel.FromMetadata(access.Mode))
+		want, valid := mode.Capabilities()
+		if mode.Present() && !valid {
 			continue
 		}
 		if known && valid && want&^have != 0 {
-			r.Errorf(pos, "nested job %q of %q requests cache-mode %q but the calling job allows %q", id, sourceSpec, mode.kind.String(), granted.kind.String())
+			r.Errorf(pos, "nested job %q of %q requests cache-mode %q but the calling job allows %q", id, sourceSpec, mode.Kind().String(), granted.Kind().String())
 			continue
 		}
 		if access.Uses == "" {

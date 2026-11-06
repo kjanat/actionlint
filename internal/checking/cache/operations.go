@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -38,25 +40,25 @@ func CheckCallOperations(call declaration.WorkflowCallView, granted declaration.
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(position(call.Uses()), call.Uses().Value(), grant(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(position(call.Uses()), call.Uses().Value(), cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec string, granted modeGrant, checked map[cacheModeVisit]bool) {
+func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec string, granted cachemodel.Grant, checked map[cacheModeVisit]bool) {
 	spec, local := references.LocalWorkflow(sourceSpec)
 	if !local {
 		return
 	}
-	have, known := granted.capabilities()
-	if granted.present && !known {
+	have, known := granted.Capabilities()
+	if granted.Present() && !known {
 		return
 	}
 	visit := cacheModeVisit{spec: spec}
-	if granted.present {
-		visit.mode = granted.kind
+	if granted.Present() {
+		visit.mode = granted.Kind()
 	}
 	if checked[visit] {
 		return
@@ -69,22 +71,22 @@ func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec st
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		own := metadataGrant(job.Mode)
-		mode := effectiveGrant(granted, own)
-		want, valid := mode.capabilities()
-		if mode.present && !valid || known && valid && want&^have != 0 {
+		own := cachemodel.FromMetadata(job.Mode)
+		mode := granted.Override(own)
+		want, valid := mode.Capabilities()
+		if mode.Present() && !valid || known && valid && want&^have != 0 {
 			// Invalid declarations and ceiling mismatches have their own diagnostics.
 			continue
 		}
-		if !own.present && known {
+		if !own.Present() && known {
 			for _, name := range job.Operations {
 				if operation := disabledCacheOperation(name, have); operation != "" {
-					r.Errorf(pos, "%q in job %q of %q cannot %s with caller-imposed cache-mode %q. GitHub skips the operation; select an action and mode that match the intended cache access, or document a reviewed exception at this call", name, id, sourceSpec, operation, granted.kind.String())
+					r.Errorf(pos, "%q in job %q of %q cannot %s with caller-imposed cache-mode %q. GitHub skips the operation; select an action and mode that match the intended cache access, or document a reviewed exception at this call", name, id, sourceSpec, operation, granted.Kind().String())
 				}
 			}
 		}
 		// An explicit intermediate mode owns its downstream operation diagnostics.
-		if job.Uses != "" && !own.present {
+		if job.Uses != "" && !own.Present() {
 			r.checkCallOperations(pos, job.SourceUses, mode, checked)
 		}
 	}
@@ -96,7 +98,7 @@ func CheckStep(step declaration.StepView, mode declaration.CacheModeView) []resu
 	if !ok || !action.Uses().Present() {
 		return nil
 	}
-	access, valid := grant(mode).capabilities()
+	access, valid := cachemodel.FromDeclaration(mode).Capabilities()
 	if !valid {
 		return nil
 	}

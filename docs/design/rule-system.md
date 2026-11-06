@@ -101,7 +101,8 @@ required-permissions adapters.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.
-Expression, action-metadata and cache checks use visitor implementations.
+Checks of expressions, action metadata, workflow calls, workflow run names,
+missing action metadata, executable bits and container runners use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
 alone does not complete that work. Plugin checks do not implement host visitor callbacks.
 
@@ -120,6 +121,13 @@ remove rows. The expression checker supplies inferred row element types and
 reports expression problems. Recursive value-to-type conversion belongs to
 `internal/model/contexts/values`, which uses inferred types only for unknown
 parts and does not change evaluation state.
+
+`internal/model/workflows/cache` owns cache-grant inheritance and capability
+values. Cache rules receive the captured workflow before their job and step
+callbacks run. Shared write grants have a reporting job assigned in source order;
+the assignment includes all reachable restricted events and does not change when
+callbacks run in another order. Step checks read their declaring job's grant,
+not a grant stored by an earlier job callback.
 
 `actionlint fix` previews revision-bound edits; `--apply` writes and reanalyzes them.
 `actionlint lsp` uses versioned buffers, UTF-16 positions, cancellation, stale-publication

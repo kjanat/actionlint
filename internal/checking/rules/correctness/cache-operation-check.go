@@ -2,43 +2,32 @@ package correctness
 
 import (
 	cachepolicy "actionlint.kjanat.dev/v2/internal/checking/cache"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 )
 
-// ruleCacheOperation adapts effective cache access to job and step checks.
-type ruleCacheOperation struct {
-	workflowvisit.Base
-	workflow, job workflowdecl.CacheModeView
-	cache         *calls.Cache
-}
-
-// NewRuleCacheOperation checks step cache access and reusable calls when cache is supplied.
-func NewRuleCacheOperation(cache *calls.Cache) workflowvisit.Rule {
-	descriptor := CacheOperationDeclaration()
-	return &ruleCacheOperation{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), cache: cache}
-}
-
-func (r *ruleCacheOperation) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
-	r.workflow = w.CacheMode()
-	return nil
-}
-
-func (r *ruleCacheOperation) VisitJobPre(job workflowdecl.JobView) error {
-	r.job = cachepolicy.EffectiveMode(r.workflow, job.CacheMode())
-	if r.cache != nil {
-		for _, d := range cachepolicy.CheckCallOperations(job.WorkflowCall(), r.job, r.cache) {
-			r.Report(findingmodel.FromDiagnostic(d))
-		}
+// CacheOperationCheck checks action operations and reusable calls against their
+// effective cache grant. Each callback derives its job mode from its own input.
+func CacheOperationCheck(workflow workflowdecl.WorkflowView, lookup *calls.Cache) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{
+		Declaration: CacheOperationDeclaration(),
+		Job: func(job workflowdecl.JobView) []reporting.Finding {
+			if lookup == nil {
+				return nil
+			}
+			mode := cachemodel.EffectiveMode(workflow.CacheMode(), job.CacheMode())
+			return reporting.FromDiagnostics(cachepolicy.CheckCallOperations(job.WorkflowCall(), mode, lookup))
+		},
+		Step: func(step workflowdecl.StepView) []reporting.Finding {
+			mode := cachemodel.EffectiveMode(workflow.CacheMode(), step.Job().CacheMode())
+			findings := reporting.FromDiagnostics(cachepolicy.CheckStep(step, mode))
+			for i := range findings {
+				findings[i].Step = step
+			}
+			return findings
+		},
 	}
-	return nil
-}
-
-func (r *ruleCacheOperation) VisitStep(step workflowdecl.StepView) error {
-	for _, d := range cachepolicy.CheckStep(step, r.job) {
-		r.Report(findingmodel.FromDiagnostic(d))
-	}
-	return nil
 }
