@@ -23,7 +23,7 @@ type ruleExecutableBit struct {
 	findings workflowvisit.Findings
 }
 
-// NewRuleExecutableBit checks script executable bits using the supplied file and Git-index readers.
+// NewRuleExecutableBit checks script executable bits using prepared Git-index facts.
 func NewRuleExecutableBit(input ExecutableContext) workflowvisit.Rule {
 	descriptor := ExecutableBitDeclaration()
 	r := &ruleExecutableBit{Tag: descriptor.Name}

@@ -2,7 +2,9 @@ package registration
 
 import (
 	"context"
+	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -63,6 +65,7 @@ type Inputs struct {
 	WorkflowNameInventory         namemodel.Inventory
 	Reader                        *files.Reader
 	Index                         func(context.Context, string) *execution.IndexSnapshot
+	ExecutableIndex               *execution.IndexSnapshot
 }
 
 // Registration pairs a rule declaration with its constructor and execution conditions.
@@ -117,10 +120,10 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"action": {Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleAction(c.Context, c.Actions.Prepared(), c.RemoteActions)
 		}},
-		"executable-bit": {Build: func(c Inputs) workflowvisit.Rule {
+		"executable-bit": {Prepare: prepareExecutableIndex, Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleExecutableBit(correctness.ExecutableContext{
-				Context: c.Context, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
-				Reader: c.Reader, Index: c.Index, Runners: c.Runners,
+				ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
+				Index: c.ExecutableIndex, Runners: c.Runners,
 			})
 		}, Enabled: func(c Inputs) bool { return c.ProjectRoot != "" && c.Index != nil }},
 		"env-var":                      declarationImplementation(correctness.EnvVarCheck()),
@@ -247,5 +250,27 @@ func prepareWorkflowMetadata(c Inputs) (InputPreparation, error) {
 		}
 		c.Workflows = c.WorkflowSources.Resolved()
 	}
+	return PreparedInputs{Inputs: c}, nil
+}
+
+func prepareExecutableIndex(c Inputs) (InputPreparation, error) {
+	if c.Rules.DiagnosticLevel(c.Config, "executable-bit") == "off" {
+		return PreparedInputs{Inputs: c}, nil
+	}
+	if err := c.Context.Err(); err != nil {
+		return nil, err
+	}
+	snapshot := c.Index(c.Context, c.ProjectRoot)
+	if err := c.Context.Err(); err != nil {
+		return nil, err
+	}
+	if err := snapshot.Err(); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrPermission) {
+			return nil, err
+		}
+		return UnavailableInputs{Reason: "Git index could not be read: " + err.Error()}, nil
+	}
+	c.Reader.Record(snapshot.Path())
+	c.ExecutableIndex = snapshot
 	return PreparedInputs{Inputs: c}, nil
 }

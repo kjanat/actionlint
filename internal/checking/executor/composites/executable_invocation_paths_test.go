@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -73,10 +72,9 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inside}]}\n",
 	}, nil)
-	reader := &files.Reader{}
 	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
 	p := &executablePathsProbe{executableRule: newExecutableRule(t, correctness.ExecutableContext{
-		Context: t.Context(), ProjectRoot: want.Workspace, WorkingDir: want.Analysis, Reader: reader,
+		ProjectRoot: want.Workspace, WorkingDir: want.Analysis,
 	}), t: t, want: want}
 	f.options.Rules = []workflowvisit.Rule{p}
 	_, err := Workflow(f.options, f.root)

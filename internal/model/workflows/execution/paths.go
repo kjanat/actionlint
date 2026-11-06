@@ -153,6 +153,34 @@ func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
 	return paths.Checkout, !paths.CheckoutUnknown
 }
 
+// AnalysisPath maps runner checkout geometry to a local path without reading it.
+// Input acquisition or captured repository facts establish filesystem spelling.
+func (paths Paths) AnalysisPath(value string) (string, bool) {
+	relativePath, known := LocalDirectoryPath(value, paths.Platform)
+	if !known {
+		return "", false
+	}
+	if filepath.IsAbs(relativePath) {
+		return relativePath, true
+	}
+	if strings.HasPrefix(relativePath, "/") || strings.ContainsRune(relativePath, '\x00') {
+		return "", false
+	}
+	checkout, known := paths.CheckoutFor(relativePath)
+	if !known {
+		return "", false
+	}
+	relativePath = filepath.FromSlash(relativePath)
+	if checkout != "" {
+		var err error
+		relativePath, err = filepath.Rel(filepath.FromSlash(checkout), filepath.Clean(relativePath))
+		if err != nil {
+			return "", false
+		}
+	}
+	return filepath.Join(paths.Workspace, relativePath), true
+}
+
 func RunnerRelativePath(value string, platform runnerlang.Platform) (string, bool) {
 	value, known := RunnerDirectoryPath(value, platform)
 	// Resolve only paths relative to the checkout on the runner.

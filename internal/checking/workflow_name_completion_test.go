@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 )
 
@@ -28,6 +29,11 @@ func TestIncompleteWorkflowNamesDoNotProveUnusedSuppression(t *testing.T) {
 			}
 			if err := os.WriteFile(filepath.Join(directory, "producer.yml"), []byte(tc.producer), 0o600); err != nil {
 				t.Fatal(err)
+			}
+			for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", ".github"}} {
+				if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+					t.Fatalf("prepare repository index: %v: %s", err, output)
+				}
 			}
 			const source = `on:
   workflow_run:

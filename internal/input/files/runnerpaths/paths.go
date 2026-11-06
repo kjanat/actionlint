@@ -4,7 +4,6 @@ package runnerpaths
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -33,20 +32,6 @@ func ResolveDirectory(paths execution.Paths, directory execution.Directory, read
 	return execution.Directory{execution.DirectoryKnown, local}
 }
 
-// LocalPath translates a workspace-relative runner path to the local self checkout.
-func LocalPath(paths execution.Paths, relativePath string, reader *files.Reader) (string, bool) {
-	relativePath, representable := execution.RunnerRelativePath(relativePath, paths.Platform)
-	if !representable {
-		return "", false
-	}
-	path, known := AnalysisPath(paths, relativePath, reader)
-	if !known {
-		return "", false
-	}
-	relative, err := filepath.Rel(paths.Workspace, path)
-	return path, err == nil && filepath.IsLocal(relative)
-}
-
 // AnalysisPath resolves available files, including those outside the indexed
 // repository. Case-insensitive checkouts are canonicalized through reader.
 func AnalysisPath(paths execution.Paths, value string, reader *files.Reader) (string, bool) {
@@ -57,10 +42,7 @@ func AnalysisPath(paths execution.Paths, value string, reader *files.Reader) (st
 	if filepath.IsAbs(relativePath) {
 		return relativePath, true
 	}
-	if strings.HasPrefix(relativePath, "/") || strings.ContainsRune(relativePath, '\x00') {
-		return "", false
-	}
-	checkout, known := paths.CheckoutFor(relativePath)
+	local, known := paths.AnalysisPath(value)
 	if !known {
 		return "", false
 	}
@@ -68,20 +50,16 @@ func AnalysisPath(paths execution.Paths, value string, reader *files.Reader) (st
 	if placement := paths.Placements.Matching(relativePath); placement.Present() {
 		caseInsensitive = placement.Details().CaseInsensitive
 	}
-	relativePath = filepath.FromSlash(relativePath)
-	if checkout != "" {
-		var err error
-		relativePath, err = filepath.Rel(filepath.FromSlash(checkout), filepath.Clean(relativePath))
-		if err != nil {
-			return "", false
-		}
+	relativePath, err := filepath.Rel(paths.Workspace, local)
+	if err != nil {
+		return "", false
 	}
 	if caseInsensitive && filepath.IsLocal(relativePath) {
 		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), reader)
 		if !known {
 			return "", false
 		}
-		relativePath = filepath.FromSlash(canonical)
+		local = filepath.Join(paths.Workspace, filepath.FromSlash(canonical))
 	}
-	return filepath.Join(paths.Workspace, relativePath), true
+	return local, true
 }

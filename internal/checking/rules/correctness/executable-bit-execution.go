@@ -1,7 +1,6 @@
 package correctness
 
 import (
-	"context"
 	"errors"
 	"path"
 	"path/filepath"
@@ -9,9 +8,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
-
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -48,15 +44,13 @@ type ExecutableChecker struct {
 }
 
 // ExecutableContext supplies repository observations and paths to script analysis.
-// Index loads a shared immutable snapshot; all shell interpretation stays local.
+// Index contains the prepared Git modes; all shell interpretation stays local.
 // Report receives each direct-execution finding; composite forks share it, so
 // the owner collects findings without reading checker state.
 type ExecutableContext struct {
 	Runners                 *runnerlang.Knowledge
-	Context                 context.Context
 	ProjectRoot, WorkingDir string
-	Reader                  *files.Reader
-	Index                   func(context.Context, string) *execution.IndexSnapshot
+	Index                   *execution.IndexSnapshot
 	Log                     func(string, ...any)
 	Report                  func(*findingmodel.Finding)
 }
@@ -595,7 +589,7 @@ func (rule *ExecutableChecker) scriptPath(directory execution.Directory, script 
 	if !ok {
 		return executableLocation{}, false
 	}
-	file, ok := runnerpaths.LocalPath(paths, runnerPath, rule.context.Reader)
+	file, ok := paths.AnalysisPath(runnerPath)
 	if !ok {
 		return executableLocation{}, false
 	}
@@ -644,13 +638,7 @@ func (rule *ExecutableChecker) modeChanges(directory execution.Directory) map[st
 }
 
 func (rule *ExecutableChecker) index() *execution.IndexSnapshot {
-	snapshot := rule.context.Index(rule.context.Context, rule.paths.Workspace)
-	if err := snapshot.Err(); err != nil {
-		rule.debug("Git index unavailable: %v", err)
-	} else {
-		rule.context.Reader.Record(snapshot.Path())
-	}
-	return snapshot
+	return rule.context.Index
 }
 
 // Model common octal and symbolic modes; other syntax leaves execution unknown.
