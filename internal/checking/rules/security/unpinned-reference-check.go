@@ -4,11 +4,21 @@ import (
 	"regexp"
 	"strings"
 
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
+
+// UnpinnedReferenceCheck binds reference exclusions to job and step declarations.
+func UnpinnedReferenceCheck(excluded func(string) bool) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{
+		Declaration: UnpinnedReferenceDeclaration(),
+		Job:         func(job declaration.JobView) []reporting.Finding { return CommitHashJob(job, excluded) },
+		Step:        func(step declaration.StepView) []reporting.Finding { return CommitHashStep(step, excluded) },
+	}
+}
 
 // reCommitSHA matches a full-length Git object ID in both the SHA-1 and the SHA-256 object formats.
 // https://git-scm.com/docs/hash-function-transition

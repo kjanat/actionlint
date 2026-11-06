@@ -1,6 +1,7 @@
 package conventions
 
 import (
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -9,6 +10,20 @@ import (
 type TimeoutPolicy struct {
 	Enabled  bool
 	Min, Max *float64
+}
+
+// JobTimeoutCheck binds the configured bounds to job declarations.
+// The check owns its bounds, so later caller edits cannot change its policy.
+func JobTimeoutCheck(policy TimeoutPolicy) checkinputs.DeclarationCheck {
+	if policy.Min != nil {
+		policy.Min = new(*policy.Min)
+	}
+	if policy.Max != nil {
+		policy.Max = new(*policy.Max)
+	}
+	return checkinputs.DeclarationCheck{Declaration: JobTimeoutDeclaration(), Job: func(job declaration.JobView) []reporting.Finding {
+		return JobTimeout(job, policy)
+	}}
 }
 
 func JobTimeout(n declaration.JobView, policy TimeoutPolicy) []reporting.Finding {

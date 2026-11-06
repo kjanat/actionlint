@@ -68,17 +68,14 @@ func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) *declarat
 	if check.Workflow == nil && check.Job == nil && check.Step == nil {
 		panic("rule " + check.Name + " supplies no declaration check")
 	}
-	r := newRule(rules, check.Name)
-	r.workflowCheck, r.jobCheck, r.stepCheck = check.Workflow, check.Job, check.Step
-	return r
-}
-
-func newRule(rules repoconfig.RuleSet, name string) *declarationRule {
-	metadata, found := rules.FindRule(name)
+	metadata, found := rules.FindRule(check.Name)
 	if !found {
-		panic("unregistered rule: " + name)
+		panic("unregistered rule: " + check.Name)
 	}
-	return &declarationRule{Base: workflowvisit.NewBase(metadata.Name, metadata.Description), rules: rules}
+	return &declarationRule{
+		Base: workflowvisit.NewBase(metadata.Name, metadata.Description), rules: rules,
+		workflowCheck: check.Workflow, jobCheck: check.Job, stepCheck: check.Step,
+	}
 }
 
 func (r *declarationRule) collect(input []reporting.Finding, job string) {
@@ -122,21 +119,7 @@ func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 
 // NewVendorLockIn checks URL-form references in jobs, steps and called composites.
 func NewVendorLockIn(rules repoconfig.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
-	r := newRule(rules, "vendor-lock-in")
-	target := runners.Target()
-	r.jobCheck = func(job workflowdecl.JobView) []reporting.Finding {
-		return reporting.FromDiagnostics(correctness.VendorLockIn(job.WorkflowCall().Uses(), target))
-	}
-	r.stepCheck = func(step workflowdecl.StepView) []reporting.Finding {
-		if action, present := step.Action(); present {
-			findings := reporting.FromDiagnostics(correctness.VendorLockIn(action.Uses(), target))
-			for i := range findings {
-				findings[i].Step = step
-			}
-			return findings
-		}
-		return nil
-	}
+	r := New(rules, correctness.VendorLockInCheck(runners.Target()))
 	return &invocationDeclarationRule{declarationRule: r}
 }
 
@@ -148,26 +131,15 @@ func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTi
 	if upper, ok := policy.MaxMinutes(); ok {
 		options.Max = new(upper)
 	}
-	r := newRule(rules, "job-timeout")
-	r.jobCheck = func(j workflowdecl.JobView) []reporting.Finding { return conventions.JobTimeout(j, options) }
-	return r
+	return New(rules, conventions.JobTimeoutCheck(options))
 }
 
 func NewRuleRequirePermissions(rules repoconfig.RuleSet, policy *repoconfig.PermissionsPolicy) workflowvisit.Rule {
-	scope := policy.Scope()
-	r := newRule(rules, "explicit-permissions")
-	r.workflowCheck = func(w workflowdecl.WorkflowView) []reporting.Finding {
-		return security.RequiredWorkflowPermissions(w, scope)
-	}
-	r.jobCheck = func(j workflowdecl.JobView) []reporting.Finding { return security.RequiredJobPermissions(j, scope) }
-	return r
+	return New(rules, security.ExplicitPermissionsCheck(policy.Scope()))
 }
 
 func NewRuleRequireCommitHash(rules repoconfig.RuleSet, excluded func(string) bool) workflowvisit.Rule {
-	r := newRule(rules, "unpinned-reference")
-	r.jobCheck = func(j workflowdecl.JobView) []reporting.Finding { return security.CommitHashJob(j, excluded) }
-	r.stepCheck = func(s workflowdecl.StepView) []reporting.Finding { return security.CommitHashStep(s, excluded) }
-	return r
+	return New(rules, security.UnpinnedReferenceCheck(excluded))
 }
 
 func declarationID(value workflowdecl.StringView) string {

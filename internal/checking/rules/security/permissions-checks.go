@@ -1,12 +1,26 @@
 package security
 
 import (
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
+
+// ExplicitPermissionsCheck checks permission declarations at the configured scope.
+func ExplicitPermissionsCheck(scope string) checkinputs.DeclarationCheck {
+	return checkinputs.DeclarationCheck{
+		Declaration: ExplicitPermissionsDeclaration(),
+		Workflow: func(workflow declaration.WorkflowView) []reporting.Finding {
+			return RequiredWorkflowPermissions(workflow, scope)
+		},
+		Job: func(job declaration.JobView) []reporting.Finding {
+			return RequiredJobPermissions(job, scope)
+		},
+	}
+}
 
 // MissingWorkflowPermissions reports jobs whose token permissions fall back to
 // repository defaults. Workflows callable only through workflow_call inherit
