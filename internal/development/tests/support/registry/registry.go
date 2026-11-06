@@ -25,6 +25,7 @@ import (
 	"time"
 
 	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
@@ -340,7 +341,7 @@ func (r *PluginRegistry) AddArtifact(t *testing.T, tag, asset string, wasm []byt
 	t.Helper()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	data := writeArtifact(r.files, r.publisher, tag, asset, wasm)
+	data := writeArtifact(t, r.files, r.publisher, tag, asset, wasm)
 	r.versions = append(r.versions, tag)
 	writeCatalogue(t, r.files, r.publisher, r.versions...)
 	return bytes.Clone(data)
@@ -357,7 +358,7 @@ func (r *PluginRegistry) AddPlugin(t *testing.T, publisher PluginPublisher, tag 
 	if _, ok := r.files[publisher.BaseURL+"statuses.json"]; !ok {
 		r.files[publisher.BaseURL+"statuses.json"] = []byte(emptyStatuses)
 	}
-	data := writeArtifact(r.files, publisher, tag, "plugin.wasm", wasm)
+	data := writeArtifact(t, r.files, publisher, tag, "plugin.wasm", wasm)
 	writeCatalogue(t, r.files, publisher, tag)
 	return bytes.Clone(data)
 }
@@ -381,18 +382,39 @@ func recordURL(publisher PluginPublisher, tag string) string {
 
 // writeArtifact stores the artifact for tag and its version record in files and
 // returns the stored artifact bytes.
-func writeArtifact(files map[string][]byte, publisher PluginPublisher, tag, asset string, wasm []byte) []byte {
+func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublisher, tag, asset string, wasm []byte) []byte {
+	t.Helper()
+	format, _, err := artifacts.Sniff(wasm)
+	if err != nil {
+		t.Fatalf("registry fixture artifact: %v", err)
+	}
 	repository := strings.TrimPrefix(publisher.Name, "github.com/")
 	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-component","interface":"kjanat:actionlint/analyzer@0.1.0","contract_sha256":%q}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name, fixtureContractDigest)
 	kind, contract := "component", "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureContractDigest
-	if len(wasm) >= 8 && bytes.Equal(wasm[4:8], []byte{1, 0, 0, 0}) {
+	if format == artifacts.Core {
 		kind, contract = "core", "wasm-core-json/1"
 		metadata = fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-core-json","abi_version":1}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name)
 	}
 	section := binary.AppendUvarint(nil, uint64(len("actionlint.plugin")))
 	section = append(section, []byte("actionlint.plugin")...)
 	section = append(section, metadata...)
-	data := bytes.Clone(wasm)
+	data := bytes.Clone(wasm[:8])
+	// Sniff validated the section lengths. Copy complete outer sections so
+	// replacing discovery metadata does not alter embedded modules or components.
+	for rest := wasm[8:]; len(rest) > 0; {
+		original := rest
+		id := rest[0]
+		size, count := binary.Uvarint(rest[1:])
+		body := rest[1+count : 1+count+int(size)]
+		rest = rest[1+count+int(size):]
+		if id == 0 {
+			length, count := binary.Uvarint(body)
+			if string(body[count:count+int(length)]) == artifacts.MetadataSection {
+				continue
+			}
+		}
+		data = append(data, original[:len(original)-len(rest)]...)
+	}
 	data = append(data, 0)
 	data = binary.AppendUvarint(data, uint64(len(section)))
 	data = append(data, section...)
