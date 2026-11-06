@@ -53,9 +53,14 @@ jobs:
           args: release --snapshot --clean --skip=sbom,homebrew,scoop,aur,aur-source
       - name: Assemble CLI preview packages
         shell: bash -euo pipefail {0}
-        run: bun distribution/npm/src/cli.ts build
-          --version "$(jq -er .version dist/metadata.json)"
-          --downloads dist
+        run: |
+          sources="${RUNNER_TEMP}/npm-preview"
+          mkdir -p "${sources}"
+          jq '.targets |= map(select(.tier == 1))' distribution/npm/targets.json > "${sources}/targets.json"
+          ln -s "${GITHUB_WORKSPACE}/distribution/npm/facade" "${sources}/facade"
+          bun distribution/npm/src/cli.ts build \
+            --version "$(jq -er .version dist/metadata.json)" \
+            --downloads dist --npm-dir "${sources}" --out distribution/npm/dist
       - name: Verify the packed plugin SDK
         env: *a
         run: run -pk @kjanat-actionlint/plugin-sdk:test:package
@@ -96,6 +101,8 @@ jobs:
           allow-config-processes: true
           report: ${{ runner.temp }}/zizmor-candidate.json
       - name: Publish CLI, SDK and example package previews
+        id: publish
+        continue-on-error: true
         run: bun run --bun pkg-pr-new publish --bun --packageManager=bun --previewVersion
           './distribution/npm/dist/*'
           ./libraries/github-changelog
@@ -109,3 +116,6 @@ jobs:
           ./plugins/examples/external-linters/syft
           ./plugins/examples/external-linters/yamllint
           ./plugins/examples/external-linters/zizmor
+      - name: Report unavailable package previews
+        if: steps.publish.outcome == 'failure'
+        run: echo '::warning::Package preview publishing failed. See the publish step for details.'
