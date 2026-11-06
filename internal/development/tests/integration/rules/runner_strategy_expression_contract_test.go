@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
@@ -91,7 +92,7 @@ jobs:
 				}
 				for _, production := range []workflowvisit.Rule{
 					productionRunnerRule(t, snapshot, knowledge),
-					correctness.NewRuleRunnerLabel(nil, runnerlang.KnownLabels(nil)),
+					declarationchecks.New(checking.ConfigurationRules(), correctness.RunnerLabelCheck(nil, runnerlang.KnownLabels(nil))),
 				} {
 					if err := production.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 						t.Fatal(err)

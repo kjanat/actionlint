@@ -1,75 +1,39 @@
 package correctness
 
 import (
-	"errors"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// ruleShellName is a rule to check 'shell' field. For more details, see
-// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
-type ruleShellName struct {
-	runners *runnerlang.Knowledge
-	workflowvisit.Base
-	platform runnerlang.Platform
-}
-
-// NewRuleShellName checks run shells against known runner platforms.
-// Nil runner knowledge accepts shells supported by any platform.
-func NewRuleShellName(runners *runnerlang.Knowledge) workflowvisit.Rule {
-	descriptor := ShellNameDeclaration()
-	return &ruleShellName{
-		Base:     workflowvisit.NewBase(descriptor.Name, descriptor.Description),
-		runners:  runners,
-		platform: runnerlang.Any,
+// ShellNameCheck validates shell declarations against their declaring job's
+// prepared platform. Without a known job platform, it accepts any supported shell.
+func ShellNameCheck(runners *runnerlang.Knowledge) checkinputs.DeclarationCheck {
+	platform := func(job workflowdecl.JobView) runnerlang.Platform {
+		if runners == nil || !job.Present() {
+			return runnerlang.Any
+		}
+		return runners.Job(job).Platform
 	}
-}
-
-// VisitStep is callback when visiting Step node.
-func (rule *ruleShellName) VisitStep(view workflowdecl.StepView) error {
-	if !view.Present() {
-		return errors.New("shell-name step declaration is unavailable")
-	}
-	if run, ok := view.Run(); ok {
-		rule.checkShellValue(run.Shell().Semantic())
-	}
-	return nil
-}
-
-// VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *ruleShellName) VisitJobPre(view workflowdecl.JobView) error {
-	if !view.Present() {
-		return errors.New("shell-name job declaration is unavailable")
-	}
-	if rule.runners != nil {
-		rule.platform = rule.runners.Job(view).Platform
-	}
-	rule.checkShellValue(execution.DefaultShell(view.Defaults().Run().Semantic()))
-	return nil
-}
-
-// VisitJobPost is callback when visiting Job node after visiting its children.
-func (rule *ruleShellName) VisitJobPost(workflowdecl.JobView) error {
-	rule.platform = runnerlang.Any // Clear
-	return nil
-}
-
-// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *ruleShellName) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
-	if !view.Present() {
-		return errors.New("shell-name workflow declaration is unavailable")
-	}
-	rule.checkShellValue(execution.DefaultShell(view.Defaults().Run().Semantic()))
-	return nil
-}
-
-func (rule *ruleShellName) checkShellValue(shell value.Value) {
-	for _, d := range checkShell(shell, rule.platform) {
-		rule.Report(findingmodel.FromDiagnostic(d))
+	return checkinputs.DeclarationCheck{
+		Declaration: ShellNameDeclaration(),
+		Workflow: func(workflow workflowdecl.WorkflowView) []reporting.Finding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflow.Defaults().Run().Semantic()), runnerlang.Any))
+		},
+		Job: func(job workflowdecl.JobView) []reporting.Finding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(job.Defaults().Run().Semantic()), platform(job)))
+		},
+		Step: func(step workflowdecl.StepView) []reporting.Finding {
+			if run, present := step.Run(); present {
+				findings := reporting.FromDiagnostics(checkShell(run.Shell().Semantic(), platform(step.Job())))
+				for i := range findings {
+					findings[i].Step = step
+				}
+				return findings
+			}
+			return nil
+		},
 	}
 }

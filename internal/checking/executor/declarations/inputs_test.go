@@ -51,7 +51,9 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 						t.Fatal("callback received a different step")
 					}
 					calls++
-					return nil
+					collector := reporting.Collector{Rule: check.Name, Step: input}
+					collector.Errorf(reporting.SourcePosition(input), "test finding")
+					return collector.Findings
 				}
 			}
 			rules, err := repoconfig.NewRuleSet([]rule.Declaration{check.Declaration})
@@ -66,6 +68,12 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 			}
 			if calls != 1 {
 				t.Fatalf("%s callback ran %d times", scope, calls)
+			}
+			if scope == "step" {
+				findings := adapter.Errs()
+				if len(findings) != 1 || findings[0].Owner == nil || findings[0].Owner.Job != "build" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "build" {
+					t.Fatalf("step finding lost its declaring job: %+v", findings)
+				}
 			}
 		})
 	}
