@@ -780,10 +780,8 @@ func (sema *Checker) checkFuncCall(n *exprsyntax.FuncCallNode) exprtypes.Type {
 				sema.evaluationError(candidate.err)
 			}
 			sema.recordCallArguments(n, matchingArity[0])
-		} else {
-			if len(candidates) > 0 {
-				sema.recordCallArguments(n, candidates[0])
-			}
+		} else if len(candidates) > 0 {
+			sema.recordCallArguments(n, candidates[0])
 		}
 		ret, _ := commonReturn(candidates)
 		return ret

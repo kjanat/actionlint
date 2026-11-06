@@ -20,6 +20,7 @@ import (
 
 func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	cache := t.TempDir()
+	t.Setenv("HOME", cache)
 	t.Setenv("LOCALAPPDATA", cache)
 	t.Setenv("XDG_CACHE_HOME", cache)
 	manifest := manifests.Manifest{
