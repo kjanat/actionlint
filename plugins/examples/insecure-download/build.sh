@@ -12,6 +12,7 @@ compose="$(mktemp -d)"
 trap 'rm -rf "${compose}"' EXIT
 mkdir -p "${compose}/deps/actionlint" "${compose}/deps/cli"
 cp "${contract}"/*.wit "${compose}/deps/actionlint/"
+cp -R "${contract}"/deps/. "${compose}/deps/"
 cp "${tinygo_root}"/lib/wasi-cli/wit/*.wit "${compose}/deps/cli/"
 cp -R "${tinygo_root}"/lib/wasi-cli/wit/deps/. "${compose}/deps/"
 cat >"${compose}/world.wit" <<'WIT'
