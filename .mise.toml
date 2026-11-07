@@ -41,7 +41,7 @@ zizmor                     = "1.31.1"
 tombi                      = "1.10.0"
 markscribe                 = "0.8.1"
 pandoc                     = "3.13"
-kprint                     = "0.60.6-kjanat"
+kprint                     = "0.60.6"
 runner-run                 = "0.28.0"
 typescript                 = "7.0.2"
 biome                      = {
@@ -70,7 +70,7 @@ wasi-sdk                   = {
 wit-bindgen = "github:bytecodealliance/wit-bindgen"
 wasi-sdk    = "github:WebAssembly/wasi-sdk"
 pandoc      = "github:jgm/pandoc"
-kprint      = "github:kjanat/kprint"
+kprint      = "npm:@kprint/kprint"
 runner-run  = "github:kjanat/runner"
 typescript  = "github:microsoft/TypeScript"
 biome       = "github:biomejs/biome"
@@ -79,6 +79,7 @@ shellcheck  = "github:koalaman/shellcheck"
 rshellcheck = "github:kjanat/shellcheck-rs"
 
 [settings]
+npm.package_manager                 = "bun"
 experimental                        = true
 idiomatic_version_file_enable_tools = ["go", "node", "bun", "rust"]
 minimum_release_age                 = "0s"
