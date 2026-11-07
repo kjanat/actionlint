@@ -51,6 +51,11 @@ alternative separately. `Current` is for a snippet-engine check. The results
 contain declaration scopes and name comparisons, without values or secrets.
 They do not enumerate ambient runner variables or changes through `GITHUB_ENV`.
 
+Include `kjanat:actionlint/environment-plugin@0.2.0` instead of
+`kjanat:actionlint/plugin@0.2.0` in the component's WIT world when calling these
+functions. Copy the protocol's `deps/` packages alongside the actionlint package
+when composing WIT packages, as the example's build script does.
+
 ```go
 import (
     "errors"
