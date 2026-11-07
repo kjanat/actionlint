@@ -35,7 +35,7 @@ func TestKnownShellExternalLinters(t *testing.T) {
 		{"known PowerShell default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"pwsh"}') }}`, "", ""},
 		{"known default overrides workflow", "ubuntu-latest", "python", `${{ fromJSON('{"shell":"bash"}') }}`, "", "shellcheck"},
 		{"step overrides known default", "ubuntu-latest", "", `${{ fromJSON('{"shell":"python"}') }}`, "bash", "shellcheck"},
-		{"dynamic custom Bash retains dispatch", "ubuntu-latest", "", "", `bash ${{ vars.FLAGS }} {0}`, "shellcheck"},
+		{"dynamic arguments do not prove file input", "ubuntu-latest", "", "", `bash ${{ vars.FLAGS }} {0}`, ""},
 		{"missing shell inherits workflow", "ubuntu-latest", "python", `${{ fromJSON('{"working-directory":"src"}') }}`, "", ""},
 		{"empty mapping inherits workflow", "ubuntu-latest", "python", `${{ fromJSON('{}') }}`, "", ""},
 		{"unknown map masks workflow Python", "ubuntu-latest", "python", `${{ fromJSON(vars.DEFAULTS) }}`, "", ""},

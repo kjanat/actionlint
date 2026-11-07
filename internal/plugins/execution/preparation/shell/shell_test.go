@@ -27,11 +27,8 @@ func TestShellStartup(t *testing.T) {
 		{"bash +e -o errexit {0}", "set -e", false},
 		{"bash -e -- {0}", "set -e", false},
 		{"bash -o noglob {0}", "set -f", false},
-		{"bash -o future-option {0}", "", false},
 		{"bash -e +e {0}", "", false},
-		{"bash -o 'pipefail' {0}", "", false},
-		{"bash -o \"pipefail\" {0}", "", false},
-		{"bash ${{ vars.FLAGS }} {0}", "", false},
+		{"bash -o \"pipefail\" {0}", "set -o pipefail", false},
 		{"bash --rcfile custom {0}", "", false},
 		{"bash {0} -e", "", false},
 	} {
@@ -46,7 +43,7 @@ func TestShellStartup(t *testing.T) {
 
 func TestUnknownScriptLanguage(t *testing.T) {
 	for _, shell := range []string{
-		"bash -c 'python {0}'", "bash -ec 'python {0}'", "bash -s {0}",
+		"bash -o future-option {0}", "bash -o 'pipefail' {0}", "bash ${{ vars.FLAGS }} {0}", "bash -c 'python {0}'", "bash -ec 'python {0}'", "bash -s {0}",
 		`bash "-c" "python {0}"`, "python {0}", "pwsh {0}",
 		"actions-shell python {0}", "wrapper bash {0}", "bash other-script {0}", "bash -- other-script {0}",
 	} {

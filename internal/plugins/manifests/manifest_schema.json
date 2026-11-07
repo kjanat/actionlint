@@ -85,6 +85,133 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
+    "invocation-definition": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "default_arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "delegate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "executables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extends": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ignore_executable_case": {
+          "type": "boolean"
+        },
+        "implicit_arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "long_options_first": {
+          "type": "boolean"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/invocation-option"
+          }
+        },
+        "prefix": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "toggle_options": {
+          "type": "boolean"
+        },
+        "unknown_options": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "invocation-option": {
+      "type": "object",
+      "properties": {
+        "argument": {
+          "type": "boolean"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effect": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exit_after": {
+          "enum": [
+            "option",
+            "long-options"
+          ]
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input": {
+          "enum": [
+            "command",
+            "stdin"
+          ]
+        },
+        "long": {
+          "type": "string",
+          "minLength": 1
+        },
+        "short": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1
+        },
+        "warning": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "short"
+          ]
+        },
+        {
+          "required": [
+            "long"
+          ]
+        }
+      ]
+    },
     "launcher": {
       "type": "object",
       "required": [
@@ -933,6 +1060,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "invocation_definitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/invocation-definition"
+      }
     },
     "metadata": {
       "type": "object"

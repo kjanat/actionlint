@@ -3,9 +3,11 @@ package component
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
@@ -126,6 +128,18 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		if err := p.loadAnalyzer(ctx); err != nil {
 			return err
 		}
+		var metadata struct {
+			Definitions []commands.Definition `json:"invocation_definitions"`
+		}
+		if len(staticMetadata) != 0 {
+			if err := json.Unmarshal(staticMetadata, &metadata); err != nil {
+				return err
+			}
+		}
+		if _, err := commands.New(metadata.Definitions); err != nil {
+			return err
+		}
+		p.analyzerDescriptor.InvocationDefinitions = metadata.Definitions
 	}
 	if roles.toolIntegration {
 		if err := p.loadToolIntegration(ctx); err != nil {

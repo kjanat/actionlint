@@ -5,6 +5,8 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -56,7 +58,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 	if shell == nil {
 		shell = workflowShell
 	}
-	request := scriptexecution.ScriptRequest{Occurrence: occurrence, DefaultShell: shell}
+	request := scriptexecution.ScriptRequest{Occurrence: occurrence, DefaultShell: shell, Interpreters: commands.FromContext(analysis.ctx)}
 	jobDefault, workflowDefault, runnerDefault := analysis.scriptJobShell, analysis.workflowShell, analysis.scriptRunnerShell
 	if analysis.scriptScope != nil && analysis.scriptScope.Composite {
 		jobDefault, workflowDefault, runnerDefault = value.Value{}, value.Value{}, value.Value{}

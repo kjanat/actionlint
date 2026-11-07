@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -68,6 +70,9 @@ func Parse(data []byte) (Manifest, error) {
 
 // validate checks what the schema cannot express.
 func validate(m Manifest) error {
+	if _, err := commands.New(m.InvocationDefinitions); err != nil {
+		return err
+	}
 	if !rulemeta.ValidCategory(m.Rule.Category) {
 		return fmt.Errorf("rule %q has invalid category %q; expected one of %s", m.Rule.Name, m.Rule.Category, strings.Join(rulemeta.Categories(), ", "))
 	}

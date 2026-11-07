@@ -9,6 +9,8 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -111,6 +113,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 	}
 	// The registration keeps no storage the caller can change.
 	m.Rule = m.Rule.Clone()
+	m.InvocationDefinitions = commands.CloneDefinitions(m.InvocationDefinitions)
 	m.Selectors.Shells = slices.Clone(m.Selectors.Shells)
 	m.Selectors.Inputs = slices.Clone(m.Selectors.Inputs)
 	p.Manifest = m
@@ -128,10 +131,11 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 		scope = rule.CompositeConfiguration
 	}
 	registration := tools.Registration{
-		Descriptor:      m.Rule.Clone(),
-		Scope:           scope,
-		SupportsActions: true,
-		ScriptInputs:    slices.Clone(m.Selectors.Inputs),
+		InvocationDefinitions: m.InvocationDefinitions,
+		Descriptor:            m.Rule.Clone(),
+		Scope:                 scope,
+		SupportsActions:       true,
+		ScriptInputs:          slices.Clone(m.Selectors.Inputs),
 		// A run step that sets no shell runs in the runner's default shell,
 		// which only execution resolution knows, so selectors.shells needs
 		// it to match such steps. capabilities.resources needs each step's

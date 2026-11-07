@@ -10,6 +10,8 @@ package manifests
 import (
 	"encoding/json"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
@@ -58,6 +60,8 @@ const (
 // configuration (tools.<name>), rule policy and the command line.
 type Manifest struct {
 	SchemaVersion int `json:"schema_version"`
+	// InvocationDefinitions describes interpreter options and wrapper delegation.
+	InvocationDefinitions []commands.Definition `json:"invocation_definitions,omitempty"`
 	// Metadata declares publisher identity for registry admission. It does not
 	// grant capabilities or change the provider's execution contract.
 	Metadata  json.RawMessage     `json:"metadata,omitempty"`

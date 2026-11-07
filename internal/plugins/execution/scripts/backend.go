@@ -11,8 +11,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
-	"unicode/utf8"
+
+	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -477,32 +478,13 @@ func scriptShell(script tools.Script) string {
 	if shell == "" && script.Shell != nil {
 		shell = *script.Shell
 	}
-	command := shellCommand(shell)
-	return strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
-}
-
-func shellCommand(shell string) string {
-	shell = strings.TrimSpace(shell)
-	if shell == "" {
-		return ""
+	registry := script.Fact.Interpreters
+	if registry == nil {
+		registry = interpreters.Builtin()
 	}
-	if quote := shell[0]; quote == '"' || quote == '\'' {
-		end := strings.IndexByte(shell[1:], quote)
-		if end < 0 {
-			return ""
-		}
-		end++
-		if end+1 < len(shell) {
-			next, _ := utf8.DecodeRuneInString(shell[end+1:])
-			if !unicode.IsSpace(next) {
-				return ""
-			}
-		}
-		return shell[1:end]
+	invocation := registry.Analyze(shell, script.Execution.ImplicitShell)
+	if invocation.Status == commands.Valid && invocation.Input == "file" && invocation.Language != "" {
+		return invocation.Language
 	}
-	end := strings.IndexFunc(shell, unicode.IsSpace)
-	if end < 0 {
-		return shell
-	}
-	return shell[:end]
+	return strings.TrimSuffix(strings.ToLower(commands.ExecutableName(invocation.Program)), ".exe")
 }

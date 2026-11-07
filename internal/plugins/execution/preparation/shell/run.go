@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -53,6 +55,10 @@ type Run struct {
 // skipped. A dialect other than the inferred one drops the startup command,
 // whose options may not exist in it.
 func PrepareRun(r Run, text string) (preparation.Prepared, error) {
+	invocation := r.Shell.Invocation()
+	if invocation.Status == commands.Invalid {
+		return preparation.Prepared{Skip: "invalid interpreter invocation: " + invocation.Issues[0].Message}, nil
+	}
 	dialect, setup := r.Shell.Analysis()
 	header, _, directiveShell := Header(text)
 	if dialect == "" && !directiveShell {

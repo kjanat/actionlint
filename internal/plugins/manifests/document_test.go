@@ -36,3 +36,23 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 		})
 	}
 }
+
+func TestInvocationDefinitionManifest(t *testing.T) {
+	definition := `"invocation_definitions":[{"id":"example/python-wrapper","executables":["actions-shell"],"prefix":["python"],"delegate":"python-plugin/python"}],`
+	document := strings.Replace(minimal, `"schema_version": 1,`, `"schema_version": 1,`+definition, 1)
+	manifest, err := manifests.Parse([]byte(document))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest.InvocationDefinitions) != 1 || manifest.InvocationDefinitions[0].Delegate != "python-plugin/python" {
+		t.Fatalf("definitions: %+v", manifest.InvocationDefinitions)
+	}
+	for _, invalid := range []string{
+		strings.Replace(document, `"delegate":"python-plugin/python"`, `"options":[{"short":"xx"}]`, 1),
+		strings.Replace(document, `"delegate":"python-plugin/python"`, `"options":[{"short":"o","group":"set"}]`, 1),
+	} {
+		if _, err := manifests.Parse([]byte(invalid)); err == nil {
+			t.Fatal("invalid option definition accepted")
+		}
+	}
+}

@@ -103,3 +103,12 @@ func TestEngineInputRefusesSources(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestInvalidInvocationCannotBeOverriddenByDirective(t *testing.T) {
+	for _, command := range []string{"bash -euo -pipefail {0}", "bash -O definitely_not_a_shopt {0}"} {
+		prepared, err := PrepareRun(Run{Shell: Shell{Name: command}}, "# shellcheck shell=bash\necho hi\n")
+		if err != nil || prepared.Skip == "" || prepared.Source != "" {
+			t.Fatalf("prepared=%+v error=%v", prepared, err)
+		}
+	}
+}

@@ -39,6 +39,7 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) checkinputs.
 	}
 	script.Reference = unit.Reference
 	script.Environment = slices.Clone(unit.Environment)
+	script.Interpreters = unit.Interpreters
 	if includeExecution && unit.Input == nil {
 		script.Runtime = &scriptmodel.Execution{
 			Shell: unit.Execution.Shell.Name, ShellKnown: unit.Execution.Shell.Name != "", ShellImplicit: unit.Execution.Shell.Implicit,
