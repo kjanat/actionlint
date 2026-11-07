@@ -37,7 +37,7 @@ jobs:
                   exit 1
                 }
               }
-            ' "dist/actionlint_${version}_checksums.txt" | (cd dist && sha256sum -c)
+            ' "dist/actionlint_${version}_checksums.txt" | (cd dist && sha256sum -c -)
             mkdir -p ".preview/docker/${arch}"
             tar -xzf "dist/${archive}" -C ".preview/docker/${arch}" actionlint
           done
