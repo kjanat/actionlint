@@ -264,7 +264,7 @@ try {
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
-	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.1'], {
+	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.3.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...shellEnvironment },
 		encoding: 'utf8',
@@ -278,7 +278,7 @@ try {
 		0,
 		shellEnvironment,
 	);
-	assert.equal(shell.outputs.get('problem-count'), '12', shell.log);
+	assert.equal(shell.outputs.get('problem-count'), '18', shell.log);
 	await writeFile(
 		join(workspace, 'shell-fix.yaml'),
 		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n',
@@ -439,8 +439,8 @@ try {
 	}
 	// Exercise released component bytes through the actual bundled launcher.
 	// The second URL cannot download: success proves reuse of the digest cache.
-	const pluginDigest = 'a3d7d7c0b1cc3d67ad6d94a7fec5ebc7974de18600372e1ae0a8f65ffb7b7c77';
-	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.2.1/plugin.wasm';
+	const pluginDigest = '23e924599d6e4b91c2aeb995e7759fd6bbece3aeaeccf7a3e9f7428c527ec13f';
+	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.3.0/plugin.wasm';
 	const pluginCache = join(workspace, 'plugin-cache');
 	const pluginEnvironment = { HOME: pluginCache, XDG_CACHE_HOME: pluginCache, LOCALAPPDATA: pluginCache };
 	await mkdir(pluginCache, { recursive: true });
@@ -478,7 +478,7 @@ try {
 		pluginEnvironment,
 	);
 	assert.deepEqual(warm.analysis.diagnostics, cold.analysis.diagnostics);
-	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.2.1'], {
+	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.3.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
