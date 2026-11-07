@@ -7,6 +7,6 @@ export default defineConfig({
 	target: 'esnext',
 	fixedExtension: false,
 	dts: true,
-	clean: false,
+	clean: true,
 	deps: { neverBundle: true },
 });
