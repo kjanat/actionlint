@@ -614,7 +614,7 @@ test('expensive CI jobs wait for selected checks while unselected checks can be 
 	assert.equal(checks.if, '${{ !cancelled() }}');
 	const steps = checks.steps;
 	assert.ok(Array.isArray(steps));
-	assert.equal(yamlMapping(steps[0]).run, 'test "$CHECKS_PASSED" = true');
+	assert.equal(yamlMapping(steps[0]).run, 'test "${CHECKS_PASSED}" = true');
 	assert.equal(
 		yamlMapping(yamlMapping(steps[0]).env).CHECKS_PASSED,
 		"${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}",
@@ -684,4 +684,25 @@ test('native Rust tests run once before component builds, with separate writable
 	assert.notEqual(cache(native).key, cache(component).key);
 	const fallback = cache(component)['restore-keys'];
 	assert.ok(typeof fallback === 'string' && fallback.includes('cargo-native-'));
+});
+
+test('workflow lint with all ShellCheck checks runs before the matrix with both tools installed', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	const lint = yamlMapping(jobs.lint);
+	assert.ok(Array.isArray(lint.steps));
+	const steps = lint.steps.map(step => yamlMapping(step));
+	const validation = steps.findIndex(step =>
+		step.run === "go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'"
+	);
+	assert.ok(validation > 0);
+	assert.ok(steps.slice(0, validation).some(step => step.run === 'uv tool install ruff==0.17.0'));
+	assert.ok(JSON.stringify(steps.slice(0, validation)).includes('setup-shellcheck'));
+	const action = yamlMapping(jobs.action);
+	assert.ok(Array.isArray(action.steps));
+	assert.ok(
+		!action.steps.some(step =>
+			yamlMapping(step).run === "go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'"
+		),
+	);
 });

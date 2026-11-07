@@ -253,6 +253,10 @@ jobs:
       - name: Build actionlint
         run: run mise:build
         env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
+      - name: Install Ruff for workflow validation
+        run: uv tool install ruff==0.17.0
+      - name: Validate workflows with all ShellCheck checks
+        run: go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'
       - run: run -s lint lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
@@ -292,7 +296,7 @@ jobs:
       - name: Require selected checks to succeed
         env:
           CHECKS_PASSED: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-        run: test "$CHECKS_PASSED" = true
+        run: test "${CHECKS_PASSED}" = true
   plugins:
     needs: [changes, checks]
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
@@ -407,9 +411,6 @@ jobs:
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: check }
-      - name: Validate release workflows with this checkout
-        if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'
       - name: Prepare the ordinary binary and release action
         env:
           BINARY_SUFFIX: ${{ runner.os == 'Windows' && '.exe' || '' }}
