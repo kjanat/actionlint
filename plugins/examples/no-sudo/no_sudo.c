@@ -6,9 +6,9 @@
 #include "gen/plugin.h"
 #include "descriptor.h"
 
-typedef exports_kjanat_actionlint_analyzer_position_t position_t;
-typedef exports_kjanat_actionlint_analyzer_script_t script_t;
-typedef exports_kjanat_actionlint_analyzer_diagnostic_t diagnostic_t;
+typedef exports_kjanat_actionlint_0_2_0_analyzer_position_t position_t;
+typedef exports_kjanat_actionlint_0_2_0_analyzer_script_t script_t;
+typedef exports_kjanat_actionlint_0_2_0_analyzer_diagnostic_t diagnostic_t;
 
 typedef struct {
     diagnostic_t *ptr;
@@ -18,7 +18,7 @@ typedef struct {
 
 static bool position(const script_t *script, uint32_t line, uint32_t column, bool exclusive, position_t *out) {
     for (size_t i = 0; i < script->spans.len; i++) {
-        const exports_kjanat_actionlint_analyzer_span_t *span = &script->spans.ptr[i];
+        const exports_kjanat_actionlint_0_2_0_analyzer_span_t *span = &script->spans.ptr[i];
         if (span->line != line) {
             continue;
         }
@@ -163,15 +163,15 @@ static void check_script(const script_t *script, findings_t *findings) {
     }
 }
 
-void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analyzer_descriptor_t *ret) {
+void exports_kjanat_actionlint_0_2_0_analyzer_describe(exports_kjanat_actionlint_0_2_0_analyzer_descriptor_t *ret) {
     memset(ret, 0, sizeof(*ret));
 #define STRING(field, value) plugin_string_dup(&ret->field, value);
 #define BOOL(field, value) ret->field = value;
     NO_SUDO_DESCRIPTOR(STRING, BOOL)
 #undef STRING
 #undef BOOL
-#define INPUT(kind) EXPORTS_KJANAT_ACTIONLINT_ANALYZER_INPUT_KIND_##kind,
-    const exports_kjanat_actionlint_analyzer_input_kind_t inputs[] = {NO_SUDO_INPUTS(INPUT)};
+#define INPUT(kind) EXPORTS_KJANAT_ACTIONLINT_0_2_0_ANALYZER_INPUT_KIND_##kind,
+    const exports_kjanat_actionlint_0_2_0_analyzer_input_kind_t inputs[] = {NO_SUDO_INPUTS(INPUT)};
 #undef INPUT
     ret->required_inputs.ptr = malloc(sizeof(inputs));
     if (!ret->required_inputs.ptr) {
@@ -181,8 +181,8 @@ void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analy
     ret->required_inputs.len = sizeof(inputs) / sizeof(inputs[0]);
 }
 
-void exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyzer_input_t *input,
-                                                exports_kjanat_actionlint_analyzer_outcome_t *ret) {
+void exports_kjanat_actionlint_0_2_0_analyzer_analyze(exports_kjanat_actionlint_0_2_0_analyzer_input_t *input,
+                                                exports_kjanat_actionlint_0_2_0_analyzer_outcome_t *ret) {
     memset(ret, 0, sizeof(*ret));
     findings_t findings = {0};
     for (size_t i = 0; i < input->scripts.len; i++) {
@@ -191,7 +191,7 @@ void exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyz
     for (size_t i = 0; i < input->invoked.len; i++) {
         check_script(&input->invoked.ptr[i], &findings);
     }
-    exports_kjanat_actionlint_analyzer_input_free(input);
+    exports_kjanat_actionlint_0_2_0_analyzer_input_free(input);
     ret->diagnostics.ptr = findings.ptr;
     ret->diagnostics.len = findings.len;
 }
