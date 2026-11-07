@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { expect, test } from 'bun:test';
@@ -9,8 +9,8 @@ import { expect, test } from 'bun:test';
 import { compileProvider } from '#authoring';
 import { createPluginTester, ProviderTestError } from '#testing';
 
-const sdk = pathToFileURL(resolve(import.meta.dirname, '#index')).href;
-const cli = resolve(import.meta.dirname, '#cli');
+const sdk = import.meta.resolve('#index');
+const cli = fileURLToPath(import.meta.resolve('#cli'));
 const mapping =
 	'map({filename:$vars.filename,code:.rule,message:.message,severity:"warning",location:{row:.line,column:.column}})';
 
@@ -60,7 +60,7 @@ test('authoring rejects rule categories outside the SDK union', async () => {
 		const path = fileURLToPath(definition);
 		const source = await readFile(path, 'utf8');
 		await writeFile(path, source.replace("category:'correctness'", "category:'style'"));
-		expect(await compileProvider(definition)).rejects.toThrow('manifest must default-export a valid SDK provider');
+		await expect(compileProvider(definition)).rejects.toThrow('manifest must default-export a valid SDK provider');
 	});
 });
 
