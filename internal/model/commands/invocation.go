@@ -328,7 +328,7 @@ func (r *Registry) analyze(result Invocation, id string, args []Token, chain []s
 			}
 			return result
 		}
-		if len(arg) < 2 || arg[0] != '-' && !(definition.ToggleOptions && arg[0] == '+') {
+		if len(arg) < 2 || arg[0] != '-' && (!definition.ToggleOptions || arg[0] != '+') {
 			if arg == "{0}" {
 				result.Input = input
 			} else {
