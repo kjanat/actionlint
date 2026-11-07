@@ -323,7 +323,7 @@ jobs:
       - parallel:
           - *Go
           - uses: $/.github/actions/setup-wasm-toolchain
-          - name: Install TinyGo and wasi-sdk
+          - name: Install TinyGo, wasi-sdk and the generated-code formatter
             uses: *SetupMise
             with:
               cache: true
@@ -331,9 +331,9 @@ jobs:
               mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
               cache_save_post: true
               cache_key: *MiseCacheKey
-              install_args: tinygo wasi-sdk
+              install_args: tinygo wasi-sdk kprint
               add_shims_to_path: false
-            env: { MISE_ENABLE_TOOLS: "tinygo,wasi-sdk" }
+            env: { MISE_ENABLE_TOOLS: "tinygo,wasi-sdk,kprint" }
           - name: Install the pinned Rust toolchain and targets
             run: rustup toolchain install
       - name: Cache Cargo dependencies and workspace builds
@@ -344,15 +344,19 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-${{ runner.arch }}-
             cargo-native-${{ runner.os }}-${{ runner.arch }}-
+      - name: Verify generated plugin interfaces
+        run: |
+          mise run --force protocol:go
+          go run -C internal/development/generators/plugin-contract .
+          git diff --exit-code -- ':(glob)internal/plugins/execution/component/*.gen.go' ':(glob)internal/plugins/protocol/component/**/*.gen.go' plugins/sdk/rust/wit plugins/sdk/rust/json plugins/sdk/go/packaging/analyzer.wit plugins/sdk/go/bindings
+          untracked="$(git ls-files --others --exclude-standard -- internal/plugins/execution/component internal/plugins/protocol/component plugins/sdk/rust/wit plugins/sdk/rust/json plugins/sdk/go/packaging/analyzer.wit plugins/sdk/go/bindings)"
+          test -z "${untracked}"
       - name: Verify the guest SDK package
         run: cargo package --locked -p actionlint-extension-api --all-features
       - name: Build the pinned Wasmtime runner host
         run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
         run: mise run --force plugins
-      - name: Verify generated plugin interfaces
-        run: go run -C internal/development/generators/plugin-contract .;
-          git diff --exit-code -- ':(glob)internal/plugins/execution/component/*.gen.go' ':(glob)internal/plugins/protocol/component/**/*.gen.go'
       - name: Load the Rust, C and TinyGo examples
         run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
           --plugin internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm

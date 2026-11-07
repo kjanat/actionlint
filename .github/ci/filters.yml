@@ -58,6 +58,9 @@ workflows:
         - ".github/actions/setup-pandoc/**"
       javascript:
         - *scripts
+        - "plugins/protocol/{wit,json}/**"
+        - "plugins/sdk/rust/{wit,json}/**"
+        - plugins/sdk/go/packaging/analyzer.wit
         - biome.jsonc
         - go.mod
         - "!**/testdata/**"
