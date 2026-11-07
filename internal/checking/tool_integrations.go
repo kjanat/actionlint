@@ -16,10 +16,8 @@ import (
 // occupiedTools identifies already-selected script-engine providers. Integrated
 // analyzers are removed from standalone execution, making repeated calls safe.
 func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Options, error) {
-	for _, registration := range options.Analyzers {
-		if validation.IsNil(registration.Checker) {
-			return options, errors.New("nil analyzer registration")
-		}
+	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
+		return options, err
 	}
 	options.Tools = slices.Clone(options.Tools)
 	remaining := make([]checkinputs.Registration, 0, len(options.Analyzers))
@@ -101,4 +99,13 @@ func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured
 		}
 	}
 	return b.integrator.NegotiateTool(ctx, config, slices.Clone(effective))
+}
+
+func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {
+	for _, registration := range registrations {
+		if validation.IsNil(registration.Checker) {
+			return errors.New("nil analyzer registration")
+		}
+	}
+	return nil
 }

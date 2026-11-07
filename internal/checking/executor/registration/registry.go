@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
 	expressionchecks "actionlint.kjanat.dev/v2/internal/checking/executor/expressions"
@@ -101,7 +103,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		}},
 		"credentials": declarationImplementation(security.CredentialsCheck()),
 		"shell-name": {Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.New(c.Rules, correctness.ShellNameCheck(c.Runners))
+			return declarationchecks.New(c.Rules, correctness.ShellNameCheck(c.Runners, commands.FromContext(c.Context)))
 		}},
 		"runner-label": {Build: func(c Inputs) workflowvisit.Rule {
 			labels := runnerlang.LabelSet{}

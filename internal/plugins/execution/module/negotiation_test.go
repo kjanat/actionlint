@@ -142,7 +142,9 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	python, bash := "python", "bash"
 	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
 		{Text: "print(1)", Shell: &python},
-		{Text: "print(2)", Execution: tools.Execution{Shell: "\"C:\\Program Files\\Python\\python.exe\"\u2003{0}"}},
+		{Text: "print(2)", Execution: tools.Execution{Shell: `C:\Python\python.exe {0}`}},
+		// Quoting does not change the runner's first-space executable split.
+		{Text: "not a runnable quoted executable", Execution: tools.Execution{Shell: `"C:\Program Files\Python\python.exe" {0}`}},
 		{Text: "echo no", Shell: &bash},
 	}})
 	if err != nil || nativeCalls != 1 {

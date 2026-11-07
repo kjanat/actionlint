@@ -5,6 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -12,14 +15,33 @@ import (
 )
 
 // checkShell validates builtin names and accepts custom shell templates.
-func checkShell(shell value.Value, platform runnerlang.Platform) []results.Diagnostic {
+func checkShell(shell value.Value, platform runnerlang.Platform, registries ...*commands.Registry) []results.Diagnostic {
 	node, known := shell.ScalarString()
 	if !known {
 		return nil
 	}
 
-	// Ignore custom shell
-	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#custom-shell
+	registry := interpreters.Builtin()
+	if len(registries) > 0 && registries[0] != nil {
+		registry = registries[0]
+	}
+	arguments := commands.UnknownArguments
+	if platform == runnerlang.MacOrLinux {
+		arguments = commands.UnixArguments
+	}
+	if platform == runnerlang.Windows {
+		arguments = commands.WindowsArguments
+	}
+	invocation := registry.AnalyzeFor(node, false, arguments)
+	if len(invocation.Issues) != 0 {
+		var findings []results.Diagnostic
+		for _, issue := range invocation.Issues {
+			findings = append(findings, results.Diagnostic{Rule: "shell-name", Code: issue.Code, Severity: issue.Severity, Start: shell.Origin().Span.Start, End: shell.Origin().Span.End, Message: issue.Message})
+		}
+		return findings
+	}
+	// Custom interpreters can supply their own definition. An unregistered
+	// executable supplies no language or option-validity conclusion.
 	if strings.Contains(node, "{0}") {
 		return nil
 	}

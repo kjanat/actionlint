@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"io/fs"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -17,8 +19,9 @@ import (
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
 	rulemeta.Descriptor
-	Scope           rulemeta.ConfigurationScope
-	SupportsActions bool
+	Scope                 rulemeta.ConfigurationScope
+	SupportsActions       bool
+	InvocationDefinitions []commands.Definition
 }
 
 // Checker completes all work before returning. The host may call CheckDocument
@@ -99,7 +102,8 @@ type ActionInput struct {
 // with the Execution input.
 type Script struct {
 	scriptmodel.Declaration
-	Occurrence  ScriptOccurrence
-	Runtime     *scriptmodel.Execution
-	Environment []scriptmodel.EnvironmentNames
+	Occurrence   ScriptOccurrence
+	Runtime      *scriptmodel.Execution
+	Environment  []scriptmodel.EnvironmentNames
+	Interpreters *commands.Registry
 }

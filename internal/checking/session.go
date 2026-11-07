@@ -12,6 +12,9 @@ import (
 	"runtime"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
@@ -81,6 +84,23 @@ type Result = report.Analysis
 
 // Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input inputmodel.Request) (result *Result, err error) {
+	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
+		return nil, err
+	}
+	var definitions []commands.Definition
+	for _, registration := range options.Analyzers {
+		if !validation.IsNil(registration.Checker) {
+			definitions = append(definitions, registration.Checker.Descriptor().InvocationDefinitions...)
+		}
+	}
+	for _, registration := range options.Tools {
+		definitions = append(definitions, registration.InvocationDefinitions...)
+	}
+	registry, err := interpreters.New(definitions)
+	if err != nil {
+		return nil, err
+	}
+	ctx = commands.WithRegistry(ctx, registry)
 	ctx, _ = accounting.TrackRequests(ctx)
 	options, err = ConfigureToolIntegrations(options)
 	if err != nil {

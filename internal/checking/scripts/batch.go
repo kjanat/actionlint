@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/invocations"
@@ -21,21 +23,22 @@ import (
 
 // Unit snapshots invocation context before analyzers run.
 type Unit struct {
-	Revision    source.Revision
-	Coordinates source.Coordinates
-	Occurrence  invocation.ID
-	Reference   source.Reference
-	Run         workflowdecl.ExecRunView
-	Input       *ActionInput
-	Shell       *string
-	Config      *repoconfig.Config
-	Path        string
-	Content     []byte
-	Origin      *findingmodel.IgnoreOrigin
-	Owner       *findingmodel.Owner
-	Scope       *Scope
-	Execution   Execution
-	Environment []scriptmodel.EnvironmentNames
+	Revision     source.Revision
+	Coordinates  source.Coordinates
+	Occurrence   invocation.ID
+	Reference    source.Reference
+	Run          workflowdecl.ExecRunView
+	Input        *ActionInput
+	Shell        *string
+	Config       *repoconfig.Config
+	Path         string
+	Content      []byte
+	Origin       *findingmodel.IgnoreOrigin
+	Owner        *findingmodel.Owner
+	Scope        *Scope
+	Execution    Execution
+	Environment  []scriptmodel.EnvironmentNames
+	Interpreters *commands.Registry
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
@@ -51,6 +54,7 @@ type ScriptRequest struct {
 	Input        *checkinputs.ScriptInput
 	Execution    Execution
 	Environment  []scriptmodel.EnvironmentNames
+	Interpreters *commands.Registry
 }
 
 type Collection struct {

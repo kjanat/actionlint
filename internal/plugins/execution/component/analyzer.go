@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
@@ -34,6 +36,7 @@ func (p *Plugin) Descriptor() checkinputs.Descriptor {
 	}
 	descriptor := *p.analyzerDescriptor
 	descriptor.Descriptor = descriptor.Clone()
+	descriptor.InvocationDefinitions = commands.CloneDefinitions(descriptor.InvocationDefinitions)
 	return descriptor
 }
 

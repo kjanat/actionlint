@@ -12,6 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -60,12 +62,13 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 	}
 	descriptor := manifest.Rule.Clone()
 	descriptor.RequiredInputs = requires
-	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
+	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
 }
 
 func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {
 	descriptor := d.descriptor
 	descriptor.Descriptor = descriptor.Clone()
+	descriptor.InvocationDefinitions = commands.CloneDefinitions(descriptor.InvocationDefinitions)
 	return descriptor
 }
 

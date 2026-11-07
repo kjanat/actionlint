@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -260,5 +262,23 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 	findings := documentFindings([]checkinputs.ScriptDiagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
 	if len(findings) != 1 || findings[0].Filename != filename {
 		t.Fatal("foreign file URI admitted as local capture", findings)
+	}
+}
+
+func TestDocumentInvocationDefinitionsOwnTheirOptions(t *testing.T) {
+	manifest := documentManifest(manifests.ProcessSpec{Output: echoOutput})
+	manifest.InvocationDefinitions = []commands.Definition{{ID: "example/runtime", Executables: []string{"custom"}, Options: []commands.Option{{Short: "o", Argument: true, Choices: []string{"allowed"}}}}}
+	checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.InvocationDefinitions[0].Options[0].Choices[0] = "caller-mutation"
+	descriptor := checker.Descriptor()
+	if descriptor.InvocationDefinitions[0].Options[0].Choices[0] != "allowed" {
+		t.Fatal("constructor aliases provider options")
+	}
+	descriptor.InvocationDefinitions[0].Options[0].Choices[0] = "descriptor-mutation"
+	if checker.Descriptor().InvocationDefinitions[0].Options[0].Choices[0] != "allowed" {
+		t.Fatal("descriptor aliases provider options")
 	}
 }

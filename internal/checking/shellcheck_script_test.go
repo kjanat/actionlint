@@ -36,6 +36,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		{name: "different native dialect clears startup", shell: "bash -e -o pipefail {0}", script: "# shellcheck shell=sh\ncd missing\nrm file", code: "SC2164", line: 2},
 		{name: "matching native dialect retains pipefail", shell: "bash -o pipefail {0}", script: "# shellcheck shell=\"bash\"\nfalse | true", args: []string{"--enable=check-extra-masked-returns"}},
 		{name: "later flag disables errexit", shell: "bash -euxo pipefail +e {0}", script: "cd missing\nrm file", code: "SC2164", line: 1},
+		{name: "shopt between errexit changes", shell: "bash -e -O extglob +e {0}", script: "cd missing\nrm file", code: "SC2164", line: 1},
 		{name: "pipefail affects analysis", shell: "bash -euxo pipefail {0}", script: "false | true", args: []string{"--enable=check-extra-masked-returns"}},
 		{name: "later flag disables pipefail", shell: "bash -euxo pipefail +o pipefail {0}", script: "false | true", args: []string{"--enable=check-extra-masked-returns"}, code: "SC2312", line: 1},
 		{name: "script flags participate in native analysis", shell: "bash {0}", script: "set -e\ncd missing\nrm file"},

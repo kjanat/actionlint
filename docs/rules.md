@@ -954,9 +954,9 @@ jobs:
 
 ## shell-name
 
-Validate script shells for the selected runner.
+Validate shell names for the selected runner and interpreter options supplied by built-in or plugin definitions. The rule cannot validate options when no interpreter definition matches or an argument contains an unresolved expression.
 
-Select a supported shell for the runner, or provide an explicit shell command containing {0}.
+Select a supported interpreter, include {0} for the script filename in custom commands, and correct invalid options. Bash uses -o for set options and -O for shopt options.
 
 - Category: `correctness/scripts`
 - Provider: `actionlint`

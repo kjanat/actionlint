@@ -325,7 +325,9 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 	python, unadvertised := "python", "bash"
 	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
 		{Text: "print(1)", Shell: &python},
-		{Text: "print(2)", Execution: tools.Execution{Shell: "\"C:\\Program Files\\Python\\python.exe\"\u2003{0}"}},
+		{Text: "print(2)", Execution: tools.Execution{Shell: `C:\Python\python.exe {0}`}},
+		// The runner splits at the first literal space, without unquoting the executable.
+		{Text: "not a runnable quoted executable", Execution: tools.Execution{Shell: `"C:\Program Files\Python\python.exe" {0}`}},
 		{Text: "echo no", Shell: &unadvertised},
 	}})
 	if err != nil || calls != 1 {

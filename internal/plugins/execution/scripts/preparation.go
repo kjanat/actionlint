@@ -248,7 +248,7 @@ func (p shellPreparation) batch(batch tools.Batch) (func(tools.Script) (scriptpr
 			return scriptpreparation.Prepared{Skip: "its tool settings are invalid"}, nil
 		}
 		run := shellprofile.Run{
-			Shell:      shellprofile.Shell{Name: script.Execution.Shell, Implicit: script.Execution.ImplicitShell},
+			Shell:      shellprofile.Shell{Name: script.Execution.Shell, Implicit: script.Execution.ImplicitShell, Registry: script.Fact.Interpreters, Platform: shellprofile.TargetArguments(script.Fact.Environment)},
 			Directives: resolved.directives, ConfigFile: resolved.configFile,
 			Sources: p.route == routeProcess && script.Execution.DirectoryKnown, Engine: p.route == routeEngine,
 			Environment: script.Fact.Environment,
