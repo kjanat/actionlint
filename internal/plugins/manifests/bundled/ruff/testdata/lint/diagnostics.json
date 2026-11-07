@@ -1,0 +1,148 @@
+{
+  "diagnostics": [
+    {
+      "filename": "actionlint.py",
+      "code": "E401",
+      "name": "multiple-imports-on-one-line",
+      "message": "Multiple imports on one line",
+      "severity": "error",
+      "location": {
+        "row": 1,
+        "column": 1
+      },
+      "end_location": {
+        "row": 1,
+        "column": 15
+      },
+      "url": "https://docs.astral.sh/ruff/rules/multiple-imports-on-one-line"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "F401",
+      "name": "unused-import",
+      "message": "`os` imported but unused",
+      "severity": "error",
+      "location": {
+        "row": 1,
+        "column": 8
+      },
+      "end_location": {
+        "row": 1,
+        "column": 10
+      },
+      "url": "https://docs.astral.sh/ruff/rules/unused-import"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "F401",
+      "name": "unused-import",
+      "message": "`sys` imported but unused",
+      "severity": "error",
+      "location": {
+        "row": 1,
+        "column": 12
+      },
+      "end_location": {
+        "row": 1,
+        "column": 15
+      },
+      "url": "https://docs.astral.sh/ruff/rules/unused-import"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "F401",
+      "name": "unused-import",
+      "message": "`json` imported but unused",
+      "severity": "error",
+      "location": {
+        "row": 2,
+        "column": 8
+      },
+      "end_location": {
+        "row": 2,
+        "column": 12
+      },
+      "url": "https://docs.astral.sh/ruff/rules/unused-import"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "E501",
+      "name": "line-too-long",
+      "message": "Line too long (139 > 88)",
+      "severity": "error",
+      "location": {
+        "row": 4,
+        "column": 89
+      },
+      "end_location": {
+        "row": 4,
+        "column": 140
+      },
+      "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "UP031",
+      "name": "printf-string-formatting",
+      "message": "Use format specifiers instead of percent format",
+      "severity": "error",
+      "location": {
+        "row": 5,
+        "column": 7
+      },
+      "end_location": {
+        "row": 5,
+        "column": 32
+      },
+      "url": "https://docs.astral.sh/ruff/rules/printf-string-formatting"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "E711",
+      "name": "none-comparison",
+      "message": "Comparison to `None` should be `cond is None`",
+      "severity": "error",
+      "location": {
+        "row": 6,
+        "column": 15
+      },
+      "end_location": {
+        "row": 6,
+        "column": 19
+      },
+      "url": "https://docs.astral.sh/ruff/rules/none-comparison"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "F821",
+      "name": "undefined-name",
+      "message": "Undefined name `undefined_name`",
+      "severity": "error",
+      "location": {
+        "row": 7,
+        "column": 11
+      },
+      "end_location": {
+        "row": 7,
+        "column": 25
+      },
+      "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "B007",
+      "name": "unused-loop-control-variable",
+      "message": "Loop control variable `i` not used within loop body",
+      "severity": "error",
+      "location": {
+        "row": 8,
+        "column": 5
+      },
+      "end_location": {
+        "row": 8,
+        "column": 6
+      },
+      "url": "https://docs.astral.sh/ruff/rules/unused-loop-control-variable"
+    }
+  ]
+}

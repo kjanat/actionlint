@@ -17,7 +17,7 @@ distribution/pypi/
 node distribution/pypi/src/cli.ts build --version "${version}" --assets release --out distribution/pypi/dist
 ```
 
-`--assets` is a directory with the GoReleaser checksums file `actionlint_<version>_checksums.txt` and the release archives. The builder checks the SHA-256 of every archive against that file, takes `actionlint` or `actionlint.exe` and `LICENSE.txt` from it, and writes one wheel per platform tag to `--out`, creating the directory if needed. It refuses to overwrite a wheel. `--version` is the stable `MAJOR.MINOR.PATCH` release version and becomes the wheel version. The builder runs on Node 24 or later after `npm ci` in the repository root. `node distribution/pypi/src/cli.ts build --help` lists the flags.
+`--assets` is a directory with the GoReleaser checksums file `actionlint_<version>_checksums.txt` and the release archives. The builder checks the SHA-256 of every archive against that file, takes `actionlint` or `actionlint.exe` and `LICENSE.txt` from it, and writes one wheel per platform tag to `--out`, creating the directory if needed. It refuses to overwrite a wheel. `--version` is the stable `MAJOR.MINOR.PATCH` release version and becomes the wheel version. The builder runs on Node 24 or later after `bun install --frozen-lockfile` in the repository root. `node distribution/pypi/src/cli.ts build --help` lists the flags.
 
 To build the wheels of a published release by hand:
 

@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/testutil"
+	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 )
 
 func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
-	wasm, err := os.ReadFile("internal/plugins/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := testutil.NewPluginRegistry(t)
+	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", wasm)
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -22,14 +22,14 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", testutil.FixtureRegistryURL)
+	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	path := filepath.Join(".github", "actionlint.yaml")
 	manifest, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
-	requests := len(registry.Requests)
+	registry.SetOffline(true)
+	requests := len(registry.Requests())
 	for _, setting := range []string{
 		"lint: {rules: {plugins: {no-sudo: off}}}",
 		"lint: {rules: {disable: [no-sudo]}}",
@@ -50,7 +50,7 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 	if output := pluginCommandTest(t, 3, "config", "validate"); !strings.Contains(output, "unknown diagnostic rule") {
 		t.Fatal(output)
 	}
-	if len(registry.Requests) != requests {
+	if len(registry.Requests()) != requests {
 		t.Fatal("config inspection contacted the offline registry")
 	}
 }

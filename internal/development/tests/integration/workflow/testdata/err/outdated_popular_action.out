@@ -1,0 +1,2 @@
+test.yaml:8:15: runtime "node12" is no longer bundled with current GitHub Actions runners. update the version of action "actions/checkout@v2" [action]
+test.yaml:10:15: runtime "node12" is no longer bundled with current GitHub Actions runners. update the version of action "actions/stale@v4" [action]

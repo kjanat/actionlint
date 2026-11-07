@@ -2,20 +2,24 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"slices"
+
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+
+	"actionlint.kjanat.dev/v2/internal/input/discovery"
+	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 
 	"github.com/spf13/cobra"
 )
 
 // Command runs the CLI with caller-provided streams. Each invocation has its own
 // argument parser and option state, so a Command can be reused.
-type Command struct {
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
-}
+type Command commandstreams.Streams
 
 // Main runs the CLI and returns its exit status. Args includes the executable
 // name, as in os.Args.
@@ -25,21 +29,36 @@ func (cmd *Command) Main(args []string) int {
 
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
-func (cmd *Command) MainContext(ctx context.Context, args []string) int {
-	app := newCommandApp(cmd)
+func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
+	ctx, accounting := networkaccounting.TrackRequests(ctx)
+	app := newCommandApp(ctx, cmd)
+	defer func() {
+		if app.opts.networkStats {
+			entry := struct {
+				Network networkaccounting.Statistics `json:"network"`
+			}{accounting.Statistics()}
+			if err := json.NewEncoder(app.streams.Stderr).Encode(entry); err != nil {
+				status = 3
+			}
+		}
+	}()
+	defer func() {
+		if app.directory.original != "" {
+			if err := os.Chdir(app.directory.original); err != nil {
+				status = app.reportError(fmt.Errorf("restore working directory: %w", err))
+			}
+		}
+	}()
 	// Root parsing must select an operation before errors can describe a check.
 	app.inv.Operation = ""
 	if len(args) > 0 {
 		args = args[1:]
 	}
-	if args == nil {
-		args = []string{}
-	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)
 		app.root.SetArgs(normalizeCommandArgs(app.root, args))
 		if err := app.root.ExecuteContext(ctx); err != nil {
-			return app.reportError(commandUsageError{err})
+			return app.reportError(commandargs.UsageError{Cause: err})
 		}
 		return app.status
 	}
@@ -50,12 +69,26 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	if app.helpShown {
 		return app.status
 	}
+	if len(rest) == 0 && !terminated && (len(app.set) == 0 || len(app.set) == 1 && app.set["directory"]) {
+		directory, err := os.Getwd()
+		if err != nil {
+			return app.reportError(err)
+		}
+		if discovery.RepositoryRoot(directory) == "" {
+			app.root.SetContext(ctx)
+			app.streams.Stderr = app.streams.Stdout
+			app.help(app.root, nil)
+			return app.status
+		}
+		// Force the check command even when the repository has a file named check.
+		forced = "check"
+	}
 	legacyOperation := app.opts.version || app.opts.initConfig || app.opts.completion != "" || app.opts.helpLegacy
 	modern := forced != "" || (!legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0]) && !commandFileExists(rest[0]))
 	if modern {
 		if forced != "" {
 			if !isCommandName(forced) {
-				return app.reportError(commandUsageError{fmt.Errorf("unknown command %q", forced)})
+				return app.reportError(commandargs.UsageError{Cause: fmt.Errorf("unknown command %q", forced)})
 			}
 			rest = append([]string{forced}, rest...)
 		}
@@ -70,7 +103,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		if err := app.root.ExecuteContext(ctx); err != nil {
-			return app.reportError(commandUsageError{err})
+			return app.reportError(commandargs.UsageError{Cause: err})
 		}
 	} else {
 		app.inv.Legacy = true
@@ -103,14 +136,14 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		}
 		var shell completionShell
 		if err := shell.Set(app.inv.Shell); err != nil {
-			return app.reportError(commandUsageError{err})
+			return app.reportError(commandargs.UsageError{Cause: err})
 		}
 		if err := writeCompletion(app.streams.Stdout, shell, app.root); err != nil {
 			return app.reportError(err)
 		}
 		return 0
 	}
-	status, err := executeInvocation(ctx, app.streams, app.inv)
+	status, err = executeInvocation(ctx, app.streams, app.inv)
 	if err != nil {
 		return app.reportError(err)
 	}

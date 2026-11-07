@@ -1,0 +1,7 @@
+test.yaml:6:19: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:10:21: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:18:19: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:25:16: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:30:16: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:35:11: Quote repeated spaces to avoid them collapsing into one [shellcheck]
+test.yaml:35:20: Double quote to prevent globbing and word splitting [shellcheck]

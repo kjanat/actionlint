@@ -1,0 +1,23 @@
+{
+  "name": "@kjanat-actionlint/plugin-trailing-space",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./actionlint": "./actionlint.js"
+  },
+  "bin": {
+    "actionlint-plugin-trailing-space": "./actionlint.js"
+  },
+  "files": [
+    "/actionlint.plugin.ts",
+    "/actionlint.js",
+    "/actionlint-provider.json",
+    "/installation.ts"
+  ],
+  "scripts": {
+    "pack": "actionlint-plugin pack"
+  },
+  "devDependencies": {
+    "@kjanat-actionlint/plugin-sdk": "workspace:*"
+  }
+}

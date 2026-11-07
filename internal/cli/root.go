@@ -1,22 +1,48 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
+
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 type commandOptions struct {
-	output, colorMode, logLevel, command            string
+	output                                          outputModes
+	colorMode, logLevel, command                    string
 	color, noColor, initConfig, version, helpLegacy bool
-	noRuff, noShellCheck                            bool
 	completion                                      completionShell
+	networkStats                                    bool
 }
 
+// outputModes is shared by all output aliases and command flag sets so every
+// occurrence appends, including flags on both sides of a subcommand.
+type outputModes []string
+
+func (m *outputModes) Set(value string) error {
+	*m = append(*m, value)
+	return nil
+}
+
+func (m *outputModes) String() string {
+	if len(*m) == 0 {
+		return "pretty"
+	}
+	return strings.Join(*m, ",")
+}
+
+func (*outputModes) Type() string { return "MODE" }
+
 type commandApp struct {
+	// ctx is the invocation context. Cobra leaves Command.Context nil for
+	// commands it did not execute, such as help targets, so help output uses this.
+	ctx          context.Context
 	root         *cobra.Command
 	streams      Command
 	inv          invocation
@@ -26,18 +52,15 @@ type commandApp struct {
 	errorJSON    bool
 	helpShown    bool
 	prefixIgnore []string
+	directory    directoryOption
 }
-
-type commandUsageError struct{ error }
 
 const commandGroupAnnotation = "actionlint/group"
 
 const commandChoicesAnnotation = "actionlint/choices"
 
-const commandOptionalValueAnnotation = "actionlint/optional-value"
-
-func newCommandApp(streams *Command) *commandApp {
-	a := &commandApp{streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
+func newCommandApp(ctx context.Context, streams *Command) *commandApp {
+	a := &commandApp{ctx: ctx, streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
 	if a.streams.Stdin == nil {
 		a.streams.Stdin = strings.NewReader("")
 	}
@@ -51,7 +74,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.root = &cobra.Command{
 		Use:           "actionlint [flags] [--] [files... | -]",
 		Short:         "Check GitHub Actions workflows",
-		Long:          "Check workflows, actions and embedded scripts.\nWith no files, discover workflows and actions in the current repository.\nPass - alone to read stdin.",
+		Long:          "Check workflows, actions and embedded scripts.\nWith no arguments, scan the current Git repository or show help outside a repository.\nPass - alone to read stdin.",
 		SilenceErrors: true, SilenceUsage: true, DisableFlagsInUseLine: true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		RunE:              a.capture("check"),
@@ -61,13 +84,19 @@ func newCommandApp(streams *Command) *commandApp {
 	a.root.SetIn(a.streams.Stdin)
 	a.root.SetOut(a.streams.Stdout)
 	a.root.SetErr(a.streams.Stderr)
-	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return commandUsageError{err} })
+	a.root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return commandargs.UsageError{Cause: err} })
 	a.root.SetHelpFunc(a.help)
+	a.root.PersistentFlags().BoolVar(&a.opts.networkStats, "network-stats", false, "Write grouped network accounting as JSON to stderr")
+	annotateFlag(a.root.PersistentFlags(), "network-stats", "Output")
+	a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup("network-stats"))
+	a.root.PersistentFlags().VarP(&a.directory, "directory", "C", "Run from `DIR`; repeated relative directories build on the previous one")
+	annotateFlag(a.root.PersistentFlags(), "directory", "Input")
+	a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup("directory"))
 	a.checkFlags(a.root, false)
 	a.root.Flags().SetInterspersed(true)
 	check := &cobra.Command{
 		Use: "check [flags] [--] [files... | -]", Short: "Check workflows and actions",
-		Long: "Check workflow and action files, stdin, or the current repository.\nOptions may appear before or after filenames. Directory inputs are not expanded.",
+		Long: "Check workflow and action files, directories, stdin, or the current repository.\nOptions may appear before or after paths. Directories are traversed recursively.",
 		Args: cobra.ArbitraryArgs, RunE: a.capture("check"),
 		ValidArgsFunction: cobra.FixedCompletions([]string{"yaml", "yml"}, cobra.ShellCompDirectiveFilterFileExt),
 	}
@@ -116,10 +145,11 @@ func newCommandApp(streams *Command) *commandApp {
 		{"path", "Print the selected configuration path"},
 		{"show", "Show effective configuration settings"},
 		{"validate", "Validate the selected configuration using actionlint's loader"},
+		{"schema", "Print the configuration JSON schema, including tools from installed plugins"},
 		{"migrate", "Preview conversion to current configuration syntax"},
 	} {
 		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture(operation("config " + item.name))}
-		if item.name == "show" || item.name == "validate" {
+		if item.name == "show" || item.name == "validate" || item.name == "schema" {
 			a.pluginFlags(c.Flags())
 		}
 		if item.name == "show" {
@@ -221,38 +251,30 @@ func (a *commandApp) hyperlinkFlag(c *cobra.Command, f *pflag.FlagSet) {
 
 func (a *commandApp) configFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.Config.Path, "config", "", "Read configuration from `PATH`")
-	f.BoolVar(&a.inv.Check.Config.Disabled, "no-config", false, "Use default configuration")
+	f.BoolVar(&a.inv.Check.Config.Disabled, "no-config", false, "Disable configuration loading")
+	for _, name := range []string{"no-rc", "norc"} {
+		f.BoolVar(&a.inv.Check.Config.Disabled, name, false, "Alias for --no-config")
+		_ = f.MarkHidden(name)
+	}
 	f.StringVar(&a.inv.Check.Config.Path, "config-file", "", "Alias for --config")
 	_ = f.MarkHidden("config-file")
-	for _, name := range []string{"config", "config-file", "no-config"} {
+	for _, name := range []string{"config", "config-file", "no-config", "no-rc", "norc"} {
 		annotateFlag(f, name, "Configuration")
 	}
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
+	f.StringVar(&a.inv.Check.ActionMetadata, "action-metadata", "off", "Remote action metadata: off, offline cache only, or online GitHub acquisition")
+	annotateFlag(f, "action-metadata", "Dependency resolution")
 	f.StringVar(&a.inv.Check.ResolverCommand, "resolve-with", "", "Resolve remote dependencies using this executable")
 	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")
 	annotateFlag(f, "resolve-with", "Dependency resolution")
 	annotateFlag(f, "resolver-arg", "Dependency resolution")
-	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Check Python scripts")
-	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "Check shell scripts")
-	f.BoolVar(&a.opts.noRuff, "no-ruff", false, "Disable Python script linting")
-	f.BoolVar(&a.opts.noShellCheck, "no-shellcheck", false, "Disable shell script linting")
-	f.BoolVar(&a.inv.Check.AllowConfigProcesses, "allow-config-processes", false, "Allow trusted repository configuration to select native executables")
-	for _, name := range []string{"ruff", "shellcheck", "no-ruff", "no-shellcheck", "allow-config-processes"} {
-		annotateFlag(f, name, "External linters")
-	}
-	for _, name := range []string{"ruff", "shellcheck"} {
-		f.Lookup(name).NoOptDefVal = name
-		f.Lookup(name).Annotations[commandOptionalValueAnnotation] = []string{"COMMAND"}
-	}
-	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: select Pyflakes rules through Ruff")
-	_ = f.MarkHidden("pyflakes")
-	annotateFlag(f, "pyflakes", "External linters")
+	a.externalToolFlags(f)
 }
 
 func (a *commandApp) pluginFlags(f *pflag.FlagSet) {
-	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI` (repeatable)")
+	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI`, or a local tool provider manifest (.json) (repeatable)")
 	annotateFlag(f, "plugin", "Rule selection")
 }
 
@@ -270,9 +292,12 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.pluginLockFlag(f)
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
+	f.BoolVar(&a.inv.Check.NoIgnore, "no-ignore", false, "Include Git-ignored files during discovery; configured file filters still apply")
+	annotateFlag(f, "no-ignore", "Input")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
-	f.StringVarP(&a.opts.output, "output-format", "o", "text", "Output mode: text, oneline, json, jsonl, sarif or github")
-	f.StringVar(&a.opts.output, "output", "text", "Alias for --output-format")
+	f.VarP(&a.opts.output, "output-format", "o", "Output mode: text, pretty, oneline, gcc, json, jsonl, sarif or github (repeatable)")
+	f.IntVar(&a.inv.Render.Width, "diagnostic-width", 100, "Pretty diagnostic width in columns (40-400)")
+	f.Var(&a.opts.output, "output", "Alias for --output-format (repeatable)")
 	f.StringVarP(&a.inv.Render.Template, "template", "f", "", "Render legacy fields with this Go template")
 	f.StringVar(&a.inv.Render.Template, "format", "", "Alias for --template")
 	f.StringVar(&a.inv.Render.TemplateFile, "template-file", "", "Read a Go template from this path")
@@ -296,7 +321,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	for _, name := range []string{"ignore-regex", "ignore"} {
 		annotateFlag(f, name, "Filtering")
 	}
-	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
+	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "diagnostic-width", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
 		annotateFlag(f, name, "Output")
 	}
 	for _, name := range []string{"yes", "help", "help-legacy"} {
@@ -325,8 +350,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 			panic(err)
 		}
 	}
-	choices("output-format", []string{"text", "oneline", "json", "jsonl", "sarif", "github"})
-	choices("output", []string{"text", "oneline", "json", "jsonl", "sarif", "github"})
+	choices("output-format", []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"})
+	choices("output", []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"})
 	choices("log-level", []string{"none", "info", "debug"})
 	if modern {
 		choices("color", []string{"auto", "always", "never"})
@@ -374,7 +399,7 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 }
 
 func (a *commandApp) jsonOutput() bool {
-	return a.inv.JSON || a.opts.output == "json" || a.opts.output == "jsonl" || a.prettyJSONSelected()
+	return a.inv.JSON || slices.Contains(a.opts.output, "json") || slices.Contains(a.opts.output, "jsonl") || a.prettyJSONSelected()
 }
 
 func (a *commandApp) formatSelected() bool {

@@ -1,0 +1,123 @@
+package composites
+
+import (
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/input/files"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/parsing"
+)
+
+func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo ok\n      - *shared\n")
+	document := parsing.Workflow(content)
+	if len(document.SyntaxErrors) != 0 {
+		t.Fatal(document.SyntaxErrors)
+	}
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document("ci.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+	result, err := Workflow(options, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	references := parsing.References("ci.yml", content, document, nil, func(path string) string { return path })
+	input, err := CheckInput(result, "ci.yml", "ci.yml", content, document, references)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(input.Scripts) != 2 {
+		t.Fatalf("script count = %d, want 2", len(input.Scripts))
+	}
+	steps := workflowStepViews(t, workflowView(t, snapshot), "test")
+	for i, step := range steps {
+		want := stepReference(t, snapshot, step)
+		if input.Scripts[i].Reference != want {
+			t.Fatalf("script %d lost its declaration owner: got %+v, want %+v", i, input.Scripts[i].Reference, want)
+		}
+		if indexed := references["ci.yml"].Steps[i]; indexed != want {
+			t.Fatalf("source index drifted from snapshot: got %+v, want %+v", indexed, want)
+		}
+	}
+	if input.Scripts[0].Reference.Node == input.Scripts[1].Reference.Node {
+		t.Fatal("aliased scalar positions collapsed separate script declarations")
+	}
+}
+
+func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "ci.yml")
+	actionPath := filepath.Join(root, "source", "action.yml")
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/source\n      - uses: $/generated\n")
+	actionContent := []byte("name: source\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - &shared\n      shell: bash\n      run: echo ok\n    - *shared\n")
+	document := parsing.Workflow(content)
+	if len(document.SyntaxErrors) != 0 {
+		t.Fatal(document.SyntaxErrors)
+	}
+	registry, store, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document(files.PhysicalPath(path), content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := workspaceactions.NewCache(t.Context(), root, nil)
+	actionCapture, err := snapshots.Capture(actionPath, actionContent, source.YAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
+	resolver := workspaceactions.NewResolver(cache, map[string]string{"./generated": "./source"})
+	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: resolver, CollectScripts: true}
+	result, err := Workflow(options, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Batch.Scripts()) != 4 {
+		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts()))
+	}
+	indexes := parsing.References(path, content, document, result.Sources, files.PhysicalPath)
+	declarations := map[source.Reference]bool{}
+	for _, reference := range indexes[actionPath].Steps {
+		declarations[reference] = true
+	}
+	for i, unit := range result.Batch.Scripts() {
+		if !declarations[unit.Reference] {
+			t.Fatalf("script %d drifted from source index: %+v", i, unit.Reference)
+		}
+		if i >= 2 {
+			original := result.Batch.Scripts()[i-2]
+			if unit.Reference != original.Reference || !reflect.DeepEqual(unit.Run, original.Run) {
+				t.Fatal("mapped snapshot changed its declaration or script value")
+			}
+		}
+	}
+	if result.Batch.Scripts()[0].Reference == result.Batch.Scripts()[1].Reference {
+		t.Fatal("aliased action declarations collapsed")
+	}
+	if result.Batch.Scripts()[0].Scope.Deployment.ActionPath() != filepath.Dir(actionPath) || result.Batch.Scripts()[2].Scope.Deployment.ActionPath() != "" {
+		t.Fatal("source reuse contaminated per-lookup deployment paths")
+	}
+}
+
+func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
+	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
+	indexed := parsing.Workflow(content)
+	foreign := parsing.Workflow(content)
+	analysis := compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, sourceSnapshot: workflowSnapshot(t, content, indexed)}
+	foreignStep := workflowStepViews(t, workflowView(t, workflowSnapshot(t, content, foreign)), "test")[0]
+	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
+		t.Fatal("accepted independently decoded declaration")
+	}
+	if len(analysis.scripts) != 0 {
+		t.Fatal("foreign declaration produced a script fact")
+	}
+	analysis.sourceSnapshot = parsing.SourceSnapshot{}
+	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
+		t.Fatal("accepted a script without a source snapshot")
+	}
+}

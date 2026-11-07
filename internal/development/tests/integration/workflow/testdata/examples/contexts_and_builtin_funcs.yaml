@@ -1,0 +1,18 @@
+on: [push, issues]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Access undefined context
+      - run: echo '${{ unknown_context }}'
+      # Access undefined property of context
+      - run: echo '${{ github.events }}'
+      # Calling undefined function (start's'With is correct)
+      - run: echo "${{ startWith('hello, world', 'lo,') }}"
+      # Wrong number of arguments
+      - run: echo "${{ startsWith('hello, world') }}"
+      # An object argument makes this predicate return false.
+      - run: echo "${{ startsWith('hello, world', github.event) }}"
+      # contains() accepts either a string or an array as its first argument.
+      - run: echo "${{ contains('hello, world', 'lo,') }}"
+      - run: echo "${{ contains(github.event.issue.labels.*.name, 'enhancement') }}"

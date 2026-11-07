@@ -1,0 +1,125 @@
+package kjanat:actionlint@0.3.0;
+
+/// A snippet engine. The host owns shell selection, expression masking, source
+/// mapping, suppression and scheduling. The engine reads no document and no
+/// files except the resources it requests and the host grants for a check.
+/// Version 0.3.0 adds fixes, findings in files the engine read, the request
+/// directory, excluded codes and resource negotiation to 0.2.0.
+interface script-engine {
+    /// One-based Unicode scalar coordinates; range ends are exclusive.
+    record position {
+        row: u32,
+        column: u32,
+    }
+
+    /// Replaces the snippet text between two positions with text.
+    record replacement {
+        location: position,
+        end-location: position,
+        text: string,
+    }
+
+    /// One suggested edit. Its replacements apply together or not at all.
+    record fix {
+        description: string,
+        replacements: list<replacement>,
+    }
+
+    /// Filename is the request's virtual filename. Severity is the engine's own
+    /// name, such as "error", "warning", "info" or "style"; the host maps it.
+    /// Source, when set, is a file the engine read besides the snippet, as a
+    /// relative slash-separated path below the request directory. The finding
+    /// is then in that file, its positions are that file's and it has no fixes.
+    /// Fixes use snippet coordinates and need the fixes capability.
+    record diagnostic {
+        filename: string,
+        code: string,
+        name: string,
+        message: string,
+        severity: string,
+        location: position,
+        end-location: position,
+        url: option<string>,
+        source: option<string>,
+        fixes: list<fix>,
+    }
+
+    /// Read-only filesystem access an engine may request for its checks.
+    enum resource-kind {
+        /// The script's working directory, mounted at the request directory.
+        directory,
+    }
+
+    /// What the engine's diagnostics may carry and what it needs to produce
+    /// them. The host rejects diagnostics that use an undeclared capability.
+    record capabilities {
+        fixes: bool,
+        reported-sources: bool,
+        /// The host grants each requested resource it can provide for a check
+        /// and states the grant in the request.
+        resources: list<resource-kind>,
+    }
+
+    /// Source is already sanitized. Filename is virtual. Config is a JSON object
+    /// containing only engine options, with no inherited environment or files.
+    /// Excluded lists diagnostic codes, such as "SC1091", that the host's
+    /// preparation excludes; the engine must not report them. Directory is set
+    /// only when the host granted the directory resource: it is the guest path
+    /// where the script's working directory is mounted read-only.
+    record request {
+        source: string,
+        filename: string,
+        config: string,
+        excluded: list<string>,
+        directory: option<string>,
+    }
+
+    /// Findings remain valid when analysis is incomplete.
+    record outcome {
+        diagnostics: list<diagnostic>,
+        error: option<string>,
+    }
+
+    record example {
+        description: string,
+        before: string,
+        after: string,
+    }
+
+    record rule-descriptor {
+        name: string,
+        description: string,
+        category: string,
+        subcategory: string,
+        maturity: string,
+        provider: string,
+        recommended: bool,
+        explanation: string,
+        help: string,
+        documentation-url: string,
+        options-schema: string,
+        examples: list<example>,
+    }
+
+    /// ID/version identify the plugin; engine/engine-version identify its embedded
+    /// analyzer. Rule name equals engine; provider equals ID. Shells are canonical
+    /// host shell names.
+    record descriptor {
+        id: string,
+        version: string,
+        name: string,
+        engine: string,
+        engine-version: string,
+        shells: list<string>,
+        rule: rule-descriptor,
+        capabilities: capabilities,
+    }
+
+    describe: func() -> descriptor;
+    validate-config: func(config: string) -> result<_, string>;
+    check: func(request: request) -> outcome;
+}
+
+world script-engine-plugin {
+    export script-engine;
+}

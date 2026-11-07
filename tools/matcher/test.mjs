@@ -21,13 +21,18 @@ describe('problem matcher pattern', () => {
 			assert.equal(m[pattern.file], want.filepath);
 			assert.equal(m[pattern.line], want.line.toString());
 			assert.equal(m[pattern.column], want.column.toString());
-			assert.equal(m[pattern.message], want.message);
+			const message = want.code && want.code !== want.kind ? `${want.code}: ${want.message}` : want.message;
+			assert.equal(m[pattern.message], message);
 			assert.equal(m[pattern.code], want.kind);
 		});
 	}
 
 	for (const parent of ['examples', 'err']) {
-		const dir = path.join(import.meta.dirname, '..', '..', 'testdata', parent);
+		const dir = path.join(
+			import.meta.dirname,
+			'../../internal/development/tests/integration/workflow/testdata',
+			parent,
+		);
 		for (const name of readdirSync(dir)) {
 			if (!name.endsWith('.out')) {
 				continue;

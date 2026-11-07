@@ -20,18 +20,17 @@ on:
       - "**/*.bash"
       - "**/*.sh"
       - "**/*.ps1"
-      - "Dockerfile"
-      - "Dockerfile.*"
+      - "distribution/docker/Dockerfile"
+      - "distribution/docker/Dockerfile.*"
       - "go.mod"
       - "go.sum"
-      - "Makefile"
+      - "tasks.toml"
       - "!testdata/**"
       - "!**/testdata/**"
       - "!docs/releases/**"
       - "!man/actionlint.1.md"
       - "!.github/**"
       - ".github/workflows/autofix.yml"
-      - ".github/actions/setup-formatters/**"
   pull_request:
     paths: *FormatPaths
 
@@ -60,27 +59,22 @@ jobs:
             base=${BASE_SHA}
           fi
           bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
-      - uses: $/.github/actions/setup-formatters
+      - uses: kjanat/install-dprint@ad298f8bd07a6bf8dcb3bd13cd567a3e6a85af71 # v2
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
         run: bash tools/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
-      - name: Regenerate the configuration schema
-        id: schema
-        run: bash tools/ci/autofix-step.bash go generate -run generate-config-schema
       - name: Keep mise metadata with cached tools
-        if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
         shell: bash
         run: |
           mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
           if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Set up mise for the affected generators
-        if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          install: ${{ steps.inputs.outputs.tables == 'true' }}
-          env: ${{ steps.inputs.outputs.tables == 'true' }}
+          install: ${{ steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true' }}
+          env: true
           add_shims_to_path: false
           working_directory: ${{ steps.inputs.outputs.tables == 'true' && github.workspace || runner.temp }}
           cache: true
@@ -89,21 +83,28 @@ jobs:
           cache_save_post: true
           cache_key: >-
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: node npm
-        env: { MISE_ENABLE_TOOLS: "node,npm" }
+          install_args: node npm bun
+        env: { MISE_ENABLE_TOOLS: "node,npm,bun" }
+      - name: Regenerate the configuration schema
+        id: schema
+        run: bash tools/ci/autofix-step.bash mise run generate:config-schema
       - name: Install catalogue generator dependencies
         if: steps.inputs.outputs.tables == 'true'
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'
-        run: bash tools/ci/autofix-step.bash go generate -skip generate-config-schema
+        run: bash tools/ci/autofix-step.bash mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'
-        run: bash tools/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
+        run: bash tools/ci/autofix-step.bash node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
+      # dprint runs rustfmt per file in parallel; each would install the
+      # rust-toolchain.toml channel at once and the rustup installs collide.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
       - name: format the code
         id: format
         # autofix-ci will fail if the .github directory is touched

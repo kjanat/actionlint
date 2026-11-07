@@ -3,19 +3,19 @@
 [![CI Status][ci-badge]][ci]
 [![Latest release][release-badge]][releases]
 [![NPM Version][npm-badge]][npm-package]
+[![pkg.pr.new][preview-badge]][previews]
 [![Docker image version][docker-badge]][dockerhub]
-[![API Document][apidoc-badge]][apidoc]
 [![Sponsor this project][sponsor-badge]][sponsor]
 
 [actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
-This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev/v2`. Report problems through [this fork's issue tracker][issue-form].
+This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub]. Report problems through [this fork's issue tracker][issue-form].
 
 ## Fork provenance and versioning
 
 This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`]). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
 
-The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable].
+The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results. Other programs connect through the [integration interfaces].
 
 ## Features
 
@@ -48,7 +48,7 @@ See the [full list][checks] of checks done by actionlint.
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
-The same files the animation above records, run through both linters. This section is generated from them by [`internal/documentation/check-readme`].
+The same files the animation above records, run through both linters. This section is generated from them by [`tools/docs/readme-demo.mjs`].
 
 <!-- BEGIN generated demo -->
 
@@ -78,7 +78,7 @@ jobs:
 `docs/screenshots/actionlint.yaml`:
 
 ```yaml
-# yaml-language-server: $schema=../../actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@1/actionlint.schema.json
 ---
 policy:
   require-commit-hash: true
@@ -140,10 +140,10 @@ go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
 
 <sub><em><code>actionlint.kjanat.dev/v2</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/v2/@latest</code></sub>
 
-Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives as minimal as possible.
+Run `actionlint check` in your repository to discover and check workflows and action manifests. Bare `actionlint` shows help and exits 0; `actionlint check` exits 3 when there is nothing to analyze.
 
 ```sh
-actionlint
+actionlint check
 ```
 
 Another option to try actionlint is [the online playground][playground]. Your browser can run actionlint through WebAssembly.
@@ -171,8 +171,7 @@ Project settings belong in [`.github/actionlint.yaml`](docs/config.md).
 Use the `config` input for a one-run override. No `with:` block is required.
 
 The upcoming JavaScript Action runs on Linux, macOS and Windows without Docker.
-Existing immutable releases retain their Docker implementation. Pin a published
-release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
+Pin a published release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
 
 See the [Action guide](docs/action.md) for configuration, saved reports,
 optional PR reviews, tool prerequisites, migration and the input/output reference.
@@ -191,7 +190,7 @@ repos:
 ```
 
 The default hook installs the matching binary wheel in an isolated Python environment.
-Project configuration and the plugin lockfile select ShellCheck and Ruff Wasm plugins.
+Exact plugin versions in project configuration select ShellCheck and Ruff Wasm plugins.
 See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 
 ## Documents
@@ -201,8 +200,8 @@ See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 - [Installation][install]: Install with npm, Homebrew, AUR, Scoop, WinGet, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes upstream-only package names.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
-- [Go API][api]: How to use actionlint as Go library.
-- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Integration interfaces][api]: Use the CLI, language server and plugin SDKs from other programs.
+- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and intentional differences.
 - [Expression behavior]: Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
@@ -222,15 +221,13 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [AUR]: docs/install.md#arch-linux
 [CLI compatibility]: CONTRIBUTING.md#cli-compatibility
 [Expression behavior]: docs/expression-behavior.md
-[Go library API remains unstable]: CONTRIBUTING.md#go-library-api
+[integration interfaces]: docs/api.md
 [Homebrew]: docs/install.md#homebrew
 [Schema audit]: docs/schema-audit.md
 [Scoop]: docs/install.md#scoop
 [WinGet]: docs/install.md#winget
 [Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
-[`internal/documentation/check-readme`]: internal/documentation/check-readme
-[apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev/v2.svg
-[apidoc]: https://pkg.go.dev/actionlint.kjanat.dev/v2
+[`tools/docs/readme-demo.mjs`]: tools/docs/readme-demo.mjs
 [changelog]: CHANGELOG.md#upstream-history
 [ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
@@ -247,6 +244,8 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
 [npm-package]: https://npm.im/@kjanat/actionlint
 [playground]: https://kjanat.github.io/actionlint/
+[preview-badge]: https://pkg.pr.new/badge/kjanat/actionlint
+[previews]: https://pkg.pr.new/~/kjanat/actionlint
 [pre-commit]: https://pre-commit.com
 [release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
 [releases]: https://github.com/kjanat/actionlint/releases

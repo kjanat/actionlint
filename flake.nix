@@ -33,12 +33,12 @@
         pkgs:
         assert (goFor pkgs).version == goVersion;
         pkgs.${"buildGo${goMajor}${goMinor}Module"};
-      ruffFor = pkgs: pkgs.callPackage ./nix/ruff.nix { };
+      ruffFor = pkgs: pkgs.callPackage ./distribution/nix/ruff.nix { };
       version = "2.0.0";
     in
     {
       packages = forAllSystems (pkgs: rec {
-        actionlint = pkgs.callPackage ./nix/package.nix {
+        actionlint = pkgs.callPackage ./distribution/nix/package.nix {
           src = self;
           buildGoModule = goBuilderFor pkgs;
           ruff = ruffFor pkgs;
@@ -49,10 +49,10 @@
 
       checks = forAllSystems (pkgs: {
         package = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
-        integration = pkgs.callPackage ./nix/check.nix {
+        integration = pkgs.callPackage ./distribution/nix/check.nix {
           actionlint = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
         };
-        completion = pkgs.callPackage ./nix/completion.nix {
+        completion = pkgs.callPackage ./distribution/nix/completion.nix {
           actionlint = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
         };
       });
@@ -64,6 +64,7 @@
             git
             bash
             bash-completion
+            mise
             zsh
             fish
             gnumake

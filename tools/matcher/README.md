@@ -22,17 +22,9 @@ run //tools/matcher:test
 
 It runs on `node --test` and is also covered by `run test:js`.
 
-The test uses test data at `./tools/matcher/testdata/*.txt`. They should be updated when actionlint changes
-the default error message format. To update them:
+The test uses text-format fixtures at `./tools/matcher/testdata/*.txt`. The matcher reads `--output-format text`,
+not the default pretty output. Regenerate the text and JSON expectations together:
 
 ```sh
-make ./tools/matcher/testdata/escape.txt
-make ./tools/matcher/testdata/no_escape.txt
-make ./tools/matcher/testdata/want.json
-```
-
-or expand glob by your shell:
-
-```sh
-make ./tools/matcher/testdata/*
+run matcher:fixtures
 ```

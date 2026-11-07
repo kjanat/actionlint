@@ -1,0 +1,7 @@
+name: Example
+description: Local action fixture
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: echo example

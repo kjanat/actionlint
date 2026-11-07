@@ -3,6 +3,7 @@ name: CI
 on:
   push: { branches: [master] }
   pull_request: null
+  workflow_dispatch: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -11,85 +12,14 @@ defaults: { run: { shell: "bash --noprofile --norc -exo pipefail {0}" } }
 jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml
-    with:
-      filters: |
-        {
-          "shared": [
-            ".github/workflows/ci.yml", ".github/workflows/ci-changes.yml", ".github/ci/**", ".tool-versions",
-            ".mise.toml"
-          ],
-          "jobs": {
-            "unit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
-              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile",
-              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
-              "flake.lock"
-            ],
-            "race": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
-              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile",
-              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
-              "flake.lock"
-            ],
-            "nix": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "nix/**",
-              "tools/**/*.go", "tools/**/testdata/**", "fuzz/**", "testdata/**",
-              "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "tools/release/check-packaged-cli.bash",
-              ".github/workflows/nix.yml"
-            ],
-            "wasm": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
-              "packages/changelog-feed/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go", "package.json",
-              "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile", ".github/actions/setup-pandoc/**"
-            ],
-            "javascript": [
-              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/*.mts", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
-              "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**", "tools/**/mise.toml", "distribution/**/mise.toml"
-            ],
-            "release": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
-              ".goreleaser.yaml", ".github/actions/setup-pandoc/**", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
-              "tools/release/build-action-release.mjs", "tools/release/*.mjs", "action.yml", "package.json",
-              "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
-              "!tools/**/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
-            ],
-            "modules": [
-              ".github/actions/**", "distribution/**", "schemas/**", "actionlint.schema.json", "man/**", "README.md", "LICENSE.txt", "go.mod",
-              "go.sum"
-            ],
-            "lint": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
-              "docs/checks.md", "tools/**/*.bash", "distribution/**/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
-              "!testdata/**", "!**/testdata/**"
-            ],
-            "docker": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
-              ".dockerignore", "distribution/docker/**", "action.yml", "!**/testdata/**"
-            ],
-            "action": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs",
-              ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
-            ],
-            "action-tests": [
-              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
-              ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
-            ],
-            "plugins": [
-              ".github/actions/setup-wasm-toolchain/**",
-              "plugins/**", "crates/**", "examples/plugins/**", "testdata/plugins/**", "testdata/runner-provider/**", "tools/runner-host/**", "tools/plugin-contract/**", "plugin/**", "internal/plugins/**", "internal/application/**", "internal/localapp/**", "analysis/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
-            ]
-          }
-        }
+    with: { profile: ci }
   nix:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['nix']) }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['nix']) }}
     uses: $/.github/workflows/nix.yml
   unit-tests:
-    needs: changes
-    if: ${{ !cancelled() }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' }}
     name: Unit tests (${{ matrix.os }})
     strategy:
       fail-fast: true
@@ -105,7 +35,7 @@ jobs:
       - uses: &SetupGo actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         if: env.CI_UNIT == 'true'
         with: &GoMod { go-version-file: go.mod }
-      - uses: &SetupUv astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: &SetupUv astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         if: env.CI_UNIT == 'true'
         with: &NoCache { enable-cache: false }
       - &PrepareMiseCache
@@ -115,9 +45,9 @@ jobs:
           mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
           if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
-      - name: Install the project Node.js and npm versions
+      - name: Install Node.js, npm and Bun
         if: env.CI_UNIT == 'true'
-        uses: &SetupMise jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: &SetupMise jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with: &NodeTools
           cache: true
           auto_update: true
@@ -125,9 +55,9 @@ jobs:
           cache_save_post: true
           cache_key: &MiseCacheKey >-
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: node npm
+          install_args: node npm bun
           add_shims_to_path: false
-        env: &NodeToolsEnv { MISE_ENABLE_TOOLS: "node,npm" }
+        env: &NodeToolsEnv { MISE_ENABLE_TOOLS: "node,npm,bun" }
       - name: Install ShellCheck
         if: env.CI_UNIT == 'true'
         uses: $/.github/actions/setup-shellcheck
@@ -136,12 +66,11 @@ jobs:
         run: uv tool install ruff==0.17.0
       - name: Install shells for completion tests on Linux
         if: ${{ env.CI_UNIT == 'true' && runner.os == 'Linux' }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion;
           zsh --version; fish --version
       - name: Install the YAML language server for editor completion tests
         if: env.CI_UNIT == 'true'
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - if: env.CI_UNIT == 'true'
         run: go test -v ./...
       # Check build without CGO
@@ -149,8 +78,8 @@ jobs:
         run: go build ./cmd/actionlint
         env: { CGO_ENABLED: 0 }
   race:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['race']) }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['race']) }}
     name: Race detector and coverage
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
@@ -162,7 +91,7 @@ jobs:
       - *PrepareMiseCache
       - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
-      - { name: Install the YAML language server for editor completion tests, run: npm ci --ignore-scripts }
+      - { name: Install the YAML language server for editor completion tests, run: bun install --frozen-lockfile --ignore-scripts }
 
       - run: go test -v -race -coverpkg=./... -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -177,8 +106,8 @@ jobs:
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
   wasm:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['wasm']) }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['wasm']) }}
     name: Wasm
     runs-on: ubuntu-latest
     steps:
@@ -192,22 +121,38 @@ jobs:
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           cache_key: *MiseCacheKey
-          install_args: go node npm
+          install_args: go node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
       - name: Install runner
         uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
       - name: Install Pandoc
         uses: $/.github/actions/setup-pandoc
       - name: Install JavaScript dependencies
-        run: runner install --pm npm --no-tools --frozen
+        run: runner install --pm bun --no-tools --frozen
       - name: Build command manual
-        run: run make:man
+        run: run man
+      - name: Install browser test runtime
+        working-directory: libraries/browser-lsp
+        run: bunx playwright install --with-deps chromium
       - name: Build and test playground
-        run: run -s actionlint-playground:build actionlint-playground:test
+        run: run -sk
+          actionlint-playground:build
+          actionlint-playground:test
+          @kjanat-actionlint/language-server:test
+          actionlint-playground:test:browser
       - name: Lint playground
         run: run actionlint-playground:lint
+      - name: Upload browser test failures
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-test-failures
+          path: .review-artifacts/browser-lsp/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
   javascript:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['javascript']) }}
@@ -224,18 +169,22 @@ jobs:
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           cache_key: *MiseCacheKey
-          install_args: node npm
+          install_args: go node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "node,npm" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
       - name: Install runner
         uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
       - name: Install dependencies and test JavaScript tooling
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
-        run: runner install --pm npm --no-tools --frozen test:js lint:biome
+        run: runner install --pm bun --no-tools --frozen test:js lint:biome
+      - name: Check the plugin SDK
+        run: run -sk
+          @kjanat-actionlint/plugin-sdk:typecheck
+          @kjanat-actionlint/plugin-sdk:test
   release-snapshot:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['release']) }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['release']) }}
     name: Release snapshot
     runs-on: ubuntu-latest
     steps:
@@ -250,32 +199,40 @@ jobs:
             uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
           - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - name: Build JavaScript Action release files outside the checkout
-        run: npm ci --ignore-scripts;
+        run: bun install --frozen-lockfile --ignore-scripts;
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
           node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
-      - run: run make:man/actionlint.1
+      - run: run man:roff
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: release --snapshot --clean }
       - name: Smoke-test the linux/amd64 snapshot binary
         run: ./dist/linux_linux_amd64_v1/actionlint -version
-  action-modules:
+      - name: Upload native CLI previews for plugin authors
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: actionlint-cli-preview
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*_checksums.txt
+          if-no-files-found: error
+          retention-days: 7
+  go-guest-modules:
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['modules']) }}
-    name: Action modules
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['guest-modules']) }}
+    name: Go guest modules
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
       - uses: *SetupGo
         with: { go-version: stable, check-latest: true }
-      # Self-contained modules under a dot-directory, which the go tool skips
-      # when expanding a ... pattern. Test each in place.
-      - name: Test and vet each action module
+      - name: Check Go guest module dependencies and tests
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
-          for mod in .github/actions/*/go.mod; do
-            dir="$(dirname "${mod}")"
+          for dir in plugins/sdk/go plugins/examples/insecure-download; do
             echo "::group::${dir}"
-            (cd "${dir}" && go vet ./... && go test ./...)
+            go -C "${dir}" mod tidy -diff
+            go -C "${dir}" test ./...
             echo "::endgroup::"
           done
   lint:
@@ -287,21 +244,62 @@ jobs:
       - *ActCheckNocred
       - *Go
       - parallel: [*Uv, *InstallShellCheck, *Runner]
-      # Sibling actions can rewrite the event payload this action reads at startup.
+      - uses: *SetupMise
+        with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with: { version-file: .tool-versions, install-only: true, problem-matchers: true }
+        run: version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)";
+          go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
       - run: go mod tidy -diff
-      - name: Build through Makefile
-        run: run make:build
+      - name: Build actionlint
+        run: run mise:build
         env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
-      - run: run -s make:lint make:lint-docs
+      - name: Install Ruff for workflow validation
+        run: uv tool install ruff==0.17.0
+      - name: Validate workflows with all ShellCheck checks
+        run: go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'
+      - run: run -s lint lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
         run: shellcheck tools/ci/*.bash distribution/docker/*.bash tools/release/*.bash distribution/install/*.bash
-  plugins:
+  rust-native:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
+    name: Native Rust checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - *ActCheckNocred
+      - uses: *SetupMise
+        with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
+      - name: Install the pinned Rust toolchain and targets
+        run: rustup toolchain install
+      - name: Cache Cargo dependencies and workspace builds
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: &CargoPaths |
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            target/
+            internal/development/tests/conformance/wasm/runner-host/target/
+          key: cargo-native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', '**/Cargo.lock', 'Cargo.toml', '**/Cargo.toml') }}
+          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
+      - name: Check Rust plugins and fixtures on the native target
+        run: mise run plugins-check-native
+      - name: Check the standalone Wasmtime host
+        run: cargo check --locked --all-targets --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
+  checks:
+    needs: [lint, javascript, go-guest-modules, rust-native]
+    if: ${{ !cancelled() }}
+    name: Check results before matrix builds
+    runs-on: ubuntu-slim
+    steps:
+      - name: Require selected checks to succeed
+        env:
+          CHECKS_PASSED: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        run: test "${CHECKS_PASSED}" = true
+  plugins:
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
     name: Component plugins
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -311,7 +309,7 @@ jobs:
       - parallel:
           - *Go
           - uses: $/.github/actions/setup-wasm-toolchain
-          - name: Install TinyGo
+          - name: Install TinyGo and wasi-sdk
             uses: *SetupMise
             with:
               cache: true
@@ -319,72 +317,59 @@ jobs:
               mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
               cache_save_post: true
               cache_key: *MiseCacheKey
-              install_args: tinygo
+              install_args: tinygo wasi-sdk
               add_shims_to_path: false
-            env: { MISE_ENABLE_TOOLS: "tinygo" }
+            env: { MISE_ENABLE_TOOLS: "tinygo,wasi-sdk" }
           - name: Install the pinned Rust toolchain and targets
             run: rustup toolchain install
-          - name: Install wasi-sdk
-            run: |
-              curl --silent --show-error --location --output "${RUNNER_TEMP}/wasi-sdk.tar.gz" https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
-              tar -xzf "${RUNNER_TEMP}/wasi-sdk.tar.gz" -C "${RUNNER_TEMP}"
-              echo "WASI_SDK_PATH=${RUNNER_TEMP}/wasi-sdk-34.0-x86_64-linux" >> "${GITHUB_ENV}"
       - name: Cache Cargo dependencies and workspace builds
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            ~/.cargo/registry/
-            ~/.cargo/git/
-            target/
-            tools/runner-host/target/
+          path: *CargoPaths
           key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', '**/Cargo.lock', 'Cargo.toml', '**/Cargo.toml') }}
-          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
-      - name: Check Rust plugins and fixtures on the native target
-        run: make plugins-check-native
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-
+            cargo-native-${{ runner.os }}-${{ runner.arch }}-
       - name: Verify the guest SDK package
         run: cargo package --locked -p actionlint-extension-api --all-features
       - name: Build the pinned Wasmtime runner host
-        run: cargo build --locked --manifest-path tools/runner-host/Cargo.toml
+        run: cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
-        run: make -B plugins
+        run: mise run --force plugins
       - name: Verify generated plugin interfaces
-        run: |
-          go run -C tools/plugin-contract .
-          git diff --exit-code -- ':(glob)internal/plugins/component/*.gen.go'
+        run: go run -C internal/development/generators/plugin-contract .;
+          git diff --exit-code -- ':(glob)internal/plugins/execution/component/*.gen.go' ':(glob)internal/plugins/protocol/component/**/*.gen.go'
       - name: Load the Rust, C and TinyGo examples
-        run: >-
-          go run ./cmd/actionlint --no-config --shellcheck= --ruff=
-          --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
-          --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
-          --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm
-          testdata/ok/minimal.yaml
+        run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
+          --plugin internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm
+          --plugin internal/plugins/execution/component/testdata/plugins/no-sudo.wasm
+          --plugin internal/plugins/execution/component/testdata/plugins/insecure-download.wasm
+          internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
       - name: Test plugins including Wasmtime runner parity
-        env:
-          ACTIONLINT_RUNNER_HOST: ${{ github.workspace }}/tools/runner-host/target/debug/actionlint-runner-host
-        run: |
-          test -x "${ACTIONLINT_RUNNER_HOST}"
-          go test -count=1 -v ./internal/plugins/component ./internal/plugins/core ./plugin
-      - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/localapp ./internal/integration/cli
+        env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host" }
+        run: test -x "${ACTIONLINT_RUNNER_HOST}";
+          go test -count=1 -v ./internal/plugins/execution/component ./internal/plugins/execution/module ./internal/development/tests/integration/plugins
+      - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/checking ./internal/lsp ./internal/development/tests/integration/checking ./internal/development/tests/integration/cli
   docker:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
     name: Dockerfile
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
       - name: Build image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with: { load: true, push: false, tags: actionlint:test }
+        with: { load: true, push: false, tags: actionlint:test, file: distribution/docker/Dockerfile }
       - name: Check bundled Ruff
         run: bash distribution/docker/test-docker-ruff.bash actionlint:test
       - name: Check published Wasm plugins and offline cache
         run: bash distribution/docker/test-docker-plugins.bash actionlint:test
       - name: Test Docker image
         run: docker container run
-          --mount type=bind,source="${PWD}",target=/w
+          --mount "type=bind,source=${PWD},target=/w"
           -- actionlint:test -color -verbose
       - name: Build Docker Action compatibility image
-        run: docker build --target action -t actionlint:action-test .
+        run: docker build -f distribution/docker/Dockerfile --target action -t actionlint:action-test .
       - name: Check Docker Action compatibility
         run: bash distribution/docker/test-docker-action.bash actionlint:action-test
       - parallel:
@@ -392,12 +377,13 @@ jobs:
             run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
               --require-label org.opencontainers.image.source:url
               --require-label org.opencontainers.image.licenses:spdx
-              - < Dockerfile
+              - < distribution/docker/Dockerfile
           - name: Lint Dockerfile with droast
             uses: immanuwell/dockerfile-roast@1c87b2aa189338c24db4acde40864dae8994de8f # 1.7.0
+            with: { files: distribution/docker/Dockerfile }
   action:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) }}
+    needs: [changes, checks]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) }}
     name: GitHub Action
     strategy:
       fail-fast: true
@@ -416,19 +402,15 @@ jobs:
         uses: $/.github/actions/setup-shellcheck
       - name: Install JavaScript Action build dependencies
         # Packaging also runs when JavaScript-only tests are not selected.
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
-        run: run -s actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test
+        run: run -s actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: check }
-      - name: Validate release workflows with this checkout
-        if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint --shellcheck='shellcheck -o all'
-          .github/workflows/*.y*ml # **/action.y*ml
       - name: Prepare the ordinary binary and release action
         env:
           BINARY_SUFFIX: ${{ runner.os == 'Windows' && '.exe' || '' }}
@@ -437,7 +419,7 @@ jobs:
           GIT_COMMITTER_NAME: Action release test
           GIT_COMMITTER_EMAIL: action-release-test@example.invalid
         run: |
-          npm ci --ignore-scripts
+          bun install --frozen-lockfile --ignore-scripts
           binary="${RUNNER_TEMP}/actionlint-test${BINARY_SUFFIX}"
           go build -o "${binary}" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${binary}" >> "${GITHUB_ENV}"
@@ -452,8 +434,7 @@ jobs:
           test -f .actionlint-action-test/cmd/actionlint/main.go
           (cd .actionlint-action-test && sha256sum --check SHA256SUMS)
       - name: Check Git-tag version fallback
-        run: |
-          env -u ACTIONLINT_VERSION run actionlint-action:build --out-dir "${RUNNER_TEMP}/actionlint-action-fallback"
+        run: env -u ACTIONLINT_VERSION run actionlint-action:build --out-dir "${RUNNER_TEMP}/actionlint-action-fallback";
           cmp "${RUNNER_TEMP}/actionlint-action-fallback/action.mjs" "${RUNNER_TEMP}/actionlint-action/action/action.mjs"
       - name: Install an explicit historical version
         id: setup-version
@@ -465,8 +446,7 @@ jobs:
           install-only: true
           shellcheck: false
       - name: Check the installed version and prepare a version file
-        run: |
-          actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0'
+        run: actionlint --version | grep -Fx 'actionlint.kjanat.dev 1.17.0';
           printf 'nodejs 24.0.0\nactionlint 1.17.0\n' > .actionlint-action-test/.tool-versions
       - name: Install from a tool version file
         id: setup-version-file
@@ -503,11 +483,11 @@ jobs:
         id: smoke
         # ./ loads the candidate release tree generated in this job's workspace.
         uses: ./.actionlint-action-test
-        with: { files: testdata/ok/minimal.yaml, format: json, sarif: true }
+        with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, format: json, sarif: true }
       - name: Exercise inline configuration
         uses: ./.actionlint-action-test
         with:
-          files: testdata/ok/minimal.yaml
+          files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
           config: "config-variables: []"
           annotations: false
           summary: false
@@ -519,12 +499,12 @@ jobs:
       - name: Lint with shared configuration
         uses: ./.actionlint-action-test
         with:
-          files: testdata/ok/minimal.yaml
+          files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
           config-file: .github/actionlint.yaml
       - name: Exercise advisory review without a token
         uses: ./.actionlint-action-test
         with:
-          files: testdata/err/one_error.yaml
+          files: internal/development/tests/integration/workflow/testdata/err/one_error.yaml
           fail-on-error: false
           annotations: false
           review: true
@@ -552,7 +532,7 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          node tools/action/check-action-outputs.mjs
+          node applications/github-action/tests/check-action-outputs.mjs
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
@@ -583,7 +563,7 @@ jobs:
         id: slim
         uses: ./.actionlint-slim-test/actionlint-action/action
         env: { ACTIONLINT_ACTION_BINARY: "${{ github.workspace }}/.actionlint-slim-test/actionlint-test" }
-        with: { files: testdata/ok/minimal.yaml, shellcheck: false }
+        with: { files: internal/development/tests/integration/workflow/testdata/ok/minimal.yaml, shellcheck: false }
       - name: Verify Dockerless result
         env: { RESULT: "${{ steps.slim.outputs.result }}" }
         run: test "${RESULT}" = success
@@ -597,7 +577,5 @@ jobs:
       - name: Require all Action platforms to pass
         env: { RESULT: "${{ needs.action.result }}", SLIM_RESULT: "${{ needs.action-slim.result }}" }
         run: |
-          if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then
-            exit 0
-          fi
+          if [[ "${RESULT}" == skipped && "${SLIM_RESULT}" == skipped ]]; then exit 0; fi
           test "${RESULT}" = success && test "${SLIM_RESULT}" = success

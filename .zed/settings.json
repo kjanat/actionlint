@@ -52,8 +52,12 @@
       },
       "initialization_options": {
         "command": [
-          "./custom-gcl",
+          "mise",
+          "exec",
+          "--",
+          "golangci-lint",
           "run",
+          // "--allow-parallel-runners",
           "--output.json.path",
           "stdout",
           "--show-stats=false",
@@ -65,7 +69,7 @@
     "biome": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "--silent", "biome@latest", "--", "biome", "lsp-proxy"],
+        "arguments": ["exec", "--silent", "biome", "--", "biome", "lsp-proxy"],
         "env": {
           "BIOME_WATCHER_KIND": "none" // https://github.com/biomejs/biome/pull/12459
         },
@@ -95,20 +99,8 @@
     "tombi": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "--silent", "github:tombi-toml/tombi@latest", "--", "tombi", "lsp", "-vv"],
+        "arguments": ["exec", "--silent", "tombi", "--", "tombi", "lsp", "-vv"],
         "env": { "NO_COLOR": "true" },
-      }
-    },
-    "json-language-server": {
-      "settings": {
-        "json": {
-          "schemas": [
-            {
-              "fileMatch": ["internal/actioncatalog/popular_actions.json"],
-              "url": "internal/actioncatalog/popular_actions.schema.json"
-            },
-          ]
-        }
       }
     },
     "yaml-language-server": {
@@ -134,7 +126,7 @@
     "dprint": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "--silent", "github:kjanat/dprint@latest", "--", "dprint", "lsp"],
+        "arguments": ["exec", "--silent", "kprint", "--", "kprint", "lsp"],
         "env": {},
       }
     }

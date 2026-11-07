@@ -7,20 +7,7 @@ permissions: { contents: read }
 jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml
-    with:
-      filters: |
-        {
-          "shared": [
-            ".github/workflows/expression-probe-tests.yml", ".github/workflows/ci-changes.yml", ".github/ci/**",
-            ".tool-versions", ".mise.toml"
-          ],
-          "jobs": {
-            "expression-probe": [
-              "internal/expression/probe/**", ".github/workflows/expr-conformance-probe.yml", ".node-version", "!internal/expression/probe/**/*.md",
-              "!internal/expression/probe/results/**"
-            ]
-          }
-        }
+    with: { profile: expression-probe-tests }
   test:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['expression-probe']) }}
@@ -31,23 +18,21 @@ jobs:
         with: { persist-credentials: false }
       - name: Keep mise metadata with cached tools
         shell: bash
-        run: |
-          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
-          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
+        run: mise_dir="${HOME//\\//}/.local/share/actionlint-mise";
+          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi;
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Install the project Node.js and npm versions
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           cache: true
           auto_update: true
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
-          cache_key: >-
-            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: node npm
+          cache_key: actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          install_args: node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "node,npm" }
+        env: { MISE_ENABLE_TOOLS: "node,npm,bun" }
       - uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
       - env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
-        run: run //internal/expression/probe:test
+        run: run //internal/development/tests/conformance/expressions:test

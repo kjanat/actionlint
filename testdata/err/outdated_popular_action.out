@@ -1,2 +1,0 @@
-test.yaml:8:15: the runtime or service used by "actions/checkout@v2" action is retired on GitHub.com. update the action's version to fix this issue [action]
-test.yaml:10:15: the runtime or service used by "actions/stale@v4" action is retired on GitHub.com. update the action's version to fix this issue [action]

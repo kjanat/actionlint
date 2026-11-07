@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 )
 
 type commandResultWriter struct {
@@ -42,13 +43,6 @@ func resolveTemplate(r renderOptions) (renderOptions, error) {
 	return r, nil
 }
 
-func writeCommandJSON(out io.Writer, value any) error {
-	if terminal, ok := out.(*prettyJSONOutput); ok {
-		return terminal.writeJSON(value)
-	}
-	return json.NewEncoder(out).Encode(value)
-}
-
 // Debug output can arrive in fragments and from concurrent file checks. Emit
 // complete JSON log records without interleaving their contents.
 type commandJSONLogWriter struct {
@@ -67,7 +61,7 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 			break
 		}
 		w.pending = rest
-		if err := writeCommandJSON(w.out, struct {
+		if err := commandstreams.WriteJSON(w.out, struct {
 			Log string `json:"log"`
 		}{line}); err != nil {
 			return 0, err
@@ -77,15 +71,16 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 }
 
 func (a *commandApp) reportError(err error) int {
-	status := render.ExitFailure
-	if _, ok := errors.AsType[commandUsageError](err); ok {
-		status = render.ExitInvalidCommandOption
+	status := commandstatus.ExitFailure
+	if _, ok := errors.AsType[commandargs.UsageError](err); ok {
+		status = commandstatus.ExitInvalidCommandOption
 	}
 	if a.errorJSON || a.jsonOutput() {
 		if a.inv.Operation == "check" {
-			result := render.NewCheckResult(status)
+			result := commandstatus.NewCheckResult(status)
 			result.Error = err.Error()
 			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
+				result.ActionMetadata = commandstatus.AnalysisResult(*failure.result).ActionMetadata
 				result.Diagnostics = failure.result.Diagnostics
 				result.Documents = failure.result.Documents
 				count := failure.result.FileCount
@@ -94,10 +89,10 @@ func (a *commandApp) reportError(err error) int {
 					result.AddConfiguration(config)
 				}
 			}
-			_ = writeCommandJSON(a.streams.Stderr, result)
+			_ = commandstreams.WriteJSON(a.streams.Stderr, result)
 			return status
 		}
-		_ = writeCommandJSON(a.streams.Stderr, struct {
+		_ = commandstreams.WriteJSON(a.streams.Stderr, struct {
 			Error    string `json:"error"`
 			ExitCode int    `json:"exit_code"`
 		}{err.Error(), status})

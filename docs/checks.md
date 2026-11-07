@@ -15,7 +15,7 @@ List of checks:
 - [Contextual typing for `matrix` object](#check-contextual-matrix-object)
 - [YAML tags of matrix values](#check-matrix-value-tags)
 - [Contextual typing for `needs` object](#check-contextual-needs-object)
-- [Strict type checks for comparison operators](#check-comparison-types)
+- [Comparison coercions](#check-comparison-types)
 - [shellcheck integration for `run:`](#check-shellcheck-integ)
 - [Executable bits on repository scripts](#check-executable-bit)
 - [Script injection by potentially untrusted inputs](#untrusted-inputs)
@@ -30,7 +30,7 @@ List of checks:
 - [Action format in `uses:`](#check-action-format)
 - [Local action inputs validation at `with:`](#check-local-action-inputs)
 - [Popular action inputs validation at `with:`](#check-popular-action-inputs)
-- [Outdated popular actions detection at `uses:`](#detect-outdated-popular-actions)
+- [Action runtime lifecycle](#detect-outdated-popular-actions)
 - [Shell name validation at `shell:`](#check-shell-names)
 - [Job ID and step ID uniqueness](#check-job-step-ids)
 - [Hardcoded credentials](#check-hardcoded-credentials)
@@ -196,7 +196,7 @@ test.yaml:6:18: expecting a single ${{...}} expression or boolean literal "true"
   |
 6 |       fail-fast: off
   |                  ^~~
-test.yaml:8:21: expected scalar node for integer value but found scalar node with "!!float" tag [syntax-check]
+test.yaml:8:21: truncated: "max-parallel" value 1.5 is truncated to 1 [numeric-values]
   |
 8 |       max-parallel: 1.5
   |                     ^~~
@@ -208,11 +208,9 @@ test.yaml:13:26: expecting a single ${{...}} expression or float number literal,
 
 [Playground](https://kjanat.github.io/actionlint/#eNo0zEEKAjEMheH9nOJdoDIKbnKbDKQ6kmlLk6DeXqp1Fd5P+GohtLD78qib0QK4mI8LmHd2ub1/C8i8a8psTqg5z3jwKzXurCpKOJ+u396jWBp0bFE8kvJgpyrN/mQanwRTkYbLus4M+H5IDU/HXsLFCP6smOMTAAD//2y5NWY=)
 
-Some mapping values are restricted to some constant strings. Several mapping values expect boolean value like `true` or
-`false`. And some mapping values expect integer or floating number values.
-
-actionlint checks such constant strings are used properly while parsing and reports an error when an unexpected value is
-specified.
+Workflow fields can require a value from a fixed set of strings, a boolean, or a
+number. actionlint checks literal values against the field's allowed values and
+type, and reports values that do not meet those requirements.
 
 <a id="check-syntax-expression"></a>
 
@@ -239,19 +237,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression-syntax]
+test.yaml:7:24: invalid-syntax: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression-syntax]
   |
 7 |       - run: echo '${{ "hello" }}'
   |                        ^
-test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]
+test.yaml:9:26: invalid-syntax: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]
   |
 9 |       - run: echo '${{ 1 + 1 }}'
   |                          ^
-test.yaml:11:65: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression-syntax]
+test.yaml:11:65: invalid-syntax: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression-syntax]
    |
 11 |       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
    |                                                                 ^~
-test.yaml:13:38: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression-syntax]
+test.yaml:13:38: invalid-syntax: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression-syntax]
    |
 13 |       - run: echo '${{ github.event. }}'
    |                                      ^~
@@ -285,7 +283,7 @@ Type check by actionlint is stricter than GitHub Actions runtime.
 
 - Only `any` and `number` are allowed to be converted to string implicitly
 - Implicit conversion to `number` is not allowed
-- Object, array, and null are not allowed to be evaluated at `${{ }}`
+- Objects and arrays cannot be interpolated as strings. Null becomes an empty string.
 
 Example input:
 
@@ -301,26 +299,26 @@ jobs:
       - run: echo '${{ job.container.os }}'
       # ERROR: `github.repository` is string. Trying to access .owner property is invalid
       - run: echo '${{ github.repository.owner }}'
-      # ERROR: Objects, arrays and null should not be evaluated at ${{ }} since the outputs are useless
+      # ERROR: Objects and arrays cannot be interpolated as strings
       - run: echo '${{ env }}'
 ```
 
 Output:
 
 ```console
-test.yaml:7:28: property access of object must be type of string but got "number" [expression-type]
+test.yaml:7:28: operand-type: property access of object must be type of string but got "number" [expression-type]
   |
 7 |       - run: echo '${{ env[0] }}'
   |                            ^
-test.yaml:9:24: property "os" is not defined in job.container [expression-reference]
+test.yaml:9:24: unknown-property: property "os" is not defined in job.container [expression-reference]
   |
 9 |       - run: echo '${{ job.container.os }}'
   |                        ^~~~~~~~~~~~~~~~
-test.yaml:11:24: receiver of object dereference "owner" must be type of object but got "string" [expression-type]
+test.yaml:11:24: operand-type: receiver of object dereference "owner" must be type of object but got "string" [expression-type]
    |
 11 |       - run: echo '${{ github.repository.owner }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:13:20: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {string => string} [expression]
+test.yaml:13:20: object and array values should not be evaluated in template with ${{ }} but evaluating the value of type {string => string} [expression]
    |
 13 |       - run: echo '${{ env }}'
    |                    ^~~
@@ -402,11 +400,11 @@ jobs:
 ```
 
 actionlint validates the inserted value in the surrounding `env:` context.
-Known arrays and scalars are rejected as insertion sources; literal mappings
-retain environment-name and expression checks. Unknown object expressions are
+Known arrays and scalars are rejected as insertion sources. Literal mappings
+undergo environment-name and expression checks. Unknown object expressions are
 accepted and keep checkout and executable-bit analysis conservative. The
 directive applies to workflow, job, step, container and service environment
-mappings. `${{ insert }}` in an ordinary value remains an undefined variable.
+mappings. `${{ insert }}` in an ordinary value is an undefined variable.
 
 Mapping insertion also works in action `with:` inputs and at the matrix mapping:
 
@@ -432,14 +430,24 @@ are deferred. Known inserted axes and filters participate in matrix and
 runner-label checks; unknown insertions keep the matrix open.
 
 An expression-produced array inside a matrix axis or `include`/`exclude` sequence
-splices one level into that sequence. Literal nested arrays remain individual
-values. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
+splices one level into that sequence. A literal nested array counts as one
+value. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
 values, while `[before, [1,2], after]` has three.
 
 `case(predicate, result, ..., default)` requires Boolean predicates, preserves
 falsy and structured results, and evaluates only the selected branch. Use it to
 select an object for insertion. `condition && value || fallback` also preserves
 short-circuit evaluation, but chooses the fallback when `value` is falsy.
+
+The result type of `case()` merges every reachable value branch and the final
+default, excluding predicates. `case(github.ref == 'refs/heads/main',
+'production', 'development')` has type `string`, so using it for
+`timeout-minutes` reports a type error. Objects and arrays merge by the
+existing property and element rules; string, number and boolean combinations
+follow the scalar merging rules; incompatible results fall back to `any`.
+Branches made unreachable by constant predicates do not contribute, so
+`case(true, 10, 'never')` has type `number`. No union of individual string
+literals is inferred.
 
 <a id="check-contexts-and-builtin-func"></a>
 
@@ -461,39 +469,38 @@ jobs:
       - run: echo "${{ startWith('hello, world', 'lo,') }}"
       # Wrong number of arguments
       - run: echo "${{ startsWith('hello, world') }}"
-      # Wrong type of parameter
+      # An object argument makes this predicate return false.
       - run: echo "${{ startsWith('hello, world', github.event) }}"
-      # Function overloads can be handled properly. contains() has string version and array version
+      # contains() accepts either a string or an array as its first argument.
       - run: echo "${{ contains('hello, world', 'lo,') }}"
       - run: echo "${{ contains(github.event.issue.labels.*.name, 'enhancement') }}"
+      # fromJSON() supplies an array of event names to contains().
+      - if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+        run: echo 'Push or pull request'
 ```
 
 Output:
 
 ```console
-test.yaml:7:24: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
+test.yaml:7:24: unknown-variable: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
   |
 7 |       - run: echo '${{ unknown_context }}'
   |                        ^~~~~~~~~~~~~~~
-test.yaml:9:24: property "events" is not defined in github; did you mean "event"? [expression-reference]
+test.yaml:9:24: unknown-property: property "events" is not defined in github; did you mean "event"? [expression-reference]
   |
 9 |       - run: echo '${{ github.events }}'
   |                        ^~~~~~~~~~~~~
-test.yaml:11:24: undefined function "startWith"; did you mean "startsWith"? [expression-reference]
+test.yaml:11:24: unknown-function: undefined function "startWith"; did you mean "startsWith"? [expression-reference]
    |
 11 |       - run: echo "${{ startWith('hello, world', 'lo,') }}"
    |                        ^~~~~~~~~
-test.yaml:13:24: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression-call]
+test.yaml:13:24: argument-count: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression-call]
    |
 13 |       - run: echo "${{ startsWith('hello, world') }}"
    |                        ^~~~~~~~~~
-test.yaml:15:51: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression-type]
-   |
-15 |       - run: echo "${{ startsWith('hello, world', github.event) }}"
-   |                                                   ^~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqckdFKAzEQRd/7FZciRCWbD9gf8UFEsutgVtOZsjNjhbL/LmlBFNo+7FMe7jk3l0S4x/PetURMqk76svmQQfsNYKTWTmB21q6RPjibdzW37BSp0V7PFNA1sgeNRRDujkc4f7Ic+HUUNvo2LEu4hr5PVnxI9EVsegXcNlAtz/Y0WbkPhWqViIPM9S1EhCoxPGBZtjddvSCvs+K/1Tc72gvkiXXF6F/172Xp9Fup5oGqpsfEeUcRgbhkHmlHbOfSnwEAjzGVzw==)
+[Playground](https://kjanat.github.io/actionlint/#eNqckUFO6zAQhvc9xch6ktsnNwfIEVgAEgsWVRU5YYoDzjh4ZihSlbsjlwpaRLvoKov5vn8m/hPVsBqVg4OeWZHXs5fUcj0DEGQpX4CsxMtCaqskuoy+zPYjFhz5iwJYFrIG7EIC+2+3A6VXSltqukSCHwLTZM+hz70EbSt8RxI+A5oCsvgsj72EuQ0YY3KwTTk+WQc2JmcXME3most/yNdZ7uTqixnlBXxPfMXR3+rxsmrfVhV9i5Gr/xX5AR1YpOCpwwFJfoX2m/onaZPTcPNwdzu3K1PKNw7MqDE2Gd8UWczaLk5/rikLFoc0OC7vXjlAylB8OPj2cwCohrtJ)
 
 [Contexts][contexts-doc] and [built-in functions][funcs-doc] are strongly typed. Typos in property access of contexts and
 function names can be checked. And invalid function calls like wrong number of arguments or type mismatch at parameter also
@@ -534,19 +541,23 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:18: property "mac" is not defined in this object [expression-reference]
+test.yaml:6:18: unknown-property: property "mac" is not defined in this object [expression-reference]
   |
 6 |     runs-on: ${{ fromJSON('{"win":"windows-latest","linux":"ubuntul-latest"}')['mac'] }}
   |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:9:24: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression-call]
+test.yaml:9:24: format-placeholder: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression-call]
   |
 9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
   |                        ^~~~~~
-test.yaml:11:24: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression-call]
+test.yaml:9:24: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+  |
+9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
+  |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:11:24: format-placeholder: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression-call]
    |
 11 |       - run: echo "${{ format('{0}{1}{2}', 1, 2) }}"
    |                        ^~~~~~
-test.yaml:14:31: broken JSON string is passed to fromJSON() at offset 23: unexpected end of JSON input [expression-call]
+test.yaml:14:31: invalid-json: broken JSON string is passed to fromJSON() at offset 23: expected ',' or ']' after JSON array value [expression-call]
    |
 14 |         if: contains(fromJson('["main","release","dev"'), github.ref_name)
    |                               ^~~~~~~~~~~~~~~~~~~~~~~~~
@@ -591,15 +602,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:24: property "get_value" is not defined in steps [expression-reference]
+test.yaml:10:24: unknown-property: property "get_value" is not defined in steps [expression-reference]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:15:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:15:24: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 15 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:22:24: property "get_value" is not defined in steps [expression-reference]
+test.yaml:22:24: unknown-property: property "get_value" is not defined in steps [expression-reference]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
@@ -615,7 +626,9 @@ Outputs of step can be accessed via `steps.<step_id>` objects. The `steps` conte
 It is a common mistake to access the wrong step outputs since people often forget to fix placeholders on copying&pasting
 steps. actionlint can catch invalid accesses to step outputs and reports them as errors.
 
-When the outputs are set by popular actions, the outputs object is more strictly typed.
+When a metadata provider supplies the selected action's manifest, its declared outputs constrain the outputs object.
+Without that metadata, output names remain dynamic. The example below checks step order and unsafe script interpolation;
+with the manifest available, the misspelled `cache_hit` is also reported as an unknown property.
 
 Example input:
 
@@ -634,24 +647,24 @@ jobs:
         with:
           key: ${{ hashFiles('**/*.lock') }}
           path: ./packages
-      # OK
+      # The output is an unknown string in this script
       - run: echo ${{ steps.cache.outputs.cache-hit }}
-      # ERROR: Typo at output name
+      # A metadata provider can also detect this misspelled output name
       - run: echo ${{ steps.cache.outputs.cache_hit }}
 ```
 
 Output:
 
 ```console
-test.yaml:8:23: property "cache" is not defined in steps [expression-reference]
+test.yaml:8:23: unknown-property: property "cache" is not defined in steps [expression-reference]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
   |                       ^~~~~~~~~~~
-test.yaml:16:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:16:23: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 16 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:18:23: property "cache_hit" is not defined in steps.cache.outputs; did you mean "cache-hit"? [expression-reference]
+test.yaml:18:23: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -767,31 +780,31 @@ jobs:
 Output:
 
 ```console
-test.yaml:19:24: property "platform" is not defined in matrix [expression-reference]
+test.yaml:19:24: unknown-property: property "platform" is not defined in matrix [expression-reference]
    |
 19 |       - run: echo '${{ matrix.platform }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:21:24: property "dev" is not defined in matrix.package [expression-reference]
+test.yaml:21:24: unknown-property: property "dev" is not defined in matrix.package [expression-reference]
    |
 21 |       - run: echo '${{ matrix.package.dev }}'
    |                        ^~~~~~~~~~~~~~~~~~
-test.yaml:24:25: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:24:25: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 24 |           echo 'os: ${{ matrix.os }}'
    |                         ^~~~~~~~~
-test.yaml:25:35: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:25:35: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 25 |           echo 'node version: ${{ matrix.node }}'
    |                                   ^~~~~~~~~~~
-test.yaml:26:30: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:26:30: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'
    |                              ^~~~~~~~~~~~~~~~~~~
-test.yaml:26:67: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:26:67: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'
    |                                                                   ^~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:34:24: property "os" is not defined in matrix [expression-reference]
+test.yaml:34:24: unknown-property: property "os" is not defined in matrix [expression-reference]
    |
 34 |       - run: echo '${{ matrix.os }}'
    |                        ^~~~~~~~~
@@ -955,27 +968,27 @@ jobs:
 Output:
 
 ```console
-test.yaml:16:24: property "prepare" is not defined in needs [expression-reference]
+test.yaml:16:24: unknown-property: property "prepare" is not defined in needs [expression-reference]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
    |                        ^~~~~~~~~~~~~
-test.yaml:24:45: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:24:45: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 24 |       - run: echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'
    |                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:24:88: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:24:88: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 24 |       - run: echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'
    |                                                                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:26:24: property "foo" is not defined in needs.install.outputs [expression-reference]
+test.yaml:26:24: unknown-property: property "foo" is not defined in needs.install.outputs [expression-reference]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:28:24: property "some_job" is not defined in needs [expression-reference]
+test.yaml:28:24: unknown-property: property "some_job" is not defined in needs [expression-reference]
    |
 28 |       - run: echo '${{ needs.some_job }}'
    |                        ^~~~~~~~~~~~~~
-test.yaml:33:24: property "build" is not defined in needs [expression-reference]
+test.yaml:33:24: unknown-property: property "build" is not defined in needs [expression-reference]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
    |                        ^~~~~~~~~~~
@@ -990,60 +1003,20 @@ actionlint defines a type of `needs` variable contextually by looking at each jo
 
 <a id="check-comparison-types"></a>
 
-## Strict type checks for comparison operators
+## Comparison coercions
 
-Example input:
+GitHub Actions accepts comparisons between different types and converts their values
+according to [its expression rules][operators-doc]. actionlint accepts these comparisons
+and infers a boolean result. For example, `true > false` evaluates to `true`, and
+`fromJSON('[]') == 0` evaluates to `false` because an array converts to `NaN`.
 
-```yaml
-on:
-  workflow_call:
-    inputs:
-      timeout:
-        type: boolean
+String parameters also accept scalar conversions: `contains(null, '')` and
+`startsWith(true, 'TR')` both evaluate to `true`. Their inferred return type is boolean.
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'called!'
-        # ERROR: Comparing string to object is always evaluated to false
-        if: ${{ github.event == 'workflow_call' }}
-      - run: echo 'timeout is too long'
-        # ERROR: Comparing boolean value with `>` doesn't make sense
-        if: ${{ inputs.timeout > 60 }}
-```
-
-Output:
-
-```console
-test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression-type]
-   |
-13 |         if: ${{ github.event == 'workflow_call' }}
-   |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression-type]
-   |
-16 |         if: ${{ inputs.timeout > 60 }}
-   |                 ^~~~~~~~~~~~~~~~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNpsj81KwDAQhO99ihGEnFo8eQjUV5Gmbtto3C3NxiIl7y7pH4jednc+ZmaFbQWssnwMQdbXvguhHADPc9J4zID6T5Kk1wro90wWTiRQx1X1Lm5nleIJLYljLWyRXGJNdeiKtktRab6d60JaUD8JTImntwdzx/jB4nHbMHqdkmvoi1jRtjC/Ghvk/J/d2Ro+QkUQhMe/1sejzcW+4PkJOf8EAAD//0dGU1w=)
-
-Expressions in `${{ }}` placeholders support `==`, `!=`, `>`, `>=`, `<`, `<=` comparison operators. Arbitrary types of operands
-can be compared. When different type values are compared, they are implicitly converted to numbers before the comparison. Please
-see [the official document][operators-doc] to know the details of operators behavior.
-
-However, comparisons between some types are actually meaningless:
-
-- Objects and arrays are converted to `NaN`. Comparing an object or an array with other type is always evaluated to false.
-- Comparing booleans, null, objects, and arrays with `>`, `>=`, `<`, `<=` makes no sense.
-
-actionlint checks operands of comparison operators and reports errors in these cases.
-
-There are some additional surprising behaviors, but actionlint allows them not to cause false positives as much as possible.
-
-- `0 == null`, `'0' == null`, `false == null` are true since they are implicitly converted to `0 == 0`
-- `'0' == false` and `0 == false` are true due to the same reason as above
-- Objects and arrays are only considered equal when they are the same instance
+To warn about boolean or null string arguments and surprising comparison operands,
+enable `lint.rules.suspicious.coercion: warn`. The rule is off by default.
+It reports a possible mistake, so it offers no automatic fix. The separate
+`mixed-type-comparisons` rule checks string-versus-number or boolean conditions.
 
 <a id="check-executable-bit"></a>
 
@@ -1138,11 +1111,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:6:19: SC2086: Double quote to prevent globbing and word splitting [shellcheck]
   |
 6 |       - run: echo $FOO
   |                   ^~~~
-test.yaml:14:19: shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting [shellcheck]
+test.yaml:14:19: SC2086: Double quote to prevent globbing and word splitting [shellcheck]
    |
 14 |       - run: echo $FOO
    |                   ^~~~
@@ -1165,15 +1138,15 @@ blocks. Other scalar forms, such as folded blocks, fall back to reporting the `r
 actionlint applies ShellCheck to recognized `bash`, `sh`, `dash`, and `ksh` interpreters, including executable paths and
 supported custom shell templates. A leading `# shellcheck shell=...` directive can select a supported dialect explicitly.
 
-By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `-shellcheck`
-option on running `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
-`-shellcheck 'shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so `-f`/`--format`
-and file arguments must not be passed. Setting empty string by `shellcheck=` disables shellcheck integration explicitly.
+By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `--tool`
+option takes a command line after the tool id: a command name, a file path, or a command with flags such as
+`--tool shellcheck='shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so
+`-f`/`--format` and file arguments must not be passed. `--no-tool shellcheck` disables shellcheck integration explicitly.
 
 By default, actionlint passes `--norc` to disable rc-file discovery. Set
 [`tools.shellcheck.config`](config.md#shellcheck) to inline settings, an rc-file path, or a directory containing
 `.shellcheckrc` or `shellcheckrc`. Selecting an rc file replaces `--norc` with `--rcfile`; relative config paths resolve from
-the selected actionlint configuration file's directory. Additional options can use `-shellcheck '<command line>'` or the
+the selected actionlint configuration file's directory. Additional options can use `--tool shellcheck='<command line>'` or the
 `SHELLCHECK_OPTS` environment variable described below.
 
 Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
@@ -1255,19 +1228,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:24: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
+test.yaml:10:24: untrusted-interpolation: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 10 |         run: echo '${{ github.event.pull_request.title }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:19:36: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
+test.yaml:19:36: untrusted-interpolation: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 19 |           script: console.log('${{ github.event.head_commit.author.name }}')
    |                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:22:31: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
+test.yaml:22:31: untrusted-interpolation: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 22 |         run: echo '${{ toJSON(github.event.*.body) }}'
    |                               ^~~~~~~~~~~~~~~~~~~
-test.yaml:25:24: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:25:24: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 25 |         run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1581,7 +1554,7 @@ actionlint validates the Webhook configurations:
 | `tags`            | `push`                                                                       |
 | `tags-ignore`     | `push`                                                                       |
 
-The table of available Webhooks and their types are defined in [`webhooks.gen.go`](../internal/webhook/webhooks.gen.go). It is generated
+The table of available Webhooks and their types are defined in [`webhooks.gen.go`](../internal/model/contexts/events/triggers/webhooks.gen.go). It is generated
 by [a script][generate-webhook-events] and kept to the latest by CI workflow triggered weekly.
 
 <a id="check-workflow-dispatch-events"></a>
@@ -1655,19 +1628,19 @@ test.yaml:26:18: type of "age" input is "number" but its default value "teen" ca
    |
 26 |         default: teen
    |                  ^~~~
-test.yaml:33:24: property "massage" is not defined in inputs; did you mean "message"? [expression-reference]
+test.yaml:33:24: unknown-property: property "massage" is not defined in inputs; did you mean "message"? [expression-reference]
    |
 33 |       - run: echo "${{ inputs.massage }}"
    |                        ^~~~~~~~~~~~~~
-test.yaml:35:28: property access of object must be type of string but got "bool" [expression-type]
+test.yaml:35:28: operand-type: property access of object must be type of string but got "bool" [expression-type]
    |
 35 |       - run: echo "${{ env[inputs.verbose] }}"
    |                            ^~~~~~~~~~~~~~
-test.yaml:37:28: property access of object must be type of string but got "number" [expression-type]
+test.yaml:37:28: operand-type: property access of object must be type of string but got "number" [expression-type]
    |
 37 |       - run: echo "${{ env[inputs.age] }}"
    |                            ^~~~~~~~~~
-test.yaml:39:24: property "massage" is not defined in github.event.inputs; did you mean "message"? [event-payload]
+test.yaml:39:24: unknown-property: property "massage" is not defined in github.event.inputs; did you mean "message"? [event-payload]
    |
 39 |       - run: echo "${{ github.event.inputs.massage }}"
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1855,13 +1828,19 @@ actionlint also checks the `timezone` configuration [is a valid IANA timezone st
 
 ## Runner labels
 
+Unknown-label findings require a complete additional-label set from the host or
+`repository.runners`. With unavailable facts, custom labels remain unknown;
+known built-in compatibility checks still run. The unknown-label examples below
+assume `repository: {runners: []}`.
+
 `ubuntu-latest` accepts Ubuntu 24.04 and 26.04 compatibility during the
 [October 19 to November 19, 2026 migration](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
 `macos-latest-xlarge` maps to macOS 26.
 
-GitHub will [retire `macos-14`, `macos-14-large`, and `macos-14-xlarge` on November 2, 2026](https://github.blog/changelog/2026-10-01-github-actions-macos-14-runner-image-retirement/).
-These labels remain accepted before retirement. Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
+GitHub [retired `macos-14`, `macos-14-large`, and `macos-14-xlarge` on November 2, 2026](https://github.blog/changelog/2026-10-01-github-actions-macos-14-runner-image-retirement/).
+Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
 `-xlarge` label; check architecture requirements when replacing the Intel `macos-14-large` image.
+These labels are no longer built in. To use them for your own runners, declare them in `repository.runners`.
 
 Example input:
 
@@ -1896,15 +1875,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:13: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
+test.yaml:10:13: label "linux-latest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
    |
 10 |           - linux-latest
    |             ^~~~~~~~~~~~
-test.yaml:16:13: label "gpu" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
+test.yaml:16:13: label "gpu" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
    |
 16 |           - gpu
    |             ^~~
-test.yaml:23:14: label "macos-10.13" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
+test.yaml:23:14: label "macos-10.13" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "windows-11-vs2026-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-26.04", "ubuntu-26.04-arm", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
    |
 23 |     runs-on: macos-10.13
    |              ^~~~~~~~~~~
@@ -1976,19 +1955,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:15: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:7:15: invalid-reference: specifying action "actions/checkout" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 7 |       - uses: actions/checkout
   |               ^~~~~~~~~~~~~~~~
-test.yaml:9:15: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:9:15: invalid-reference: specifying action "checkout@v2" in invalid format because owner is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
   |
 9 |       - uses: checkout@v2
   |               ^~~~~~~~~~~
-test.yaml:11:15: tag of Docker action should not be empty: "docker://image" [action]
+test.yaml:11:15: invalid-reference: tag of Docker action should not be empty: "docker://image" [action]
    |
 11 |       - uses: "docker://image:"
    |               ^~~~~~~~~~~~~~~~~
-test.yaml:13:15: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+test.yaml:13:15: invalid-reference: specifying action ".github/my-actions/do-something" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
    |
 13 |       - uses: .github/my-actions/do-something
    |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2083,92 +2062,29 @@ validates inputs at `with:` in the workflow are correct. Missing required inputs
 
 <a id="check-popular-action-inputs"></a>
 
-## Popular action inputs validation at `with:`
+## Remote action inputs and outputs
 
-Example input:
+Remote reference syntax is checked without metadata. Input names, required inputs
+and declared outputs are checked when dependency resolution supplies the action
+manifest. Both checks use the same request-scoped metadata service and selected content.
 
-```yaml
-on: push
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/cache@v6
-        with:
-          keys: |
-            ${{ hashFiles('**/*.lock') }}
-            ${{ hashFiles('**/*.cache') }}
-          path: ./packages
-      - run: make
-```
-
-Output:
-
-```console
-test.yaml:7:15: missing input "key" which is required by action "actions/cache@v6". all required inputs are "key", "path" [action]
-  |
-7 |       - uses: actions/cache@v6
-  |               ^~~~~~~~~~~~~~~~
-test.yaml:9:11: input "keys" is not defined in action "actions/cache@v6". available inputs are "enableCrossOsArchive", "fail-on-cache-miss", "key", "lookup-only", "path", "restore-keys", "save-always", "upload-chunk-size" [action]
-  |
-9 |           keys: |
-  |           ^~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNqEjrHKwkAQhPs8xRQ/5DeQpLO4ysr32ByLFy/eHdlbRWLeXRIliI3VsvN9MBODQVJxRXGOnZgCyCx5ucCoQepF0E5D1nqgha1IMid5WUANFRYDsrmPQVpL1vHhun9j4NZnZ7YP8HwXg8dHAvxNExyJO/YDy39ZVW3VDNH6cod5/mmuld9qouwMmjaR9XRi2eaOGgwu5PkZAAD///yrRBc=)
-
-actionlint checks inputs of many popular actions such as `actions/checkout@v7`. It checks
-
-- some input is required by the action but it is not set at `with:`
-- input set at `with:` is not defined in the action (this commonly occurs by a typo)
-
-this is done by checking `with:` section items with a small database collected at building `actionlint` binary. actionlint
-can check popular actions without fetching any `action.yml` of the actions from the remote so that it can run efficiently.
-
-Note that it only supports the case of specifying major versions like `actions/checkout@v7`. Fixing version of action like
-`actions/checkout@v7.0.1` and using the HEAD of action like `actions/checkout@main` are not supported for now.
-
-Actionlint bundles metadata for popular actions in [`popular_actions.json`](../internal/actioncatalog/popular_actions.json)
-and were automatically collected by [a script][generate-popular-actions]. If you want more checks for other actions, please
-make a request [as an issue][issue-form].
+There is no bundled popular-action list. Without a provider, remote metadata is
+unavailable; metadata-dependent checks skip that action. Local action validation
+continues to use the actual local manifest. See [remote action metadata](remote-actions.md).
 
 <a id="detect-outdated-popular-actions"></a>
 
-## Outdated popular actions detection at `uses:`
+## Action runtime lifecycle
 
-Example input:
+Available manifests are checked against runtime tables generated from GitHub's
+runner source. Deprecated runtimes do not disable input/output validation.
+The declared runtime determines the finding; an action's tag or release age does
+not. Unfetched metadata does not establish that a runtime or service is retired.
 
-```yaml
-on: push
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      # ERROR: actions/checkout@v3 is using the outdated runner 'node16'
-      - uses: actions/checkout@v3
-```
-
-Output:
-
-```console
-test.yaml:8:15: the runtime or service used by "actions/checkout@v3" action is retired on GitHub.com. update the action's version to fix this issue [action]
-  |
-8 |       - uses: actions/checkout@v3
-  |               ^~~~~~~~~~~~~~~~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNokyjEOxCAMRNGeU8wF0BbbUe1VAFlik8hGGTvnj0iqX/xnWjCDI6XNGksCXOirwBnKvEC0UI981PWeRZfJVwEZQWFB7f435acP6buF/67vHQAA//90iR3O)
-
-In addition to the checks for inputs of actions described in [the previous section](#check-popular-action-inputs), actionlint
-reports an error when a popular action declares a deprecated or removed runtime, or uses a known retired service.
-Node 20 deprecation is reported while its metadata remains available for input and output checks. Local JavaScript
-actions receive the same runtime lifecycle checks. Runtime metadata is generated from GitHub's runner source.
-
-This check does not require the newest release of an action. An older release remains accepted if it uses a current
-runtime and service. SHA references whose metadata is absent from the popular-action data set are not resolved online.
-If you want to keep actions used by your workflows up-to-date, consider to use [Dependabot][dependabot-doc].
+A provider selection preserves the requested ref, original selected object,
+terminal commit, repository identity and lookup route. A raw tag-object ID may
+peel to a different commit. Selection and fetched bytes are distinct from proof
+of what a runner actually executed.
 
 <a id="check-shell-names"></a>
 
@@ -2407,7 +2323,7 @@ or jobs that call reusable workflows. It checks that the value is one of these s
 | `write-only` | No             | Yes         |
 | `none`       | No             | No          |
 
-A job's declaration overrides its workflow's declaration. Omitted settings retain GitHub's trigger-dependent
+A job's declaration overrides its workflow's declaration. Omitted settings use GitHub's trigger-dependent
 defaults. Explicit `write` and `write-only` declarations are valid even on low-trust events; GitHub warns about
 their security implications. Cache operations skipped by the selected mode do not fail the workflow.
 
@@ -2466,12 +2382,12 @@ test.yaml:14:15: "actions/cache/restore" cannot restore caches with effective ca
 These three policies are enabled by default. `cache-write-untrusted` reports write grants on low-trust events that
 can use default-branch caches. `cache-call-unrestricted` requires an explicit cap on reusable calls from those events,
 because the callee can otherwise request write access. `cache-operation` reports official cache steps that an
-explicit mode makes ineffective. An ordinary job without `cache-mode` retains GitHub's trigger default and is not
-reported for omission. Ordinary pull request caching is not treated as the default-branch cache risk.
+explicit mode makes ineffective. Omitting `cache-mode` on an ordinary job uses GitHub's trigger default and
+produces no finding. Ordinary pull request caching is not treated as the default-branch cache risk.
 
 See [policy configuration and inline exceptions](config.md#policy-checks)
 for the event list, exact action/mode combinations, limitations, and ways to document reviewed exceptions.
-Use [`policy.disallow-suppressions`](config.md#disallow-suppressions) to prohibit those inline exceptions for all
+Use [`forbidden-suppression`](config.md#forbidden-suppression) to prohibit those inline exceptions for all
 or selected cache rules, reporting the prohibited comment, the original violation, or both.
 
 <a id="permissions"></a>
@@ -2605,15 +2521,15 @@ test.yaml:25:18: input "path" of workflow_call event has the default value "", b
    |
 25 |         default: ""
    |                  ^~
-test.yaml:31:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:31:24: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
    |                        ^~~~~~~~~~~~~
-test.yaml:31:47: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:31:47: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
    |                                               ^~~~~~~~~~~
-test.yaml:31:84: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:31:84: unknown-script-value: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
    |
 31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
    |                                                                                    ^~~~~~~~~~~
@@ -2719,15 +2635,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:20:23: property "uri" is not defined in inputs; did you mean "url"? [expression-reference]
+test.yaml:20:23: unknown-property: property "uri" is not defined in inputs; did you mean "url"? [expression-reference]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                       ^~~~~~~~~~
-test.yaml:20:44: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:20:44: unknown-script-value: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                                            ^~~~~~~~~~~~~~~~~~~
-test.yaml:23:22: property "credentials" is not defined in secrets; did you mean "credential"? [expression-reference]
+test.yaml:23:22: unknown-property: property "credentials" is not defined in secrets; did you mean "credential"? [expression-reference]
    |
 23 |           TOKEN: ${{ secrets.credentials }}
    |                      ^~~~~~~~~~~~~~~~~~~
@@ -2815,7 +2731,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:20: property "imagetag" is not defined in jobs.gen-image-version.outputs; did you mean "image_tag"? [expression-reference]
+test.yaml:7:20: unknown-property: property "imagetag" is not defined in jobs.gen-image-version.outputs; did you mean "image_tag"? [expression-reference]
   |
 7 |         value: ${{ jobs.gen-image-version.outputs.imagetag }}
   |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3144,23 +3060,23 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:6:16: unavailable-context: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
   |
 6 |     shell: ${{ env.SHELL }}
   |                ^~~
-test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:16:17: unavailable-context: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 16 |           - ${{ runner.temp }}
    |                 ^~~~~~
-test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:24:16: unavailable-context: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 24 |       FOO: ${{ env.BAR }}
    |                ^~~
-test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:30:20: unavailable-context: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 30 |         shell: ${{ env.SHELL}}
    |                    ^~~
-test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
+test.yaml:32:33: unavailable-function: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 32 |         run: echo 'Success? ${{ success() }}'
    |                                 ^~~~~~~
@@ -3294,8 +3210,8 @@ actionlint reports conditions whose outcome is provably constant. Removing `if: 
 preserves the default success gate. An always-false condition skips the guarded work;
 removing it would enable that work. The diagnostic therefore does not suggest removal
 for false conditions. Blank and YAML-null conditions use `success()`. A sole string
-literal expression is folded and parsed as condition source; computed strings remain
-values. See [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string).
+literal expression is folded and parsed as condition source. See
+[expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string) for computed strings.
 
 In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
 and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is
@@ -3458,7 +3374,7 @@ The schema-derived data ships with actionlint; linting does not download the sch
 
 ## Deprecated inputs usage
 
-Example input:
+When the host supplies action metadata declaring `fail_on_error` deprecated:
 
 ```yaml
 on: push
@@ -3472,16 +3388,14 @@ jobs:
           fail_on_error: true
 ```
 
-Output:
+Expected diagnostic:
 
 ```console
-test.yaml:9:11: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [action]
+test.yaml:9:11: deprecated-input: avoid using deprecated input "fail_on_error" in action "reviewdog/action-actionlint@v1": Deprecated, use `fail_level` instead [action]
   |
 9 |           fail_on_error: true
   |           ^~~~~~~~~~~~~~
 ```
-
-[Playground](https://kjanat.github.io/actionlint/#eNo8yksKwkAQhOF9TlEXGMTtrLxJmGhrWobu0I/k+jJGXBXF96tUbOnr9NbF6wQEeYwFLMXL8FxSIktvw77kQZufFVCQTl5htDMdD31d2j1YpZzTWeK2X38xcHCs9f+AZ+M+q8xkplYRlvQJAAD//4fnLew=)
 
 Action inputs can be deprecated by setting [`deprecationMessage`][dep-msg]. When deprecated inputs are used in a
 workflow, actionlint reports the usage as error.
@@ -3686,7 +3600,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 
 ---
 
-[Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [yamllint]: https://github.com/adrienverge/yamllint
 [issue-form]: https://github.com/kjanat/actionlint/issues/new
@@ -3721,8 +3635,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [actions-cache]: https://github.com/actions/cache
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/webhook/generate
-[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/internal/actioncatalog/generate
+[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/development/generators/event-triggers
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

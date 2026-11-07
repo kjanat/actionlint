@@ -12,7 +12,7 @@ npm and PyPI packages need `git` on `PATH`; on macOS the Xcode Command Line Tool
 In v2, ShellCheck and Ruff run as project-managed Wasm plugins. Standalone archives, Go installs, and npm and
 PyPI packages contain the actionlint host. Run `actionlint config init` for a new project, or follow
 [configuration migration](config-migration.md) for an existing one, to install and pin the default plugins.
-Commit the configuration and adjacent `actionlint.plugins.lock.json`; native script-linter executables are not
+Commit the configuration with its exact plugin versions; no project lockfile is required. Native script-linter executables are not
 required for these plugins. See [plugin installation](plugins.md#install-from-the-registry).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package
@@ -237,6 +237,11 @@ For the usage of actionlint on GitHub Actions, see [the usage document](usage.md
 The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjanat/actionlint`. See
 [Docker usage](usage.md#docker) for running the linter with a mounted repository.
 
+For a preview, use `:pr-343` or `:branch-go-identity-model` from either registry.
+These Linux amd64 and arm64 images are built for pull requests from this repository
+and branch pushes. Branch names use Docker-safe tags; for example, `feature/cache`
+becomes `branch-feature-cache`. OCI labels identify the source commit and build.
+
 Development images are available from both registries as `:nightly`, `:nightly-<git-describe>`
 and `:sha-<full-commit-SHA>` for Linux amd64 and arm64. They are published after successful
 master CI, or manually after the same CI check, and include ShellCheck and Ruff.
@@ -410,7 +415,7 @@ installation for later steps in the same job:
 provide native `shellcheck` and `ruff` executables. The `shellcheck` and `ruff` inputs control Wasm checks during
 analysis; they do not install those tools on `PATH`. Provision native executables separately if later steps need them.
 For later actionlint checks, install and pin the project's plugins using the commands above.
-Existing immutable releases retain their original implementation. Pin a published release commit SHA or a specific
+Pin a published release commit SHA or a specific
 release tag for reproducible setup. See the [Action installation guide](action.md#install-without-running-analysis)
 for version selection and prerequisites.
 
@@ -481,7 +486,7 @@ Until it is merged, use one of the [project-maintained distributions](#project-m
 
 ---
 
-[Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [Go]: https://go.dev/
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin "AUR package for kjanat/actionlint (binary)"

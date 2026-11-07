@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@1/actionlint.schema.json
 ---
 policy:
   require-commit-hash: true

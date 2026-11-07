@@ -1,0 +1,147 @@
+paths:
+  shared: &shared [".github/ci/**", ".github/workflows/ci-changes.yml", ".{tool-versions,mise.toml}", "tasks.toml"]
+  # Go consumers need source, runtime assets and fixtures, not independent Rust build trees.
+  go: &go
+    - "*.go"
+    - "{cmd,internal,plugins/sdk/go}/**/*.go"
+    - "{cmd,internal,plugins/sdk/go}/**/testdata/**"
+    - "!**/testdata/sources/**"
+    - "internal/**/*.{json,yaml,yml,jq}"
+    - "internal/development/generators/event-triggers/sources/**"
+    - "plugins/sdk/go/**/*.wit"
+    - "plugins/protocol/**"
+    - "go.{mod,sum}"
+  production: &production [*go, "!**/*_test.go"]
+  node: &node ["package.json", "bun.lock", ".node-version", "tsconfig.json"]
+  scripts: &scripts ["**/*.{js,mjs,cjs,ts,tsx,mts}", "**/{package.json,tsconfig*.json,bun.lock}"]
+  schemas: &schemas ["schemas/**", actionlint.schema.json]
+  shell-scripts: &shell-scripts ["{tools,distribution}/**/*.bash"]
+  test-fixtures: &test-fixtures ["tools/**/testdata/**"]
+  action: &action
+    - "{applications/github-action,distribution/npm/facade/types,.github/actions/test-action}/**"
+    - "tools/release/*.mjs"
+    - action.yml
+    - *node
+
+  go-tests: &go-tests
+    - *go
+    - *test-fixtures
+    - *schemas
+    - ".github/actions/setup-shellcheck/**"
+    - ".github/workflows/upkeep.yml"
+    - *shell-scripts
+    - distribution/docker/Dockerfile
+    - CONTRIBUTING.md
+    - "flake.{nix,lock}"
+
+workflows:
+  ci:
+    shared: [*shared, ".github/workflows/ci.yml"]
+    jobs:
+      unit: *go-tests
+      race: *go-tests
+      nix:
+        - *go
+        - "{distribution/nix,man}/**"
+        - *schemas
+        - *test-fixtures
+        - "flake.{nix,lock}"
+        - tools/release/check-packaged-cli.bash
+        - ".github/workflows/nix.yml"
+      wasm:
+        - *go
+        - "{applications/playground,man,libraries/github-changelog,libraries/browser-lsp}/**"
+        - "!{cmd,internal/cli}/**"
+        - "cmd/actionlint-lsp-wasm/**"
+        - "!**/*_test.go"
+        - *node
+        - ".github/actions/setup-pandoc/**"
+      javascript:
+        - *scripts
+        - biome.jsonc
+        - go.mod
+        - "!**/testdata/**"
+        - *node
+        - ".github/actions/**/mise.toml"
+        - ".github/actions/setup-{shellcheck,runner,wasm-toolchain,pandoc}/**"
+        - "{tools,distribution}/**/mise.toml"
+      release:
+        - *production
+        - .goreleaser.yaml
+        - ".github/actions/setup-pandoc/**"
+        - "{man,distribution,applications/github-action,plugins/sdk/typescript,plugins/examples}/**"
+        - *schemas
+        - "tools/release/*.mjs"
+        - action.yml
+        - *node
+        - "!applications/github-action/tests/**"
+        - "!tools/**/*.test.mjs"
+        - "!**/testdata/**"
+        - README.md
+        - LICENSE.txt
+        - "docs/**"
+      guest-modules: ["plugins/{sdk/go,examples/insecure-download}/**", "go.{mod,sum}"]
+      lint:
+        - *go
+        - "**/*.go"
+        - .golangci.toml
+        - docs/checks.md
+        - *shell-scripts
+        - ".github/{workflows,actions}/**"
+        - .github/actionlint.yaml
+        - "!**/testdata/**"
+      docker: [*production, .dockerignore, "distribution/docker/**", action.yml, "!**/testdata/**"]
+      action: [
+        *production,
+        *action,
+        .goreleaser.yaml,
+        "!**/testdata/**",
+        "internal/development/tests/integration/workflow/testdata/ok/minimal.yaml",
+        "internal/development/tests/integration/workflow/testdata/err/one_error.yaml",
+      ]
+      action-tests: *action
+      plugins:
+        - ".github/actions/setup-wasm-toolchain/**"
+        - "plugins/**"
+        - "internal/development/tests/conformance/wasm/**"
+        - "internal/development/generators/plugin-contract/**"
+        - "internal/{plugins,checking,input,model,results,lsp}/**"
+        - "internal/development/tests/integration/{checking,plugins}/**"
+        - "go.{mod,sum}"
+        - "Cargo.{toml,lock}"
+        - rust-toolchain.toml
+
+  codeql:
+    shared: [*shared, ".github/workflows/codeql.yml"]
+    jobs:
+      go: ["**/*.go", "go.{mod,sum}", internal/input/configuration/config_default.yaml, ".github/codeql/**", "!**/testdata/**", "!**/*_test.go"]
+      javascript-typescript: [*scripts, "**/*.jsx", ".github/codeql/**", "!**/testdata/**"]
+      actions: [".github/{workflows,actions,codeql}/**", action.yml, "!.github/actions/**/testdata/**"]
+
+  conformance:
+    shared: [*shared, ".github/workflows/conformance.yml"]
+    jobs:
+      conformance: [*go, "!{cmd,internal/cli}/**", "!**/*_test.go", "internal/development/tests/conformance/**", "!**/*.md"]
+
+  matcher:
+    shared: [*shared, ".github/workflows/matcher.yml"]
+    jobs:
+      matcher: [
+        *go,
+        "!**/*_test.go",
+        "tools/matcher/**",
+        .github/actionlint-matcher.json,
+        "internal/development/tests/integration/workflow/testdata/**",
+        .node-version,
+      ]
+
+  expression-probe-tests:
+    shared: [*shared, ".github/workflows/expression-probe-tests.yml"]
+    jobs:
+      expression-probe: [
+        "internal/development/tests/conformance/expressions/**",
+        ".github/workflows/expr-conformance-probe.yml",
+        .node-version,
+        "!internal/development/tests/conformance/expressions/**/*.md",
+        "!internal/development/tests/conformance/expressions/results/**",
+      ]

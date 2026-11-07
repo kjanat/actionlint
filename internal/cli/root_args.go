@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
 	"slices"
+	"strings"
 	"sync"
+
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"github.com/spf13/pflag"
 )
@@ -15,6 +19,7 @@ import (
 func (a *commandApp) parseRoot(args []string) (rest []string, forced string, terminated bool, err error) {
 	flags := a.root.Flags()
 	flags.SetOutput(io.Discard)
+	a.errorJSON = requestsJSON(flags, args, true)
 	scanner := argumentScanner{args: args}
 	parsedArgs := make([]string, 0, len(args))
 	hasInput := false
@@ -29,6 +34,15 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 			parsedArgs = append(parsedArgs, arg.tokens...)
 			parsedArgs = append(parsedArgs, args[scanner.index:]...)
 			break
+		}
+		if helpIndex < 0 && len(arg.flags) == 1 && arg.flags[0].flag.Name == "directory" {
+			if len(arg.tokens) == 1 && !strings.Contains(arg.tokens[0], "=") {
+				return nil, "", false, commandargs.UsageError{Cause: errors.New("flag needs an argument: -C")}
+			}
+			if err := flags.Set("directory", arg.flags[0].value); err != nil {
+				return nil, "", false, commandargs.UsageError{Cause: err}
+			}
+			continue
 		}
 		if arg.positional {
 			name := arg.tokens[0]
@@ -58,7 +72,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 	err = flags.Parse(parsedArgs)
 	flags.Visit(func(flag *pflag.Flag) { a.set[flag.Name] = true })
 	if err != nil {
-		return nil, "", false, commandUsageError{err}
+		return nil, "", false, commandargs.UsageError{Cause: err}
 	}
 	if helpIndex >= 0 {
 		a.inv.JSON = a.errorJSON
@@ -73,7 +87,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 	forced = a.opts.command
 	if a.set["command"] {
 		if forced == "" {
-			return nil, "", false, commandUsageError{errors.New("--command requires a command name")}
+			return nil, "", false, commandargs.UsageError{Cause: errors.New("--command requires a command name")}
 		}
 		return rest, forced, false, nil
 	}
@@ -98,7 +112,8 @@ func isCommandName(name string) bool {
 }
 
 var registeredCommandNames = sync.OnceValue(func() []string {
-	app := newCommandApp(&Command{})
+	// Only the static command tree is read; nothing runs under this context.
+	app := newCommandApp(context.Background(), &Command{})
 	names := []string{"help"}
 	for _, command := range app.root.Commands() {
 		names = append(names, command.Name())

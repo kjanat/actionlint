@@ -249,8 +249,8 @@ test('manifest binds exact assets to the complete candidate tree', async () => {
 			'README.md': '# Fixture\n',
 			'LICENSE.txt': 'Fixture\n',
 			'go.mod': 'module example.invalid/actionlint\n',
-			'packages/github-action/package.json': JSON.stringify({ scripts: { build: 'node build.mjs' } }),
-			'packages/github-action/build.mjs': `
+			'applications/github-action/package.json': JSON.stringify({ scripts: { build: 'node build.mjs' } }),
+			'applications/github-action/build.mjs': `
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';

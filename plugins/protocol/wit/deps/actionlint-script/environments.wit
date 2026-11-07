@@ -1,0 +1,34 @@
+package kjanat:actionlint-script@0.3.0;
+
+/// Names available to scripts, without environment values or secrets.
+/// Missing declarations do not establish that an ambient runner variable or
+/// a variable written by an earlier command is absent.
+interface environments {
+    enum operating-system { linux, macos, windows }
+    enum name-comparison { sensitive, insensitive, unknown }
+    enum environment-scope { workflow, job, caller, step, runtime }
+    record variable-name {
+        name: string,
+        /// First scope to introduce the exported spelling, even if an inner
+        /// scope supplies its value.
+        scope: environment-scope,
+        /// False when unresolved earlier Windows keys could choose another spelling.
+        case-known: bool,
+    }
+    record environment {
+        operating-system: operating-system,
+        /// Runner dictionary comparison, independent of shell lookup.
+        merge-comparison: name-comparison,
+        /// Bash is case-sensitive even when Windows merges keys without case.
+        lookup-comparison: name-comparison,
+        names: list<variable-name>,
+        /// Unresolved declaration keys, not the runner's ambient environment.
+        unknown-names: bool,
+    }
+    /// Only script occurrences supplied in this analyze call are accepted.
+    /// Other IDs return an error, even if they appear in the invocation graph.
+    for-script: func(occurrence: string) -> result<list<environment>, string>;
+    /// Environment of the active snippet-engine check. Returns an error during
+    /// describe, negotiation, document analysis, or checks without these facts.
+    current: func() -> result<list<environment>, string>;
+}

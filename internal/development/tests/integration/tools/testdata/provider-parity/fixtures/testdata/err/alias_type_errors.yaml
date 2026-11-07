@@ -1,0 +1,17 @@
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - &Runner { uses: example/action@v1 }
+      - uses: *Runner
+      - uses: *Runner
+      - *Runner
+      - uses: &Action example/action@v1
+      - uses: *Action
+      - &Wrapper
+        uses: *Runner
+      - *Wrapper
+      - uses: *Wrapper
+      - &Bad { uses: example/action }
+      - *Bad
