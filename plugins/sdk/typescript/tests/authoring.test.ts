@@ -178,3 +178,25 @@ test('pack rejects broken jq before changing the author package or writing outpu
 		expect((await readdir(directory)).sort()).toEqual(['actionlint.plugin.ts', 'output.jq', 'package.json']);
 	});
 });
+
+test('authoring distributes wrapper delegation and option warnings', async () => {
+	await fixture(mapping, async (_directory, definition) => {
+		const path = fileURLToPath(definition);
+		const source = await readFile(path, 'utf8');
+		await writeFile(
+			path,
+			source.replace(
+				"shells:['bash']",
+				"invocationDefinitions:[{id:'example/wrapper',executables:['actions-shell'],prefix:['python'],delegate:'python-plugin/python'},{id:'example/custom',executables:['custom'],language:'typescript',options:[{long:'unsafe',warning:'Sandbox disabled.'}]}],shells:['bash']",
+			),
+		);
+		expect((await createPluginTester(definition).validate()).valid).toBe(true);
+		expect(await compileProvider(definition)).toMatchObject({
+			invocation_definitions: [{ id: 'example/wrapper', prefix: ['python'], delegate: 'python-plugin/python' }, {
+				id: 'example/custom',
+				language: 'typescript',
+				options: [{ long: 'unsafe', warning: 'Sandbox disabled.' }],
+			}],
+		});
+	});
+});

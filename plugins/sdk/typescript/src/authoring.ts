@@ -12,6 +12,7 @@ import type {
 	DocumentProvider,
 	DocumentRequirement,
 	JSONValue,
+	InvocationDefinition,
 	PluginProvider,
 	ProcessProvider,
 	RuleDescriptor,
@@ -61,6 +62,9 @@ export async function compileProvider(definition: string | URL): Promise<Record<
 		};
 		const manifest = {
 			schema_version: 1,
+			...(provider.invocationDefinitions
+				? { invocation_definitions: provider.invocationDefinitions.map(invocationDefinition) }
+				: {}),
 			metadata,
 			id: provider.id,
 			version: provider.version,
@@ -215,6 +219,8 @@ function isPluginProvider(value: unknown): value is PluginProvider {
 		|| typeof value.description !== 'string' || typeof value.license !== 'string'
 		|| typeof value.repository !== 'string' || !isRuleDescriptor(value.rule)
 		|| (value.env_passthrough !== undefined && !isStringArray(value.env_passthrough))
+		|| (value.invocationDefinitions !== undefined
+			&& (!Array.isArray(value.invocationDefinitions) || !value.invocationDefinitions.every(isInvocationDefinition)))
 	) return false;
 	if (value.kind === 'document') {
 		return typeof value.check === 'function' && isOptionalDocumentKinds(value.documentKinds)
@@ -256,4 +262,68 @@ function isRuleDescriptor(value: unknown): value is RuleDescriptor {
 
 function isRecord(value: unknown): value is Record<string, JSONValue> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function invocationDefinition(definition: InvocationDefinition): Record<string, JSONValue> {
+	const result: Record<string, JSONValue> = { id: definition.id };
+	if (definition.extends !== undefined) result.extends = definition.extends;
+	if (definition.delegate !== undefined) result.delegate = definition.delegate;
+	if (definition.language !== undefined) result.language = definition.language;
+	if (definition.executables) result.executables = [...definition.executables];
+	if (definition.prefix) result.prefix = [...definition.prefix];
+	if (definition.default_arguments) result.default_arguments = [...definition.default_arguments];
+	if (definition.implicit_arguments) result.implicit_arguments = [...definition.implicit_arguments];
+	if (definition.ignore_executable_case !== undefined) {
+		result.ignore_executable_case = definition.ignore_executable_case;
+	}
+	if (definition.toggle_options !== undefined) result.toggle_options = definition.toggle_options;
+	if (definition.long_options_first !== undefined) result.long_options_first = definition.long_options_first;
+	if (definition.unknown_options !== undefined) result.unknown_options = definition.unknown_options;
+	if (definition.options) {
+		result.options = definition.options.map(option => {
+			const value: Record<string, JSONValue> = {};
+			if (option.short !== undefined) value.short = option.short;
+			if (option.long !== undefined) value.long = option.long;
+			if (option.argument !== undefined) value.argument = option.argument;
+			if (option.exit_after !== undefined) value.exit_after = option.exit_after;
+			if (option.choices) value.choices = [...option.choices];
+			if (option.group !== undefined) value.group = option.group;
+			if (option.effect !== undefined) value.effect = option.effect;
+			if (option.input !== undefined) value.input = option.input;
+			if (option.warning !== undefined) value.warning = option.warning;
+			return value;
+		});
+	}
+	return result;
+}
+
+function isInvocationDefinition(value: unknown): value is InvocationDefinition {
+	if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0) return false;
+	for (const key of ['executables', 'prefix', 'default_arguments', 'implicit_arguments']) {
+		if (value[key] !== undefined && !isStringArray(value[key])) return false;
+	}
+	for (const key of ['extends', 'delegate', 'language']) {
+		if (value[key] !== undefined && typeof value[key] !== 'string') return false;
+	}
+	for (const key of ['ignore_executable_case', 'toggle_options', 'long_options_first', 'unknown_options']) {
+		if (value[key] !== undefined && typeof value[key] !== 'boolean') return false;
+	}
+	if (
+		value.options !== undefined && (!Array.isArray(value.options) || !value.options.every(option => {
+			if (!isRecord(option)) return false;
+			if (option.short === undefined && option.long === undefined) return false;
+			for (const key of ['short', 'long', 'group', 'effect', 'warning']) {
+				if (option[key] !== undefined && (typeof option[key] !== 'string' || option[key].length === 0)) return false;
+			}
+			if (typeof option.short === 'string' && option.short.length !== 1) return false;
+			if (option.argument !== undefined && typeof option.argument !== 'boolean') return false;
+			if (option.exit_after !== undefined && option.exit_after !== 'option' && option.exit_after !== 'long-options') {
+				return false;
+			}
+			if (option.choices !== undefined && !isStringArray(option.choices)) return false;
+			if (option.group !== undefined && option.argument !== true && option.effect === undefined) return false;
+			return option.input === undefined || option.input === 'command' || option.input === 'stdin';
+		}))
+	) return false;
+	return true;
 }

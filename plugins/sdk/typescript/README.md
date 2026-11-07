@@ -30,6 +30,52 @@ The root export has no Node imports or globals. `executeScriptCheck` and `execut
 
 Callback providers are packaged as native stdio programs. Their `runtime` defaults to `node`; `bun` and `deno` are opt-in, and `runtimeArgs` are passed before the generated program filename (`deno run` is inserted automatically). The bundler's dependency resolution defaults to `bundle: { platform: 'neutral' }`, independently of that runtime choice. Set `bundle: { platform: 'node' }` when dependencies need Node/CommonJS resolution. `browser` is also a resolution choice, but it does not change the generated process manifest: it still expects native stdin/stdout and the current web host does not run that artifact unchanged. Select a runtime and its dependencies that the consuming host actually provides; bundling never installs Node, Bun, Deno, or native scanner executables.
 
+## Interpreter and wrapper validation
+
+Add `invocationDefinitions` to a provider to describe the command used in a
+workflow's `shell:` field. These definitions register option validation; they do
+not install an interpreter or execute the command. The `shell-name` rule reports
+invalid options and declared option warnings. Script preparation uses the same
+option model for its startup settings.
+
+For example, a Python plugin can publish its argument grammar, and a wrapper
+plugin can delegate to that grammar:
+
+```ts
+// In the Python provider:
+invocationDefinitions: [{
+ id: 'python-plugin/python',
+ executables: ['python', 'python3'],
+ language: 'python',
+ options: [{ short: 'u' }],
+ unknown_options: true,
+}],
+
+// In a separate wrapper provider:
+invocationDefinitions: [{
+ id: 'wrapper-plugin/python',
+ executables: ['actions-shell', 'actions-shells'],
+ prefix: ['python'],
+ delegate: 'python-plugin/python',
+}],
+```
+
+Both plugins must be loaded for delegation to work. A missing definition or an
+option outside an explicitly incomplete grammar produces an unknown result;
+this does not prove that the invocation is valid. `unknown_options: true` suits
+partial grammars such as the Python example above. Omit it only when the listed
+options cover the interpreter's complete argument grammar.
+
+Use `extends` to borrow another definition's options and language while adding
+or replacing options. An option can set `warning: 'Explain the consequence here.'`
+to report a warning when it occurs. An unregistered command does not imply Bash.
+
+The compiled process manifest carries these definitions in
+`invocation_definitions`. A document-analysis WebAssembly component can declare
+the same field in its `actionlint.plugin` metadata section. Definition IDs must
+be unique across loaded plugins and built-in interpreters. Conflicting command
+selectors produce an unknown result instead of selecting a plugin by load order.
+
 ## Build and test
 
 From the repository root:
