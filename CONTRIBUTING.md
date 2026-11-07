@@ -93,6 +93,12 @@ The CI, CodeQL, matcher, upstream-conformance and expression-probe workflows sel
 
 Required workflows still start on every PR. Unneeded jobs are skipped; the unit-test matrix keeps its exact required check names using `ubuntu-slim` jobs with their setup and test steps skipped. Go test-only changes keep the relevant test and lint jobs without rebuilding packages. PR comparisons cover the full diff from the merge-base; pushes cover all commits in the push. Manual and scheduled runs select every check in their workflow. If comparison history, a path pattern or a trailer is invalid, selection falls back to running every check.
 
+Lint, JavaScript tests, Go guest-module tests and native Rust checks run before the expensive builds and platform matrices. A failed selected check blocks those jobs; an unselected check does not. Native Rust tests run before component builds, fixture rebuilding and Wasmtime parity tests. All six unit-test platforms still run when selected.
+
+Go selection covers Go source, embedded resources and test fixtures. Standalone Rust host sources select the plugin and conformance checks rather than Go or package builds. Shared input lists in `filters.yml` use YAML anchors so jobs consume the same paths without copying them.
+
+To test selection and job dependencies locally, run `mise exec -- bun test --cwd .github/ci ./plan.test.mjs`.
+
 To skip optional PR checks, add trailers to the **latest PR head commit** after a blank line:
 
 ```text

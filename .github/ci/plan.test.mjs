@@ -605,3 +605,83 @@ test('Go consumers include embedded assets and checked-in guest fixtures', () =>
 	]);
 	assert.deepEqual(Object.keys(source).filter(job => source[job]), ['plugins']);
 });
+
+test('expensive CI jobs wait for selected checks while unselected checks can be skipped', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	const checks = yamlMapping(jobs.checks);
+	assert.deepEqual(checks.needs, ['lint', 'javascript', 'go-guest-modules', 'rust-native']);
+	assert.equal(checks.if, '${{ !cancelled() }}');
+	const steps = checks.steps;
+	assert.ok(Array.isArray(steps));
+	assert.equal(yamlMapping(steps[0]).run, 'test "$CHECKS_PASSED" = true');
+	assert.equal(
+		yamlMapping(yamlMapping(steps[0]).env).CHECKS_PASSED,
+		"${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}",
+	);
+	for (const name of checks.needs) {
+		assert.deepEqual(yamlMapping(jobs[name]).needs, 'changes', `${name} must run before the matrix`);
+	}
+	for (const name of ['unit-tests', 'race', 'nix', 'wasm', 'release-snapshot', 'plugins', 'docker', 'action']) {
+		const job = yamlMapping(jobs[name]);
+		assert.deepEqual(job.needs, ['changes', 'checks'], name);
+		assert.ok(typeof job.if === 'string');
+		assert.ok(job.if.startsWith("${{ !cancelled() && needs.checks.result == 'success'"), name);
+	}
+	const unit = yamlMapping(jobs['unit-tests']);
+	assert.deepEqual(yamlMapping(yamlMapping(unit.strategy).matrix).os, [
+		'ubuntu-26.04',
+		'ubuntu-26.04-arm',
+		'macos-latest',
+		'macos-26-intel',
+		'windows-2025-vs2026',
+		'windows-11-vs2026-arm',
+	]);
+	assert.ok(typeof unit['runs-on'] === 'string' && unit['runs-on'].endsWith("|| 'ubuntu-slim' }}"));
+});
+
+test('native Rust tests run once before component builds, with separate writable build caches', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	const native = yamlMapping(jobs['rust-native']);
+	const component = yamlMapping(jobs.plugins);
+	assert.equal(
+		native.if,
+		"${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}",
+	);
+	/** @param {Record<string, unknown>} job */
+	const commands = (job) => {
+		assert.ok(Array.isArray(job.steps));
+		return job.steps.map(step => yamlMapping(step)).flatMap(step => typeof step.run === 'string' ? [step.run] : []);
+	};
+	const early = commands(native);
+	const late = commands(component);
+	assert.ok(early.includes('mise run plugins-check-native'));
+	assert.ok(
+		early.includes(
+			'cargo check --locked --all-targets --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml',
+		),
+	);
+	assert.ok(!late.includes('mise run plugins-check-native'));
+	for (
+		const command of [
+			'cargo package --locked -p actionlint-extension-api --all-features',
+			'cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml',
+			'mise run --force plugins',
+		]
+	) assert.ok(late.includes(command), command);
+	assert.ok(late.some(command => command.includes('go test -count=1 -v ./internal/plugins/execution/component')));
+	/** @param {Record<string, unknown>} job */
+	const cache = job => {
+		assert.ok(Array.isArray(job.steps));
+		const step = job.steps.map(step => yamlMapping(step)).find(step =>
+			typeof step.uses === 'string' && step.uses.startsWith('actions/cache@')
+		);
+		assert.ok(step);
+		return yamlMapping(step.with);
+	};
+	assert.equal(cache(native).path, cache(component).path);
+	assert.notEqual(cache(native).key, cache(component).key);
+	const fallback = cache(component)['restore-keys'];
+	assert.ok(typeof fallback === 'string' && fallback.includes('cargo-native-'));
+});
