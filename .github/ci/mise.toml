@@ -1,6 +1,6 @@
 [tasks.test]
-description = "Test CI path selection and commit trailers"
-run         = "bun test --timeout 30000 ./plan.test.mjs"
+description = "Test CI path selection, commit trailers and protocol synchronization"
+run         = "bun test --timeout 30000"
 
 [tasks.typecheck]
 description = "Typecheck the Bun CI selector"

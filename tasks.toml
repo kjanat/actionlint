@@ -7,7 +7,8 @@ sources     = ["plugins/protocol/wit/**", "go.mod", "go.sum"]
 outputs     = ["plugins/sdk/go/bindings/**"]
 run         = [
   "go tool wit-bindgen-go generate --versioned --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
-  "go tool wit-bindgen-go generate --versioned --world environment-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit"
+  "go tool wit-bindgen-go generate --versioned --world environment-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "kprint fmt plugins/sdk/go/bindings"
 ]
 
 ["protocol:sdk"]
