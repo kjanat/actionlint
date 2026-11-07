@@ -92,7 +92,7 @@ test('built playground uses real ShellCheck ranges, suppressions and shell selec
 	}
 	for (
 		const step of [
-			'      - run: |\n          # shellcheck disable=SC2086\n          echo $value',
+			'      - run: |\n          # shellcheck disable=SC2086\n          value=hello\n          echo $value',
 			'      # actionlint:ignore-next-line shellcheck\n      - run: echo $value',
 			'      - shell: python\n        run: print("hello")',
 			'      - shell: pwsh\n        run: Write-Output $value',
