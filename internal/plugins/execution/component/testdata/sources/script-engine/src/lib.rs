@@ -1,7 +1,7 @@
 //! Snippet component fixture, including partial failures and real WASI clocks.
 wit_bindgen::generate!({ path: "../../../../../../../plugins/protocol/wit", world: "script-engine-plugin" });
 
-use exports::kjanat::actionlint::script_engine::{
+use exports::kjanat::actionlint0_2_0::script_engine::{
     Descriptor, Diagnostic, Guest, Outcome, Position, Request, RuleDescriptor, Severity,
 };
 
