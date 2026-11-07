@@ -3,7 +3,7 @@ use std::path::Path;
 
 use actionlint_extension_api::package::{Identity, RunnerPackage};
 use buildkite_runners::Plugin;
-use buildkite_runners::exports::kjanat::actionlint::runner_provider::Guest;
+use buildkite_runners::exports::kjanat::actionlint0_2_0::runner_provider::Guest;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();

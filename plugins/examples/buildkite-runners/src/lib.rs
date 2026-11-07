@@ -2,7 +2,7 @@
 //! labels and explicit platform guarantees; it never implies GitHub image parity.
 wit_bindgen::generate!({ path: "../../protocol/wit", world: "runner-plugin" });
 
-use exports::kjanat::actionlint::runner_provider::{
+use exports::kjanat::actionlint0_2_0::runner_provider::{
     Answer, Candidate, CaseSensitivity, DatasetStatus, Descriptor, Freshness, Guest, Os, Outcome,
     Position, Rejection, Request, Resolution, Selector, Term,
 };
@@ -175,7 +175,7 @@ export!(Plugin);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use exports::kjanat::actionlint::runner_provider::{Constraint, Snapshot};
+    use exports::kjanat::actionlint0_2_0::runner_provider::{Constraint, Snapshot};
 
     const QUEUES: &str = r#"{"queues":[
         {"name":"linux-build","labels":["build","linux"],"group":"ci","os":"linux","architecture":"x64","shell":"bash"},
