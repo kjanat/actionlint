@@ -47,11 +47,9 @@ function snapshotFixture(t) {
 	const checksums = join(dist, `actionlint_${version}_checksums.txt`);
 	const complete = [...archives.values()].map(archive => archive.checksum).join('');
 	writeFileSync(checksums, complete);
-	const bash = process.platform === 'win32'
-		? join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git/bin/bash.exe')
-		: 'bash';
+	writeFileSync(join(root, 'extract.bash'), extractionScript());
 	const extract = () => {
-		const result = spawnSync(bash, ['--noprofile', '--norc', '-euo', 'pipefail', '-c', extractionScript()], {
+		const result = spawnSync('bash', ['--noprofile', '--norc', '-euo', 'pipefail', './extract.bash'], {
 			cwd: root,
 			encoding: 'utf8',
 			timeout: 10_000,
