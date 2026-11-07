@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"golang.org/x/sys/execabs"
 )
 
 // Index is a read-only snapshot of the prospective tree and its watcher input.
@@ -18,7 +16,10 @@ type Index struct {
 }
 
 func ReadIndex(ctx context.Context, root string) (result Index, err error) {
-	git, err := execabs.LookPath("git")
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	git, err := executable()
 	if err != nil {
 		return result, err
 	}
