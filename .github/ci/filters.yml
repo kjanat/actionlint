@@ -1,7 +1,17 @@
 paths:
   shared: &shared [".github/ci/**", ".github/workflows/ci-changes.yml", ".{tool-versions,mise.toml}", "tasks.toml"]
-  go: &go ["*.go", "{cmd,internal,plugins/sdk/go}/**", "go.{mod,sum}"]
-  workflow: &workflow ["*.go", "{cmd,internal}/**", "go.{mod,sum}"]
+  # Go consumers need source, runtime assets and fixtures, not independent Rust build trees.
+  go: &go
+    - "*.go"
+    - "{cmd,internal,plugins/sdk/go}/**/*.go"
+    - "{cmd,internal,plugins/sdk/go}/**/testdata/**"
+    - "!**/testdata/sources/**"
+    - "internal/**/*.{json,yaml,yml,jq}"
+    - "internal/development/generators/event-triggers/sources/**"
+    - "plugins/sdk/go/**/*.wit"
+    - "plugins/protocol/**"
+    - "go.{mod,sum}"
+  workflow: &workflow [*go]
   production: &production [*go, "!**/*_test.go"]
   node: &node ["package.json", "bun.lock", ".node-version", "tsconfig.json"]
   scripts: &scripts ["**/*.{js,mjs,cjs,ts,tsx}", "**/{package.json,tsconfig*.json,bun.lock}"]
