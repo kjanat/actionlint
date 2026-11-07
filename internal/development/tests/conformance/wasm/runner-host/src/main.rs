@@ -6,7 +6,7 @@ use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 wasmtime::component::bindgen!({ path: "../../../../../../plugins/protocol/wit", world: "runner-plugin" });
-use exports::kjanat::actionlint::runner_provider::{
+use exports::kjanat::actionlint0_2_0::runner_provider::{
     Answer, CaseSensitivity, Constraint, Freshness, Os, Position, Request, Resolution, Selector,
     Snapshot, Term,
 };
@@ -72,7 +72,7 @@ fn main() -> wasmtime::Result<()> {
     store.limiter(|host| &mut host.limits);
     store.set_fuel(10_000_000)?;
     let plugin = RunnerPlugin::instantiate(&mut store, &component, &linker)?;
-    let provider = plugin.kjanat_actionlint_runner_provider();
+    let provider = plugin.kjanat_actionlint0_2_0_runner_provider();
     let descriptor = provider.call_describe(&mut store)?;
     let selectors = [
         Term::Literal("buildkite-windows".into()),
