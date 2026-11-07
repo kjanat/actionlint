@@ -111,7 +111,7 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#coercion"
               },
               "fullDescription": {
-                "text": "Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with another type, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity."
+                "text": "Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with a type other than null, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity. Equality with null is a presence check and is allowed."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#coercion",
               "help": {

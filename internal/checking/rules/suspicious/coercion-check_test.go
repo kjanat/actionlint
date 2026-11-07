@@ -31,6 +31,9 @@ func TestSuspiciousCoercion(t *testing.T) {
 		{"endsWith(711, '11')", 0},
 		{"fromJSON('{}') == fromJSON('{}')", 0},
 		{"fromJSON('[]') == fromJSON('[1]')", 0},
+		{"fromJSON('{}') == null", 0},
+		{"null != fromJSON('[]')", 0},
+		{"fromJSON('[]') < null", 1},
 		{"github.event.unknown >= 0", 0},
 		{"startsWith(github.event.unknown, 'x')", 0},
 	} {
