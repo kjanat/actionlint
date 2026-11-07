@@ -80,6 +80,10 @@ workflows:
         - README.md
         - LICENSE.txt
         - "docs/**"
+        - "libraries/github-changelog/**"
+        - ".github/workflows/{package-previews,docker-previews}.yml"
+        - ".github/actions/setup-runner/**"
+        - .dockerignore
       guest-modules: ["plugins/{sdk/go,examples/insecure-download}/**", "go.{mod,sum}"]
       lint:
         - *go

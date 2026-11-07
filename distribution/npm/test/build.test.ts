@@ -88,6 +88,38 @@ async function manifest(path: string): Promise<Record<string, unknown>> {
 	return jsonObject(value, 'package.json');
 }
 
+test('preview packages include only essential platforms and their archived manual', async t => {
+	const f = await fixture(t);
+	const configured = await manifest(join(f.options.npmDir, 'targets.json'));
+	assert.ok(Array.isArray(configured.targets));
+	const preview = {
+		...configured,
+		targets: configured.targets.map(value => jsonObject(value, 'target')).filter(target => target.tier === 1),
+	};
+	const essential = parseTargets(preview).targets;
+	await writeFile(join(f.options.npmDir, 'targets.json'), JSON.stringify(preview));
+	const result = await buildPackages(f.options, { report: () => {} });
+	assert.deepEqual(result.map(path => path.slice(f.options.outDir.length + 1)).sort(), [
+		'darwin-arm64',
+		'darwin-x64',
+		'facade',
+		'linux-arm64',
+		'linux-x64',
+		'win32-arm64',
+		'win32-x64',
+	]);
+	const facade = await manifest(join(f.options.outDir, 'facade/package.json'));
+	assert.deepEqual(
+		Object.keys(jsonObject(facade.optionalDependencies, 'optionalDependencies')),
+		essential.map(target => packageName(f.targets, target)),
+	);
+	for (const target of essential) {
+		const binary = f.targets.binary + (target.os === 'win32' ? '.exe' : '');
+		assert.equal(await readFile(join(f.options.outDir, target.pkg, 'bin', binary), 'utf8'), `binary for ${target.pkg}`);
+	}
+	assert.equal(await readFile(join(f.options.outDir, 'facade/man/actionlint.1'), 'utf8'), 'manual');
+});
+
 test('all platform packages contain their own verified binary and matching npm metadata', async t => {
 	const f = await fixture(t);
 	const result = await buildPackages(f.options, {

@@ -28,23 +28,34 @@ RUN case "${TARGETARCH}" in \
     && cp "/tmp/ruff-${target}/ruff" /ruff \
     && /ruff --version
 
-FROM alpine:${ALPINE_VER} AS runtime
+FROM alpine:${ALPINE_VER} AS runtime-common
 LABEL org.opencontainers.image.source="https://github.com/kjanat/actionlint"
 LABEL org.opencontainers.image.licenses="MIT"
 # Git refuses a mounted repository owned by another user.
 RUN apk add --no-cache git && git config --system --add safe.directory '*'
-COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=ruff /ruff /usr/local/bin/ruff
+
+FROM runtime-common AS runtime
+COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 
 FROM runtime AS action
 COPY --chmod=755 distribution/docker/docker-action.sh /usr/local/bin/actionlint-action
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
-FROM runtime AS cli
+FROM runtime-common AS cli-base
 # Alpine guest (uid 405) otherwise has /dev/null as its home.
 ENV HOME=/home/actionlint
 RUN mkdir -p "${HOME}" && chown 405 "${HOME}"
 WORKDIR /w
 USER 405
 ENTRYPOINT ["/usr/local/bin/actionlint"]
+
+# CI previews reuse the checksum-verified GoReleaser snapshot without compiling Go.
+FROM cli-base AS cli-prebuilt
+ARG TARGETARCH
+COPY --chmod=755 .preview/docker/${TARGETARCH}/actionlint /usr/local/bin/actionlint
+
+# Keep source builds as the default for releases and local use.
+FROM cli-base AS cli
+COPY --from=builder /go/src/app/actionlint /usr/local/bin/
