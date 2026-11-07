@@ -3,17 +3,17 @@ wit_bindgen::generate!({
     world: "plugin",
 });
 
-use exports::kjanat::actionlint::analyzer::{
+use exports::kjanat::actionlint0_2_0::analyzer::{
     Descriptor, Diagnostic, Guest, Input, InputKind, Outcome, Position,
 };
-use kjanat::actionlint::host::log;
+use kjanat::actionlint0_2_0::host::log;
 
 struct Plugin;
 
 impl Guest for Plugin {
     fn describe() -> Descriptor {
         assert!(
-            kjanat::actionlint::invocation_context::describe().is_err(),
+            kjanat::actionlint0_2_0::invocation_context::describe().is_err(),
             "graph leaked into describe"
         );
         Descriptor {
@@ -184,7 +184,7 @@ fn analyze(input: Input) -> Result<Vec<Diagnostic>, String> {
 export!(Plugin);
 
 fn inspect_graph(input: &Input) -> Result<Vec<Diagnostic>, String> {
-    use kjanat::actionlint::invocation_context as graph;
+    use kjanat::actionlint0_2_0::invocation_context as graph;
     let summary = graph::describe()?;
     let mut owners = std::collections::HashSet::from([summary.entry.id.clone()]);
     for offset in (0..summary.calls).step_by(256) {
