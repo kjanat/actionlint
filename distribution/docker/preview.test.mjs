@@ -40,7 +40,7 @@ function snapshotFixture(t) {
 	for (const arch of ['amd64', 'arm64']) {
 		const name = `actionlint_${version}_linux_${arch}.tar.gz`;
 		writeFileSync(join(source, 'actionlint'), `binary for ${arch}\n`);
-		execFileSync('tar', ['-czf', join(dist, name), '-C', source, 'actionlint']);
+		execFileSync('tar', ['-czf', `dist/${name}`, '-C', 'source', 'actionlint'], { cwd: root });
 		const digest = createHash('sha256').update(readFileSync(join(dist, name))).digest('hex');
 		archives.set(arch, { name, checksum: `${digest}  ${name}\n` });
 	}
