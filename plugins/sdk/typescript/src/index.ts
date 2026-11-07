@@ -207,8 +207,65 @@ export interface RuleDescriptor {
 	/** Public documentation URL for this rule. */
 	documentation_url?: string;
 }
+/** One option accepted by an interpreter, independent of its executable name. */
+export interface InvocationOption {
+	/** Exit immediately after this option, or after parsing all long options (as Bash --help does). */
+	exit_after?: 'option' | 'long-options';
+	/** Single short-option character; bundled short options are parsed individually. */
+	short?: string;
+	/** Long option name without the leading two dashes. */
+	long?: string;
+	/** Consume the next argument as this option's value. */
+	argument?: boolean;
+	/** Accepted values for the consumed argument. Omit for unrestricted values. */
+	choices?: readonly string[];
+	/** Setting family, such as set or shopt, reported to script preparation. */
+	group?: string;
+	/** Fixed setting name for a flag that takes no argument. */
+	effect?: string;
+	/** Source comes from command text or stdin instead of the script filename. */
+	input?: 'command' | 'stdin';
+	/** Warning emitted when this option occurs. */
+	warning?: string;
+}
+/** Describe an interpreter or delegate a wrapper's arguments to another plugin's definition.
+ * @example
+ * ```ts
+ * { id: 'my-wrapper/python', executables: ['actions-shell'], prefix: ['python'], delegate: 'python-plugin/python' }
+ * ```
+ */
+export interface InvocationDefinition {
+	/** Unique definition ID used by extends and delegate, including across plugins. */
+	id: string;
+	/** Executable basenames that select this definition. */
+	executables?: readonly string[];
+	/** Match executable basenames without distinguishing letter case. */
+	ignore_executable_case?: boolean;
+	/** Exact arguments immediately after the executable; these are removed before validation. */
+	prefix?: readonly string[];
+	/** Borrow another definition's language and options, then add or replace options. */
+	extends?: string;
+	/** Validate forwarded arguments with this definition instead. */
+	delegate?: string;
+	/** Script language; a wrapper does not imply Bash. */
+	language?: string;
+	/** Accepted interpreter options. */
+	options?: readonly InvocationOption[];
+	/** Accept +options to disable settings. */
+	toggle_options?: boolean;
+	/** Reject long options after a short option. */
+	long_options_first?: boolean;
+	/** Report unmodeled options as unknown rather than invalid. */
+	unknown_options?: boolean;
+	/** Arguments supplied by the runner for a bare explicit interpreter name. */
+	default_arguments?: readonly string[];
+	/** Arguments supplied for the runner's implicit interpreter selection. */
+	implicit_arguments?: readonly string[];
+}
 /** Metadata and host requirements shared by callback providers and existing executable wrappers. */
 export interface ProviderIdentity {
+	/** Interpreter grammars and wrapper routes registered when this plugin is loaded. */
+	invocationDefinitions?: readonly InvocationDefinition[];
 	/** Stable plugin identity across releases, for example "github.com/owner/actionlint-plugin-example". */
 	id: string;
 	/** Plugin package version, not the wrapped scanner's version; must match publication metadata. */
