@@ -198,12 +198,20 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				}
 				var actual []string
 				for _, request := range engine.requests {
-					actual = append(actual, strings.TrimSpace(request.Source))
+					source := strings.TrimSpace(request.Source)
+					body := source[strings.LastIndex(source, "\n")+1:]
+					if !strings.Contains(source, "export CI GITHUB_ACTION GITHUB_ACTIONS GITHUB_ACTION_PATH ") {
+						t.Fatalf("composite script lacks runtime environment declarations: %q", source)
+					}
+					if body == "echo nested_run" && !strings.HasPrefix(source, "# shellcheck external-sources=false\nset -e -o pipefail; export ") {
+						t.Fatalf("composite run lacks interpreter setup: %q", source)
+					}
+					actual = append(actual, body)
 				}
 				slices.Sort(actual)
 				want := []string{"echo nested_input"}
 				if runs {
-					want = append(want, "# shellcheck external-sources=false\nset -e -o pipefail\necho nested_run")
+					want = append(want, "echo nested_run")
 					slices.Sort(want)
 				}
 				if !slices.Equal(actual, want) {
