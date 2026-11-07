@@ -57,7 +57,11 @@ function command(root, cwd, args, allowFindings = false) {
 		});
 	} catch (error) {
 		if (error instanceof Error && 'status' in error && 'stderr' in error && 'stdout' in error) {
-			if (allowFindings && error.status === 1 && String(error.stderr).length === 0) return String(error.stdout);
+			const output = String(error.stdout);
+			if (allowFindings && error.status === 1 && /^.+:\d+:\d+: /m.test(output)) {
+				if (String(error.stderr).length !== 0) process.stderr.write(String(error.stderr));
+				return output;
+			}
 			throw new Error(`Could not run mise ${args.join(' ')}: ${String(error.stderr).trim()}`, { cause: error });
 		}
 		throw error;

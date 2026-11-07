@@ -11,13 +11,13 @@ import type {
 	DocumentOutline,
 	Edit,
 	Fix,
-	JobOutline,
 	IncompleteCheck,
+	JobOutline,
 	Position,
 	ResultConfig,
 	ResultData,
-	StepOutline,
 	SourceReference,
+	StepOutline,
 	UsesReference,
 } from '../../../distribution/npm/facade/types/result.d.ts';
 
