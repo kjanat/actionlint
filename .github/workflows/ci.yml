@@ -215,8 +215,22 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/*_checksums.txt
+            dist/metadata.json
           if-no-files-found: error
           retention-days: 7
+  package-previews:
+    needs: release-snapshot
+    uses: $/.github/workflows/package-previews.yml
+    permissions: { contents: read }
+  docker-previews:
+    needs: release-snapshot
+    if: >-
+      github.repository == 'kjanat/actionlint' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    uses: $/.github/workflows/docker-previews.yml
+    permissions: { contents: read, packages: write }
+    secrets: { DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}" }
   go-guest-modules:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['guest-modules']) }}

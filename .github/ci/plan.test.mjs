@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
 
 import { YAML } from 'bun';
 
@@ -705,4 +706,81 @@ test('workflow lint with all ShellCheck checks runs before the matrix with both 
 			yamlMapping(step).run === "go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'"
 		),
 	);
+});
+
+test('preview consumers share the successful CI snapshot and cannot trigger separate builds', () => {
+	const read = (/** @type {string} */ name) =>
+		yamlMapping(YAML.parse(readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), 'utf8')));
+	const ci = read('ci');
+	const jobs = yamlMapping(ci.jobs);
+	const producer = yamlMapping(jobs['release-snapshot']);
+	assert.ok(Array.isArray(producer.steps));
+	const steps = producer.steps.map(step => yamlMapping(step));
+	const upload = steps.find(step => typeof step.uses === 'string' && step.uses.startsWith('actions/upload-artifact@'));
+	assert.ok(upload);
+	const artifact = yamlMapping(upload.with);
+	assert.ok(typeof artifact.path === 'string' && artifact.path.includes('dist/metadata.json'));
+	assert.equal(steps.filter(step => typeof step.uses === 'string' && step.uses.startsWith('goreleaser/')).length, 1);
+	assert.deepEqual(yamlMapping(ci.on).push, { branches: ['master'] });
+	assert.deepEqual(ci.permissions, { contents: 'read' });
+	for (const name of ['package-previews', 'docker-previews']) {
+		const caller = yamlMapping(jobs[name]);
+		assert.equal(caller.needs, 'release-snapshot', `${name} must wait for the same producer`);
+		assert.equal(caller.uses, `$/.github/workflows/${name}.yml`);
+		const workflow = read(name);
+		assert.deepEqual(Object.keys(yamlMapping(workflow.on)), ['workflow_call']);
+		const publish = yamlMapping(yamlMapping(workflow.jobs).publish);
+		assert.ok(Array.isArray(publish.steps));
+		const consumer = publish.steps.map(step => yamlMapping(step));
+		const download = consumer.find(step =>
+			typeof step.uses === 'string' && step.uses.startsWith('actions/download-artifact@')
+		);
+		assert.ok(download);
+		assert.equal(yamlMapping(download.with).name, artifact.name);
+		assert.equal(yamlMapping(download.with)['run-id'], undefined, 'Consume only this run, including fork PRs');
+		assert.ok(!JSON.stringify(consumer).includes('goreleaser/'));
+		assert.ok(!JSON.stringify(consumer).includes('go build'));
+	}
+	const docker = yamlMapping(jobs['docker-previews']);
+	assert.ok(typeof docker.if === 'string');
+	assert.match(docker.if, /github.repository == 'kjanat\/actionlint'/);
+	assert.match(docker.if, /github.event.pull_request.head.repo.full_name == github.repository/);
+	for (
+		const [repository, eventName, headRepository, expected] of [
+			['kjanat/actionlint', 'pull_request', 'contributor/actionlint', false],
+			['kjanat/actionlint', 'pull_request', 'kjanat/actionlint', true],
+			['kjanat/actionlint', 'push', undefined, true],
+			['contributor/actionlint', 'push', undefined, false],
+		]
+	) {
+		// This condition uses only operators shared by JavaScript and GitHub expressions.
+		const enabled = runInNewContext(docker.if, {
+			github: {
+				repository,
+				event_name: eventName,
+				event: { pull_request: { head: { repo: { full_name: headRepository } } } },
+			},
+		}, { timeout: 100 });
+		assert.equal(enabled, expected, `${repository} ${eventName} ${headRepository}`);
+	}
+	assert.deepEqual(docker.permissions, { contents: 'read', packages: 'write' });
+	assert.deepEqual(yamlMapping(jobs['package-previews']).permissions, { contents: 'read' });
+	assert.equal(yamlMapping(jobs['package-previews']).secrets, undefined);
+});
+
+test('all preview packaging inputs select the shared snapshot producer', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of [
+			'libraries/github-changelog/src/index.ts',
+			'plugins/sdk/typescript/src/authoring.ts',
+			'plugins/examples/external-linters/yamllint/actionlint.plugin.ts',
+			'distribution/npm/targets.json',
+			'distribution/docker/Dockerfile',
+			'.dockerignore',
+			'.github/actions/setup-runner/setup.mjs',
+			'.github/workflows/package-previews.yml',
+			'.github/workflows/docker-previews.yml',
+		]
+	) assert.equal(selectJobs(ci, [path]).release, true, path);
 });

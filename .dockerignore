@@ -13,6 +13,9 @@
 !distribution
 !distribution/docker
 !distribution/docker/docker-action.sh
+!.preview
+!.preview/docker
+!.preview/docker/**
 
 
 
