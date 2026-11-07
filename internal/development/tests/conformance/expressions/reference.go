@@ -77,9 +77,20 @@ type Expectation struct {
 	ExceptionType string
 }
 
+// JSONMode selects the runner's fromJSON parser for a reference comparison.
+type JSONMode uint8
+
+const (
+	LooseJSON JSONMode = iota
+	StrictJSON
+)
+
 // runGitHubReference invokes a command in the pinned image after checking access.
-func runGitHubReference(t *testing.T, operation, input string, variables map[string]any) ([]byte, string) {
+func runGitHubReference(t *testing.T, operation, input string, variables map[string]any, mode JSONMode) ([]byte, string) {
 	t.Helper()
+	if mode != LooseJSON && mode != StrictJSON {
+		t.Fatalf("unknown JSON parser mode: %d", mode)
+	}
 	image, err := githubReferenceImage()
 	if errors.Is(err, errGitHubReferenceUnavailable) {
 		t.Skip(err)
@@ -101,7 +112,10 @@ func runGitHubReference(t *testing.T, operation, input string, variables map[str
 		args = append(args, "-e", "RUNNY_CONTEXT="+string(data))
 	}
 	// The next runner implements the current reference, including case().
-	args = append(args, image, operation, "--engine", "next", "--strict-json")
+	args = append(args, image, operation, "--engine", "next")
+	if mode == StrictJSON {
+		args = append(args, "--strict-json")
+	}
 	command := exec.CommandContext(ctx, "docker", args...)
 	command.Stdin = strings.NewReader(input)
 	var stderr bytes.Buffer
@@ -118,14 +132,24 @@ func runGitHubReference(t *testing.T, operation, input string, variables map[str
 // still occur inside an expression that returns a value.
 func CheckOutcome(t *testing.T, input string, variables map[string]any, want Expectation) {
 	t.Helper()
-	output, image := runGitHubReference(t, "eval-expr", input, variables)
+	CheckOutcomeWithJSONMode(t, input, variables, StrictJSON, want)
+}
+
+// CheckOutcomeWithJSONMode compares an expression using the selected JSON parser.
+// LooseJSON uses Newtonsoft.Json; StrictJSON uses System.Text.Json.
+func CheckOutcomeWithJSONMode(t *testing.T, input string, variables map[string]any, mode JSONMode, want Expectation) {
+	t.Helper()
+	output, image := runGitHubReference(t, "eval-expr", input, variables, mode)
 	if image == "" {
 		return
 	}
 	var report struct {
 		RunnerSHA string `json:"runnerSha"`
 		Engines   []struct {
-			Engine        string          `json:"engine"`
+			Engine    string `json:"engine"`
+			Semantics struct {
+				JSON string `json:"json"`
+			} `json:"semantics"`
 			Parsed        *bool           `json:"parsed"`
 			Evaluated     *bool           `json:"evaluated"`
 			Accepted      *bool           `json:"accepted"`
@@ -143,6 +167,13 @@ func CheckOutcome(t *testing.T, input string, variables map[string]any, want Exp
 		t.Fatalf("missing reference identity or unexpected engine count: %s", output)
 	}
 	engine := report.Engines[0]
+	wantJSONMode := "Loose"
+	if mode == StrictJSON {
+		wantJSONMode = "Strict"
+	}
+	if engine.Semantics.JSON != wantJSONMode {
+		t.Fatalf("unexpected JSON parser mode; want %s: %s", wantJSONMode, output)
+	}
 	if engine.Engine != "next" || engine.Parsed == nil || engine.Evaluated == nil || engine.Accepted == nil || engine.Diagnosed == nil {
 		t.Fatalf("missing reference outcome fields: %s", output)
 	}
@@ -175,7 +206,7 @@ func CheckOutcome(t *testing.T, input string, variables map[string]any, want Exp
 // CheckWorkflow compares workflow acceptance when ACTIONLINT_REFERENCE_IMAGE is set.
 func CheckWorkflow(t *testing.T, workflow string, wantAccepted bool) {
 	t.Helper()
-	output, image := runGitHubReference(t, "parse-workflow", workflow, nil)
+	output, image := runGitHubReference(t, "parse-workflow", workflow, nil, StrictJSON)
 	if image == "" {
 		return
 	}

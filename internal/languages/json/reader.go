@@ -3,6 +3,7 @@ package json
 import (
 	"errors"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 	"unicode"
@@ -224,6 +225,17 @@ func (r *fromJSONReader) number() (any, error) {
 			r.IntegerNegativeZero = r.IntegerNegativeZero || math.Signbit(n)
 			return float64(0), nil // Integer -0 loses its sign in JToken.
 		}
+		if integer, err := strconv.ParseInt(text, 10, 64); err == nil {
+			return float64(integer), nil
+		}
+		integer, ok := new(big.Int).SetString(text, 10)
+		if !ok {
+			return nil, r.fail("invalid JSON integer")
+		}
+		// Newtonsoft stores integers outside Int64 as BigInteger. Its .NET
+		// conversion to double truncates the magnitude to 53 significant bits.
+		truncated, _ := new(big.Float).SetPrec(53).SetMode(big.ToZero).SetInt(integer).Float64()
+		return truncated, nil
 	}
 	return n, nil
 }
