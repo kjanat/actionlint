@@ -568,3 +568,40 @@ test('preview selects the Go toolchain and npm assembly uses Node and Bun', () =
 	assert.match(npm, /install_args: bun/);
 	assert.match(npm, /bun install --filter @kjanat\/actionlint-npm --frozen-lockfile --ignore-scripts/);
 });
+
+test('standalone Rust host changes select plugin parity without Go or packaging matrices', () => {
+	for (const file of ['src/main.rs', 'Cargo.toml', 'Cargo.lock']) {
+		const path = `internal/development/tests/conformance/wasm/runner-host/${file}`;
+		const jobs = selectJobs(workflowFilters('ci'), [path]);
+		assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['plugins'], path);
+		assert.equal(selectJobs(workflowFilters('matcher'), [path]).matcher, false, path);
+		assert.equal(selectJobs(workflowFilters('conformance'), [path]).conformance, true, path);
+	}
+});
+
+test('Go consumers include embedded assets and checked-in guest fixtures', () => {
+	for (
+		const path of [
+			'internal/input/configuration/config_default.yaml',
+			'internal/input/configuration/schema/assets/actionlint.schema.json',
+			'internal/model/contexts/events/payload/catalogue.json',
+			'internal/plugins/manifests/manifest_schema.json',
+			'internal/plugins/execution/process/result_schema.json',
+			'internal/plugins/manifests/bundled/ruff/output.jq',
+			'internal/development/tests/conformance/sources.json',
+			'internal/development/generators/event-triggers/sources/events.tsv',
+			'plugins/sdk/go/packaging/analyzer.wit',
+			'plugins/protocol/wit/analyzer.wit',
+			'internal/plugins/execution/component/testdata/plugins/no-sudo.wasm',
+		]
+	) {
+		const jobs = selectJobs(workflowFilters('ci'), [path]);
+		assert.equal(jobs.unit, true, path);
+		assert.equal(jobs.race, true, path);
+		assert.equal(jobs.nix, true, path);
+	}
+	const source = selectJobs(workflowFilters('ci'), [
+		'internal/plugins/execution/component/testdata/sources/misbehave/src/lib.rs',
+	]);
+	assert.deepEqual(Object.keys(source).filter(job => source[job]), ['plugins']);
+});
