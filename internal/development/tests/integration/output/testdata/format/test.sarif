@@ -723,11 +723,11 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shell-name"
               },
               "fullDescription": {
-                "text": "Validate script shells for the selected runner."
+                "text": "Validate shell names for the selected runner and interpreter options supplied by built-in or plugin definitions. The rule cannot validate options when no interpreter definition matches or an argument contains an unresolved expression."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shell-name",
               "help": {
-                "text": "Select a supported shell for the runner, or provide an explicit shell command containing {0}."
+                "text": "Select a supported interpreter, include {0} for the script filename in custom commands, and correct invalid options. Bash uses -o for set options and -O for shopt options."
               }
             },
             {

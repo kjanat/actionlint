@@ -7,7 +7,7 @@ jobs:
     steps:
       # Direct access to untrusted inputs
       - run: |
-          echo "ISSUE: $ISSUE, COMMITS: $COMMIT, REF: $REF"
+          echo "ISSUE: $ISSUE, COMMITS: $COMMITS, REF: $REF"
         env:
           ISSUE: ${{ github.event.issue.body }}
           COMMITS: ${{ toJSON(github.event.commits.*.message) }}

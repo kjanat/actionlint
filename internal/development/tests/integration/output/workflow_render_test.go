@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	render "actionlint.kjanat.dev/v2/internal/output"
@@ -87,19 +89,21 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 }
 
 func TestWorkflowDiagnosticSARIF(t *testing.T) {
-	root, err := filepath.Abs(".")
+	fixtureRoot, err := filepath.Abs(".")
 	if err != nil {
 		t.Fatal(err)
 	}
+	root, _ := testutil.ExecutableFixture(t)
 	dir := filepath.Join("testdata", "format")
-	proj := workspace.Identity(filepath.Join(root, dir))
+	proj := workspace.Identity(root)
 	file := filepath.Join(dir, "test.yaml")
 
 	var b strings.Builder
-	content, err := os.ReadFile(filepath.Join(root, file))
+	content, err := os.ReadFile(filepath.Join(fixtureRoot, file))
 	if err != nil {
 		t.Fatal(err)
 	}
+	fixturefiles.Write(t, root, file, string(content))
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: proj, Config: &repoconfig.Config{}}})
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +131,7 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 		t.Fatalf("output is not JSON: %v: %q", err, out)
 	}
 
-	bytes, err := os.ReadFile(filepath.Join(root, dir, "test.sarif"))
+	bytes, err := os.ReadFile(filepath.Join(fixtureRoot, dir, "test.sarif"))
 	if err != nil {
 		panic(err)
 	}

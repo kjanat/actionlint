@@ -55,8 +55,11 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(engine.requests) != 1 || engine.requests[0].Source != "supported_input" {
+			if len(engine.requests) != 1 || !strings.HasSuffix(engine.requests[0].Source, "\nsupported_input\n") && engine.requests[0].Source != "supported_input" {
 				t.Fatalf("input-only guest received unsupported run: %+v", engine.requests)
+			}
+			if tc.name == "shellcheck" && !strings.HasPrefix(engine.requests[0].Source, "export CI GITHUB_ACTION ") {
+				t.Fatalf("shell input lacks runtime environment declarations: %q", engine.requests[0].Source)
 			}
 		})
 	}
