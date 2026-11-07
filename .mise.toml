@@ -41,7 +41,7 @@ zizmor                     = "1.31.1"
 tombi                      = "1.10.0"
 markscribe                 = "0.8.1"
 pandoc                     = "3.13"
-kprint                     = "0.60.6"
+kprint                     = { version = "0.60.6", depends = ["bun"] }
 runner-run                 = "0.28.0"
 typescript                 = "7.0.2"
 biome                      = {
