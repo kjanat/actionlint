@@ -71,7 +71,7 @@ Configure this rule with `lint.rules.suspicious.case-insensitive-conditions`. Us
 
 ## coercion
 
-Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with another type, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity.
+Warn when a string parameter converts a boolean or null, when a comparison mixes a collection with a type other than null, or when an ordering comparison uses booleans, null or collections. These expressions are valid in GitHub Actions. Unknown types do not establish a suspicious conversion. Collection equality within the same type is allowed because Actions compares instance identity. Equality with null is a presence check and is allowed.
 
 Check the intended argument or operand type. Use a string literal when text is intended, or compare values of the intended types. This rule offers no automatic edit because the intended value is unknown.
 

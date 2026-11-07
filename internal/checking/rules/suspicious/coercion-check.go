@@ -54,7 +54,7 @@ func suspiciousComparison(op exprsyntax.CompareOpNodeKind, left, right exprtypes
 	}
 	composite := func(k exprtypes.Kind) bool { return k == exprtypes.KindArray || k == exprtypes.KindObject }
 	if op.IsEqualityOp() {
-		return l != r && (composite(l) || composite(r))
+		return l != r && l != exprtypes.KindNull && r != exprtypes.KindNull && (composite(l) || composite(r))
 	}
 	return composite(l) || composite(r) || l == exprtypes.KindNull || r == exprtypes.KindNull || l == exprtypes.KindBool || r == exprtypes.KindBool
 }
