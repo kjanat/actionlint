@@ -8,7 +8,8 @@ import (
 )
 
 func New(additional []commands.Definition) (*commands.Registry, error) {
-	definitions := []commands.Definition{bash.Definition()}
+	definitions := make([]commands.Definition, 0, 4+len(additional))
+	definitions = append(definitions, bash.Definition())
 	for _, name := range []string{"sh", "dash", "ksh"} {
 		definition := commands.Definition{ID: name, Executables: []string{name, name + ".exe"}, IgnoreExecutableCase: true, Language: name, ToggleOptions: true, UnknownOptions: true}
 		if name == "sh" {

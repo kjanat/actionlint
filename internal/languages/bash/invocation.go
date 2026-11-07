@@ -1,3 +1,4 @@
+// Package bash describes Bash command-line options and their initial script settings.
 package bash
 
 import (
@@ -136,9 +137,7 @@ func initialSettings(settings []commands.Setting) []commands.Setting {
 }
 
 func quote(value string) string {
-	if value != "" && strings.IndexFunc(value, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-')
-	}) < 0 {
+	if value != "" && strings.Trim(value, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") == "" {
 		return value
 	}
 	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"

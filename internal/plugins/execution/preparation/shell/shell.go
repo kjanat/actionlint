@@ -64,12 +64,14 @@ func LanguageDialect(language string) string {
 func TargetArguments(environments []scriptmodel.EnvironmentNames) commands.ArgumentPlatform {
 	result := commands.UnknownArguments
 	for _, environment := range environments {
-		current := commands.UnknownArguments
+		var current commands.ArgumentPlatform
 		switch environment.OperatingSystem() {
 		case runner.Linux, runner.MacOS:
 			current = commands.UnixArguments
 		case runner.Windows:
 			current = commands.WindowsArguments
+		case runner.UnknownOS:
+			return commands.UnknownArguments
 		default:
 			return commands.UnknownArguments
 		}
