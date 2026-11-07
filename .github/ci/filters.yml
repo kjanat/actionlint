@@ -11,38 +11,41 @@ paths:
     - "plugins/sdk/go/**/*.wit"
     - "plugins/protocol/**"
     - "go.{mod,sum}"
-  workflow: &workflow [*go]
   production: &production [*go, "!**/*_test.go"]
   node: &node ["package.json", "bun.lock", ".node-version", "tsconfig.json"]
-  scripts: &scripts ["**/*.{js,mjs,cjs,ts,tsx}", "**/{package.json,tsconfig*.json,bun.lock}"]
+  scripts: &scripts ["**/*.{js,mjs,cjs,ts,tsx,mts}", "**/{package.json,tsconfig*.json,bun.lock}"]
+  schemas: &schemas ["schemas/**", actionlint.schema.json]
+  shell-scripts: &shell-scripts ["{tools,distribution}/**/*.bash"]
+  test-fixtures: &test-fixtures ["tools/**/testdata/**"]
   action: &action
     - "{applications/github-action,distribution/npm/facade/types,.github/actions/test-action}/**"
     - "tools/release/*.mjs"
     - action.yml
     - *node
 
+  go-tests: &go-tests
+    - *go
+    - *test-fixtures
+    - *schemas
+    - ".github/actions/setup-shellcheck/**"
+    - ".github/workflows/upkeep.yml"
+    - *shell-scripts
+    - distribution/docker/Dockerfile
+    - CONTRIBUTING.md
+    - "flake.{nix,lock}"
+
 workflows:
   ci:
     shared: [*shared, ".github/workflows/ci.yml"]
     jobs:
-      unit: &go-tests
-        - *go
-        - "tools/**/testdata/**"
-        - "schemas/**"
-        - actionlint.schema.json
-        - ".github/actions/setup-shellcheck/**"
-        - ".github/workflows/upkeep.yml"
-        - "{tools,distribution}/**/*.bash"
-        - distribution/docker/Dockerfile
-        - CONTRIBUTING.md
-        - "flake.{nix,lock}"
+      unit: *go-tests
       race: *go-tests
       nix:
         - *go
-        - "{distribution/nix,man,schemas}/**"
-        - "tools/**/testdata/**"
+        - "{distribution/nix,man}/**"
+        - *schemas
+        - *test-fixtures
         - "flake.{nix,lock}"
-        - actionlint.schema.json
         - tools/release/check-packaged-cli.bash
         - ".github/workflows/nix.yml"
       wasm:
@@ -55,7 +58,6 @@ workflows:
         - ".github/actions/setup-pandoc/**"
       javascript:
         - *scripts
-        - "**/*.mts"
         - biome.jsonc
         - go.mod
         - "!**/testdata/**"
@@ -67,8 +69,8 @@ workflows:
         - *production
         - .goreleaser.yaml
         - ".github/actions/setup-pandoc/**"
-        - "{man,schemas,distribution,applications/github-action,plugins/sdk/typescript,plugins/examples}/**"
-        - actionlint.schema.json
+        - "{man,distribution,applications/github-action,plugins/sdk/typescript,plugins/examples}/**"
+        - *schemas
         - "tools/release/*.mjs"
         - action.yml
         - *node
@@ -84,11 +86,11 @@ workflows:
         - "**/*.go"
         - .golangci.toml
         - docs/checks.md
-        - "{tools,distribution}/**/*.bash"
+        - *shell-scripts
         - ".github/{workflows,actions}/**"
         - .github/actionlint.yaml
         - "!**/testdata/**"
-      docker: [*production, distribution/docker/Dockerfile, .dockerignore, "distribution/docker/**", action.yml, "!**/testdata/**"]
+      docker: [*production, .dockerignore, "distribution/docker/**", action.yml, "!**/testdata/**"]
       action: [
         *production,
         *action,
@@ -105,7 +107,6 @@ workflows:
         - "internal/development/generators/plugin-contract/**"
         - "internal/{plugins,checking,input,model,results,lsp}/**"
         - "internal/development/tests/integration/{checking,plugins}/**"
-        - "plugins/sdk/go/**"
         - "go.{mod,sum}"
         - "Cargo.{toml,lock}"
         - rust-toolchain.toml
@@ -120,13 +121,13 @@ workflows:
   conformance:
     shared: [*shared, ".github/workflows/conformance.yml"]
     jobs:
-      conformance: [*workflow, "!{cmd,internal/cli}/**", "!**/*_test.go", "internal/development/tests/conformance/**", "!**/*.md"]
+      conformance: [*go, "!{cmd,internal/cli}/**", "!**/*_test.go", "internal/development/tests/conformance/**", "!**/*.md"]
 
   matcher:
     shared: [*shared, ".github/workflows/matcher.yml"]
     jobs:
       matcher: [
-        *workflow,
+        *go,
         "!**/*_test.go",
         "tools/matcher/**",
         .github/actionlint-matcher.json,
