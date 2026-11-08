@@ -19,13 +19,13 @@
   },
   "preparation_transform": {
     "language": "jq",
-    "digest": "sha256:96903ae5f4081af6b4f251b9c6268c1967b341ccdc5d1897ac5862022d80cb08"
+    "digest": "sha256:ae394b07316ff9a482fa92c29603a56b8fbf4f59289d8e694e1172572da64528"
   },
   "preparation": "kjanat:actionlint/shell-preparation@0.3.0",
   "configuration_paths": ["/source-path"],
   "configuration_transform": {
     "language": "jq",
-    "digest": "sha256:c773bb82fd1e6f39e1f092ef56717ab8780fdf029a198524398989b5b9d39bff"
+    "digest": "sha256:c2304a74f38abba3689947d7d1ff821418522cc4392b35e04f3327aa344d7696"
   },
   "integration": { "tool": "shellcheck", "contract": "kjanat:actionlint/shellcheck-config@0.1.0" },
   "deprecated_flags": [{ "name": "shellcheck", "value": "command" }],
