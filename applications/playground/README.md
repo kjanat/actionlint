@@ -1,6 +1,6 @@
 # Playground for actionlint
 
-This is a development directory for [actionlint playground](https://kjanat.github.io/actionlint/).
+This directory contains the [actionlint playground](https://kjanat.github.io/actionlint/).
 
 The playground is built with HTML/CSS/TypeScript/Wasm and bundled by [Vite](https://vite.dev/). All dependencies are
 defined in the repository's Bun workspace. The editor connects to the actual Go language

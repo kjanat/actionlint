@@ -1,14 +1,14 @@
 # generate-actionlint-matcher
 
-This script generates [`actionlint-matcher.json`](../../../.github/actionlint-matcher.json).
+This script generates [`actionlint-matcher.json`](../../.github/actionlint-matcher.json).
 
 ## Usage
 
 ```sh
-make .github/actionlint-matcher.json
+mise exec -- run matcher
 ```
 
-or directly run the script
+To run the script directly:
 
 ```sh
 node ./tools/matcher/main.mjs .github/actionlint-matcher.json
@@ -20,7 +20,7 @@ node ./tools/matcher/main.mjs .github/actionlint-matcher.json
 run //tools/matcher:test
 ```
 
-It runs on `node --test` and is also covered by `run test:js`.
+This task runs `node --test`. The same tests also run as part of `run test:js`.
 
 The test uses text-format fixtures at `./tools/matcher/testdata/*.txt`. The matcher reads `--output-format text`,
 not the default pretty output. Regenerate the text and JSON expectations together:

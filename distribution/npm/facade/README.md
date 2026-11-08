@@ -38,8 +38,9 @@ As a package script:
 }
 ```
 
-`actionlint` exits `0` when it finds nothing, `1` when it reports problems, and `2` or `3` on a usage error or a fatal
-error. CI can use these exit codes to fail a check.
+`actionlint` exits `0` when checks finish without findings, `1` when they report
+problems, `2` for a usage error and `3` when checking cannot complete. CI can use
+these exit codes to fail a check.
 
 See the [usage documentation](https://github.com/kjanat/actionlint/blob/master/docs/usage.md) for the full command line,
 and [the checks list](https://github.com/kjanat/actionlint/blob/master/docs/checks.md) for what it looks for.

@@ -471,6 +471,6 @@ The report distinguishes expression-parser rejection, dispatch-input rejection, 
 
 ## Relationship to actionlint and upstream documentation
 
-actionlint checks constant `fromJSON()` string arguments with a strict JSON parser. A literal argument such as `fromJSON('017')` can therefore be diagnosed even when GitHub accepts it at runtime. Dynamic input needs runtime validation. Deliberately invalid expressions are stored as test data and exercised through isolated probe workflows.
+Actionlint checks constant `fromJSON()` string arguments with its runner-compatible loose reader. For example, it accepts `fromJSON('017')` and interprets the number as octal. Dynamic input still needs runtime validation. Deliberately invalid expressions are stored as test data and exercised through isolated probe workflows.
 
 GitHub's [expression reference](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions) describes the public language contract. Captures record the API version, runner versions and measurement times. A discrepancy can be reported with the relevant case, generated workflow and saved output.

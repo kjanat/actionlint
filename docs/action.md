@@ -23,7 +23,7 @@ jobs:
 
 This discovers workflows, reports findings as annotations, and writes a compact
 job summary. Findings fail the step. Pin a **published release commit SHA** or
-normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
+a `vX.Y.Z` tag to use a fixed version; major and minor tags move.
 
 ## Permissions
 
@@ -218,7 +218,7 @@ first; a checked-in config file avoids escaping nested expressions.
 | SARIF file                | `sarif: true`; `report-sarif` output.                                   |
 | PR comments               | `review: true`, opt-in.                                                 |
 
-Explicit annotations off preserves the serialized `output` value. Fatal errors
+Turning annotations off does not change the serialized `output` value. Fatal errors
 still report a step error. Multiple destinations share one analysis.
 
 Finding annotations include the diagnostic message followed by a numbered source

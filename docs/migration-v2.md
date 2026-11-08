@@ -31,7 +31,7 @@ cannot perform the URL change.
 
 Remove Go `additional_dependencies` entries used to install native ShellCheck.
 The new default hook does not build Go source or provision native script linters.
-Its pinned wheel supplies the host; the project's [plugin configuration](plugins.md)
+Its pinned wheel supplies actionlint; the project's [plugin configuration](plugins.md)
 selects exact analyzer versions. The registry supplies immutable artifact records and
 checksums; direct artifact declarations carry their own digests. Commit the configuration.
 
@@ -78,7 +78,7 @@ accepted and ignored.
 The Go host implementation is private. Programs that previously embedded it
 should use the [CLI, LSP or plugin interfaces](api.md).
 
-The last `--tool`, `--no-tool` or `-shellcheck` for an id wins, so
+The last `--tool`, `--no-tool` or `-shellcheck` option for an ID takes precedence, so
 `--no-tool shellcheck -shellcheck=COMMAND` runs `COMMAND`. A disabled tool also
 turns off plugins that provide it: a locked plugin whose name or alias is the id is
 not downloaded, and any other plugin whose metadata names the id as its engine or a

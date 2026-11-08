@@ -75,8 +75,8 @@ Its recorded-output cases pass saved scanner output to actionlint's decoder with
 Pass the intended actionlint executable explicitly when another version is on PATH.
 
 Declare the scanner's input format, accepted exit codes, line and column conventions,
-settings, and capabilities. Preserve external diagnostic codes as codes rather than burying
-them in message prefixes. Distinguish process failure from valid findings.
+settings, and capabilities. Return the scanner's diagnostic code in the code field.
+Distinguish process failure from valid findings.
 To verify installation and execution, install the plugin and run its scanner
 through actionlint; recorded-output tests do not perform those operations.
 

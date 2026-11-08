@@ -48,18 +48,21 @@ Positions are one-based Unicode code points, with exclusive ends. Paths are
 relative to the analysis working directory where possible. Do not use array
 indexes as stable identities.
 
-Related locations optionally carry a paired `revision: {document, digest}` and
-`coordinates` (`yaml` or `raw-lf`). Both fields must be present or both absent.
-The document identity is absolute (except the reserved `<stdin>` identity),
-independent of the display path. A binding is a producer claim: publication
-checks the exact captured revision, coordinate model, admitted path alias and
-strict half-open range. Failed, conflicted, unavailable or invalid-UTF-8 sources
-cannot authorize a location. Invalid related locations are omitted individually;
-the primary remains and an `admission-rejected` error counts the withheld
-locations exactly, making the result incomplete.
+Related locations may include `revision: {document, digest}` and `coordinates`
+(`yaml` or `raw-lf`). Supply both fields together or omit both. The `document`
+identifies an absolute path or the reserved `<stdin>` source, independently of
+the path shown to the user. Before reporting a location, the host checks that
+its digest matches the captured source, its coordinate model matches that
+source, its display path identifies that document, and its entire range is
+valid. It cannot verify locations against sources that failed to load, have
+conflicting revisions, are unavailable, or contain invalid UTF-8. It omits each
+invalid related location and keeps the primary diagnostic. An
+`admission-rejected` error reports the number of omitted locations and marks the
+check incomplete.
 
-Successful CLI results go to stdout or `--output-file`. Failed CLI checks emit
-the result on stderr and preserve an existing output file. Logs and opt-in
+When checking completes, the CLI writes results to stdout or `--output-file`,
+including results with findings. If checking fails to complete, it reports the
+failure on stderr and leaves an existing output file unchanged. Logs and opt-in
 summaries on stderr use separate records. Argument errors before an operation
 is selected use the CLI error record (`error` and `exit_code`). JSONL contains findings only: use
 the process exit code or the Action `result-file` to distinguish completion from
@@ -68,9 +71,10 @@ records the analysis exit code regardless of that setting.
 
 ## Document outlines
 
-The optional `documents` array is a lossy report projection of observed workflow
-and action declarations, with available source positions. `kind` distinguishes
-the two document shapes. For example:
+The optional `documents` array describes workflows and action manifests parsed
+during the check, with source positions where available. It leaves out details such
+as script bodies and expression trees. The `kind` field distinguishes workflows
+from action manifests. For example:
 
 ```json
 {
@@ -149,11 +153,12 @@ Jobs and steps include the parsed `uses` string and may include a structured
 unknown. A step's `./` action is a workspace reference. A job's `./` workflow
 call is a self-repository reference, like `$/`, because GitHub resolves it from
 the caller's commit. Repository references separate owner, repository, subpath, and ref.
-`host_source` records default, explicit, or self context; a bare `owner/repo@ref`
-does not imply a provider or invent a host. For explicit URLs, the reference
-contains the declared host and scheme. Dependency resolution is outside this model.
-Reference classification establishes neither dialect support nor an authoritative
-runtime or provider identity.
+`host_source` records whether the host comes from the default context, an
+explicit declaration, or the calling repository. A bare `owner/repo@ref` leaves
+the host and provider unspecified. Explicit URLs include their declared host and
+scheme. These fields describe the written reference; they do not resolve it,
+establish that its workflow syntax is supported, or identify the runtime or
+provider that would execute it.
 
 `parse_status` records the existing parser or decoder's outcome: `complete` means
 it returned a document tree without errors, `partial` means a document tree
@@ -171,8 +176,8 @@ action declarations have their own documents; steps are not expanded into each
 caller. The npm package exports `DocumentOutline`, `WorkflowOutline`,
 `ActionOutline`, runtime/input/output types, `UsesReference`, `JobOutline`, and
 `StepOutline` alongside `CheckResult`. These report types cover selected
-declarations and source locations. A canonical AST or plugin execution model
-would require a separate contract.
+declarations and source locations. They do not expose the complete parsed syntax
+tree or the information supplied to executing plugins.
 
 ## TypeScript and compatibility
 
@@ -190,7 +195,7 @@ function describe(result: CheckResult): string {
 ```
 
 The npm package includes the types and schema for its matching binary version.
-`CheckResult` names the currently emitted contract; `CheckResultV1` explicitly
+`CheckResult` describes the currently emitted result; `CheckResultV1` explicitly
 selects version 1. Import the schema as `@kjanat/actionlint/result.schema.json`
 or `@kjanat/actionlint/schemas/results/v1.schema.json`. TypeScript types alone do
 not validate parsed JSON.

@@ -1,6 +1,6 @@
 # generate-webhook-events
 
-Generates the Actions trigger registry [`webhooks.gen.go`](../../../model/contexts/events/triggers/webhooks.gen.go), offline:
+Generate the Actions trigger registry [`webhooks.gen.go`](../../../model/contexts/events/triggers/webhooks.gen.go) without network access:
 
 ```sh
 go run ./internal/development/generators/event-triggers --registry internal/model/contexts/events/triggers/webhooks.gen.go
@@ -49,11 +49,11 @@ The manifest records exact source URLs and revisions for attribution.
 The HTML parser provides an independent documentation audit.
 Its output is not the canonical registry and must not overwrite `webhooks.gen.go`.
 
-It does:
+The parser:
 
-1. Fetch [the GitHub Docs HTML page](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
-2. Parse the HTML and find webhook names and their activity types from tables
-3. Generate mappings from webhook names to their activity types as a Go map variable
+1. Fetches [the GitHub Docs HTML page](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+2. Reads webhook names and activity types from its tables.
+3. Generates a Go map from webhook names to activity types.
 
 ## Usage
 
@@ -61,19 +61,19 @@ It does:
 generate-webhook-events [[srcfile] dstfile]
 ```
 
-Generate an independent documentation observation:
+Print a map generated from the documentation:
 
 ```sh
 go run ./internal/development/generators/event-triggers -
 ```
 
-When the HTML file is in local:
+To read a local HTML file:
 
 ```sh
 go run ./internal/development/generators/event-triggers ./input.html -
 ```
 
-For debugging, specifying `-` to `dstfile` outputs the generated source to stdout:
+Use `-` as the destination to print the generated source to stdout:
 
 ```sh
 go run ./internal/development/generators/event-triggers ./input.html -

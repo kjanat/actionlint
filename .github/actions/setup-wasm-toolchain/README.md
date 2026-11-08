@@ -1,8 +1,9 @@
 # Pinned WebAssembly fixture toolchain
 
-This private action installs the two tools used by the Linux x64 plugin fixture
-job: wasm-tools 1.258.0 and wit-bindgen 0.62.0. It preserves their versions and the
-existing fixture builds and tests. Unsupported runner platforms fail explicitly.
+This action installs the tools pinned in [`releases.json`](releases.json) for the
+Linux x64 plugin fixture job. These CI pins differ from the local development
+versions in [`.mise.toml`](../../../.mise.toml). The action reports an error on
+unsupported runner platforms.
 
 Both archives were downloaded and checked against their GitHub release asset
 digests and `gh release verify-asset` on 2026-10-21. The authenticated tags resolve

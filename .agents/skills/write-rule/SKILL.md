@@ -35,9 +35,11 @@ use them before adding new analysis.
 
 Read the matching section of [implementation.md](references/implementation.md):
 
-- **Native semantic check:** follow the existing declaration/fact model through
-  registration and diagnostic admission. Implement analysis used by several rules
-  in the shared semantic model rather than duplicating it in each rule.
+- **Native semantic check:** define the rule's name, category, severity and
+  required data in a `rule.Declaration`. Add it to `internal/checking/rule_index.go`
+  and register the implementation in `internal/checking/executor/registration`.
+  Report findings through the host. If several rules need the same analysis,
+  implement it once in the semantic model.
 - **External linter:** author a plugin using the manifest/SDK contracts. Test its
   output conversion through actionlint; do not add a tool-specific host adapter.
 - **Rename or configuration change:** identify where the rule emits findings and

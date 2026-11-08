@@ -1,9 +1,10 @@
 # LSP implementation notes
 
 The [readiness checklist](../../docs/lsp.md) records advertised behavior.
-This package owns JSON-RPC framing, document versions, UTF-16 translation,
-diagnostic publication, completion transport and code-action transport. It
-does not own workflow parsing, network resolution or plugin loading.
+This package reads and writes JSON-RPC messages, tracks document versions,
+converts UTF-16 positions, publishes diagnostics, and handles completion and
+code-action requests. Workflow parsing, network resolution and plugin loading
+are implemented elsewhere.
 
 ## Current data path
 
@@ -11,43 +12,45 @@ does not own workflow parsing, network resolution or plugin loading.
    entry and cancels superseded generations. Closed dependencies can still
    receive diagnostics. A later publication clears removed diagnostics.
 2. [`LanguageServer`](checks.go) opens an editor session,
-   uses the shared checking operations with source overlays, then admits captured source
-   revisions and diagnostics into [`Analysis`](server.go). It selects native and
+   checks files with open-buffer contents taking precedence over disk, then adds
+   the captured source revisions and diagnostics to [`Analysis`](server.go). It selects native and
    plugin checks through the same configuration as the CLI.
 3. [`completion.Complete`](completion/completion.go) separately parses the
-   current buffer and calls [`typecheck.Checker.Complete`](../languages/expressions/typecheck/completion.go).
-   It has event and dispatch-input context, not the per-job types built during
-   the diagnostic traversal. That split is the immediate completion gap.
+   current buffer. Its [expression completion helper](completion/expression.go)
+   uses the expression checker's available contexts and property types.
+   It knows the event and dispatch inputs but does not receive the job-specific
+   types inferred while checking diagnostics. Completion therefore cannot yet
+   offer the same properties that diagnostic checks validate.
 4. [`codeActions`](actions.go) accepts only revisions matching published/open
    sources and emits versioned workspace edits. The client applies them.
 
-## Extension contract to implement
+## Requirements for further features
 
 These are implementation requirements, not advertised features:
 
-- [ ] Project one immutable editor analysis snapshot per generation: captured
-      source revisions, declarations, identifier/ref locations, inferred types,
-      metadata provenance and dependency edges. Bind every feature result to its
-      source revision. Share this projection across diagnostics and requests;
+- [ ] Collect one immutable analysis snapshot for each generation. Include the
+      captured source revisions, declarations, identifier and reference locations,
+      inferred types, metadata origins and dependencies. Identify the source
+      revision for every feature result. Share this snapshot across diagnostics and requests;
       avoid a second parser or per-request network resolver in the transport.
 - [ ] Feed expression completion from the same context as diagnostics at the
       cursor: workflow/job/step scope, matrix, `needs`, step outputs, dispatch and
       reusable-call inputs. Keep open-buffer edits and UTF-16 conversion. Add
       focused tests that compare completion types with diagnostics on one buffer.
-- [ ] Add source-backed hover, definition/declaration, references and document
-      highlights for each supported identifier/ref kind. Define scope and targets
+- [ ] Add hover, definition/declaration, references and document highlights using
+      locations in captured sources. Define scope and targets
       explicitly: jobs, steps, outputs, local actions and local reusable workflows
       first. Return no target when metadata has no captured source location.
-- [ ] Project existing document outlines to document symbols. Add a workspace
+- [ ] Convert existing document outlines to document symbols. Add a workspace
       index and invalidation before workspace symbols. Build folding/selection
-      ranges from owned YAML/expression spans, then semantic tokens with a declared
+      ranges from the parser's YAML and expression spans, then semantic tokens with a declared
       legend and versioned refresh. A tree/dependency view needs a separately
-      specified client protocol; memory layout has no workflow meaning.
+      specified client protocol.
 - [ ] Extend code actions only with revision-safe fixes from the existing fix
       model. Distinguish quick fixes, refactors and source-wide actions in
       capability advertisement and tests. Never turn a resolver suggestion into
       an unvalidated edit.
-- [ ] Implement remote metadata typing enabled by default, with explicit opt-out,
+- [ ] Enable remote metadata typing by default, with explicit opt-out,
       as requested in [#157](https://github.com/kjanat/actionlint/issues/157#issuecomment-6353123385)
       and the actup integration workstream [#336](https://github.com/kjanat/actionlint/issues/336).
       The provider result must contain
@@ -58,13 +61,18 @@ These are implementation requirements, not advertised features:
       identity changes; preserve cancellation. Specify reliable caching and
       permissions. Explicit offline mode must prevent network requests and report
       unavailable metadata when the cache cannot satisfy a request; provider
-      failure must not silently disable validation. Current
-      [`references.Resolver`](../input/references/resolver.go) resolves repository references, not
-      these schemas, so this requires a new explicit contract.
+      failure must not silently disable validation. The native server currently
+      passes the `RemoteActions` provider to checking, with
+      `--action-metadata=online` as the default. Its `offline` and `online` modes
+      supply available action declarations to diagnostic checks. They do not yet
+      provide the editor features or complete reusable-workflow metadata described
+      here. [`references.Resolver`](../input/references/resolver.go) resolves repository
+      references; configuring it alone does not enable metadata acquisition.
 - [ ] Define whether plugin metadata can add editor facts. Existing plugin
-      analyzers supply findings/fixes; avoid inferring LSP providers from that ABI.
-      If extended, require typed, versioned facts and source provenance through
-      the same admission boundary as native analysis.
+      analyzers supply findings and fixes, which do not register LSP feature
+      handlers. If the interface is extended, version the additional typed data,
+      identify its captured source, and validate it through the same path as
+      native analysis.
 
 [actup's LSP backend](https://github.com/kjanat/actup/blob/master/crates/lsp/src/backend.rs) advertises
 `uses:` hover, completion, quick-fix/refactor/fix-all actions and workspace

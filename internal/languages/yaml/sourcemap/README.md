@@ -1,20 +1,24 @@
 # Scalar source maps
 
-`Document` indexes physical YAML lines and their original line endings. `Decode`
-scans a scalar once, emitting its decoded value, source spans, and lexical extent
-together. The containing YAML collection supplies indentation and flow context.
-No decoded-value prefix matching determines where a scalar ends.
+`Document` indexes YAML source lines and their original line endings. `Decode`
+reads a scalar once and returns its decoded text, the source locations of its
+characters, and the scalar's start and end positions. The containing collection
+supplies the indentation and whether the scalar is inside a flow-style mapping
+or sequence. The decoder determines where the scalar ends from YAML syntax,
+rather than searching the source for a prefix matching the decoded text.
 
-All styles use the same emitter. Plain and quoted values share flow-whitespace
-handling; literal and folded blocks share indentation and chomping. Escapes map
-to the complete source escape. Folding and normalized line breaks emit whitespace
-without a token position. Preserved LS/PS line breaks have cross-line spans.
+All scalar styles use the same code to record decoded characters and their
+locations. Plain and quoted values share whitespace handling; literal and folded
+blocks share indentation and trailing-newline handling. Each decoded escape maps
+to the complete escape sequence in the source. Whitespace created by folding or
+line-break normalization has no token position. Unicode line separators (LS) and
+paragraph separators (PS) map across source lines.
 
 The actionlint adapter compares the complete result with `syntax.Node.Value` before
 using a map. Workflow expressions, metadata expressions, and external script
 checkers use that map. Inline suppressions use the scalar extent from the same
 scan, including closing quotes. Malformed-YAML recovery also uses this decoder to
-find block extents, without claiming a fully validated YAML value.
+find where blocks end.
 
 `TestScalarDecoderInvariants` and `FuzzScalarDecoderInvariants` in
 `internal/model/workflows/parser/scalar_decoder_invariant_test.go`

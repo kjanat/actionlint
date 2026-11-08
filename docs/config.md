@@ -131,17 +131,18 @@ before writing; it does not rewrite hosted configurations.
 
 ## File selection
 
-Top-level `files` controls which input files are analyzed, independently of lint
-rule settings. Patterns are repository-relative doublestar globs using `/`; when
-there is no repository, they are relative to the working directory. They filter
-selected inputs and do not discover additional files. Inside a Git repository,
-discovery honours Git's ignore rules. Use `files.excludes` for explicit exclusions.
+Top-level `files` controls which files are analyzed, independently of lint rule
+settings. Patterns are doublestar globs using `/`, relative to the repository
+root or, outside a repository, the working directory. These patterns filter the
+selected files; they do not discover more files. Discovery inside a Git repository
+also honours Git's ignore rules. Use `files.excludes` to exclude files explicitly.
 
-Omitted or `null` `includes` selects every input; `includes: []` selects none.
+Omitted or `null` `includes` selects every file; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
 order. A negative-only include list selects nothing during discovery. Directories
 and glob matches respect these filters. A literally named file is checked even
-when excluded. `--no-ignore` disables Git ignore rules, not these config filters.
+when excluded. With `--no-ignore`, Git ignore rules are disabled and the
+configuration filters still apply.
 Referenced actions, reusable workflows, and shell sources can still be
 read as dependencies of included workflows. File selection does not restrict
 dependency reads.
@@ -171,14 +172,12 @@ External tool provisioning uses each selected file's effective settings.
 
 ## Lint rules
 
-The `lint` section owns analysis settings. Rule categories are `correctness`,
-`suspicious`, `security`, and `conventions`. Optional stable rules belong to
-their semantic concern group. Stable explicitly registered plugins are selected
-by default; recommended presets select rules marked recommended. Nursery is
-maturity metadata for rules under development. The shared
-configuration resolver is used by analysis frontends. Top-level `overrides` provide
-file scopes that can also host future formatter settings. Formatting and LSP
-options are not implemented yet; do not add placeholder keys for them.
+The `lint` section controls analysis. Rules belong to `correctness`, `suspicious`,
+`security`, or `conventions`. Stable plugins registered explicitly are selected by
+default; the recommended preset selects rules marked recommended. Nursery rules
+are under development. Analysis frontends use the same configuration resolver.
+Top-level `overrides` select files and can also support future formatter settings.
+Formatting and LSP options are not implemented yet; do not add placeholder keys for them.
 
 ```yaml
 lint:
@@ -256,11 +255,10 @@ Unknown dynamic axes with boolean/numeric filters are also examined. Dynamic
 filter entries and wholly dynamic matrices cannot be checked statically.
 See [expression behavior](expression-behavior.md) for evidence and limitations.
 
-### Conventions rules
+### Empty declarations
 
-`lint.rules.conventions` holds recommended rules for declarations GitHub accepts that
-do nothing. They report at warning severity. They used to be syntax errors;
-GitHub's own parser accepts each of these documents.
+The following recommended rules under `lint.rules.suspicious` warn about
+declarations that GitHub accepts but that do nothing.
 
 | Rule             | What it examines                                                                    |
 | ---------------- | ----------------------------------------------------------------------------------- |
@@ -274,10 +272,10 @@ and a `max-parallel` that is not greater than zero.
 
 ### Nursery
 
-Nursery is rule maturity metadata, not a semantic category. Global and category
-presets and `--strict` exclude nursery rules. Select one with an explicit rule
-level or use `--experimental`; `--experimental=false` hard-disables nursery
-rules. There are currently no nursery rules, so the flag currently adds none.
+Nursery rules are experimental. They use the same categories as stable rules.
+Global and category presets and `--strict` exclude nursery rules.
+Select one by setting its rule level or use `--experimental`. Use
+`--experimental=false` to disable all nursery rules. For example, `join-literal` is a nursery rule.
 The former unreleased `lint.rules.experimental` section is rejected; configure
 the four stable checks under `suspicious` instead.
 
@@ -625,9 +623,9 @@ including Windows paths. Missing search directories are ignored and recorded as
 dependencies. Symlinks cannot escape a granted root. Files are snapshotted on first
 read; subsequent reads and sourced diagnostic snippets use the same bytes.
 
-All successful Wasm source reads, including clean and transitively sourced files,
-enter analysis inputs. Metadata lookups also enter the dependency list, so creating
-an earlier search candidate changes the observed inputs. One invocation allows
+actionlint records every file read successfully by Wasm, including files with no
+findings and files sourced indirectly. It also records metadata lookups, so creating
+a file earlier in the search path changes the recorded dependencies. One invocation allows
 8 MiB of source bytes, 256 source files, 4096 lookups and 32 configured search
 directories; exceeding a limit makes analysis incomplete even if the guest ignores
 the read error. Source snapshots come from disk; unsaved source-file buffers are
@@ -651,7 +649,7 @@ The three cache checks below default to enabled. Cache safety checks belong to
 `lint.rules.security`; `cache-operation` belongs to `lint.rules.correctness`.
 Other policy checks use their semantic category. Omitted rules and `level: default`
 keep defaults; `level: off` explicitly disables a rule, including under `--strict`.
-Policy names also identify their diagnostics.
+Each policy name is also its diagnostic ID.
 
 ### cache-call-unrestricted
 

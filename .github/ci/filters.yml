@@ -1,6 +1,6 @@
 paths:
   shared: &shared [".github/ci/**", ".github/workflows/ci-changes.yml", ".{tool-versions,mise.toml}", "tasks.toml"]
-  # Go consumers need source, runtime assets and fixtures, not independent Rust build trees.
+  # Changes to these Go files, runtime assets and test fixtures select the Go jobs.
   go: &go
     - "*.go"
     - "{cmd,internal,plugins/sdk/go}/**/*.go"
