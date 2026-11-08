@@ -21,7 +21,7 @@ export function parseRunnerGuardSarif(
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/runner-guard',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'Runner Guard document provider',
 	description: 'Runs Runner Guard against an isolated copy of the captured workflow.',
 	license: 'MIT',

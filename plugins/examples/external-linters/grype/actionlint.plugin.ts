@@ -40,7 +40,7 @@ export function parseGrypeJSON(
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/grype',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'Grype image vulnerability provider',
 	description: 'Reports Grype vulnerability matches for static container references in the captured document.',
 	license: 'Apache-2.0',

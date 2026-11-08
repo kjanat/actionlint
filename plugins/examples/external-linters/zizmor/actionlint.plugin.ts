@@ -10,7 +10,7 @@ export function parseZizmorSarif(output: string, filename: string): DocumentDiag
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/zizmor',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'zizmor document provider',
 	description: 'Runs offline zizmor audits against the captured workflow or action YAML.',
 	license: 'MIT',

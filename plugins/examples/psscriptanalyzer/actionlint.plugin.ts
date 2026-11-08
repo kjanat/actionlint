@@ -2,7 +2,7 @@ import { defineProcessProvider, jqOutput } from '@kjanat-actionlint/plugin-sdk';
 
 export default defineProcessProvider({
 	id: 'github.com/kjanat/actionlint/examples/psscriptanalyzer',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'PSScriptAnalyzer',
 	description: 'PowerShell diagnostics and fixes through a typed process manifest and jq.',
 	license: 'MIT',

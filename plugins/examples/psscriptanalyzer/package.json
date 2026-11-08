@@ -1,6 +1,6 @@
 {
   "name": "@kjanat-actionlint/plugin-psscriptanalyzer",
-  "version": "0.1.0",
+  "version": "0.1.0-plugins.1",
   "description": "PSScriptAnalyzer process manifest and jq adapter for actionlint",
   "type": "module",
   "files": [

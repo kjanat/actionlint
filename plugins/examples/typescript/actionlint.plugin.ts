@@ -34,7 +34,7 @@ function trailingWhitespace(source: string, filename: string): Diagnostic[] {
 
 export default defineScriptProvider({
 	id: 'github.com/kjanat/actionlint/examples/trailing-space',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'Trailing whitespace example',
 	description: 'Reports and removes trailing spaces and tabs in a script source.',
 	license: 'MIT',

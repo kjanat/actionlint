@@ -8,11 +8,22 @@ import { imageReferences } from '@kjanat-actionlint/plugin-sdk/images';
 import { parseSarif } from '@kjanat-actionlint/plugin-sdk/sarif';
 
 import { parseGrantJSON } from '../grant/actionlint.plugin.ts';
+import { parsePoutineSarif } from '../poutine/actionlint.plugin.ts';
 import { validateSyftSBOM } from '../syft/actionlint.plugin.ts';
 import { parseYamllint } from '../yamllint/actionlint.plugin.ts';
 import { parseZizmorSarif } from '../zizmor/actionlint.plugin.ts';
 
 const root = resolve(import.meta.dirname, '..');
+
+test('Poutine 1.1.6 line-only SARIF highlights the captured source line', async () => {
+	const output = await readFile(join(root, 'testdata/poutine-1.1.6.sarif.json'), 'utf8');
+	const source = await readFile(join(root, 'testdata/poutine-workflow.yml'), 'utf8');
+	const findings = parsePoutineSarif(output, 'workflow.yml', '.', '.github/workflows/workflow.yml', source);
+	assert.equal(findings.length, 1);
+	assert.equal(findings[0]?.code, 'injection');
+	assert.deepEqual(findings[0]?.location, { row: 11, column: 1 });
+	assert.deepEqual(findings[0]?.end_location, { row: 11, column: 59 });
+});
 
 test('yamllint parser handles captured 1.38.0 parsable output', async () => {
 	const output = await readFile(join(root, 'testdata/yamllint.parsable.txt'), 'utf8');

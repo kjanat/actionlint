@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { parseSarif } from '#sarif';
 
-function log(suppressions: unknown, kind?: string): string {
+function log(suppressions: unknown, kind?: string, region: Record<string, number> = { startLine: 1 }): string {
 	return JSON.stringify({
 		version: '2.1.0',
 		runs: [{
@@ -13,7 +13,7 @@ function log(suppressions: unknown, kind?: string): string {
 				kind,
 				suppressions,
 				locations: [{
-					physicalLocation: { artifactLocation: { uri: 'workflow.yml' }, region: { startLine: 1 } },
+					physicalLocation: { artifactLocation: { uri: 'workflow.yml' }, region },
 				}],
 			}],
 		}],
@@ -38,6 +38,16 @@ test('SARIF preserves active findings and respects native suppression decisions'
 	}
 	expect(parseSarif(log(undefined, 'pass'), 'workflow.yml', () => true)).toHaveLength(0);
 	expect(parseSarif(log(undefined, ''), 'workflow.yml', () => true)).toHaveLength(1);
+});
+
+test('SARIF defaults optional end coordinates and reads line ends from captured source', () => {
+	const read = (region: Record<string, number>, source?: string) =>
+		parseSarif(log(undefined, undefined, region), 'workflow.yml', () => true, source)[0];
+	expect(read({ startLine: 1, endLine: 1 })?.end_location).toBeUndefined();
+	expect(read({ startLine: 1, endLine: 1 }, 'echo hello\r\n')?.end_location).toEqual({ row: 1, column: 11 });
+	expect(read({ startLine: 1, endColumn: 5 })?.end_location).toEqual({ row: 1, column: 5 });
+	expect(read({ startLine: 1, endLine: 2 }, 'first\necho 😀\n')?.end_location).toEqual({ row: 2, column: 7 });
+	expect(() => read({ startLine: 2, endLine: 1 })).toThrow('ends before its start');
 });
 
 test('SARIF rejects malformed native suppression records instead of hiding findings', () => {
