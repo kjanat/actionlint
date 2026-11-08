@@ -21,7 +21,7 @@ online="$(docker run --rm --platform "${platform}" \
 	mkdir "${HOME}/project"
 	cd "${HOME}/project"
 	git init --quiet
-	actionlint plugin install shellcheck@v0.3.0 >&2
+	actionlint plugin install shellcheck@v0.3.1 >&2
 	actionlint plugin install ruff@v0.2.0 >&2
 	cat > workflow.yml <<"YAML"
 on: push
@@ -32,6 +32,10 @@ jobs:
       - run: echo $GITHUB_SHA
       - shell: python
         run: print(unknown_name)
+      - shell: pwsh
+        run: |
+          $venv = Join-Path $env:RUNNER_TEMP pypi-smoke-venv
+          & python -m venv --clear $venv
 YAML
 	cp .github/actionlint.yaml config.before
 	mkdir -p "${HOME}/legacy/.github"
@@ -45,7 +49,7 @@ YAML
 	test ! -e .github/actionlint.plugins.lock.json
 ')"
 jq -e '.completed and .exit_code == 1
-	and any(.diagnostics[]; .rule == "shellcheck" and .code == "SC2086")
+	and ([.diagnostics[] | select(.rule == "shellcheck") | .code] == ["SC2086"])
 	and any(.diagnostics[]; .rule == "ruff" and .code == "F821")' <<<"${online}" >/dev/null
 
 offline="$(docker run --rm --platform "${platform}" --network none \
