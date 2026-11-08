@@ -65,6 +65,7 @@ export const targets = [
 		],
 		generated: [
 			/uses: [\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\r?$/dgm,
+			/^\s+version: \d+\.\d+\.\d+,?\r?$/dgm,
 		],
 	},
 	{
