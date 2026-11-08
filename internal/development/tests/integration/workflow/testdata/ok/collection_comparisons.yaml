@@ -18,7 +18,7 @@ jobs:
       # An array converts to NaN for comparison with a number.
       - run: echo '${{ 42 != matrix.a }}'
       # Arrays are compared by instance identity.
-      - run: echo '${{ matrix.a == matrix.a2 }}'
+      - run: echo '${{ matrix.a == matrix.a }}'
       # Null converts to zero.
       - run: echo '${{ 1 > null }}'
       # Boolean ordering converts false and true to zero and one.

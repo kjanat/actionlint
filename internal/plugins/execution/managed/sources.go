@@ -321,6 +321,10 @@ func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, scr
 	if finding.Path == script.Path {
 		return result, nil
 	}
+	if reference := finding.Reference; reference != nil && reference.Document != "" && reference.Revision != "" && reference.Node != "" && *reference == script.Fact.Reference {
+		result.Path = script.Path
+		return result, nil
+	}
 	for _, mount := range f.mounts {
 		relative, ok := strings.CutPrefix(finding.Path, mount.guest+"/")
 		if !ok {

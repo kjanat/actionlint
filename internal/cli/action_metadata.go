@@ -2,7 +2,6 @@ package cli
 
 import (
 	"os"
-	"path/filepath"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 
@@ -13,21 +12,8 @@ import (
 )
 
 func (c checkInvocation) actionMetadata() (actions.Provider, error) {
-	mode := github.Mode(c.ActionMetadata)
-	if mode == "" {
-		mode = github.Online
-	}
-	options := github.Options{Mode: mode}
-	if mode != github.Off {
-		if cache, err := os.UserCacheDir(); err == nil {
-			options.CacheDir = filepath.Join(cache, "actionlint", "action-metadata", "v1")
-		}
-	}
-	if mode == github.Online {
-		options.Token = os.Getenv("GH_TOKEN")
-		if options.Token == "" {
-			options.Token = os.Getenv("GITHUB_TOKEN")
-		}
+	options := github.EnvironmentOptions(github.Mode(c.ActionMetadata), os.Getenv)
+	if options.Mode == github.Online {
 		if c.ResolverCommand != "" {
 			options.Resolver = func() references.Resolver {
 				return resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)

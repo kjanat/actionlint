@@ -297,7 +297,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 }
 
 func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
-	content := []byte("name: recovered\ndescription: test\ninputs:\n  value:\n    unexpected: tolerated metadata error\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo recovered\n")
+	content := []byte("name: recovered\ndescription: test\ninputs:\n  value:\n    required: [invalid]\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo recovered\n")
 	metadata, parseErr := actionmeta.Parse("action.yml", content)
 	if parseErr == nil || len(metadata.Runs.Steps) != 1 {
 		t.Fatal("fixture must recover a declaration alongside a metadata error")

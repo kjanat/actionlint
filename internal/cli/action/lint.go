@@ -14,6 +14,8 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/integrations/github"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -35,7 +37,8 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
-	ctx context.Context
+	ctx           context.Context
+	remoteActions actions.Provider
 	// disabledTools lists the tool ids the disable-tools input turned off.
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
@@ -72,6 +75,11 @@ func (r *lintResult) selectedFileCount() int {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	metadata, err := github.New(github.EnvironmentOptions(github.Online, env))
+	if err != nil {
+		return inputErrorf("%s", err)
+	}
+	req.remoteActions = metadata
 	req.configureTools(env)
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
@@ -107,6 +115,7 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := checking.Options{
+		RemoteActions:  req.remoteActions,
 		IgnorePatterns: req.ignore,
 		ConfigFile:     req.configFile,
 		ConfigOverlays: req.overlays,
