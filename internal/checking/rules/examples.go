@@ -18,8 +18,11 @@ func WorkflowExample(description, before, after string) Example {
 // WorkflowExampleSource wraps job fields in a workflow and supplies a step when absent.
 func WorkflowExampleSource(job string) string {
 	source := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n" + job
-	if !strings.Contains(job, "    steps:\n") {
-		source += "    steps:\n      - run: echo ok\n"
+	for line := range strings.SplitSeq(job, "\n") {
+		if strings.HasPrefix(line, "    steps:") {
+			return source
+		}
 	}
+	source += "    steps:\n      - run: echo ok\n"
 	return source
 }
