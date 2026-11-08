@@ -10,13 +10,14 @@ export function parsePoutineSarif(
 	filename: string,
 	directory: string,
 	relativeFile: string,
+	source?: string,
 ): DocumentDiagnostic[] {
-	return parseSarif(output, filename, exactStagedUri(directory, relativeFile));
+	return parseSarif(output, filename, exactStagedUri(directory, relativeFile), source);
 }
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/poutine',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'Poutine document provider',
 	description: 'Runs Poutine against an isolated copy of the captured workflow.',
 	license: 'Apache-2.0',
@@ -47,7 +48,7 @@ export default defineDocumentProvider({
 			if (result.stdout.trim().length === 0) {
 				throw new Error(`Poutine produced no SARIF output${result.stderr ? `: ${result.stderr.trim()}` : ''}`);
 			}
-			return parsePoutineSarif(result.stdout, request.filename, directory, relativeFile);
+			return parsePoutineSarif(result.stdout, request.filename, directory, relativeFile, request.source);
 		});
 	},
 });

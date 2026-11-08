@@ -12,6 +12,7 @@ env: { TAG: "${{ github.event.release.tag_name }}" }
 
 jobs:
   verify:
+    if: ${{ !github.event.release.prerelease }}
     name: Verify published candidate
     runs-on: ubuntu-latest
     timeout-minutes: 15

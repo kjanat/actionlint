@@ -155,7 +155,7 @@
     },
     "plugins/examples/external-linters/grant": {
       "name": "@kjanat-actionlint/plugin-grant",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-grant": "./actionlint.js",
       },
@@ -165,7 +165,7 @@
     },
     "plugins/examples/external-linters/grype": {
       "name": "@kjanat-actionlint/plugin-grype",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-grype": "./actionlint.js",
       },
@@ -175,7 +175,7 @@
     },
     "plugins/examples/external-linters/poutine": {
       "name": "@kjanat-actionlint/plugin-poutine",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-poutine": "./actionlint.js",
       },
@@ -185,7 +185,7 @@
     },
     "plugins/examples/external-linters/runner-guard": {
       "name": "@kjanat-actionlint/plugin-runner-guard",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-runner-guard": "./actionlint.js",
       },
@@ -195,7 +195,7 @@
     },
     "plugins/examples/external-linters/syft": {
       "name": "@kjanat-actionlint/plugin-syft",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-syft": "./actionlint.js",
       },
@@ -205,7 +205,7 @@
     },
     "plugins/examples/external-linters/yamllint": {
       "name": "@kjanat-actionlint/plugin-yamllint",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-yamllint": "./actionlint.js",
       },
@@ -215,7 +215,7 @@
     },
     "plugins/examples/external-linters/zizmor": {
       "name": "@kjanat-actionlint/plugin-zizmor",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-zizmor": "./actionlint.js",
       },
@@ -225,14 +225,14 @@
     },
     "plugins/examples/psscriptanalyzer": {
       "name": "@kjanat-actionlint/plugin-psscriptanalyzer",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "devDependencies": {
         "@kjanat-actionlint/plugin-sdk": "workspace:*",
       },
     },
     "plugins/examples/typescript": {
       "name": "@kjanat-actionlint/plugin-trailing-space",
-      "version": "0.1.0",
+      "version": "0.1.0-plugins.1",
       "bin": {
         "actionlint-plugin-trailing-space": "./actionlint.js",
       },

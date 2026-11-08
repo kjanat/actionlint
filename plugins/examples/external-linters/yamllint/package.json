@@ -1,6 +1,6 @@
 {
   "name": "@kjanat-actionlint/plugin-yamllint",
-  "version": "0.1.0",
+  "version": "0.1.0-plugins.1",
   "type": "module",
   "exports": {
     "./actionlint": "./actionlint.js"

@@ -21,7 +21,7 @@ export function validateSyftSBOM(output: string): void {
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/syft',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'Syft image inventory provider',
 	description: 'Writes Syft JSON SBOM files for static container references in the captured workflow or action.',
 	license: 'Apache-2.0',

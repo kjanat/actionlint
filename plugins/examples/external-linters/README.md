@@ -5,7 +5,22 @@ Runner Guard, Syft, Grype and Grant. Each can be packaged separately and uses
 the captured workflow or action source. Repository scanners scan an isolated
 temporary copy of that source rather than the user's checkout.
 
-These packages belong to the root workspace and use `@kjanat-actionlint/plugin-sdk` through `workspace:*`. Install and build from the repository root:
+To use a published plugin in another repository, install its registry name:
+
+```sh
+actionlint plugin install yamllint
+actionlint check --allow-config-processes .github
+```
+
+Replace `yamllint` with `zizmor`, `poutine`, `runner-guard`, `syft`, `grype` or
+`grant` to install another integration. Install Node and the scanner on `PATH`.
+Grype needs its vulnerability database. Run `grype db update` before its first
+scan so the initial download does not use the plugin's execution time limit.
+
+## Build from source
+
+These packages use `@kjanat-actionlint/plugin-sdk` through `workspace:*`.
+Build from the repository root:
 
 ```powershell
 bun install

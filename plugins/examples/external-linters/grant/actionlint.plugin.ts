@@ -69,7 +69,7 @@ export function parseGrantJSON(
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/grant',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'Grant license policy provider',
 	description: 'Checks Syft SBOM files against a Grant policy for images in the captured document.',
 	license: 'Apache-2.0',

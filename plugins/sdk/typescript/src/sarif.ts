@@ -6,9 +6,10 @@ import { array, positiveInteger, record, text } from './process.ts';
 
 /**
  * Decode SARIF 2.1.0 results, accepting only artifact URIs allowed by the caller.
- * Columns and rows are retained as reported; the host validates the resulting ranges.
+ * Return columns and rows as reported. actionlint validates the resulting ranges.
+ * Pass source to calculate line ends when SARIF omits endColumn.
  * Native suppressions with no review status or an accepted status are honored.
- * Rejected/under-review requests remain active; malformed suppression records throw.
+ * Report findings with rejected or under-review suppressions. Malformed suppression records throw.
  * @example
  * ```ts
  * import { exactStagedUri, parseSarif } from '@kjanat-actionlint/plugin-sdk/sarif';
@@ -19,6 +20,7 @@ export function parseSarif(
 	input: string,
 	filename: string,
 	allowedUris: (uri: string) => boolean,
+	source?: string,
 ): Diagnostic[] {
 	let value: unknown;
 	try {
@@ -59,13 +61,18 @@ export function parseSarif(
 				severity: severityOf(result.level),
 				location: start,
 			};
-			if (region.endLine !== undefined || region.endColumn !== undefined) {
-				if (region.endLine === undefined || region.endColumn === undefined) {
-					throw new Error('SARIF region has an incomplete end position');
-				}
+			const endLine = region.endLine === undefined ? start.row : positiveInteger(region.endLine, 'SARIF end line');
+			const lastLine = source?.split(/\r\n|\n|\r/u)[endLine - 1];
+			const endColumn = region.endColumn === undefined
+				? lastLine === undefined ? undefined : [...lastLine].length + 1
+				: positiveInteger(region.endColumn, 'SARIF end column');
+			if (endLine < start.row || endColumn !== undefined && endLine === start.row && endColumn < start.column) {
+				throw new Error('SARIF region ends before its start');
+			}
+			if (endColumn !== undefined) {
 				diagnostic.end_location = {
-					row: positiveInteger(region.endLine, 'SARIF end line'),
-					column: positiveInteger(region.endColumn, 'SARIF end column'),
+					row: endLine,
+					column: endColumn,
 				};
 			}
 			diagnostics.push(diagnostic);

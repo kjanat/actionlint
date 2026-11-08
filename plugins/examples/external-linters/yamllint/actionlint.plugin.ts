@@ -34,7 +34,7 @@ export function parseYamllint(output: string, filename: string): DocumentDiagnos
 
 export default defineDocumentProvider({
 	id: 'github.com/kjanat/actionlint/examples/external-linters/yamllint',
-	version: '0.1.0',
+	version: '0.1.0-plugins.1',
 	name: 'yamllint document provider',
 	description: 'Runs yamllint against the captured workflow or action YAML.',
 	license: 'MIT',
