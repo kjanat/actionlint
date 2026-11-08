@@ -7,6 +7,7 @@ toolchain go1.27.3
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.3
 	github.com/fatih/color v1.19.0
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/itchyny/gojq v0.12.19
