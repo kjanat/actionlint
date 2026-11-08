@@ -87,6 +87,8 @@ Root tasks are defined in `tasks.toml`. Run them with `mise run <task>` or `run 
 
 CI pins mise and runs one setup per job. `MISE_ENABLE_TOOLS` selects that job's tools, and `MISE_LOCKED=1` makes installation use `mise.lock`. The cache includes installed tools and mise's metadata, with separate keys for each platform and tool selection.
 
+Jobs that install Runner request `attestations: read` so its setup action can verify the downloaded package.
+
 After changing a tool version, run `mise lock <tool>` and commit `mise.lock` with any dependency files under `.mise/locks/`. The platform list in `.mise.toml` covers Linux, macOS and Windows on x64 and ARM64. To update a floating request such as `latest`, run `mise lock --bump <tool>`. The README maintenance workflow refreshes its two actionlint versions this way before generating the comparison.
 
 ### Selecting CI checks

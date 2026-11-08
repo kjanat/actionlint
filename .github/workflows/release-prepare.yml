@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
   queue: max
 
-permissions: { contents: read }
+permissions: { contents: read, attestations: read }
 defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
 env: {
   VERSION: "${{ inputs.version }}",

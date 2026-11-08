@@ -4,7 +4,7 @@ on:
   push: { branches: [master] }
   pull_request:
   workflow_dispatch:
-permissions: { contents: read }
+permissions: { contents: read, attestations: read }
 jobs:
   changes:
     uses: $/.github/workflows/ci-changes.yml

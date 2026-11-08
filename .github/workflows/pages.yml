@@ -43,7 +43,7 @@ on:
   workflow_run: { workflows: [Release], types: [completed] }
   workflow_dispatch: null
 
-permissions: { contents: read }
+permissions: { contents: read, attestations: read }
 
 concurrency:
   group: pages

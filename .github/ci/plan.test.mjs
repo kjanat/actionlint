@@ -364,6 +364,23 @@ function yamlMapping(value) {
 	return fields;
 }
 
+test('Runner installation has permission to read package attestations', () => {
+	const directory = new URL('../workflows/', import.meta.url);
+	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
+		const workflow = yamlMapping(YAML.parse(readFileSync(new URL(name, directory), 'utf8')));
+		for (const [jobName, value] of Object.entries(yamlMapping(workflow.jobs))) {
+			const job = yamlMapping(value);
+			const installsRunner = [...yamlObjects(job)].some(step =>
+				typeof step.uses === 'string' && step.uses.startsWith('kjanat/runner@')
+			);
+			const callsPreview = job.uses === '$/.github/workflows/package-previews.yml';
+			if (!installsRunner && !callsPreview) continue;
+			const permissions = yamlMapping(job.permissions ?? workflow.permissions);
+			assert.equal(permissions.attestations, 'read', `${name}:${jobName}`);
+		}
+	}
+});
+
 test('mise locks the CI tool artifacts and Python dependencies', () => {
 	const root = new URL('../../', import.meta.url);
 	const config = yamlMapping(Bun.TOML.parse(readFileSync(new URL('.mise.toml', root), 'utf8')));
