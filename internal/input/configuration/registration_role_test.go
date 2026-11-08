@@ -1,11 +1,34 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
+
+func TestInspectionUsesToolReplacementRegistration(t *testing.T) {
+	rules := registrationRuleSet(t)
+	path := filepath.Join(t.TempDir(), "actionlint.yaml")
+	if err := os.WriteFile(path, []byte("lint: {rules: {security: {shellcheck: on}}}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	descriptor := rule.Descriptor{Name: "shellcheck", Category: "security", Provider: "replacement", Maturity: "stable", OptionsSchema: []byte(`{"type":"object","properties":{"mode":{"enum":["safe"]}},"additionalProperties":false}`)}
+	for _, replaces := range []string{"shellcheck", "", "ruff"} {
+		_, err := rules.InspectContextWithRegistrations(t.Context(), Selection{Path: path}, true, RuleRegistration{Descriptor: descriptor, Scope: rule.SourceConfiguration, ReplacesTool: replaces})
+		if replaces == "shellcheck" && err != nil || replaces != "shellcheck" && (err == nil || !strings.Contains(err.Error(), "conflicts")) {
+			t.Fatalf("replacement=%q inspection error=%v", replaces, err)
+		}
+	}
+	if err := os.WriteFile(path, []byte("lint: {rules: {security: {shellcheck: {level: on, options: {mode: unsafe}}}}}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rules.InspectContextWithRegistrations(t.Context(), Selection{Path: path}, false, RuleRegistration{Descriptor: descriptor, Scope: rule.SourceConfiguration, ReplacesTool: "shellcheck"}); err == nil || !strings.Contains(err.Error(), "options") {
+		t.Fatalf("invalid replacement options were accepted: %v", err)
+	}
+}
 
 func registrationRuleSet(t *testing.T) RuleSet {
 	t.Helper()

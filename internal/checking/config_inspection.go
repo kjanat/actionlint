@@ -8,6 +8,7 @@ import (
 	"os"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -42,22 +43,29 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		return inspection, err
 	}
 	defer func() { err = errors.Join(err, plugins.Close(context.WithoutCancel(ctx))) }()
-	rules := make([]rule.Descriptor, 0, len(plugins.Components)+len(plugins.ScriptEngines)+len(plugins.Providers))
-	for _, plugin := range plugins.Components {
-		if plugin.HasAnalyzer() {
-			rules = append(rules, plugin.Descriptor().Descriptor)
-		}
+	configured, err := ConfigureManagedPlugins(plugins, Options{Tools: registry.Registrations(nil), Analyzers: plugins.Registrations()})
+	if err != nil {
+		return inspection, err
 	}
+	rules := configurationRegistrations(configured.Analyzers, configured.Tools)
 	for _, engine := range plugins.ScriptEngines {
-		rules = append(rules, engine.Descriptor.Rule)
+		rules = append(rules, config.RuleRegistration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: engine.Descriptor.Engine})
 	}
 	for _, provider := range plugins.Providers {
-		rules = append(rules, provider.Files.Manifest.Rule)
+		manifest := provider.Files.Manifest
+		registration := config.RuleRegistration{Descriptor: manifest.Rule, Scope: rule.SourceConfiguration, SupportsActions: true}
+		if manifest.Scope == pluginmanifests.ScopeComposite {
+			registration.Scope = rule.CompositeConfiguration
+		}
+		if manifest.Role == pluginmanifests.RoleScript {
+			registration.ReplacesTool = manifest.Rule.Name
+		}
+		rules = append(rules, registration)
 	}
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	return ConfigurationRules().InspectContextWithRules(ctx, selection, origins, rules...)
+	return ConfigurationRules().InspectContextWithRegistrations(ctx, selection, origins, rules...)
 }
 
 // InstalledProviders returns the tool provider manifests among the plugins
