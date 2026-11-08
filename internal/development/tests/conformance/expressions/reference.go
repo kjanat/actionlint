@@ -206,7 +206,18 @@ func CheckOutcomeWithJSONMode(t *testing.T, input string, variables map[string]a
 // CheckWorkflow compares workflow acceptance when ACTIONLINT_REFERENCE_IMAGE is set.
 func CheckWorkflow(t *testing.T, workflow string, wantAccepted bool) {
 	t.Helper()
-	output, image := runGitHubReference(t, "parse-workflow", workflow, nil, StrictJSON)
+	checkDocumentAcceptance(t, "parse-workflow", workflow, wantAccepted)
+}
+
+// CheckAction compares action manifest acceptance when ACTIONLINT_REFERENCE_IMAGE is set.
+func CheckAction(t *testing.T, manifest string, wantAccepted bool) {
+	t.Helper()
+	checkDocumentAcceptance(t, "parse-action", manifest, wantAccepted)
+}
+
+func checkDocumentAcceptance(t *testing.T, operation, source string, wantAccepted bool) {
+	t.Helper()
+	output, image := runGitHubReference(t, operation, source, nil, StrictJSON)
 	if image == "" {
 		return
 	}
@@ -219,14 +230,14 @@ func CheckWorkflow(t *testing.T, workflow string, wantAccepted bool) {
 		} `json:"engines"`
 	}
 	if err := json.Unmarshal(output, &report); err != nil {
-		t.Fatalf("invalid Runny workflow response: %v\n%s", err, output)
+		t.Fatalf("invalid Runny %s response: %v\n%s", operation, err, output)
 	}
 	if report.RunnerSHA == "" || len(report.Engines) != 1 || report.Engines[0].Engine != "next" || report.Engines[0].Accepted == nil {
-		t.Fatalf("missing workflow reference identity or outcome: %s", output)
+		t.Fatalf("missing %s reference identity or outcome: %s", operation, output)
 	}
 	engine := report.Engines[0]
 	if *engine.Accepted != wantAccepted || (len(engine.TemplateErrors) == 0) != wantAccepted {
-		t.Fatalf("Runny workflow acceptance mismatch, want accepted=%t: %s", wantAccepted, output)
+		t.Fatalf("Runny %s acceptance mismatch, want accepted=%t: %s", operation, wantAccepted, output)
 	}
-	t.Logf("verified workflow with %s, runner %s", image, report.RunnerSHA)
+	t.Logf("verified %s with %s, runner %s", operation, image, report.RunnerSHA)
 }

@@ -128,7 +128,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 	}
 	md := make(Inputs, len(n.Content)/2)
 	var defaults []*KeyValue
-	var sectionErr, softErr error
+	var sectionErr error
 	for key, value := range root.Pairs() {
 		kn, err := key.Enter()
 		if err != nil {
@@ -161,7 +161,6 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 		var deprecation string
 		var deprecated bool
 		var fieldErrors []error
-		var notice error
 		seen := map[string]bool{}
 		for fieldKey, fieldValue := range definition.Pairs() {
 			fkn, err := fieldKey.Enter()
@@ -198,9 +197,6 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 			case "deprecationmessage":
 				deprecated = true
 				err = fieldValue.Decode(&deprecation)
-			case "description":
-			default:
-				notice = fmt.Errorf("unexpected key %q for definition of input %q", fieldKey.Node().Value, name)
 			}
 			if err != nil {
 				if _, fatal := codec.FatalLoadError(err); fatal {
@@ -221,14 +217,11 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 			continue
 		}
 		md[id] = &Input{name, required && defaultValue == nil, deprecated, strings.TrimSpace(deprecation)}
-		if notice != nil {
-			softErr = notice
-		}
 	}
 	if sectionErr != nil {
 		return nil, defaults, sectionErr
 	}
-	return md, defaults, d.session.Wrap(n, softErr)
+	return md, defaults, nil
 }
 
 func (d manifestDecoder) outputs(root codec.Entered) (Outputs, error) {
