@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.
@@ -53,19 +51,18 @@ func (ruleSet RuleSet) InspectContext(ctx context.Context, selection Selection, 
 	return ruleSet.inspectContext(ctx, selection, withOrigin, nil, registeredRules...)
 }
 
-// InspectContextWithRules binds every source and override to the complete rule
-// metadata, including installed analyzers and tool providers.
-func (ruleSet RuleSet) InspectContextWithRules(ctx context.Context, selection Selection, withOrigin bool, descriptors ...rule.Descriptor) (Inspection, error) {
-	metadata := make([]rule.Descriptor, len(descriptors))
-	copy(metadata, descriptors)
-	names := make([]string, 0, len(descriptors))
-	for _, descriptor := range descriptors {
-		names = append(names, descriptor.Name)
+// InspectContextWithRegistrations validates settings using the selected rules and tool replacements.
+func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, selection Selection, withOrigin bool, registrations ...RuleRegistration) (Inspection, error) {
+	metadata := make([]RuleRegistration, len(registrations))
+	copy(metadata, registrations)
+	names := make([]string, 0, len(registrations))
+	for _, registration := range registrations {
+		names = append(names, registration.Descriptor.Name)
 	}
 	return ruleSet.inspectContext(ctx, selection, withOrigin, metadata, names...)
 }
 
-func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, withOrigin bool, descriptors []rule.Descriptor, registeredRules ...string) (Inspection, error) {
+func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, withOrigin bool, registrations []RuleRegistration, registeredRules ...string) (Inspection, error) {
 	if err := ctx.Err(); err != nil {
 		return Inspection{}, err
 	}
@@ -73,22 +70,29 @@ func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, 
 	if err != nil {
 		return Inspection{}, err
 	}
+	parseRules := ruleSet
+	if registrations != nil {
+		parseRules, err = ruleSet.WithRegisteredRules(registrations...)
+		if err != nil {
+			return Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
+		}
+	}
 	var resolved Resolved
 	if path != "" {
 		var source *Loaded
-		source, err = ruleSet.ReadContext(ctx, path, nil, registeredRules...)
+		source, err = parseRules.ReadContext(ctx, path, nil, registeredRules...)
 		if err != nil {
 			return Inspection{Path: path}, err
 		}
 		resolved = source.Resolved
 	} else {
-		resolved, err = ruleSet.ResolveDocument(nil, registeredRules...)
+		resolved, err = parseRules.ResolveDocument(nil, registeredRules...)
 	}
 	if err != nil {
 		return Inspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	if descriptors != nil {
-		if _, err := ruleSet.ResolveRules(Presets{}, resolved.Config, descriptors...); err != nil {
+	if registrations != nil {
+		if _, err := ruleSet.ResolveRegisteredRules(Presets{}, resolved.Config, registrations...); err != nil {
 			return Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
 		}
 	}

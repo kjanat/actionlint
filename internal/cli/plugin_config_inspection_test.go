@@ -9,6 +9,35 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 )
 
+func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
+	component, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/ruff-script-engine.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ extension, content string }{
+		{"yaml", "plugins: []\nlint: {rules: {correctness: {shellcheck: on, ruff: on}}}\n"},
+		{"yml", "plugins: []\nlint: {rules: {correctness: {shellcheck: on, ruff: on}}}\n"},
+		{"json", `{"plugins":[],"lint":{"rules":{"correctness":{"shellcheck":"on","ruff":"on"}}}}`},
+		{"jsonc", "// Tool replacements\n" + `{"plugins":[],"lint":{"rules":{"correctness":{"shellcheck":"on","ruff":"on"}}},}`},
+		{"toml", "plugins = []\n[lint.rules.correctness]\nshellcheck = 'on'\nruff = 'on'\n"},
+	} {
+		t.Run(tc.extension, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			path := "actionlint." + tc.extension
+			if err := os.WriteFile(path, []byte(tc.content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, command := range []string{"validate", "show"} {
+				pluginCommandTest(t, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
+			}
+		})
+	}
+}
+
 func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
