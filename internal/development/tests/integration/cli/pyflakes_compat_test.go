@@ -83,7 +83,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 		return codes
 	}
 	defaults, pyflakes := nativeCodes(), nativeCodes("--select=F")
-	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(strings.TrimSuffix(script, "\n"), "\n", "\n          ") + "\n"
+	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: |\n          " + strings.ReplaceAll(strings.TrimSuffix(script, "\n"), "\n", "\n          ") + "\npermissions: {}\n"
 	for _, prefix := range [][]string{nil, {"check"}} {
 		for _, tc := range []struct {
 			name  string
@@ -141,6 +141,7 @@ jobs:
     steps:
       - shell: python
         run: print(undefined_name)
+permissions: {}
 `
 	for _, prefix := range [][]string{nil, {"check"}} {
 		args := append(append([]string{}, prefix...), "--pyflakes=does-not-exist --invalid", "--json", "-")

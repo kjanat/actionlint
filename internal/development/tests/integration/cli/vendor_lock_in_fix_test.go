@@ -26,6 +26,7 @@ func TestFixVendorLockIn(t *testing.T) {
 				if strings.HasPrefix(tc.scalar, "&action ") {
 					before += "      - uses: *action\n"
 				}
+				before += "permissions: {}\n"
 				before = strings.ReplaceAll(before, "\n", ending)
 				after := strings.Replace(before, strings.ReplaceAll(tc.scalar, "\n", ending), strings.ReplaceAll(tc.fixed, "\n", ending), 1)
 				if err := os.WriteFile(path, []byte(before), 0600); err != nil {

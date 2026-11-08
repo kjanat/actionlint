@@ -36,6 +36,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 		var stdout, stderr bytes.Buffer
@@ -64,6 +65,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flags := range []string{`["other.py"]`, `["--select", "F", "."]`, `["--", "other.py"]`, `["-"]`} {
 		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
@@ -94,6 +96,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, args := range [][]string{{"--no-config", "-"}, {"check", "--no-config", "-"}} {
 		var stdout, stderr bytes.Buffer
@@ -119,6 +122,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flags := range []string{`["--silent"]`, `["-s"]`, `["-qs"]`} {
 		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
@@ -147,6 +151,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flags := range []string{`["--extension", "py:ipynb"]`, `["--extension=py:pyi"]`} {
 		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
@@ -177,6 +182,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, suffix := range []string{"ruff", "NAME=reviewed ruff", "--unknown ruff", "ruff --extension py:ipynb"} {
 		for _, prefix := range [][]string{nil, {"check"}} {
@@ -209,6 +215,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flags := range []string{`["--no-cache"]`, `["--isolated"]`, `["--ignore-noqa"]`, `["--no-fix"]`, `["--target-version", "py314"]`, `["--target-version=py314"]`, `["--stdin-filename", "actionlint.py"]`, `["--stdin-filename=actionlint.py"]`} {
 		t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", flags)
@@ -237,6 +244,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
 		flags, err := json.Marshal([]string{flag})

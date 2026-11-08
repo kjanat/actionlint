@@ -354,6 +354,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./local
+permissions: {}
 `
 				case "reusable":
 					target = ".github/workflows/called.yml"
@@ -362,6 +363,7 @@ jobs:
 jobs:
   test:
     uses: ./.github/workflows/called.yml
+permissions: {}
 `
 				}
 				if err := os.WriteFile(target, []byte(content), 0644); err != nil {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
-	workflow := "on: push\njobs:\n  build:\n    runs-on: gpu\n    steps:\n      - run: echo hi\n"
+	workflow := "on: push\njobs:\n  build:\n    runs-on: gpu\n    steps:\n      - run: echo hi\npermissions: {}\n"
 	without := testRunCommand(workflow, "check", "--no-config", "-")
 	if without.Status != 0 || without.Stdout != "" || without.Stderr != "" {
 		t.Fatalf("without runner-label facts: %+v", without)
@@ -52,7 +52,7 @@ func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := testRunCommand(workflow, "check", "--config", broken, "-")
-	if got.Status != 3 || !strings.Contains(got.Stderr, "repository names must be a sequence") {
+	if got.Status != 3 || !strings.Contains(got.Stderr, "/repository/runners:") {
 		t.Fatalf("broken: %+v", got)
 	}
 }

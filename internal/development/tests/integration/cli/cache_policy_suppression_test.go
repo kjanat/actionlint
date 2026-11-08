@@ -18,7 +18,7 @@ func TestCachePolicyCommandOutput(t *testing.T) {
 		source := "on: pull_request_target\ncache-mode: write" + exception + `
 jobs:
   test:
-` + cachePolicySteps
+` + cachePolicySteps + "\npermissions: {}\n"
 		var stdout, stderr strings.Builder
 		cmd := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 		status := cmd.Main([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color", "-format", "{{json .}}", "-"})
@@ -47,7 +47,7 @@ func TestCachePolicyInvalidSuppressionSARIF(t *testing.T) {
 cache-mode: write # actionlint:ignore cache-write-untrusted --
 jobs:
   test:
-` + cachePolicySteps
+` + cachePolicySteps + "\npermissions: {}\n"
 	var stdout, stderr strings.Builder
 	cmd := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 	status := cmd.Main([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-output", "sarif", "-"})
@@ -108,7 +108,7 @@ func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
 			source := "on: pull_request_target\ncache-mode: write # actionlint:ignore " + tc.directive + `
 jobs:
   test:
-` + cachePolicySteps
+` + cachePolicySteps + "\npermissions: {}\n"
 			var stdout, stderr strings.Builder
 			cmd := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 			args := []string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color", "-format", "{{json .}}", "-stdin-filename", "test.yaml"}

@@ -59,7 +59,7 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 					var stdout, stderr strings.Builder
 					source := `on: pull_request_target
 jobs:
-` + body
+` + body + "\npermissions: {}\n"
 					cmd := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 					args := []string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color", "-format", "{{json .}}"}
 					input := "-"
@@ -113,7 +113,7 @@ func TestDisallowSuppressionsOutputAndFilters(t *testing.T) {
 cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed
 jobs:
   test:
-` + cachePolicySteps
+` + cachePolicySteps + "\npermissions: {}\n"
 	const forbidden = "disallowed by policy"
 	const violation = "poison caches"
 	for _, tc := range []struct {

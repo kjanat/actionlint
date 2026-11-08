@@ -108,6 +108,7 @@ jobs:
         shell: bash
       - run: print(missing)
         shell: python
+permissions: {}
 `, args...)
 			if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
 				t.Fatalf("disable %q %v: %+v", disabled, prefix, got)
@@ -284,8 +285,9 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		}
 		t.Setenv("ACTIONLINT_TOOL_"+toolName+"_ENV", string(env))
 	}
-	input := commandGoodWorkflow + `      - shell: python
+	input := strings.TrimSuffix(commandGoodWorkflow, "permissions: {}\n") + `      - shell: python
         run: print('ok')
+permissions: {}
 `
 	for _, args := range [][]string{{"-"}, {"check", "-"}} {
 		var out, stderr bytes.Buffer

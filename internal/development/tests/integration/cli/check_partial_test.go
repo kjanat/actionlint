@@ -26,13 +26,15 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", executable)
 	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
+	base := strings.TrimSuffix(commandBadWorkflow, "permissions: {}\n")
 	for name, content := range map[string]string{
 		"config.yml":     "{}\n",
-		"successful.yml": commandBadWorkflow + "        shell: pwsh\n",
-		"failing.yml": commandBadWorkflow +
+		"successful.yml": base + "        shell: pwsh\npermissions: {}\n",
+		"failing.yml": base +
 			`        shell: bash
       - run: FAIL_ANALYZER
         shell: bash
+permissions: {}
 `,
 	} {
 		if err := os.WriteFile(name, []byte(content), 0600); err != nil {
