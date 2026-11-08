@@ -9,24 +9,24 @@
 
 [actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
-This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub]. Report problems through [this fork's issue tracker][issue-form].
+This is an actively maintained fork of [rhysd/actionlint][upstream]. It adds cache safety checks enabled by default, opt-in [policy checks][config], composite action step validation, shell completion and a GitHub Action. Releases include attested binaries and Docker images on [GHCR][ghcr] and [Docker Hub][dockerhub]. Report problems through [this fork's issue tracker][issue-form].
 
 ## Fork provenance and versioning
 
-This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`]). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
+This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12), at [`rhysd/actionlint@914e7df`]. Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases. Upstream may not have a matching tag.
 
-The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results. Other programs connect through the [integration interfaces].
+The [changelog] lists fork releases separately from upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration]. The [CLI compatibility] policy covers existing integrations. New or corrected checks can report problems in workflows that previously passed CI. Other programs connect through the [integration interfaces].
 
 ## Features
 
-- **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
-- **Type checking for `${{ }}` expressions** to catch errors such as access to nonexistent properties and type mismatches
-- **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are correct
-- **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
-- **[shellcheck] integration** for scripts at `run:`
-- **[Ruff integration](docs/config.md#ruff)** for Python `run:` scripts, without requiring a Python interpreter
-- **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
-- **Other checks** for [glob syntax][filter-pattern-doc], `needs:` dependencies, runner labels, and cron syntax
+- Report unexpected or missing keys according to GitHub's [workflow syntax][syntax-doc].
+- Check types in `${{ }}` expressions, including references to nonexistent properties.
+- Check action inputs at `with:` and outputs at `steps.{id}.outputs`.
+- Check inputs, outputs and secrets passed to reusable workflows.
+- Run [shellcheck] on shell scripts in `run:` steps.
+- Run [Ruff](docs/config.md#ruff) on Python `run:` scripts without a Python interpreter.
+- Report [script injection][script-injection-doc] through untrusted values and hard-coded credentials.
+- Check [glob syntax][filter-pattern-doc], `needs:` dependencies, runner labels and cron syntax.
 
 See the [full list of checks][checks].
 
@@ -47,7 +47,7 @@ See the [full list of checks][checks].
 
 <details><summary><h3>Example of a broken workflow</h3></summary>
 
-The same files the animation above records, run through both linters. This section is generated from them by [`tools/docs/readme-demo.mjs`].
+The animation and the comparison below use the same files. [`tools/docs/readme-demo.mjs`] generates this section by running both linters on those files.
 
 <!-- BEGIN generated demo -->
 
@@ -125,7 +125,7 @@ demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "w
 
 Install with [npm], [Homebrew], [AUR],
 [Scoop], [WinGet], or [mise], or download [a release archive][releases].
-See [the installation document][install] for all options. To run it through npm:
+See [installation][install] for all options. To run it through npm:
 
 ```sh
 npx @kjanat/actionlint
@@ -139,19 +139,19 @@ go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
 
 <sub><em><code>actionlint.kjanat.dev/v2</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/v2/@latest</code></sub>
 
-Run `actionlint check` in your repository to discover and check workflows and action manifests. Bare `actionlint` also checks the current Git repository; outside a repository it shows help and exits 0. `actionlint check` exits 3 when there is nothing to analyze.
+Run `actionlint check` in your repository to find and check workflows and action manifests. Running `actionlint` without arguments also checks the current Git repository. Outside a repository, it displays help and exits 0. `actionlint check` exits 3 when it finds no files to analyze.
 
 ```sh
 actionlint check
 ```
 
-Another option to try actionlint is [the online playground][playground]. Your browser can run actionlint through WebAssembly.
+Try actionlint in your browser with [the online playground][playground], which runs it through WebAssembly.
 
-See [the usage document][usage] for more details.
+See [usage][usage] for command options and examples.
 
 ## GitHub Action
 
-Lint with annotations and a compact job summary:
+This example runs the `v1` actionlint GitHub Action with GitHub annotations:
 
 ```yaml
 name: Lint workflows
@@ -166,11 +166,15 @@ jobs:
       - uses: kjanat/actionlint@v1
 ```
 
-Project settings belong in [`.github/actionlint.yaml`](docs/config.md).
-Use the `config` input for a one-run override. No `with:` block is required.
+For v1, use the `config-file` input to select a configuration file.
 
-The upcoming JavaScript Action runs on Linux, macOS and Windows without Docker.
-Pin a published release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
+### v2 configuration
+
+Put project settings for the v2 Action in [`.github/actionlint.yaml`](docs/config.md).
+Use the `config` input to override settings for one run. You can omit the `with:` block when using the defaults.
+
+The v2 actionlint GitHub Action runs on Linux, macOS and Windows without Docker.
+Use a published release commit SHA or `vX.Y.Z` tag to select an exact release. The `v1` and `v1.X` tags move to newer releases.
 
 See the [Action guide](docs/action.md) for configuration, saved reports,
 optional PR reviews, tool prerequisites, migration and the input/output reference.
@@ -188,26 +192,26 @@ repos:
     hooks: [id: actionlint]
 ```
 
-The default hook installs the matching binary wheel in an isolated Python environment.
-Exact plugin versions in project configuration select ShellCheck and Ruff Wasm plugins.
+The default hook installs actionlint from the matching Python wheel in an isolated environment.
+The project's plugin declarations select exact versions of the ShellCheck and Ruff Wasm plugins.
 See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 
 ## Documents
 
-- [AI usage and policy] and [CLI compatibility]: How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
-- [Checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
+- [AI usage and policy] and [CLI compatibility]: How this fork uses AI and supports existing workflows and CI integrations.
+- [Checks]: Checks with examples, expected diagnostics and playground links.
 - [Installation][install]: Install with npm, Homebrew, AUR, Scoop, WinGet, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes upstream-only package names.
-- [Usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
+- [Usage]: Run actionlint locally, in GitHub Actions, in the playground or in Docker. Includes integrations with reviewdog, Problem Matchers, super-linter, pre-commit and VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Integration interfaces][api]: Use the CLI, language server and plugin SDKs from other programs.
-- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and intentional differences.
+- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation results and intentional differences.
 - [Expression behavior]: Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
 
 ## Bug reporting
 
-If you find a bug or false positive, please [file an issue][issue-form] with a minimal example. Feature requests and ideas for additional checks are welcome too.
+To report a bug or false positive, [file an issue][issue-form] with a minimal example. You can also request features or suggest checks.
 
 See the [contribution guide] for more details.
 
@@ -225,7 +229,7 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [Schema audit]: docs/schema-audit.md
 [Scoop]: docs/install.md#scoop
 [WinGet]: docs/install.md#winget
-[Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
+[Semantic Versioning for the supported CLI and configuration]: CONTRIBUTING.md#release-versioning
 [`tools/docs/readme-demo.mjs`]: tools/docs/readme-demo.mjs
 [changelog]: CHANGELOG.md#upstream-history
 [ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg

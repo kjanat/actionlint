@@ -1,7 +1,7 @@
 # Implementation routes
 
-Paths below are relative to the actionlint checkout root. Confirm signatures and callers
-before editing; search by the named symbol if a file has moved.
+Paths below are relative to the actionlint checkout root. Read the current function
+signatures and their callers before editing. Search for the symbol if its file has moved.
 
 ## Native checks
 
@@ -51,14 +51,14 @@ before attaching a finding to another file. Use existing span/source-map helpers
 for decoded scalars; decoded string offsets are not YAML source offsets.
 
 Inspect `internal/checking/rules/declaration.go`, `internal/checking/rules/aliases.go`, and `internal/input/configuration/resolve_rules.go` for
-descriptor, category, and selection contracts. Read current configuration examples
+rule metadata, categories and preset selection. Read current configuration examples
 in `docs/config.md`. Public rule settings belong under
 `lint.rules.<category>.<rule-id>`, beside that category's defaults. Legacy internal
 fields and groups accepted only for migration must not be used as settings for new rules.
 
 ## External linters and plugin checks
 
-Choose an existing example matching the input and delivery contract:
+Choose an example for the data your plugin checks and how actionlint runs it:
 
 - Process output plus jq: `plugins/examples/psscriptanalyzer/actionlint.plugin.ts`,
   `output.jq`, and `manifest.test.ts` in that directory.
@@ -66,7 +66,7 @@ Choose an existing example matching the input and delivery contract:
   `plugins/examples/typescript/actionlint.plugin.ts`.
 - A whole-document check: `plugins/examples/external-linters/yamllint/actionlint.plugin.ts`.
 - A component plugin: inspect a matching Rust example under `plugins/examples`
-  and the WIT world it imports. Do not assume the process contract applies.
+  and the WIT world it imports. Component plugins exchange data through those WIT interfaces.
 
 Read `plugins/sdk/typescript/README.md` for authoring and packaging. Use the public
 `@kjanat-actionlint/plugin-sdk` exports; workspace consumers declare `workspace:*`.
@@ -87,7 +87,7 @@ Search the old ID across code, schemas, docs, fixtures, and examples. Inspect
 `internal/results/suppression`, and `internal/results/policy`. Check structured ignores,
 inline selectors, unused-suppression accounting, CLI lookup, and emitted codes.
 
-Use `internal/input/configuration/category_migration_test.go` for effective-selection comparison:
+Use `internal/input/configuration/category_binding_test.go` for effective-selection comparison:
 parse both versions, resolve under the same presets and registrations, compare
 levels/options, then migrate again to prove idempotence. Do not replace legacy
 group defaults with a wider semantic category default. Require plugin metadata

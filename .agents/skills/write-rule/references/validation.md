@@ -39,9 +39,10 @@ where it runs, and the interfaces changed by the implementation. Test through
 actionlint as well as calling the check directly. Describe what each test verifies;
 do not report untested behavior as verified.
 
-For SDK authoring, the existing runner builds this checkout's host in a temporary
-directory, runs TypeScript-source tests, and cleans up. Leave `ACTIONLINT` unset
-to use that build, or set it deliberately to the host being tested:
+For SDK authoring, `plugins/sdk/typescript/scripts/test.ts` runs tests against the
+TypeScript source. Unless `ACTIONLINT` is set, it builds actionlint from this
+checkout in a temporary directory and removes the temporary files after testing.
+To test another actionlint version, set `ACTIONLINT` to its executable path:
 
 ```sh
 mise exec -- bun plugins/sdk/typescript/scripts/test.ts tests/authoring.test.ts

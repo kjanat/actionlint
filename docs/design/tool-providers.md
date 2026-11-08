@@ -1,41 +1,65 @@
-# Tool providers: one layer above transports
+# Tool integrations through manifests
 
-Design decision for actionlint v2 (Go). Read-only review of `C:\Users\kjanat\Projects\actionlint\.worktrees\go-v2` at `f8d5a6c3` (branch `go-identity-model`). Every claim cites `file:line` I read; items I did not read in this session are marked **inferred** or **investigator-cited**.
+This design records a review of [actionlint at `f8d5a6c3`](https://github.com/kjanat/actionlint/tree/f8d5a6c3d5dd96f893a1a55ca8897ec962427aa7).
+Code references describe that revision. Claims based on files the reviewer did
+not read are marked **inferred** or **investigator-cited**.
 
-## 0. Ground truth that shapes the decision
+## Implementation at the reviewed revision
 
-- The host already consumes tools only through capability closures: `tools.Registration{Enabled, Required, Build, NeedsProcess, WithBackend, WithAnalyzer, ConfiguredBackend, PrepareInput, InputSelectors}` (`internal/checking/scripts/contract/tools.go:34-52`); composition calls only `Enabled/Required/Build` (`internal/checking/composition.go:28-44`). The package doc promises independence from "tool names and transports" (`tools.go:1`).
-- The transport-neutral snippet contract exists and has three implementers: `analyzer.ScriptBackend.Check(ctx, ScriptRequest) ([]ScriptDiagnostic, error)` (`analyzer/backend.go:16-18,117-121,139-149`); `core.Engine`, `component.Plugin`, `ruff.ProcessBackend` (`internal/checking/scripts/contract/ruff/backend_process.go:88`). ShellCheck's native path is **not** a `ScriptBackend`; it converts backend diagnostics back into its private json1 struct (`internal/checking/scripts/contract/shellcheck/analysis_shellcheck_run.go:288-297`).
-- A fully generic `ScriptDiagnostic -> tools.Finding` runner exists: `backend.runner.Analyze` (`internal/plugins/execution/scripts/backend.go:98-212`): shell/input selection, template-effect gate, filename check, `AcceptDiagnostic`, `OriginalLine`, `Position/EndPos` mapping, `Key` fallback. The same fallback is copied twice more (`internal/checking/scripts/contract/ruff/adapter.go:141-145`, `analysis_shellcheck_run.go:261-267`).
-- A generic native-process transport exists and has **no production caller**: `backend.Process` + `processBackend.Check` with the `{ok,diagnostics,errors}` envelope (`internal/plugins/execution/scripts/process.go:19-71`); only `internal/checking/tools_registry_test.go:24,38` use it.
-- The content-addressed store exists: `CacheDir/<sha256hex>`, re-hashed on read, atomic publish (`internal/plugins/artifacts/resolve.go:93,251-257,312-335`); `Import(reader, digest)` adds verified bytes (`resolve.go:188-208`); `sha256://` is a cache-only scheme (`resolve.go:157-162`). Blockers for binaries: scheme allow-list `file|http|https|sha256` (`resolve.go:156-183`) and `Sniff` rejecting non-wasm (`inspect.go:48-49`).
-- Pins and locks are already tool-neutral: `Pin{URL, SHA256, Kind, Contract, Alias, PluginID}` (`internal/plugins/installation/model.go:119-141`), `Lock{schema_version:1, plugins}` (`lock.go:24-27`).
-- Tool names leak in exactly the places the investigators listed; I verified the structural ones: fixed `ToolsConfig{Ruff, Shellcheck}` (`internal/input/configuration/config.go:419-424`); `if name == "ruff"` switches (`internal/checking/scripts/contract/selection/module.go:22-25`, `process.go:27-30`, `requirements.go:69-72,149-152`); fixed `adapters.Options` fields (`internal/checking/scripts/contract/adapters/registry.go:16-34`); `NormalizePaths` literal list (`internal/input/configuration/tools/command.go:110`); `normalizeToolSwitch` literal list (`internal/input/configuration/shellcheck.go:76`); catalog entries (`internal/input/configuration/catalog.go:63,105`; `internal/checking/registry/index.go:22,55,78`); CLI flags (`internal/cli/root.go:241-255`, `env.go:87-120`); plugin language table (`internal/cli/plugin.go:72-77`); default plugin injection (`internal/localapp/config_migration.go:39-42`); cache plan (`internal/localapp/plugin_cache.go:40-43`); public API map (`analysis/analysis.go:61-62,162,189-193`); provenance enum (`internal/results/finding/unavailable_source.go:19-20,36-48`); managed contract literal (`internal/checking/scripts/contract/shellcheck/document_plugin.go:24`). `rg` counts 46 further literal `"ruff"|"shellcheck"` lines in production Go outside the two tool packages and `internal/input/configuration`.
-- No transform library is present: `go.mod:7-32` has no jq/CEL/JSONPath dependency; `go.sum` has none either. Deps that matter: `go-toml/v2` (`go.mod:19`), `santhosh-tekuri/jsonschema/v6` (`go.mod:21`), `encoding/json/v2` via Go 1.27 (`docs/design/json-processing.md:3-5`).
-- **No v2 tag exists**: `git tag --list 'v2*'` is empty; `git describe` gives `v1.17.0`. The "v2 configs in the wild" are pre-release/nightly users and the docs (`docs/config.md:283-296,345-361`).
-- Architecture guards that constrain where new code may live: `internal/input/configuration`, `internal/plugins/{core,component}`, `plugin` must not transitively import `internal/checking/passes`, `internal/cli`, `os/exec`, `analysis`, `config` (`internal/architecture/contracts_test.go:12-52`); `internal/checking/passes`, `internal/checking`, `analysis` must not import `internal/plugins/execution/component` or wazero/wacogo (`contracts_test.go:140-151`). So manifest/process code goes under `internal/checking/scripts/contract/...`; Wasm instantiation stays in `localapp` behind `tools.Context.LoadEngine` (`tools.go:24`), as `docs/design/application-boundary.md:31-35` already requires.
-- The owner's `rust-adr` worktree already decided the end state for the Rust host: no tool names in-repo, scripts exposed as providers (`.worktrees/identity-model/docs/adr/0008-no-tool-specific-code.md:15-19`); extension distribution out of scope there (`0009-extension-contract.md:125`). This Go design is the bridge: tools become data the Rust host can consume unchanged.
+- The checking code calls tools through `tools.Registration`, defined at `internal/checking/scripts/contract/tools.go:34-52`. It contains `Enabled`, `Required`, `Build`, `NeedsProcess`, `WithBackend`, `WithAnalyzer`, `ConfiguredBackend`, `PrepareInput` and `InputSelectors`. Composition calls `Enabled`, `Required` and `Build` at `internal/checking/composition.go:28-44`. The package documentation at `tools.go:1` states that callers need not know tool names or execution methods.
 
-## 1. The abstraction: **Tool Providers**
+- `core.Engine`, `component.Plugin` and `ruff.ProcessBackend` implement `analyzer.ScriptBackend.Check(ctx, ScriptRequest) ([]ScriptDiagnostic, error)`. See `analyzer/backend.go:16-18,117-121,139-149` and `internal/checking/scripts/contract/ruff/backend_process.go:88`. Native ShellCheck converts backend diagnostics into its private json1 structure at `internal/checking/scripts/contract/shellcheck/analysis_shellcheck_run.go:288-297`.
 
-A *tool provider* is data: a manifest (content-addressed) that names a rule, a transport, the artifacts to fetch by digest, how to invoke them, how to turn their output into the diagnostic record, and which host-owned *preparation profile* feeds them. The host has one registration constructor that turns a manifest into `tools.Registration`. Nothing in the host names a tool.
+- `backend.runner.Analyze` converts `ScriptDiagnostic` results to `tools.Finding` at `internal/plugins/execution/scripts/backend.go:98-212`. It selects scripts, checks template effects and filenames, filters findings, maps positions and supplies fallback identifiers. The fallback is also implemented at `internal/checking/scripts/contract/ruff/adapter.go:141-145` and `analysis_shellcheck_run.go:261-267`.
 
-### Layers
+- `backend.Process` and `processBackend.Check` run a native process and decode its `{ok,diagnostics,errors}` response at `internal/plugins/execution/scripts/process.go:19-71`. Only `internal/checking/tools_registry_test.go:24,38` call this code at the reviewed revision.
 
-| Layer                                           | Owns                                                                                                                                                                                                              | Today's code that becomes it                                                                                                                                                                                                                                                                                                                                                                                          |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L0 **Store** (CAFS)                             | bytes by sha256; sources `path`, `file`, `https#sha256`, `sha256://`, **`oci://…@sha256:`**; materialization of executables                                                                                       | `internal/plugins/artifacts/resolve.go:68-127,188-208,248-335`, `inspect.go:47-96`                                                                                                                                                                                                                                                                                                                                    |
-| L1 **Manifest**                                 | identity, role, rule descriptor, transport, per-platform artifact digests, selectors, capabilities, invocation template, output format + transform, config rendering/schema, version probe, template-effect table | core `Metadata` (`internal/plugins/execution/module/engine.go:79-111`), component static metadata (`internal/plugins/execution/component/script_engine.go:404-464`), `actionlint.plugin` section (`inspect.go:16`), plus everything currently hard-coded in `ruff/{command,native_options,compatibility,template_effects,diagnostic}.go` and `shellcheck/{analysis_shellcheck_run,input_options,shellcheck_paths}.go` |
-| L2 **Transport** → `analyzer.ScriptBackend`     | `process` (new, generic), `wasm-core` (`core.Engine`), `wasm-component` (`component.Plugin`), `embedded` (Go callers; Playground)                                                                                 | `backend/process.go:41-71`, `ruff/backend_process.go:88-172`, `shellcheck` `externalCommand` (`analysis_shellcheck_run.go:300-310`), `analyzerhost.EmbeddedCommand` (`internal/integrations/process/process.go:162-164`)                                                                                                                                                                                              |
-| L3 **Preparation profile** (language, not tool) | masking, dialect/target inference, injected directive/startup lines + line map, template-mask provenance filter, argv variables, resource requests                                                                | shell: `shellcheck_shell.go`, `shellcheck_script.go:44-113`, `prepared_plugin.go` (= `schemas/shell-preparation-0.2.0.md:1-35`); python: `ruff/checker.go` sanitize/`templateMasks`/python-shell detection (investigator: 226-340, 369-431, 490-642); generic mask: `backend/backend.go:227-251`                                                                                                                      |
-| L4 **Runner**                                   | `ScriptDiagnostic -> tools.Finding`: validation, line remap, YAML mapping, fix mapping, reported-source findings, message template, severity passthrough                                                          | `backend/backend.go:98-212` + `shellcheck_fixes.go:30-92` + `shellcheck_sources.go` + the two duplicated fallbacks                                                                                                                                                                                                                                                                                                    |
-| L5 **Registration/composition**                 | `provider.Register(manifest, backend, profile, selection) -> tools.Registration`; precedence explicit > repo backend > locked plugin > bundled default                                                            | `adapters/registry.go`, `selection/*`, `ruff/registry.go`, `shellcheck/registry.go`, `localapp/check.go:99-144`, `application/tool_integrations.go:18-83`                                                                                                                                                                                                                                                             |
-| L6 **Policy**                                   | unchanged, keyed by rule name only (`internal/results/suppression/inline.go:122`; `diagnosticpolicy` investigator-cited)                                                                                          | unchanged                                                                                                                                                                                                                                                                                                                                                                                                             |
+- The artifact cache stores bytes under `CacheDir/<sha256hex>`, verifies their hash on reads and publishes files atomically. See `internal/plugins/artifacts/resolve.go:93,251-257,312-335`. `Import(reader, digest)` accepts verified bytes at `resolve.go:188-208`, and `sha256://` selects cached bytes at `resolve.go:157-162`. Native binaries need additional support because `parseSource` accepts only `file`, `http`, `https` and `sha256` at `resolve.go:156-183`, and `Sniff` rejects non-Wasm files at `inspect.go:48-49`.
 
-### Manifest (JSON; `schema_version: 1`)
+- Plugin pins and lock files do not have fields specific to individual tools. `Pin` records `URL`, `SHA256`, `Kind`, `Contract`, `Alias` and `PluginID` at `internal/plugins/installation/model.go:119-141`. Lock version 1 records `schema_version` and `plugins` at `lock.go:24-27`.
+
+- Tool-specific names occur in these configuration, registration and execution settings: fixed `ToolsConfig{Ruff, Shellcheck}` (`internal/input/configuration/config.go:419-424`). `if name == "ruff"` switches (`internal/checking/scripts/contract/selection/module.go:22-25`, `process.go:27-30`, `requirements.go:69-72,149-152`); fixed `adapters.Options` fields (`internal/checking/scripts/contract/adapters/registry.go:16-34`); `NormalizePaths` literal list (`internal/input/configuration/tools/command.go:110`); `normalizeToolSwitch` literal list (`internal/input/configuration/shellcheck.go:76`); catalog entries (`internal/input/configuration/catalog.go:63,105`; `internal/checking/registry/index.go:22,55,78`); CLI flags (`internal/cli/root.go:241-255`, `env.go:87-120`); plugin language table (`internal/cli/plugin.go:72-77`); default plugin injection (`internal/localapp/config_migration.go:39-42`); cache plan (`internal/localapp/plugin_cache.go:40-43`); public API map (`analysis/analysis.go:61-62,162,189-193`); provenance enum (`internal/results/finding/unavailable_source.go:19-20,36-48`); managed contract literal (`internal/checking/scripts/contract/shellcheck/document_plugin.go:24`). `rg` counts 46 further literal `"ruff"|"shellcheck"` lines in production Go outside the two tool packages and `internal/input/configuration`.
+
+- `go.mod:7-32` and `go.sum` contain no jq, CEL or JSONPath library. Other relevant dependencies are `go-toml/v2` at `go.mod:19`, `santhosh-tekuri/jsonschema/v6` at `go.mod:21`, and `encoding/json/v2` through Go 1.27, described at `docs/design/json-processing.md:3-5`.
+
+- At the reviewed revision, `git tag --list 'v2*'` returned no tags and `git describe` returned `v1.17.0`. Existing v2 configuration came from prerelease builds and documentation examples at `docs/config.md:283-296,345-361`.
+
+- Dependency tests restrict where code can live. `internal/input/configuration`, `internal/plugins/{core,component}` and `plugin` must not transitively import `internal/checking/passes`, `internal/cli`, `os/exec`, `analysis` or `config`. See `internal/architecture/contracts_test.go:12-52`. `internal/checking/passes`, `internal/checking` and `analysis` must not import `internal/plugins/execution/component`, wazero or wacogo, as checked at `contracts_test.go:140-151`. The proposal therefore puts manifest and process code under `internal/checking/scripts/contract/`. `localapp` creates Wasm instances through `tools.Context.LoadEngine` at `tools.go:24`, following `docs/design/application-boundary.md:31-35`.
+
+- The Rust design [moves external-tool integrations to extensions](https://github.com/kjanat/actionlint/blob/a75c707c06c32c0773df1d4bc7f6c9af8cfd6b45/docs/adr/0008-no-tool-specific-code.md#decision) and [excludes extension distribution from that decision](https://github.com/kjanat/actionlint/blob/2af1c3506a6034116bd2adb0f5106ec44d682474/docs/adr/0009-extension-contract.md#open). This Go design proposes manifests that a Rust host could also read.
+
+## Proposed manifests
+
+The manifest is a JSON file. It tells actionlint which linter to run, where to get
+its executable or Wasm module and which arguments to pass. It also describes how
+to convert linter output into diagnostics. Actionlint verifies downloaded files
+against the SHA-256 hashes listed in the manifest.
+
+The manifest also selects how actionlint builds the script sent to the linter.
+For shell scripts, actionlint replaces `${{ ... }}` expressions with placeholders
+and adds shell settings and directives. It records where it changed the script
+so it can map diagnostics and fixes back to the original YAML. Python scripts
+use replacements chosen for Python syntax. The linter receives the resulting script.
+
+One registration function reads each manifest and connects the linter to these
+operations through `tools.Registration`.
+
+### What actionlint does with a manifest
+
+| Step                                | Operation                                                                                                                                                                                                                                      | Code at the reviewed revision                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L0. Download and cache artifacts    | Store bytes by SHA-256. Read local paths, file URLs, digest-pinned HTTPS URLs, sha256:// references and OCI digests. Write executable files from verified cached bytes.                                                                        | `internal/plugins/artifacts/resolve.go:68-127,188-208,248-335`, `inspect.go:47-96`                                                                                                                                                                                                                                                                                                                                    |
+| L1. Read tool manifests             | Read tool identity, rules, execution method, platform-specific artifact digests, script selectors, requested access, command arguments, output conversion, configuration schema and version checks.                                            | core `Metadata` (`internal/plugins/execution/module/engine.go:79-111`), component static metadata (`internal/plugins/execution/component/script_engine.go:404-464`), `actionlint.plugin` section (`inspect.go:16`), plus everything currently hard-coded in `ruff/{command,native_options,compatibility,template_effects,diagnostic}.go` and `shellcheck/{analysis_shellcheck_run,input_options,shellcheck_paths}.go` |
+| L2. Call the tool                   | Use the selected execution method: a native process, a core Wasm module, a Wasm component or an embedded Go callback.                                                                                                                          | `backend/process.go:41-71`, `ruff/backend_process.go:88-172`, `shellcheck` `externalCommand` (`analysis_shellcheck_run.go:300-310`), `analyzerhost.EmbeddedCommand` (`internal/integrations/process/process.go:162-164`)                                                                                                                                                                                              |
+| L3. Build the script for the linter | Replace workflow expressions, determine the language dialect or target version, add directives and startup commands, and record changed lines. Supply command variables and file-access requests. Filter diagnostics caused by generated text. | shell: `shellcheck_shell.go`, `shellcheck_script.go:44-113`, `prepared_plugin.go` (= `schemas/shell-preparation-0.2.0.md:1-35`); python: `ruff/checker.go` sanitize/`templateMasks`/python-shell detection (investigator: 226-340, 369-431, 490-642); generic mask: `backend/backend.go:227-251`                                                                                                                      |
+| L4. Report findings in the YAML     | Validate tool diagnostics and translate their locations and fixes to the YAML. Report findings in files the tool read. Format messages and pass through severity.                                                                              | `backend/backend.go:98-212` + `shellcheck_fixes.go:30-92` + `shellcheck_sources.go` + the two duplicated fallbacks                                                                                                                                                                                                                                                                                                    |
+| L5. Register the tool               | Construct tools.Registration from the manifest, execution method, script processing and selection settings. Apply this precedence: explicit selection, repository backend, locked plugin, bundled default.                                     | `adapters/registry.go`, `selection/*`, `ruff/registry.go`, `shellcheck/registry.go`, `localapp/check.go:99-144`, `application/tool_integrations.go:18-83`                                                                                                                                                                                                                                                             |
+| L6. Apply rule settings             | Apply suppression and severity settings by rule name. This behavior is unchanged.                                                                                                                                                              | unchanged                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+### Manifest fields
 
 ```go
-// internal/plugins/manifests/manifest.go — data only; imports analyzer, rule, encoding/json
+// internal/plugins/manifests/manifest.go. Data types import analyzer, rule and encoding/json.
 package provider
 
 type Role string      // "script" | "document" | "runner"
@@ -50,7 +74,7 @@ type Manifest struct {
 	Scope         string          `json:"scope"`           // "source" | "composite" (today config/catalog.go:63,105)
 	Transport     Transport       `json:"transport"`
 	Artifacts     []Artifact      `json:"artifacts,omitempty"` // per platform; empty => PATH-discovered binary
-	Preparation   string          `json:"preparation"`     // profile id, see L3
+	Preparation   string          `json:"preparation"`     // selects how actionlint builds the linter's script, see L3
 	Selectors     Selectors       `json:"selectors"`
 	Capabilities  Capabilities    `json:"capabilities"`
 	ConfigSchema  json.RawMessage `json:"config_schema,omitempty"` // validates tools.<name>.config
@@ -103,7 +127,7 @@ type Output struct {
 }
 type Transform struct {
 	Language string `json:"language"`         // "jq"
-	Digest   string `json:"digest,omitempty"` // content-addressed program (the owner's "oid")
+	Digest   string `json:"digest,omitempty"` // SHA-256 digest of the transform program
 	Inline   string `json:"inline,omitempty"` // bundled manifests only
 }
 type VersionProbe struct {
@@ -114,14 +138,27 @@ type VersionProbe struct {
 }
 ```
 
-Argv placeholder grammar (closed; no evaluation): `{var:NAME}`, `{flag:NAME:--opt}` (emits `--opt value` when the profile set NAME), `{switch:NAME:--on:--off}`, `{list:NAME:SEP}`, `{config:toml-pairs:--config}` (repeated `--config "k" = <inline TOML>` exactly as `native_options.go:19-44` does today, investigator-cited), `{config:toml-file}`/`{config:json-file}` (temp file path). Variables come from the preparation profile (`dialect`, `target_version`, `exclude`, `filename`, `config_file`, `external_sources`).
+The proposed command arguments use these placeholders:
 
-Transform contract: input `.` is parsed stdout (`json`) or the raw string (`text`); `$vars` is the same variable map plus `exit_code`; output is `{"diagnostics":[...], "sources":[...], "errors":[...]}` or a bare diagnostics array; each diagnostic is `analyzer.ScriptDiagnostic` extended with `source` and `fixes` (below). The host validates the output against a JSON schema (`jsonschema/v6`, `go.mod:21`) and applies the same caps the component host applies (investigator: `script_engine.go:134-229`: 8 MiB, 10000 diagnostics).
+- `{var:NAME}` inserts one variable value.
+- `{flag:NAME:--opt}` emits `--opt value` when script processing supplies `NAME`.
+- `{switch:NAME:--on:--off}` selects one of two flags.
+- `{list:NAME:SEP}` joins a list with the selected separator.
+- `{config:toml-pairs:--config}` repeats `--config "k" = <inline TOML>`. This matches the conversion in `native_options.go:19-44`, cited by an investigator.
+- `{config:toml-file}` and `{config:json-file}` insert a generated configuration file's path.
 
-### Go contract growth (host side, JSON-compatible superset)
+Actionlint supplies values such as `dialect`, `target_version`, `exclude`, `filename`, `config_file` and `external_sources` when it builds the script and command. Placeholders do not evaluate arbitrary expressions.
+
+For a JSON transform, `.` contains parsed stdout. For a text transform, it contains the stdout string. `$vars` contains the command variables and `exit_code`.
+
+A transform returns `{"diagnostics":[...], "sources":[...], "errors":[...]}` or a diagnostics array. Diagnostics use `analyzer.ScriptDiagnostic` with the proposed `source` and `fixes` fields below.
+
+Actionlint validates transformed output with `jsonschema/v6`, listed at `go.mod:21`. It applies the component host's limits of 8 MiB and 10000 diagnostics. Those limits were cited by an investigator at `script_engine.go:134-229`.
+
+### Proposed Go result fields
 
 ```go
-// analyzer/backend.go — additive
+// Proposed additions to analyzer/backend.go
 type ScriptDiagnostic struct {
 	/* existing fields analyzer/backend.go:140-148 */
 	Source string      `json:"source,omitempty"` // engine-read file, relative to the run directory; finding is not in the snippet
@@ -138,7 +175,7 @@ type ScriptReplacement struct { // = shellcheck json1 replacement shape, shellch
 ```
 
 ```go
-// internal/plugins/manifests — runtime-free (no wasm imports; passes contracts_test.go:140-151)
+// internal/plugins/manifests does not import Wasm runtimes. See contracts_test.go:140-151.
 func Parse(data []byte) (Manifest, error)                 // schema-validated, jsonv2 (duplicate keys rejected)
 func Register(m Manifest, backend analyzer.ScriptBackend, profile Profile, sel Selection) (tools.Registration, error)
 
@@ -148,11 +185,11 @@ type Selection struct {              // replaces internal/checking/scripts/contr
 	Required bool                    // explicit selection => Build errors fatal (composition.go:34-37 semantics kept)
 }
 
-// internal/plugins/execution/preparation — preparation profiles
+// internal/plugins/execution/preparation builds scripts and options for linters.
 type Profile interface {
 	ID() string                                            // "kjanat:actionlint/shell-preparation@0.3.0" | ".../python-preparation@0.1.0" | ".../expression-mask@0.1.0"
 	Prepare(script tools.Script, config json.RawMessage) (Prepared, error)
-	Preparer() analyzer.ScriptPreparer                     // analyzer/tool_integration.go:79; nil when the profile has none
+	Preparer() analyzer.ScriptPreparer                     // analyzer/tool_integration.go:79. Returns nil when no script preparer is needed.
 }
 type Prepared struct {
 	tools.PreparedInput                   // tools.go:56-63 unchanged
@@ -160,7 +197,7 @@ type Prepared struct {
 	Resources []analyzer.ToolResourceRequest
 }
 
-// internal/plugins/execution/process — the one native transport
+// Generic native-process execution in internal/plugins/execution/process
 type Backend struct{ /* spec, *analyzerhost.Command, Decoder, limits, probe cache */ }
 func NewBackend(spec ProcessSpec, cmd *analyzerhost.Command, dec Decoder) *Backend
 // implements analyzer.ScriptBackend, DescribedScriptBackend, ScriptConfigValidator (schema), ScriptTemplateValidator (version probe; generalizes ruff/version_probe.go)
@@ -169,15 +206,23 @@ type Decoder interface { Decode(ctx context.Context, stdout []byte, vars map[str
 type Result struct { Diagnostics []analyzer.ScriptDiagnostic; Sources, Errors []string }
 // Envelope{} (process.go:52-56 shape), SARIF{}, JQ{program, limits}
 
-// internal/plugins/artifacts — store growth
+// Proposed additions to internal/plugins/artifacts
 type Reference struct{ Scheme, Location, Digest, Platform string }
 func (s *Store) Pull(ctx context.Context, ref Reference) (*Artifact, error)             // + "oci" scheme, digest-only
 func (s *Store) Materialize(ctx context.Context, digest, filename string) (string, error) // CacheDir/exec/<hex>/<filename>, 0o755, re-hashed per use
 ```
 
-`tools.Registration`, `tools.Runner`, `tools.Batch/Script/Finding` (`tools.go:34-116`) and `execution.Tool` (`internal/checking/scripts/registered_tools.go:14-65`) are unchanged. `backend.runner.Analyze` (`backend.go:98-212`) absorbs: profile preparation for run scripts (today only action inputs reach `prepareInput`, `backend.go:120`), fix mapping (from `shellcheck_fixes.go:30-92`), reported-source findings (from `shellcheck_sources.go`, with the `UnavailableSource` producer becoming the provider id instead of the two-value enum at `unavailable_source.go:19-20`), message templating, and `Sources` recording into `script.Scope.Reader` for watch invalidation.
+`tools.Registration`, `tools.Runner`, `tools.Batch/Script/Finding` at `tools.go:34-116` and `execution.Tool` at `internal/checking/scripts/registered_tools.go:14-65` do not change.
 
-### A bundled manifest, to prove "tools are data" (ShellCheck)
+Extend `backend.runner.Analyze` at `backend.go:98-212` to:
+
+- Build scripts before checking `run:` steps. At the reviewed revision, only action inputs reach `prepareInput` at `backend.go:120`.
+- Map fixes using the code from `shellcheck_fixes.go:30-92`.
+- Report findings in files read by the tool, using `shellcheck_sources.go`. Use the provider ID for `UnavailableSource` instead of the two-value enum at `unavailable_source.go:19-20`.
+- Format diagnostic messages.
+- Record `Sources` in `script.Scope.Reader` so file changes trigger another check.
+
+### ShellCheck manifest example
 
 ```json
 {
@@ -233,20 +278,32 @@ func (s *Store) Materialize(ctx context.Context, digest, filename string) (strin
 }
 ```
 
-This reproduces today's argv (`analysis_shellcheck_run.go:182-207`), json1 decoding (`:19-34,304-308`), the `SC%d` code and message text (`:264,269-270`), fix replacements (`shellcheck_fixes.go:13-23`) and sourced-file findings (`:244-250`). The directive prefix, `set -e -o pipefail` startup line, line map and default exclusions `SC1091,…,SC2043` (`input_options.go:12`) are the shell profile, i.e. `shell-preparation-0.2.0` (`schemas/shell-preparation-0.2.0.md:15-32`), not the manifest. Ruff's manifest is the same shape with `preparation: python-preparation@0.1.0`, `args: ["check", "{config:toml-pairs:--config}", "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", "{var:filename}", "--extension", "py:python", "{flag:target_version:--target-version}", "-"]` (assembly today at `ruff/checker.go:205-214`, flags investigator-cited `:342-360`), `exit_codes: [0,1]` (`adapter.go:68`), `version: {args:["--version"], pattern:"^ruff (\\d+\\.\\d+\\.\\d+)", minimum:"0.17.0", template_effects:"0.17.0"}` (`template_effects.go:20-26`), `template_effects: {"E501":"line-length", …}` (`template_effects.go:31-52`), a config transform folding flat `target-version/select/ignore` into `{target-version, lint:{select,ignore}}` (what `backend_process.go:106-126` unfolds today), and `message_template: "Ruff reported issue in this script: {code}: {message}"` (`adapter.go:146`).
+The ShellCheck manifest reproduces the reviewed implementation's command arguments at `analysis_shellcheck_run.go:182-207`, json1 decoding at lines 19-34 and 304-308, `SC%d` codes and messages at lines 264 and 269-270, fixes at `shellcheck_fixes.go:13-23`, and sourced-file findings at lines 244-250.
 
-## 2. How the four routes collapse
+Actionlint adds the directive prefix and `set -e -o pipefail` startup line when it builds the shell script. It also records the line map and applies the default exclusions `SC1091,...,SC2043` from `input_options.go:12`. These operations use `shell-preparation-0.2.0`, documented at `schemas/shell-preparation-0.2.0.md:15-32`.
 
-| Route today                           | After                                                                                                                                                                                                    | Moves                                                                                                                                                                                                                                   | Deleted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Stays generic                                                                                                                                      |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Native process** (bespoke adapters) | `transport: process` provider built from a manifest; bundled manifests under `providers/` (embedded) supply the PATH-discovery defaults                                                                  | argv/decoding/version/effect tables → manifest data; python & shell preparation → `internal/plugins/execution/preparation/{python,shell}`; fixes/sources → `backend` runner                                                             | `internal/checking/scripts/contract/ruff/{command,native_options,backend_process,compatibility,version_probe,diagnostic,template_effects,adapter,registry,requirements,config,input_options}.go`; `internal/checking/scripts/contract/shellcheck/{analysis_shellcheck*,shellcheck_paths,shellcheck_options,shellcheck_sources,shellcheck_fixes,input_options,registry,adapter,path_context}.go`; `internal/checking/scripts/contract/adapters`; `internal/checking/scripts/contract/selection` (ConfigVariants `requirements.go:87-130` moves to `provider/selection.go`); `backend/process.go` | `analyzerhost.Execution/Command/ProcessPool` (`process.go:19-254`), `processconfig.Options` (`options.go:14-75`), `execution.Tool`, `scriptcoords` |
-| **Core-wasm JSON ABI**                | `transport: wasm-core`; `core.Metadata` (`engine.go:79-111`) is accepted as a `Manifest` v0 and up-converted (`id`, `engine`, `capabilities.script_shells/inputs`, `template_contract`, `config_schema`) | nothing                                                                                                                                                                                                                                 | the `descriptor.Engine == registration.Descriptor.Name` matching in `localapp/check.go:109-126` and `input_routing.go:128-130,186-189` becomes "manifest rule name == registration rule name", same code path for all transports                                                                                                                                                                                                                                                                                                                                                                | `core.Engine` untouched; `analyzerhost.ScriptEngines` cache (`script_engines.go:24-47`)                                                            |
-| **WIT component**                     | `transport: wasm-component`; `role: script` → same registration as above; `role: document` → `analyzer.Registration` as today                                                                            | ShellCheck managed glue (`document_plugin.go`, `plugin_sources.go`, `prepared_plugin.go`) → `internal/plugins/manifests/managed`, generic over `Manifest.Integration{Tool, Contract}` instead of the literal at `document_plugin.go:24` | nothing yet (knot 4 sets the retirement)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `component` loader, roles, sandbox                                                                                                                 |
-| **Auto-added default plugins**        | Default **provider references** in the default config: `plugins: [shellcheck, ruff]` resolved by registry alias as today; bundled manifests are the fallback when nothing is declared                    | `DefaultPluginReferences` (`config_migration.go:30-54`) iterates registered bundled provider ids instead of a literal pair                                                                                                              | the `DefaultPluginOptions{Shellcheck, Ruff bool}` fields (`:21-26`) and the pair at `:39-42`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `pluginref`, `pluginregistry`, lock/sync                                                                                                           |
+A Ruff manifest uses the same structure with these settings:
 
-### Config surface (YAML)
+- Select `preparation: python-preparation@0.1.0`.
+- Pass `args: ["check", "{config:toml-pairs:--config}", "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", "{var:filename}", "--extension", "py:python", "{flag:target_version:--target-version}", "-"]`. Command assembly is at `ruff/checker.go:205-214`. The flags at lines 342-360 were cited by an investigator.
+- Accept `exit_codes: [0,1]`, as in `adapter.go:68`.
+- Probe the version with `version: {args:["--version"], pattern:"^ruff (\\d+\\.\\d+\\.\\d+)", minimum:"0.17.0", template_effects:"0.17.0"}`, from `template_effects.go:20-26`.
+- Use the template-effect table `template_effects: {"E501":"line-length", ...}` from `template_effects.go:31-52`.
+- Convert flat `target-version/select/ignore` settings to `{target-version, lint:{select,ignore}}`. `backend_process.go:106-126` performs the reverse conversion in the reviewed implementation.
+- Format messages with `message_template: "Ruff reported issue in this script: {code}: {message}"`, as in `adapter.go:146`.
 
-`tools` becomes a map keyed by provider rule name; the keys `ruff`/`shellcheck` keep parsing because they are now data, not fields:
+## Changes to existing tool integrations
+
+| Existing integration                       | After                                                                                                                                                                                                    | Moves                                                                                                                                                                                                                                   | Deleted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Stays generic                                                                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native process with tool-specific adapters | `transport: process` provider built from a manifest; bundled manifests under `providers/` (embedded) supply the PATH-discovery defaults                                                                  | argv/decoding/version/effect tables → manifest data; python & shell preparation → `internal/plugins/execution/preparation/{python,shell}`; fixes/sources → `backend` runner                                                             | `internal/checking/scripts/contract/ruff/{command,native_options,backend_process,compatibility,version_probe,diagnostic,template_effects,adapter,registry,requirements,config,input_options}.go`; `internal/checking/scripts/contract/shellcheck/{analysis_shellcheck*,shellcheck_paths,shellcheck_options,shellcheck_sources,shellcheck_fixes,input_options,registry,adapter,path_context}.go`; `internal/checking/scripts/contract/adapters`; `internal/checking/scripts/contract/selection` (ConfigVariants `requirements.go:87-130` moves to `provider/selection.go`); `backend/process.go` | `analyzerhost.Execution/Command/ProcessPool` (`process.go:19-254`), `processconfig.Options` (`options.go:14-75`), `execution.Tool`, `scriptcoords` |
+| Core Wasm JSON ABI                         | `transport: wasm-core`; `core.Metadata` (`engine.go:79-111`) is accepted as a `Manifest` v0 and up-converted (`id`, `engine`, `capabilities.script_shells/inputs`, `template_contract`, `config_schema`) | nothing                                                                                                                                                                                                                                 | the `descriptor.Engine == registration.Descriptor.Name` matching in `localapp/check.go:109-126` and `input_routing.go:128-130,186-189` becomes "manifest rule name == registration rule name", same code path for all transports                                                                                                                                                                                                                                                                                                                                                                | `core.Engine` untouched; `analyzerhost.ScriptEngines` cache (`script_engines.go:24-47`)                                                            |
+| WIT component                              | `transport: wasm-component`; `role: script` → same registration as above; `role: document` → `analyzer.Registration` as today                                                                            | ShellCheck managed glue (`document_plugin.go`, `plugin_sources.go`, `prepared_plugin.go`) → `internal/plugins/manifests/managed`, generic over `Manifest.Integration{Tool, Contract}` instead of the literal at `document_plugin.go:24` | nothing yet (knot 4 sets the retirement)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `component` loader, roles, sandbox                                                                                                                 |
+| Default plugins                            | Default **provider references** in the default config: `plugins: [shellcheck, ruff]` resolved by registry alias as today; bundled manifests are the fallback when nothing is declared                    | `DefaultPluginReferences` (`config_migration.go:30-54`) iterates registered bundled provider ids instead of a literal pair                                                                                                              | the `DefaultPluginOptions{Shellcheck, Ruff bool}` fields (`:21-26`) and the pair at `:39-42`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `pluginref`, `pluginregistry`, lock/sync                                                                                                           |
+
+### YAML configuration
+
+`tools` becomes a map keyed by the provider's rule name. Existing `ruff` and `shellcheck` keys become entries in that map.
 
 ```go
 // internal/input/configuration
@@ -258,14 +315,14 @@ type ToolConfig struct {
 }
 ```
 
-- Bool shorthand (`tools.ruff: false`, `shellcheck.go:98-105`; `ruff/config.go:56-63`) stays, generic.
+- Bool shorthand such as `tools.ruff: false` works for every tool. See `shellcheck.go:98-105` and `ruff/config.go:56-63`.
 - Ruff's flat `target-version/select/ignore` (`internal/input/configuration/tools/ruff/config.go:21-26`) fold into `Config` at decode (unknown sibling keys become `config.<key>`), and the bundled ruff manifest's config transform normalizes them. `internal/input/configuration/tools/ruff` is deleted; remove it from `contracts_test.go:22`.
 - `tools.<id>.config` as a scalar string is a path (today ShellCheck's rc path, `config.go:439-445`); `files.go:80,85` relativizes any `tools.*.config` scalar, not `tools.shellcheck.config`.
 - Unknown `tools.<id>` keys are validated against registered providers at the same point `lint.rules.plugins` names are (`lint.go:66-74`; registration-time names already flow through `config.Parse(..., names)`, `docs/plugins.md:543`).
 - `lint.rules.external.<id>` = all script providers (bundled or installed); `lint.rules.plugins.<name>` = document analyzers. `rulecatalog.ConfigGroup` (`catalog.go:77-80`) returns `"external"` for any provider rule; `config/catalog.go:63,105` entries go; `Scope` comes from `Manifest.Scope`; `suppression_scope.go:67` is derived from providers with `scope: source`.
 - Repo-selected process backends keep requiring `--allow-config-processes` (`selection/process.go:14-19` semantics, moved).
 
-### CLI / env / API / Action
+### CLI, environment variables, Go API and GitHub Action
 
 - Flags: `--tool ID[=COMMAND]` (repeatable; bare `--tool ID` = explicit default command, `--tool ID=false` disables) and `--no-tool ID` (repeatable) replace `--ruff`, `--shellcheck`, `--no-ruff`, `--no-shellcheck`, hidden `--pyflakes` (`root.go:241-255`). No alias table; unknown-flag errors point at `--tool/--no-tool`. Explicit `--tool` sets `IgnoreConfig` and `Required` exactly as `env.go:115-120` does today.
 - Env: `ACTIONLINT_TOOL_<ID>_BIN|_FLAGS|_ENV` (`<ID>` upper-cased, `-`→`_`); `externalToolEnvironment(prefix)` is already prefix-parameterized (`env.go:201-231`) and loops over registered provider ids.
@@ -276,61 +333,160 @@ type ToolConfig struct {
 
 ### Commit 11770d95
 
-It maps `--no-ruff → "python"` and `--no-shellcheck → "shell"` (`cli/plugin.go:72-77`) and skips plugins whose untrusted metadata lists a disabled `languages` entry (`localapp/plugins.go:46-50,195-213`), after the artifact has already been resolved (`plugins.go:40` precedes `:46`). The `languages` key is read nowhere else (`rg` confirms only `plugins.go:202`) and has no schema. **Disposition: revert the language mapping, `DisabledLanguages`, and `declaresLanguage`; replace with id-based disabling evaluated before resolution.** `PluginSelection.DisabledTools []string` is matched against `Pin.Name`/`Pin.Alias` (`model.go:122-123`) and bundled manifest ids *before* `artifact.Resolve`, so a disabled tool is never downloaded or loaded. Its motivating bug ("incompatible artifact aborts the run") is additionally fixed by treating a load failure of a non-required provider as a logged skip, mirroring `composition.go:34-37`. The Action gap (its `PluginSelection` omits the field, `provisioning.go:32`, investigator-cited) closes because disabling is now plain selection data. Keep the test intent as `TestDisabledToolIsNotResolved`.
+Commit `11770d95` maps `--no-ruff` to `"python"` and `--no-shellcheck` to `"shell"` at `cli/plugin.go:72-77`. It then skips plugins whose metadata lists a disabled `languages` entry at `localapp/plugins.go:46-50,195-213`. This happens after artifact resolution at `plugins.go:40`. The review found no other reader or schema for `languages`.
 
-## 3. Knots
+Replace the language mapping, `DisabledLanguages` and `declaresLanguage` with disabling by tool ID before resolution. Match `PluginSelection.DisabledTools` against `Pin.Name`, `Pin.Alias` at `model.go:122-123`, and bundled manifest IDs before calling `artifact.Resolve`. A disabled tool must not be downloaded or loaded.
 
-**K1. Declarative transform language.** Options: jq (gojq), CEL, Go `text/template`, SARIF-only, JSON-pointer field map. **Decision: jq via `github.com/itchyny/gojq`, plus two built-in decoders that need no program: the native envelope (`process.go:52-56`) and SARIF 2.1.0.** Why: it is what the owner asked for; ShellCheck json1 and Ruff JSON reshape in ~10 lines each (above); gojq is pure Go, context-cancellable, and keeps environment access, module imports and `input` opt-in via compiler options (**inferred** from gojq's documented API; verify before pinning). CEL is boolean-expression shaped and drags protobuf; `text/template` emits text, not JSON; SARIF-only excludes every tool without a SARIF emitter (ShellCheck); a field map cannot express `"SC"+code` or conditionals without growing into a language. Argv is **not** jq: argv uses the closed placeholder grammar so repository config can never evaluate into arbitrary flags. Transform programs are content-addressed blobs (`Transform.Digest`) resolved through the same store; bundled manifests inline them.
+For optional providers, log load failures and skip the provider, following `composition.go:34-37`. This addresses the bug that motivated the commit, where an incompatible artifact aborted the run. The Action's `PluginSelection` also omitted the disabling field at `provisioning.go:32`, according to an investigator. The shared selection data must cover that caller too.
 
-**K2. Are binary providers sandboxed?** Options: OS sandbox (bwrap/seccomp/AppContainer), Wasm-only, policy sandbox. **Decision: policy sandbox, no OS sandbox this release; Wasm stays the sandboxed route and the docs say so.** Concretely: digest-pinned bytes (`resolve.go:102-105`), explicit opt-in for repository-selected processes (`--allow-config-processes`), registry-installed binaries only via an explicit `plugin install`, literal argv (`command.go:56`), scrubbed child environment (new `Execution.InheritEnvironment bool`, default false for providers; today `cmd.Environ()` is inherited at `process.go:36-44`) plus `env_passthrough`, stdin-only input, bounded stdout, materialized executables re-hashed per use. OS sandboxes are not portable across the three supported platforms and would be a second, half-true security story.
+Test that disabling happens before resolution with `TestDisabledToolIsNotResolved`.
 
-**K3. OCI/ORAS vs the existing registry.** Options: replace the registry with OCI; add OCI as a source scheme; keep the registry as index and OCI as transport. **Decision: OCI is the distribution substrate, the registry stays the index.** Add `oci://<host>/<repo>@sha256:<digest>` to `parseSource` (`resolve.go:156-183`), digest references only (tags resolve to digests at `plugin install`, like `latest` today). **The pull transport is oras-go v3, pinned at `v3.0.0-rc.4`** (the owner accepted the release candidate; `@latest` resolves to a retracted `v3.0.3-dev` snapshot). It is used as transport only: `remote.NewRepository` with the repository name (v3 rejects a tag or digest there), the digest passed to each fetch, `Registry.Client` an anonymous `auth.Client` that answers the bearer challenge (GHCR public images), `content.ReadAll`/`content.FetchAll` verifying size and digest, and a context deadline around every pull because oras-go's retry client honours `Retry-After` up to 60 s. oras-go is imported only by `internal/plugins/artifacts/oci` (a depguard rule forbids it elsewhere), because its credential helpers link `os/exec`, which the WebAssembly runtimes importing `internal/plugins/artifacts` must not; `artifact.Options.PullOCI` injects the puller. Measured module cost: oras-go v2.7.0 needs only `opencontainers/go-digest`, `opencontainers/image-spec` and `x/sync`; v3 adds `BurntSushi/toml`, `yaml.v3`, `ProtonMail/go-crypto`, `cloudflare/circl` and `x/crypto`. Publishing with the `oras` CLI needs nothing from us. An OCI blob digest is the sha256 of the blob bytes (OCI descriptor spec, not re-read here), so pulled layers land at today's `CacheDir/<hex>` (`resolve.go:251`). Multi-platform binaries are an OCI index whose per-platform manifests carry the provider manifest layer, the binary layer and the transform layer; the declaration pins the index digest and the host selects `GOOS/GOARCH`. Lock schema bumps to 2 (reads 1 and 2, writes 2): `Lock.Sources` records each direct `oci://` declaration with the image manifest and layer digests of every platform, so the cache plan lists a platform's executable before any pull; registry `Pin`s are unchanged until the catalogue can publish OCI locations. The catalogue keeps aliases, OIDC identity receipts and withdrawals (`model.go:57-115`), none of which OCI provides without sigstore.
+## Design decisions
 
-**K4. Unify analyzer vs script-engine contracts.** Options: everything a document analyzer; everything a script engine; one manifest with two roles and a script contract rich enough that no *tool* needs the analyzer role. **Decision: the third.** The snippet contract gains `fixes`, `source` (reported foreign files) and resource negotiation; on the Go side now (section 1), on the wire as `script-engine@0.3.0` + core `check 3` in stage 7 (host accepts both 0.2.0 and 0.3.0). `script-engine.wit:67` explicitly withholds fixes today, and `docs/design/analysis-contracts.md:167-170` names exactly these three missing capabilities. The `managed-plugin` world (`tool-integration` + `prepared-scripts` + `source-files`) keeps working through `provider/managed`, generic over `Manifest.Integration`, and is marked deprecated; it is retired once the ShellCheck component is rebuilt against 0.3.0 (its repo, not this one). Document analyzers (`pipe-to-shell`, `pinned-actions`) are unaffected.
+### K1. Output conversion with jq
 
-**K5. Backward compatibility for v2 configs.** **Decision: v2.0 ships the generic surface; there is no v2 tag to be compatible with** (`git describe` → `v1.17.0`). What stays byte-compatible by construction: YAML `tools.ruff`/`tools.shellcheck` keys (map entries), bool shorthand, flat Ruff keys (folded), `lint.rules.external.{ruff,shellcheck}` (`docs/config.md:292-296`), `plugins: [shellcheck, ruff]` aliases, lock v1 files (read; rewritten on install), diagnostic message text (manifest `message_template` reproduces `analysis_shellcheck_run.go:264` and `adapter.go:146`, so the documented `ignore-regex` example at `config.go:61` keeps matching), codes, severities (renderers keep their `style` cases at `render/result.go:154`, `sarif.go:135`, `langserver/publication.go:16`). What breaks, deliberately and before any v2 release: `--ruff/--shellcheck/--no-*/--pyflakes`, `ACTIONLINT_RUFF_*`/`ACTIONLINT_SHELLCHECK_*`, Action inputs `ruff/shellcheck/pyflakes`, `analysis.Options.{ShellCheck,Ruff}`, the Ruff launcher grammar (`ruff/command.go:8-259`: users write `backend.process.{executable,args}` literally, as `docs/config.md:346-352` already shows for ShellCheck). `docs/migration-v2.md` gets the table.
+The proposal uses `github.com/itchyny/gojq` to convert tool output. It also includes decoders for the native response format and SARIF 2.1.0, which need no jq program. The alternatives considered were CEL, Go `text/template`, a SARIF-only interface and a JSON-pointer field map.
 
-**K6. Scope for this Go release vs later.** **This release: stages 0-6 plus the host side of stage 7.** Later (next Go release or the Rust host): retire the managed route, rebuild the ShellCheck/Ruff components against 0.3.0, OS sandboxing, moving alias/identity to an OCI-native index, Rust-host parity tests over the same manifests (ADR-0008 wants no tool code; manifests are the data it will consume).
+jq was requested for authoring these conversions. The ShellCheck json1 and Ruff examples above each need about ten lines. gojq is pure Go and supports cancellation through a context. Its documented compiler options appear to control environment access, module imports and `input`. This last claim is **inferred** and must be verified before pinning the dependency.
 
-**K7. Three masking implementations.** **Decision: one lexer-based masker (`backend.go:227-251`) in `profile/mask`, used by the shell and generic profiles; Python keeps its token-aware sanitizer.** ShellCheck's naive first-`}}` scan (`analysis_shellcheck_run.go:86-119`) differs for expressions containing `}}` inside strings; this is a deliberate behavior change covered by a fixture in stage 3.
+CEL adds protobuf and is oriented towards expressions. `text/template` emits text, so the host would have to parse it as JSON. A SARIF-only interface excludes tools such as ShellCheck that do not emit SARIF. A field map would need extra syntax for operations such as `"SC" + code` and conditionals.
 
-**K8. Where defaults come from.** **Decision: bundled manifests in `providers/` at the module root (`embed.go` exposing `FS`), iterated by directory; `config init` keeps installing registry aliases.** `go:embed` cannot reach parent directories, so the data lives beside its tiny public embedding package rather than under `internal/`. The docs generator (`rulecatalog/check-docs`, investigator-cited) iterates the embedded manifests instead of requiring named binaries.
+Command arguments use the restricted placeholders described above. They do not run jq. Transform programs are stored by `Transform.Digest` in the artifact cache. Bundled manifests can include them inline.
 
-**K9. Required vs optional.** **Decision: no manifest field.** Explicit selection (flag, env, API, repo backend) → required; bundled default → optional (skip + warn), which is today's effective behavior for both tools (`env.go:98-99`; `shellcheck/registry.go:36-39` returns false when options are nil; `composition.go:34-37`).
+### K2. Native-process access
 
-## 4. Staged plan (each stage green on `go test ./...` with ShellCheck + Ruff 0.17.0 installed, `ci.yml:133-167`, and `make lint` incl. `actionlintarch`)
+This release does not add an OS sandbox for native tools. The alternatives considered were platform-specific sandboxes such as bwrap, seccomp and AppContainer, or allowing only Wasm tools. Wasm execution continues to use its runtime sandbox.
 
-**Stage 0 — Manifest, jq decoder, bundled data (nothing wired).**
+The native-process controls are:
+
+- Verify pinned artifact digests at `resolve.go:102-105` and recheck executable bytes before each use.
+- Require `--allow-config-processes` for repository-selected executables. Installing a registry binary requires an explicit `plugin install`.
+- Pass literal arguments, as in `command.go:56`.
+- Start with a restricted environment and copy only the variables listed in `env_passthrough`. The proposed `Execution.InheritEnvironment` defaults to false for providers. The implementation at `process.go:36-44` inherits `cmd.Environ()`.
+- Send the script through stdin and limit stdout size.
+
+These controls govern what actionlint starts and passes to a process. They do not restrict the process's access through OS APIs. The documentation must state this limitation. A portable OS sandbox across the three supported platforms is outside this release.
+
+### K3. OCI artifact downloads and the plugin registry
+
+The proposal uses OCI to distribute artifacts. The existing registry continues to index plugins, aliases, publisher identities and withdrawn releases. Replacing that registry with OCI was considered and rejected.
+
+Add `oci://<host>/<repo>@sha256:<digest>` to `parseSource` at `resolve.go:156-183`. Stored references must use digests. `plugin install` can resolve a tag to a digest, as it resolves `latest` today.
+
+The selected download library is oras-go v3 at `v3.0.0-rc.4`. The maintainer accepted this release candidate during the design review. At that time, `@latest` selected a retracted `v3.0.3-dev` snapshot.
+
+Use `remote.NewRepository` with the repository name. v3 rejects a tag or digest in that argument. Pass the digest to each fetch. Use an anonymous `auth.Client` for `Registry.Client` to answer bearer challenges for public GHCR images. `content.ReadAll` and `content.FetchAll` verify sizes and digests. Set a deadline on every pull because the retry client can honor `Retry-After` for up to 60 seconds.
+
+Only `internal/plugins/artifacts/oci` imports oras-go. A depguard rule enforces this restriction. Its credential helpers link `os/exec`, which must not enter the WebAssembly builds that import `internal/plugins/artifacts`. `artifact.Options.PullOCI` supplies the downloader.
+
+The recorded dependency comparison found `opencontainers/go-digest`, `opencontainers/image-spec` and `x/sync` in oras-go v2.7.0. v3 also adds `BurntSushi/toml`, `yaml.v3`, `ProtonMail/go-crypto`, `cloudflare/circl` and `x/crypto`. Publishing with the `oras` CLI requires no actionlint library support.
+
+An OCI blob digest is the SHA-256 of its bytes. This claim comes from the OCI descriptor specification, which was not reread during the review. Downloaded layers use the existing `CacheDir/<hex>` layout at `resolve.go:251`.
+
+For multiple platforms, publish an OCI index. Each platform manifest contains the provider manifest, executable and transform layers. The plugin declaration pins the index digest, and actionlint selects the entry for `GOOS/GOARCH`.
+
+The proposed lock schema is version 2. Readers accept versions 1 and 2, and writers emit version 2. `Lock.Sources` records the image manifest and layer digests for every platform in a direct `oci://` declaration. The cache plan can then list executable digests before downloading them. Registry `Pin` records do not change until the catalogue supports OCI locations.
+
+The catalogue continues to manage aliases, OIDC identity records and withdrawals through `model.go:57-115`. OCI alone does not provide that publisher verification without a system such as Sigstore.
+
+### K4. Script and document plugins
+
+Use one manifest with separate script and document roles. Extend the script interface with fixes, findings in other files and file-access requests so external linters can use it. The alternatives were to make every plugin a document analyzer or every plugin a script engine.
+
+The Go additions are described above. Stage 7 adds the wire format through `script-engine@0.3.0` and core `check 3`. The host accepts 0.2.0 and 0.3.0. At the reviewed revision, `script-engine.wit:67` excludes fixes, and `docs/design/analysis-contracts.md:167-170` lists the missing fixes, source and resource capabilities.
+
+The `managed-plugin` world continues to work through `provider/managed` and `Manifest.Integration`. It combines `tool-integration`, `prepared-scripts` and `source-files`. Mark it deprecated and retire it after the ShellCheck component is rebuilt against 0.3.0 in its own repository. Document analyzers such as `pipe-to-shell` and `pinned-actions` are unaffected.
+
+### K5. Configuration and API changes before v2
+
+There was no v2 tag at the reviewed revision. `git describe` returned `v1.17.0`. The proposal introduces the manifest-based interfaces before v2.0.
+
+The following formats and behavior stay compatible:
+
+- YAML `tools.ruff` and `tools.shellcheck` entries, boolean shorthand and flat Ruff settings.
+- `lint.rules.external.{ruff,shellcheck}`, documented at `docs/config.md:292-296`.
+- The `shellcheck` and `ruff` plugin aliases.
+- Lock version 1 files, which are read and rewritten during installation.
+- Diagnostic messages, codes and severities. `message_template` reproduces `analysis_shellcheck_run.go:264` and `adapter.go:146`, including the text matched by the `ignore-regex` example at `config.go:61`. Renderer cases at `render/result.go:154`, `sarif.go:135` and `langserver/publication.go:16` continue to apply.
+
+The migration deliberately replaces these development interfaces:
+
+- `--ruff`, `--shellcheck`, their `--no-*` flags and `--pyflakes`.
+- `ACTIONLINT_RUFF_*` and `ACTIONLINT_SHELLCHECK_*`.
+- The Action inputs `ruff`, `shellcheck` and `pyflakes`.
+- `analysis.Options.ShellCheck` and `analysis.Options.Ruff`.
+- The Ruff launcher grammar at `ruff/command.go:8-259`. Users specify `backend.process.executable` and `backend.process.args` directly, as the ShellCheck example at `docs/config.md:346-352` already does.
+
+Document the replacements in `docs/migration-v2.md`.
+
+### K6. Release scope
+
+This Go release includes stages 0 to 6 and the host changes in stage 7.
+
+Later work covers retiring the managed-plugin interface, rebuilding the ShellCheck and Ruff components against 0.3.0, OS sandboxing, moving aliases and publisher identities into an OCI-native index, and comparing the Rust host against the same manifests. ADR-0008 places tool-specific code outside the Rust host, so its integration would read the manifest data.
+
+### K7. Workflow expression replacement
+
+Shell scripts and generic script tools share the lexer-based replacement code at `backend.go:227-251`, moved to `profile/mask`. Python uses its tokenizer-aware replacement code.
+
+The ShellCheck implementation at `analysis_shellcheck_run.go:86-119` stops at the first `}}`, including one inside an expression string. Replacing it with the lexer changes that behavior. Stage 3 must include a regression fixture for this case.
+
+### K8. Bundled defaults
+
+The design places bundled manifests under `providers/` at the module root. `embed.go` exposes them through `FS`, and registration reads the directory entries. `config init` continues to install registry aliases.
+
+This layout puts the data beside its public embedding package because `go:embed` cannot read parent directories. The documentation generator at `rulecatalog/check-docs` reads the embedded manifests to discover tools. The generator behavior was cited by an investigator.
+
+### K9. Required and optional tools
+
+Whether a tool is required depends on how it was selected. Do not add a manifest field for this.
+
+A tool selected through a flag, environment variable, API option or repository backend is required. A bundled default is optional, so a missing tool produces a warning and is skipped. This follows `env.go:98-99`, `shellcheck/registry.go:36-39` and `composition.go:34-37`.
+
+## Implementation plan
+
+Each stage must pass `go test ./...` with ShellCheck and Ruff 0.17.0 installed, plus the checks at `ci.yml:133-167` and `make lint`, including `actionlintarch`. These commands describe the reviewed revision.
+
+### Stage 0. Add manifests, output decoders and bundled data
+
 Files: new `internal/plugins/manifests/{manifest.go,validate.go,manifest_schema.json}`, `internal/plugins/execution/process/decoder_jq.go` (gojq, limits: no env, no modules, no inputs, context deadline, output cap), `decoder_envelope.go`, `decoder_sarif.go`, `providers/{embed.go, shellcheck/manifest.json, shellcheck/output.jq, ruff/manifest.json, ruff/output.jq, ruff/config.jq}`; `go.mod` adds gojq.
 Tests: every bundled manifest validates against the schema; golden decode tests `providers/<id>/testdata/{stdout.json → diagnostics.json}` captured from real `shellcheck -f json1` / `ruff --output-format json` output; jq sandbox tests (env/import/input refused, timeout, cap); SARIF fixture.
-CI: additive only.
+CI changes in this stage must be additive.
 
-**Stage 1 — Config as data.**
+### Stage 1. Read tool settings from manifests
+
 Files: `internal/input/configuration/config.go:418-446` (map `ToolsConfig`/`ToolConfig`), `shellcheck.go:76-81,98-115`, `files.go:80,85`, `tools/command.go:110-120`, `catalog.go:63,105`, `suppression_scope.go:67`, delete `internal/input/configuration/tools/ruff`, `internal/checking/registry/index.go:22,55,78`, `internal/localapp/plugin_cache.go:40-43`, `internal/checking/scripts/contract/selection/{module,process,requirements}.go` → `cfg.Tools[name]` (temporary), `internal/architecture/contracts_test.go:22`, `internal/development/generators/config-schema/main.go` schema generator.
 Tests: existing config parse/override tests unchanged in expectation; new: bool shorthand through the map, flat Ruff keys fold into `config`, unknown `tools.<x>` rejected without a registered provider and accepted with one, inherited `tools.*.config` path relativization, JSON-schema output diff.
 
-**Stage 2 — Generic process transport + contract growth + runner absorption.**
-Files: `analyzer/backend.go` (+`Source`, `Fixes`), `internal/plugins/execution/process/{backend.go,args.go,config_render.go,version.go}`, `internal/integrations/process/process.go` (+`InheritEnvironment`), `internal/plugins/execution/scripts/backend.go` (profile hook for run scripts at `:118-130`, fixes, sources, message template), new `internal/plugins/execution/scripts/{fixes.go,sources.go}` ported from `shellcheck_fixes.go:30-92` and `shellcheck_sources.go`, delete `internal/plugins/execution/scripts/process.go`, update `internal/checking/tools_registry_test.go:24,38` to the new transport.
+### Stage 2. Run tools and convert their findings
+
+Files: `analyzer/backend.go` (+`Source`, `Fixes`), `internal/plugins/execution/process/{backend.go,args.go,config_render.go,version.go}`, `internal/integrations/process/process.go` (+`InheritEnvironment`), `internal/plugins/execution/scripts/backend.go` (script-building call for run scripts at `:118-130`, fixes, sources, message template), new `internal/plugins/execution/scripts/{fixes.go,sources.go}` ported from `shellcheck_fixes.go:30-92` and `shellcheck_sources.go`, delete `internal/plugins/execution/scripts/process.go`, update `internal/checking/tools_registry_test.go:24,38` to the new transport.
 Tests: args placeholder table; `toml-pairs` rendering equals today's `native_options.go` output (port `native_options_test.go`); version probe (min/exact); env scrubbing + passthrough; generic fix mapping (port `shellcheck_fixes_test.go`); reported-source finding provenance; process integration via the test-binary helper pattern (`tools_registry_test.go:53-72`, `config_tool_command_test.go:20-51`) for envelope, jq and SARIF decoders.
 
-**Stage 3 — Preparation profiles.**
-Files: new `internal/plugins/execution/preparation/{profile.go, mask/, shell/, python/}`; move `shellcheck_shell.go`, `shellcheck_script.go:44-113`, `prepared_plugin.go`, `path_context.go` → `profile/shell`; `ruff/checker.go` sanitize/`templateMasks`/python-shell/target inference → `profile/python`; `backend.go:227-251` → `profile/mask`. `ruff` and `shellcheck` packages import the profiles (behavior unchanged except K7).
+### Stage 3. Build scripts for linters
+
+Files: new `internal/plugins/execution/preparation/{profile.go, mask/, shell/, python/}`; move `shellcheck_shell.go`, `shellcheck_script.go:44-113`, `prepared_plugin.go`, `path_context.go` → `profile/shell`; `ruff/checker.go` sanitize/`templateMasks`/python-shell/target inference → `profile/python`; `backend.go:227-251` → `profile/mask`. `ruff` and `shellcheck` import the moved script-processing code. Behavior is unchanged except for the expression-replacement fix in K7.
 Tests: move `shellcheck_shell_test.go`, `shellcheck_script_test.go`, `prepared_plugin_test.go`, `ruff/sanitize_regression_test.go` and the `*_review_test.go` sanitizer suites unchanged; new K7 fixture (`${{ '}}' }}` inside a string).
 
-**Stage 4 — Register from manifests; delete the bespoke adapters.** (Split 4a Ruff, 4b ShellCheck if the diff is too large.)
-Files: new `internal/plugins/manifests/{registration.go,selection.go,bundled.go,managed/}`; `analysis/analysis.go:141-196`, `analysis/rules.go:24`, `internal/cli/action/lint.go:127-132`, Playground wiring → `provider.Bundled()` + `Tools map`; `internal/results/finding/unavailable_source.go:16-52` producer → id; delete `internal/checking/scripts/contract/adapters`, `internal/checking/scripts/contract/selection`, `internal/checking/scripts/contract/ruff/*`, `internal/checking/scripts/contract/shellcheck/*` (managed glue moves to `provider/managed`, generic over `Manifest.Integration`).
-Tests: **parity gate**: before deleting, capture snapshots from the current adapters (the `capture_fixture_test.go` pattern already exists in `ruff/`, `shellcheck/`, `backend/`) and assert identical findings (message, code, severity, start/end, fixes, foreign sources, suppression origin) through the manifest route; re-point `internal/development/tests/integration/tools/*` (`composite_ruff_test.go`, `ruff_process_test.go`, `shellcheck_{fixes,paths,runner,shell,sources}_test.go`, `config_tool_command_test.go:63-77`) from `adapters.Options{...}` to `provider.Bundled()`; `internal/development/tests/integration/cli/plugin_test.go:88-161` (`ACTIONLINT_TEST_{RUFF,SHELLCHECK}_WASM`) unchanged.
+### Stage 4. Register tools from manifests and remove their adapters
 
-**Stage 5 — Surfaces + 11770d95 disposition.**
+Split the Ruff and ShellCheck migrations if they are too large to review together.
+Files: new `internal/plugins/manifests/{registration.go,selection.go,bundled.go,managed/}`; `analysis/analysis.go:141-196`, `analysis/rules.go:24`, `internal/cli/action/lint.go:127-132`, Playground wiring → `provider.Bundled()` + `Tools map`; `internal/results/finding/unavailable_source.go:16-52` producer → id; delete `internal/checking/scripts/contract/adapters`, `internal/checking/scripts/contract/selection`, `internal/checking/scripts/contract/ruff/*`, `internal/checking/scripts/contract/shellcheck/*` (managed glue moves to `provider/managed`, generic over `Manifest.Integration`).
+Tests: Before deleting adapters, capture snapshots from the current adapters (the `capture_fixture_test.go` pattern already exists in `ruff/`, `shellcheck/`, `backend/`) and assert identical findings (message, code, severity, start/end, fixes, foreign sources, suppression origin) through the manifest route; re-point `internal/development/tests/integration/tools/*` (`composite_ruff_test.go`, `ruff_process_test.go`, `shellcheck_{fixes,paths,runner,shell,sources}_test.go`, `config_tool_command_test.go:63-77`) from `adapters.Options{...}` to `provider.Bundled()`; `internal/development/tests/integration/cli/plugin_test.go:88-161` (`ACTIONLINT_TEST_{RUFF,SHELLCHECK}_WASM`) unchanged.
+
+### Stage 5. Update commands, APIs and plugin disabling
+
 Files: `internal/cli/root.go:236-256`, `env.go:83-125`, `plugin.go:68-95`, `doctor.go:54-84,120-140`, `help.go:249-251`, `check.go:49`; `analysis/analysis.go:40-67`; `internal/cli/action/{inputs.go:103-126, lint.go:67-106,155-157, main.go:10-23, outputs.go}` + `action.yml`; `internal/localapp/{config_migration.go:19-54,121-125, plugins.go:31-82,195-213, plugin_selection.go:21-46,106-113}`; delete `internal/localapp/plugin_languages_test.go`; docs `config.md`, `usage.md`, `env.md`, `action.md`, `migration-v2.md`, `plugins.md`.
 Tests: CLI `--tool/--no-tool` parsing incl. `=false`, env prefix per id, doctor JSON snapshot with a manifest probe, Action input tests, `TestDisabledToolIsNotResolved` (no `artifact.Resolve` call for a disabled id), public API example tests.
 
-**Stage 6 — Store: OCI + executables + lock v2.**
+### Stage 6. Download OCI artifacts and write lock version 2
+
 Files: `internal/plugins/artifacts/{resolve.go (oci scheme), oci.go, inspect.go (Kind binary/manifest; Sniff only for wasm kinds), store.go (Materialize)}`, `internal/plugins/installation/{model.go, lock.go}`, `internal/localapp/{plugins.go (dispatch on Manifest.Transport), plugin_cache.go}`, `internal/cli/plugin.go` (install/inspect OCI refs), `plugin/plugin.go` aliases, docs `plugins.md`.
 Tests: `httptest` OCI distribution fixture (index → platform manifest → blobs, bearer challenge), digest mismatch, tag reference refused in lock, platform selection, Windows filename materialization (`.exe`; `os/exec` extension handling is **inferred**), `plugin sync` offline from cache, `CachePlan` lists binary digests, lock v1 → v2 round trip.
 
-**Stage 7 — Wire-level unified snippet contract (host side).**
+### Stage 7. Update the host for script-engine 0.3.0
+
 Files: `plugins/protocol/wit/script-engine.wit` → `@0.3.0` (+`fixes`, `source`, `resources` negotiate), `core-json-abi.md` check 3, `internal/plugins/execution/component/{script_engine.go,validation.go:34-65,contract.gen.go (regen)}`, `internal/plugins/execution/module/engine.go` negotiation, SDK crate; 0.2.0 still accepted.
 Tests: 0.3.0 fixture components under `internal/plugins/execution/component/testdata` (Rust + wat), negotiation and version-mismatch tests, parity between the process route and a 0.3.0 component on the same stdout fixture.
 
-Order rationale: 0-3 are additive or pure moves, 4 is the single behavior-parity gate protected by captured snapshots, 5 changes public surface only after the engine is data-driven, 6 adds distribution without touching analysis, 7 touches guests last so no guest rebuild blocks the release.
+Stages 0 to 3 add code or move existing code. Stage 4 replaces the adapters and compares their findings against captured results. Stage 5 changes commands and APIs after manifest-based execution works. Stage 6 adds artifact distribution. Stage 7 updates guest interfaces last, so guest rebuilds do not block the earlier work.

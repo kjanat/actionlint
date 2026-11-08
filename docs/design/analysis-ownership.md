@@ -6,10 +6,11 @@ Accepted.
 
 ## Context
 
-A single document check previously selected configuration and rules, dispatched
-workflow/action decoding, traversed composites, constructed tools, ran scripts,
-joined processes and applied diagnostic policy. Separate files left all of those
-responsibilities inside the engine's dependency graph.
+Previously, one document check selected configuration and rules, dispatched
+workflow or action decoding, traversed composites, constructed tools, ran
+scripts, joined processes and applied diagnostic policy. Splitting this code
+across files did not remove those responsibilities from the engine's dependency
+graph.
 
 ## Decision
 
@@ -33,14 +34,14 @@ resolve configuration, dispatch document languages or manage execution.
 
 ```mermaid
 flowchart LR
-    Application --> Decode[documentparse]
-    Application --> Registry[checks]
-    Application --> Composition[workflow/composition]
+    Application --> Decode[model/parsing]
+    Application --> Registry[checking/selection]
+    Application --> Composition[checking/executor/composites]
     Registry --> Builtin[builtin adapters]
-    Composition --> Engine[engine traversal]
-    Composition --> Scripts[tools/execution]
-    Application --> Policy[diagnosticpolicy]
-    Application --> Workspace[workspace]
+    Composition --> Engine[checking/passes]
+    Composition --> Scripts[checking/scripts]
+    Application --> Policy[results/policy]
+    Application --> Workspace[input/workspace]
     Decode --> Documents[document values]
 ```
 
@@ -69,10 +70,10 @@ eligibility belongs to `Document.CanAnalyze` and local metadata status; composit
 checks those before collecting executable scripts.
 
 Composite analysis returns findings, script facts, loaded sources and resolved
-composite configurations together. It executes prepared script services and joins
-resources before reading rule collectors, including after traversal failure.
-Adapter-construction failures are joined by the application before returning.
-Cleanup failures accompany partial findings and are reported once.
+composite configurations together. It runs the prepared script services and joins
+their resources before reading rule collectors, even if traversal fails. The
+application joins adapter-construction errors before returning. Cleanup errors
+accompany any partial findings and are reported once.
 
 Each composite invocation has its own traversal frame: source snapshot,
 configuration, invocation context, script scope and local-action resolver.

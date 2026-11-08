@@ -377,10 +377,11 @@ further applicable requests without sleeping through the reset window. A plain
 permission-denied response does not imply rate-limit exhaustion. These controls
 follow [GitHub's rate-limit guidance](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
 
-Dependency reservations protect declared future work from optional enrichment.
-The quota check is not a guarantee: other processes can consume the same server
-quota after it is observed. Unknown quota information is not treated as zero.
-This accounting is invocation-owned and does not add lint configuration settings.
+An HTTP caller can reserve quota units for later required requests. The tracker
+then blocks lower-priority requests from spending those units. A quota check is
+not a guarantee: another process can use the same server quota after actionlint
+observes it. Unknown quota information does not mean the quota is zero. These
+statistics belong to one invocation and are not lint configuration settings.
 
 External resolvers can add a `network` request report to their response:
 
@@ -1260,7 +1261,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [emacs-flymake]: https://www.gnu.org/software/emacs/manual/html_node/flymake/
 [emacs-melpa]: https://melpa.org/
 [ga-annotate-error]: https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#setting-an-error-message
-[go-install]: https://go.dev/doc/install
 [go-template]: https://pkg.go.dev/text/template
 [jsonl]: https://jsonlines.org/
 [nova-extension]: https://extensions.panic.com/extensions/org.netwrk/org.netwrk.actionlint/
@@ -1298,7 +1298,7 @@ For an allowed diagnostic, choose **Suppress RULE for this declaration** from th
 editor's quick-fix menu. The action adds a suppression comment or extends an
 existing one while retaining its reason. Multiline scripts are suppressed at the
 YAML declaration. The target buffer must be open; edits carry its current version.
-Rules prohibited by `disallow-suppressions` do not offer this action.
+Rules prohibited by `forbidden-suppression` do not offer this action.
 
 `actionlint fix [files...]` previews source edits as JSON. `--apply` writes the
 validated edits and checks the files again. Only fixes marked safe are selected

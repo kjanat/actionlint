@@ -40,8 +40,9 @@ actionlint check --no-config --no-tool shellcheck --no-tool ruff \
   --plugin plugins/examples/no-sudo/dist/plugin.wasm plugins/examples/no-sudo/example.yml
 ```
 
-The supplied workflow produces one warning highlighting `sudo`. A finding makes
-the CLI exit with status 1.
+The supplied workflow runs `sudo make install`. The plugin reports that command
+because self-hosted runners may not provide `sudo`. The finding makes the CLI
+exit with status 1.
 
 Build and run the example's tests in one command:
 
