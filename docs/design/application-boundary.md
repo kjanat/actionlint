@@ -34,9 +34,9 @@ sources without discovering configuration or reading their paths again.
 to `Check`, and closes those plugins afterward. File-based plugin arguments are
 converted to selected sources by `CheckWithPluginPaths`.
 
-Rules receive decoded models and the inputs their declarations request. The
-checking session constructs those inputs and coordinates nested invocations.
-Neither a renderer nor an LSP diagnostic converter starts another analysis.
+Rules receive decoded models and the data their declarations request. The
+checking session collects that data and coordinates nested invocations.
+Renderers and LSP diagnostic converters do not start another analysis.
 
 ## Resource ownership
 
@@ -53,8 +53,8 @@ matching close operation around the check.
 
 `internal/results/report.Analysis` carries findings, captured sources, document
 outlines, configuration reports and rule descriptions. It contains no live rules,
-parser nodes or process handles. CLI rendering and editor diagnostics consume
-that report.
+parser nodes or process handles. The CLI uses the report to render output, and
+the language server uses it to produce editor diagnostics.
 
 The CLI selects output formats and opens destinations. Output renderers write to
 supplied writers. The CLI owns process status and stderr. The LSP owns protocol

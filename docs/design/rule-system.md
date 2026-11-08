@@ -126,8 +126,7 @@ parts and does not change evaluation state.
 values. Cache rules receive the captured workflow before their job and step
 callbacks run. Shared write grants have a reporting job assigned in source order;
 the assignment includes all reachable restricted events and does not change when
-callbacks run in another order. Step checks read their declaring job's grant,
-not a grant stored by an earlier job callback.
+callbacks run in another order. A step check uses its own job's grant.
 
 Each admitted workflow source seeds its own reusable-workflow metadata before
 checks run, including when no lint rules are selected. Metadata parse failures are cached for callers

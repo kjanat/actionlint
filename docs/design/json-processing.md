@@ -1,6 +1,6 @@
 # JSON processing and Go version compatibility
 
-The module requires Go 1.27 and prefers the Go 1.27.2 toolchain. Core WebAssembly
+The Go version and toolchain are configured in [`go.mod`](../../go.mod). Core WebAssembly
 engine metadata and response decoding use `encoding/json/v2`: duplicate object
 keys and invalid UTF-8 are rejected, and protocol fields match case-sensitively.
 Unknown fields are accepted to support extensions to engine metadata and responses.

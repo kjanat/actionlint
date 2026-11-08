@@ -1,6 +1,6 @@
 # Upstream tracker
 
-This document inventories open issues and pull requests in [`rhysd/actionlint`] so maintainers of this fork can decide which behavior to integrate. It records whether each upstream item still applies, is worth porting, or already has an equivalent local implementation. This integration triage record is separate from the fork's implementation backlog. Upstream patches may be redesigned before integration. Inclusion does not validate every upstream report or establish current applicability. The `Author` column identifies the upstream author; equivalent local behavior alone does not establish code authorship or inspiration. Verified contribution, idea, and report credits are recorded in [CHANGELOG.md], with upstream contribution evidence noted here.
+This tracker lists open issues and pull requests in [`rhysd/actionlint`] to help maintainers decide what to integrate into the fork. It records whether each item still applies, is worth porting, or already has an equivalent local implementation. The tracker is separate from the fork's implementation backlog. Upstream patches may be redesigned before integration. An item's presence does not confirm its report or show that it still applies. The `Author` column identifies the upstream author; equivalent local behavior alone does not establish code authorship or inspiration. Verified contribution, idea, and report credits are recorded in [CHANGELOG.md], with supporting evidence here.
 
 ## Snapshot
 
@@ -37,7 +37,7 @@ itself mean the related feature is implemented.
 
 ## Reconciliation by Local disposition
 
-Items are ordered by local disposition first, then retain their original upstream order within the pull-request and issue tables.
+Items are grouped by local disposition. Within each pull-request or issue table, they follow their original upstream order.
 
 | Local disposition     | Pull requests | Issues | Total | Meaning                                                                     |
 | --------------------- | ------------- | ------ | ----- | --------------------------------------------------------------------------- |
@@ -340,7 +340,7 @@ The following closed PRs were added during the attribution review on 2026-09-07.
 | rhysd/actionlint#257 | Make Actionlint Directly Invokable as an Action Itself | @norwd | Closed unmerged, 2023-01-18 | Implemented locally | v1.11.0      | kjanat/actionlint#5 explicitly builds on rhysd/actionlint#257 and rhysd/actionlint#479; [`kjanat/actionlint@c41a8df`] credits @norwd as co-author. The fork ships a prebuilt Docker action with validated inputs and structured outputs. |
 | rhysd/actionlint#479 | Make Actionlint Directly Invokable as an Action Itself | @norwd | Closed unmerged, 2024-11-19 | Implemented locally | v1.11.0      | The same kjanat/actionlint#5 contribution above follows up on both upstream proposals. It is one contribution, credited once in the v1.11.0 changelog.                                                                                   |
 
-On refresh, do not silently delete reviewed rows that are no longer open upstream. Verify their final upstream state, move them here, and retain the local disposition and evidence.
+When refreshing the tracker, verify the final upstream state of reviewed items that are no longer open. Move their rows here and keep the local disposition and evidence.
 
 ## Refresh procedure
 

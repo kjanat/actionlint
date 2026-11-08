@@ -4,11 +4,11 @@ Run commands from the checkout root through `mise exec -- ...`. Select tests for
 the changed behavior. Use repository instructions for expensive or external runs.
 
 Read `tasks.toml`, `.mise.toml`, and the configuration for the tools you will run before choosing
-commands. The `format` task runs `kfmt`, which reads `dprint.toml`; its configured
+commands. The `format` task runs `kprint fmt`, which reads `dprint.toml`; its configured
 plugins include Go formatting through `gofumpt`. Use that repository pipeline,
 selecting the changed files when formatting a limited change. A language formatter invoked
-on its own does not replace the configured pipeline. Discover checks and generators
-from the maintained tasks and source directives rather than inventing alternatives.
+on its own does not replace the configured pipeline. Find the checks and generators
+in the task definitions and source directives.
 
 ## Before implementation
 

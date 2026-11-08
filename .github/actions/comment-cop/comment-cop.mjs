@@ -25,7 +25,7 @@ const LANGS = [
 ];
 
 const CONTRAST_GUIDANCE =
-	'Check whether the comparison explains a real constraint. If it does, keep it; otherwise describe the chosen behavior directly.';
+	'Review the wording even when the technical content is correct. State the behavior or instruction directly. Describe both alternatives only when readers need the distinction to decide or act.';
 
 /** @type {Array<[string, RegExp, string]>} */
 const TELLS = [

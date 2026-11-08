@@ -1,7 +1,7 @@
 # Integration interfaces
 
 Use the command-line interface to check files, the language server to connect an
-editor, or a plugin contract to add checks. The Go host implementation lives under
+editor, or a plugin to add checks. The Go host implementation lives under
 `internal/`; it is not an importable library API.
 
 ## Choose an interface
@@ -32,7 +32,7 @@ checks that completed. Inspect both the report and the exit code.
 
 JSON contains the complete result and completion status. JSONL emits one
 versioned diagnostic record per line; it does not encode completion status.
-Use JSON when the consumer needs that status in the report itself.
+Use JSON when your program needs that status in the report itself.
 
 Use `actionlint config schema` to obtain a configuration schema with the selected
 plugins included. Use `actionlint rules` to list rules and their declarations.
@@ -41,22 +41,22 @@ These commands expose their data without requiring imports of host Go packages.
 ## Connect an editor
 
 Run `actionlint lsp` with stdin and stdout connected to the client. Send and
-receive LSP messages through that transport. Diagnostics, completion and code
-actions use the same checking implementation as the CLI.
+receive LSP messages through that transport. The server uses the same diagnostic
+checks as the CLI and offers completion and code actions through LSP.
 
 For browser workers and VS Code web clients, use
 [`@kjanat-actionlint/language-server`](../libraries/browser-lsp/README.md).
 The package supplies the worker transport and compiled Go server. The
-[playground](../applications/playground/README.md) consumes that library.
+[playground](../applications/playground/README.md) uses that library.
 
 The [language server feature table](lsp.md) describes implemented features and
 features that are not available yet.
 
 ## Write and test a plugin
 
-Author a plugin against its delivery contract, rather than the host's Go types.
-The host supplies the inputs declared by the plugin and processes its findings,
-suppressions and proposed edits through the same result path as built-in checks.
+Declare the data your plugin needs through its interface. The host sends that
+data to the plugin and processes its findings, suppressions and proposed edits
+through the same code path as built-in checks.
 
 - The [TypeScript SDK](../plugins/sdk/typescript/README.md) supplies typed provider
   declarations, packaging commands and fixture-test helpers. Its package root
@@ -67,8 +67,8 @@ suppressions and proposed edits through the same result path as built-in checks.
   TinyGo. It is a separate module and contains no host runtime implementation.
 
 The [plugin examples](../plugins/examples) contain manifests, source,
-build instructions and tests. Start with an example that uses the execution
-contract your plugin needs.
+build instructions and tests. Start with an example for the kind of plugin you
+want to write.
 
 Authoritative component interfaces live under
 [`plugins/protocol/wit`](../plugins/protocol/wit). JSON metadata and message
@@ -82,9 +82,8 @@ a fix for every finding.
 
 ## Host implementation and registry validation
 
-CLI and LSP entry points use the private checking implementation. Other programs
-use the interfaces above instead of importing `internal/checking`, parser nodes,
-configuration objects or execution backends.
+The CLI and language server call the private checking code. To connect another
+program, use the CLI, LSP or plugin interfaces described above.
 
 The registry has its own unpublished adapter module for testing plugins against
 an exact host revision. That adapter's imports do not make the host packages part

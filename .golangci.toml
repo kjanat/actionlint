@@ -61,9 +61,8 @@ forbid        = [
   { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only the invocation owner registers occurrence IDs" },
 ]
 
-# Import direction. Each rule applies to every file its globs match, so a
-# file must satisfy all matching rules. Deny entries match import-path prefixes.
-# The rules below restrict which packages can import specific dependencies.
+# A file can match several rules' file patterns. Every such rule applies.
+# Deny entries block imports beginning with the listed path.
 
 [linters.settings.depguard.rules.yaml-types]
 files = [

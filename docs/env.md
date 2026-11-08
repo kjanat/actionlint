@@ -125,8 +125,8 @@ the same color selection. `JQ_COLORS` is interpreted by `jq` itself.
 
 ## External linters
 
-Each bundled tool reads three variables named after its id, upper-cased with dashes
-replaced by underscores:
+Each bundled tool reads three variables named after its ID. Uppercase the ID and
+replace dashes with underscores:
 
 | Variable                     | Meaning                                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------------------- |

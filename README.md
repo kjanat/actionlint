@@ -20,16 +20,15 @@ The [changelog] separates fork releases from inherited upstream history. Release
 ## Features
 
 - **Syntax check for workflow files** to check unexpected or missing keys following [workflow syntax][syntax-doc]
-- **Strong type check for `${{ }}` expressions** to catch several semantic errors like access to not existing property,
-  type mismatches, ...
+- **Type checking for `${{ }}` expressions** to catch errors such as access to nonexistent properties and type mismatches
 - **Actions usage check** to check that inputs at `with:` and outputs in `steps.{id}.outputs` are correct
 - **Reusable workflow check** to check inputs/outputs/secrets of reusable workflows and workflow calls
-- **[shellcheck][shellcheck] integration** for scripts at `run:`
+- **[shellcheck] integration** for scripts at `run:`
 - **[Ruff integration](docs/config.md#ruff)** for Python `run:` scripts, without requiring a Python interpreter
 - **Security checks**; [script injection][script-injection-doc] by untrusted inputs, hard-coded credentials
-- **Other several useful checks**; [glob syntax][filter-pattern-doc] validation, dependencies check for `needs:`, runner label validation, cron syntax validation, ...
+- **Other checks** for [glob syntax][filter-pattern-doc], `needs:` dependencies, runner labels, and cron syntax
 
-See the [full list][checks] of checks done by actionlint.
+See the [full list of checks][checks].
 
 <picture>
   <source
@@ -140,7 +139,7 @@ go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
 
 <sub><em><code>actionlint.kjanat.dev/v2</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/v2/@latest</code></sub>
 
-Run `actionlint check` in your repository to discover and check workflows and action manifests. Bare `actionlint` shows help and exits 0; `actionlint check` exits 3 when there is nothing to analyze.
+Run `actionlint check` in your repository to discover and check workflows and action manifests. Bare `actionlint` also checks the current Git repository; outside a repository it shows help and exits 0. `actionlint check` exits 3 when there is nothing to analyze.
 
 ```sh
 actionlint check
@@ -196,9 +195,9 @@ See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 ## Documents
 
 - [AI usage and policy] and [CLI compatibility]: How this fork uses AI and approaches compatibility for existing workflows and CI integrations.
-- [Checks][checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
+- [Checks]: Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 - [Installation][install]: Install with npm, Homebrew, AUR, Scoop, WinGet, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes upstream-only package names.
-- [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
+- [Usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Integration interfaces][api]: Use the CLI, language server and plugin SDKs from other programs.
 - [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and intentional differences.
@@ -208,7 +207,7 @@ See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 
 ## Bug reporting
 
-When you see some bugs or false positives, it is helpful to [file a new issue][issue-form] with a minimal example of input. Feature requests and ideas for additional checks are welcome too.
+If you find a bug or false positive, please [file an issue][issue-form] with a minimal example. Feature requests and ideas for additional checks are welcome too.
 
 See the [contribution guide] for more details.
 
@@ -246,7 +245,6 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [playground]: https://kjanat.github.io/actionlint/
 [preview-badge]: https://pkg.pr.new/badge/kjanat/actionlint
 [previews]: https://pkg.pr.new/~/kjanat/actionlint
-[pre-commit]: https://pre-commit.com
 [release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
 [releases]: https://github.com/kjanat/actionlint/releases
 [repo]: https://github.com/kjanat/actionlint

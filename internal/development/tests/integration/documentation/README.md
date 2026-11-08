@@ -2,11 +2,11 @@
 
 This tool maintains [the Checks document](../../../../../docs/checks.md).
 
-This script does:
+The checker can:
 
-- update the outputs of the example inputs; the code blocks after `Output:` header
-- update the links to the [playground](https://kjanat.github.io/actionlint/) for the example inputs
-- check the document is up-to-date
+- Update the example output in the code blocks after `Output:`.
+- Update each example's [playground](https://kjanat.github.io/actionlint/) link.
+- Check whether the recorded output and links match the examples.
 
 Generated examples use a fixed repository path and consistent missing-file error
 messages on Windows, Linux, and macOS.
@@ -22,7 +22,7 @@ messages on Windows, Linux, and macOS.
 go run ./internal/development/tests/integration/documentation [FLAGS] FILE
 ```
 
-Check the document is up-to-date.
+Check the recorded output and playground links without modifying the document.
 
 ```sh
 go run ./internal/development/tests/integration/documentation ./docs/checks.md
@@ -38,7 +38,7 @@ The check is run on the [CI workflow](../../../../../.github/workflows/ci.yml).
 
 ## Format
 
-The format of the section is:
+Each section has this format:
 
 ````markdown
 <a id="some-id"></a>
@@ -68,21 +68,20 @@ THIS CODE BLOCK WILL BE AUTO-GENERATED
 Explanation for the check...
 ````
 
-Multiple examples within a section are allowed. You can show multiple examples to explain one check
-rule.
+One section can contain several examples of the same rule.
 
 The example input code block must not be empty and must contain at least one error.
 
-When you don't want to update the output by this script, put the comment as follows. This script
-will ignore the code block. Instead you need to write the output in the code block manually.
+To write an example's output manually, add the following comment before its output
+code block. The checker will not update that block.
 
 ```yaml
 Output:
 <!-- Skip update output -->
 ```
 
-When you don't want to put a playground link for your example input, put the comment as follows
-instead of the link. This script will not generate the hash for the playground link.
+To omit an example's playground link, replace it with the following comment.
+The checker will not generate a link for that example.
 
 ```yaml
 <!-- Skip playground link -->

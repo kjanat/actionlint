@@ -2,21 +2,21 @@
 
 This command generates [`availability.gen.go`](../../../model/contexts/availability.gen.go).
 
-It does:
+The command:
 
-1. Fetch [the official contexts document](https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/contexts.md)
-2. Parse the markdown file and find "Context availability" table
-3. Extract contexts and special functions from the table
-4. Generate Go function and variable to map from workflow keys to available contexts and special functions
+1. Fetches [the official contexts document](https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/contexts.md).
+2. Finds the "Context availability" table in the Markdown file.
+3. Reads the contexts and special functions listed for each workflow key.
+4. Generates the Go function and variable that actionlint uses to look up those restrictions.
 
 ## Background
 
 GitHub Actions limits contexts and functions in certain places. For example:
 
-- limited workflow keys can access `secrets` context
-- `jobs.<job_id>.if` and `jobs.<job_id>.steps.if` can use `always()` function.
+- Only some workflow keys can access the `secrets` context.
+- `jobs.<job_id>.if` and `jobs.<job_id>.steps.if` can use the `always()` function.
 
-To check these limitations by actionlint, we maintain a table to map workflow keys to available contexts and special functions.
+Actionlint checks these restrictions using a table of the contexts and special functions available at each workflow key.
 
 ## Usage
 
@@ -24,19 +24,20 @@ To check these limitations by actionlint, we maintain a table to map workflow ke
 generate-availability [[srcfile] dstfile]
 ```
 
-For generating the source at root directory of this repository:
+Generate the source from the repository root:
 
 ```sh
 go run ./internal/development/generators/expression-contexts ./internal/model/contexts/availability.gen.go
 ```
 
-Read local file instead of fetching it from remote:
+To read a local copy of the documentation instead of downloading it, supply its
+path relative to the current directory. The destination must also be a relative path:
 
 ```sh
-go run ./internal/development/generators/expression-contexts /path/to/contexts.md ./internal/model/contexts/availability.gen.go
+go run ./internal/development/generators/expression-contexts path/to/contexts.md ./internal/model/contexts/availability.gen.go
 ```
 
-For debugging, specifying `-` to `dstfile` outputs the generated source to stdout:
+Use `-` as the destination to print the generated source to stdout:
 
 ```sh
 go run ./internal/development/generators/expression-contexts -

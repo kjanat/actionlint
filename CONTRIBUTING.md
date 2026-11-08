@@ -1,16 +1,14 @@
 # Policy for actionlint's features
 
-actionlint has two kinds of checks.
+actionlint checks workflow correctness and can also enforce project policies.
 
-**Correctness checks** report a workflow that GitHub rejects, that runs differently than its author meant, or that refers to something which does not exist. They always run. A configuration key may tell such a check what exists in this project, as `self-hosted-runner.labels` and `config-variables` do, but the check still exists and still reports the same thing in a repository with no configuration file. Errors from them are filtered with the `-ignore` option or the `ignore` key in [the configuration].
+**Correctness checks** report workflows that GitHub rejects, that run differently than their authors intended, or that refer to something that does not exist. Repository settings can tell a check about local resources, such as self-hosted runner labels and configuration variables. Correctness checks must also work in a repository without a configuration file. Users can filter findings with `-ignore` or settings in [the configuration].
 
-**Policy checks** report a workflow that GitHub runs happily but that breaks a convention the project chose for itself, such as pinning every action to a commit hash or setting `timeout-minutes` on every job. They stay silent until the `policy` mapping in [the configuration] turns them on, so a repository that configures nothing never sees them. Being opinionated is fine in a check that only runs for the projects which asked for it.
+**Policy checks** report workflows that GitHub accepts but that do not follow a chosen practice, such as pinning actions to commit hashes or setting `timeout-minutes` on every job. Most are opt-in. The cache safety checks are enabled by default. Configure rules under `lint.rules` in [the configuration].
 
-Patches for both kinds are welcome. A patch for a policy check needs its own key under `policy`, a default of off, and a section in [the configuration document]. A patch that makes an existing correctness check depend on configuration for its current behaviour is not accepted, because a repository with no configuration file must keep getting the same results.
+Patches for both kinds are welcome. Give each policy check its own rule setting and document it in [the configuration document]. New policy checks must default to off. A patch that makes an existing correctness check depend on configuration for its current behaviour is not accepted, because a repository with no configuration file must keep getting the same results.
 
-Every new key must tell "not set" apart from "set to off". A boolean key is therefore a `*bool`, and a key with a list or an object value uses nil for "not set". actionlint reads a single configuration file today, but it is meant to read a user-global one as well, and at that point a key which cannot express "not set" leaves a repository unable to opt out of what the user-global file turned on.
-
-The configuration is read once at the start of a run, so a check may rely on it being available.
+Configuration settings must distinguish an omitted value from an explicit disabling value. Use `*bool` for boolean keys and nil for omitted list or object values. This lets a repository override inherited settings. Checks can use the resolved configuration for the run.
 
 This is where the fork differs from [the upstream project], which accepts neither checks that enforce conventions nor checks that require user configuration. A patch turned down upstream for that reason is worth proposing here.
 
@@ -54,23 +52,23 @@ The Go host implementation is private. Integrations use the CLI, language server
 
 ## Reporting an issue
 
-To report a bug, please submit a new ticket on GitHub. It's helpful to search similar tickets before making it.
+To report a bug, search for similar issues and then open a new issue on GitHub.
 
 https://github.com/kjanat/actionlint/issues/new
 
-Providing a reproducible workflow content is much appreciated. If only a small snippet of workflow is provided or no input is provided at all, such issue tickets may get lower priority because they are occasionally time consuming to investigate.
+Include a workflow that reproduces the problem. Reports with only a small snippet or no input may receive lower priority because they can take longer to investigate.
 
 ## Sending a patch
 
-Thank you for taking your time to improve this project. To send a patch, please submit a new pull request on GitHub.
+To contribute a patch, open a pull request on GitHub.
 
 https://github.com/kjanat/actionlint/pulls
 
-Before submitting your PR, please ensure the following points:
+Before submitting your PR, check the following:
 
-- Confirm build/tests/lints passed on your branch. How to run them is described in the following sections.
-- If you added a new feature, consider to add tests and explain it in [the usage document].
-- If you added a new public API, consider to add tests and a doc comment for the API.
+- Confirm the build, tests and lint checks pass on your branch. The following sections explain how to run them.
+- If you added a feature, consider adding tests and explaining it in [the usage document].
+- If you added a public API, consider adding tests and a doc comment.
 - If you updated [the checks document], ensure to run [the maintenance script].
 
 ### Larger changes and refactors
@@ -95,7 +93,9 @@ Required workflows still start on every PR. Unneeded jobs are skipped; the unit-
 
 Lint, JavaScript tests, Go guest-module tests and native Rust checks run before the expensive builds and platform matrices. A failed selected check blocks those jobs; an unselected check does not. Native Rust tests run before component builds, fixture rebuilding and Wasmtime parity tests. All six unit-test platforms still run when selected.
 
-Go selection covers Go source, embedded resources and test fixtures. Standalone Rust host sources select the plugin and conformance checks rather than Go or package builds. Shared input lists in `filters.yml` use YAML anchors so jobs consume the same paths without copying them.
+CI runs the Go checks after changes to Go source, embedded resources or test fixtures. For changes limited to the Rust test host, CI runs the plugin and conformance checks. The Go checks and package builds are skipped for those changes.
+
+Jobs reuse path patterns defined with YAML anchors in `filters.yml`.
 
 To test selection and job dependencies locally, run `mise exec -- bun test --cwd .github/ci ./plan.test.mjs`.
 
@@ -150,7 +150,7 @@ make build
 make build SKIP_GO_GENERATE=1
 ```
 
-Since actionlint doesn't use any cgo features, setting `CGO_ENABLED=0` environment variable is recommended to avoid troubles around linking libc. `make build` does this by default.
+actionlint does not use cgo. Set `CGO_ENABLED=0` to avoid libc linking problems; `make build` does this by default.
 
 ### Packaging source builds
 
@@ -205,7 +205,7 @@ or
 make test
 ```
 
-To measure the code coverage
+To measure code coverage:
 
 ```sh
 # Generate coverage.html and print the code coverage per functions
@@ -214,7 +214,7 @@ make cov
 open coverage.html
 ```
 
-Automated tests are as follows.
+The automated tests are organized as follows:
 
 - [Upstream conformance tests] compare actionlint with fixtures from GitHub's language services and runner, SchemaStore, and YAML Test Suite. Run `make conformance` when changing parsing or validation. Baselines record known differences and detect changes; a green job does not mean full runtime compatibility.
 - Unit tests use `*_test.go` files beside the implementation. Each package owns its fixtures in a local `testdata/` directory.
@@ -246,7 +246,7 @@ go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
 ```
 
-These lints can be run with other checks by the following command.
+Run these lint checks with the other checks using the following command.
 
 ```sh
 make lint
@@ -306,7 +306,7 @@ Submission runs are serialized. The fork also keeps a shared submission lock and
 
 A blocked or failed submission opens an issue in `kjanat/actionlint`, with the reason and workflow link. Reruns reuse the issue, reopening it if needed. A separate reporting job also covers failures before the submission script starts, job timeouts and cancelled submission jobs. Issue reporting itself needs GitHub to be available.
 
-When releasing v1.2.3 as example:
+For example, to release v1.2.3:
 
 1. Describe the release in [CHANGELOG.md], either under the `Unreleased` heading or in a `v1.2.3` section written out in full, and write the release notes to `docs/releases/v1.2.3.md`. That file is the body of the GitHub release, GoReleaser's release notes and the WinGet manifest notes. Version preparation refuses to run when the changelog describes nothing or the file is missing.
 2. Validate and commit the release changes on `master`, including the changelog, and push them to `origin`.
@@ -377,19 +377,19 @@ The generator resolves the newest commit touching those inputs and downloads all
 
 [`webhooks.gen.go`] is a table all webhooks supported by GitHub Actions to trigger workflows. Note that not all webhooks are supported by GitHub Actions.
 
-It is generated automatically with `go generate` running [`generate-webhook-events`] script.
+`go generate` runs the [`generate-webhook-events`] script to generate it.
 
 It fetches [`events-that-trigger-workflows.md`], parses the markdown document, and extracts webhook names and their types. For more details, see [README.md at the script directory].
 
-Updating `webhooks.gen.go` is run weekly on CI by the [`Upkeep`] workflow.
+The [`Upkeep`] workflow updates `webhooks.gen.go` weekly in CI.
 
 ### Maintain `actionlint-matcher.json`
 
 [`actionlint-matcher.json`] is a matcher configuration to extract error annotations from outputs of `actionlint` command. See [the document] for its usage.
 
-The regular expression is complicated because it can matches to outputs which contain ANSI color escape sequences. So the JSON file is not modified manually.
+The regular expression must match output containing ANSI color escape sequences, so it is complex. Do not edit the JSON file manually.
 
-It is generated by [`generate-actionlint-matcher`] script. See the README.md file for the usage of the script and how to run the tests for it.
+The [`generate-actionlint-matcher`] script generates it. See the script’s README.md for usage and test instructions.
 
 ### Maintain `availability.gen.go`
 
@@ -400,17 +400,17 @@ It is generated by [`generate-actionlint-matcher`] script. See the README.md fil
 
 `availability.gen.go` is generated from [the contexts document] using [generate-availability] script. It is run through `go generate` in root `generate.go`. See [the readme of the script] for the usage of the script.
 
-Update for `availability.gen.go` is run weekly on CI by the [`Upkeep`] workflow.
+The [`Upkeep`] workflow updates `availability.gen.go` weekly in CI.
 
 <a id="about-checks-doc"></a>
 
 ## How to write checks document
 
-The ['Checks' document]['Checks' document-2] is a large document to explain all checks by actionlint.
+The ['Checks' document]['Checks' document-2] explains actionlint's checks.
 
-This document is maintained with [`check-checks`] script. This script automatically updates the code blocks after `Output:` and the `Playground` links. This script should be run after modifying the document.
+The [`check-checks`] script updates the code blocks after `Output:` and the `Playground` links. Run it after changing the document.
 
-Please see [the readme of the script][the readme of the script-2] for the usage and knowing the details of the document format that this script assumes.
+See [the script README][the readme of the script-2] for usage and the document format it expects.
 
 ['Checks' document-2]: ./docs/checks.md
 ['Checks' document]: docs/checks.md

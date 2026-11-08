@@ -1,5 +1,8 @@
 # Pinned Pandoc installer
 
+CI uses the version selected in [`setup.bash`](setup.bash). Local development
+uses the version in [`.mise.toml`](../../../.mise.toml).
+
 This private action downloads public release assets directly and checks their SHA-256
 before installation, including after cache restoration. It needs no GitHub token or
 release metadata requests.

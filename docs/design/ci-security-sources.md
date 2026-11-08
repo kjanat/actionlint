@@ -20,8 +20,9 @@ mapping; rolling documentation needs a captured revision before rule acceptance.
 ## Initial coverage map
 
 Existing rule names come from the [index of rule declarations](../../internal/checking/rule_index.go).
-These are proposed relationships requiring a predicate-level review, not new
-rule selections or implemented standards profiles.
+The table proposes connections between existing rules and published security
+requirements. Check exactly what each rule detects before using these connections
+to select rules or build a standards profile.
 
 | Proposed category                            | Existing starting point                                                                      | Required coverage work                                                                                                                                                |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -58,4 +59,5 @@ permission to read their metadata.
 Begin with immutable references, token permissions and script injection. Review
 their actual predicates before adding source mappings to the public rule contract.
 Add standards profiles only after coverage and unknown-result reporting exist;
-a profile must expose partial evaluation rather than turn missing controls green.
+a profile must list any controls it could not evaluate. Those controls cannot
+count as successful checks.

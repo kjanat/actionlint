@@ -1,8 +1,8 @@
 # Upstream conformance tests
 
-The conformance job runs reference-project fixtures through actionlint's Go implementation. It compares the recorded
-contracts and keeps score of reviewed differences. Reference expectations can reflect missing features or validation.
-Assessments use implementation or runtime evidence to explain each difference.
+The conformance job runs reference-project fixtures through actionlint's Go implementation and compares the results
+with the recorded expectations. Reference expectations can reflect missing features or validation. Assessments use
+implementation or runtime evidence to explain reviewed differences.
 
 For live GitHub expression evaluation, coercion and `fromJSON()` behavior, see the separate
 [expression reference and reproduction workflow](expression-behavior.md).
@@ -20,11 +20,12 @@ GitHub's language server lives in `actions/languageservices`. Its shared express
 designed for use across languages. We also import the language-service tests for service container commands and YAML
 anchors. The runner fixtures come from `ActionManifestManagerL0.cs` and `ExpressionParserL0.cs`.
 
-SchemaStore supplies interesting test inputs. Its positive and negative labels describe that schema's expectations;
-they are not correctness expectations for actionlint or evidence of GitHub acceptance. Agreement counts measure
-comparison with those labels, not type accuracy. A schema-valid example can still contain undefined context
-properties, incomplete jobs, or retired actions. YAML Test Suite comparisons cover YAML stream acceptance, not
-GitHub's runtime behavior.
+SchemaStore labels say whether its schema accepts each example. The agreement count shows how often actionlint
+gives the same answer. That count does not establish correct type checking or GitHub acceptance: an example can
+pass the schema while containing undefined context properties, incomplete jobs or retired actions.
+
+The YAML Test Suite checks whether the parser accepts a YAML stream. Use separate runner comparisons to check
+runtime behavior.
 
 ## Run locally
 
@@ -182,5 +183,5 @@ requires the recorded fixture counts to match the imported corpus. Review count 
 and update this document when the selected contracts change. Source revision changes make the affected assessments
 stale, even when diagnostics happen to stay the same. Review their evidence before updating their fingerprints.
 
-The cache stores upstream archives unmodified, including their
-license notices they contain; fixture source text is not copied into this repository or release packages.
+The cache stores upstream archives unmodified, including their license notices. Fixture source text is not copied into
+this repository or release packages.

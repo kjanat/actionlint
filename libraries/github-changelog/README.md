@@ -1,6 +1,7 @@
 # `@kjlint/changelog-rss`
 
-RSS 2.0 parser, browser reader, and issue monitor for the [GitHub Actions changelog feed].
+This package provides an RSS 2.0 parser, browser reader and issue monitor for
+the [GitHub Actions changelog feed].
 
 ## Feed parser
 
@@ -71,7 +72,7 @@ await run({ github, context, core });
 ## Development
 
 The source is TypeScript under `src/`, compiled to `dist/` by `tsc`. The tests run
-against `src/` directly on Node's type stripping.
+against `src/` directly, using Node's support for stripping TypeScript types.
 
 ```sh
 run -s @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test

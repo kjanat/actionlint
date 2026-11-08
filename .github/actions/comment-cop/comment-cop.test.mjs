@@ -372,7 +372,7 @@ test('combines different advice and deduplicates equivalent contrast advice', ()
 
 	assert.equal(body.split('\n').filter(line => line.startsWith('- ')).length, 2);
 	assert.match(body, /length-only flag/);
-	assert.match(body, /comparison explains a real constraint/);
+	assert.match(body, /Review the wording even when the technical content is correct/);
 });
 
 const reviewFiles = [

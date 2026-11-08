@@ -1,8 +1,8 @@
 # Checking contracts
 
-Host Go implementation lives under `internal/`. The Go plugin SDK contains guest
-bindings, not a public API for embedding the host. Plugins use the contracts under
-`plugins/protocol`; CLI and LSP code use the private checking operation.
+The Go host implementation lives under `internal/`. The Go SDK provides guest
+bindings for building plugins against the interfaces in `plugins/protocol`.
+The CLI and language server call the private checking code.
 
 ## Inputs and language behavior
 
@@ -29,10 +29,10 @@ deprecation status, category, defaults, options and configuration scope.
 `internal/checking/rule_index.go` assembles those declarations. Bundled external
 tools supply their declarations through manifests.
 
-Configuration loading receives a `configuration.RuleSet`. It does not import the
-implementations. `checking.ConfigurationRules` assembles the declarations for
-native and editor callers. Schema generation and option validation use those
-declarations instead of maintaining another rule list.
+`checking.ConfigurationRules` collects rule declarations for the CLI and editor
+integrations. Configuration loading receives these declarations as a
+`configuration.RuleSet`, without importing the rule implementations. The schema
+generator and option validator use these declarations too.
 
 `internal/checking/selection` selects implementations and supplies resolved
 configuration. `internal/checking/executor` adapts models to checks and coordinates
@@ -70,9 +70,9 @@ components, core Wasm modules and native processes through their declared
 contracts. `internal/plugins/installation` handles project declarations and
 registry selection. Installation does not make those host Go packages public.
 
-The SDKs and examples live under `plugins/sdk` and `plugins/examples`. Guest code
-must build without importing private host packages. Registry validation uses its
-private host adapter instead of expanding the public Go API.
+The SDKs and examples live under `plugins/sdk` and `plugins/examples`. Plugin
+code must compile without importing private host packages. The registry tests
+plugins through its own unpublished adapter, which can import those packages.
 
 ## Findings, suppressions and edits
 

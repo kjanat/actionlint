@@ -8,13 +8,13 @@ Only the selected file is rewritten. Inherited files are normalized while read;
 select each inherited file explicitly to rewrite its syntax too.
 
 Checking reads legacy syntax through normalization without rewriting project files.
-Explicit `config migrate` supplies default
+The `config migrate` command adds default
 ShellCheck and Ruff declarations when `plugins` was omitted. An explicit `plugins`
 value, including `[]` or `null`, prevents default plugin insertion. Native backends
 are selected for explicit process configuration and ShellCheck source or rc-file settings.
 
-Applying this migration resolves and verifies plugin dependencies before saving
-exact canonical registry versions in config. An existing project lock is retired only
+When you apply the migration, actionlint resolves and verifies plugin dependencies
+before saving exact canonical registry versions in the configuration. An existing project lock is retired only
 after its recorded versions and digests agree with registry evidence and config is saved.
 A failed resolution or download leaves config and the old lock unchanged. New locks are not created.
 Preview and `--check` do not download artifacts. Already canonical configs are
@@ -25,9 +25,10 @@ The parser accepts old documents through the same conversion, including
 inherited files and inline configuration. Parsing alone never writes files.
 Migration writes the input format: YAML, JSON or TOML. TOML schema directives are
 copied to the output; comments within moved settings appear before the resulting `lint` section.
-A prepared file migration checks its entire inherited input graph before writing,
-including fetching HTTPS bases again; changed bytes abort the write. Hosted bases
-remain read-only. Migrate a selected local file to retain its remote `extends`.
+Before writing a migrated file, actionlint checks every configuration it inherits,
+including fetching HTTPS base configurations again. If their contents have changed,
+actionlint stops without writing. Hosted base configurations are read-only. Migrate
+the local file to keep its remote `extends`.
 TOML cannot express null resets or unknown variable values. If encoding would lose facts or change inherited settings,
 migration refuses the rewrite; convert that selected document to YAML or JSON first.
 
@@ -69,8 +70,8 @@ The `required-actions` rule has been removed. Delete its configuration entries
 before migrating; migration rejects remaining entries.
 
 Older knowledge options on `runner-label`, `expression-reference` and `workflow-call`
-also migrate to `repository` without changing their diagnostic levels. Repository facts
-remain available when those rules are off. Null means unknown; empty collections mean
+also migrate to `repository` without changing their diagnostic levels. The repository settings
+are still available when those rules are off. Null means unknown; empty collections mean
 known empty sets. Built-in and declared reusable-workflow secrets are added separately.
 
 ```yaml

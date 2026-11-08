@@ -1,12 +1,13 @@
-This directory contains project directories tested by `TestLinterLintProject` in `linter_test.go`.
+`TestProjectWorkflowFixtures` in `fixtures_test.go` checks the projects in this directory.
 
-Each directory represents one project. And `<project>.out` file describes all errors when linting the project (one error per
-line). Error messages in the file must be sorted by file paths and error positions. An empty file means no error.
+Each subdirectory represents one project. Its neighboring `<project>.out` file lists the expected diagnostics, one per
+line, sorted by file path and source position. An empty file means the check should report no diagnostics.
 
-Each project must contain `workflows` directory and it must contain at least one workflow file.
+For each fixture, this test scans `<project>/workflows/`. It reads local actions
+referenced by those workflows from the paths in their `uses:` declarations.
 
-Working directory is set to `projects/<project>` when running the tests. File paths in `.out` files should be relative to the
-project directory.
+The test discovers workflows and reads configuration relative to each project directory. Paths in `.out` files are also
+relative to that directory.
 
 ```
 ├── some_project
