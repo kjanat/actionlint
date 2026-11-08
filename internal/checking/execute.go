@@ -73,8 +73,9 @@ type sourceUnit = workspace.Source
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
-	RemoteActions actions.Provider
-	Repository    func(context.Context, string) repository.Snapshot
+	RemoteActions   actions.Provider
+	RemoteWorkflows workflowinputs.Provider
+	Repository      func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
 	Runners            runner.Options
@@ -379,6 +380,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	// Local dependencies use the project root or an explicitly supplied dependency root.
 	workflows := map[string]*workflowinputs.Cache{}
+	remoteWorkflows := workflowinputs.NewRemote(request.RemoteWorkflows)
 	session.workingDir = absPath(cwd)
 	session.repositories = make(map[string]repository.Snapshot)
 	for _, source := range request.Sources {
@@ -417,6 +419,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		wc, configured := workflows[root]
 		if !configured {
 			wc = workflowinputs.NewCache(root, session.debugWriter())
+			wc.SetRemote(remoteWorkflows)
 			workflows[root] = wc
 		}
 		ac := actions.GetCache(lifetime, root)

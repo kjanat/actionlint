@@ -28,6 +28,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -43,6 +44,9 @@ type Options struct {
 	// Nil creates an application-owned pool.
 	Processes     *process.ProcessPool
 	RemoteActions actions.Provider
+	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
+	// them when it also implements workflows.Provider.
+	RemoteWorkflows workflowinputs.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
 	Runners    runner.Options
@@ -181,6 +185,10 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
 	request.RemoteActions = options.RemoteActions
+	request.RemoteWorkflows = options.RemoteWorkflows
+	if request.RemoteWorkflows == nil {
+		request.RemoteWorkflows, _ = options.RemoteActions.(workflowinputs.Provider)
+	}
 	request.Repository = options.Repository
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
 

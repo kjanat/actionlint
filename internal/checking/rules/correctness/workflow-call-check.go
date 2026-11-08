@@ -70,11 +70,12 @@ func (rule *workflowCallCheck) checkJob(n workflowdecl.JobView) {
 	}
 
 	if _, ok := references.LocalWorkflow(u.Value()); ok {
-		rule.checkWorkflowCallUsesLocal(n.WorkflowCall(), n.Permissions(), n.CacheMode())
+		rule.checkWorkflowCall(n.WorkflowCall(), n.Permissions(), n.CacheMode())
 		return
 	}
 
 	if _, ok := references.WorkflowRef(u.Value()); ok {
+		rule.checkWorkflowCall(n.WorkflowCall(), n.Permissions(), n.CacheMode())
 		return
 	}
 
@@ -85,7 +86,7 @@ func (rule *workflowCallCheck) checkJob(n workflowdecl.JobView) {
 	)
 }
 
-func (rule *workflowCallCheck) checkWorkflowCallUsesLocal(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, jobCacheMode workflowdecl.CacheModeView) {
+func (rule *workflowCallCheck) checkWorkflowCall(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, jobCacheMode workflowdecl.CacheModeView) {
 	u := call.Uses()
 	m, err := rule.cache.LookupForCall(u.Value())
 	if err != nil {
