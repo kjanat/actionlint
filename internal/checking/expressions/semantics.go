@@ -167,7 +167,8 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	if rule.compositeScript {
 		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
 	}
-	result := c.CheckResult(expreval.EvaluateSubexpressions(expr))
+	evaluation := expreval.EvaluateSubexpressions(expr)
+	result := c.CheckResult(evaluation)
 	ty, errs := result.Type, result.Findings
 	errs = append(errs, correctness.UnusedFormatArguments(expr, result.Calls)...)
 	if rule.options.SuspiciousCoercion {
@@ -175,6 +176,9 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 	if rule.options.JoinLiteral {
 		errs = append(errs, suspicious.JoinLiteral(expr, result.Calls)...)
+	}
+	if rule.options.CollectionComparison {
+		errs = append(errs, suspicious.CollectionComparison(expr, result.Types, evaluation)...)
 	}
 	if strings.HasSuffix(workflowKey, ".if") {
 		if rule.options.CaseInsensitiveConditions {

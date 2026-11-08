@@ -75,6 +75,7 @@ type Options struct {
 	UnsoundTernary            bool
 	SuspiciousCoercion        bool
 	JoinLiteral               bool
+	CollectionComparison      bool
 	StringConditions          bool
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool

@@ -576,7 +576,7 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 // problemRule selects the configurable check and its reported subcode.
 func problemRule(code actionmeta.ProblemCode) (ruleName, diagnosticCode string) {
 	switch code {
-	case actionmeta.CodeCoercion, actionmeta.CodeStringCondition, actionmeta.CodeJoinLiteral:
+	case actionmeta.CodeCoercion, actionmeta.CodeStringCondition, actionmeta.CodeJoinLiteral, actionmeta.CodeCollectionComparison:
 		return string(code), string(code)
 	case actionmeta.CodeInvalidJSON, actionmeta.CodeFormatPlaceholder:
 		return "expression-call", string(code)

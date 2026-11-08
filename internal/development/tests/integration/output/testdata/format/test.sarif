@@ -119,6 +119,24 @@
               }
             },
             {
+              "id": "collection-comparison",
+              "name": "CollectionComparison",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Detect equality checks between object or array instances",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#collection-comparison"
+              },
+              "fullDescription": {
+                "text": "Objects and arrays compare equal only when they are the same instance. Equal contents do not make separately created objects or arrays equal. A condition that grants access or gates a write can therefore evaluate differently from a comparison of contents. This check reports == and != between two known objects or two known arrays. It accepts null checks and repeated access to the same context property, and skips unknown types and expressions that cannot execute."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#collection-comparison",
+              "help": {
+                "text": "Compare the fields or array elements that determine equality. Disable this rule for a deliberate instance-identity comparison."
+              }
+            },
+            {
               "id": "container-runner",
               "name": "ContainerRunner",
               "defaultConfiguration": {
@@ -497,6 +515,24 @@
               }
             },
             {
+              "id": "invalid-output-file",
+              "name": "InvalidOutputFile",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Check literal writes to GITHUB_OUTPUT",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#invalid-output-file"
+              },
+              "fullDescription": {
+                "text": "GITHUB_OUTPUT requires NAME=value records or multiline records enclosed by NAME\u003c\u003cdelimiter and a matching delimiter. This check combines literal writes from Bash and sh scripts, then validates the complete file. It handles literal echo and printf commands, command groups, and cat or tee with literal text from a here-document or pipe. It skips the script if it contains dynamic values, unsupported commands, variable assignments or control flow. Commands that could redefine these utilities also cause the script to be skipped."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#invalid-output-file",
+              "help": {
+                "text": "Write NAME=value for a single-line output. For a multiline output, write NAME\u003c\u003cdelimiter, the value, and the matching delimiter."
+              }
+            },
+            {
               "id": "job-needs",
               "name": "JobNeeds",
               "defaultConfiguration": {
@@ -512,6 +548,24 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#job-needs",
               "help": {
                 "text": "Reference an existing job ID and remove dependency cycles."
+              }
+            },
+            {
+              "id": "join-literal",
+              "name": "JoinLiteral",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report redundant join calls on string literals",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#join-literal"
+              },
+              "fullDescription": {
+                "text": "join() accepts a string and returns it unchanged. Context names inside the quotes are literal text and are not evaluated. The separator has no effect on that string. This optional check reports a string literal as the first argument even when the call may be deliberate. Arrays and strings supplied by other expressions are not reported."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#join-literal",
+              "help": {
+                "text": "If you meant to use literal text, remove the redundant call. To combine expression values, use format() or pass an array to join(). This rule does not offer an automatic edit."
               }
             },
             {
