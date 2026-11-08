@@ -3,7 +3,7 @@ import { appendFileSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { Glob, YAML } from 'bun';
+import { YAML } from 'bun';
 
 const optional = new Set(['nix', 'conformance', 'expression-probe']);
 
@@ -22,48 +22,6 @@ function commandFile(environment, name) {
 	return file;
 }
 
-/** Match ordered globs, preserving exclusions and later re-inclusions. @param {string} path @param {string[]} patterns */
-export function matchesPaths(path, patterns) {
-	let included = false;
-	for (const pattern of patterns) {
-		const exclude = pattern.startsWith('!');
-		const glob = exclude ? pattern.slice(1) : pattern;
-		if (!glob) throw new Error('Empty CI path pattern');
-		if (new Glob(glob).match(path)) included = !exclude;
-	}
-	return included;
-}
-
-/** @param {unknown} value @returns {Record<string, unknown>} */
-function fields(value) {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid CI path filters');
-	return Object.fromEntries(Object.entries(value));
-}
-
-/** Flatten shared YAML sequences without changing pattern order. @param {unknown} value @returns {string[]} */
-function patterns(value) {
-	if (!Array.isArray(value)) throw new Error('CI path filters must be sequences');
-	/** @type {unknown[]} */
-	const result = value.flat(Infinity);
-	if (!result.every(pattern => typeof pattern === 'string')) throw new Error('CI path patterns must be strings');
-	if (result.some(pattern => !pattern || pattern === '!')) throw new Error('Empty CI path pattern');
-	return result;
-}
-
-/** @typedef {{shared: string[], jobs: Record<string, string[]>}} Filters */
-/** @param {string} profile @param {string} cwd @returns {Filters} */
-export function readFilters(profile, cwd = process.cwd()) {
-	const config = fields(YAML.parse(readFileSync(resolve(cwd, '.github/ci/filters.yml'), 'utf8')));
-	const filters = fields(fields(config.workflows)[profile]);
-	const jobs = Object.fromEntries(
-		Object.entries(fields(filters.jobs)).map(([name, paths]) => {
-			if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error('Invalid CI check name');
-			return [name, patterns(paths)];
-		}),
-	);
-	return { shared: patterns(filters.shared), jobs };
-}
-
 /** @param {string} message @param {string} cwd */
 export function ciTrailers(message, cwd = process.cwd()) {
 	const parsed = execFileSync('git', ['interpret-trailers', '--parse'], { cwd, input: message, encoding: 'utf8' });
@@ -80,13 +38,96 @@ export function ciTrailers(message, cwd = process.cwd()) {
 	return { full: false, skip };
 }
 
-/** @param {Filters} filters @param {string[]} paths @param {{full: boolean, skip: string[]}} trailers */
-export function selectJobs(filters, paths, trailers = { full: false, skip: [] }) {
-	const shared = paths.some(path => matchesPaths(path, filters.shared));
+/** @param {unknown} value @returns {string[]} */
+function stringsIn(value) {
+	if (typeof value === 'string') return [value];
+	if (Array.isArray(value)) return value.flatMap(stringsIn);
+	if (value && typeof value === 'object') return Object.values(value).flatMap(stringsIn);
+	return [];
+}
+
+/** @param {string} profile @param {string} cwd */
+export function jobNames(profile, cwd = process.cwd()) {
+	if (!/^[a-z][a-z0-9-]*$/.test(profile)) throw new Error('Invalid workflow name');
+	const workflow = YAML.parse(readFileSync(resolve(cwd, `.github/workflows/${profile}.yml`), 'utf8'));
+	const names = [
+		...new Set(
+			stringsIn(workflow).flatMap(text =>
+				[...text.matchAll(/outputs\.jobs\)\[['"]([a-z][a-z0-9-]*)['"]\]/g)].map(match => match[1])
+			),
+		),
+	];
+	if (!names.length) throw new Error(`Workflow ${profile} has no planned jobs`);
+	return names;
+}
+
+/** @param {string} base @param {string} head @param {string} cwd */
+export function affectedProjects(base, head, cwd = process.cwd()) {
+	/** @type {unknown} */
+	const result = JSON.parse(execFileSync('mise', [
+		'run',
+		'--affected',
+		'--affected-committed',
+		'--affected-base',
+		base,
+		'--affected-head',
+		head,
+		'--affected-json',
+		'test',
+	], { cwd, encoding: 'utf8', timeout: 60000, maxBuffer: 16 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] }));
+	if (!result || typeof result !== 'object' || !('projects' in result) || !Array.isArray(result.projects)) {
+		throw new Error('mise returned no affected projects');
+	}
+	/** @type {string[]} */
+	const projects = [];
+	for (const project of result.projects) {
+		if (!project || typeof project !== 'object' || !('id' in project) || typeof project.id !== 'string') {
+			throw new Error('mise returned a project without an ID');
+		}
+		projects.push(project.id);
+	}
+	return projects;
+}
+
+/** @param {string} project @param {string} profile @returns {string[] | null} */
+function projectChecks(project, profile) {
+	if (project === 'custom:runner-host' || project.startsWith('cargo:')) {
+		return profile === 'ci' ? ['plugins'] : profile === 'conformance' ? ['conformance'] : [];
+	}
+	if (project === 'custom:documentation') return profile === 'ci' ? ['release', 'lint'] : [];
+	if (project === 'custom:distribution') {
+		return profile === 'ci'
+			? ['nix', 'release', 'docker', 'action', 'javascript']
+			: profile === 'codeql'
+			? ['javascript-typescript', 'actions']
+			: [];
+	}
+	if (project.startsWith('node:')) {
+		if (profile === 'codeql') return ['javascript-typescript'];
+		if (profile !== 'ci') return [];
+		const jobs = ['javascript', 'release'];
+		if (project === 'node:actionlint-action') jobs.push('action', 'action-tests', 'docker');
+		if (project === 'node:actionlint-playground' || project === 'node:@kjanat-actionlint/language-server') {
+			jobs.push('wasm');
+		}
+		if (
+			project.startsWith('node:@kjanat-actionlint/plugin-')
+			|| project === 'node:@kjanat-actionlint/external-linter-examples'
+		) jobs.push('plugins');
+		return jobs;
+	}
+	// Unknown projects select every check until their CI jobs have been assigned.
+	return null;
+}
+
+/** @param {string} profile @param {string[]} names @param {string[]} projects @param {{full: boolean, skip: string[]}} trailers */
+export function selectJobs(profile, names, projects, trailers = { full: false, skip: [] }) {
+	const checks = projects.map(project => projectChecks(project, profile));
 	return Object.fromEntries(
-		Object.entries(filters.jobs).map(([job, patterns]) => [
+		names.map(job => [
 			job,
-			trailers.full || (!trailers.skip.includes(job) && (shared || paths.some(path => matchesPaths(path, patterns)))),
+			trailers.full
+			|| (!trailers.skip.includes(job) && checks.some(selected => selected === null || selected.includes(job))),
 		]),
 	);
 }
@@ -113,23 +154,25 @@ export function changedInputs(environment, cwd = process.cwd()) {
 			throw new Error('No comparison for this push');
 		}
 	} else {
-		return { paths: [], trailers: { full: true, skip: [] } };
+		return { paths: [], base: '', head: '', trailers: { full: true, skip: [] } };
 	}
 	const paths = git(['diff', '--name-only', '--no-renames', '-z', base, head, '--']).split('\0').filter(Boolean);
-	return { paths, trailers };
+	return { paths, base, head, trailers };
 }
 
-/** @param {NodeJS.ProcessEnv} environment @param {string} cwd */
-export function plan(environment = process.env, cwd = process.cwd()) {
-	const filters = readFilters(required(environment, 'CI_PROFILE'), cwd);
+/** @param {NodeJS.ProcessEnv} environment @param {string} cwd @param {typeof affectedProjects} affected */
+export function plan(environment = process.env, cwd = process.cwd(), affected = affectedProjects) {
+	const profile = required(environment, 'CI_PROFILE');
+	const names = jobNames(profile, cwd);
 	let jobs;
 	let fallback = false;
 	try {
-		const { paths, trailers } = changedInputs(environment, cwd);
-		jobs = selectJobs(filters, paths, trailers);
-	} catch {
-		// Missing history, invalid trailers or unsupported patterns must run more checks, never fewer.
-		jobs = Object.fromEntries(Object.keys(filters.jobs).map(job => [job, true]));
+		const { paths, base, head, trailers } = changedInputs(environment, cwd);
+		const projects = trailers.full || paths.length === 0 ? [] : affected(base, head, cwd);
+		jobs = selectJobs(profile, names, projects, trailers);
+	} catch (error) {
+		console.error(`CI dependency planning failed: ${error instanceof Error ? error.message : String(error)}`);
+		jobs = Object.fromEntries(names.map(job => [job, true]));
 		fallback = true;
 	}
 	const output = commandFile(environment, 'GITHUB_OUTPUT');

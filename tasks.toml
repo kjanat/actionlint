@@ -282,7 +282,7 @@ run = "biome check . --error-on-warnings"
 run = "bun run --filter '*' --if-present lint"
 
 ["test:js"]
-run = "run -p //.github/ci:test //.github/actions/comment-cop:test //.github/actions/setup-pandoc:test //.github/actions/setup-runner:test //.github/actions/setup-shellcheck:test //.github/actions/setup-wasm-toolchain:test //tools/matcher:test //tools/release:test //tools/toolchain:test //tools/generate/webhook-payloads:test //distribution/docker:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-npm:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test"
+run = "run -p //.github/ci:test //.github/actions/comment-cop:test //tools/matcher:test //tools/release:test //tools/toolchain:test //tools/generate/webhook-payloads:test //distribution/docker:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-npm:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test"
 
 ["test:workspaces"]
 run = "bun run --filter '*' --if-present test"

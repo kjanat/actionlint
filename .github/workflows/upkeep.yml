@@ -12,6 +12,9 @@ concurrency:
 permissions: { contents: read }
 
 env:
+  MISE_CACHE_DIR: "${{ github.workspace }}/../actionlint-mise/cache"
+  MISE_LOCKED: "1"
+  MISE_TASK_RUN_AUTO_INSTALL: "false"
   hasToken: "${{ secrets.UPKEEP_TOKEN != null }}"
 
 jobs:
@@ -65,29 +68,26 @@ jobs:
     if: github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions: { contents: write, pull-requests: write }
+    env: { MISE_ENABLE_TOOLS: "shellcheck" }
     steps:
       - *Checkout
       - *SetupNode
-      - uses: $/.github/actions/setup-shellcheck
-      - name: Keep mise metadata with cached tools
-        shell: bash
-        run: mise_dir="${HOME//\\//}/.local/share/actionlint-mise";
-          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi;
-          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}/../actionlint-mise"
           cache: true
-          auto_update: true
-          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}"
           cache_save_post: true
-          cache_key: >-
-            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: github:kjanat/actionlint github:rhysd/actionlint
           add_shims_to_path: false
           minimum_release_age: 0s
         env:
-          MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint"
-          MISE_DISABLE_TOOLS: "shellcheck,github:koalaman/shellcheck,rshellcheck,github:kjanat/shellcheck-rs"
+          MISE_ENABLE_TOOLS: shellcheck
+          MISE_DISABLE_TOOLS: "rshellcheck,github:kjanat/shellcheck-rs"
+      - name: Refresh the actionlint release locks
+        run: mise lock --bump github:kjanat/actionlint github:rhysd/actionlint;
+          mise install --locked
+        env: { GITHUB_TOKEN: "${{ github.token }}", MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint" }
       - run: node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
@@ -104,7 +104,9 @@ jobs:
           token: ${{ secrets.UPKEEP_TOKEN || github.token }}
           branch: ci/readme-demo
           delete-branch: true
-          add-paths: README.md
+          add-paths: |
+            README.md
+            mise.lock
           commit-message: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
           title: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
           body: |
@@ -126,10 +128,19 @@ jobs:
       - *SetupGo
       - *SetupNode
       - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # 31.11.3
-      - uses: $/.github/actions/setup-runner
+      - uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
         with: { version-file: .tool-versions }
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
-        with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
+        with: {
+          version: 2026.11.4,
+          mise_dir: "${{ github.workspace }}/../actionlint-mise",
+          cache: true,
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}",
+          install: false,
+          env: false,
+          add_shims_to_path: false,
+          working_directory: "${{ runner.temp }}",
+        }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: run //tools/toolchain:test

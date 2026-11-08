@@ -36,11 +36,15 @@ syft                       = "1.56.0"
 tinygo                     = "0.43.0"
 wasm-tools                 = "1.263.0"
 wit-bindgen                = "0.63.0"
-yamllint                   = "1.38.0"
+uv                         = "0.13.7"
+yamllint                   = { version = "1.38.0", depends = ["uv"] }
 zizmor                     = "1.31.1"
 tombi                      = "1.10.0"
 markscribe                 = "0.8.1"
-pandoc                     = "3.13"
+pandoc                     = {
+  version                               = "3.13",
+  platforms.windows-arm64.asset_pattern = "pandoc-{{ version }}-windows-x86_64.zip",
+}
 kprint                     = { version = "0.60.6", depends = ["bun"] }
 runner-run                 = "0.28.0"
 typescript                 = "7.0.2"
@@ -79,6 +83,7 @@ shellcheck  = "github:koalaman/shellcheck"
 rshellcheck = "github:kjanat/shellcheck-rs"
 
 [settings]
+lockfile_platforms                  = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64", "windows-arm64"]
 npm.package_manager                 = "bun"
 experimental                        = true
 idiomatic_version_file_enable_tools = ["go", "node", "bun", "rust"]
@@ -210,3 +215,49 @@ config_roots = [
   "tools/*",
   "tools/generate/*",
 ]
+
+[monorepo.projects."go:actionlint.kjanat.dev/v2"]
+root        = "."
+depends_add = ["custom:plugin-protocol", "custom:configuration-schemas", "go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+
+[monorepo.projects."go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+root        = "plugins/sdk/go"
+depends_add = ["custom:plugin-protocol"]
+
+[monorepo.projects."go:example.com/actionlint-plugin-insecure-download"]
+root        = "plugins/examples/insecure-download"
+depends_add = ["go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+
+[monorepo.projects."custom:runner-host"]
+root = "internal/development/tests/conformance/wasm/runner-host"
+
+[monorepo.projects."custom:plugin-protocol"]
+root = "plugins/protocol"
+
+[monorepo.projects."custom:configuration-schemas"]
+root = "schemas"
+
+[monorepo.projects."custom:documentation"]
+root = "docs"
+
+[monorepo.projects."custom:maintenance"]
+root = "tools"
+
+[monorepo.projects."custom:distribution"]
+root        = "distribution"
+depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
+
+[monorepo.projects."node:actionlint-playground"]
+depends_add = ["go:actionlint.kjanat.dev/v2"]
+
+[monorepo.projects."node:actionlint-action"]
+depends_add = ["go:actionlint.kjanat.dev/v2"]
+
+[monorepo.projects."node:@kjanat/actionlint-npm"]
+depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
+
+[monorepo.projects."node:@kjanat-actionlint/plugin-sdk"]
+depends_add = ["custom:plugin-protocol"]
+
+[monorepo.projects."cargo:actionlint-extension-api"]
+depends_add = ["custom:plugin-protocol"]

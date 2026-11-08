@@ -4,8 +4,6 @@ import test from 'node:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { readFilters, selectJobs } from './plan.mjs';
-
 const root = resolve(import.meta.dirname, '../..');
 
 /** @param {string} directory @param {string} prefix @returns {string[]} */
@@ -34,24 +32,5 @@ test('Go SDK packaging analyzer WIT matches the protocol', () => {
 	assert.deepEqual(
 		readFileSync(join(root, 'plugins/sdk/go/packaging/analyzer.wit')),
 		readFileSync(join(root, 'plugins/protocol/wit/analyzer.wit')),
-	);
-});
-
-test('protocol and SDK copy changes select the synchronization tests', () => {
-	const filters = readFilters('ci', root);
-	for (
-		const path of [
-			'plugins/protocol/wit/analyzer.wit',
-			'plugins/protocol/json/nested/schema.json',
-			'plugins/sdk/rust/wit/analyzer.wit',
-			'plugins/sdk/rust/json/nested/schema.json',
-			'plugins/sdk/go/packaging/analyzer.wit',
-		]
-	) {
-		assert.equal(selectJobs(filters, [path]).javascript, true, path);
-	}
-	assert.equal(
-		selectJobs(filters, ['internal/development/tests/conformance/wasm/runner-host/src/main.rs']).javascript,
-		false,
 	);
 });
