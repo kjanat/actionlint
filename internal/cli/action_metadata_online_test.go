@@ -94,9 +94,10 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 			}
 		}
 		want := uint64(0)
-		if mode == "default" {
+		switch mode {
+		case "default":
 			want = 5
-		} else if mode == "online" {
+		case "online":
 			want = 2
 		}
 		if attempts != want {

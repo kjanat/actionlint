@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -110,10 +111,10 @@ func (t *Transform) Apply(ctx context.Context, inline json.RawMessage, file stri
 	}
 	var options map[string]any
 	if err := json.Unmarshal(settings.Options, &options); err != nil || options == nil {
-		return Settings{}, fmt.Errorf("configuration transform must return an options object")
+		return Settings{}, errors.New("configuration transform must return an options object")
 	}
 	if settings.Prefix != "" && !strings.HasSuffix(settings.Prefix, "\n") {
-		return Settings{}, fmt.Errorf("configuration transform source_prefix must end with a newline")
+		return Settings{}, errors.New("configuration transform source_prefix must end with a newline")
 	}
 	return settings, nil
 }

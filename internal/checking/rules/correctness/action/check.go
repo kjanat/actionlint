@@ -580,6 +580,19 @@ func problemRule(code actionmeta.ProblemCode) (ruleName, diagnosticCode string) 
 		return string(code), string(code)
 	case actionmeta.CodeInvalidJSON, actionmeta.CodeFormatPlaceholder:
 		return "expression-call", string(code)
+	case actionmeta.CodeMissingField, actionmeta.CodeUnexpectedField, actionmeta.CodeInvalidFieldType,
+		actionmeta.CodeDuplicateField, actionmeta.CodeNestingDepth, actionmeta.CodeExpressionForbidden,
+		actionmeta.CodeMissingFile, actionmeta.CodeInvalidDockerfile, actionmeta.CodeInvalidStepID,
+		actionmeta.CodeDuplicateStepID, actionmeta.CodeInvalidStep, actionmeta.CodeConflictingStepKind,
+		actionmeta.CodeMissingStepKind, actionmeta.CodeMissingShell, actionmeta.CodeInvalidReference,
+		actionmeta.CodeReusableWorkflow, actionmeta.CodeExpressionSyntax, actionmeta.CodeExpressionContext,
+		actionmeta.CodeExpressionReference, actionmeta.CodeExpressionCall, actionmeta.CodeExpressionType,
+		actionmeta.CodeJSONMemberCollision, actionmeta.CodeRuntimeUnsupported, actionmeta.CodeRuntimeRemoved,
+		actionmeta.CodeRuntimeDeprecated, actionmeta.CodeBrandingIcon, actionmeta.CodeBrandingColor,
+		actionmeta.CodeEmptyDeprecationMessage, actionmeta.CodeUnknownInput, actionmeta.CodeDeprecatedInput,
+		actionmeta.CodeRequiredInput, actionmeta.CodeYAMLAnchor, actionmeta.CodeYAMLAlias, actionmeta.CodeYAMLTag,
+		actionmeta.CodeMetadataParse, actionmeta.CodeMetadataRead, actionmeta.CodeMetadataEmpty:
+		return "action", string(code)
 	}
 	return "action", string(code)
 }
