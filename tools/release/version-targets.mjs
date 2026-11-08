@@ -50,9 +50,8 @@ export const targets = [
 			{ description: 'manual footer version', pattern: /^footer: actionlint (\d+\.\d+\.\d+)\r?$/dgm, count: 1 },
 			{ description: 'document link', pattern: /\/blob\/v(\d+\.\d+\.\d+)\/docs\//dgm, count: 5 },
 		],
-		unrelated: [
-			'kjanat:actionlint/analyzer@0.1.0',
-			'kjanat:actionlint/runner-provider@0.1.0',
+		generated: [
+			/kjanat:actionlint\/(?:analyzer|runner-provider)@\d+\.\d+\.\d+/gm,
 		],
 	},
 	{
