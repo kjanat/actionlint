@@ -8,7 +8,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-permissions: { contents: read }
+permissions: { contents: read, attestations: read }
 defaults: { run: { shell: "bash --noprofile --norc -exo pipefail {0}" } }
 jobs:
   changes:
@@ -72,7 +72,7 @@ jobs:
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['race']) }}
     name: Race detector and coverage
     runs-on: ubuntu-latest
-    permissions: { contents: read, id-token: write }
+    permissions: { contents: read, attestations: read, id-token: write }
     env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck" }
     steps:
       - &ActCheckNocred { uses: *ActionsCheckout, with: *NoCreds }
@@ -217,7 +217,7 @@ jobs:
   package-previews:
     needs: release-snapshot
     uses: $/.github/workflows/package-previews.yml
-    permissions: { contents: read }
+    permissions: { contents: read, attestations: read }
   docker-previews:
     needs: release-snapshot
     if: >-

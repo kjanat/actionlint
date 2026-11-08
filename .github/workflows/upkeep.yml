@@ -123,7 +123,7 @@ jobs:
     name: Bump Go toolchain
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
-    permissions: { contents: write, pull-requests: write }
+    permissions: { contents: write, pull-requests: write, attestations: read }
     steps:
       - *Checkout
       - *SetupGo
