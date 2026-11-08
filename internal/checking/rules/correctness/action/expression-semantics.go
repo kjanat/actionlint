@@ -28,11 +28,13 @@ func expressionSemanticFindings(expressions []actionmeta.ParsedExpression, field
 		// the outputs property is an object.
 		step := outputs.StepType(exprtypes.NewMapObjectType(exprtypes.StringType()))
 		checker.SetContextType("steps", exprtypes.NewMapObjectType(step.Type()).Type())
-		result := checker.CheckResult(expreval.EvaluateSubexpressions(expression.Node))
+		evaluation := expreval.EvaluateSubexpressions(expression.Node)
+		result := checker.CheckResult(evaluation)
 		semantic := result.Findings
 		if advisories {
 			semantic = append(semantic, suspicious.SuspiciousCoercion(expression.Node, result.Types, result.Calls)...)
 			semantic = append(semantic, suspicious.JoinLiteral(expression.Node, result.Calls)...)
+			semantic = append(semantic, suspicious.CollectionComparison(expression.Node, result.Types, evaluation)...)
 			if strings.HasSuffix(field, ".if") {
 				semantic = append(semantic, suspicious.StringConditions(expression.Node, result.Types)...)
 			}
@@ -46,6 +48,8 @@ func expressionSemanticFindings(expressions []actionmeta.ParsedExpression, field
 				code = actionmeta.CodeStringCondition
 			case "join-literal":
 				code = actionmeta.CodeJoinLiteral
+			case "collection-comparison":
+				code = actionmeta.CodeCollectionComparison
 			case "expression-call":
 				switch finding.Code {
 				case "invalid-json":

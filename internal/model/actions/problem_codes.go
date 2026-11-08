@@ -9,6 +9,7 @@ const (
 	CodeCoercion                ProblemCode = "coercion"
 	CodeStringCondition         ProblemCode = "string-conditions"
 	CodeJoinLiteral             ProblemCode = "join-literal"
+	CodeCollectionComparison    ProblemCode = "collection-comparison"
 	CodeInvalidJSON             ProblemCode = "invalid-json"
 	CodeFormatPlaceholder       ProblemCode = "format-placeholder"
 	CodeMissingField            ProblemCode = "missing-field"

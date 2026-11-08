@@ -26,6 +26,10 @@ func TestExpressionConversionsThroughCLI(t *testing.T) {
 		{"ordinary-join", "join('ordinary text', '/')", "join-literal", "'ordinary text'"},
 		{"array-join", `join(fromJSON('["a","b"]'), '/')`, "", ""},
 		{"dynamic-join", "join(inputs.value, '/')", "", ""},
+		{"object-equality", `fromJSON('{}') == fromJSON('{}')`, "collection-comparison", `fromJSON('{}') == fromJSON('{}')`},
+		{"array-inequality", `fromJSON('[]') != fromJSON('[]')`, "collection-comparison", `fromJSON('[]') != fromJSON('[]')`},
+		{"object-null", `fromJSON('{}') != null`, "", ""},
+		{"scalar-json-equality", `fromJSON('42') == fromJSON('42')`, "", ""},
 	} {
 		for _, kind := range []string{"workflow", "composite", "composite-output"} {
 			for _, selection := range []string{"off", "selected", "suppressed"} {
@@ -33,7 +37,7 @@ func TestExpressionConversionsThroughCLI(t *testing.T) {
 					root := t.TempDir()
 					config := "tools: {shellcheck: false, ruff: false}\nlint:\n  rules:\n    preset: none\n    correctness:\n      expression-call: error\n      expression-type: error\n"
 					if selection != "off" {
-						config += "    suspicious:\n      string-conditions: warn\n      join-literal: info\n"
+						config += "    suspicious:\n      string-conditions: warn\n      join-literal: info\n      collection-comparison: error\n"
 					}
 					configPath := filepath.Join(root, "actionlint.yaml")
 					if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {

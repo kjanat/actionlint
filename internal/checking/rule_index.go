@@ -37,6 +37,7 @@ var builtins = []rule.Declaration{
 	correctness.MissingLocalActionDeclaration(),
 	suspicious.StringConditionsDeclaration(),
 	suspicious.JoinLiteralDeclaration(),
+	suspicious.CollectionComparisonDeclaration(),
 	suspicious.CoercionDeclaration(),
 	suspicious.MixedTypeComparisonsDeclaration(),
 	suspicious.CaseInsensitiveConditionsDeclaration(),

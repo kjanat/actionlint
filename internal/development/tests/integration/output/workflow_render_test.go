@@ -2,6 +2,7 @@ package output_test
 
 import (
 	"encoding/json"
+	"flag"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+var updateSARIF = flag.Bool("update-sarif", false, "Update the expected SARIF output")
 
 func TestWorkflowDiagnosticTemplates(t *testing.T) {
 	tests := []struct {
@@ -131,7 +134,13 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 		t.Fatalf("output is not JSON: %v: %q", err, out)
 	}
 
-	bytes, err := os.ReadFile(filepath.Join(fixtureRoot, dir, "test.sarif"))
+	fixture := filepath.Join(fixtureRoot, dir, "test.sarif")
+	if *updateSARIF {
+		if err := os.WriteFile(fixture, []byte(out), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bytes, err := os.ReadFile(fixture)
 	if err != nil {
 		panic(err)
 	}

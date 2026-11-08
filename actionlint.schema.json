@@ -138,6 +138,12 @@
           "const": "coercion"
         },
         {
+          "description": "Detect equality checks between object or array instances",
+          "markdownDescription": "Detect equality checks between object or array instances",
+          "type": "string",
+          "const": "collection-comparison"
+        },
+        {
           "description": "Report Docker container requirements for selected runners",
           "markdownDescription": "Report Docker container requirements for selected runners",
           "type": "string",
@@ -1078,6 +1084,7 @@
                                 "missing-local-action",
                                 "string-conditions",
                                 "join-literal",
+                                "collection-comparison",
                                 "coercion",
                                 "suspicious-coercion",
                                 "mixed-type-comparisons",
@@ -1373,6 +1380,7 @@
                                 "script-injection",
                                 "string-conditions",
                                 "join-literal",
+                                "collection-comparison",
                                 "coercion",
                                 "suspicious-coercion",
                                 "mixed-type-comparisons",
@@ -1698,6 +1706,7 @@
                                 "missing-local-action",
                                 "string-conditions",
                                 "join-literal",
+                                "collection-comparison",
                                 "coercion",
                                 "suspicious-coercion",
                                 "mixed-type-comparisons",
@@ -1759,6 +1768,12 @@
                               "title": "coercion",
                               "description": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset.",
                               "markdownDescription": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset."
+                            },
+                            "collection-comparison": {
+                              "$ref": "#/$defs/rule-setting",
+                              "title": "collection-comparison",
+                              "description": "Detect equality checks between object or array instances",
+                              "markdownDescription": "Detect equality checks between object or array instances"
                             },
                             "empty-job": {
                               "$ref": "#/$defs/rule-setting",
@@ -2309,6 +2324,7 @@
                                           "missing-local-action",
                                           "string-conditions",
                                           "join-literal",
+                                          "collection-comparison",
                                           "coercion",
                                           "suspicious-coercion",
                                           "mixed-type-comparisons",
@@ -2604,6 +2620,7 @@
                                           "script-injection",
                                           "string-conditions",
                                           "join-literal",
+                                          "collection-comparison",
                                           "coercion",
                                           "suspicious-coercion",
                                           "mixed-type-comparisons",
@@ -2929,6 +2946,7 @@
                                           "missing-local-action",
                                           "string-conditions",
                                           "join-literal",
+                                          "collection-comparison",
                                           "coercion",
                                           "suspicious-coercion",
                                           "mixed-type-comparisons",
@@ -2990,6 +3008,12 @@
                                         "title": "coercion",
                                         "description": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset.",
                                         "markdownDescription": "Warn about surprising string and comparison coercions. Stable; not enabled by the recommended preset."
+                                      },
+                                      "collection-comparison": {
+                                        "$ref": "#/$defs/rule-setting",
+                                        "title": "collection-comparison",
+                                        "description": "Detect equality checks between object or array instances",
+                                        "markdownDescription": "Detect equality checks between object or array instances"
                                       },
                                       "empty-job": {
                                         "$ref": "#/$defs/rule-setting",

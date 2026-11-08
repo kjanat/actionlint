@@ -104,6 +104,41 @@ jobs:
       - run: echo ok
 ```
 
+## collection-comparison
+
+Objects and arrays compare equal only when they are the same instance. Equal contents do not make separately created objects or arrays equal. A condition that grants access or gates a write can therefore evaluate differently from a comparison of contents. This check reports == and != between two known objects or two known arrays. It accepts null checks and repeated access to the same context property, and skips unknown types and expressions that cannot execute.
+
+Compare the fields or array elements that determine equality. Disable this rule for a deliberate instance-identity comparison.
+
+- Category: `suspicious/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.suspicious.collection-comparison`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Compare the object properties that matter to the condition.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ fromJSON('{"ready":true}') == fromJSON('{"ready":true}') }}
+    steps:
+      - run: echo ok
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ fromJSON('{"ready":true}').ready == fromJSON('{"ready":true}').ready }}
+    steps:
+      - run: echo ok
+```
+
 ## container-runner
 
 GitHub-managed job containers, service containers and Docker actions require Linux and a Docker daemon. Report an error for known Windows or macOS selections. Warn for GitHub-hosted ubuntu-slim: it includes Docker client tools but no local daemon; a compatible remote daemon may satisfy the requirement. Inspect available action metadata and expanded local composites, with matrix rows and conditions determining which selections can reach the container. Unknown runner facts and unavailable action bodies do not establish a violation. Docker commands in scripts can use remote daemons and are not classified by this rule.
