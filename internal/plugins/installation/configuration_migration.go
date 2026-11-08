@@ -355,7 +355,7 @@ func (s Selection) Migrate(ctx context.Context, directory string, input inputmod
 
 // InitializeConfiguration verifies default plugin artifacts before creating the config
 // and lockfile. A failed resolution leaves both project files untouched.
-func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, version string) (string, error) {
+func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, version string, format config.FileFormat) (string, error) {
 	lock, err := OpenSelectedLock(ctx, root, "", "")
 	if err != nil {
 		return "", err
@@ -369,15 +369,23 @@ func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, ve
 	} else if !os.IsNotExist(err) {
 		return "", err
 	}
-	project, err := OpenProject(ctx, rules, root, "", "")
+	path = filepath.Join(filepath.Dir(path), format.Filename())
+	project, err := OpenProject(ctx, rules, root, "", path)
 	if err != nil {
 		return "", err
 	}
 	if project.Manifest.Exists {
 		return "", fmt.Errorf("config file already exists at %q", project.Manifest.Path)
 	}
-	content := config.DefaultDocument(version)
-	cfg, err := rules.Parse(content)
+	content, err := rules.DefaultDocument(version, format)
+	if err != nil {
+		return "", err
+	}
+	node, err := configtree.Decode(path, content)
+	if err != nil {
+		return "", err
+	}
+	defaults, _, err := configplugins.References(node)
 	if err != nil {
 		return "", err
 	}
@@ -386,7 +394,7 @@ func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, ve
 		return "", err
 	}
 	if len(refs) == 0 {
-		refs = []pluginref.Reference(cfg.Plugins)
+		refs = defaults
 	}
 	if err := project.Resolve(ctx, refs, nil); err != nil {
 		return "", err

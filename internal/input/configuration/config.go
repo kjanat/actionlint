@@ -305,11 +305,10 @@ func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 //
 // Declare custom runner labels and available variable or secret names, suppress selected
 // diagnostics by file path, choose assumed token permissions, and enable repository policy checks.
-// Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or
-// `.github/actionlint.toml`, or select a file with `--config`.
+// Create a configuration with `actionlint config init`, or select a file with `--config`.
 // Every setting is optional; normal workflow correctness checks run without a configuration file.
 type Config struct {
-	// Extends loads local or HTTPS YAML, JSON and TOML configurations in order.
+	// Extends loads local or HTTPS configuration files in order.
 	// Relative references resolve against their declaring file or URL. Later
 	// bases override earlier bases; this file wins over all bases.
 	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
@@ -571,7 +570,13 @@ func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile fu
 }
 
 // RepositoryConfigNames lists the config file names read from .github, in precedence order.
-var RepositoryConfigNames = []string{"actionlint.yaml", "actionlint.yml", "actionlint.json", "actionlint.toml"}
+var RepositoryConfigNames = func() []string {
+	names := make([]string, 0, len(FileFormats()))
+	for _, format := range FileFormats() {
+		names = append(names, format.Filename())
+	}
+	return names
+}()
 
 // LoadRepository reads the first existing file named in RepositoryConfigNames
 // from the repository's .github directory.

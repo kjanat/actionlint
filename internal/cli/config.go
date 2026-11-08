@@ -49,15 +49,15 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 			return err
 		}
 	}
-	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks)
+	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, repoconfig.FormatYAML)
 }
 
-func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format repoconfig.FileFormat) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	path, err := plugininstall.InitializeConfiguration(ctx, checking.ConfigurationRules(), discovery.RepositoryRoot(cwd), buildinfo.Version())
+	path, err := plugininstall.InitializeConfiguration(ctx, checking.ConfigurationRules(), discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
 	if err != nil {
 		return err
 	}

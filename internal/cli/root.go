@@ -124,7 +124,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.checkFlags(preCommit, true)
 	config := &cobra.Command{
 		Use: "config", Short: "Inspect and validate configuration",
-		Long: "Select a configuration file or the repository's .github/actionlint.yaml, .yml, .json or .toml.\nUse extends for shared configuration and overrides for file-specific settings.",
+		Long: "Use --config to select a file, or let actionlint find the repository config in .github.\nUse extends for shared configuration and overrides for file-specific settings.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error {
 			if a.opts.initConfig {
@@ -141,7 +141,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.configFlags(config.PersistentFlags())
 	a.commonFlags(config, config.PersistentFlags())
 	for _, item := range []struct{ name, description string }{
-		{"init", "Create the repository config with its editor schema directive"},
+		{"init", "Create a repository config with its editor schema URL"},
 		{"path", "Print the selected configuration path"},
 		{"show", "Show effective configuration settings"},
 		{"validate", "Validate the selected configuration using actionlint's loader"},
@@ -149,6 +149,9 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 		{"migrate", "Preview conversion to current configuration syntax"},
 	} {
 		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture(operation("config " + item.name))}
+		if item.name == "init" {
+			a.configInitFlags(c)
+		}
 		if item.name == "show" || item.name == "validate" || item.name == "schema" {
 			a.pluginFlags(c.Flags())
 		}

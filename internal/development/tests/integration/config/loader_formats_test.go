@@ -13,10 +13,11 @@ import (
 )
 
 var formatSources = map[string]string{
-	"actionlint.yaml": "self-hosted-runner:\n  labels: [gpu]\nconfig-variables: [STAGE]\n",
-	"actionlint.yml":  "self-hosted-runner:\n  labels: [gpu]\nconfig-variables: [STAGE]\n",
-	"actionlint.json": "{\n\t\"$schema\": \"../actionlint.schema.json\",\n\t\"self-hosted-runner\": {\"labels\": [\"gpu\"]},\n\t\"config-variables\": [\"STAGE\"]\n}\n",
-	"actionlint.toml": "config-variables = [\"STAGE\"]\n\n[self-hosted-runner]\nlabels = [\"gpu\"]\n",
+	"actionlint.yaml":  "self-hosted-runner:\n  labels: [gpu]\nconfig-variables: [STAGE]\n",
+	"actionlint.yml":   "self-hosted-runner:\n  labels: [gpu]\nconfig-variables: [STAGE]\n",
+	"actionlint.json":  "{\n\t\"$schema\": \"../actionlint.schema.json\",\n\t\"self-hosted-runner\": {\"labels\": [\"gpu\"]},\n\t\"config-variables\": [\"STAGE\"]\n}\n",
+	"actionlint.jsonc": "{\n// repository settings\n\"self-hosted-runner\": {\"labels\": [\"gpu\"],},\n\"config-variables\": [\"STAGE\"],\n}\n",
+	"actionlint.toml":  "config-variables = [\"STAGE\"]\n\n[self-hosted-runner]\nlabels = [\"gpu\"]\n",
 }
 
 func writeConfig(t *testing.T, dir, name, content string) string {

@@ -131,6 +131,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 	for _, tc := range []struct{ name, source string }{
 		{"actionlint.yaml", "config-variables: []\r\npolicy: {require-commit-hash: false}\r\n"},
 		{"actionlint.json", `{"config-variables":[],"policy":{"require-commit-hash":false}}`},
+		{"actionlint.jsonc", "{// project settings\n\"config-variables\":[],\"policy\":{\"require-commit-hash\":false},\n}"},
 		{"actionlint.toml", "config-variables = []\n[policy]\nrequire-commit-hash = false\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

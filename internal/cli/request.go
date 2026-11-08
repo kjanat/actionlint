@@ -122,6 +122,7 @@ func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, err
 type configInitRequest struct {
 	JSON       bool
 	Hyperlinks hyperlinkMode
+	Format     repoconfig.FileFormat
 }
 
 type configMigrateRequest configcmd.MigrateOptions
@@ -134,7 +135,7 @@ func (r configInitRequest) run(ctx context.Context, streams Command) (int, error
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	return 0, generateCommandConfig(ctx, streams.Stdout, r.JSON, r.Hyperlinks)
+	return 0, generateCommandConfig(ctx, streams.Stdout, r.JSON, r.Hyperlinks, r.Format)
 }
 
 type legacyConfigInitRequest struct {

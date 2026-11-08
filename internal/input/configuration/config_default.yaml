@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
+# yaml-language-server: $schema={{SCHEMA_URL}}
 # Use an exact release such as @2.0.0 to pin the schema, or @2 to follow v2.
 # Lint rules: recommended checks are enabled without a configuration file.
 # Use all for all stable rules, or none to select rules individually.
@@ -8,31 +8,13 @@ lint:
   enabled: true
   rules:
     preset: recommended
-    # Each group accepts a level or individual rules. Levels: off, on, info,
-    # warn, error, default. Warnings and info findings also cause exit status 1.
+    # Each group accepts a level or individual rules. Named levels: {{RULE_LEVELS}}.
+    # Warnings and info findings also cause exit status 1.
     # List rules and their defaults with: actionlint rules
-    # correctness:
-    #   deprecated-commands: warn
-    # suspicious:
-    #   case-insensitive-conditions: off
-    # security:
-    #   cache-write-untrusted: error
-    # policy:
-    #   require-commit-hash: error
-    #   require-job-timeout:
-    #     level: error
-    #     options: {min-minutes: 1, max-minutes: 30}
-    #   require-permissions:
-    #     level: error
-    #     options: {scope: job}
-    # external:
-    #   shellcheck: on
-    #   ruff: on
-    # Document analyzers loaded with --plugin use their registered rule names.
-    # plugins:
-    #   no-sudo: warn
-    # Nursery rules require explicit selection; stable presets exclude them.
-    # nursery: {preset: none}
+    # Rule defaults in this build:
+    # {{RULE_EXAMPLES}}
+    # Use actionlint rules to find each plugin rule's category.
+    # Enable nursery rules individually under their categories.
     # disable: []
 
 # Plugins check scripts without executing them. Configure a native backend explicitly when needed.
@@ -67,7 +49,7 @@ lint:
 # overrides:
 #   - includes: [".github/workflows/release*.yml"]
 #     excludes: [".github/workflows/release-preview.yml"]
-#     lint: {rules: {policy: {require-commit-hash: error}}}
+#     {{RULE_OVERRIDE}}
 #     tools: {ruff: {ignore: [F401]}}
 
 # Shared local configs resolve relative to this file, in the order listed.

@@ -15,7 +15,7 @@ import (
 
 func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "default-config-for-test.yml")
-	if err := repoconfig.WriteDefaultFile(f, "1.17.0"); err != nil {
+	if err := checking.ConfigurationRules().WriteDefaultFile(f, "1.17.0"); err != nil {
 		t.Fatal(err)
 	}
 	c, err := checking.ConfigurationRules().Load(f)
@@ -78,12 +78,32 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 
 func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "missing", "test.yml")
-	err := repoconfig.WriteDefaultFile(p, "1.17.0")
+	err := checking.ConfigurationRules().WriteDefaultFile(p, "1.17.0")
 	if err == nil {
 		t.Fatal("error did not occur")
 	}
 	msg := err.Error()
 	if !strings.Contains(msg, "could not write default configuration file") {
 		t.Fatalf("unexpected error message: %q", msg)
+	}
+}
+
+func TestConfigGenerateSnapshotSchemaHeader(t *testing.T) {
+	for _, version := range []string{"2.0.0-SNAPSHOT-02d216d", "v2.0.0-rc.1-SNAPSHOT-02d216d"} {
+		t.Run(version, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "actionlint.yaml")
+			if err := checking.ConfigurationRules().WriteDefaultFile(path, version); err != nil {
+				t.Fatal(err)
+			}
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			header, _, _ := strings.Cut(string(content), "\n")
+			const want = "# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@02d216d/actionlint.schema.json"
+			if header != want {
+				t.Fatalf("snapshot schema header = %q, want %q", header, want)
+			}
+		})
 	}
 }

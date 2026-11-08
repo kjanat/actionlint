@@ -25,6 +25,7 @@ type invocation struct {
 	Origin         bool
 	MigrationWrite bool
 	MigrationCheck bool
+	ConfigFormat   repoconfig.FileFormat
 	Rule           string
 	Shell          string
 }
@@ -253,7 +254,7 @@ func (inv invocation) request() (commandRequest, error) {
 		if inv.Check.Config.Path != "" || inv.Check.Config.Disabled {
 			return nil, commandargs.UsageError{Cause: errors.New("config init always creates the repository config; omit --config and --no-config")}
 		}
-		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
+		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks, Format: inv.ConfigFormat}, nil
 	case operationCheck:
 		return checkRequest{Check: inv.Check, Render: inv.Render, Yes: inv.Yes, JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationCompletion:

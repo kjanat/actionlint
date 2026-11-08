@@ -33,9 +33,25 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 			t.Fatalf("%s: got %s, want %s", tc.rules, got, tc.want)
 		}
 	}
-	for _, info := range checking.ConfigurationRules().RuleInfos() {
-		if info.Category == "nursery" || info.Maturity != "stable" {
-			t.Fatalf("unexpected nursery rule: %+v", info)
+	for _, entry := range checking.ConfigurationRules().Rules() {
+		if !entry.Experimental() {
+			continue
+		}
+		for _, tc := range []struct {
+			rules   string
+			presets repoconfig.Presets
+		}{
+			{"{}", repoconfig.Presets{}},
+			{"{preset: all}", repoconfig.Presets{}},
+			{"{}", repoconfig.Presets{Strict: true}},
+		} {
+			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := checking.ConfigurationRules().SettingFor(cfg, entry, tc.presets, false).Level(); got != "off" {
+				t.Errorf("%s with %s and presets %+v: got %s, want off", entry.Name, tc.rules, tc.presets, got)
+			}
 		}
 	}
 }
