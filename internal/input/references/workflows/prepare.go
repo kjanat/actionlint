@@ -11,14 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// Prepare acquires direct and transitive local workflow metadata before checks
-// run. Invalid YAML and missing manifests are cached for caller diagnostics.
-// Other read failures stop preparation and preserve their causes.
+// Prepare acquires metadata for direct workflow calls and nested local calls.
+// Invalid YAML and missing manifests are cached for caller diagnostics.
+// Other read failures return an error to the caller.
 func (c *Cache) Prepare(ctx context.Context, snapshot parsing.SourceSnapshot) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if c == nil || c.root == "" || snapshot.Kind() != parsing.KindWorkflow {
+	if c == nil || snapshot.Kind() != parsing.KindWorkflow {
 		return nil
 	}
 	if err := c.Seed(snapshot); err != nil {
@@ -34,10 +34,10 @@ func (c *Cache) Prepare(ctx context.Context, snapshot parsing.SourceSnapshot) er
 	return c.LoadCalls(ctx, pending)
 }
 
-// LoadCalls acquires metadata for the supplied call references and their local
-// dependencies. It is a loading operation, not a lookup for rule callbacks.
+// LoadCalls fetches remote workflow files and reads local workflow dependencies.
+// Rule callbacks use Resolved instead, which never fetches or reads files.
 func (c *Cache) LoadCalls(ctx context.Context, referencesToLoad []string) error {
-	if c == nil || c.root == "" {
+	if c == nil {
 		return nil
 	}
 	pending := slices.Clone(referencesToLoad)
@@ -45,6 +45,15 @@ func (c *Cache) LoadCalls(ctx context.Context, referencesToLoad []string) error 
 	for index := 0; index < len(pending); index++ {
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		if IsRemoteReference(pending[index]) {
+			if _, err := c.remote.Load(ctx, pending[index]); err != nil {
+				if failure, ok := errors.AsType[metadataError](err); ok && failure.kind == failureParse {
+					continue
+				}
+				return err
+			}
+			continue
 		}
 		spec, local := references.LocalWorkflow(pending[index])
 		if !local || seen[spec] {
