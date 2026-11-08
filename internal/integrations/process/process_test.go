@@ -504,9 +504,8 @@ func TestProcessErrorLinterFailed(t *testing.T) {
 	p := NewProcessPool(t.Context(), 1)
 	ls := testSkipIfNoCommand(t, p, "ls")
 
-	// Running ls with directory which does not exist emulates external liter's failure.
-	// For example shellcheck exits with non-zero status but it outputs nothing to stdout when it
-	// fails to run.
+	// A missing directory makes ls fail without stdout, like ShellCheck when it
+	// cannot run.
 	ls.Run([]string{"oops-this-directory-does-not-exist"}, "", func(b []byte, err error) error {
 		if err != nil {
 			return err

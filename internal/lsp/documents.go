@@ -22,7 +22,7 @@ type Analysis struct {
 	Sources     map[string]Source
 }
 
-// Source carries the sealed revision and coordinate model used for publication.
+// Source pairs captured text with its revision and coordinate model.
 type Source struct {
 	Text        string
 	Revision    sourcemodel.Revision

@@ -124,11 +124,9 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 	return stdout, 0, nil
 }
 
-// ProcessPool is a manager to run process concurrently. Since running process consumes OS
-// resources, running too many processes concurrently causes some issues. On macOS, making too many
-// process makes the parent process hang (see issue #3). And running processes which open files can
-// cause the error "pipe: too many files to open". To avoid it, this type manages how many processes
-// are run at once.
+// ProcessPool limits concurrent processes to avoid exhausting operating system
+// resources. Too many processes can hang the parent on macOS (issue #3) or
+// exhaust the available file descriptors.
 type ProcessPool struct {
 	Scope *Scope
 	Ctx   context.Context
@@ -136,10 +134,9 @@ type ProcessPool struct {
 	wg    *sync.WaitGroup
 }
 
-// NewProcessPool creates a new ConcurrentProcess instance. The ctx argument acquires the
-// semaphore and runs each child process, so cancelling it kills the processes which are running.
-// The `par` argument represents how many processes can be run in parallel. It is recommended to
-// use the value returned from runtime.NumCPU() for the argument.
+// NewProcessPool creates a pool that runs up to par processes at once. The
+// context controls semaphore acquisition and child processes; cancelling it
+// stops running children. runtime.NumCPU() is a recommended value for par.
 func NewProcessPool(ctx context.Context, par int) *ProcessPool {
 	return &ProcessPool{
 		Ctx:  ctx,
@@ -161,13 +158,12 @@ func (proc *ProcessPool) Run(eg *errgroup.Group, exec *Execution, callback func(
 	})
 }
 
-// Wait waits all goroutines started by this ProcessPool instance finish.
+// Wait waits for all goroutines started by the pool to finish.
 func (proc *ProcessPool) Wait() {
-	proc.wg.Wait() // Wait for all goroutines completing to shutdown
+	proc.wg.Wait()
 }
 
-// NewCommandRunner creates new external command runner for given executable. The executable path
-// is resolved in this function.
+// NewCommandRunner creates a command runner and resolves the executable path.
 func (proc *ProcessPool) NewCommandRunner(exe string, combineOutput bool) (*Command, error) {
 	return proc.ConfiguredCommandRunner(exe, nil, combineOutput)
 }
@@ -198,16 +194,14 @@ func (proc *ProcessPool) ConfiguredCommandRunner(exe string, options *processcon
 	return cmd, nil
 }
 
-// EmbeddedCommand binds an in-process runner to the same completion owner as
-// native commands without performing executable discovery.
+// EmbeddedCommand creates an in-process runner that the pool waits for alongside
+// native commands. It does not look up an executable.
 func (proc *ProcessPool) EmbeddedCommand(name string, runner func([]string, string) ([]byte, error)) *Command {
 	return &Command{proc: proc, Exe: name, Runner: runner}
 }
 
-// Command is struct to run specific command concurrently with ProcessPool bounding
-// number of processes at the same time. This type manages fatal errors while running the command
-// by using errgroup.Group. The wait() method must be called at the end for checking if some fatal
-// error occurred.
+// Command runs a specific command through a ProcessPool. Call Wait to wait for
+// its runs and check for errors returned by their callbacks.
 type Command struct {
 	// runner replaces process execution for embedded checkers. It must honor
 	// the same arguments/stdout contract; callbacks still join through eg.
@@ -225,9 +219,8 @@ type Command struct {
 	Dir            string
 }
 
-// Run runs the command with given arguments and stdin. The callback function is called after the
-// process runs. First argument is stdout and the second argument is an error while running the
-// process.
+// Run starts the command with the given arguments and stdin. After it finishes,
+// Run calls callback with stdout and any execution error.
 func (cmd *Command) Run(args []string, stdin string, callback func([]byte, error) error) {
 	cmd.RunInDirectory(args, stdin, cmd.Dir, callback)
 }

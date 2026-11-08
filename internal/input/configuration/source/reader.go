@@ -21,8 +21,8 @@ import (
 // MaxBytes bounds each remote configuration document independently of its format.
 const MaxBytes = 4 << 20
 
-// Reader binds acquisition to its host's context. A supplied reader owns all
-// sources, including HTTPS addresses, and is never bypassed by network fallback.
+// Reader uses a context to read configuration sources. When supplied, the
+// contents reader handles all sources, including HTTPS, without network fallback.
 type Reader struct {
 	ctx      context.Context
 	contents files.Contents

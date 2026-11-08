@@ -11,7 +11,7 @@ import (
 )
 
 // ConfigureAnalyzers applies presets and per-rule settings to explicit registrations.
-// still apply. Library registration options take precedence over repository options.
+// Library registration options take precedence over repository options.
 func ConfigureAnalyzers(config *repoconfig.Config, registrations []checkinputs.Registration) ([]checkinputs.Registration, error) {
 	selected := make([]checkinputs.Registration, 0, len(registrations))
 	for _, registration := range registrations {

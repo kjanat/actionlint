@@ -23,9 +23,8 @@ type Directory struct {
 	Path string
 }
 
-// Paths is the checkout geometry of one execution scope: a plain value record
-// relating runner paths to local analysis paths. Input acquisition resolves
-// these paths against the filesystem separately.
+// Paths relates runner checkout paths to local analysis paths for one execution
+// scope. Input acquisition resolves these paths against the filesystem separately.
 type Paths struct {
 	Platform          runnerlang.Platform
 	Workspace         string
@@ -153,7 +152,7 @@ func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
 	return paths.Checkout, !paths.CheckoutUnknown
 }
 
-// AnalysisPath maps runner checkout geometry to a local path without reading it.
+// AnalysisPath maps a runner checkout path to a local path without reading it.
 // Input acquisition or captured repository facts establish filesystem spelling.
 func (paths Paths) AnalysisPath(value string) (string, bool) {
 	relativePath, known := LocalDirectoryPath(value, paths.Platform)

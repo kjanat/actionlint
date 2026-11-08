@@ -14,21 +14,21 @@ import (
 
 // TemplateFields holds all fields to format one finding with a Go template.
 type TemplateFields struct {
-	// Message is error message body.
+	// Message is the diagnostic message.
 	Message string `json:"message"`
 	// Filepath is a canonical relative file path. This is empty when input was read from stdin.
 	Filepath string `json:"filepath,omitempty"`
-	// Line is a line number of error position.
+	// Line is the line number of the diagnostic position.
 	Line int `json:"line"`
-	// Column is a column number of error position.
+	// Column is the column number of the diagnostic position.
 	Column int `json:"column"`
-	// Kind is a rule name the error belongs to.
+	// Kind is the name of the rule that reported the diagnostic.
 	Kind string `json:"kind"`
 	// Code is the native diagnostic identifier, when supplied by the check.
 	Code string `json:"code,omitempty"`
 	// Severity is info, warning or error; empty means the default error level.
 	Severity string `json:"severity,omitempty"`
-	// Snippet is a code snippet and indicator to indicate where the error occurred.
+	// Snippet is a source excerpt and an indicator of the diagnostic position.
 	Snippet string `json:"snippet,omitempty"`
 	// EndColumn is a column number where the error indicator (^~~~~~~) ends. When no indicator
 	// can be shown, EndColumn is equal to Column.
@@ -122,7 +122,7 @@ func newFormatter(format string, version func() string, known *ruleSet) (*Format
 	return &Formatter{t, known}, nil
 }
 
-// Print formats the slice of template fields and prints it with given writer.
+// Print formats the template fields and writes the result to out.
 func (f *Formatter) Print(out io.Writer, t []*TemplateFields) error {
 	if err := f.temp.Execute(out, t); err != nil {
 		return fmt.Errorf("could not format error messages: %w", err)

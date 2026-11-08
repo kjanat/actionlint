@@ -19,9 +19,9 @@ const (
 	EvaluateCase
 )
 
-// FuncSignature is a signature of function, which holds return and arguments types.
+// FuncSignature describes a function's argument and return types.
 type FuncSignature struct {
-	// Name is a name of the function.
+	// Name is the function name.
 	Name string
 	// Ret declares the function's return domain, including for invalid calls.
 	// A known result can refine this domain without replacing the declaration.
@@ -30,9 +30,8 @@ type FuncSignature struct {
 	// source types, conversion outcomes and converted values are recorded separately
 	// for each argument. The final parameter repeats for variadic signatures.
 	Params []exprtypes.Type
-	// VariableLengthParams is a flag to handle variable length parameters. When this flag is set to
-	// true, it means that the last type of params might be specified multiple times (including zero
-	// times). Setting true implies length of Params is more than 0.
+	// VariableLengthParams allows zero or more arguments of the final parameter
+	// type. When true, Params must contain at least one type.
 	VariableLengthParams bool
 	// MaxParams is a parser limit. Zero means the signature has no upper limit.
 	MaxParams int

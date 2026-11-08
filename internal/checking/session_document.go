@@ -73,7 +73,7 @@ type analysisSession struct {
 	rulePresets    repoconfig.Presets
 }
 
-// check dispatches the two document languages at the application input boundary.
+// check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config, provenance repoconfig.Provenance,
 	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, error) {

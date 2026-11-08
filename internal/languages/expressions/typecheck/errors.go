@@ -9,15 +9,15 @@ import (
 // Error is a syntax or semantic finding in an expression. Rule and Code identify
 // the check independently of its wording and source coordinates.
 type Error struct {
-	// Message is an Error message
+	// Message describes the finding.
 	Message string
-	// Offset is byte offset position which caused the Error
+	// Offset is the byte offset where the finding starts.
 	Offset int
 	// EndOffset is the exclusive byte end of the diagnostic's intended range.
 	EndOffset int
-	// Line is line number position which caused the Error. Note that this value is 1-based.
+	// Line is the one-based line where the finding starts.
 	Line int
-	// Column is column number position which caused the Error. Note that this value is 1-based.
+	// Column is the one-based column where the finding starts.
 	Column int
 	// Rule identifies the configurable check; Code identifies its diagnostic kind.
 	Rule string

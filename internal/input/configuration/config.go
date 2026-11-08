@@ -21,11 +21,10 @@ import (
 	"github.com/kjanat/go-yaml/v4"
 )
 
-// IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by
-// matching the error messages.
+// IgnorePatterns contains regular expressions that match diagnostic messages.
 type IgnorePatterns []*regexp.Regexp
 
-// Match returns whether the given error should be ignored due to the "ignore" configuration.
+// Match reports whether a pattern matches the diagnostic message.
 func (pats IgnorePatterns) Match(message string) bool {
 	for _, r := range pats {
 		if r.MatchString(message) {
@@ -52,14 +51,13 @@ func (pats *IgnorePatterns) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// PathConfig is a configuration for specific file path pattern. This is for values of the "paths" mapping
-// in the configuration file.
+// PathConfig holds settings for one path pattern in the configuration file's "paths" mapping.
 type PathConfig struct {
 	// Ignore suppresses diagnostics whose message matches any of these Go regular expressions.
 	//
 	// Applies only to workflow files matching the parent path glob. For example,
 	// `["shellcheck reported issue in this script: SC2086"]` ignores that ShellCheck diagnostic.
-	// Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.
+	// Omit this key, use `null`, or use `[]` to suppress nothing. The `-ignore` CLI option also matches messages.
 	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
 }
 
@@ -148,17 +146,16 @@ func (p *policyWire) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// JobTimeoutPolicy is the value of the "require-job-timeout" policy in the configuration file. The
-// value is a boolean which turns the check on and off, or a mapping which turns it on and sets the
-// allowed range in its "min-minutes" and "max-minutes" keys.
+// JobTimeoutPolicy holds the "require-job-timeout" policy. Its configuration value
+// is a boolean, or a mapping that enables the check and sets "min-minutes" and "max-minutes".
 type JobTimeoutPolicy struct {
 	enabled    bool
 	minMinutes float64
 	maxMinutes float64
 }
 
-// RequireJobTimeout creates a JobTimeoutPolicy which turns the check on. The argument is the largest
-// allowed number of minutes, where a value which is not larger than zero sets no upper limit.
+// RequireJobTimeout enables the check with the given upper limit in minutes.
+// A value of zero or less sets no upper limit.
 func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {
 	return &JobTimeoutPolicy{enabled: true, maxMinutes: maxMinutes}
 }
@@ -349,8 +346,7 @@ type Config struct {
 	Policy Policy `yaml:"-"`
 }
 
-// PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
-// be relative to the root of the project.
+// PathConfigs returns settings matching a path relative to the project root.
 func (cfg *Config) PathConfigs(path string) []PathConfig {
 	path = filepath.ToSlash(path)
 
@@ -395,8 +391,8 @@ func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
 	return new(*cfg.Policy.RequirePermissions)
 }
 
-// Parse parses the given bytes as an actionlint config file. When deserializing the YAML file
-// or the config validation fails, this function returns an error.
+// Parse decodes and validates an actionlint configuration document. It returns
+// an error if decoding or validation fails, or if the document uses extends.
 func (ruleSet RuleSet) Parse(b []byte, additional ...string) (*Config, error) {
 	resolved, err := ruleSet.ResolveDocument(b, additional...)
 	if err != nil {

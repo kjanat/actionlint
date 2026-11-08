@@ -1980,9 +1980,7 @@ func (p *Parser) parseJob(id *workflowlang.String, n *syntax.Node) *workflowlang
 		case "snapshot":
 			ret.Snapshot = p.parseSnapshot(k.Pos, v)
 		default:
-			// this is inelegant as fuck
-			// TODO: refactor this to use a map of valid keys instead of a switch statement
-			// or summit'
+			// TODO: Share the valid job keys with the switch above.
 			p.unexpectedKey(e.key, "job", []string{
 				"name",
 				"needs",

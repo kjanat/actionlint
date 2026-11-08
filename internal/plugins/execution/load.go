@@ -31,18 +31,14 @@ type Loaded struct {
 	Components    []*component.Plugin
 	ScriptEngines []ScriptEngineRegistration
 	Modules       []*corewasm.Engine
-	// providers are process tool provider manifests read from a local path
-	// or pulled from an oci:// source.
+	// Providers contains process tool manifests read from local paths or OCI sources.
 	Providers []SelectedProvider
-	// tools lists the tool ids the invocation named; configure checks that
-	// each names a tool.
+	// NamedTools lists tool IDs selected by the invocation. configure checks each ID.
 	NamedTools []string
-	// skipped lists the disabled tool ids that matched a plugin, which was
-	// therefore not loaded.
+	// SkippedTools lists disabled tool IDs that matched plugins that were not loaded.
 	SkippedTools []string
-	// ids lists the ids --no-tool can disable for each loaded plugin: the
-	// name and alias of its lock pin, and the engine and rule names in its
-	// metadata.
+	// ToolIDs lists names that --no-tool can disable: lock pin names and aliases,
+	// and engine and rule names from loaded plugin metadata.
 	ToolIDs []string
 }
 

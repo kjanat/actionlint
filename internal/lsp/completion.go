@@ -4,7 +4,8 @@ import (
 	"context"
 )
 
-// Completion is a buffer-relative property edit; the transport owns UTF-16 conversion.
+// Completion describes a property edit using byte offsets in the document.
+// completionItemFor converts those offsets to UTF-16 positions.
 type Completion struct {
 	Label, Detail string
 	Start, End    int

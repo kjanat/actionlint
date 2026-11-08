@@ -25,8 +25,8 @@ type UnavailableSource struct {
 	document string
 }
 
-// ReportedSourceUnavailable records a file the tool provider named provider
-// reported a finding in, and whether the optional display reread failed.
+// ReportedSourceUnavailable records a file in which the named tool provider
+// reported a finding, and whether the optional display reread failed.
 // Neither state is evidence of the revision the tool analyzed.
 func ReportedSourceUnavailable(provider, address string, readFailed bool) UnavailableSource {
 	state := sourceNotCaptured

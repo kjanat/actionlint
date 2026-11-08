@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-// UntrustedInputMap is a recursive map to match context object property dereferences.
-// Root of this map represents each context names and their ancestors represent recursive properties.
+// UntrustedInputMap is a node in a tree of untrusted input paths. Roots name
+// contexts; children name properties or array elements.
 type UntrustedInputMap struct {
 	Name     string
 	Parent   *UntrustedInputMap
@@ -30,7 +30,7 @@ func (m *UntrustedInputMap) String() string {
 	return b.String()
 }
 
-// Find child with the exact key in this map
+// findChild finds the child with the exact key.
 func (m *UntrustedInputMap) findChild(key string) (*UntrustedInputMap, bool) {
 	if m != nil && m.Children != nil {
 		if c, ok := m.Children[key]; ok {
@@ -40,7 +40,7 @@ func (m *UntrustedInputMap) findChild(key string) (*UntrustedInputMap, bool) {
 	return nil, false
 }
 
-// Find child object property in this map. A `**` child matches any property name.
+// findObjectProp finds a property by name. A `**` child matches any property name.
 func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, bool) {
 	if c, ok := m.findChild(name); ok {
 		return c, true
@@ -48,17 +48,17 @@ func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, boo
 	return m.findAnyProp()
 }
 
-// Find child array element in this map. This is special case with object filter where its receiver is an array
+// findArrayElem finds the child representing an array element.
 func (m *UntrustedInputMap) findArrayElem() (*UntrustedInputMap, bool) {
 	return m.findChild("*")
 }
 
-// Find child which matches any property name in this map
+// findAnyProp finds the child that matches any property name.
 func (m *UntrustedInputMap) findAnyProp() (*UntrustedInputMap, bool) {
 	return m.findChild("**")
 }
 
-// Build path like `github.event.commits.*.body` by following parents
+// buildPath follows parents to build a path such as `github.event.commits.*.body`.
 func (m *UntrustedInputMap) buildPath(b *strings.Builder) {
 	if m.Parent != nil && m.Parent.Name != "" {
 		m.Parent.buildPath(b)
@@ -67,8 +67,7 @@ func (m *UntrustedInputMap) buildPath(b *strings.Builder) {
 	b.WriteString(m.Name)
 }
 
-// NewUntrustedInputMap creates new instance of UntrustedInputMap. It is used for node of search
-// tree of untrusted input checker.
+// NewUntrustedInputMap creates a node in the untrusted input search tree.
 // The name `*` matches an array element and is reached by an index access or an object
 // filter. The name `**` matches any property name. A map which uses either name must have
 // it as its only child.
@@ -88,21 +87,19 @@ func NewUntrustedInputMap(name string, children ...*UntrustedInputMap) *Untruste
 	return m
 }
 
-// UntrustedInputSearchRoots is a list of untrusted inputs. It forms tree structure to detect
-// untrusted inputs in nested object property access, array index access, and object filters
-// efficiently. Each value of this map represents a root of the search so their names are context
-// names.
+// UntrustedInputSearchRoots maps context names to trees of untrusted input paths.
+// The checker follows those paths through properties, array indices and object filters.
 type UntrustedInputSearchRoots map[string]*UntrustedInputMap
 
-// AddRoot adds a new root to search for detecting untrusted input.
+// AddRoot adds a context root to the search tree.
 func (ms UntrustedInputSearchRoots) AddRoot(m *UntrustedInputMap) {
 	ms[m.Name] = m
 }
 
 // TODO: Automatically generate BuiltinUntrustedInputs from https://github.com/github/codeql/blob/main/javascript/ql/src/experimental/Security/CWE-094/ExpressionInjection.ql
 
-// BuiltinUntrustedInputs is list of untrusted inputs. These inputs are detected as untrusted in
-// `run:` scripts. See the URL for more details.
+// BuiltinUntrustedInputs lists inputs treated as untrusted in `run:` scripts.
+// See these references for details.
 // - https://securitylab.github.com/research/github-actions-untrusted-input/
 // - https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
 // - https://github.com/github/codeql/blob/main/javascript/ql/src/experimental/Security/CWE-094/ExpressionInjection.ql

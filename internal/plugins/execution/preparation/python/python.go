@@ -1,8 +1,8 @@
-// Package python is the Python preparation profile. Its token-aware sanitizer
-// replaces each template with an opaque value that keeps Python's syntax,
-// rows and columns, records the masks so findings they manufacture can be
-// filtered, and skips scripts whose templates cannot be masked that way. The
-// profile also selects Python step shells and infers their target version.
+// Package python replaces workflow expressions with values that fit Python
+// syntax and preserve line and column positions. It records the replacements
+// to filter diagnostics they cause. If a replacement cannot satisfy these
+// constraints, the script is skipped. The package also identifies Python step
+// shells and determines their target version.
 package python
 
 import (
@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
 
-// ID names this profile in tool provider manifests.
+// ID selects this Python script processing in provider manifests.
 const ID = "kjanat:actionlint/python-preparation@0.1.0"
 
 // ExpressionEnd returns the byte length of a valid expression, including its
@@ -30,14 +30,14 @@ func TemplateEnd(src string) (int, bool) {
 }
 
 // Sanitize masks templates with independent opaque values, preserving Unicode
-// columns and line breaks. Scripts whose templates cannot preserve Python
-// syntax and positions are not valid and must be skipped.
+// columns and line breaks. The boolean result reports whether masking succeeded.
+// Callers must skip the script when it is false. Ruff checks the resulting Python syntax.
 func Sanitize(src string, end ExpressionEnd) (string, bool, error) {
 	return sanitize(src, end, nil)
 }
 
-// Mask sanitizes src like Sanitize and returns the masks that filter the
-// findings its opaque values manufacture.
+// Mask sanitizes src like Sanitize and returns masks that filter findings caused
+// by the replacement values.
 func Mask(src string, end ExpressionEnd) (string, *Masks, bool, error) {
 	masks := &Masks{identifiers: make(map[checkinputs.ScriptPosition]int), parentheses: make(map[checkinputs.ScriptPosition]checkinputs.ScriptPosition), quoted: make(map[checkinputs.ScriptPosition]string)}
 	source, valid, err := sanitize(src, end, masks)

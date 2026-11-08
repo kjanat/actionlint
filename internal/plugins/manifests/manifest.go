@@ -74,8 +74,8 @@ type Manifest struct {
 	// Artifacts lists per-platform executables or modules; empty means the
 	// process entry is discovered on PATH.
 	Artifacts []Artifact `json:"artifacts,omitempty"`
-	// Preparation names the host preparation profile that masks templates and
-	// supplies argument variables.
+	// Preparation selects how actionlint rewrites the script and supplies values
+	// for placeholders in the tool command.
 	Preparation  string       `json:"preparation"`
 	Selectors    Selectors    `json:"selectors"`
 	Capabilities Capabilities `json:"capabilities"`

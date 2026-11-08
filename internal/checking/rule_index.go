@@ -73,12 +73,10 @@ var builtins = []rule.Declaration{
 	correctness.CacheOperationDeclaration(),
 }
 
-// providerRules holds the rules of the bundled tool providers. The manifests
-// are embedded build inputs, so a defect is a build defect and panics, as
-// missing built-in metadata does. The manifest model in package provider
-// imports the analyzer contract, which input preparation reaches the catalog
-// without, so only the rule is read here; TestProviderRulesComeFromManifests
-// keeps it equal to provider.Bundled.
+// providerRules reads rule descriptors from the bundled provider manifests.
+// Invalid embedded metadata causes a panic. This package reads only the rule
+// field to avoid importing the provider model and its analyzer dependency.
+// TestProviderRulesComeFromManifests compares the result with provider.Bundled.
 var providerRules = sync.OnceValue(func() []rule.Descriptor {
 	names := bundled.Names()
 	rules := make([]rule.Descriptor, 0, len(names))
