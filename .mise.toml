@@ -96,7 +96,13 @@ minimum_release_age_excludes        = [
 ]
 
 [env]
-_.path        = ["{{config_root}}/node_modules/.bin"]
+_.path        = [
+  {
+    path  = "{% if 'npm:runner-run' in tools %}{{ tools['npm:runner-run'].path }}/node_modules/@runner-run/{{ os(macos='darwin', windows='win32') }}-{{ arch() }}{% if os() == 'linux' %}-{{ libc() }}{% elif os() == 'windows' %}-msvc{% endif %}/bin{% else %}{{config_root}}/node_modules/.bin{% endif %}",
+    tools = true
+  },
+  "{{config_root}}/node_modules/.bin",
+]
 GOFLAGS       = "-buildvcs=true"
 VOLTA_BYPASS  = 1
 WASI_SDK_PATH = { value = "{% if 'wasi-sdk' in tools %}{{ tools['wasi-sdk'].path }}{% endif %}", tools = true }
