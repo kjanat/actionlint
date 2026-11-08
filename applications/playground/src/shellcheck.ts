@@ -13,8 +13,8 @@ export interface ShellcheckClient {
 	cancel: () => void;
 }
 
-// Bound untrusted analysis in a worker. A timeout/trap discards the instance;
-// the next lint can start a fresh one without reloading the editor.
+// Run ShellCheck in a worker with a time limit. A timeout or trap discards the worker;
+// the next check can start a new one without reloading the editor.
 export async function loadShellcheck(): Promise<ShellcheckClient> {
 	const response = await fetch(shellcheckAssets.wasm);
 	if (!response.ok) throw new Error(`Could not load ShellCheck WASM: HTTP ${response.status}`);
@@ -115,7 +115,7 @@ export async function loadShellcheck(): Promise<ShellcheckClient> {
 			return shellcheckOutput(await send({ request }));
 		},
 		cancel() {
-			// Invalidate calls between worker initialization and send too.
+			// Also invalidate checks waiting for worker initialization before sending a request.
 			if (pending.size > 0) stop(new Error('ShellCheck analysis was superseded'));
 			else generation++;
 		},

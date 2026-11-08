@@ -1,6 +1,6 @@
 /**
  * Query commands return captured stdout. With live output, commands inherit the
- * parent's output streams and return an empty buffer. Both modes join the child.
+ * parent's output streams and return an empty buffer. Both modes wait for the child to exit.
  * @typedef {(program: string, args: string[], options?: {live?: boolean, timeout?: number}) => Promise<Buffer>} ExecuteCommand
  */
 

@@ -17,8 +17,7 @@ export function editorRange(doc: Text, range: Range): { from: number; to: number
 	return { from, to };
 }
 
-/** Accept only edits for this exact open document version. The playground has
- * one editable buffer; VS Code clients apply multi-file edits through its API. */
+/** Accept nonoverlapping text edits for the open document and its current version. */
 export function workspaceChanges(doc: Text, edit: WorkspaceEdit, uri: string, version: number): ChangeSpec[] | null {
 	if (edit.changes || !edit.documentChanges?.length) return null;
 	const changes: { from: number; to: number; insert: string }[] = [];

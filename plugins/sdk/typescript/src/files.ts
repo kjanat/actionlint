@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import type { DocumentRequest } from './index.ts';
 
 /**
- * Materialize a captured document at the conventional path expected by file-based tools.
- * The temporary directory is removed even when the callback fails.
+ * Write a captured document to the conventional path expected by file-based tools.
+ * Remove the temporary directory even when the callback fails.
  * @example
  * ```ts
  * import { withCapturedFile } from '@kjanat-actionlint/plugin-sdk/files';

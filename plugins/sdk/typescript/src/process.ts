@@ -8,7 +8,7 @@ export interface CommandResult {
 
 /**
  * Run a captured-source tool with separate argument tokens and no shell expansion.
- * Inherit the callback's environment, which the host already filters using the manifest.
+ * Inherit the callback's environment, which actionlint already filters using the manifest.
  * Supply env to replace that environment for this command; no second SDK allowlist is applied.
  * @example
  * ```ts

@@ -1,5 +1,5 @@
-//! Checks dependency facts supplied by the host. Source text
-//! is intentionally unused: the host owns parsing and declaration provenance.
+//! Checks dependency facts supplied by actionlint. actionlint parses the source
+//! and supplies declaration provenance, so this plugin does not read source text.
 use actionlint_extension_api::{Descriptor, Diagnostic, Guest, Input, InputKind, Outcome};
 
 pub struct Plugin;
@@ -18,7 +18,7 @@ impl Guest for Plugin {
             explanation: String::new(),
             help: String::new(),
             documentation_url: String::new(),
-            fix_availability: String::new(), // Legacy ABI field; ignored by the host.
+            fix_availability: String::new(), // Legacy ABI field; actionlint ignores it.
             options_schema: "{}".into(),
             examples: Vec::new(),
         }

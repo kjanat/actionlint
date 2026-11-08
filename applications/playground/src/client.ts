@@ -7,7 +7,7 @@ export const workspaceURI = 'file:///workspace';
 export const documentURI = `${workspaceURI}/.github/workflows/playground.yml`;
 export type PlaygroundClient = Pick<BrowserLanguageClient, 'open' | 'change' | 'complete' | 'codeActions' | 'stop'>;
 
-/** Start the same worker a VS Code web LanguageClient can use directly. */
+/** Start the actionlint language server worker, which a VS Code web LanguageClient can also use. */
 export async function startPlaygroundClient(
 	options: Pick<BrowserClientOptions, 'onDiagnostics' | 'onError'>,
 ): Promise<PlaygroundClient> {

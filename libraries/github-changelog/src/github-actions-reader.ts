@@ -791,8 +791,8 @@ async function refreshLatest() {
 
 		void writeCache(state.cacheComplete);
 
-		// On a cold start, load only enough old history to make the list genuinely scrollable.
-		// If cached content already provides a scrollbar this resolves without another request.
+		// Try to load enough older history for the list to scroll. If cached content fills
+		// the list, this resolves without another request.
 		void ensureScrollable();
 	} catch (error) {
 		const detail = error instanceof Error
