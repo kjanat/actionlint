@@ -372,6 +372,7 @@ test('mise locks the CI tool artifacts and Python dependencies', () => {
 	assert.deepEqual(yamlMapping(config.settings).lockfile_platforms, platforms);
 	const configuredTools = yamlMapping(config.tools);
 	const lockedTools = yamlMapping(lock.tools);
+	assert.deepEqual(yamlMapping(configuredTools.npm).depends, ['bun']);
 
 	/** @param {string} name */
 	function entry(name) {
@@ -466,6 +467,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				assert.equal(yamlMapping(workflow.env).MISE_TASK_RUN_AUTO_INSTALL, 'false');
 				assert.equal(options.install_args, undefined, `${name}:${jobName} must use the locked tool selection`);
 				assert.equal(options.add_shims_to_path, false);
+				assert.equal(options.monorepo, false, `${name}:${jobName} installs its selected root tools`);
 				if (options.install === false) {
 					assert.equal(options.env, false);
 					assert.equal(options.working_directory, '${{ runner.temp }}');
