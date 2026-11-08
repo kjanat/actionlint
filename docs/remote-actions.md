@@ -77,6 +77,24 @@ fields, but metadata acquisition reports it as `unsupported`. The host
 does not guess a tag or branch route. A typed `actions.Provider` can instead
 supply the manifest and complete selection evidence directly to an in-process caller.
 
+## Reusable workflows
+
+The same `--action-metadata` setting controls downloads for remote reusable
+workflows. actionlint reads the referenced workflow file at its resolved commit.
+The `workflow-call` rule checks required and unknown inputs and secrets, then
+compares the caller's known token permissions with the callee's declared job
+permissions. Expression checks use the declared workflow outputs.
+
+Full SHA-1 references work without a resolver. Named references require
+`--resolve-with` and use the resolver's workflow selection, separately from
+action selection. Offline mode accepts full SHA-1 references already cached
+online. Off mode downloads nothing.
+
+These checks inspect the directly referenced workflow. They do not follow remote
+workflow call chains. Unavailable metadata supplies no input, output or permission
+facts, and unknown caller permissions do not establish a permission conflict.
+Remote workflow metadata is not included in the `action_metadata` results below.
+
 ## Coverage and enforcement
 
 The analysis API exposes `ActionMetadata`; version-1 JSON results expose
