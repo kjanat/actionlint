@@ -26,6 +26,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
+	github.com/tidwall/jsonc v0.3.3
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/mod v0.42.0
 	golang.org/x/net v0.62.0

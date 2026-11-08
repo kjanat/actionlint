@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -9,14 +10,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 
 	"github.com/kjanat/go-yaml/v4"
+	"github.com/tidwall/jsonc"
 )
 
-// Decode parses one configuration document into a node tree. The file
-// extension selects the format: .toml is TOML, everything else is YAML, which
-// includes JSON. An empty document is an empty mapping.
+// Decode parses one configuration document into a node tree.
+// JSON and JSONC share comment and trailing-comma support.
+// An empty document is an empty mapping.
 func Decode(path string, data []byte) (*yaml.Node, error) {
-	if strings.EqualFold(address.Extension(path), ".toml") {
+	switch strings.ToLower(address.Extension(path)) {
+	case ".toml":
 		return decodeTOML(data)
+	case ".json", ".jsonc":
+		data = jsonc.ToJSON(data)
+		if len(bytes.TrimSpace(data)) != 0 {
+			var document json.RawMessage
+			if err := json.Unmarshal(data, &document); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return decodeYAML(data)
 }

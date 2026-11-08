@@ -381,7 +381,7 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := repositoryfixture.Directory(t)
-	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0")
+	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +390,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}
 	registry.SetOffline(true)
-	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0"); err == nil || !strings.Contains(err.Error(), "already exists") {
+	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
 	}
 }
@@ -423,7 +423,7 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 			if err := project.Lock.Save(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0")
+			path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML)
 			if err != nil {
 				t.Fatal(err)
 			}

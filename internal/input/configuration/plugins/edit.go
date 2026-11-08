@@ -97,7 +97,7 @@ func EditManifest(path string, original []byte, refs []pluginref.Reference) ([]b
 	}
 	var edited []byte
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".json":
+	case ".json", ".jsonc":
 		edited, err = editJSONPlugins(original, sequence)
 	case ".toml":
 		edited, err = editTOMLPlugins(original, sequence)

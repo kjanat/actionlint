@@ -18,5 +18,5 @@ func FindOrDefaultPath(directory string) (string, error) {
 			return "", err
 		}
 	}
-	return filepath.Join(directory, "actionlint.yaml"), nil
+	return filepath.Join(directory, repoconfig.FormatYAML.Filename()), nil
 }

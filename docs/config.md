@@ -1,9 +1,14 @@
 # Configuration
 
-Configuration is optional. Put `actionlint.yaml`, `actionlint.yml`, `actionlint.json` or
+Configuration is optional. Put `actionlint.yaml`, `actionlint.yml`, `actionlint.json`, `actionlint.jsonc` or
 `actionlint.toml` in `.github/`, or select a file with `actionlint --config path/to/actionlint.toml`.
 actionlint reads the first of those names that exists. The CLI and GitHub Action use the same
 settings.
+
+Create a config with `actionlint config init`. Choose its format with `--json`,
+`--jsonc`, `--toml`, `--yaml` or `--yml`. YAML is the default.
+Both `.json` and `.jsonc` accept comments and trailing commas. `--json` generates
+ordinary JSON, while `--jsonc` includes commented rule examples.
 
 ## Configuration file
 

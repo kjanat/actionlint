@@ -86,7 +86,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 			t.Fatalf("invalid output destination created config: %v", err)
 		}
 	}
-	created := testRunCommand("", "config", "init", "--json")
+	created := testRunCommand("", "--json", "config", "init")
 	var result map[string]string
 	if err := json.Unmarshal([]byte(created.Stdout), &result); err != nil || created.Status != 0 {
 		t.Fatalf("%+v (%v)", created, err)

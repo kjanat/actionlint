@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	releaseVersionPattern = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
+	releaseVersionPattern  = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
+	snapshotVersionPattern = regexp.MustCompile(`-SNAPSHOT-([0-9a-f]+)(?:\+[0-9A-Za-z.-]+|-dirty)?$`)
 	// Go pseudo-versions and Makefile git-describe versions carry a commit suffix.
 	developmentVersionPattern = regexp.MustCompile(`(?:[.-]\d{14}-|-\d+-g)([0-9a-f]+)(?:\+[0-9A-Za-z.-]+|-dirty)?$`)
 )
@@ -16,6 +17,9 @@ var (
 // SourceRef returns the matching release tag or source commit. Only builds
 // without usable version or VCS metadata fall back to the development HEAD.
 func SourceRef(version string, info *debug.BuildInfo) string {
+	if snapshot := snapshotVersionPattern.FindStringSubmatch(version); snapshot != nil {
+		return snapshot[1]
+	}
 	development := developmentVersionPattern.FindStringSubmatch(version)
 	if development == nil && !strings.HasSuffix(version, "-dirty") && releaseVersionPattern.MatchString(version) {
 		return "v" + strings.TrimPrefix(version, "v")

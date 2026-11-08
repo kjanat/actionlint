@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kjanat/go-yaml/v4"
+	"github.com/tidwall/jsonc"
 )
 
 func manifestJSONValue(sequence *yaml.Node) ([]byte, error) {
@@ -39,31 +40,33 @@ func editJSONPlugins(original []byte, sequence *yaml.Node) ([]byte, error) {
 	if len(bytes.TrimSpace(original)) == 0 {
 		return append(append([]byte("{\n  \"plugins\": "), value...), []byte("\n}\n")...), nil
 	}
-	decoder := json.NewDecoder(bytes.NewReader(original))
+	normalized := jsonc.ToJSON(original)
+	decoder := json.NewDecoder(bytes.NewReader(normalized))
 	token, err := decoder.Token()
 	if err != nil || token != json.Delim('{') {
 		return nil, errors.New("JSON config must be an object")
 	}
 	count := 0
+	end := int(decoder.InputOffset())
 	for decoder.More() {
 		key, err := decoder.Token()
 		if err != nil {
 			return nil, err
 		}
 		start := int(decoder.InputOffset())
-		for start < len(original) && (original[start] == ':' || strings.ContainsRune(" \r\n\t", rune(original[start]))) {
+		for start < len(normalized) && (normalized[start] == ':' || strings.ContainsRune(" \r\n\t", rune(normalized[start]))) {
 			start++
 		}
 		var raw json.RawMessage
 		if err := decoder.Decode(&raw); err != nil {
 			return nil, err
 		}
+		end = int(decoder.InputOffset())
 		if key == "plugins" {
 			return spliceManifest(original, start, int(decoder.InputOffset()), value), nil
 		}
 		count++
 	}
-	end := int(decoder.InputOffset())
 	prefix := []byte("\n  \"plugins\": ")
 	if count > 0 {
 		prefix = append([]byte{','}, prefix...)

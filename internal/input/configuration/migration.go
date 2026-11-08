@@ -72,7 +72,7 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 		result.Notes = append(result.Notes, "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.")
 	}
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".json":
+	case ".json", ".jsonc":
 		var value map[string]any
 		if err := next.Decode(&value); err != nil {
 			return Migration{}, err

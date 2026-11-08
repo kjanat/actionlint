@@ -15,8 +15,9 @@ func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
 	}
 	dir := t.TempDir()
 	configs := map[string]string{
-		"actionlint.toml": "#:schema https://actionlint.kjanat.dev/schema/config.json\n# repository runner settings\nplugins = [] # explicit opt-out\n[repository] # runner section\nrunners = [\"gpu\"] # custom label\n",
-		"actionlint.json": "{\"$schema\": \"../actionlint.schema.json\", \"repository\": {\"runners\": [\"gpu\"]}}\n",
+		"actionlint.toml":  "#:schema https://actionlint.kjanat.dev/schema/config.json\n# repository runner settings\nplugins = [] # explicit opt-out\n[repository] # runner section\nrunners = [\"gpu\"] # custom label\n",
+		"actionlint.json":  "{\"$schema\": \"../actionlint.schema.json\", \"repository\": {\"runners\": [\"gpu\"]}}\n",
+		"actionlint.jsonc": "{\n// custom runner\n\"repository\": {\"runners\": [\"gpu\"],},\n}\n",
 	}
 	for name, content := range configs {
 		path := filepath.Join(dir, name)

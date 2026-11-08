@@ -417,6 +417,8 @@ guests do not become observable merely because they run under actionlint.
 actionlint check --config=other.yml workflow.yml
 actionlint check --no-config workflow.yml
 actionlint config init
+actionlint config init --toml
+actionlint config init --jsonc
 actionlint config path
 actionlint config show --origin
 actionlint config validate
@@ -424,7 +426,7 @@ actionlint config schema
 ```
 
 Select an explicit configuration file or use repository discovery in this order:
-`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, then
+`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, `.github/actionlint.jsonc`, then
 `.github/actionlint.toml`. There is no new global
 configuration search or merge policy. `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
@@ -446,13 +448,16 @@ not silently introduce the stricter JSON Schema validation policy.
 `config schema` prints the configuration JSON schema with an entry under `tools`
 for each tool provider that `--plugin` or the configuration installs; see
 [Configuration](config.md).
-`config init` writes to the repository configuration directory, refuses to overwrite either
-config filename, and includes the YAML Language Server schema directive.
-It creates a commented configuration reference with lint rules and tools first.
+`config init` creates `.github/actionlint.yaml`. Use `--json`, `--jsonc`, `--toml`,
+`--yaml` or `--yml` to choose the format and extension. The flags cannot be combined.
+The generated file includes its editor schema URL. YAML, JSONC and TOML also
+include commented rule examples generated from the rule declarations.
+The command refuses to create another config when any supported config file exists.
 `init`, `init-config`, `--init` and `--init-config` are compatibility aliases;
 `config --init` and `config --init-config` also work. The success message displays
 a path relative to the working directory, linked to the file when terminal
-hyperlinks are enabled. JSON output uses the absolute path.
+hyperlinks are enabled. Put `--json` before `config init` to receive the absolute
+path as JSON, for example `actionlint --json config init --toml`.
 
 `rules` lists checks by name, description and category; `rules NAME` explains one
 check. `doctor` reports the selected config and resolves configured external-tool
