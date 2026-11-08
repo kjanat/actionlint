@@ -52,7 +52,7 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 		col := col + offset
 
 		result, offsetAfter, parsed := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
-		// Parsed expressions have a complete boundary even when semantic checks fail.
+		// A parsed expression can be followed by another even if semantic checks fail.
 		if !parsed {
 			return nil, false
 		}

@@ -1,15 +1,14 @@
 package output
 
-// Color is kind of colorful output behavior.
+// Color selects whether diagnostic output uses color.
 type Color int
 
 const (
-	// ColorAuto is kind to determine to colorize errors output automatically. It is
-	// determined based on pty and $NO_COLOR environment variable. See document of fatih/color
-	// for more details.
+	// ColorAuto selects color automatically based on the terminal and NO_COLOR.
+	// See the fatih/color documentation for details.
 	ColorAuto Color = iota
-	// ColorAlways is kind to always colorize errors output.
+	// ColorAlways enables color.
 	ColorAlways
-	// ColorNever is kind never to colorize errors output.
+	// ColorNever disables color.
 	ColorNever
 )

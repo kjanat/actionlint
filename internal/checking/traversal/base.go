@@ -25,29 +25,27 @@ func (r *Base) Report(findings ...*findingmodel.Finding) {
 	r.findings.Report(findings...)
 }
 
-// VisitStep is callback when visiting Step node.
+// VisitStep is the default callback for a step.
 func (r *Base) VisitStep(node declaration.StepView) error { return nil }
 
-// VisitJobPre is callback when visiting Job node before visiting its children.
+// VisitJobPre is the default callback before visiting a job's children.
 func (r *Base) VisitJobPre(node declaration.JobView) error { return nil }
 
-// VisitJobPost is callback when visiting Job node after visiting its children.
+// VisitJobPost is the default callback after visiting a job's children.
 func (r *Base) VisitJobPost(node declaration.JobView) error { return nil }
 
-// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
+// VisitWorkflowPre is the default callback before visiting a workflow's children.
 func (r *Base) VisitWorkflowPre(node declaration.WorkflowView) error { return nil }
 
-// VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
+// VisitWorkflowPost is the default callback after visiting a workflow's children.
 func (r *Base) VisitWorkflowPost(node declaration.WorkflowView) error { return nil }
 
-// Error creates a new error from the source position and the error message and stores it in the
-// rule instance. The errors can be accessed by Errs method.
+// Error records a finding at pos. Errs returns the recorded findings.
 func (r *Base) Error(pos *workflowlang.Pos, msg string) {
 	r.findings.Report(findingmodel.At(pos, r.name, msg))
 }
 
-// Errorf reports a new error with the source position and the formatted error message and stores it
-// in the rule instance. The errors can be accessed by Errs method.
+// Errorf formats and records a finding at pos. Errs returns the recorded findings.
 func (r *Base) Errorf(pos *workflowlang.Pos, format string, args ...any) {
 	r.findings.Report(findingmodel.Errorf(pos, r.name, format, args...))
 }

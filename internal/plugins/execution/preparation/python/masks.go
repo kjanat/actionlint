@@ -7,7 +7,7 @@ import (
 )
 
 // Masks records where sanitizing replaced templates with opaque values so
-// findings those values manufacture can be filtered.
+// findings caused by those values can be filtered.
 type Masks struct {
 	identifiers        map[checkinputs.ScriptPosition]int
 	parentheses        map[checkinputs.ScriptPosition]checkinputs.ScriptPosition
@@ -31,8 +31,8 @@ func (m *Masks) Accept(d checkinputs.ScriptDiagnostic) bool {
 	if m.dynamicQuotedValue(d) {
 		return false
 	}
-	// A mask can manufacture undefined-name and useless-expression
-	// findings. Only its exact identifier range is excluded.
+	// A mask can cause undefined-name and useless-expression findings.
+	// Only its exact identifier range is excluded.
 	if width, ok := m.identifiers[d.Location]; ok && d.TemplateEffect == checkinputs.TemplateEffectOpaqueName &&
 		d.EndLocation == (checkinputs.ScriptPosition{Row: d.Location.Row, Column: d.Location.Column + width}) {
 		return false

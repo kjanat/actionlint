@@ -100,7 +100,7 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string, 
 }
 
 // Decision independently controls whether an exception hides findings and
-// whether using that exception produces a policy results.
+// whether using that exception produces a policy diagnostic.
 type Decision struct{ Suppress, Report bool }
 
 type lineRange struct{ first, last int }

@@ -319,8 +319,8 @@
           "const": "missing-action-metadata"
         },
         {
-          "description": "Report local action references whose manifests cannot be found",
-          "markdownDescription": "Report local action references whose manifests cannot be found",
+          "description": "Report local action references that cannot be resolved",
+          "markdownDescription": "Report local action references that cannot be resolved",
           "type": "string",
           "const": "missing-local-action"
         },
@@ -1273,8 +1273,8 @@
                             "missing-local-action": {
                               "$ref": "#/$defs/rule-setting",
                               "title": "missing-local-action",
-                              "description": "Report local action references whose manifests cannot be found",
-                              "markdownDescription": "Report local action references whose manifests cannot be found"
+                              "description": "Report local action references that cannot be resolved",
+                              "markdownDescription": "Report local action references that cannot be resolved"
                             },
                             "numeric-values": {
                               "$ref": "#/$defs/rule-setting",
@@ -2513,8 +2513,8 @@
                                       "missing-local-action": {
                                         "$ref": "#/$defs/rule-setting",
                                         "title": "missing-local-action",
-                                        "description": "Report local action references whose manifests cannot be found",
-                                        "markdownDescription": "Report local action references whose manifests cannot be found"
+                                        "description": "Report local action references that cannot be resolved",
+                                        "markdownDescription": "Report local action references that cannot be resolved"
                                       },
                                       "numeric-values": {
                                         "$ref": "#/$defs/rule-setting",

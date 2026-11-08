@@ -7,8 +7,8 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
-// SourcesFromArguments is an invocation boundary, separate from constructing
-// sources from repository declarations or lock evidence.
+// SourcesFromArguments copies plugin paths and grants network access to the
+// endpoint of each explicitly supplied remote source.
 func SourcesFromArguments(paths []string) (Sources, error) {
 	sources := Sources{Paths: slices.Clone(paths), NetworkGrants: make(map[string]acquisitionhttp.Grant, len(paths))}
 	for _, source := range paths {

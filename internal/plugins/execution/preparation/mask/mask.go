@@ -8,8 +8,8 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-// ID names the generic profile in tool provider manifests: it masks
-// templates and passes inline settings through, for tools of any language.
+// ID selects workflow-expression replacement in provider manifests for any
+// script language. Inline settings pass through unchanged.
 const ID = "kjanat:actionlint/expression-mask@0.1.0"
 
 // Expressions replaces each ${{ }} template with underscores of the same rune

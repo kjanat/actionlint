@@ -1,8 +1,7 @@
-// Package preparation defines what a preparation profile hands a script tool.
-// Profiles are language preparation, not tools: they mask templates, infer
-// the language dialect, insert directive and startup lines and map the
-// prepared rows back to the script. They receive configuration as typed
-// values and never import configuration loading.
+// Package preparation builds scripts and options for linters. It replaces
+// workflow expressions, determines language settings and adds directives or
+// startup commands. Line maps relate the resulting text to the original script.
+// Callers pass typed settings. This package does not load configuration files.
 package preparation
 
 import (
@@ -21,16 +20,16 @@ type Prepared struct {
 	// LineMap maps a row of Source to the script row it holds and to what
 	// produced it.
 	LineMap func(int) Line
-	// AcceptDiagnostic filters findings preparation manufactured; nil keeps
-	// every finding.
+	// AcceptDiagnostic filters findings caused by generated script text.
+	// A nil function accepts every finding.
 	AcceptDiagnostic func(checkinputs.ScriptDiagnostic) bool
-	// Vars are preparation variables for process argument placeholders.
+	// Vars supplies values for placeholders in the tool command.
 	Vars map[string]string
-	// Excluded are diagnostic codes the profile excludes, which snippet
-	// engines receive with each request.
+	// Excluded lists diagnostic codes the tool should skip for this script.
+	// Script engines receive these codes with each request.
 	Excluded []string
-	// Skip is why preparation withholds the script from the tool. Empty
-	// checks it.
+	// Skip explains why the tool should not check this script.
+	// An empty string allows checking.
 	Skip string
 }
 
@@ -48,8 +47,8 @@ const (
 	LineStartup
 )
 
-// Line is the script row a prepared row holds. Line is set only when Origin
-// is LineScript.
+// Line identifies the origin of a prepared row. Line is set only when Origin
+// is LineScript and gives the corresponding row in the original script.
 type Line struct {
 	Line   int
 	Origin LineOrigin

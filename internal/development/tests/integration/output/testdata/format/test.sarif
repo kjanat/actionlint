@@ -39,11 +39,11 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-call-unrestricted"
               },
               "fullDescription": {
-                "text": "Report reusable workflow calls without explicit cache limits on low-trust triggers."
+                "text": "Report reusable workflow calls reachable from low-trust triggers without an explicit cache mode. The called workflow can request cache writes despite the trigger's read-only default."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-call-unrestricted",
               "help": {
-                "text": "Pass explicit cache limits to reusable workflows on low-trust triggers."
+                "text": "Set cache-mode to read or none on the calling job or workflow."
               }
             },
             {
@@ -57,11 +57,11 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-operation"
               },
               "fullDescription": {
-                "text": "Report cache actions blocked by explicit cache access limits."
+                "text": "Report cache save or restore operations blocked by an explicit cache mode. GitHub skips the blocked operations."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-operation",
               "help": {
-                "text": "Align cache actions with the effective cache access limits."
+                "text": "Remove the cache step or choose an action and cache mode that allow the intended operation."
               }
             },
             {
@@ -75,11 +75,11 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-write-untrusted"
               },
               "fullDescription": {
-                "text": "Report cache write access granted on low-trust triggers."
+                "text": "Report cache write access reachable from low-trust triggers. Untrusted code or input can poison caches consumed by privileged workflows."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-write-untrusted",
               "help": {
-                "text": "Restrict cache writes for low-trust triggers using explicit cache permissions or an event guard."
+                "text": "Set cache-mode to read or none, restrict the job with an event guard, or document a reviewed exception with an inline suppression."
               }
             },
             {
@@ -493,7 +493,7 @@
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#if-cond",
               "help": {
-                "text": "Remove the constant condition or correct the expression so it tests the intended runtime value."
+                "text": "Correct the expression to test the intended runtime value. Remove a condition that is always true if it is unnecessary."
               }
             },
             {
@@ -593,15 +593,15 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Report local action references whose manifests cannot be found",
+                "description": "Report local action references that cannot be resolved",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-local-action"
               },
               "fullDescription": {
-                "text": "Report local action references whose manifests cannot be found."
+                "text": "Report local action references with no manifest or Dockerfile, a missing directory, or an ambiguous path under case-insensitive lookup."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-local-action",
               "help": {
-                "text": "Check the uses path and ensure the local action metadata or Dockerfile exists in the repository."
+                "text": "Check the uses path and ensure the action has a manifest or Dockerfile. If paths differ only in casing, rename them so each path can be resolved unambiguously."
               }
             },
             {
@@ -673,7 +673,7 @@
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#numeric-values",
               "help": {
-                "text": "Write the whole number GitHub will use, greater than zero."
+                "text": "Set max-parallel to a positive whole number."
               }
             },
             {
@@ -727,7 +727,7 @@
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#runner-label",
               "help": {
-                "text": "Correct the runner label or declare repository-specific labels in lint.rules.correctness.runner-label.options.labels."
+                "text": "Correct the runner label or declare repository-specific labels in repository.runners."
               }
             },
             {
@@ -903,11 +903,11 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call"
               },
               "fullDescription": {
-                "text": "Validate reusable workflow references and their declared inputs and outputs."
+                "text": "Check reusable workflow references and report missing or undeclared inputs and secrets. For local calls with available metadata, check the caller's permission and cache limits against the called workflow. The expression-reference rule checks references to workflow outputs."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call",
               "help": {
-                "text": "Match the reusable workflow reference and its declared input/output contract."
+                "text": "Correct the reference and supply required inputs and secrets. For permission or cache conflicts, adjust the caller's grant or reduce the called workflow's requirements."
               }
             }
           ]

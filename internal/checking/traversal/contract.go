@@ -5,17 +5,18 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Pass visits immutable declarations in source order.
+// Pass visits immutable declarations in source order. Each method returns an
+// error if traversal cannot continue.
 type Pass interface {
-	// VisitStep is callback when visiting Step node. It returns internal error when it cannot continue the process
+	// VisitStep visits a step and returns an error if traversal cannot continue.
 	VisitStep(node declaration.StepView) error
-	// VisitJobPre is callback when visiting Job node before visiting its children. It returns internal error when it cannot continue the process
+	// VisitJobPre visits a job before its children.
 	VisitJobPre(node declaration.JobView) error
-	// VisitJobPost is callback when visiting Job node after visiting its children. It returns internal error when it cannot continue the process
+	// VisitJobPost visits a job after its children.
 	VisitJobPost(node declaration.JobView) error
-	// VisitWorkflowPre is callback when visiting Workflow node before visiting its children. It returns internal error when it cannot continue the process
+	// VisitWorkflowPre visits a workflow before its children.
 	VisitWorkflowPre(node declaration.WorkflowView) error
-	// VisitWorkflowPost is callback when visiting Workflow node after visiting its children. It returns internal error when it cannot continue the process
+	// VisitWorkflowPost visits a workflow after its children.
 	VisitWorkflowPost(node declaration.WorkflowView) error
 }
 

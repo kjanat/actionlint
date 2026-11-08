@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-// Parser is a Parser for expression syntax. To know the details, see
+// Parser parses expression syntax. For the language reference, see
 // https://docs.github.com/en/actions/learn-github-actions/expressions
 type Parser struct {
 	cur   *Token
@@ -17,7 +17,7 @@ type Parser struct {
 	last  *Token
 }
 
-// NewParser creates new Parser instance.
+// NewParser creates a parser.
 func NewParser() *Parser {
 	return &Parser{}
 }
@@ -75,10 +75,8 @@ func (p *Parser) peek() *Token {
 func (p *Parser) parseIdent() parsedExprNode {
 	ident := p.next() // eat ident
 	if p.peek().Kind == TokenKindLeftParen {
-		// Parse function call as primary expression though generally function call is parsed as
-		// postfix expression. The reason is that only built-in function call is allowed in workflow
-		// expression syntax, meant that callee is always built-in function name, not a general
-		// expression.
+		// Parse a function call as a primary expression. Only an identifier can
+		// name the function to call.
 		p.next() // eat '('
 		args := []Node{}
 		if p.peek().Kind == TokenKindRightParen {

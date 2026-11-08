@@ -86,9 +86,9 @@ func Complete(content string, offset int) []Item {
 	return result
 }
 
-// keyAt follows the owned YAML tree to the scalar preceding the cursor. Block
-// scalars keep their mapping address across lines; sequence indices do not enter
-// the context-availability vocabulary.
+// keyAt finds the workflow field containing the scalar preceding the cursor.
+// Block scalars keep their field path across lines. Sequence indices are omitted
+// because context availability is defined by field paths.
 func keyAt(root *syntax.Node, content string, offset int) string {
 	before := content[:offset]
 	line := strings.Count(before, "\n") + 1

@@ -10,10 +10,9 @@ import (
 type LogLevel int
 
 const (
-	// LogLevelNone does not output any log output.
+	// LogLevelNone disables logging.
 	LogLevelNone LogLevel = 0
-	// LogLevelVerbose shows verbose log output. This is equivalent to specifying -verbose option
-	// to actionlint command.
+	// LogLevelVerbose enables verbose logging, as actionlint's -verbose option does.
 	LogLevelVerbose = 1
 	// LogLevelDebug shows all log output including debug information.
 	LogLevelDebug = 2

@@ -8,22 +8,21 @@ import (
 	"unicode/utf8"
 )
 
-// TokenKind is kind of Token.
+// TokenKind identifies the kind of a token.
 type TokenKind int
 
 const (
-	// TokenKindUnknown is a default value of Token as unknown Token value.
+	// TokenKindUnknown is the zero value for an unknown token.
 	TokenKindUnknown TokenKind = iota
-	// TokenKindEnd is a Token for end of Token sequence. Sequence without this
-	// Token means invalid.
+	// TokenKindEnd marks the closing '}}' delimiter.
 	TokenKindEnd
-	// TokenKindIdent is a Token for identifier.
+	// TokenKindIdent identifies an identifier.
 	TokenKindIdent
-	// TokenKindString is a Token for String literals.
+	// TokenKindString identifies a string literal.
 	TokenKindString
-	// TokenKindInt is a Token for integers including hex integers.
+	// TokenKindInt identifies an integer literal, including hexadecimal integers.
 	TokenKindInt
-	// TokenKindFloat is a Token for float numbers.
+	// TokenKindFloat identifies a floating-point literal.
 	TokenKindFloat
 	// TokenKindLeftParen is a Token for '('.
 	TokenKindLeftParen
@@ -110,18 +109,18 @@ func (t TokenKind) String() string {
 	}
 }
 
-// Token is a Token lexed from expression syntax. For more details, see
+// Token is a token from expression syntax. For the language reference, see
 // https://docs.github.com/en/actions/learn-github-actions/expressions
 type Token struct {
-	// Kind is kind of the Token.
+	// Kind identifies the token's kind.
 	Kind TokenKind
-	// Value is String representation of the Token.
+	// Value is the token's source text.
 	Value string
-	// Offset is byte Offset of Token String starting.
+	// Offset is the byte offset where the token starts.
 	Offset int
-	// Line is line number of start position of the Token. Note that this value is 1-based.
+	// Line is the one-based line where the token starts.
 	Line int
-	// Column is column number of start position of the Token. Note that this value is 1-based.
+	// Column is the one-based column where the token starts.
 	Column int
 }
 

@@ -15,9 +15,9 @@ import (
 
 // Pos represents a position in the file.
 type Pos struct {
-	// Line is a line number of the position. This value is 1-based.
+	// Line is the one-based line number.
 	Line int
-	// Col is a column number of the position. This value is 1-based.
+	// Col is the one-based column number.
 	Col int
 }
 
@@ -153,7 +153,7 @@ func (p *Pos) String() string {
 	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Col)
 }
 
-// IsBefore returns if the Position is before the other Position. If they are equal, this function returns false.
+// IsBefore reports whether p precedes other. Equal positions return false.
 func (p *Pos) IsBefore(other *Pos) bool {
 	if p.Line < other.Line {
 		return true
@@ -190,11 +190,11 @@ type SourceScalar struct {
 
 // String represents a YAML string value and its source position.
 type String struct {
-	// Value is a raw value of the String.
+	// Value is the decoded string.
 	Value string
-	// Quoted represents the String is quoted with ' or " in the YAML source.
+	// Quoted reports whether the YAML source uses single or double quotes.
 	Quoted bool
-	// Pos is a Position of the String in source.
+	// Pos is the string's position in the source.
 	Pos *Pos
 	// SourceScalar records the original YAML node before normalization or folding.
 	SourceScalar SourceScalar
@@ -210,7 +210,7 @@ func IsExprAssigned(s string) bool {
 		return false
 	}
 	// Delimiters inside single-quoted strings are data. Doubled quotes toggle
-	// twice, keeping the scan inside the same String literal.
+	// twice, keeping the scan inside the same string literal.
 	inString := false
 	for i := 3; i < len(s)-1; i++ {
 		if s[i] == '\'' {
@@ -224,7 +224,7 @@ func IsExprAssigned(s string) bool {
 			}
 		}
 	}
-	// Let the expression parser diagnose an unterminated String literal.
+	// Let the expression parser diagnose an unterminated string literal.
 	return inString
 }
 
@@ -233,13 +233,13 @@ func (s *String) IsExpressionAssigned() bool {
 	return IsExprAssigned(s.Value)
 }
 
-// Bool represents generic boolean value in YAML file with Position.
+// Bool represents a YAML boolean or expression and its source position.
 type Bool struct {
-	// Value is a raw value of the Bool String.
+	// Value is the decoded boolean.
 	Value bool
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
@@ -253,59 +253,59 @@ func (b *Bool) String() string {
 	return "false"
 }
 
-// Int represents generic integer value in YAML file with Position.
+// Int represents a YAML integer or expression and its source position.
 type Int struct {
-	// Value is a raw value of the integer String.
+	// Value is the decoded integer.
 	Value int
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 	// TruncatedFrom is the source spelling of a fractional literal GitHub
 	// truncates toward zero to produce Value. It is empty for whole numbers.
 	TruncatedFrom string
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Float represents generic Float value in YAML file with Position.
+// Float represents a YAML number or expression and its source position.
 type Float struct {
-	// Value is a raw value of the Float String.
+	// Value is the decoded number.
 	Value float64
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Event interface represents Workflow events in 'on' section
+// Event represents an event in the workflow on section.
 type Event interface {
-	// EventName returns name of the Event to trigger this Workflow.
+	// EventName returns the event name that triggers the workflow.
 	EventName() string
 }
 
-// WebhookEventFilter is a filter for Webhook events such as 'branches', 'paths-ignore', ...
-// Webhook events are filtered by those filters. Some filters are exclusive.
+// WebhookEventFilter describes a webhook filter, such as branches or paths-ignore.
+// Some filters are mutually exclusive.
 // https://docs.github.com/en/actions/using-workflows/Workflow-syntax-for-github-actions#using-filters
 type WebhookEventFilter struct {
-	// Name is a name of filter such like 'branches', 'tags'
+	// Name is the filter name, such as branches or tags.
 	Name *String
 	// Values is a list of filter values.
 	Values []*String
 }
 
-// IsEmpty returns true when it has no value. This may mean the WebhookEventFilter instance itself is nil.
+// IsEmpty reports whether the filter is nil or has no values.
 func (f *WebhookEventFilter) IsEmpty() bool {
 	return f == nil || len(f.Values) == 0
 }
 
-// WebhookEvent represents Event type based on webhook events.
-// Some events can't have 'types' field. Only 'push' and 'pull' events can have 'tags', 'tags-ignore',
-// 'paths' and 'paths-ignore' fields. Only 'workflow_run' Event can have 'workflows' field.
+// WebhookEvent configures a webhook trigger.
+// Some events cannot specify types. The push event accepts tag and path filters.
+// The pull_request and pull_request_target events accept path filters.
+// Only workflow_run accepts workflows.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onevent_nametypes
 type WebhookEvent struct {
-	// Hook is a name of the webhook Event.
+	// Hook is the webhook event name.
 	Hook *String
-	// Types is list of types of the webhook Event. Only the types enumerated here will trigger
-	// the Workflow.
+	// Types lists the webhook activity types that trigger the workflow.
 	Types []*String
 	// Branches is 'branches' filter. This value is nil when it is omitted.
 	Branches *WebhookEventFilter
@@ -319,361 +319,360 @@ type WebhookEvent struct {
 	Paths *WebhookEventFilter
 	// PathsIgnore is 'paths-ignore' filter. This value is nil when it is omitted.
 	PathsIgnore *WebhookEventFilter
-	// Workflows is list of Workflow names which are triggered by 'workflow_run' Event.
+	// Workflows lists names selected by the workflow_run event.
 	Workflows []*String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EventName returns name of the Event to trigger this Workflow.
+// EventName returns the event name that triggers the workflow.
 func (e *WebhookEvent) EventName() string {
 	return e.Hook.Value
 }
 
-// ScheduleEntry is a single entry in a schedule Event.
+// ScheduleEntry is one entry in a schedule event.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#onschedule
 type ScheduleEntry struct {
-	// Cron is the cron String for the schedule.
+	// Cron is the cron expression for the schedule.
 	Cron *String
 	// Timezone is the optional IANA timezone for the schedule.
 	Timezone *String
 }
 
-// ScheduledEvent is Event scheduled by Workflow.
+// ScheduledEvent configures a workflow schedule.
 // https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#scheduled-events
 type ScheduledEvent struct {
-	// Schedules is list of schedule entries which schedule the Workflow.
+	// Schedules lists the workflow schedule entries.
 	Schedules []*ScheduleEntry
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EventName returns name of the Event to trigger this Workflow.
+// EventName returns the event name that triggers the workflow.
 func (e *ScheduledEvent) EventName() string {
 	return "schedule"
 }
 
-// WorkflowDispatchEventInputType is a type for Input types of workflow_dispatch events.
+// WorkflowDispatchEventInputType identifies a workflow_dispatch input type.
 // https://github.blog/changelog/2021-11-10-github-actions-Input-types-for-manual-workflows/
 type WorkflowDispatchEventInputType uint8
 
 const (
-	// WorkflowDispatchEventInputTypeNone represents no type is specified to the Input of workflow_dispatch Event.
+	// WorkflowDispatchEventInputTypeNone means no input type was specified.
 	WorkflowDispatchEventInputTypeNone WorkflowDispatchEventInputType = iota
-	// WorkflowDispatchEventInputTypeString is String type of Input of workflow_dispatch Event.
+	// WorkflowDispatchEventInputTypeString identifies a string input.
 	WorkflowDispatchEventInputTypeString
-	// WorkflowDispatchEventInputTypeNumber is number type of Input of workflow_dispatch Event.
+	// WorkflowDispatchEventInputTypeNumber identifies a number input.
 	WorkflowDispatchEventInputTypeNumber
-	// WorkflowDispatchEventInputTypeBoolean is boolean type of Input of workflow_dispatch Event.
+	// WorkflowDispatchEventInputTypeBoolean identifies a boolean input.
 	WorkflowDispatchEventInputTypeBoolean
-	// WorkflowDispatchEventInputTypeChoice is choice type of Input of workflow_dispatch Event.
+	// WorkflowDispatchEventInputTypeChoice identifies a choice input.
 	WorkflowDispatchEventInputTypeChoice
-	// WorkflowDispatchEventInputTypeEnvironment is Environment type of Input of workflow_dispatch Event.
+	// WorkflowDispatchEventInputTypeEnvironment identifies an environment input.
 	WorkflowDispatchEventInputTypeEnvironment
 )
 
-// DispatchInput is Input specified on dispatching Workflow manually.
+// DispatchInput describes an input for a manually dispatched workflow.
 // https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 type DispatchInput struct {
-	// Name is a name of Input value specified on dispatching Workflow manually.
+	// Name is the input name.
 	Name *String
-	// Description is a description of Input value specified on dispatching Workflow manually.
+	// Description describes the input.
 	Description *String
-	// Required is a flag to show if this Input is mandatory or not on dispatching Workflow manually.
+	// Required indicates whether the input is mandatory.
 	Required *Bool
-	// Default is a default value of Input value on dispatching Workflow manually.
+	// Default is the input default.
 	Default *String
-	// Type is a type of the Input
+	// Type is the input type.
 	// https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 	Type WorkflowDispatchEventInputType
-	// Options is list of options of choice type
+	// Options lists the values for a choice input.
 	Options []*String
 }
 
-// WorkflowDispatchEvent is Event on dispatching Workflow manually.
+// WorkflowDispatchEvent configures manual workflow dispatch.
 // https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 type WorkflowDispatchEvent struct {
-	// Inputs is map from Input names to Input attributes. Keys are in lower case since they are case insensitive.
+	// Inputs maps lowercase input names to their attributes. Names are case insensitive.
 	Inputs map[string]*DispatchInput
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EventName returns name of the Event to trigger this Workflow.
+// EventName returns the event name that triggers the workflow.
 func (e *WorkflowDispatchEvent) EventName() string {
 	return "workflow_dispatch"
 }
 
-// RepositoryDispatchEvent is repository_dispatch Event configuration.
+// RepositoryDispatchEvent configures the repository_dispatch event.
 // https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#repository_dispatch
 type RepositoryDispatchEvent struct {
-	// Types is list of types which can trigger Workflow.
+	// Types lists the activity types that can trigger the workflow.
 	Types []*String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EventName returns name of the Event to trigger this Workflow.
+// EventName returns the event name that triggers the workflow.
 func (e *RepositoryDispatchEvent) EventName() string {
 	return "repository_dispatch"
 }
 
-// WorkflowCallEventInputType is a type of inputs at workflow_call Event.
+// WorkflowCallEventInputType identifies a workflow_call input type.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinput_idtype
 type WorkflowCallEventInputType uint8
 
 const (
-	// WorkflowCallEventInputTypeInvalid represents invalid type Input as default value of the type.
+	// WorkflowCallEventInputTypeInvalid is the zero value and represents an invalid type.
 	WorkflowCallEventInputTypeInvalid WorkflowCallEventInputType = iota
-	// WorkflowCallEventInputTypeBoolean represents boolean type Input.
+	// WorkflowCallEventInputTypeBoolean identifies a boolean input.
 	WorkflowCallEventInputTypeBoolean
-	// WorkflowCallEventInputTypeNumber represents number type Input.
+	// WorkflowCallEventInputTypeNumber identifies a number input.
 	WorkflowCallEventInputTypeNumber
-	// WorkflowCallEventInputTypeString represents String type Input.
+	// WorkflowCallEventInputTypeString identifies a string input.
 	WorkflowCallEventInputTypeString
 )
 
-// WorkflowCallEventInput is an Input configuration of workflow_call Event.
+// WorkflowCallEventInput describes a workflow_call input.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs
 type WorkflowCallEventInput struct {
-	// Name is a name of the Input.
+	// Name is the input name.
 	Name *String
-	// Description is a description of the Input.
+	// Description describes the input.
 	Description *String
-	// Default is a default value of the Input. Nil means no default value.
+	// Default is the input default. Nil means no default was specified.
 	Default *String
-	// Required represents if the Input is required or optional. When this value is nil, it was not explicitly specified.
-	// In the case the default value is 'not required'.
+	// Required indicates whether the input is required. Nil means it was not
+	// specified and defaults to optional.
 	Required *Bool
-	// Type of the Input, which must be one of 'boolean', 'number' or 'String'. This property is required.
+	// Type is required and must be boolean, number or string.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinput_idtype
 	Type WorkflowCallEventInputType
-	// ID is an ID of the Input. Input ID is in lower case because it is case-insensitive.
+	// ID is the lowercase input ID. Input IDs are case insensitive.
 	ID string
 }
 
-// IsRequired returns if the Input is marked as required or not.
-// require
+// IsRequired reports whether the input is marked as required.
 func (i *WorkflowCallEventInput) IsRequired() bool {
 	return i.Required != nil && i.Required.Value
 }
 
-// WorkflowCallEventSecret is a secret configuration of workflow_call Event.
+// WorkflowCallEventSecret describes a workflow_call secret.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callsecrets
 type WorkflowCallEventSecret struct {
-	// Name is a name of the secret.
+	// Name is the secret name.
 	Name *String
-	// Description is a description of the secret.
+	// Description describes the secret.
 	Description *String
-	// Required represents if the secret is required or optional. When this value is nil, it means optional.
+	// Required indicates whether the secret is required. Nil means optional.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callsecretssecret_idrequired
 	Required *Bool
 }
 
-// WorkflowCallEventOutput is an Output configuration of workflow_call Event.
+// WorkflowCallEventOutput describes a workflow_call output.
 // https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-Workflow
 type WorkflowCallEventOutput struct {
-	// Name is a name of the Output.
+	// Name is the output name.
 	Name *String
-	// Description is a description of the Output.
+	// Description describes the output.
 	Description *String
-	// Value is an expression for the value of the Output.
+	// Value is an expression for the output value.
 	Value *String
 }
 
-// WorkflowCallEvent is workflow_call Event configuration.
+// WorkflowCallEvent configures the workflow_call event.
 // https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#Workflow-reuse-events
 type WorkflowCallEvent struct {
-	// Inputs is an array of inputs of the workflow_call Event. This value is not a map unlike other fields of this
-	// struct since its order is important when checking the default values of inputs.
+	// Inputs lists workflow_call inputs in source order, which matters when
+	// checking their default values.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs
 	Inputs []*WorkflowCallEventInput
-	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this field.
-	// Keys are in lower case since they are case-insensitive.
+	// Secrets maps lowercase names to secret declarations. Nil means 'secrets'
+	// was omitted. Names are case insensitive.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callsecrets
 	Secrets map[string]*WorkflowCallEventSecret
-	// Outputs is a map from name of Output to Output configuration. Keys are in lower case since they are case-insensitive.
+	// Outputs maps lowercase names to output declarations. Names are case insensitive.
 	// https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-Workflow
 	Outputs map[string]*WorkflowCallEventOutput
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EventName returns name of the Event to trigger this Workflow.
+// EventName returns the event name that triggers the workflow.
 func (e *WorkflowCallEvent) EventName() string {
 	return "workflow_call"
 }
 
-// ImageVersionEvent is image_version Event configuration.
+// ImageVersionEvent configures the image_version event.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
 type ImageVersionEvent struct {
 	// Types filters image version activity to created, ready, or deleted events.
 	Types []*String
-	// Names is a list of names which match to the created image names.
+	// Names lists names matched against created image names.
 	Names []*String
-	// Versions is a list of names which match to the created image versions. Glob patterns are available.
+	// Versions lists patterns matching created image versions. Glob patterns are allowed.
 	Versions []*String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EventName returns name of the Event to trigger this Workflow.
+// EventName returns the event name that triggers the workflow.
 func (e *ImageVersionEvent) EventName() string {
 	return "image_version"
 }
 
-// PermissionScope is struct for respective permission scope like "issues", "checks", ...
+// PermissionScope configures a token permission scope, such as "issues" or "checks".
 // https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#Permissions-for-the-github_token
 type PermissionScope struct {
-	// Name is name of the scope.
+	// Name is the scope name.
 	Name *String
-	// Value is permission value of the scope.
+	// Value is the access level for the scope.
 	Value *String
 }
 
-// Permissions is set of permission configurations in Workflow file. All Permissions can be set at
-// once. Or each permission can be configured respectively.
+// Permissions configures all token scopes together or individual scopes.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#Permissions
 type Permissions struct {
 	// All represents a permission value for all the scopes at once.
 	All *String
-	// Scopes is mappings from scope name to its permission configuration
+	// Scopes maps scope names to their permission configurations.
 	Scopes map[string]*PermissionScope
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// DefaultsRun is configuration that shell is how to be run.
+// DefaultsRun configures the shell and working directory for run steps.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#defaultsrun
 type DefaultsRun struct {
 	// Expression supplies the complete run Defaults mapping.
 	Expression *String
-	// Shell is shell name to be run.
+	// Shell names the shell to run.
 	Shell *String
 	// WorkingDirectory is a default working directory path.
 	WorkingDirectory *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Defaults is set of default configurations to run shell.
+// Defaults contains default settings for run steps.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#Defaults
 type Defaults struct {
-	// Run is configuration of how to run shell.
+	// Run configures defaults for run steps.
 	Run *DefaultsRun
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Concurrency is a configuration of Concurrency of the Workflow.
+// Concurrency configures a workflow or job concurrency group.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#Concurrency
 type Concurrency struct {
-	// Expression supplies a group String or complete Concurrency mapping.
+	// Expression supplies a group string or complete concurrency mapping.
 	Expression *String
-	// Group is name of the Concurrency group.
+	// Group is the concurrency group name.
 	Group *String
-	// CancelInProgress is a flag that shows if canceling this Workflow cancels other jobs in progress.
+	// CancelInProgress controls cancellation of other jobs or workflow runs in the group.
 	CancelInProgress *Bool
-	// Queue is the queue Strategy for pending Workflow runs. Valid values are "single" (default) and "max".
+	// Queue sets the strategy for pending jobs or workflow runs: "single" (default) or "max".
 	Queue *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Environment is a configuration of Environment.
+// Environment configures a deployment environment.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idenvironment
 type Environment struct {
-	// Expression supplies an Environment name or complete Environment mapping.
+	// Expression supplies an environment name or complete environment mapping.
 	Expression *String
-	// Name is a name of Environment which the Workflow uses.
+	// Name is the environment name.
 	Name *String
 	// URL is the URL mapped to 'environment_url' in the deployments API. Empty value means no value was specified.
 	URL *String
-	// Deployment is whether GitHub should create a deployment for this Job. false skips auto-deployment while still applying Environment protection rules and secrets.
+	// Deployment controls whether GitHub creates a deployment. False skips
+	// automatic deployment but retains environment protection rules and secrets.
 	Deployment *Bool
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// ExecKind is Kind of how the Step is executed. A Step runs some action or runs some shell script.
+// ExecKind identifies how a step is executed.
 type ExecKind uint8
 
 const (
-	// ExecKindAction is Kind for Step to run action
+	// ExecKindAction identifies a step that runs an action.
 	ExecKindAction ExecKind = iota
-	// ExecKindRun is Kind for Step to run shell script
+	// ExecKindRun identifies a step that runs a shell script.
 	ExecKindRun
-	// ExecKindWait is Kind for Step to wait for background steps ('wait' or 'wait-all')
+	// ExecKindWait identifies a wait or wait-all step.
 	ExecKindWait
-	// ExecKindCancel is Kind for Step to cancel background steps ('cancel')
+	// ExecKindCancel identifies a step that cancels a background step.
 	ExecKindCancel
-	// ExecKindParallel is Kind for Step to run a group of steps in parallel ('parallel')
+	// ExecKindParallel identifies a group of steps that run in parallel.
 	ExecKindParallel
 )
 
-// Exec is an interface how the Step is executed. Step in Workflow runs either an action or a script
+// Exec identifies how a workflow step is executed.
 type Exec interface {
-	// Kind returns Kind of the Step execution.
+	// Kind returns the step execution kind.
 	Kind() ExecKind
 }
 
-// ExecRun is configuration how to run shell script at the Step.
+// ExecRun configures a step that runs a shell script.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsrun
 type ExecRun struct {
-	// Run is script to run.
+	// Run is the script to execute.
 	Run *String
-	// source maps positions in Run.Value back to the original YAML source when this can be done
-	// exactly. It is intentionally kept internal because it is parser metadata rather than syntax.
+	// Source maps positions in Run.Value back to the original YAML source when
+	// they can be mapped exactly.
 	Source *ScriptSource
-	// Shell represents optional 'shell' field. Nil means nothing specified.
+	// Shell is the optional shell field. Nil means it was not specified.
 	Shell *String
-	// WorkingDirectory represents optional 'working-directory' field. Nil means nothing specified.
+	// WorkingDirectory is the optional working-directory field. Nil means it was not specified.
 	WorkingDirectory *String
-	// RunPos is Position of 'run' section
+	// RunPos is the position of the run field.
 	RunPos *Pos
 }
 
-// Kind returns Kind of the Step execution.
+// Kind returns the step execution kind.
 func (e *ExecRun) Kind() ExecKind {
 	return ExecKindRun
 }
 
-// Input is an Input field for running an action.
+// Input describes an input passed to an action.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepswith
 type Input struct {
-	// Name is a name of the Input.
+	// Name is the input name.
 	Name *String
-	// Value is a value of the Input.
+	// Value is the input value.
 	Value *String
 	// Source maps the decoded input back to its declaring YAML scalar.
 	Source *ScriptSource
 }
 
-// ActionInputMapping is a literal or expression-valued action Input mapping.
+// ActionInputMapping is a literal or expression-valued action input mapping.
 type ActionInputMapping struct {
-	// Inputs contains named Input values.
+	// Inputs contains named input values.
 	Inputs     map[string]*Input
 	Expression *String
 	// Insertions contains nested mapping directives.
 	Insertions []*ActionInputMapping
 }
 
-// ExecAction is configuration how to run action at the Step.
+// ExecAction configures a step that runs an action.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsuses
 type ExecAction struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsuses
-	// Uses is nil when its value could not be parsed as a nonempty String.
+	// Uses is nil when its value could not be parsed as a nonempty string.
 	Uses *String
-	// Inputs represents inputs to the action to execute in 'with' section. Keys are in lower case since they are case-insensitive.
+	// Inputs maps lowercase names to action inputs from 'with'. Names are case insensitive.
 	Inputs map[string]*Input
 	// InputsExpression supplies the complete action inputs mapping.
 	InputsExpression *String
 	// InputInsertions supplies additional action inputs through mapping directives.
 	InputInsertions []*ActionInputMapping
-	// Entrypoint represents optional 'entrypoint' field in 'with' section. Nil field means nothing specified
+	// Entrypoint is the optional 'entrypoint' input. Nil means it was not specified.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
 	Entrypoint *String
-	// Args represents optional 'args' field in 'with' section. Nil field means nothing specified
+	// Args is the optional 'args' input. Nil means it was not specified.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepswithargs
 	Args *String
 
@@ -683,94 +682,89 @@ type ExecAction struct {
 	InputNameExpressions []*String
 }
 
-// Kind returns Kind of the Step execution.
+// Kind returns the step execution kind.
 func (e *ExecAction) Kind() ExecKind {
 	return ExecKindAction
 }
 
-// ExecWait is configuration of a Step that waits for background steps to complete. It corresponds to
-// the 'wait' and 'wait-all' steps.
+// ExecWait configures a wait or wait-all step for background steps.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type ExecWait struct {
-	// Names is the list of background Step IDs to wait for, given by the 'wait' field. It is nil when
+	// Names lists background step IDs from the 'wait' field. It is nil when
 	// 'wait-all' is used instead.
 	Names []*String
-	// All is true when the Step waits for all preceding background steps via the 'wait-all' field.
+	// All is true when the step waits for all preceding background steps.
 	All bool
-	// AllPos is the Position of the 'wait-all' field. It is nil when 'wait' is used instead.
+	// AllPos is the position of 'wait-all'. It is nil when 'wait' is used instead.
 	AllPos *Pos
 }
 
-// Kind returns Kind of the Step execution.
+// Kind returns the step execution kind.
 func (e *ExecWait) Kind() ExecKind {
 	return ExecKindWait
 }
 
-// ExecCancel is configuration of a Step that cancels a running background Step. It corresponds to the
-// 'cancel' Step.
+// ExecCancel configures a step that cancels a running background step.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type ExecCancel struct {
-	// Name is the ID of the background Step to cancel, given by the 'cancel' field. The 'cancel' Step
-	// targets a single background Step by its ID.
+	// Name is the ID of the background step to cancel.
 	Name *String
 }
 
-// Kind returns Kind of the Step execution.
+// Kind returns the step execution kind.
 func (e *ExecCancel) Kind() ExecKind {
 	return ExecKindCancel
 }
 
-// ExecParallel is configuration of a Step that runs a group of steps in parallel.
-// It corresponds to the 'parallel' Step.
+// ExecParallel configures a group of steps that run in parallel.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type ExecParallel struct {
 	// Steps is the group of steps to run in parallel, given by the 'parallel' field.
 	Steps []*Step
 }
 
-// Kind returns Kind of the Step execution.
+// Kind returns the step execution kind.
 func (e *ExecParallel) Kind() ExecKind {
 	return ExecKindParallel
 }
 
-// RawYAMLValueKind is Kind of raw YAML values
+// RawYAMLValueKind identifies the kind of a raw YAML value.
 type RawYAMLValueKind int
 
 const (
-	// RawYAMLValueKindObject is Kind for an object value of raw YAML value.
+	// RawYAMLValueKindObject identifies a mapping.
 	RawYAMLValueKindObject = RawYAMLValueKind(4)
-	// RawYAMLValueKindArray is Kind for an array value of raw YAML value.
+	// RawYAMLValueKindArray identifies a sequence.
 	RawYAMLValueKindArray = RawYAMLValueKind(2)
-	// RawYAMLValueKindString is Kind for a String value of raw YAML value.
+	// RawYAMLValueKindString identifies a scalar.
 	RawYAMLValueKindString = RawYAMLValueKind(8)
 )
 
-// RawYAMLValue is a value at Matrix variation. Any value can be put at Matrix variations
-// including mappings and arrays.
+// RawYAMLValue is a matrix value, which can include mappings and arrays.
 type RawYAMLValue interface {
-	// Kind returns Kind of raw YAML value.
+	// Kind returns the kind of the raw YAML value.
 	Kind() RawYAMLValueKind
-	// Equals returns if the other value is equal to the value.
+	// Equals reports whether the other value is equal.
 	Equals(other RawYAMLValue) bool
-	// Pos returns the start Position of the value in the source file
+	// Pos returns the value's start position in the source file.
 	Pos() *Pos
-	// String returns String representation of the value
+	// String returns the string representation of the value.
 	String() string
 }
 
-// RawYAMLObject is raw YAML mapping value.
+// RawYAMLObject is a raw YAML mapping value.
 type RawYAMLObject struct {
-	// Props is map from property names to their values. Keys are in lower case since they are case-insensitive.
+	// Props maps lowercase property names to values. Names are case insensitive.
 	Props    map[string]RawYAMLValue
 	Position *Pos
 }
 
-// Kind returns Kind of raw YAML value.
+// Kind returns the kind of the raw YAML value.
 func (o *RawYAMLObject) Kind() RawYAMLValueKind {
 	return RawYAMLValueKindObject
 }
 
-// Equals returns if the other value is equal to the value.
+// Equals reports whether the other value is equal.
 func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 	switch other := other.(type) {
 	case *RawYAMLObject:
@@ -788,7 +782,7 @@ func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 	}
 }
 
-// Pos returns a copy of the start Position of the value in the source file
+// Pos returns a copy of the value's start position in the source file.
 func (o *RawYAMLObject) Pos() *Pos {
 	return copyPos(o.Position)
 }
@@ -802,19 +796,19 @@ func (o *RawYAMLObject) String() string {
 	return "{" + strings.Join(qs, ", ") + "}"
 }
 
-// RawYAMLArray is raw YAML sequence value.
+// RawYAMLArray is a raw YAML sequence value.
 type RawYAMLArray struct {
-	// Elems is list of elements of the array value.
+	// Elems lists the array elements.
 	Elems    []RawYAMLValue
 	Position *Pos
 }
 
-// Kind returns Kind of raw YAML value.
+// Kind returns the kind of the raw YAML value.
 func (a *RawYAMLArray) Kind() RawYAMLValueKind {
 	return RawYAMLValueKindArray
 }
 
-// Equals returns if the other value is equal to the value.
+// Equals reports whether the other value is equal.
 func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 	switch other := other.(type) {
 	case *RawYAMLArray:
@@ -832,7 +826,7 @@ func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 	}
 }
 
-// Pos returns a copy of the start Position of the value in the source file
+// Pos returns a copy of the value's start position in the source file.
 func (a *RawYAMLArray) Pos() *Pos {
 	return copyPos(a.Position)
 }
@@ -855,9 +849,9 @@ func (a *RawYAMLArray) String() string {
 	return b.String()
 }
 
-// RawYAMLString is raw YAML scalar value.
+// RawYAMLString is a raw YAML scalar value.
 type RawYAMLString struct {
-	// Value is String representation of the scalar node.
+	// Value is the scalar node's string representation.
 	Value string
 	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int".
 	// A tag rejected by the parser is recorded as "!!str".
@@ -865,12 +859,12 @@ type RawYAMLString struct {
 	Position *Pos
 }
 
-// Kind returns Kind of raw YAML value.
+// Kind returns the kind of the raw YAML value.
 func (s *RawYAMLString) Kind() RawYAMLValueKind {
 	return RawYAMLValueKindString
 }
 
-// Equals returns if the other value is equal to the value.
+// Equals reports whether the other value is equal.
 func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 	switch other := other.(type) {
 	case *RawYAMLString:
@@ -923,7 +917,7 @@ func (s *RawYAMLString) ScalarValue() any {
 	return s.Value
 }
 
-// Pos returns a copy of the start Position of the value in the source file
+// Pos returns a copy of the value's start position in the source file.
 func (s *RawYAMLString) Pos() *Pos {
 	return copyPos(s.Position)
 }
@@ -976,50 +970,48 @@ func (s *RawYAMLString) String() string {
 	return s.Value
 }
 
-// MatrixRow is one row of Matrix. One Matrix row can take multiple values. Those variations are
-// stored as row of values in this struct.
+// MatrixRow declares one matrix axis and the values it can take.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixRow struct {
 	Evaluated bool // Expression results are data and must not be evaluated again.
-	// Name is a name of Matrix value.
+	// Name is the matrix axis name.
 	Name *String
-	// Values is variations of values which the Matrix value can take.
+	// Values lists the values the axis can take.
 	Values []RawYAMLValue
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 }
 
-// MatrixAssign represents which value should be taken in the row of the Matrix.
+// MatrixAssign assigns a value to a matrix axis.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixAssign struct {
-	// Key is a name of the Matrix value.
+	// Key is the matrix axis name.
 	Key *String
-	// Value is the value selected from values in row.
+	// Value is the value assigned to the axis.
 	Value RawYAMLValue
 }
 
-// MatrixCombination is combination of Matrix value assignments to define one of Matrix variations.
+// MatrixCombination is a set of matrix value assignments.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixCombination struct {
 	Evaluated bool // Expression results are data and must not be evaluated again.
 	Assigns   map[string]*MatrixAssign
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 }
 
-// MatrixCombinations is list of combinations of Matrix assignments used for 'include' and 'exclude'
-// sections.
+// MatrixCombinations lists assignments in an include or exclude section.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixCombinations struct {
 	// Name is the include/exclude key as written in source.
 	Name         *String
 	Evaluated    bool
 	Combinations []*MatrixCombination
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 }
 
-// ContainsExpression returns if the combinations section includes at least one expression node.
+// ContainsExpression reports whether the combinations include an expression.
 func (cs *MatrixCombinations) ContainsExpression() bool {
 	if cs.Expression != nil {
 		return true
@@ -1032,63 +1024,62 @@ func (cs *MatrixCombinations) ContainsExpression() bool {
 	return false
 }
 
-// Matrix is Matrix variations configuration of a Job.
+// Matrix configures the combinations for a job.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type Matrix struct {
 	// Insertions supplies additional axes or filters through mapping directives.
 	Insertions []*Matrix
-	// Values stores mappings from name to values. Keys are in lower case since they are case-insensitive.
+	// Rows maps lowercase axis names to their values. Names are case insensitive.
 	Rows map[string]*MatrixRow
-	// Include is list of combinations of Matrix values and additional values on running Matrix combinations.
+	// Include lists matrix combinations and values to add to combinations.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#example-including-additional-values-into-combinations
 	Include *MatrixCombinations
-	// Exclude is list of combinations of Matrix values which should not be run. Combinations in
-	// this list will be removed from combinations of Matrix to run.
+	// Exclude lists matrix combinations that should not run.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#example-excluding-configurations-from-a-Matrix
 	Exclude *MatrixCombinations
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Strategy is Strategy configuration of how the Job is run.
+// Strategy configures how a job runs its matrix combinations.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategy
 type Strategy struct {
-	// Expression supplies the complete Strategy mapping.
+	// Expression supplies the complete strategy mapping.
 	Expression *String
-	// Matrix is Matrix of combinations of values. Each combination will run the Job once.
+	// Matrix defines combinations of values. Each combination runs the job once.
 	Matrix *Matrix
-	// FailFast is flag to show if other jobs should stop when one Job fails.
+	// FailFast indicates whether other jobs should stop when one job fails.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
 	FailFast *Bool
-	// MaxParallel is how many jobs should be run at once.
+	// MaxParallel limits how many jobs run at once.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel
 	MaxParallel *Int
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// EnvVar represents key-value of Environment variable setup.
+// EnvVar declares an environment variable and its value.
 type EnvVar struct {
-	// Name is name of the Environment variable.
+	// Name is the environment variable name.
 	Name *String
-	// Value is String value of the Environment variable.
+	// Value is the environment variable value.
 	Value *String
 }
 
-// Env represents set of Environment variables.
+// Env declares a set of environment variables.
 type Env struct {
-	// Vars is mapping from Env var name to Env var value.
+	// Vars maps environment variable names to their values.
 	Vars map[string]*EnvVar
-	// Insertions contains Environment mappings or object expressions supplied by ${{ insert }} directives.
+	// Insertions contains environment mappings or object expressions supplied by ${{ insert }} directives.
 	Insertions []*Env
-	// Expression is an expression String which contains ${{ ... }}. When this value is not empty,
+	// Expression contains a ${{ ... }} expression. When it is not empty,
 	// Vars and Insertions should be nil.
 	Expression *String
 }
 
-// Step is Step configuration. Step runs one action or one shell script.
+// Step configures a workflow step.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idsteps
 type Step struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsid
@@ -1106,258 +1097,254 @@ type Step struct {
 	ContinueOnError *Bool
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
 	TimeoutMinutes *Float
-	// Background is 'background' field. When it is true, the Step runs asynchronously and the Workflow
-	// immediately continues to the next Step.
+	// Background runs the step asynchronously when true, allowing the workflow
+	// to continue immediately to the next step.
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	Background *Bool
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Credentials is Credentials configuration.
+// Credentials configures authentication for a container.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontainercredentials
 type Credentials struct {
-	// Username is username for authentication.
+	// Username is the username for authentication.
 	Username *String
-	// Password is password for authentication.
+	// Password is the password for authentication.
 	Password *String
-	// Expression is a String when expression syntax ${{ }} is used for this section.
+	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Container is configuration of how to run the Container.
+// Container configures a job or service container.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontainer
 type Container struct {
-	// Expression supplies an image String or complete Container mapping.
+	// Expression supplies an image string or complete container mapping.
 	Expression *String
-	// Image is specification of Docker image.
+	// Image identifies the Docker image.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontainerimage
 	Image *String
-	// Credentials is Credentials configuration of the Docker Container.
+	// Credentials configures authentication for the Docker image.
 	Credentials *Credentials
-	// Env is Environment variables setup in the Container.
+	// Env configures environment variables in the container.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontainerenv
 	Env *Env
-	// Ports is list of port number mappings of the Container.
+	// Ports lists container port mappings.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontainerports
 	Ports []*String
 	// PortsExpression supplies the complete ports sequence.
 	PortsExpression *String
-	// Volumes are list of volumes to be mounted to the Container.
+	// Volumes lists the volumes to mount in the container.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontainervolumes
 	Volumes []*String
 	// VolumesExpression supplies the complete volumes sequence.
 	VolumesExpression *String
-	// Options is options String to run the Container.
+	// Options supplies container options.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontaineroptions
 	Options *String
-	// Command overrides Docker image's default command for Service containers.
+	// Command overrides the Docker image's default command for service containers.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idservicesservice_idcommand
 	Command *String
-	// Entrypoint overrides Docker image's default entrypoint for Service containers.
+	// Entrypoint overrides the Docker image's default entrypoint for service containers.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idservicesservice_identrypoint
 	Entrypoint *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Service is configuration to run a Service like database.
+// Service configures a service such as a database.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idservices
 type Service struct {
-	// Name is name of the Service.
+	// Name is the service name.
 	Name *String
-	// Container is configuration of Container which runs the Service.
+	// Container configures the container that runs the service.
 	Container *Container
 }
 
-// Services is a mapping from Service ID to its configuration.
+// Services maps service IDs to their configurations.
 // https://docs.github.com/en/actions/using-workflows/Workflow-syntax-for-github-actions#jobsjob_idservices
 type Services struct {
-	// Value is a mapping from Service ID to its Service instances. Keys are in lower case since
-	// they are case-insensitive.
+	// Value maps lowercase service IDs to services. IDs are case insensitive.
 	Value map[string]*Service
 	// Expression is an expression assigned to the Services mapping by ${{ }} placeholder. Otherwise
 	// this field is nil.
 	Expression *String
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Output is Output entry of the Job.
+// Output describes a job output.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idoutputs
 type Output struct {
-	// Name is name of Output.
+	// Name is the output name.
 	Name *String
-	// Value is value of Output.
+	// Value is the output value.
 	Value *String
 }
 
-// Runner is struct for Runner configuration.
+// Runner configures runner selection for a job.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idruns-on
 type Runner struct {
-	// Expression supplies labels or a complete Runner selection mapping.
+	// Expression supplies labels or a complete runner selection mapping.
 	Expression *String
-	// Labels is list label names to select a Runner to run a Job. There are preset labels and user
-	// defined labels. Runner matching to the labels is selected.
+	// Labels selects a runner by preset or user-defined labels.
 	Labels []*String
-	// LabelsExpr is a String when expression syntax ${{ }} is used for this section. Related issue is #164.
+	// LabelsExpr contains a ${{ }} expression for the labels. See issue #164.
 	LabelsExpr *String
 	// Group is a group of runners specified in runs-on: section. It is nil when no group is specified.
 	// https://docs.github.com/en/actions/using-workflows/Workflow-syntax-for-github-actions#choosing-runners-in-a-group
 	Group *String
 }
 
-// WorkflowCallInput is a normal Input for Workflow call.
+// WorkflowCallInput describes an input passed to a reusable workflow.
 type WorkflowCallInput struct {
-	// Name is a name of the Input.
+	// Name is the input name.
 	Name *String
-	// Value is a value of the Input.
+	// Value is the input value.
 	Value *String
 }
 
-// WorkflowCallSecret is a secret Input for Workflow call.
+// WorkflowCallSecret describes a secret passed to a reusable workflow.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idwith
 type WorkflowCallSecret struct {
-	// Name is a name of the secret
+	// Name is the secret name.
 	Name *String
-	// Value is a value of the secret
+	// Value is the secret value.
 	Value *String
 }
 
-// WorkflowCall is a struct to represent Workflow call at jobs.<job_id>.
+// WorkflowCall represents a reusable workflow call at jobs.<job_id>.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_iduses
 type WorkflowCall struct {
-	// Uses is a Workflow specification to be called. This field is mandatory.
+	// Uses identifies the reusable workflow to call. This field is required.
 	Uses *String
-	// Inputs is a map from Input name to Input value at 'with:'. Keys are in lower case since Input names
-	// are case-insensitive.
+	// Inputs maps lowercase input names to values from 'with:'. Names are case insensitive.
 	Inputs map[string]*WorkflowCallInput
-	// Secrets is a map from secret name to secret value at 'secrets:'. Keys are in lower case since Input
-	// names are case-insensitive.
+	// Secrets maps lowercase secret names to values from 'secrets:'. Names are case insensitive.
 	Secrets map[string]*WorkflowCallSecret
 	// InheritSecrets is true when 'secrets: inherit' is specified. In this case, Secrets must be empty.
 	// https://docs.github.com/en/actions/using-workflows/Workflow-syntax-for-github-actions#onworkflow_callsecretsinherit
 	InheritSecrets bool
 }
 
-// Snapshot is a struct to represent image Snapshot at jobs.<job_id>.Snapshot.
+// Snapshot configures a custom image snapshot for a job.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#jobsjob_idsnapshot
 // https://docs.github.com/en/actions/how-tos/manage-runners/larger-runners/use-custom-images
 type Snapshot struct {
 	// Expression supplies an image name or complete Snapshot mapping.
 	Expression *String
-	// ImageName is a name of the custom image.
+	// ImageName is the custom image name.
 	ImageName *String
-	// Version is a version of the custom image.
+	// Version is the custom image version.
 	Version *String
-	// If is a condition whether the custom image is used.
+	// If controls whether the custom image is used.
 	If *String
 }
 
-// Job is configuration of how to run a Job.
+// Job configures a workflow job.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobs
 type Job struct {
-	// ID is an ID of the Job, which is key of Job configuration objects.
+	// ID is the job ID, which is the key of its configuration.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_id
 	ID *String
-	// Name is a name of Job that user can specify freely.
+	// Name is the user-specified job name.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idname
 	Name *String
-	// Needs is list of Job IDs which should be run before running this Job.
+	// Needs lists job IDs that must run before this job.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idneeds
 	Needs []*String
-	// RunsOn is Runner configuration which run the Job.
+	// RunsOn configures the runner for the job.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idruns-on
 	RunsOn *Runner
-	// Permissions is permission configuration for running the Job.
+	// Permissions configures the job token permissions.
 	Permissions *Permissions
-	// CacheMode overrides the Workflow's cache access for this Job. Nil means inherit.
+	// CacheMode overrides workflow cache access for this job. Nil means inherit.
 	CacheMode *CacheMode
-	// Environment is Environment specification where the Job runs.
+	// Environment selects the deployment environment for the job.
 	Environment *Environment
-	// Concurrency is Concurrency configuration on running the Job.
+	// Concurrency configures the job concurrency group.
 	Concurrency *Concurrency
-	// Outputs is map from Output name to Output specifications.
+	// Outputs maps output names to their declarations.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idoutputs
 	Outputs map[string]*Output
-	// Env is Environment variables setup while running the Job.
+	// Env configures environment variables for the job.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idenv
 	Env *Env
-	// Defaults is default configurations of how to run scripts.
+	// Defaults configures default settings for scripts.
 	Defaults *Defaults
-	// If is a condition whether this Job should be run.
+	// If controls whether the job runs.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idif
 	If *String
-	// Steps is list of steps to be run in the Job.
+	// Steps lists the steps in the job.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idsteps
 	Steps []*Step
-	// TimeoutMinutes is timeout value of running the Job in minutes.
+	// TimeoutMinutes is the job timeout in minutes.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
 	TimeoutMinutes *Float
 	// CancelTimeoutMinutes is the time allowed for cancellation cleanup in minutes.
 	CancelTimeoutMinutes *Float
-	// Strategy is Strategy configuration of running the Job.
+	// Strategy configures how the job runs.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategy
 	Strategy *Strategy
-	// ContinueOnError is a flag to show if execution should continue on error.
+	// ContinueOnError controls whether execution continues after an error.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error
 	ContinueOnError *Bool
-	// Container is Container configuration to run the Job.
+	// Container configures the job container.
 	Container *Container
-	// Services is a Services configurations.
+	// Services configures the job service containers.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idservices
 	Services *Services
-	// WorkflowCall is a Workflow call by 'uses:'.
+	// WorkflowCall describes a reusable workflow call.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_iduses
 	WorkflowCall *WorkflowCall
 	// DeclaredUses records uses even when step-only keys invalidate the call.
 	DeclaredUses *String
-	// Snapshot is a custom image Snapshot.
+	// Snapshot configures a custom image snapshot.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#jobsjob_idsnapshot
 	Snapshot *Snapshot
-	// Pos is a Position in source.
+	// Pos is the source position.
 	Pos *Pos
 }
 
-// Workflow is root of Workflow syntax tree, which represents one Workflow configuration file.
+// Workflow is the root of the syntax tree for one workflow file.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions
 type Workflow struct {
 	ExpressionSources map[Pos]*ScriptSource
-	// Name is name of the Workflow. This field can be nil when user didn't specify the name explicitly.
+	// Name is the workflow name. It is nil when no name was specified.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#name
 	Name *String
-	// Description describes the Workflow or reusable Workflow.
+	// Description describes the workflow.
 	Description *String
-	// RunName is the name of Workflow runs. This field can be set dynamically using ${{ }}.
+	// RunName names workflow runs. It can use a ${{ }} expression.
 	// https://docs.github.com/en/actions/using-workflows/Workflow-syntax-for-github-actions#run-name
 	RunName *String
-	// On is list of events which can trigger this Workflow.
+	// On lists the events that can trigger the workflow.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onpushpull_requestbranchestags
 	On []Event
 	// OnPos is the position of the "on" key. It is nil when the key is absent.
 	OnPos *Pos
-	// Permissions is configuration of Permissions of this Workflow.
+	// Permissions configures workflow token permissions.
 	Permissions *Permissions
 	// CacheMode sets default cache access. Nil leaves the trigger-dependent default in effect.
 	CacheMode *CacheMode
-	// Env is a default set of Environment variables while running this Workflow.
+	// Env configures default environment variables for the workflow.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#Env
 	Env *Env
-	// Defaults is default configuration of how to run scripts.
+	// Defaults configures default settings for scripts.
 	Defaults *Defaults
-	// Concurrency is Concurrency configuration of entire Workflow. Each jobs also can their own
-	// Concurrency configurations.
+	// Concurrency configures the workflow concurrency group. Jobs can also
+	// configure their own groups.
 	Concurrency *Concurrency
-	// Jobs is mappings from Job ID to the Job object. Keys are in lower case since they are case-insensitive.
+	// Jobs maps lowercase job IDs to jobs. IDs are case insensitive.
 	Jobs map[string]*Job
-	// Pos is the first Workflow mapping key's Position. It may be nil for
+	// Pos is the position of the first workflow mapping key. It may be nil for
 	// workflows constructed directly by API callers.
 	Pos *Pos
 }
 
-// FindWorkflowCallEvent returns the workflow's workflow_call Event node if it exists.
+// FindWorkflowCallEvent returns the workflow_call event when present.
 func FindWorkflowCallEvent(w *Workflow) (*WorkflowCallEvent, bool) {
 	for _, e := range w.On {
 		if e, ok := e.(*WorkflowCallEvent); ok {

@@ -402,7 +402,7 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 			rule.Errorf(pos, runtimeProblemCode(using), "%s. update runs.using in local action %q to a current runtime", problem, meta.Name)
 		}
 
-		// Validate JavaScript fields even when the runtime declaration has a results.
+		// Validate JavaScript fields even when the runtime declaration has a finding.
 		if strings.HasPrefix(using, "node") {
 			rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
 		}

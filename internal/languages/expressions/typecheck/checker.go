@@ -233,7 +233,7 @@ func (sema *Checker) checkObjectDeref(n *exprsyntax.ObjectDerefNode) exprtypes.T
 			)
 			return exprtypes.AnyType()
 		}
-		// Map element type of delererenced array
+		// Map the element type of the dereferenced array.
 		mappedElem := exprtypes.AnyType()
 		if t, ok := et.Property(n.Property); ok {
 			mappedElem = t
@@ -795,7 +795,7 @@ func (sema *Checker) checkLogicalOp(n *exprsyntax.LogicalOpNode) (ty exprtypes.T
 		right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 		return left.Merge(right)
 	case exprsyntax.LogicalOpNodeKindOr:
-		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
+		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise it is `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
 		right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
@@ -978,7 +978,7 @@ func (sema *Checker) Check(input EvaluationResults) (exprtypes.Type, []*Error) {
 	return result.Type, result.Findings
 }
 
-// IsConstant returns the given expression is a constant. For example the following expressions
+// IsConstant reports whether the expression is constant. For example, these expressions
 // are constants.
 //   - 1 == 2
 //   - (!true && 'foo') || 'bar'

@@ -220,7 +220,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 		}
 	case actionSchemaSequence:
 		if n.Kind != syntax.SequenceNode {
-			// Missing/null composite steps already has a precise runtime results.
+			// Missing or null composite steps already have a specific runtime finding.
 			if path != "runs.steps" {
 				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a sequence")
 			}

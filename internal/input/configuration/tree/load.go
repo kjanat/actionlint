@@ -11,7 +11,8 @@ import (
 	"github.com/kjanat/go-yaml/v4"
 )
 
-// Loaded is an expanded config graph and its dependency/provenance data.
+// Loaded contains the merged configuration, its source files, and the source of
+// each YAML node.
 type Loaded struct {
 	Node    *yaml.Node
 	Files   []string
@@ -24,8 +25,8 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 	return LoadWithMerge(path, read, normalize, Merge)
 }
 
-// LoadWithMerge lets a document owner define which mappings are atomic values.
-// The tree loader retains ownership of cycle detection and source provenance.
+// LoadWithMerge lets the caller choose how mappings are merged. It detects cycles
+// in extends and records the source of each node.
 func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, *yaml.Node) (*yaml.Node, error), merge func(*yaml.Node, *yaml.Node, map[*yaml.Node]Input) *yaml.Node) (Loaded, error) {
 	result := Loaded{Origins: map[*yaml.Node]string{}}
 	inputs := map[*yaml.Node]Input{}

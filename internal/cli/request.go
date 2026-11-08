@@ -16,7 +16,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-// commandRequest is the execution boundary: each operation carries only its own inputs.
+// commandRequest runs a command using the inputs stored in its request type.
 type commandRequest interface {
 	run(context.Context, Command) (int, error)
 }

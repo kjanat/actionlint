@@ -17,8 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-// A standalone manifest has no workflow caller or supplied inputs. Validate its
-// declarations directly, then use the same composite script lifecycle as uses:.
+// visitStandaloneAction validates a manifest without a workflow caller or supplied
+// inputs. For composite actions, it also visits the action's steps.
 func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
 	snapshot := analysis.sourceSnapshot
 	if snapshot.Kind() != parsing.KindAction {

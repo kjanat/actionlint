@@ -142,7 +142,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 		backend = engine
 	}
 	if err != nil {
-		// A superseded analysis must not poison the next generation's load.
+		// Do not cache a failed load, so a later analysis can retry it.
 		return nil, err
 	}
 	s.loaded[identity] = backend

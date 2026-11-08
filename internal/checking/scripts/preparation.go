@@ -14,7 +14,8 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// ScriptInputAction normalizes repository ownership while preserving subpath case.
+// ScriptInputAction removes the ref and lowercases the owner and repository.
+// It preserves the case of any action subpath.
 func ScriptInputAction(action workflowdecl.ExecActionView) (string, bool) {
 	if !action.Uses().Present() || action.Uses().ContainsExpression() {
 		return "", false

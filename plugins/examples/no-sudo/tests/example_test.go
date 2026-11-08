@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-// These tests use the published CLI and JSON report rather than host packages.
+// These tests run the published actionlint CLI and check its JSON report.
 func TestComponentThroughCLI(t *testing.T) {
 	binary := os.Getenv("ACTIONLINT_TEST_BINARY")
 	if binary == "" {

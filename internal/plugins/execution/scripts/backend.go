@@ -28,8 +28,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Register uses advertised shell selectors, never an engine-name switch. Backends
-// with language-specific preparation can instead supply their own registration.
+// Register selects scripts by the supplied shell names. Backends with
+// language-specific preparation can supply their own registration.
 func Register(descriptor rule.Descriptor, shells []string, backend checkinputs.ScriptBackend) (tools.Registration, error) {
 	return RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: descriptor, Shells: shells}, backend)
 }

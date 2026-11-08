@@ -55,7 +55,7 @@ func (t InputType) ExprType() exprtypes.Type {
 // String returns the expression type's spelling, as used in diagnostics.
 func (t InputType) String() string { return t.ExprType().String() }
 
-// Input is an input metadata for validating local reusable workflow file.
+// Input describes an input declared by a local reusable workflow.
 type Input struct {
 	// Name is a name of the input defined in the reusable workflow.
 	Name string
@@ -65,31 +65,31 @@ type Input struct {
 	Type InputType
 }
 
-// Inputs is a map from input name to reusable wokflow input metadata. The
-// keys are in lower case since input names of workflow calls are case insensitive.
+// Inputs maps lowercase input names to reusable workflow input metadata.
+// Workflow call input names are case insensitive.
 type Inputs map[string]Input
 
-// Secret is a secret metadata for validating local reusable workflow file.
+// Secret describes a secret declared by a local reusable workflow.
 type Secret struct {
 	// Name is a name of the secret in the reusable workflow.
 	Name string
 	// Required indicates whether the secret is required by its reusable workflow. When this value
-	// is true, workflow calls must set this secret unless secrets are not inherited.
+	// is true, workflow calls must set this secret unless they inherit secrets.
 	Required bool `yaml:"required"`
 }
 
-// Secrets is a map from secret name to reusable wokflow secret metadata.
-// The keys are in lower case since secret names of workflow calls are case insensitive.
+// Secrets maps lowercase secret names to reusable workflow secret metadata.
+// Workflow call secret names are case insensitive.
 type Secrets map[string]Secret
 
-// Output is an output metadata for validating local reusable workflow file.
+// Output describes an output declared by a local reusable workflow.
 type Output struct {
 	// Name is a name of the output in the reusable workflow.
 	Name string
 }
 
-// Outputs is a map from output name to reusable wokflow output metadata.
-// The keys are in lower case since output names of workflow calls are case insensitive.
+// Outputs maps lowercase output names to reusable workflow output metadata.
+// Workflow call output names are case insensitive.
 type Outputs map[string]Output
 
 // Metadata describes reusable-workflow inputs, outputs, secrets and job access.
