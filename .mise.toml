@@ -46,7 +46,7 @@ pandoc                     = {
   platforms.windows-arm64.asset_pattern = "pandoc-{{ version }}-windows-x86_64.zip",
 }
 kprint                     = { version = "0.60.6", depends = ["bun"] }
-runner-run                 = "0.28.0"
+"npm:runner-run"           = { version = "0.28.0", depends = ["bun"] }
 typescript                 = "7.0.2"
 biome                      = {
   version        = "2.6.6",
@@ -75,7 +75,6 @@ wit-bindgen = "github:bytecodealliance/wit-bindgen"
 wasi-sdk    = "github:WebAssembly/wasi-sdk"
 pandoc      = "github:jgm/pandoc"
 kprint      = "npm:@kprint/kprint"
-runner-run  = "github:kjanat/runner"
 typescript  = "github:microsoft/TypeScript"
 biome       = "github:biomejs/biome"
 markscribe  = "github:charmbracelet/markscribe"

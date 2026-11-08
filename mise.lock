@@ -445,6 +445,11 @@ version = "12.2.0"
 backend = "npm:npm"
 specifiers = ["12.2.0"]
 
+[[tools."npm:runner-run"]]
+version = "0.28.0"
+backend = "npm:runner-run"
+specifiers = ["0.28.0"]
+
 [[tools.pandoc]]
 version = "3.13"
 backend = "github:jgm/pandoc"
@@ -578,47 +583,6 @@ provenance = "github-attestations"
 checksum = "sha256:bc831eaa01912323099d7bc185981bf6bb1960931350bd3ad6a82f7a59a46c3b"
 url = "https://github.com/astral-sh/ruff/releases/download/0.17.0/ruff-x86_64-pc-windows-msvc.zip"
 url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/625999369"
-provenance = "github-attestations"
-
-[[tools.runner-run]]
-version = "0.28.0"
-backend = "github:kjanat/runner"
-specifiers = ["0.28.0"]
-
-[tools.runner-run."platforms.linux-arm64"]
-checksum = "sha256:d173c287f5976c8e35efc29029229796c97a28a0f9cc23757d50ff7d3550e3b7"
-url = "https://github.com/kjanat/runner/releases/download/v0.28.0/runner-v0.28.0-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/runner/releases/assets/629762167"
-provenance = "github-attestations"
-
-[tools.runner-run."platforms.linux-x64"]
-checksum = "sha256:1ee0162b4d5973028a4be2a94aef841bad9cb5553d24f6b8e8534fc49df14abf"
-url = "https://github.com/kjanat/runner/releases/download/v0.28.0/runner-v0.28.0-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/runner/releases/assets/629761266"
-provenance = "github-attestations"
-
-[tools.runner-run."platforms.macos-arm64"]
-checksum = "sha256:5f62540fc9b68df501a4897798faa054cb71f9ecdbb20cb375f54638a30874f6"
-url = "https://github.com/kjanat/runner/releases/download/v0.28.0/runner-v0.28.0-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/runner/releases/assets/629770645"
-provenance = "github-attestations"
-
-[tools.runner-run."platforms.macos-x64"]
-checksum = "sha256:baaae754462d2967d9ffbbca08f42bd8b8b240d21e9dc1ba3a1e34aa9e23f9ff"
-url = "https://github.com/kjanat/runner/releases/download/v0.28.0/runner-v0.28.0-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/runner/releases/assets/629773212"
-provenance = "github-attestations"
-
-[tools.runner-run."platforms.windows-arm64"]
-checksum = "sha256:927d897b915c26cfabc59ca48a7cff16982fcd104a3fc080bb67c2e4ee72f833"
-url = "https://github.com/kjanat/runner/releases/download/v0.28.0/runner-v0.28.0-aarch64-pc-windows-msvc.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/runner/releases/assets/629762690"
-provenance = "github-attestations"
-
-[tools.runner-run."platforms.windows-x64"]
-checksum = "sha256:aefd14c6655f1ddda82354670b53ed66a0e949d62e405b822a629c829f624211"
-url = "https://github.com/kjanat/runner/releases/download/v0.28.0/runner-v0.28.0-x86_64-pc-windows-msvc.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/runner/releases/assets/629763884"
 provenance = "github-attestations"
 
 [[tools.rust]]

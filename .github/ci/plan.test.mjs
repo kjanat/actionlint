@@ -311,8 +311,8 @@ test('documentation workflows install their tools through Runner and mise', () =
 	const root = new URL('../../', import.meta.url);
 	const read = (/** @type {string} */ path) => readFileSync(new URL(path, root), 'utf8');
 	const pages = read('.github/workflows/pages.yml');
-	assert.match(pages, /uses: kjanat\/runner@[a-f0-9]{40}/);
-	assert.match(pages, /MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc"/);
+	assert.doesNotMatch(pages, /uses: kjanat\/runner@/);
+	assert.match(pages, /MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run"/);
 	const upkeep = read('.github/workflows/upkeep.yml');
 	assert.match(upkeep, /MISE_ENABLE_TOOLS: "shellcheck"/);
 	assert.match(upkeep, /mise lock --bump github:kjanat\/actionlint github:rhysd\/actionlint/);
@@ -364,21 +364,41 @@ function yamlMapping(value) {
 	return fields;
 }
 
-test('Runner installation has permission to read package attestations', () => {
+test('Runner uses the cached npm installation', () => {
 	const directory = new URL('../workflows/', import.meta.url);
 	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
-		const workflow = yamlMapping(YAML.parse(readFileSync(new URL(name, directory), 'utf8')));
+		const source = readFileSync(new URL(name, directory), 'utf8');
+		assert.doesNotMatch(source, /uses: kjanat\/runner@/, name);
+		const workflow = yamlMapping(YAML.parse(source));
 		for (const [jobName, value] of Object.entries(yamlMapping(workflow.jobs))) {
 			const job = yamlMapping(value);
-			const installsRunner = [...yamlObjects(job)].some(step =>
-				typeof step.uses === 'string' && step.uses.startsWith('kjanat/runner@')
+			const callsRunner = [...yamlObjects(job)].some(step =>
+				typeof step.run === 'string' && /(?:^|[;\n])\s*(?:run|runner)\s/.test(step.run)
 			);
-			const callsPreview = job.uses === '$/.github/workflows/package-previews.yml';
-			if (!installsRunner && !callsPreview) continue;
-			const permissions = yamlMapping(job.permissions ?? workflow.permissions);
-			assert.equal(permissions.attestations, 'read', `${name}:${jobName}`);
+			if (!callsRunner) continue;
+			const selected = String(yamlMapping(job.env).MISE_ENABLE_TOOLS ?? '').split(',');
+			assert.ok(selected.includes('npm:runner-run'), `${name}:${jobName}`);
+			assert.ok(selected.includes('bun'), `${name}:${jobName} installs npm tools with Bun`);
 		}
 	}
+});
+
+test('Comment Cop caches Git objects and runs only trusted base-branch code', () => {
+	const workflow = yamlMapping(
+		YAML.parse(readFileSync(new URL('../workflows/comment-cop.yml', import.meta.url), 'utf8')),
+	);
+	const job = yamlMapping(yamlMapping(workflow.jobs)['comment-cop']);
+	const steps = [...yamlObjects(job.steps)];
+	const checkout = steps.find(step => typeof step.uses === 'string' && step.uses.startsWith('actions/checkout@'));
+	assert.ok(checkout);
+	assert.equal(yamlMapping(checkout.with).ref, '${{ github.event.pull_request.base.sha }}');
+	assert.equal(yamlMapping(checkout.with)['persist-credentials'], false);
+	const setup = steps.find(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@'));
+	assert.ok(setup);
+	assert.equal(yamlMapping(setup.with).cache_save_post, true);
+	assert.equal(yamlMapping(setup.with).install, false);
+	assert.equal(yamlMapping(job.concurrency)['cancel-in-progress'], true);
+	assert.equal(yamlMapping(workflow.permissions).contents, 'read');
 });
 
 test('mise locks the CI tool artifacts and Python dependencies', () => {
@@ -421,7 +441,7 @@ test('mise locks the CI tool artifacts and Python dependencies', () => {
 			}
 		}
 	}
-	for (const name of ['kprint', 'npm']) {
+	for (const name of ['kprint', 'npm', 'npm:runner-run']) {
 		assert.match(String(entry(name).backend), /^npm:/, `${name} uses the npm backend`);
 	}
 	const uv = yamlMapping(entry('yamllint').uv);
@@ -437,23 +457,25 @@ test('mise setup is pinned, cached, and used once per job', () => {
 	const expected = {
 		'unit-tests': 'node,npm,bun,shellcheck',
 		race: 'node,npm,bun,shellcheck',
-		wasm: 'go,node,npm,bun,pandoc',
-		javascript: 'go,node,npm,bun',
-		'release-snapshot': 'node,npm,bun,pandoc',
-		lint: 'shellcheck',
+		wasm: 'go,node,npm,bun,pandoc,npm:runner-run',
+		javascript: 'go,node,npm,bun,npm:runner-run',
+		'release-snapshot': 'node,npm,bun,pandoc,npm:runner-run',
+		lint: 'bun,shellcheck,npm:runner-run',
 		plugins: 'bun,tinygo,wasi-sdk,kprint,wasm-tools,wit-bindgen',
-		action: 'node,npm,bun,shellcheck',
+		action: 'node,npm,bun,shellcheck,npm:runner-run',
 	};
 	/** @type {Record<string, string>} */
 	const otherJobs = {
 		'autofix.yml:autofix': 'node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint',
 		'ci-changes.yml:changes': 'bun',
-		'expression-probe-tests.yml:test': 'node,npm,bun',
+		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
 		'npm-release.yml:build': 'bun',
-		'package-previews.yml:publish': 'bun,uv,yamllint,zizmor',
-		'changelog-release.yml:publish': 'bun',
-		'pages.yml:build': 'go,node,npm,bun,pandoc',
-		'release-prepare.yml:prepare': 'node,npm,bun,shellcheck,pandoc',
+		'matcher.yml:matcher-test': 'bun,npm:runner-run',
+		'upkeep.yml:go-toolchain': 'bun,npm:runner-run',
+		'package-previews.yml:publish': 'bun,uv,yamllint,zizmor,npm:runner-run',
+		'changelog-release.yml:publish': 'bun,npm:runner-run',
+		'pages.yml:build': 'go,node,npm,bun,pandoc,npm:runner-run',
+		'release-prepare.yml:prepare': 'node,npm,bun,shellcheck,pandoc,npm:runner-run',
 		'upkeep.yml:readme': 'shellcheck',
 	};
 	const directory = new URL('../workflows/', import.meta.url);
@@ -606,7 +628,7 @@ test('workflow lint with all ShellCheck checks runs before the matrix with both 
 	const setup = steps.slice(0, validation).flatMap(step =>
 		Array.isArray(step.parallel) ? step.parallel.map(item => yamlMapping(item)) : [step]
 	);
-	assert.equal(yamlMapping(lint.env).MISE_ENABLE_TOOLS, 'shellcheck');
+	assert.equal(yamlMapping(lint.env).MISE_ENABLE_TOOLS, 'bun,shellcheck,npm:runner-run');
 	assert.ok(setup.some(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@')));
 	const action = yamlMapping(jobs.action);
 	assert.ok(Array.isArray(action.steps));
