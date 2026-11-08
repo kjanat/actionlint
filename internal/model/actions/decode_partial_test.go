@@ -3,6 +3,8 @@ package action
 import (
 	"strings"
 	"testing"
+
+	reference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 )
 
 func TestDecodePartialNullAndEmptyMetadata(t *testing.T) {
@@ -93,18 +95,30 @@ func TestDecodePartialDuplicateDefinitionFieldsKeepsDefaults(t *testing.T) {
 	}
 }
 
-func TestDecodePartialUnknownInputKeepsLastSoftErrorAndMap(t *testing.T) {
-	metadata, err := Parse("action.yml", []byte(`inputs:
+func TestDecodeIgnoresUnknownInputMetadata(t *testing.T) {
+	// actions/runner 1ba885c2065fd9be317808ab3fd406f392635cf7:
+	// action_yaml.json permits arbitrary values for extra input properties.
+	const source = `name: extensions
+description: Input metadata extensions
+runs: {using: node24, main: index.js}
+inputs:
   token:
-    firstUnknown: ignored
-    lastUnknown: ignored
-`))
-	if err == nil || !strings.Contains(err.Error(), `lastUnknown`) || strings.Contains(err.Error(), `firstUnknown`) {
-		t.Fatalf("unexpected-key error = %v", err)
+    type: boolean
+    extraMapping: {format: [true, false]}
+    required: true
+    default: false
+`
+	metadata, err := Parse("action.yml", []byte(source))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if input := metadata.Inputs["token"]; input == nil || input.Name != "token" {
-		t.Fatalf("soft input error lost parsed map: %#v", metadata.Inputs)
+	if input := metadata.Inputs["token"]; input == nil || input.Name != "token" || input.Required {
+		t.Fatalf("input metadata was lost: %#v", metadata.Inputs)
 	}
+	if problems := Validate(metadata).Problems; len(problems) != 0 {
+		t.Fatalf("valid extension metadata was rejected: %+v", problems)
+	}
+	reference.CheckAction(t, source, true)
 }
 
 func TestDecodePartialOutputIgnoresRecursiveAliasPayload(t *testing.T) {

@@ -231,14 +231,6 @@ inputs:
 outputs: "foo"`,
 			want: "outputs must be mapping node",
 		},
-		{
-			what: "unknown input metadata",
-			input: `name: Test
-inputs:
-  input1:
-    foo: bar`,
-			want: "unexpected key \"foo\" for definition of input \"input1\"",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -255,7 +247,7 @@ inputs:
 	}
 }
 
-func TestActionMetadataPreservesPartialDecode(t *testing.T) {
+func TestActionMetadataAcceptsUnknownInputFields(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/metadata/lighthouse.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -264,14 +256,14 @@ func TestActionMetadataPreservesPartialDecode(t *testing.T) {
 		t.Run(using, func(t *testing.T) {
 			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
 			md, err := Parse("action.yml", src)
-			if err == nil || !strings.Contains(err.Error(), "unexpected key") || !strings.Contains(err.Error(), `input "temporaryPublicStorage"`) {
-				t.Fatalf("expected the upstream typo error, got %v", err)
+			if err != nil {
+				t.Fatalf("runner ignores the upstream description typo: %v", err)
 			}
 			if md.Name != "Lighthouse CI Action" || md.Runs.Using != using || md.Runs.Main != "dist/index.js" {
-				t.Fatalf("partially decoded metadata was lost: %+v", md)
+				t.Fatalf("decoded metadata was lost: %+v", md)
 			}
 			if md.Inputs["temporarypublicstorage"] == nil || md.Outputs["links"] == nil {
-				t.Fatalf("partially decoded inputs or outputs were lost: %+v", md)
+				t.Fatalf("decoded inputs or outputs were lost: %+v", md)
 			}
 			if len(md.InputDefaults) != 1 || md.InputDefaults[0].Value.Line != 5 {
 				t.Fatalf("positioned default was lost: %+v", md.InputDefaults)
