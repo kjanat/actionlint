@@ -243,7 +243,7 @@ func (a *commandApp) commonFlags(c *cobra.Command, f *pflag.FlagSet) {
 }
 
 func (a *commandApp) hyperlinkFlag(c *cobra.Command, f *pflag.FlagSet) {
-	f.Var(&a.inv.Render.Hyperlinks, "hyperlinks", "Hyperlinks in help and doctor: auto, always or never")
+	f.Var(&a.inv.Render.Hyperlinks, "hyperlinks", "Hyperlinks in pretty output, help and doctor: auto, always or never")
 	annotateFlag(f, "hyperlinks", "Output")
 	choices := []string{"auto", "always", "never"}
 	f.Lookup("hyperlinks").Annotations[commandChoicesAnnotation] = choices
