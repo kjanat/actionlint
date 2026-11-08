@@ -82,16 +82,17 @@ run     = "go tool cover -func=coverage.out"
 run = "golangci-lint run"
 
 ["lint:playground"]
-run = "golangci-lint run ./cmd/actionlint-lsp-wasm"
-env = { GOOS = "js", GOARCH = "wasm" }
+# When both checks run, wait for the native check to release golangci-lint's lock.
+wait_for = ["lint:golangci"]
+run      = "golangci-lint run ./cmd/actionlint-lsp-wasm"
+env      = { GOOS = "js", GOARCH = "wasm" }
 
 ["lint:vulnerabilities"]
 run = "go run golang.org/x/vuln/cmd/govulncheck@latest ./..."
 
 ["lint"]
+depends     = ["lint:golangci", "lint:vulnerabilities", "lint:playground"]
 description = "Run Go, vulnerability and browser checks"
-
-run = ["mise run lint:golangci", "mise run lint:vulnerabilities", "mise run lint:playground"]
 
 ["lint-docs"]
 run = "go run ./internal/development/tests/integration/documentation -quiet ./docs/checks.md"
