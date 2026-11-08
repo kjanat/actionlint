@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 
@@ -38,11 +39,15 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 	if availability.State() == actions.MetadataAvailable {
 		return nil
 	}
+	switch availability.Reason() {
+	case factavailability.LookupDisabledReason, factavailability.OfflineReason, factavailability.CacheMissReason:
+		return nil
+	}
 	reason := string(availability.Reason())
 	if availability.State() == actions.MetadataInvalid {
 		reason = "invalid parse/schema metadata"
 	}
 	collector := reporting.Collector{Rule: "missing-action-metadata", Step: step}
-	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "remote action metadata for "+spec+" is unavailable ("+reason+"); use --action-metadata=online with a full SHA-1, or provide the required action-profile selection and warm the offline cache")
+	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "could not inspect metadata for "+spec+" ("+reason+")")
 	return collector.Findings
 }

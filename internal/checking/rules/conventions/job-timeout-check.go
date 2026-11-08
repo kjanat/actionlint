@@ -42,7 +42,7 @@ func JobTimeout(n declaration.JobView, policy TimeoutPolicy) []reporting.Finding
 	if !n.TimeoutMinutes().Present() {
 		rule.Errorf(
 			reporting.ViewPosition(n.Pos()),
-			"%q is not set in job %q. it is required because \"job-timeout\" is enabled in the \"policy\" configuration. a job which does not set it is cancelled after the default of 360 minutes",
+			"%q is not set in job %q. Set an explicit timeout for this job",
 			"timeout-minutes",
 			n.ID().Value(),
 		)
@@ -56,7 +56,7 @@ func JobTimeout(n declaration.JobView, policy TimeoutPolicy) []reporting.Finding
 		limit := *policy.Min
 		rule.Errorf(
 			reporting.ViewPosition(n.TimeoutMinutes().Pos()),
-			"%q is %v in job %q. it must not be smaller than %v because \"min-minutes\" of \"job-timeout\" is set in the \"policy\" configuration",
+			"%q is %v in job %q, below the configured min-minutes of %v",
 			"timeout-minutes", n.TimeoutMinutes().Value(), n.ID().Value(), limit,
 		)
 	}
@@ -64,7 +64,7 @@ func JobTimeout(n declaration.JobView, policy TimeoutPolicy) []reporting.Finding
 		limit := *policy.Max
 		rule.Errorf(
 			reporting.ViewPosition(n.TimeoutMinutes().Pos()),
-			"%q is %v in job %q. it must not be larger than %v because \"max-minutes\" of \"job-timeout\" is set in the \"policy\" configuration",
+			"%q is %v in job %q, above the configured max-minutes of %v",
 			"timeout-minutes",
 			n.TimeoutMinutes().Value(),
 			n.ID().Value(),

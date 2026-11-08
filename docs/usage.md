@@ -81,8 +81,7 @@ omit fixtures or generated actions. Literally named files bypass discovery filte
 Standalone actions have no known runner, so `executable-bit` is checked only when
 an action is reached through a workflow with a known runner.
 
-When `-` argument is given, actionlint reads inputs from stdin and checks it as
-workflow source.
+Pass `-` to read workflow source from stdin.
 
 ```sh
 cat path/to/workflow.yaml | actionlint -
@@ -296,7 +295,7 @@ timeout bounds, permission scopes, suppression report modes and rule-ID/path
 ignores. It does not install missing external linters. `--experimental`
 enables nursery rules except those explicitly excluded. Strict
 mode alone does not enable nursery rules. Both switches apply after file
-overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
+overrides; `--experimental=false` clears only nursery selections. The `join-literal` rule is in nursery.
 `--strict=false` removes the strict preset; configure policies separately to disable them.
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
@@ -339,13 +338,19 @@ CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
 take precedence, including empty strings and `false`.
 
+Remote action metadata is fetched in online mode by default. Use
+`--action-metadata=offline` to check cached metadata without network requests,
+or `--action-metadata=off` to skip acquisition. Offline cache misses appear in
+JSON coverage without failing the check. See [remote action metadata](remote-actions.md)
+for the supported references and resolver configuration.
+
 ### Network accounting
 
 Use `--network-stats` to write grouped network statistics as a final JSON record
 on stderr. Diagnostic JSON on stdout is unchanged:
 
 ```sh
-actionlint check --action-metadata=online --network-stats --output=json .github
+actionlint check --network-stats --output=json .github
 ```
 
 Each group identifies the host, request kind, purpose and priority. The `credentials`
@@ -629,9 +634,9 @@ locally. Additional options can use `--tool shellcheck='<command line>'` or the
 
 ### Format error messages
 
-`-format` option can flexibly format error messages with [Go template syntax][go-template].
+Use `-format` to format error messages with [Go template syntax][go-template].
 
-Before explaining the formatting details, let's see some examples.
+The following examples show how to format diagnostics.
 
 #### Example: Legacy template JSON
 
@@ -734,7 +739,7 @@ See the [SARIF output example](../internal/development/tests/integration/output/
 In [Go template syntax][go-template], `.` within `{{ }}` means the target object. Here, the target object is a sequence of error
 objects.
 
-The sequence can be traversed with `range` action, which is like `for ... = range ... {}` in Go.
+Use the `range` action to traverse the sequence, as you would use `for ... = range ... {}` in Go.
 
 ```text
 {{range $err := .}} this part iterates error objects with the iteration variable $err {{end}}
@@ -758,10 +763,9 @@ The error object has the following fields.
 
 <!-- dprint-ignore-end -->
 
-Functions called in `{{ }}` placeholder are template actions. There are many
-actions defined by Go standard library. In addition, there are a few custom
-actions defined by actionlint. Most useful action would be `json` as we already
-used it in the above JSON example. List of all custom actions are as follows:
+Functions called inside `{{ }}` are template actions. In addition to the actions
+defined by the Go standard library, actionlint provides the following custom
+actions. The JSON example above uses `json`.
 
 | Action             | Description                                                                      | Example usage                             |
 | ------------------ | -------------------------------------------------------------------------------- | ----------------------------------------- |
@@ -773,7 +777,7 @@ used it in the above JSON example. List of all custom actions are as follows:
 | `allKinds`         | Return an array of kind objects. The kind object is explained in the below table | `{{range $ = allKinds}}{{$.Name}}{{end}}` |
 | `getVersion`       | Return the version of actionlint as string                                       | `{{getVersion}}`                          |
 
-The kind object returned from `allKinds` action has the following fields.
+The `allKinds` action returns kind objects with the following fields.
 
 | Field                   | Description                   | Example                                     |
 | ----------------------- | ----------------------------- | ------------------------------------------- |
@@ -792,16 +796,14 @@ will produce output like below.
 line is 21, col is 20, message is "property \"platform\" is not defined in object type {os: string}"
 ```
 
-In `{{ }}` placeholder, input can be piped and action can be used to transform
-texts. In above example, the message is piped with `|` and transformed with
-`printf "%q"`.
+Inside `{{ }}`, you can pipe a value to an action to transform it. In the
+example above, `|` pipes the message to `printf "%q"`.
 
-Note that special characters escaped with backslash like `\n` in the format
-string are automatically unescaped.
+Backslash escapes such as `\n` in the format string are automatically unescaped.
 
 ### Exit status
 
-`actionlint` command exits with one of the following exit statuses.
+The `actionlint` command exits with one of the following statuses.
 
 | Status | Description                                             |
 | ------ | ------------------------------------------------------- |
@@ -822,9 +824,8 @@ optional PR reviews, tools and the complete input/output reference.
 Use the download script for direct access to the executable. It sets the absolute path of the downloaded
 executable to the `executable` output for following steps.
 
-Here is an example of simple workflow to run actionlint on GitHub Actions.
-Please ensure `shell: bash` since the default shell for Windows runners is
-`pwsh`.
+This workflow runs actionlint on GitHub Actions. Set `shell: bash` because the
+default shell on Windows runners is `pwsh`.
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -856,8 +857,8 @@ Or simply download the executable and run it in one step:
   shell: bash
 ```
 
-The download script allows to specify the version of actionlint and the download
-directory. Try to give `--help` argument to the script for more usage details.
+The download script accepts an actionlint version and a download directory.
+Pass `--help` to the script for more details.
 
 If you want to enable
 [shellcheck integration](checks.md#check-shellcheck-integ), install `shellcheck`
@@ -887,15 +888,14 @@ jobs:
 
 ## Online playground
 
-Thanks to WebAssembly, actionlint playground is available on your browser. It
-never sends any data to outside your browser.
+The actionlint playground runs in your browser using WebAssembly. It does not
+send data outside your browser.
 
 <https://kjanat.github.io/actionlint>
 
-Paste your workflow content to the code editor at left pane. It automatically
-shows the results at right pane. When editing the workflow content in the code
-editor, the results will be updated on the fly. Clicking an error message in the
-results table moves a cursor to position of the error in the code editor.
+Paste your workflow into the editor on the left. Results appear on the right and
+update as you edit. Click an error in the results table to move the cursor to its
+location in the editor.
 
 <a id="docker"></a>
 
@@ -939,8 +939,7 @@ default working directory, `/w`:
 docker run --rm -v "$(git rev-parse --show-toplevel):/w" ghcr.io/kjanat/actionlint:latest -color
 ```
 
-To check a file with actionlint in a Docker container, pass the file content via
-stdin and use `-` argument:
+To check a file in a Docker container, pass its contents through stdin and use `-`:
 
 ```sh
 cat /path/to/workflow.yml | docker run --rm -i ghcr.io/kjanat/actionlint:latest -color -
@@ -1146,9 +1145,9 @@ the hook installation; exact declarations in actionlint configuration select the
 > which defaults to `actionlint` on `PATH`. It uses this fork when that command
 > resolves to a fork build; it does not download actionlint itself.
 
-[Linter extension][vsc-extension] for [VS Code][vscode] is available. The
-extension automatically detects `.github/workflows` directory, runs `actionlint`
-command, and reports errors in the code editor while editing workflow files.
+The [Linter extension][vsc-extension] for [VS Code][vscode] detects the
+`.github/workflows` directory, runs `actionlint`, and reports errors in the
+editor as you edit workflow files.
 
 ### Emacs
 
@@ -1172,15 +1171,11 @@ Their respective repositories are
 > command can be overridden, and ALE exposes
 > `g:ale_yaml_actionlint_executable`, so either can select this fork.
 
-[nvim-lint][nvim-lint] supports actionlint on Neovim. The plugin automatically
-and asynchronously runs actionlint and notifies errors on the fly when you edit
-GitHub Actions CI workflows. Please read the plugin's documentation for more
-details.
+[nvim-lint][nvim-lint] runs actionlint asynchronously and reports errors as you
+edit GitHub Actions workflows in Neovim. See the plugin documentation for details.
 
-[ALE][vim-ale] supports actionlint on Vim and Neovim. Similar to nvim-lint, The
-plugin automatically and asynchronously runs actionlint and notifies errors on
-the fly when you edit GitHub Actions CI workflows. Please read the plugin's
-documentation for more details.
+[ALE][vim-ale] runs actionlint asynchronously and reports errors as you edit
+GitHub Actions workflows in Vim or Neovim. See the plugin documentation for details.
 
 ### Pulsar Edit
 
@@ -1189,11 +1184,9 @@ documentation for more details.
 > which defaults to `actionlint` on `PATH`. Point that setting at this fork's
 > binary to use fork-specific checks.
 
-A [Linter package][pulsar-linter] for [Pulsar Edit][pulsar] is available. The
-package automatically detects a `workflows` directory, executes the `actionlint`
-command on any detected GitHub Actions files within the directory, and reports
-returned information in the code editor display tab while editing workflow
-files.
+The [Linter package][pulsar-linter] for [Pulsar Edit][pulsar] detects a
+`workflows` directory, runs `actionlint` on GitHub Actions files in that directory,
+and shows its findings in the editor as you work.
 
 ### Nova
 

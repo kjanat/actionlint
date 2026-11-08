@@ -290,6 +290,25 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 	}
 }
 
+func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
+	batch := twoRunFactBatch(t)
+	calls := 0
+	adapter := FactAnalyzer{IncludeExecution: true, Analyzer: factAdapterAnalyzer{
+		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "execution", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}},
+		run: func(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+			calls++
+			scripts := slices.Concat(input.Scripts, input.Invoked)
+			if !slices.Contains(input.AvailableInputs, rulemeta.Execution) || len(scripts) != 1 || scripts[0].Runtime == nil {
+				t.Fatalf("requested execution facts are absent: %+v", input)
+			}
+			return nil, nil
+		},
+	}}
+	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts()) {
+		t.Fatalf("execution analyzer calls=%d, error=%v", calls, err)
+	}
+}
+
 func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	batch := twoRunFactBatch(t)
 	want := batch.CallGraph().Export()

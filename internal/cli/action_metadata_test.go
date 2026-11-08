@@ -3,6 +3,10 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,7 +18,7 @@ import (
 func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"), Stdout: &out, Stderr: &log}
-	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "-"})
+	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=off", "--output-format=json", "--summary=false", "-"})
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
 	}
@@ -30,5 +34,51 @@ func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 func TestActionMetadataModeRejectsUnknownValue(t *testing.T) {
 	if _, err := (checkInvocation{ActionMetadata: "sometimes"}).actionMetadata(); err == nil {
 		t.Fatal("unknown network policy accepted")
+	}
+}
+
+func TestExplicitOfflineAndOffDoNotFailForUncachedMetadata(t *testing.T) {
+	cache := t.TempDir()
+	for _, name := range []string{"LOCALAPPDATA", "XDG_CACHE_HOME", "HOME"} {
+		t.Setenv(name, cache)
+	}
+	original := http.DefaultTransport
+	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+		t.Errorf("disabled acquisition requested %s", r.URL)
+		return nil, errors.New("unexpected network request")
+	})
+	t.Cleanup(func() { http.DefaultTransport = original })
+	path := filepath.Join(t.TempDir(), "actionlint.yml")
+	if err := os.WriteFile(path, []byte("lint:\n  rules:\n    conventions:\n      missing-action-metadata: error\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		mode, ref string
+		reason    availability.Reason
+	}{
+		{"offline", "v1", availability.OfflineReason},
+		{"offline", strings.Repeat("a", 40), availability.CacheMissReason},
+		{"off", "v1", availability.LookupDisabledReason},
+	} {
+		t.Run(tc.mode+"/"+tc.ref, func(t *testing.T) {
+			var out, log bytes.Buffer
+			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\n"), Stdout: &out, Stderr: &log}
+			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", path, "--action-metadata=" + tc.mode, "--output=json", "--summary=false", "-"})
+			if code != 0 {
+				t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
+			}
+			var result resultreport.CheckResult
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != tc.reason {
+				t.Fatalf("coverage=%+v", result.ActionMetadata)
+			}
+			for _, finding := range result.Diagnostics {
+				if finding.Rule == "missing-action-metadata" {
+					t.Fatalf("intentional offline lookup produced a finding: %+v", finding)
+				}
+			}
+		})
 	}
 }

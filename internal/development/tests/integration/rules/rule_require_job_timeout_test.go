@@ -17,7 +17,7 @@ import (
 func TestRuleRequireJobTimeout(t *testing.T) {
 	jobPos := &workflowlang.Pos{Line: 4, Col: 3}
 	valuePos := &workflowlang.Pos{Line: 6, Col: 22}
-	missing := ":4:3: \"timeout-minutes\" is not set in job \"test\". it is required because \"job-timeout\" is enabled in the \"policy\" configuration. a job which does not set it is cancelled after the default of 360 minutes [job-timeout]"
+	missing := ":4:3: \"timeout-minutes\" is not set in job \"test\". Set an explicit timeout for this job [job-timeout]"
 
 	newJob := func(timeout *workflowlang.Float) *workflowlang.Job {
 		return &workflowlang.Job{
@@ -78,7 +78,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 			policy: repoconfig.RequireJobTimeout(30),
 			job:    newJob(minutes(45)),
 			want: []string{
-				":6:22: \"timeout-minutes\" is 45 in job \"test\". it must not be larger than 30 because \"max-minutes\" of \"job-timeout\" is set in the \"policy\" configuration [job-timeout]",
+				":6:22: \"timeout-minutes\" is 45 in job \"test\", above the configured max-minutes of 30 [job-timeout]",
 			},
 		},
 		{
@@ -86,7 +86,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 			policy: repoconfig.RequireJobTimeout(30.5),
 			job:    newJob(minutes(45)),
 			want: []string{
-				":6:22: \"timeout-minutes\" is 45 in job \"test\". it must not be larger than 30.5 because \"max-minutes\" of \"job-timeout\" is set in the \"policy\" configuration [job-timeout]",
+				":6:22: \"timeout-minutes\" is 45 in job \"test\", above the configured max-minutes of 30.5 [job-timeout]",
 			},
 		},
 		{

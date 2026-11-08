@@ -50,6 +50,15 @@ func MatchParameter(parameter exprtypes.Type, arg CallArgument, compositeFallbac
 			}
 			m.Conversion = ConversionString
 			m.Converted = exprtypes.StringType()
+			// Arrays convert to "Array" and objects to "Object", even when their contents are unknown.
+			if m.State == ArgumentUnknown {
+				switch actual.Kind() {
+				case exprtypes.KindArray:
+					m.Value, m.State = "Array", ArgumentKnown
+				case exprtypes.KindObject:
+					m.Value, m.State = "Object", ArgumentKnown
+				}
+			}
 			if m.State == ArgumentKnown {
 				if value, ok := exprvalues.FunctionString(m.Value); ok {
 					m.Value = value

@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/model/availability"
+
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -22,7 +25,7 @@ policy:
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Analyze(context.Background(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
+	result, err := checking.Analyze(context.Background(), checking.Options{WorkingDir: t.TempDir(), RemoteActions: unavailableActionMetadata{}}, []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
 jobs:
   own:
     uses: my-org/repo/.github/workflows/ci.yml@main
@@ -51,4 +54,10 @@ jobs:
 	if pins != 2 || !metadataUnavailable {
 		t.Fatalf("pins=%d metadata-unavailable=%v: %+v", pins, metadataUnavailable, result.Diagnostics)
 	}
+}
+
+type unavailableActionMetadata struct{}
+
+func (unavailableActionMetadata) Lookup(context.Context, actions.Reference) (actions.Manifest, error) {
+	return actions.UnavailableManifest(availability.Failed()), nil
 }

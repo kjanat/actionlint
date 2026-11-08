@@ -9,7 +9,7 @@ import (
 // StringConditions reports a bare string reference used as a condition.
 func StringConditions(root exprsyntax.Node, types exprlang.InferredTypes) []*exprlang.Error {
 	if ty, known := types.TypeOf(root); known && conditionStringReference(root, ty) {
-		return []*exprlang.Error{expressionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")}
+		return []*exprlang.Error{expressionFinding(root, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; compare the string explicitly or use fromJSON() to parse a boolean value")}
 	}
 	return nil
 }

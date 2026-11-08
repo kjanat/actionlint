@@ -74,6 +74,7 @@ type Options struct {
 	Semantics                 exprlang.Options
 	UnsoundTernary            bool
 	SuspiciousCoercion        bool
+	JoinLiteral               bool
 	StringConditions          bool
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool

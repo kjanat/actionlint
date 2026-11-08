@@ -50,10 +50,14 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})
 	t.Cleanup(func() { http.DefaultTransport = original })
-	for _, mode := range []string{"online", "offline"} {
+	for _, mode := range []string{"default", "online", "offline"} {
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + sha + ", with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log}
-		code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=" + mode, "--output-format=json", "--summary=false", "--network-stats", "-"})
+		args := []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "-"}
+		if mode != "default" {
+			args = append(args, "--action-metadata="+mode)
+		}
+		code := command.MainContext(t.Context(), args)
 		if code != 1 {
 			t.Fatalf("%s status=%d stderr=%s output=%s", mode, code, log.String(), out.String())
 		}
@@ -90,14 +94,16 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 			}
 		}
 		want := uint64(0)
-		if mode == "online" {
+		if mode == "default" {
 			want = 5
+		} else if mode == "online" {
+			want = 2
 		}
 		if attempts != want {
 			t.Fatalf("%s attempts=%d, want %d", mode, attempts, want)
 		}
 	}
-	if requests != 5 {
+	if requests != 7 {
 		t.Fatalf("warm offline used network: requests=%d", requests)
 	}
 }

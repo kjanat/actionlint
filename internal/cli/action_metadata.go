@@ -15,7 +15,7 @@ import (
 func (c checkInvocation) actionMetadata() (actions.Provider, error) {
 	mode := github.Mode(c.ActionMetadata)
 	if mode == "" {
-		mode = github.Off
+		mode = github.Online
 	}
 	options := github.Options{Mode: mode}
 	if mode != github.Off {

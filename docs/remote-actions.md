@@ -1,21 +1,23 @@
 # Remote action metadata
 
-Remote action metadata is optional host evidence, separate from workflow syntax
-and action reference validation. The default is `--action-metadata=off`.
+actionlint can acquire remote action manifests to check their declared inputs,
+outputs and runtime. It downloads metadata by default. Use `--action-metadata=offline` to use cached
+metadata without network requests, or `--action-metadata=off` to skip acquisition.
 
 ```console
 actionlint check --action-metadata=online .github/workflows/build.yml
 actionlint check --action-metadata=offline .github/workflows/build.yml
 ```
 
-- `off`: no metadata acquisition. Coverage records `lookup-disabled`.
-- `offline`: read previously acquired immutable manifests. No HTTP or resolver
-  process runs. A missing full-SHA cache entry records `cache-miss`; named refs
-  record `offline` because their selection needs a new observation.
-- `online`: acquire GitHub.com metadata for full 40-character SHA-1 commit
+- `off` acquires no metadata. Coverage records `lookup-disabled`.
+- `offline` reads previously acquired manifests for exact commits. It makes no
+  HTTP requests and runs no resolver process. A missing full-SHA cache entry
+  records `cache-miss`; named references record `offline` because resolving them
+  requires a new observation.
+- `online` acquires GitHub.com metadata for full 40-character SHA-1 commit
   references. Named references require an injected action-profile resolver.
-  Native SHA-256 and raw tag-object resolution are outside this host's coverage.
-  They never fall back to a similarly named tag or branch.
+  The host cannot resolve SHA-256 objects or raw tag objects directly. It never
+  substitutes a similarly named tag or branch for an unsupported selection.
 
 Online mode uses `GH_TOKEN`, falling back to `GITHUB_TOKEN`, when present.
 Otherwise it makes unauthenticated requests. Credentials, HTTP response bodies
@@ -31,7 +33,7 @@ are refused. Each response is limited to 1 MiB, each HTTP request to 15 seconds,
 and the complete lookup, including an injected resolver, to 30 seconds. Caller
 cancellation also stops acquisition.
 
-These are source observations. They do not prove that GitHub would authorize
+The acquired data records what the host observed in the repository. It does not prove that GitHub would authorize
 execution, that the commit is reachable from a particular branch, or that a
 runner executed these bytes. The host uses GitHub's [commit object
 endpoint](https://docs.github.com/en/rest/git/commits#get-a-commit-object) and
@@ -42,33 +44,37 @@ never the general commits endpoint to select between named refs.
 
 The cache lives under the operating system user cache directory at
 `actionlint/action-metadata/v1`. Analysis does not create project lockfiles or
-configuration. Cache records contain repository host/name/ID, terminal full
-commit, action directory, metadata filename, bytes, SHA-256 and observation time.
-Mutable ref-to-commit selections are not persisted.
+configuration. Each cache record contains the repository host, name and ID;
+the full commit hash; the action directory; the manifest filename and bytes;
+its SHA-256; and the observation time. The cache does not save mappings from
+mutable references, such as tags or branches, to commits.
 
-Warm offline success requires an explicit full SHA-1 reference. An online named
-selection can warm the corresponding terminal commit for a later explicit SHA
-request. Cache entries never cross hosts, repository names/IDs or action
-directories. Conflicting repository IDs for the same offline request, corrupt
-records and digest mismatches are unavailable evidence. Offline operation cannot
-recheck current ownership of a previously observed repository name; the recorded
-identity and observation time remain visible in coverage.
+To use a cached manifest offline, specify its full SHA-1 commit hash. An online
+lookup of a named reference can cache the resolved commit's manifest for a later
+request using that hash. A cache entry can be reused only for the same host,
+repository name and ID, and action directory. If records disagree about the
+repository ID, are corrupt, or fail their digest check, the metadata is
+unavailable. Offline operation cannot recheck who currently owns a repository
+name. Coverage includes the recorded identity and observation time.
 
 ## Resolver boundary
 
-`--resolve-with EXECUTABLE` uses the existing version-1 resolver protocol. Action
-metadata sends `kind: "action"`; reusable workflows keep `kind: "workflow"`.
-Those profiles must remain separate. Ref selection belongs to the provider's
-measured profile, not generic Git revision syntax or a GitHub API shortcut.
+`--resolve-with EXECUTABLE` starts a native program and exchanges version-1
+JSON requests and responses through stdin and stdout. This protocol is separate
+from the WebAssembly component plugin interfaces. Action metadata sends
+`kind: "action"`; reusable workflows keep `kind: "workflow"`.
+Keep those request kinds separate. The provider must select references according
+to the action or workflow behavior it implements. Generic Git revision parsing
+or a shortcut through the GitHub API does not establish equivalent selection.
 
 For named action metadata, a successful result must also supply
 `selected_object` (the original full SHA-1 object before any tag peeling) and
-`selected_ref` (the exact lookup key, such as `refs/tags/v4` or `HEAD`). The usual
-repository ID/name, terminal commit, observation time and evidence remain
-required. A result without these selection fields remains usable by existing
-resolver consumers but is `unsupported` for metadata acquisition. The host
+`selected_ref` (the exact lookup key, such as `refs/tags/v4` or `HEAD`). It must
+also include the repository ID and name, resolved commit, observation time and
+evidence. Other resolver callers can use a result without these selection
+fields, but metadata acquisition reports it as `unsupported`. The host
 does not guess a tag or branch route. A typed `actions.Provider` can instead
-supply complete manifest selection evidence directly to library callers.
+supply the manifest and complete selection evidence directly to an in-process caller.
 
 ## Coverage and enforcement
 
@@ -76,12 +82,13 @@ The analysis API exposes `ActionMetadata`; version-1 JSON results expose
 `action_metadata`. Each entry describes one distinct static remote reference
 requested by active metadata-dependent checks:
 
-- `available`: parsing and structural manifest validation succeeded; input,
-  output and runtime facts can be consumed.
-- `unavailable`: includes a typed reason, without invented metadata facts.
-- `invalid`: includes parse/schema diagnostic positions in the selected
-  manifest. These positions are associated with its repository/commit/path;
-  they are not positions in the calling workflow.
+- `available` means parsing and structural manifest validation succeeded. Checks
+  can use the declared inputs, outputs and runtime.
+- `unavailable` gives a reason for the missing metadata and supplies no metadata
+  facts.
+- `invalid` includes parse or schema diagnostics in the selected manifest. Their
+  positions identify that manifest's repository, commit and path, rather than
+  the calling workflow.
 
 Invalid manifest diagnostics are also reported at the calling `uses` position.
 Structural validation is not a claim that every runtime or filesystem-dependent
@@ -93,16 +100,16 @@ leave the list empty; it does not establish full coverage.
 An omitted `outputs` declaration leaves output names unknown. It does not prove
 the action produces no outputs; explicit output declarations remain checkable.
 
-To require usable metadata, opt in independently of the network mode:
+Enable `missing-action-metadata` to report acquisition failures:
 
 ```yaml
-policy:
-  require-action-metadata: true
+lint:
+  rules:
+    conventions:
+      missing-action-metadata: on
 ```
 
-The equivalent rule is `lint.rules.policy.require-action-metadata`. It is off in
-the recommended preset. Enabling the policy does not enable HTTP. Offline misses,
-disabled acquisition, unsupported selections and invalid parse/schema metadata
-produce a policy finding with a reason and a remedy. This replaces any notion
-that membership in a bundled popular-action catalogue establishes metadata
-availability.
+This rule is off in the recommended preset. Offline cache misses and disabled
+acquisition appear in `action_metadata` coverage without a lint finding. Cached
+metadata is still checked in offline mode. Repository access failures, unsupported
+reference selections and invalid metadata produce findings when this rule is enabled.

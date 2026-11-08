@@ -7,6 +7,10 @@ type ProblemCode string
 
 const (
 	CodeCoercion                ProblemCode = "coercion"
+	CodeStringCondition         ProblemCode = "string-conditions"
+	CodeJoinLiteral             ProblemCode = "join-literal"
+	CodeInvalidJSON             ProblemCode = "invalid-json"
+	CodeFormatPlaceholder       ProblemCode = "format-placeholder"
 	CodeMissingField            ProblemCode = "missing-field"
 	CodeUnexpectedField         ProblemCode = "unexpected-field"
 	CodeInvalidFieldType        ProblemCode = "invalid-field-type"

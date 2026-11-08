@@ -342,10 +342,10 @@ func pipelineInvocation(statement *syntax.Stmt) (*syntax.Stmt, bool) {
 		if len(command.Args) == 0 {
 			return nil, false
 		}
-		name, known := execution.LiteralShellWord(command.Args[0].Parts)
+		name, known := scriptmodel.LiteralShellWord(command.Args[0].Parts)
 		if known && len(command.Assigns) == 0 && (name == "true" || name == ":" || name == "echo") {
 			for _, word := range command.Args[1:] {
-				if _, literal := execution.LiteralShellWord(word.Parts); !literal {
+				if _, literal := scriptmodel.LiteralShellWord(word.Parts); !literal {
 					return nil, false
 				}
 			}
@@ -362,7 +362,7 @@ func (rule *ExecutableChecker) redirectsKnown(redirects []*syntax.Redirect, dire
 		if redirect.Word == nil || redirect.Hdoc != nil || redirect.N != nil && !standardShellDescriptor(redirect.N.Value) {
 			return false
 		}
-		target, literal := execution.LiteralShellWord(redirect.Word.Parts)
+		target, literal := scriptmodel.LiteralShellWord(redirect.Word.Parts)
 		if !literal {
 			return false
 		}
@@ -436,7 +436,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run workflowdecl.E
 			}
 		}
 	}
-	name, literal := execution.LiteralShellWord(command.Args[0].Parts)
+	name, literal := scriptmodel.LiteralShellWord(command.Args[0].Parts)
 	if !literal {
 		rule.pristine = false
 		return
@@ -445,7 +445,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run workflowdecl.E
 	if name == "exec" || name == "command" {
 		arguments = arguments[1:]
 		if len(arguments) > 0 {
-			if option, literal := execution.LiteralShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.Name, "bash")) {
+			if option, literal := scriptmodel.LiteralShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.Name, "bash")) {
 				arguments = arguments[1:]
 			}
 		}
@@ -453,7 +453,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run workflowdecl.E
 			rule.pristine = false
 			return
 		}
-		name, literal = execution.LiteralShellWord(arguments[0].Parts)
+		name, literal = scriptmodel.LiteralShellWord(arguments[0].Parts)
 		// Lookup-only flags and other options do not prove a script invocation.
 		if !literal || strings.HasPrefix(name, "-") || !strings.Contains(name, "/") {
 			rule.pristine = false
@@ -478,7 +478,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run workflowdecl.E
 	}
 	args := make([]string, len(command.Args))
 	for i, word := range command.Args {
-		value, ok := execution.LiteralShellWord(word.Parts)
+		value, ok := scriptmodel.LiteralShellWord(word.Parts)
 		if !ok {
 			rule.pristine = false
 			return
