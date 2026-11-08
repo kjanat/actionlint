@@ -385,6 +385,9 @@ func (p shellPreparation) input(ctx context.Context, script tools.Script) (scrip
 	dialect := ""
 	if script.Input != nil {
 		dialect = shellprofile.LanguageDialect(script.Input.Language)
+		if dialect == "" {
+			return configuredInput(p.name, script)
+		}
 	}
 	if script.Config != nil && script.Config.Tools[p.name].Config.Path() != "" {
 		return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, errEngineConfigFile)

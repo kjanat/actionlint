@@ -27,6 +27,23 @@ import (
 // whose tools.shellcheck.config grants source access.
 var sourceRunner = documentRunner{documentRoute: shellcheckRoute}
 
+func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.T) {
+	reference := sourcepos.Reference{Document: "captured-action", Revision: "captured-revision", Node: "run", Address: "runs.steps[0].run"}
+	script := tools.Script{Path: filepath.Join(t.TempDir(), "action.yml"), Content: []byte("captured action"), Fact: checkinputs.Script{Reference: reference}}
+	files := pluginSourceFiles{}
+	finding := results.Diagnostic{Path: "actions/example/action.yml", Reference: &reference, Message: "shell issue"}
+	got, err := files.finding("shellcheck", finding, script, 2)
+	if err != nil || got.Path != script.Path || got.Reference == nil || *got.Reference != reference || got.Script != 2 || string(got.Content) != string(script.Content) || got.RawScript || got.UnavailableSource.Present() {
+		t.Fatalf("captured script mapping=%+v error=%v", got, err)
+	}
+	for _, foreign := range []*sourcepos.Reference{nil, {}, {Document: "other", Revision: reference.Revision, Node: reference.Node}, {Document: reference.Document, Revision: "stale", Node: reference.Node}, {Document: reference.Document, Revision: reference.Revision, Node: "other"}} {
+		finding.Reference = foreign
+		if _, err := files.finding("shellcheck", finding, script, 2); err == nil {
+			t.Fatalf("accepted a path without the selected script reference: %+v", foreign)
+		}
+	}
+}
+
 func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	root := t.TempDir()
 	shared := filepath.Join(root, "shared-sources")
