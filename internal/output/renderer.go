@@ -8,12 +8,13 @@ import (
 
 // Renderer formats analysis results.
 type Renderer struct {
-	format    Format
-	oneline   bool
-	version   func() string
-	rules     *ruleSet
-	formatter *Formatter
-	width     int
+	format     Format
+	oneline    bool
+	version    func() string
+	rules      *ruleSet
+	formatter  *Formatter
+	width      int
+	hyperlinks bool
 }
 
 // New validates a built-in format or custom Go template before rendering.
@@ -43,6 +44,9 @@ func New(format Format, template string, oneline bool, version func() string, ru
 
 // Formatter returns the template formatter, or nil for built-in formats.
 func (r *Renderer) Formatter() *Formatter { return r.formatter }
+
+// SetHyperlinks enables OSC 8 links in pretty diagnostics.
+func (r *Renderer) SetHyperlinks(enabled bool) { r.hyperlinks = enabled }
 
 // SetWidth sets the pretty format's display width, including indentation.
 func (r *Renderer) SetWidth(width int) error {
@@ -89,7 +93,7 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 					finding.Diagnostic.DocumentationURL = ""
 				}
 			}
-			if err := finding.printPretty(out, r.width); err != nil {
+			if err := finding.printPretty(out, r.width, r.hyperlinks); err != nil {
 				return err
 			}
 			continue

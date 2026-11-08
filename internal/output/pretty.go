@@ -10,7 +10,7 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func (f Finding) printPretty(out io.Writer, width int) error {
+func (f Finding) printPretty(out io.Writer, width int, hyperlinks bool) error {
 	var b strings.Builder
 	d := f.Diagnostic
 	severity := d.Severity
@@ -31,9 +31,9 @@ func (f Finding) printPretty(out io.Writer, width int) error {
 	if d.Code != "" && d.Code != d.Rule {
 		label += " " + d.Code
 	}
-	writeWrapped(&b, "", label, width, style)
-	writeWrapped(&b, "  ", d.Message, width, nil)
-	writeWrapped(&b, "  --> ", fmt.Sprintf("%s:%d:%d", d.Path, d.Start.Line, d.Start.Column), width, nil)
+	writeWrapped(&b, "", label, width, style, hyperlinks)
+	writeWrapped(&b, "  ", d.Message, width, nil, hyperlinks)
+	writeWrapped(&b, "  --> ", fmt.Sprintf("%s:%d:%d", d.Path, d.Start.Line, d.Start.Column), width, nil, hyperlinks)
 	if line, ok := f.line(); ok && d.Start.Line > 0 {
 		gutter := fmt.Sprintf("%d | ", d.Start.Line)
 		space := strings.Repeat(" ", len(gutter)-2)
@@ -43,22 +43,22 @@ func (f Finding) printPretty(out io.Writer, width int) error {
 			fmt.Fprintf(&b, "%s| %s%s\n", space, strings.Repeat(" ", start), style.Sprint(strings.Repeat("^", length)))
 		}
 		if d.End.Line > d.Start.Line {
-			writeWrapped(&b, "  = ", fmt.Sprintf("range continues to %d:%d", d.End.Line, d.End.Column), width, nil)
+			writeWrapped(&b, "  = ", fmt.Sprintf("range continues to %d:%d", d.End.Line, d.End.Column), width, nil, hyperlinks)
 		}
 	}
 	for _, item := range []struct{ label, text string }{
 		{"note", d.Explanation}, {"help", d.Help}, {"docs", d.DocumentationURL},
 	} {
 		if item.text != "" {
-			writeWrapped(&b, "  = ", item.label+": "+item.text, width, nil)
+			writeWrapped(&b, "  = ", item.label+": "+item.text, width, nil, hyperlinks)
 		}
 	}
 	for _, related := range d.Related {
-		writeWrapped(&b, "  = ", "related: "+related.Message, width, nil)
-		writeWrapped(&b, "    --> ", fmt.Sprintf("%s:%d:%d", related.Path, related.Start.Line, related.Start.Column), width, nil)
+		writeWrapped(&b, "  = ", "related: "+related.Message, width, nil, hyperlinks)
+		writeWrapped(&b, "    --> ", fmt.Sprintf("%s:%d:%d", related.Path, related.Start.Line, related.Start.Column), width, nil, hyperlinks)
 	}
 	for _, fix := range d.Fixes {
-		writeWrapped(&b, "  = ", "fix: "+fix.Description, width, nil)
+		writeWrapped(&b, "  = ", "fix: "+fix.Description, width, nil, hyperlinks)
 	}
 	b.WriteByte('\n')
 	_, err := io.WriteString(out, b.String())
@@ -75,33 +75,64 @@ func terminalText(s string) string {
 	}, s)
 }
 
-func writeWrapped(b *strings.Builder, prefix, text string, width int, style *color.Color) {
+func writeWrapped(b *strings.Builder, prefix, text string, width int, style *color.Color, hyperlinks bool) {
 	available := max(1, width-runewidth.StringWidth(prefix))
 	for paragraph := range strings.SplitSeq(terminalText(text), "\n") {
 		line := ""
+		var rendered strings.Builder
+		activeURL := ""
+		selectURL := func(target string) {
+			if target == activeURL {
+				return
+			}
+			if activeURL != "" {
+				writeTerminalLinkEnd(&rendered)
+			}
+			if target != "" {
+				writeTerminalLinkStart(&rendered, target)
+			}
+			activeURL = target
+		}
 		flush := func() {
+			selectURL("")
 			b.WriteString(prefix)
 			if style == nil {
-				b.WriteString(line)
+				b.WriteString(rendered.String())
 			} else {
-				b.WriteString(style.Sprint(line))
+				b.WriteString(style.Sprint(rendered.String()))
 			}
 			b.WriteByte('\n')
 			line = ""
+			rendered.Reset()
 		}
 		for word := range strings.FieldsSeq(paragraph) {
 			if line != "" {
 				if runewidth.StringWidth(line)+1+runewidth.StringWidth(word) > available {
 					flush()
 				} else {
+					selectURL("")
 					line += " "
+					rendered.WriteByte(' ')
 				}
 			}
-			for _, r := range word {
+			var links []terminalURL
+			if hyperlinks {
+				links = terminalURLs(word)
+			}
+			for offset, r := range word {
 				if runewidth.StringWidth(line)+runewidth.RuneWidth(r) > available {
 					flush()
 				}
+				target := ""
+				for _, link := range links {
+					if offset >= link.start && offset < link.end {
+						target = link.target
+						break
+					}
+				}
+				selectURL(target)
 				line += string(r)
+				rendered.WriteRune(r)
 			}
 		}
 		flush()

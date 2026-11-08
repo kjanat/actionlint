@@ -148,8 +148,9 @@ An explicit color request overrides those environment settings.
 `--no-color` and `check --color=never` disable styling. Root color flags belong
 before `--help`, since root help exits immediately. Redirected JSON help is uncolored.
 
-Help can make the project name and documentation URLs clickable using OSC 8
-terminal hyperlinks. The documentation URL uses the release tag or the build's
+Pretty diagnostics make HTTP and HTTPS URLs clickable using OSC 8 terminal
+hyperlinks. When a URL wraps across lines, each part opens the full URL.
+Help also links the project name and documentation URLs. Its documentation URL uses the release tag or the build's
 source commit. Without embedded version or VCS metadata, it falls back to `HEAD`;
 use `go run -buildvcs=true ./cmd/actionlint --help` to include the checkout revision
 when running from source.
@@ -159,7 +160,7 @@ file and resolved executables. Select `--hyperlinks=auto|always|never` independe
 color. The default `auto` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec):
 non-empty `NO_HYPERLINKS` disables links, then non-empty `FORCE_HYPERLINKS`
 enables them, then the output stream's TTY status and known terminal capabilities decide:
-stderr for help, stdout for doctor.
+stderr for help, stdout for doctor and diagnostic output for pretty reports.
 Even `0` is a non-empty value. Explicit `always` or `never` overrides both variables.
 Unknown terminals and multiplexers use plain URLs in auto mode; `always` can
 enable links when the terminal and multiplexer are configured to pass them through.

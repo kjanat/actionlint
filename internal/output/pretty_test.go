@@ -2,6 +2,7 @@ package output
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -10,6 +11,76 @@ import (
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
+
+func TestPrettyWrappedHyperlinks(t *testing.T) {
+	previous := color.NoColor
+	color.NoColor = true
+	t.Cleanup(func() { color.NoColor = previous })
+	target := "https://example.com/" + strings.Repeat("long-path/", 9) + "rule?q=hello%20world#details"
+	help := "https://example.com/help_(bash)?a=1&b=2"
+	docs := "https://example.com/docs"
+	diagnostic := results.Diagnostic{
+		Rule: "example", Message: "See " + target + ".",
+		Help: "Read [the help](" + help + ").", DocumentationURL: docs,
+	}
+	renderer, err := New(FormatPretty, "", false, testVersion, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := renderer.SetWidth(40); err != nil {
+		t.Fatal(err)
+	}
+	result := Result{Findings: []Finding{FindingOf(diagnostic, nil)}}
+	var plain, linked strings.Builder
+	if err := renderer.Render(&plain, result); err != nil {
+		t.Fatal(err)
+	}
+	renderer.SetHyperlinks(true)
+	if err := renderer.Render(&linked, result); err != nil {
+		t.Fatal(err)
+	}
+	osc := regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\`)
+	if got := osc.ReplaceAllString(linked.String(), ""); got != plain.String() {
+		t.Fatalf("links changed visible wrapping:\n%q\nwant:\n%q", got, plain.String())
+	}
+	links := regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\([^\x1b]*)\x1b\]8;;\x1b\\`).FindAllStringSubmatch(linked.String(), -1)
+	labels := map[string]string{}
+	for _, link := range links {
+		if link[1] != target && link[1] != help && link[1] != docs {
+			t.Fatalf("incorrect link destination: %q", link[1])
+		}
+		if strings.ContainsAny(link[2], "\r\n") || strings.HasPrefix(link[2], "  = ") {
+			t.Fatalf("link includes a line break or gutter: %q", link[2])
+		}
+		labels[link[1]] += link[2]
+	}
+	for _, target := range []string{target, help, docs} {
+		if labels[target] != target {
+			t.Errorf("visible URL parts=%q, want %q", labels[target], target)
+		}
+	}
+}
+
+func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
+	previous := color.NoColor
+	color.NoColor = true
+	t.Cleanup(func() { color.NoColor = previous })
+	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
+	var out strings.Builder
+	f := FindingOf(results.Diagnostic{Message: message}, nil)
+	if err := f.printPretty(&out, 40, true); err != nil {
+		t.Fatal(err)
+	}
+	osc := regexp.MustCompile(`\x1b\]8;;[^\x1b\a]*\x1b\\`)
+	plain := osc.ReplaceAllString(out.String(), "")
+	if strings.ContainsAny(plain, "\x1b\a") {
+		t.Fatalf("untrusted control reached terminal: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "\x1b]8;;https://example.com/safe\x1b\\") ||
+		!strings.Contains(out.String(), "\x1b]8;;https://example.com/next\x1b\\") {
+		t.Fatalf("URL detection did not stop at sanitized controls and punctuation: %q", out.String())
+	}
+}
 
 func TestPrettyDiagnostic(t *testing.T) {
 	r, err := New(FormatPretty, "", false, testVersion, nil)
@@ -90,7 +161,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 		Rule: "long-rule", Message: strings.Repeat("界", 100) + "\nnext paragraph",
 		Path: strings.Repeat("path/", 30), Help: "escape\x1b[31m must not execute",
 	}, nil)
-	if err := f.printPretty(&out, 40); err != nil {
+	if err := f.printPretty(&out, 40, false); err != nil {
 		t.Fatal(err)
 	}
 	for line := range strings.SplitSeq(out.String(), "\n") {
@@ -109,7 +180,7 @@ func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	t.Cleanup(func() { color.NoColor = previous })
 	var out strings.Builder
 	f := FindingOf(results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: sourcepos.Position{Line: 8, Column: 4}}, nil)
-	if err := f.printPretty(&out, 80); err != nil {
+	if err := f.printPretty(&out, 80, false); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "\x1b[") {

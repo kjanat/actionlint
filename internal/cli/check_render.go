@@ -30,12 +30,18 @@ func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, form
 	jsonColor := r.Color
 	r.resolveGitHubActionsColor(out, format)
 	jsonDestination := out
-	_, terminal := terminalFile(out)
+	file, terminal := terminalFile(out)
+	links := format == render.FormatPretty && r.Hyperlinks.enabled(terminal, os.Getenv)
+	renderer.SetHyperlinks(links)
+	if terminal && links {
+		restore := enableTerminalVT(file)
+		defer restore()
+	}
 	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (format == render.FormatJSON || format == render.FormatSARIF)
 	previous := color.NoColor
 	defer func() { color.NoColor = previous }()
 	if legacy {
-		out = legacyColorOutput(out, r.Color)
+		out = legacyColorOutput(out, r.Color, links)
 	}
 	if !legacy {
 		switch r.Color {
@@ -46,7 +52,7 @@ func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, form
 		case render.ColorAuto:
 			// Keep the terminal detection result.
 		}
-		if file, ok := out.(*os.File); ok && !color.NoColor {
+		if file, ok := out.(*os.File); ok && !color.NoColor && !links {
 			out = colorable.NewColorable(file)
 		}
 	}
@@ -98,14 +104,14 @@ func newResultRenderer(options renderOptions, format render.Format) (*render.Ren
 	return renderer, nil
 }
 
-func legacyColorOutput(out io.Writer, mode render.Color) io.Writer {
+func legacyColorOutput(out io.Writer, mode render.Color, hyperlinks bool) io.Writer {
 	if mode == render.ColorNever {
 		color.NoColor = true
 	} else {
 		if mode == render.ColorAlways {
 			color.NoColor = false
 		}
-		if file, ok := out.(*os.File); ok {
+		if file, ok := out.(*os.File); ok && !hyperlinks {
 			out = colorable.NewColorable(file)
 		}
 	}
