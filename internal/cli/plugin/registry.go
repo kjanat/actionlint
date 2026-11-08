@@ -22,6 +22,12 @@ type RegistryOptions struct {
 	Version  string
 }
 
+type undeclaredPluginError struct{ name string }
+
+func (e undeclaredPluginError) Error() string {
+	return fmt.Sprintf("plugin %q is not declared", e.name)
+}
+
 type Operation string
 
 const (
@@ -230,6 +236,24 @@ func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Pro
 		if err != nil {
 			return err
 		}
+		if ref.IsAlias() {
+			index, lookupErr := DeclaredPlugin(ctx, project, refs, name, r.Options.Registry)
+			if lookupErr == nil {
+				explicitVersion := strings.Contains(name, "@") || r.Options.Version != ""
+				name = refs[index].Name()
+				if explicitVersion {
+					name += "@" + ref.Version()
+				}
+				ref, err = RequestedPlugin(name, r.Options, refs)
+				if err != nil {
+					return err
+				}
+			} else {
+				if _, ok := errors.AsType[undeclaredPluginError](lookupErr); !ok {
+					return lookupErr
+				}
+			}
+		}
 		index, err := RequestedPluginIndex(ref, r.Options.Registry, refs)
 		if err != nil {
 			return err
@@ -354,7 +378,7 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 		}
 	}
 	if index < 0 {
-		return -1, fmt.Errorf("plugin %q is not declared", name)
+		return -1, undeclaredPluginError{name: name}
 	}
 	return index, nil
 }

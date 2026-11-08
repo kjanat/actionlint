@@ -246,10 +246,20 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 	for _, v := range versions {
 		normalized := "v" + strings.TrimPrefix(v.Version, "v")
 		core, _, _ := strings.Cut(normalized, "+")
-		if !semver.IsValid(normalized) || strings.Count(core, ".") != 2 || semver.Prerelease(normalized) != "" {
+		core = strings.TrimSuffix(core, semver.Prerelease(normalized))
+		if !semver.IsValid(normalized) || strings.Count(core, ".") != 2 {
 			continue
 		}
 		comparison := semver.Compare(normalized, "v"+strings.TrimPrefix(best.Version, "v"))
+		stable := semver.Prerelease(normalized) == ""
+		bestStable := semver.Prerelease("v"+strings.TrimPrefix(best.Version, "v")) == ""
+		if stable != bestStable {
+			if stable {
+				comparison = 1
+			} else {
+				comparison = -1
+			}
+		}
 		if best.Version == "" || comparison > 0 {
 			best, ambiguous = v, false
 		} else if comparison == 0 {
@@ -257,7 +267,7 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 		}
 	}
 	if best.Version == "" {
-		return Version{}, errors.New("no stable semantic version; select an exact tag with --version")
+		return Version{}, errors.New("no semantic version; select an exact tag with --version")
 	}
 	if ambiguous {
 		return Version{}, errors.New("latest version has ambiguous tags; select an exact tag with --version")

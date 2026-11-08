@@ -39,10 +39,22 @@ func TestRegistrySelection(t *testing.T) {
 			t.Fatalf("%s: %+v, %v", tc.selector, p, err)
 		}
 	}
-	for _, versions := range [][]string{{"v2.0.0-rc.1", "nightly"}, {"v1.10.0", "1.10.0"}, {"v1.10.0+a", "v1.10.0+b"}} {
+	r.Publish(t, "v2.0.0-rc.1", "nightly")
+	preview, err := c.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || preview.Version != "v2.0.0-rc.1" {
+		t.Fatalf("preview-only plugin was not installable: %+v, %v", preview, err)
+	}
+	r.Add(t, "v2.0.0-rc.2", emptyComponent)
+	r.Add(t, "v2.0.0-rc.10", emptyComponent)
+	r.Publish(t, "v2.0.0-rc.1", "v2.0.0-rc.2", "v2.0.0-rc.10")
+	preview, err = c.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	if err != nil || preview.Version != "v2.0.0-rc.10" {
+		t.Fatalf("latest prerelease was not selected by semantic version: %+v, %v", preview, err)
+	}
+	for _, versions := range [][]string{{"nightly"}, {"v1.10.0", "1.10.0"}, {"v1.10.0+a", "v1.10.0+b"}} {
 		r.Publish(t, versions...)
 		if _, err := c.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil {
-			t.Fatalf("ambiguous/nonstable latest accepted: %v", versions)
+			t.Fatalf("ambiguous/non-semantic latest accepted: %v", versions)
 		}
 	}
 	plugins, err := c.Search(t.Context(), "sudo")

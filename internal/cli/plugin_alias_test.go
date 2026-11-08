@@ -92,6 +92,8 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
+	pluginCommandTest(t, 0, "plugin", "install", "community-check")
+	pluginCommandTest(t, 0, "plugin", "install", "community-check@v1.0.0")
 	pluginCommandTest(t, 0, "plugin", "install")
 	pluginCommandTest(t, 0, "plugin", "list")
 	pluginCommandTest(t, 1, "check", "--no-tool=shellcheck", "--no-tool=ruff", "workflow.yml")
@@ -99,6 +101,11 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 		t.Fatalf("offline alias triggered registry lookup: %v", requests)
 	}
 	registry.SetOffline(false)
+	pluginCommandTest(t, 0, "plugin", "install", "community-check@latest")
+	cfg, err = checking.ConfigurationRules().Load(configPath)
+	if err != nil || cfg.Plugins[0].Version() != "v1.1.0" {
+		t.Fatalf("explicit latest alias did not update its existing declaration: %+v, %v", cfg, err)
+	}
 	pluginCommandTest(t, 0, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "v1.1.0")
 	cfg, err = checking.ConfigurationRules().Load(configPath)
 	if err != nil || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName || cfg.Plugins[0].Version() != "v1.1.0" {
