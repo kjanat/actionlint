@@ -42,6 +42,36 @@ are specified alongside WIT. Check operation 2 carries the same template-effect 
 
 ## Install from the registry
 
+Install the example integrations by name:
+
+```sh
+actionlint plugin install yamllint
+actionlint check --allow-config-processes .github
+```
+
+The registry also provides `zizmor`, `poutine`, `runner-guard`, `syft`, `grype`,
+`grant`, `psscriptanalyzer`, `trailing-space` and `shuck`. The external-linter
+examples need Node and their scanner on `PATH`. PSScriptAnalyzer needs Node,
+PowerShell and the PSScriptAnalyzer module. The trailing-space example needs
+Node. Shuck includes its scanner in WebAssembly. Enable its nursery rule with `--experimental` or an
+explicit `lint.rules.correctness.shuck` setting. The trailing-space example is
+also a nursery rule.
+
+### Install a preview or CDN artifact
+
+Pass the manifest URL directly to actionlint:
+
+```sh
+actionlint plugin install 'https://esm.sh/pr/kjanat/actionlint/@kjanat-actionlint/plugin-yamllint@afaa8f8/actionlint-provider.json?raw'
+actionlint check --allow-config-processes .github
+```
+
+actionlint downloads the file, validates it, saves its SHA-256 in the config and
+caches it for later checks. No npm installation or `node_modules` path is needed.
+The same command accepts HTTPS plugin files from jsDelivr and other servers.
+
+### Find published versions
+
 Search the [published catalogue](https://plugins.actionlint.kjanat.dev/):
 
 ```sh
@@ -72,7 +102,9 @@ Names are never inferred from a repository prefix or claimed through plugin meta
 Install resolves an alias through its selected registry and writes the canonical package
 and exact version into configuration. An alias reassignment cannot change that declaration.
 Plugins without an assigned alias use `owner/plugin`, `github.com/owner/plugin` or `gitlab.com/group/plugin`.
-A new dependency without `@version` selects `latest`.
+A new dependency without `@version` selects the newest stable version. If the
+plugin has only prereleases, it selects the newest prerelease. Installation
+writes the exact selected version into configuration.
 Reinstalling an existing dependency preserves its declared version and registry unless explicitly overridden.
 Use an object for a custom registry:
 
