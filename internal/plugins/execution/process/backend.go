@@ -2,8 +2,6 @@ package process
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,7 +96,7 @@ func NewBackend(manifest manifests.Manifest, command *process.Command, options O
 		return nil, err
 	}
 	if spec.Config.Transform != nil {
-		source, err := program(spec.Config.Transform, options.Programs)
+		source, err := manifests.ResolveTransform(spec.Config.Transform, options.Programs)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +106,11 @@ func NewBackend(manifest manifests.Manifest, command *process.Command, options O
 		}
 		b.transform = &configTransform{program: compiled}
 	}
-	for _, document := range []json.RawMessage{manifest.ConfigSchema, spec.ConfigSchema} {
+	schemas := []json.RawMessage{spec.ConfigSchema}
+	if manifest.ConfigurationTransform == nil && manifest.PreparationTransform == nil && len(manifest.ConfigurationPaths) == 0 {
+		schemas = append(schemas, manifest.ConfigSchema)
+	}
+	for _, document := range schemas {
 		if len(document) == 0 {
 			continue
 		}
@@ -166,7 +168,7 @@ func newDecoder(output manifests.Output, programs func(string) ([]byte, bool)) (
 		if output.Transform == nil {
 			return nil, fmt.Errorf("output format %q needs a transform", output.Format)
 		}
-		source, err := program(output.Transform, programs)
+		source, err := manifests.ResolveTransform(output.Transform, programs)
 		if err != nil {
 			return nil, err
 		}
@@ -178,29 +180,6 @@ func newDecoder(output manifests.Output, programs func(string) ([]byte, bool)) (
 	default:
 		return nil, fmt.Errorf("unknown output format %q", output.Format)
 	}
-}
-
-// program returns a transform's text, verifying a digest-named program
-// against its digest.
-func program(transform *manifests.Transform, programs func(string) ([]byte, bool)) (string, error) {
-	if transform.Language != manifests.LanguageJQ {
-		return "", fmt.Errorf("unsupported transform language %q", transform.Language)
-	}
-	if transform.Inline != "" {
-		return transform.Inline, nil
-	}
-	if programs == nil {
-		return "", fmt.Errorf("transform program %s is not available", transform.Digest)
-	}
-	source, ok := programs(transform.Digest)
-	if !ok {
-		return "", fmt.Errorf("transform program %s is not available", transform.Digest)
-	}
-	sum := sha256.Sum256(source)
-	if "sha256:"+hex.EncodeToString(sum[:]) != transform.Digest {
-		return "", fmt.Errorf("transform program does not match digest %s", transform.Digest)
-	}
-	return string(source), nil
 }
 
 // Concurrent reports whether checks may run at once, each holding one slot

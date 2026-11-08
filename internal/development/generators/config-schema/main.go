@@ -17,14 +17,8 @@ import (
 	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 
 	"github.com/invopop/jsonschema"
-)
-
-const (
-	shellcheckSchemaVersion = "0.11.0"
-	shellcheckSchemaPath    = "schemas/shellcheck/" + shellcheckSchemaVersion + ".schema.json"
 )
 
 func reflector() *jsonschema.Reflector {
@@ -322,9 +316,6 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "plugins", "execution", "preparation", "shell", "directives.go"), jsonschema.WithFullComment()); err != nil {
-		return nil, err
-	}
 	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "input", "configuration", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
@@ -392,56 +383,9 @@ func generate() ([]byte, error) {
 	return encodeSchema(s)
 }
 
-func generateShellcheckSchema() ([]byte, error) {
-	r, err := documentedReflector()
-	if err != nil {
-		return nil, err
-	}
-	s := r.Reflect(shellprofile.Directives{})
-	enable, _ := s.Properties.Get("enable")
-	enable.OneOf = append(enable.OneOf, &jsonschema.Schema{Type: "string", Enum: []any{"all"}}, &jsonschema.Schema{Type: "boolean", Enum: []any{true}})
-	enable.Description = enable.OneOf[0].Description
-	enable.OneOf[0].Description = ""
-	if description, ok := enable.OneOf[0].Extras["markdownDescription"]; ok {
-		if enable.Extras == nil {
-			enable.Extras = map[string]any{}
-		}
-		enable.Extras["markdownDescription"] = description
-		delete(enable.OneOf[0].Extras, "markdownDescription")
-	}
-	sourcePath, _ := s.Properties.Get("source-path")
-	// Match the shell profile's directivePath: a directive cannot contain line breaks or
-	// NUL. Both quote types require an unquoted path with no space/tab or leading quote.
-	sourcePath.OneOf[0].Items.Not = &jsonschema.Schema{Pattern: `[\x00\r\n]`}
-	sourcePath.OneOf[0].Items.AnyOf = []*jsonschema.Schema{
-		{Not: &jsonschema.Schema{Pattern: `"`}},
-		{Not: &jsonschema.Schema{Pattern: `'`}},
-		{Not: &jsonschema.Schema{Pattern: `[ \t]|^['"]`}},
-	}
-	s.ID = ""
-	s.Title = "ShellCheck " + shellcheckSchemaVersion + " inline directives for actionlint"
-	s.Comments = "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see internal/development/generators/config-schema/README.md."
-	return encodeSchema(s)
-}
-
-func initializeShellcheckSchema() error {
-	b, err := generateShellcheckSchema()
-	if err != nil {
-		return err
-	}
-	return genfile.Write(context.Background(), shellcheckSchemaPath, b, true)
-}
-
 func main() {
-	if len(os.Args) == 2 && os.Args[1] == "-init-shellcheck-schema" {
-		if err := initializeShellcheckSchema(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
-	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./internal/development/generators/config-schema [-init-shellcheck-schema]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./internal/development/generators/config-schema")
 		os.Exit(1)
 	}
 	b, err := generate()

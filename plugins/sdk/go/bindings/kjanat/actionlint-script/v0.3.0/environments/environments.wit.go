@@ -181,6 +181,7 @@ type Environment struct {
 //
 // Only script occurrences supplied in this analyze call are accepted.
 // Other IDs return an error, even if they appear in the invocation graph.
+// An empty list means that environment facts were not supplied.
 //
 //	for-script: func(occurrence: string) -> result<list<environment>, string>
 //
@@ -194,7 +195,8 @@ func ForScript(occurrence string) (result cm.Result[cm.List[Environment], cm.Lis
 // Current represents the imported function "current".
 //
 // Environment of the active snippet-engine check. Returns an error during
-// describe, negotiation, document analysis, or checks without these facts.
+// describe, negotiation or document analysis. An empty list means that the
+// active snippet has no supplied environment facts.
 //
 //	current: func() -> result<list<environment>, string>
 //

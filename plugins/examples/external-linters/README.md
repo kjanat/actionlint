@@ -1,6 +1,9 @@
 # External linter examples
 
-Seven independently packable document providers: yamllint, zizmor, Poutine, Runner Guard, Syft, Grype, and Grant. Each package uses the captured workflow or action source. Repository scanners receive an isolated temporary copy, never a scan of the user's checkout.
+This directory contains document providers for yamllint, zizmor, Poutine,
+Runner Guard, Syft, Grype and Grant. Each can be packaged separately and uses
+the captured workflow or action source. Repository scanners scan an isolated
+temporary copy of that source rather than the user's checkout.
 
 These packages belong to the root workspace and use `@kjanat-actionlint/plugin-sdk` through `workspace:*`. Install and build from the repository root:
 

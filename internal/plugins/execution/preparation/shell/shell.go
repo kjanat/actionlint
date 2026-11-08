@@ -1,8 +1,6 @@
-// Package shell is the shell preparation profile: it infers a run block's
-// dialect and runtime startup options from the step shell, honours a leading
-// `# shellcheck shell=` directive, masks templates, inserts directive and
-// startup lines and maps the prepared rows back to the run block. Settings
-// arrive as typed values; the profile never reads configuration files.
+// Package shell prepares shell source with interpreter settings, declared
+// environment names and source maps. Integrations supply their own settings
+// conversions and preparation programs.
 package shell
 
 import (

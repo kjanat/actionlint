@@ -72,17 +72,19 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	}
 }
 
-func TestPluginPreparationUsesDeclaredDialectWithoutRuntimeFlags(t *testing.T) {
+func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t *testing.T) {
 	script := checkinputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
-	if err != nil || prepared == nil || prepared.Dialect != nil || prepared.ShellSetup != "" {
+	if err != nil || prepared == nil || prepared.Dialect == nil || *prepared.Dialect != "bash" || prepared.ShellSetup != "set -e -o pipefail" {
 		t.Fatalf("prepared=%+v err=%v", prepared, err)
 	}
-	script.Text = "echo hi"
 	script.Runtime.Shell = "python"
 	prepared, err = BuildShellScriptInput(script, nil)
-	if err != nil || prepared != nil {
-		t.Fatalf("unsupported shell: %+v %v", prepared, err)
+	if err != nil || prepared == nil || prepared.Dialect != nil {
+		t.Fatalf("unknown POSIX dialect lost its source: %+v %v", prepared, err)
+	}
+	if len(prepared.Excluded) != 0 {
+		t.Fatal("the host supplied tool-specific exclusions")
 	}
 }
 

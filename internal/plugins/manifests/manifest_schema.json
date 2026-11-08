@@ -1002,6 +1002,17 @@
         "$ref": "#/$defs/token"
       }
     },
+    "configuration_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^/([^~]|~[01])*$"
+      }
+    },
+    "configuration_transform": {
+      "$ref": "#/$defs/transform"
+    },
     "deprecated_flags": {
       "type": "array",
       "maxItems": 16,
@@ -1072,6 +1083,9 @@
     },
     "preparation": {
       "$ref": "#/$defs/token"
+    },
+    "preparation_transform": {
+      "$ref": "#/$defs/transform"
     },
     "process": {
       "$ref": "#/$defs/process"

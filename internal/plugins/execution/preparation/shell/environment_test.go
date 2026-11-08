@@ -39,24 +39,24 @@ func TestEnvironmentPreparationUsesAllOperatingSystemAlternatives(t *testing.T) 
 		{Scope: scriptmodel.EnvironmentStep, Names: []string{"FOO"}},
 	}
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux, runnerapi.Windows}, layers...)
-	startup, excluded := environmentStartup("", environments)
-	if startup != "export foo" || len(excluded) != 0 {
-		t.Fatalf("Windows cannot export FOO after an earlier foo key: %q, %v", startup, excluded)
+	startup, known := EnvironmentStartup("", environments)
+	if startup != "export foo" || !known {
+		t.Fatalf("Windows cannot export FOO after an earlier foo key: %q, %v", startup, known)
 	}
 	for _, environments := range [][]scriptmodel.EnvironmentNames{
 		nil,
 		scriptmodel.EnvironmentAlternatives("bash", nil, scriptmodel.EnvironmentLayer{UnknownNames: true}),
 	} {
-		startup, excluded := environmentStartup("set -e", environments)
-		if startup != "set -e" || !slices.Contains(excluded, "SC2153") || !slices.Contains(excluded, "SC2154") {
-			t.Fatalf("unresolved environment keys were treated as absent: %q, %v", startup, excluded)
+		startup, known := EnvironmentStartup("set -e", environments)
+		if startup != "set -e" || known {
+			t.Fatalf("unresolved environment keys were treated as absent: %q, %v", startup, known)
 		}
 	}
 }
 
 func TestActionInputPreparationImportsEnvironmentNames(t *testing.T) {
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"input_env"}})
-	prepared, err := EngineInput("echo \"$input_env\"", "bash", nil, environments)
+	prepared, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Environment: environments}, "echo \"$input_env\"")
 	if err != nil || !strings.HasPrefix(prepared.Source, "export input_env\n") || slices.Contains(prepared.Excluded, "SC2154") {
 		t.Fatalf("action input environment = %+v, %v", prepared, err)
 	}

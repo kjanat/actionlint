@@ -1,7 +1,10 @@
 package shell
 
 import (
+	"encoding/json"
 	"testing"
+
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
@@ -32,15 +35,32 @@ func TestPrepareMapsGeneratedLines(t *testing.T) {
 }
 
 func TestInputKeepsDeclaredLanguageAndDirectiveCoordinates(t *testing.T) {
-	prepared, dialect := Input("#!/bin/sh\n# shellcheck shell=ksh\necho ${{ '}}' }}\n", "sh", "# shellcheck disable=SC2086\n", "")
+	prepared, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "sh", Settings: &integrationconfig.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "#!/bin/sh\n# shellcheck shell=ksh\necho ${{ '}}' }}\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var options struct {
+		Shell string `json:"shell"`
+	}
+	if err := json.Unmarshal(prepared.Config, &options); err != nil {
+		t.Fatal(err)
+	}
+	dialect := options.Shell
 	if dialect != "ksh" || prepared.Source != "#!/bin/sh\n# shellcheck disable=SC2086\n# shellcheck shell=ksh\necho ___________\n" {
 		t.Fatalf("prepared %q as %q", prepared.Source, dialect)
 	}
 	if prepared.LineMap == nil || prepared.LineMap(2) != (preparation.Line{Origin: preparation.LineDirective}) || prepared.LineMap(4) != (preparation.Line{Line: 3, Origin: preparation.LineScript}) {
 		t.Fatal("directive prefix changed source line ownership")
 	}
-	plain, dialect := Input("echo input", LanguageDialect("sh"), "", "")
-	if dialect != "sh" || plain.Source != "echo input" || plain.LineMap != nil {
+	plain, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: LanguageDialect("sh")}, "echo input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(plain.Config, &options); err != nil {
+		t.Fatal(err)
+	}
+	dialect = options.Shell
+	if dialect != "sh" || plain.Source != "echo input\n" || plain.LineMap == nil {
 		t.Fatalf("unconfigured input changed: %+v as %q", plain, dialect)
 	}
 	if LanguageDialect("python") != "" {

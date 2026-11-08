@@ -24,7 +24,7 @@ func Bundled() ([]Manifest, error) {
 		if manifest.Rule.Name != name {
 			return nil, fmt.Errorf("bundled provider %s declares rule %q", name, manifest.Rule.Name)
 		}
-		for _, transform := range manifest.transforms() {
+		for _, transform := range manifest.Transforms() {
 			if transform.Digest == "" {
 				continue
 			}
@@ -35,18 +35,4 @@ func Bundled() ([]Manifest, error) {
 		manifests = append(manifests, manifest)
 	}
 	return manifests, nil
-}
-
-// transforms lists the transforms a manifest references.
-func (m Manifest) transforms() []*Transform {
-	if m.Process == nil {
-		return nil
-	}
-	var found []*Transform
-	for _, transform := range []*Transform{m.Process.Config.Transform, m.Process.Output.Transform} {
-		if transform != nil {
-			found = append(found, transform)
-		}
-	}
-	return found
 }

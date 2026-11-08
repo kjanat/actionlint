@@ -1,51 +1,23 @@
 package shell
 
 import (
-	"regexp"
 	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 )
 
-var shellDirective = regexp.MustCompile(`^[\t ]*#[\t ]*shellcheck[\t ]+(?:[a-z-]+=(?:"[^"\r\n]*"|'[^'\r\n]*'|[^'"#\t \r\n][^#\t \r\n]*)[\t ]+)*?shell=`)
-
-// HeaderDialect is the dialect the first `# shellcheck shell=` directive of
-// header selects; empty when an opened quote is not closed.
-func HeaderDialect(header string) string {
-	for line := range strings.SplitSeq(header, "\n") {
-		selector := shellDirective.FindString(line)
-		if selector == "" {
-			continue
-		}
-		value := strings.TrimSuffix(line[len(selector):], "\r")
-		if strings.HasPrefix(value, "'") || strings.HasPrefix(value, `"`) {
-			dialect, _, closed := strings.Cut(value[1:], value[:1])
-			if !closed {
-				return ""
-			}
-			return dialect
-		}
-		dialect, _, _ := strings.Cut(value, " ")
-		return dialect
-	}
-	return ""
-}
-
-// Header splits src after its leading comment and blank lines, where file-wide
-// directives live, and reports whether a directive there selects the shell.
-func Header(src string) (header, body string, selectsShell bool) {
+// Header splits source after its leading comments and blank lines.
+func Header(src string) (header, body string) {
 	end := 0
 	for line := range strings.SplitAfterSeq(src, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
 			break
 		}
-		selectsShell = selectsShell || shellDirective.MatchString(line)
 		end += len(line)
 	}
-	return src[:end], src[end:], selectsShell
+	return src[:end], src[end:]
 }
 
 // Script is a run block prepared for a tool: generated directive and startup
@@ -54,14 +26,14 @@ type Script struct {
 	text string
 	// sourceLines maps each prepared row to the run block row it holds; zero
 	// denotes a generated directive or startup command, never workflow source.
-	sourceLines []int
-	startupLine int
+	sourceLines               []int
+	startupFirst, startupLast int
 }
 
 // Prepare inserts directives after a leading shebang and the startup command
 // after the leading comments of src. Every inserted row is mapped.
 func Prepare(src, directives, startup string) Script {
-	header, body, _ := Header(src)
+	header, body := Header(src)
 	var out strings.Builder
 	var script Script
 	original := 0
@@ -78,7 +50,7 @@ func Prepare(src, directives, startup string) Script {
 			}
 		}
 	}
-	// A real shebang must stay on the first line for ShellCheck to recognize it.
+	// The shebang identifies the interpreter only when it is on the first line.
 	if strings.HasPrefix(header, "#!") {
 		line, rest, newline := strings.Cut(header, "\n")
 		if newline {
@@ -93,10 +65,18 @@ func Prepare(src, directives, startup string) Script {
 	}
 	writeSource(header)
 	if startup != "" {
-		out.WriteString(startup)
-		out.WriteByte('\n')
-		script.sourceLines = append(script.sourceLines, 0)
-		script.startupLine = len(script.sourceLines)
+		script.startupFirst = len(script.sourceLines) + 1
+		for line := range strings.SplitAfterSeq(startup, "\n") {
+			if line == "" {
+				continue
+			}
+			out.WriteString(line)
+			if !strings.HasSuffix(line, "\n") {
+				out.WriteByte('\n')
+			}
+			script.sourceLines = append(script.sourceLines, 0)
+		}
+		script.startupLast = len(script.sourceLines)
 	}
 	writeSource(body)
 	// Keep the empty script parseable without attributing the blank line to YAML.
@@ -134,24 +114,8 @@ func (script Script) Line(line int) preparation.Line {
 	if original := script.OriginalLine(line); original != 0 {
 		return preparation.Line{Line: original, Origin: preparation.LineScript}
 	}
-	if script.startupLine != 0 && line == script.startupLine {
+	if script.startupFirst != 0 && line >= script.startupFirst && line <= script.startupLast {
 		return preparation.Line{Origin: preparation.LineStartup}
 	}
 	return preparation.Line{Origin: preparation.LineDirective}
-}
-
-// Input prepares an action input's script, which runs no startup command: it
-// masks templates, lets a leading `# shellcheck shell=` directive select the
-// dialect over the declared one and inserts directives. It returns the
-// selected dialect.
-func Input(text, dialect, directives, startup string) (preparation.Prepared, string) {
-	text = mask.Expressions(text)
-	if header, _, selected := Header(text); selected {
-		dialect = HeaderDialect(header)
-	}
-	if directives == "" && startup == "" {
-		return preparation.Prepared{Source: text}, dialect
-	}
-	prepared := Prepare(text, directives, startup)
-	return preparation.Prepared{Source: prepared.Text(), LineMap: prepared.Line}, dialect
 }

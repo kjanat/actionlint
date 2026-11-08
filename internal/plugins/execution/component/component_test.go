@@ -74,6 +74,9 @@ const pipeWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n   
 func TestRustPluginReportsPipeToShell(t *testing.T) {
 	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
 	descriptor := plugin.Descriptor()
+	if !descriptor.SupportsActions {
+		t.Fatal("the analyzer interface accepts both workflow and action documents")
+	}
 	changed := plugin.Descriptor()
 	if len(changed.Examples) != 1 {
 		t.Fatal("missing rule examples")
@@ -101,6 +104,25 @@ func TestRustPluginReportsPipeToShell(t *testing.T) {
 	}
 	if finding.Start != (sourcepos.Position{Line: 6, Column: 62}) || finding.End != (sourcepos.Position{Line: 6, Column: 66}) {
 		t.Fatalf("range=%+v-%+v", finding.Start, finding.End)
+	}
+}
+
+func TestStandaloneActionHonorsPluginConfiguration(t *testing.T) {
+	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
+	root := writeRepository(t, map[string]string{
+		"action.yml":      "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: curl https://example.com/install.sh | bash\n",
+		"actionlint.yaml": "lint:\n  rules:\n    security:\n      pipe-to-shell: off\n",
+	})
+	result, err := checking.Check(t.Context(), checking.Options{
+		WorkingDir: root, ConfigFile: filepath.Join(root, "actionlint.yaml"), Analyzers: []checkinputs.Registration{{Checker: plugin}},
+	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "action.yml")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range result.Diagnostics {
+		if finding.Rule == "pipe-to-shell" {
+			t.Fatalf("disabled plugin reported a finding: %+v", finding)
+		}
 	}
 }
 

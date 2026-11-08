@@ -21,7 +21,31 @@ export interface ProviderResult {
 	errors?: string[];
 }
 
+/** Interpreter and environment facts used to evaluate a preparation transform. */
+export interface PreparationContext {
+	language: string;
+	startup?: string;
+	environment_startup?: string;
+	environment_known?: boolean;
+	config_file?: string;
+	filesystem?: boolean;
+	engine?: boolean;
+	input?: boolean;
+}
+
+/** Generated text and tool options returned by a preparation transform. */
+export interface PreparationPlan {
+	source_prefix?: string;
+	startup?: string;
+	config?: JSONValue;
+	variables?: Record<string, string>;
+	excluded?: string[];
+	skip?: string;
+}
+
 interface CaseInput {
+	/** Required when the provider defines preparationTransform. Source and settings come from request. */
+	preparation?: PreparationContext;
 	/** Unique label shown by the CLI and assertion failure, such as "PowerShell alias". */
 	name: string;
 	/** Captured snippet/document and user configuration. The linter is never executed. */
@@ -33,6 +57,10 @@ interface CaseInput {
 }
 
 interface SuccessAssertions {
+	/** Complete source sent to the process after generated text is inserted. */
+	expect_source?: string;
+	/** Complete plan returned by the preparation transform. */
+	expect_preparation?: PreparationPlan;
 	/** Recorded stdout exactly as emitted by the wrapped linter. An empty string still gets decoded. */
 	stdout?: string;
 	/** Expected complete diagnostics/result, after host decoding and source validation. */
@@ -60,6 +88,8 @@ export type ProviderTestCase =
 	& CaseInput
 	& (
 		| SuccessAssertions & { stdout: string; expect: ProviderResult }
+		| SuccessAssertions & { expect_source: string }
+		| SuccessAssertions & { expect_preparation: PreparationPlan }
 		| SuccessAssertions & { expect_config: JSONValue }
 		| SuccessAssertions & { expect_vars: Record<string, string> }
 		| {
@@ -67,6 +97,8 @@ export type ProviderTestCase =
 			/** Substring required in a genuine config/decoder failure, such as "invalid jq transform output". */
 			expect_error: string;
 			expect?: never;
+			expect_source?: never;
+			expect_preparation?: never;
 			expect_config?: never;
 			expect_vars?: never;
 		}
@@ -84,6 +116,8 @@ export interface ValidationReport {
 
 /** One evaluated fixture, including the values needed to diagnose failed assertions. */
 export interface CaseReport {
+	/** Source after generated comments and startup commands are inserted. */
+	source: string;
 	/** The submitted fixture's name. */
 	name: string;
 	/** Whether all assertions passed, including any explicitly expected pipeline error. */
@@ -259,8 +293,10 @@ function testReport(value: unknown): TestReport {
 	const cases = array(object.cases, 'test report.cases').map((value): CaseReport => {
 		const item = record(value, 'case report');
 		if (typeof item.passed !== 'boolean') throw new Error('case report.passed must be boolean');
+		if (typeof item.source !== 'string') throw new Error('case report.source must be a string');
 		if (item.config !== undefined && !isJSONValue(item.config)) throw new Error('case report.config must be JSON');
 		return {
+			source: item.source,
 			name: text(item.name, 'case report.name'),
 			passed: item.passed,
 			...(item.config === undefined ? {} : { config: item.config }),

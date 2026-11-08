@@ -49,7 +49,7 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 	}
 	referenced := map[string]bool{}
 	for _, manifest := range manifests {
-		for _, transform := range []*pluginmanifests.Transform{manifest.Process.Config.Transform, manifest.Process.Output.Transform} {
+		for _, transform := range manifest.Transforms() {
 			if transform != nil {
 				referenced[transform.Digest] = true
 			}

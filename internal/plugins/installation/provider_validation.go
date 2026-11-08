@@ -27,7 +27,7 @@ func ReadProviderArtifact(artifact *pluginartifact.Artifact) (manifests.Manifest
 		if len(manifest.Artifacts) != 0 {
 			return manifests.Manifest{}, errors.New("a standalone process provider cannot include executable artifacts; package its blob graph as OCI")
 		}
-		for _, transform := range []*manifests.Transform{manifest.Process.Config.Transform, manifest.Process.Output.Transform} {
+		for _, transform := range manifest.Transforms() {
 			if transform != nil && transform.Digest != "" {
 				return manifests.Manifest{}, errors.New("a standalone process provider requires inline transforms; package digest-addressed programs as OCI")
 			}

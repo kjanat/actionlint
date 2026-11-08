@@ -54,7 +54,7 @@ type Registration struct {
 	Build             func(Context) (Runner, error)
 	WithBackend       func(checkinputs.ScriptBackend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
-	PrepareInput func(Script) (preparation.Prepared, error)
+	PrepareInput func(context.Context, Script) (preparation.Prepared, error)
 	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
 	WithAnalyzer func(checkinputs.Checker) (Registration, error)
 }

@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptpreparation "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 	pythonprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/python"
@@ -40,9 +42,9 @@ const (
 type inputPreparer interface {
 	// batch prepares the run blocks of one batch. Errors in a scope's
 	// settings are reported once, here; its scripts are then skipped.
-	batch(tools.Batch) (func(tools.Script) (scriptpreparation.Prepared, error), error)
+	batch(context.Context, tools.Batch) (func(context.Context, tools.Script) (scriptpreparation.Prepared, error), error)
 	// input prepares an action input for a snippet engine.
-	input(tools.Script) (scriptpreparation.Prepared, error)
+	input(context.Context, tools.Script) (scriptpreparation.Prepared, error)
 }
 
 // knownPreparation reports whether the host implements a preparation
@@ -59,7 +61,7 @@ func knownPreparation(id string) bool {
 // newPreparation binds the profile a manifest names; RegisterProvider
 // rejects profiles the host does not implement. The expression mask passes
 // inline settings through.
-func newPreparation(m manifests.Manifest, via route) inputPreparer {
+func newPreparation(m manifests.Manifest, via route, programs manifests.Programs) inputPreparer {
 	name := m.Rule.Name
 	switch m.Preparation {
 	case shellprofile.ID:
@@ -67,11 +69,17 @@ func newPreparation(m manifests.Manifest, via route) inputPreparer {
 		if m.Process != nil && m.Process.ConfigFiles != nil {
 			files = *m.Process.ConfigFiles
 		}
-		return shellPreparation{name: name, files: files, route: via}
+		transform, err := integrationconfig.New(m, programs)
+		sourceTransform, sourceErr := scriptpreparation.NewSourceTransform(m.PreparationTransform, programs)
+		return shellPreparation{name: name, files: files, route: via, transform: transform, sourceTransform: sourceTransform, failure: errors.Join(err, sourceErr)}
 	case pythonprofile.ID:
-		return pythonPreparation{name: name, route: via}
+		transform, err := integrationconfig.New(m, programs)
+		sourceTransform, sourceErr := scriptpreparation.NewSourceTransform(m.PreparationTransform, programs)
+		return pythonPreparation{name: name, route: via, transform: transform, sourceTransform: sourceTransform, transformed: m.ConfigurationTransform != nil || m.PreparationTransform != nil || len(m.ConfigurationPaths) != 0, failure: errors.Join(err, sourceErr)}
 	default:
-		return genericPreparation{name: name}
+		transform, err := integrationconfig.New(m, programs)
+		sourceTransform, sourceErr := scriptpreparation.NewSourceTransform(m.PreparationTransform, programs)
+		return genericPreparation{name: name, route: via, transform: transform, sourceTransform: sourceTransform, transformed: m.ConfigurationTransform != nil || m.PreparationTransform != nil || len(m.ConfigurationPaths) != 0, failure: errors.Join(err, sourceErr)}
 	}
 }
 
@@ -127,26 +135,80 @@ var errConfigFilePath = errors.New("a tool provider without a preparation profil
 
 // genericPreparation masks expressions and passes inline settings to the
 // engine.
-type genericPreparation struct{ name string }
+type genericPreparation struct {
+	sourceTransform *scriptpreparation.SourceTransform
+	route           route
+	name            string
+	transform       *integrationconfig.Transform
+	transformed     bool
+	failure         error
+}
 
-func (p genericPreparation) batch(tools.Batch) (func(tools.Script) (scriptpreparation.Prepared, error), error) {
+func (p genericPreparation) batch(context.Context, tools.Batch) (func(context.Context, tools.Script) (scriptpreparation.Prepared, error), error) {
 	return p.input, nil
 }
 
-func (p genericPreparation) input(script tools.Script) (scriptpreparation.Prepared, error) {
-	return configuredInput(p.name, script)
+func (p genericPreparation) input(ctx context.Context, script tools.Script) (scriptpreparation.Prepared, error) {
+	if p.failure != nil {
+		return scriptpreparation.Prepared{}, p.failure
+	}
+	prepared, err := configuredInput(p.name, script)
+	if err != nil {
+		return prepared, err
+	}
+	if !p.transformed {
+		return applySourcePreparation(ctx, p.sourceTransform, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
+	}
+	settings, err := p.transform.Apply(ctx, prepared.Config, "", PathContext(script.Scope).Expand)
+	if err != nil {
+		return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
+	}
+	if settings.Language != nil || settings.ReadAccess.Enabled != nil || len(settings.ReadAccess.Directories) != 0 {
+		return scriptpreparation.Prepared{}, errors.New("language and source access settings require shell preparation")
+	}
+	prepared.Config = settings.Options
+	if p.sourceTransform != nil {
+		return applySourcePreparation(ctx, p.sourceTransform, script, prepared, settings, p.route)
+	}
+	if settings.Prefix != "" {
+		mapped := shellprofile.Prepare(prepared.Source, settings.Prefix, "")
+		prepared.Source, prepared.LineMap = mapped.Text(), mapped.Line
+	}
+	return applySourcePreparation(ctx, p.sourceTransform, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
 }
 
 // pythonPreparation binds the Python profile.
 type pythonPreparation struct {
-	name  string
-	route route
+	sourceTransform *scriptpreparation.SourceTransform
+	name            string
+	route           route
+	transform       *integrationconfig.Transform
+	transformed     bool
+	failure         error
 }
 
-func (p pythonPreparation) batch(tools.Batch) (func(tools.Script) (scriptpreparation.Prepared, error), error) {
-	return func(script tools.Script) (scriptpreparation.Prepared, error) {
+func (p pythonPreparation) prepareOptions(ctx context.Context, script tools.Script) (json.RawMessage, error) {
+	if p.failure != nil {
+		return nil, p.failure
+	}
+	inline, err := inlineSettings(script.Config, p.name)
+	if err != nil || !p.transformed {
+		return inline, err
+	}
+	settings, err := p.transform.Apply(ctx, inline, "", PathContext(script.Scope).Expand)
+	if err != nil {
+		return nil, fmt.Errorf("tools.%s.config: %w", p.name, err)
+	}
+	if settings.Prefix != "" || settings.Language != nil || settings.ReadAccess.Enabled != nil || len(settings.ReadAccess.Directories) != 0 {
+		return nil, errors.New("Python preparation accepts converted options; generated comments, language overrides and source access require another preparation profile")
+	}
+	return settings.Options, nil
+}
+
+func (p pythonPreparation) batch(context.Context, tools.Batch) (func(context.Context, tools.Script) (scriptpreparation.Prepared, error), error) {
+	return func(ctx context.Context, script tools.Script) (scriptpreparation.Prepared, error) {
 		if script.Input != nil {
-			return p.input(script)
+			return p.input(ctx, script)
 		}
 		prepared, err := pythonprofile.Run(script.Text, script.Shell)
 		if err != nil {
@@ -155,7 +217,7 @@ func (p pythonPreparation) batch(tools.Batch) (func(tools.Script) (scriptprepara
 		if prepared.Skip != "" {
 			return prepared, nil
 		}
-		settings, err := inlineSettings(script.Config, p.name)
+		settings, err := p.prepareOptions(ctx, script)
 		if err != nil {
 			return scriptpreparation.Prepared{}, err
 		}
@@ -165,43 +227,46 @@ func (p pythonPreparation) batch(tools.Batch) (func(tools.Script) (scriptprepara
 				return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 			}
 		}
-		return prepared, nil
+		return applySourcePreparation(ctx, p.sourceTransform, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
 	}, nil
 }
 
-func (p pythonPreparation) input(script tools.Script) (scriptpreparation.Prepared, error) {
+func (p pythonPreparation) input(ctx context.Context, script tools.Script) (scriptpreparation.Prepared, error) {
 	prepared, err := pythonprofile.Script(script.Text)
 	if err != nil || prepared.Skip != "" {
 		return prepared, err
 	}
-	settings, err := inlineSettings(script.Config, p.name)
+	settings, err := p.prepareOptions(ctx, script)
 	if err != nil {
 		return scriptpreparation.Prepared{}, err
 	}
 	if prepared.Config, err = pythonprofile.EngineConfig(settings, nil); err != nil {
 		return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}
-	return prepared, nil
+	return applySourcePreparation(ctx, p.sourceTransform, script, prepared, integrationconfig.Settings{Options: prepared.Config}, routeEngine)
 }
 
 // shellPreparation binds the shell profile: inline settings become
 // directives, a configuration path selects the native configuration file,
 // and path interpolations resolve against each script's scope.
 type shellPreparation struct {
-	name  string
-	files manifests.ConfigFiles
-	route route
+	sourceTransform *scriptpreparation.SourceTransform
+	transform       *integrationconfig.Transform
+	failure         error
+	name            string
+	files           manifests.ConfigFiles
+	route           route
 }
 
 // scopeSettings are a scope's resolved shell settings.
 type scopeSettings struct {
-	directives *shellprofile.Directives
+	settings   *integrationconfig.Settings
 	configFile string
 	// failed marks a scope whose settings were reported as an error.
 	failed bool
 }
 
-func (p shellPreparation) batch(batch tools.Batch) (func(tools.Script) (scriptpreparation.Prepared, error), error) {
+func (p shellPreparation) batch(ctx context.Context, batch tools.Batch) (func(context.Context, tools.Script) (scriptpreparation.Prepared, error), error) {
 	settings := map[*tools.Scope]scopeSettings{}
 	var failure, deferred error
 	var deferredScope *tools.Scope
@@ -210,7 +275,7 @@ func (p shellPreparation) batch(batch tools.Batch) (func(tools.Script) (scriptpr
 		if scope == nil || !toolEnabled(scope.Config, p.name) {
 			continue
 		}
-		resolved, err := p.scope(scope)
+		resolved, err := p.scope(ctx, scope)
 		if err != nil {
 			settings[scope] = scopeSettings{failed: true}
 			// A workflow scope cannot interpolate the action path; report
@@ -228,14 +293,14 @@ func (p shellPreparation) batch(batch tools.Batch) (func(tools.Script) (scriptpr
 	if deferred != nil && !compositePrepared {
 		failure, deferredScope = errors.Join(failure, deferred), nil
 	}
-	return func(script tools.Script) (scriptpreparation.Prepared, error) {
+	return func(ctx context.Context, script tools.Script) (scriptpreparation.Prepared, error) {
 		if script.Input != nil {
-			return p.input(script)
+			return p.input(ctx, script)
 		}
 		resolved, ok := settings[script.Scope]
 		if !ok {
 			var err error
-			if resolved, err = p.scope(script.Scope); err != nil {
+			if resolved, err = p.scope(ctx, script.Scope); err != nil {
 				return scriptpreparation.Prepared{}, err
 			}
 			settings[script.Scope] = resolved
@@ -248,17 +313,17 @@ func (p shellPreparation) batch(batch tools.Batch) (func(tools.Script) (scriptpr
 			return scriptpreparation.Prepared{Skip: "its tool settings are invalid"}, nil
 		}
 		run := shellprofile.Run{
-			Shell:      shellprofile.Shell{Name: script.Execution.Shell, Implicit: script.Execution.ImplicitShell, Registry: script.Fact.Interpreters, Platform: shellprofile.TargetArguments(script.Fact.Environment)},
-			Directives: resolved.directives, ConfigFile: resolved.configFile,
+			Shell:    shellprofile.Shell{Name: script.Execution.Shell, Implicit: script.Execution.ImplicitShell, Registry: script.Fact.Interpreters, Platform: shellprofile.TargetArguments(script.Fact.Environment)},
+			Settings: resolved.settings, Transform: p.sourceTransform, ConfigFile: resolved.configFile,
 			Sources: p.route == routeProcess && script.Execution.DirectoryKnown, Engine: p.route == routeEngine,
 			Environment: script.Fact.Environment,
 		}
-		return shellprofile.PrepareRun(run, script.Text)
+		return shellprofile.PrepareRun(ctx, run, script.Text)
 	}, failure
 }
 
 // scope resolves the directives and configuration file of a scope.
-func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
+func (p shellPreparation) scope(ctx context.Context, scope *tools.Scope) (scopeSettings, error) {
 	paths := scopePaths(scope)
 	var cfg *config.Config
 	if scope != nil {
@@ -269,19 +334,18 @@ func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
 	if err != nil {
 		return scopeSettings{}, err
 	}
-	if inline != nil {
-		if resolved.directives, err = shellprofile.ParseDirectives(inline); err != nil {
-			return scopeSettings{}, fmt.Errorf("tools.%s.config.%w", p.name, err)
-		}
-		expanded := *resolved.directives
-		expanded.SourcePath = make([]string, len(resolved.directives.SourcePath))
-		for i, path := range resolved.directives.SourcePath {
-			if expanded.SourcePath[i], err = paths.context().Expand(path); err != nil {
-				return scopeSettings{}, fmt.Errorf("tools.%s.config.source-path: %w", p.name, err)
-			}
-		}
-		resolved.directives = &expanded
+	if p.failure != nil {
+		return scopeSettings{}, p.failure
 	}
+	file := ""
+	if cfg != nil {
+		file = cfg.Tools[p.name].Config.Path()
+	}
+	projected, err := p.transform.Apply(ctx, inline, file, paths.context().Expand)
+	if err != nil {
+		return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
+	}
+	resolved.settings = &projected
 	if cfg == nil {
 		return resolved, nil
 	}
@@ -292,7 +356,7 @@ func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
 		if path != "" {
 			return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, errEngineConfigFile)
 		}
-		if d := resolved.directives; d != nil && (len(d.SourcePath) != 0 || d.ExternalSources != nil && *d.ExternalSources) {
+		if d := resolved.settings; d != nil && (len(d.ReadAccess.Directories) != 0 || d.ReadAccess.Enabled != nil && *d.ReadAccess.Enabled) {
 			return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, shellprofile.ErrNoSourceAccess)
 		}
 	case p.route == routeEmbedded || path == "":
@@ -317,7 +381,7 @@ func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
 	return resolved, nil
 }
 
-func (p shellPreparation) input(script tools.Script) (scriptpreparation.Prepared, error) {
+func (p shellPreparation) input(ctx context.Context, script tools.Script) (scriptpreparation.Prepared, error) {
 	dialect := ""
 	if script.Input != nil {
 		dialect = shellprofile.LanguageDialect(script.Input.Language)
@@ -329,13 +393,14 @@ func (p shellPreparation) input(script tools.Script) (scriptpreparation.Prepared
 	if err != nil {
 		return scriptpreparation.Prepared{}, err
 	}
-	var directives *shellprofile.Directives
-	if inline != nil {
-		if directives, err = shellprofile.ParseDirectives(inline); err != nil {
-			return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config.%w", p.name, err)
-		}
+	if p.failure != nil {
+		return scriptpreparation.Prepared{}, p.failure
 	}
-	prepared, err := shellprofile.EngineInput(script.Text, dialect, directives, script.Fact.Environment)
+	settings, err := p.transform.Apply(ctx, inline, "", PathContext(script.Scope).Expand)
+	if err != nil {
+		return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
+	}
+	prepared, err := shellprofile.PrepareRun(ctx, shellprofile.Run{Input: true, Engine: true, Language: dialect, Settings: &settings, Environment: script.Fact.Environment, Transform: p.sourceTransform}, script.Text)
 	if err != nil {
 		return scriptpreparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}

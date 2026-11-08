@@ -9,7 +9,9 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -42,6 +44,28 @@ func TestValidateManifestCompilesSandboxedProgramsWithoutRunningEntry(t *testing
 		if err := ValidateManifest(manifest, nil); err == nil {
 			t.Errorf("accepted jq %q", program)
 		}
+	}
+}
+
+func TestPathExpansionValidatesUserAndExecutionSettingsSeparately(t *testing.T) {
+	manifest := authoringManifest(t, `[]`)
+	manifest.ConfigurationPaths = []string{"/path"}
+	manifest.ConfigSchema = json.RawMessage(`{"type":"object","properties":{"path":{"const":"relative"}},"additionalProperties":false}`)
+	manifest.Process.ConfigSchema = json.RawMessage(`{"type":"object","properties":{"path":{"type":"string","pattern":"^/"}},"additionalProperties":false}`)
+	manifest.Process.Config.Transform = nil
+	backend, err := authoringBackend(manifest, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := backend.ValidateConfig(t.Context(), []byte(`{"path":"/repo/relative"}`)); err != nil {
+		t.Fatalf("expanded path was checked against the user schema: %v", err)
+	}
+	if err := backend.ValidateConfig(t.Context(), []byte(`{"path":"relative"}`)); err == nil {
+		t.Fatal("execution schema was skipped")
+	}
+	stdout := `[]`
+	if _, err := EvaluateFixture(t.Context(), manifest, nil, checkinputs.ScriptRequest{Source: "pass", Filename: "snippet.py", Config: []byte(`{"path":"wrong"}`)}, &stdout, nil, nil); err == nil {
+		t.Fatal("user schema was skipped for path-only configuration")
 	}
 }
 
@@ -124,7 +148,7 @@ func TestAuthoringTesterHonorsCancellation(t *testing.T) {
 	}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := tester.Evaluate(canceled, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil); !errors.Is(err, context.Canceled) {
+	if _, err := tester.Evaluate(canceled, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled evaluation error=%v", err)
 	}
 
@@ -135,8 +159,49 @@ func TestAuthoringTesterHonorsCancellation(t *testing.T) {
 	}
 	timed, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 	defer cancel()
-	_, err = tester.Evaluate(timed, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil)
+	_, err = tester.Evaluate(timed, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil, nil)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("nonterminating jq error=%v, want deadline", err)
+	}
+}
+
+func TestAuthoringEvaluatesShellCheckPreparation(t *testing.T) {
+	manifest := bundledManifest(t, "shellcheck")
+	tester, err := NewAuthoringTester(manifest, bundled.Program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts := preparation.ScriptContext{Language: "bash", Startup: "set -e", EnvironmentStartup: "export lowercase", EnvironmentKnown: true}
+	request := checkinputs.ScriptRequest{Filename: "script.sh", Source: "# shellcheck shell=sh\n[[ -n \"$HOME\" ]]\n", Config: json.RawMessage(`{"disable":["SC2086"]}`)}
+	stdout := `{"comments":[]}`
+	result, err := tester.Evaluate(t.Context(), request, &stdout, nil, nil, &facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Preparation == nil || result.Variables["dialect"] != "" || strings.Contains(result.Source, "set -e") || !strings.Contains(result.Source, "export lowercase") || !strings.Contains(result.Source, "# shellcheck disable=SC2086") {
+		t.Fatalf("result=%+v", result)
+	}
+	if _, present := result.Variables["dialect"]; present {
+		t.Fatal("explicit directive must reach ShellCheck without a CLI shell override")
+	}
+	if len(result.Preparation.Excluded) != 5 || strings.Contains(result.Variables["exclude"], "SC2154") {
+		t.Fatalf("known environment exclusions=%v", result.Preparation.Excluded)
+	}
+	facts.EnvironmentKnown = false
+	result, err = tester.Evaluate(t.Context(), request, nil, nil, nil, &facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result.Variables["exclude"], "SC2154") {
+		t.Fatal("unknown environment did not disable unassigned checks")
+	}
+	facts.Language = ""
+	request.Source = "print(1)\n"
+	result, err = tester.Evaluate(t.Context(), request, &stdout, nil, nil, &facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Preparation.Skip == "" || result.Result != nil {
+		t.Fatalf("unsupported source was processed: %+v", result)
 	}
 }

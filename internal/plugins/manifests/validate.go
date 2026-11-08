@@ -89,6 +89,9 @@ func validate(m Manifest) error {
 	if m.Role == RoleDocument && (len(m.Selectors.Inputs) != 0 || len(m.Selectors.Shells) != 0) {
 		return errors.New("document providers cannot select script inputs or shells")
 	}
+	if m.Role != RoleScript && (m.ConfigurationTransform != nil || m.PreparationTransform != nil || len(m.ConfigurationPaths) != 0) {
+		return errors.New("configuration_transform, preparation_transform and configuration_paths require the script role")
+	}
 	if err := checkinputs.ValidateScriptInputs(m.Selectors.Inputs); err != nil {
 		return err
 	}

@@ -25,7 +25,7 @@ import (
 
 // sourceRunner is a document runner for the provider named shellcheck,
 // whose tools.shellcheck.config grants source access.
-var sourceRunner = documentRunner{name: "shellcheck"}
+var sourceRunner = documentRunner{documentRoute: shellcheckRoute}
 
 func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	root := t.TempDir()
@@ -200,7 +200,7 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: inputfiles.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: outside, DirectoryKnown: true}}
-	if _, err := sourceRunner.sourceFiles(context.Background(), script, requestedSourceGrants(t, script.Config)); err == nil || !strings.Contains(err.Error(), "outside its source grants") {
+	if _, err := sourceRunner.sourceFiles(context.Background(), script, requestedSourceGrants(t, script.Config)); err == nil || !strings.Contains(err.Error(), "outside the configured read-access directories") {
 		t.Fatalf("outside cwd granted: %v", err)
 	}
 	cfg, err = (config.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
@@ -218,11 +218,11 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 func requestedSourceGrants(t *testing.T, cfg *config.Config) []checkinputs.ToolResourceRequest {
 	t.Helper()
 	resources := []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}}
-	settings, err := sourceRunner.options(cfg)
+	settings, err := sourceRunner.options(t.Context(), cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range settings.SourcePath {
+	for _, path := range settings.ReadAccess.Directories {
 		resources = append(resources, checkinputs.ToolResourceRequest{Kind: checkinputs.ToolDirectory, Path: path})
 	}
 	return resources

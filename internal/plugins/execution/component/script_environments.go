@@ -28,9 +28,6 @@ func (scriptEnvironments) ForScript(ctx context.Context, occurrence string) (env
 	if !ok {
 		return environmentbind.ResultListEnvironmentStringErr{Value: "script occurrence is outside this analysis call"}, nil
 	}
-	if len(environments) == 0 {
-		return environmentbind.ResultListEnvironmentStringErr{Value: "environment names are unavailable for this script occurrence"}, nil
-	}
 	return environmentResult(environments)
 }
 
@@ -38,8 +35,8 @@ func (scriptEnvironments) Current(ctx context.Context) (environmentbind.ResultLi
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	environments, _ := ctx.Value(environmentContextKey{}).(snippetEnvironmentNames)
-	if len(environments) == 0 {
+	environments, available := ctx.Value(environmentContextKey{}).(snippetEnvironmentNames)
+	if !available {
 		return environmentbind.ResultListEnvironmentStringErr{Value: "no snippet environment is available in this call"}, nil
 	}
 	return environmentResult(environments)

@@ -17,6 +17,7 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -66,26 +67,24 @@ func closeSourceAuthorities(authorities []sourceAuthority) error {
 	return failure
 }
 
-func sourceAuthorities(script tools.Script, settings documentSettings, paths config.PathContext, workspace, directory string) ([]sourceAuthority, error) {
+func sourceAuthorities(script tools.Script, settings integrationconfig.Settings, paths config.PathContext, workspace, directory string) ([]sourceAuthority, error) {
 	if script.Config == nil {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
-	inline := settings.Directives
-	if inline.ExternalSources != nil && !*inline.ExternalSources || inline.ExternalSources == nil && len(inline.SourcePath) == 0 {
+	inline := settings.ReadAccess
+	if inline.Enabled != nil && !*inline.Enabled || inline.Enabled == nil && len(inline.Directories) == 0 {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
-	if len(inline.SourcePath) > 32 {
+	if len(inline.Directories) > 32 {
 		return nil, errors.New("tool source access exceeds 32 search directories")
 	}
 	names := []string{workspace}
-	for _, name := range inline.SourcePath {
+	for _, name := range inline.Directories {
 		expanded, err := paths.Expand(name)
 		if err != nil {
 			return nil, err
 		}
-		if expanded != "SCRIPTDIR" && !strings.HasPrefix(expanded, "SCRIPTDIR/") {
-			names = append(names, sourceName(expanded, directory))
-		}
+		names = append(names, sourceName(expanded, directory))
 	}
 	var authorities []sourceAuthority
 	for _, name := range names {
@@ -166,7 +165,7 @@ func (r documentRunner) sourceFiles(ctx context.Context, script tools.Script, re
 	}
 	directory := sourcePath(script.Execution.Directory, "")
 	paths := scriptsbackend.PathContext(script.Scope)
-	settings, err := r.options(script.Config)
+	settings, err := r.options(ctx, script.Config, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -261,9 +260,6 @@ func (r documentRunner) sourceFiles(ctx context.Context, script tools.Script, re
 		if err != nil {
 			return nil, errors.Join(err, files.close())
 		}
-		if source == "SCRIPTDIR" || strings.HasPrefix(source, "SCRIPTDIR/") {
-			continue
-		}
 		source = sourceName(source, directory)
 		guest := fmt.Sprintf("/sources/%d", directoryIndex)
 		directoryIndex++
@@ -280,7 +276,7 @@ func (r documentRunner) sourceFiles(ctx context.Context, script tools.Script, re
 		}
 	}
 	if files.directory == "" {
-		return nil, errors.Join(errors.New("tool working directory is outside its source grants; add an explicit source-path directory"), files.close())
+		return nil, errors.Join(errors.New("tool working directory is outside the configured read-access directories"), files.close())
 	}
 	return files, nil
 }

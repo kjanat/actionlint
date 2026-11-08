@@ -55,6 +55,90 @@ test('source compilation embeds jq without creating author build outputs', async
 	});
 });
 
+test('integration configuration transforms run before process settings validation', async () => {
+	await fixture('[]', async (directory, definition) => {
+		const path = fileURLToPath(definition);
+		const source = await readFile(path, 'utf8');
+		const transform = '{options:{threshold:.config.limit}}';
+		await writeFile(join(directory, 'configuration.jq'), transform);
+		await writeFile(
+			path,
+			source.replace(
+				"shells:['bash']",
+				`
+configurationPaths: ['/search'],
+configurationTransform: jqOutput('./configuration.jq'),
+configSchema: {type:'object',additionalProperties:false,properties:{limit:{type:'integer',minimum:7}},required:['limit']},
+shells:['bash']`,
+			),
+		);
+		expect(await compileProvider(definition)).toMatchObject({
+			configuration_paths: ['/search'],
+			configuration_transform: { language: 'jq', inline: transform },
+		});
+		await createPluginTester(definition).assert([{
+			name: 'integration settings',
+			request: { source: 'echo ok', filename: 'script.sh', config: { limit: 7 } },
+			stdout: '[]',
+			expect_config: { threshold: 7 },
+		}]);
+	});
+});
+
+test('preparation fixtures evaluate generated source, options and interpreter facts', async () => {
+	await fixture('[]', async (directory, definition) => {
+		const path = fileURLToPath(definition);
+		const source = await readFile(path, 'utf8');
+		const transform =
+			'{source_prefix:"# generated\\n",startup:(.startup + "\\n" + .environment_startup),config:{threshold:.settings.options.limit},variables:{mode:.language},excluded:["X1"]}';
+		await writeFile(join(directory, 'preparation.jq'), transform);
+		await writeFile(
+			path,
+			source.replace(
+				"shells:['bash']",
+				`
+preparation: 'shell', preparationTransform: jqOutput('./preparation.jq'),
+configSchema:{type:'object',properties:{limit:{type:'integer'}},additionalProperties:false},
+shells:['bash']`,
+			),
+		);
+		expect(await compileProvider(definition)).toMatchObject({
+			preparation_transform: { language: 'jq', inline: transform },
+		});
+		const plugin = createPluginTester(definition);
+		await plugin.assert([{
+			name: 'generated lines',
+			request: { source: '#!/bin/bash\necho ok\n', filename: 'script.sh', config: { limit: 7 } },
+			preparation: {
+				language: 'bash',
+				startup: 'set -e',
+				environment_startup: 'export example',
+				environment_known: true,
+			},
+			stdout: '[]',
+			expect: { diagnostics: [] },
+			expect_config: { threshold: 7 },
+			expect_source: '#!/bin/bash\n# generated\nset -e\nexport example\necho ok\n',
+			expect_preparation: {
+				source_prefix: '# generated\n',
+				startup: 'set -e\nexport example',
+				config: { threshold: 7 },
+				variables: { mode: 'bash' },
+				excluded: ['X1'],
+			},
+		}, {
+			name: 'invalid user configuration',
+			request: { source: 'echo ok', filename: 'script.sh', config: { typo: true } },
+			preparation: { language: 'bash' },
+			expect_error: 'additional properties',
+		}, {
+			name: 'missing preparation facts',
+			request: { source: 'echo ok', filename: 'script.sh' },
+			expect_error: 'fixture needs preparation facts',
+		}]);
+	});
+});
+
 test('authoring rejects rule categories outside the SDK union', async () => {
 	await fixture(mapping, async (_directory, definition) => {
 		const path = fileURLToPath(definition);

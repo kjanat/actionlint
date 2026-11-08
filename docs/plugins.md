@@ -1,37 +1,41 @@
 # Plugins
 
-Plugins can ship as WebAssembly components, supported core Wasm script engines, or
+Plugins can be distributed as WebAssembly components, supported core Wasm script engines, or
 [process-provider manifests](#local-tool-provider-manifests) for external tools.
 The [TypeScript SDK](../plugins/sdk/typescript/README.md) supports manifest authoring,
-jq tests and packaging. See [contribution routes](#contribute-a-rule) for their public contracts.
+jq tests and packaging. See [contribution routes](#contribute-a-rule) to choose an interface.
 
-actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.1.0` interface. The contract is
-[`plugins/protocol/wit/analyzer.wit`](../plugins/protocol/wit/analyzer.wit). A plugin describes itself once, then receives one document per
-call with the facts it declared and returns diagnostics. Components may instead implement the independent
-`kjanat:actionlint/runner-provider@0.1.0` interface or the
+actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.2.0` interface, defined in
+[`plugins/protocol/wit/analyzer.wit`](../plugins/protocol/wit/analyzer.wit). A plugin first describes the checks it provides and the data it needs.
+For each analysis call, it receives one document and the requested data, then returns diagnostics. Components may instead implement the independent
+`kjanat:actionlint/runner-provider@0.2.0` interface or the
 `kjanat:actionlint/script-engine` interface, version
 [0.2.0](../plugins/protocol/wit/script-engine.wit) or
-[0.3.0](../plugins/protocol/wit/0.3.0/script-engine.wit). Components can implement multiple
+[0.3.0](../plugins/protocol/wit/deps/actionlint-0.3.0/script-engine.wit). Components can implement multiple
 roles. Any language with a component toolchain can implement them.
 
 Tool integrations are discovered through the optional
 [`tool-integration`](../plugins/protocol/wit/tool-integration.wit) export,
 regardless of repository name, registry alias or loading path. A conforming fork receives
-the same configuration, suppression and execution behavior. The plugin negotiates the
-versioned host configuration profile together with opaque caller options before execution;
-it declares resource requests and configurations it cannot support. Native fallback requires
-the caller to have enabled native execution.
+the same configuration, suppression and execution behavior. Before execution,
+the plugin receives configuration produced by the provider's manifest and caller-supplied
+plugin options as separate arguments. It accepts or rejects the resulting
+configuration and declares the resources it needs. Falling back to a native tool
+requires the caller to have enabled native execution.
 
-The [ShellCheck profile](../plugins/protocol/json/shellcheck-config-0.1.0.md)
-uses typed `source-files` mount translations and `prepared-scripts` source preparation.
-Shell interpretation, masking, startup preparation and exclusions have one host implementation.
-Managed filesystem grants stay within the host-selected workspace. Configured
-source paths and symlink targets that resolve outside it fail analysis; missing paths receive no grant.
+The [ShellCheck integration](https://github.com/kjanat/actionlint-plugin-shellcheck/blob/master/docs/configuration.md)
+uses `source-files` to map host paths to guest filesystem paths and
+[`shell-script-inputs`](../plugins/protocol/wit/deps/actionlint-script/shell-script-inputs.wit) to obtain prepared shell text. The host supplies interpreter and environment facts, masks expressions and maps
+generated lines to source locations. The integration interprets ShellCheck directives
+and selects the engine options and excluded diagnostic codes.
+Filesystem access stays within the workspace selected by the host. Configured
+source paths and symlink targets that resolve outside it fail analysis; missing paths receive no access.
 Plugin options do not carry filesystem mount metadata. The
 [`template-effects`](../plugins/protocol/wit/template-effects.wit) interface
-classifies snippet diagnostics for substitution-aware filtering; hosts never infer these
-effects from diagnostic wording or rule codes. Structural WIT types determine compatibility;
-source-file hashes are informational build provenance.
+identifies which diagnostics depend on masked workflow expressions, so the host
+can filter them. The host never infers those effects from diagnostic wording or
+rule codes. Compatibility depends on the WIT types. Source-file hashes record
+which interface files were used to build the plugin.
 
 The alternative [core JSON memory ABI and versioned operations](../plugins/protocol/wit/core-json-abi.md)
 are specified alongside WIT. Check operation 2 carries the same template-effect semantics.
@@ -102,9 +106,9 @@ format, contract and checksum from its immutable release record. Verified resolu
 under the user's `actionlint/registry` cache, separately for each registry, package and version.
 Downloaded bytes are checked against that checksum, including compression. A changed record for
 an already observed release is refused. This trusts the configured registry to maintain its
-immutable release mapping; admission does not guarantee plugin safety or correctness.
+immutable release mapping. Registry validation does not guarantee plugin safety or correctness.
 Install verifies the download and embedded metadata without executing guest code. Actual ABI/capability checks
-run when the plugin loads. Registry admission and reports for another host revision do not guarantee compatibility.
+run when the plugin loads. Registry validation and reports for another host revision do not guarantee compatibility.
 `versions --json` includes the registry's host-specific compatibility evidence; missing evidence is not a failure.
 
 For new dependencies, omitting `--version`, or using `--version latest`, selects the highest stable full semantic version. Prereleases
@@ -157,7 +161,7 @@ See [configuration migration](config-migration.md) for preview and explicit migr
 
 ### Try an unpublished candidate
 
-A local candidate catalogue installs packaged bytes before creating a release or registry submission:
+Use a local candidate catalogue to install a packaged plugin before creating a release or registry submission:
 
 ```sh
 actionlint plugin install owner/plugin@v1.2.3 --registry file:///absolute/path/to/candidate/
@@ -322,7 +326,7 @@ grants. Direct URLs, `--plugin`, and registry declarations select identical inte
 Opaque plugin options use `lint.rules.plugins.shellcheck.options`; explicit library registration
 options take precedence. Components without a tool-integration export run as standalone analyzers.
 
-Check, fix, rules and LSP load declared plugins from their matching locked artifacts. Selection precedence:
+Check, fix, rules and LSP load the exact artifacts declared for the selected plugins. The following rules determine which plugins are selected:
 
 - Explicit `--plugin` sources replace automatic selection.
 - `--plugin-lock FILE` explicitly loads every entry in one invocation-wide lock, bypassing config declarations.
@@ -355,8 +359,9 @@ when it loads and forwards its log lines, stdout and stderr.
 
 Actionlint interprets its own YAML directives (`actionlint:ignore`,
 `actionlint-ignore`, `ignore[...]` and the next-line forms) and configured
-`ignores`. Plugins return active findings; the host admits their source ranges,
-maps snippet positions to YAML, then applies those host ignores and their policy.
+`ignores`. Plugins return findings that their own directives have not suppressed.
+The host validates their source ranges, maps snippet positions to YAML, then
+applies actionlint ignores and the repository's suppression policy.
 Plugins must not reinterpret actionlint directives as native linter directives.
 Selectors use the registered host rule ID; upstream check IDs remain diagnostic
 codes. Native per-code suppression stays with the plugin. Rule IDs must not
@@ -393,7 +398,7 @@ use a fixed snapshot for that session; restart to refresh them. Configured local
 content changes, and selecting a different engine URI loads that identity separately. Active analyses can finish
 using the engine they started with.
 
-The host refuses a component at load when it exports an unsupported version of a recognized interface, imports an interface
+The host refuses to load a component when it exports an unsupported version of a recognized interface, imports an interface
 the host does not grant, or exports no supported role. Before guest startup it checks each implemented interface's complete
 type graph against the canonical WIT, including function signatures, record fields and enum ordering. The expected
 graph and enum discriminants are generated with `go generate ./internal/plugins/execution/component`; a test detects stale output.
@@ -401,8 +406,8 @@ graph and enum discriminants are generated with `go generate ./internal/plugins/
 ## Limits and capabilities
 
 Every analysis call runs in a fresh instance with a shared 64 MiB limit across live linear memory and reserved core
-tables in its plugin runtime. Its 10-second timeout starts after queue
-admission and covers instance setup and guest execution. Queue waiting honors the caller's cancellation and
+tables in its plugin runtime. Its 10-second timeout starts when the call leaves
+the queue and covers instance setup and guest execution. Queue waiting honors the caller's cancellation and
 deadline; it has no separate timeout. A trap, a panic, an exit, an
 exhausted limit or a cancelled run fails the analysis of that document with an error that names the plugin and its
 limits. The run then continues with the next document and actionlint exits with status 3.
@@ -422,7 +427,7 @@ The host grants these imports and nothing else:
 
 | Interface                        | What the plugin gets                                                                        |
 | -------------------------------- | ------------------------------------------------------------------------------------------- |
-| `kjanat:actionlint/host@0.1.0`   | `log`, one line into actionlint's debug log                                                 |
+| `kjanat:actionlint/host@0.2.0`   | `log`, one line into actionlint's debug log                                                 |
 | `wasi:cli/*`, `wasi:io/*`        | stdout and stderr into the debug log, empty stdin and environment                           |
 | `wasi:clocks/*`, `wasi:random/*` | clocks and random numbers                                                                   |
 | `wasi:filesystem/*`              | no directories by default; explicitly granted read-only snapshots for source-aware adapters |
@@ -444,14 +449,19 @@ use the [guest SDKs](api.md#write-and-test-a-plugin); host runtime packages are 
 
 [`plugins/protocol/wit/runner.wit`](../plugins/protocol/wit/runner.wit) defines the separate `runner-plugin` world. A provider-only
 component exports `describe` and `resolve`.
-The host resolves a batch of whole selectors before running checks. Labels within a selector are conjunctive; groups,
-correlated matrix alternatives, source positions and unresolved expressions survive normalization. Incomplete matrix
-alternatives cannot establish a resolved execution environment.
+The host resolves a batch of complete `runs-on` selectors before running checks.
+All labels within a selector must match the same runner. The request preserves
+runner groups, source positions and unresolved expressions. It keeps each
+matrix combination separate, so labels from different combinations are not
+mixed. An incomplete set of matrix alternatives cannot establish the
+execution environment.
 
-Runner validation, shell validation, script execution facts, local action resolution and executable checks consume
-the same prepared knowledge. The built-in GitHub catalogue implements this boundary too. Installing a provider never
-changes authority: `--runner-target` defaults to `github`; choose another target explicitly. Multiple applicable
-providers require `--runner-provider`. Configuration labels stay configuration, without plugin mutation.
+Runner validation, shell validation, script analysis, local action resolution
+and executable checks use the same runner facts. The built-in GitHub catalogue
+supplies facts through the same interface. Installing a provider does not select
+its target: `--runner-target` defaults to `github`, so choose another target
+explicitly. If several providers apply, select one with `--runner-provider`.
+Providers do not change the runner labels in configuration.
 
 Results distinguish resolved candidates, no match, unknown and not applicable. An operational error fails analysis;
 independent checks still run, while runner-dependent inference stays unknown. No match produces a `runner-label`
@@ -562,20 +572,23 @@ The CLI passes that JSON to the provider as opaque content. Providers using a te
 }
 ```
 
-The host reads this bounded envelope once per session. Refresh by replacing the snapshot before another CLI run,
-or restarting the language server. Freshness is an explicit input classification; no implicit TTL or network refresh
-runs during analysis. Snapshot and answer scope must match the requested scope. Host snapshot limits on freshness
-and completeness cannot be upgraded by a provider.
+The host reads this size-limited JSON object once per session. To refresh it,
+replace the snapshot before the next CLI run, or restart the language server.
+The snapshot explicitly states whether its data is fresh; analysis does not
+expire it automatically or refresh it from the network. The snapshot and each
+answer must use the requested scope. A provider cannot report fresher or more
+complete data than the supplied snapshot allows.
 
 The runner-provider WIT contract supplies the request and response types. The host
 records the implementation ID, target, scope, snapshot digest and answers when
 preparing runner knowledge. Its cache key includes those values and the
 configuration, so a changed catalogue or artifact invalidates cached answers.
-Provider trust is selected by the host; the Wasm sandbox does not prove answers true.
+The host chooses which provider to trust. The Wasm sandbox restricts execution
+but does not verify the provider's answers.
 
 ### Cross-runtime verification
 
-[`internal/development/tests/conformance/wasm/runner-host`](../internal/development/tests/conformance/wasm/runner-host) is a finite Wasmtime parity probe scoped to the runner-provider interface.
+[`internal/development/tests/conformance/wasm/runner-host`](../internal/development/tests/conformance/wasm/runner-host) compares the Go host and Wasmtime for a fixed set of runner-provider requests.
 It uses the unchanged WIT and the exact same component bytes as the Go host. Build and compare normalized answers,
 source positions, candidate guarantees, dataset status and artifact digest:
 
@@ -601,7 +614,7 @@ An empty `rule` takes the plugin name, and an empty `path` means the analyzed do
 action copy `script.path`.
 
 Plugins can opt into the [`source-annotations`](../plugins/protocol/wit/source-annotations.wit) interface by selecting the
-`annotated-plugin` world. The existing `analyzer@0.1.0` interface and its contract digest are unchanged. The optional
+`annotated-plugin` world. The existing `analyzer@0.2.0` interface and its contract digest are unchanged. The optional
 host function `comments` accepts a complete script source reference and returns physical YAML comments attached
 immediately before its declaration or after its scalar/header, with placement and Unicode source positions.
 `script.text` includes comments inside the scalar. The source-annotations interface supplies attached YAML comments separately.
@@ -724,36 +737,45 @@ configuration is an engine-validated JSON object; shared descriptors, diagnostic
 records. Coordinates count one-based Unicode scalar values, with exclusive range ends. An outcome can contain
 both findings and an incomplete-analysis error.
 
-The host accepts two versions of the interface. A component exports exactly one of them; the host checks the
-exported version's complete type graph before running guest code and rejects any other version.
+The host accepts two versions of the interface. A component exports exactly one.
+Before running guest code, the host checks every exported type against that
+version's definition, including function signatures, records and enums. Other
+versions are rejected.
 
 - `kjanat:actionlint/script-engine@0.2.0` ([`script-engine.wit`](../plugins/protocol/wit/script-engine.wit))
   returns diagnostics without fix edits and reads no files. The optional
   [`template-effects@0.2.0`](../plugins/protocol/wit/template-effects.wit) export pairs with it.
-- `kjanat:actionlint/script-engine@0.3.0` ([`0.3.0/script-engine.wit`](../plugins/protocol/wit/0.3.0/script-engine.wit))
-  is the same contract as the process route's: what a manifest says about a native tool, the engine says in its
-  descriptor. The descriptor's `capabilities` record declares `fixes`, `reported-sources` and the `resources` the
+- `kjanat:actionlint/script-engine@0.3.0` ([`0.3.0/script-engine.wit`](../plugins/protocol/wit/deps/actionlint-0.3.0/script-engine.wit))
+  declares in its descriptor the capabilities that a process-provider manifest declares for a native tool.
+  The descriptor's `capabilities` record declares `fixes`, `reported-sources` and the `resources` the
   engine needs for each check. The request adds `excluded`, the diagnostic codes the host's preparation profile
   excludes (strings such as `SC1091`), and `directory`. Each diagnostic adds `fixes`, edits in snippet coordinates,
   and `source`, a file the engine read besides the snippet. The diagnostic severity is the engine's own string,
   such as `style`; the host maps it as it maps a process tool's severity. A template-aware engine pairs it with
-  [`template-effects@0.3.0`](../plugins/protocol/wit/0.3.0/template-effects.wit), whose check
+  [`template-effects@0.3.0`](../plugins/protocol/wit/deps/actionlint-0.3.0/template-effects.wit), whose check
   takes the 0.3.0 request and wraps 0.3.0 diagnostics, so effects, fixes, reported sources and the directory
   grant combine. A finding in a reported source has the effect `none`. The host rejects a template-effects export
   of the other version.
 
-Resource negotiation: the only resource kind is `directory`, the script's working directory. When the engine
-requests it and the working directory is known, the host opens that directory through the workspace root and
-mounts it read-only at the guest path `/directory` for that one call, and sets the request's `directory` to it.
-Like managed grants, the grant stays within the host-selected workspace: a working directory outside it, or a
-symlink that leaves it, fails the check; a missing directory receives no grant. Without a grant `directory` is
-none and the engine sees no files. A `source` is a relative slash-separated path below the request directory,
-without `..`, backslashes or colons, and the host accepts it only when the engine declares `reported-sources` and
-the directory was granted for that check. A finding in a source has that file's positions and no fixes, and the
-host shows the file as read through the same grant, so it never displays a file the engine could not read. The
-host rejects diagnostics that carry fixes or sources the engine did not declare. Every file the engine reads
-through the grant is recorded for watch mode. Guest reads come from disk, as a native tool's do; read overlays
-of the caller apply to workflow files, not to files an engine reads.
+The only resource kind is `directory`, which an engine can request to read the script's working
+directory. When that directory is known, the host opens it through the workspace
+root and mounts it read-only at `/directory` for that call. The request's
+`directory` field contains that guest path. A working directory outside the
+workspace, including a symlink that leads outside it, fails the check. A missing
+directory receives no access. Without access, `directory` is none and the engine
+sees no files.
+
+To report a finding in a file it read, the engine must declare
+`reported-sources` and have directory access for that check. The diagnostic's
+`source` is a relative slash-separated path below the request directory, without
+`..`, backslashes or colons. Its positions refer to that file, and it cannot
+include fixes. The host reads the file through the same directory access, so it
+does not display a file that the engine could not read. It rejects diagnostics
+that use fixes or reported sources without declaring those capabilities.
+
+The host records files read through the directory for watch mode. The engine
+reads those files from disk, as a native tool does. The caller's read overlays
+apply to workflow files; they do not replace files read by an engine.
 
 [actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) supplies a component and a legacy core
 module built from the same analysis implementation. Both use the existing Ruff expression sanitizer, configuration
@@ -822,6 +844,39 @@ and how to run the command:
 Inline `tools.<id>.config` settings reach the tool through `process.config.render`, after an optional
 `process.config.transform`. The manifest replaces a bundled tool with the same rule name for that invocation.
 
+An integration can also declare `configuration_transform` to normalize its settings before either a process
+or a managed component receives them. This jq program receives `{config, config_file}` and returns an object
+with `options`. It can also return `source_prefix` (generated comments ending in a newline), `language` and
+`read_access: {enabled, directories}`. Shell preparation uses the language and source-access settings;
+expression-mask preparation accepts options and generated comments. Python preparation accepts converted options.
+The host checks the original settings
+against `config_schema` before running the program. A process can validate the converted options with
+`process.config_schema`.
+
+List path settings in `configuration_paths` as JSON pointers, for example `["/source-path"]`. The host expands
+configuration variables in those strings or arrays of strings before running the transform. Other strings,
+such as regular expressions, are passed through unchanged. Requested directories must pass the host's
+workspace and filesystem checks before a component can read them.
+
+Use `preparation_transform` when tool options depend on the script or its interpreter. It receives:
+
+- `source`, `language` and `startup`: the original script, inferred interpreter and its startup commands.
+- `environment_startup` and `environment_known`: declarations for known environment variable names and whether those names are fully known.
+- `settings`: the result of `configuration_transform`, including `options`.
+- `config_file`, `filesystem`, `engine` and `input`: the resolved configuration file, filesystem availability, whether execution uses a snippet engine, and whether the script comes from an action input.
+
+Return `source_prefix` for generated comments, `startup` for generated commands, `config` for tool options,
+`variables` for argument substitutions and `excluded` for diagnostic codes. A nonempty `skip` skips the script.
+Generated comments must end with a newline. The host inserts comments after a shebang and commands after
+leading comments, then maps the inserted lines so they cannot receive edits to the original source.
+Omit `config`, or return `null`, when the tool needs no options.
+
+The bundled [ShellCheck transformation](../internal/plugins/manifests/bundled/shellcheck/configuration.jq)
+normalizes `enable: true`, writes directive comments and supplies source-directory requests. Its option names
+and directive syntax are defined by that integration. Its [preparation program](../internal/plugins/manifests/bundled/shellcheck/preparation.jq)
+selects the shell, exclusions and native arguments. The component plugin uses the ShellCheck parser for directives
+and requests environment facts to choose its exclusions.
+
 ### PSScriptAnalyzer example
 
 The [PSScriptAnalyzer provider](../plugins/examples/psscriptanalyzer/provider.json) checks snippets selected by
@@ -874,8 +929,9 @@ actionlint plugin inspect 'https://example.com/plugins/ruff.wasm.gz' --json
 ```
 
 Replace the example URL and digest with your artifact's location and SHA-256.
-The optional `#sha256=` fragment verifies the distributed file **before gzip
-decompression**. For a `.wasm.gz` artifact, use the checksum of the compressed
+The `#sha256=` fragment verifies the distributed file **before gzip
+decompression**. Remote execution requires this pin; inspection can omit it to discover the digest.
+For a `.wasm.gz` artifact, use the checksum of the compressed
 file. The CLI caches pinned downloads under the user cache directory's
 `actionlint/artifacts` folder and verifies cached bytes on every use. Unpinned
 URLs are fetched on each invocation. A corrupted pinned cache entry is an error;
@@ -917,19 +973,21 @@ Plugins can live in their own repositories. Choose the contract that fits the in
 | Embedded script engine                   | Versioned WIT or core Wasm JSON ABI                     | [Script engines](#script-engines)                                                       |
 | External executable or container scanner | Version 1 process-provider manifest and diagnostic JSON | [TypeScript SDK](../plugins/sdk/typescript/README.md), including jq tests and packaging |
 
-These artifact contracts are independent of the host's implementation language. Target a supported interface version;
-incompatible interfaces need a new version. The private host implementation is separate from these wire
-contracts. The SDK currently provides local tarballs and package previews; follow its README for a matching host CLI.
+Plugins use the same interfaces regardless of the host's implementation
+language. Target a supported interface version; incompatible changes require a
+new version. Plugins communicate through these interfaces rather than importing
+private host packages. The SDK currently provides local tarballs and package
+previews; follow its README to obtain a matching host CLI.
 
 Publish through the [registry submission workflow](https://github.com/kjanat/actionlint-registry/blob/master/docs/publishing.md).
-Admission checks publisher identity, metadata and artifact digests. It does not certify plugin safety or compatibility
+Registry validation checks publisher identity, metadata and artifact digests. It does not certify plugin safety or compatibility
 with every host. Run the candidate fixture against the exact artifact and intended host version. Native process
 providers also require the user's execution opt-in. Open an issue here to add a plugin to the documentation.
 
 Built-in rule declarations, implementations and tests live in their category under
 [`internal/checking/rules`](../internal/checking/rules). The index in
 [`internal/checking/rule_index.go`](../internal/checking/rule_index.go) reads those
-declarations; configuration projections live in `internal/input/configuration`.
+declarations; `internal/input/configuration` maps rule declarations to configuration settings.
 Workflow adapters in `internal/checking/executor/declarations` supply inputs to
 the checks. The index generates [`docs/rules.md`](rules.md);
 [`docs/checks.md`](checks.md) provides behavior examples. External plugins use the
@@ -937,20 +995,29 @@ the checks. The index generates [`docs/rules.md`](rules.md);
 
 ## Rule and source contracts
 
-Documents, scripts, invocations and mappings carry source references. Diagnostics
-carry structured help, related locations and revision-bound fixes. Descriptors are
-shared rule metadata with independent category, subcategory, maturity and provider.
-Related locations require paired revision and coordinate evidence. WIT 0.2
-records remain revision-less: the same trusted adapter rule used for native
-analyzers binds only an exact request `Input.Path` match to the supplied captured
-revision/model. Foreign unbound locations are withheld. Explicit bindings remain
-claims until sealed admission verifies the absolute document identity (or
-`<stdin>`), digest, model, admitted display-path alias and strict range. Each
-rejected location is omitted and counted in a typed `admission-rejected` failure;
-the primary diagnostic survives and the result is incomplete. WIT 0.3 and JSON2
-remain versioned migrations for explicit wire bindings, not changes to WIT 0.2.
-Plugins requiring `dependencies` receive literal action and reusable-workflow
-references, including source ranges and owning node identities. Dynamic references are omitted.
+Documents, scripts, invocations and mappings identify the source declarations
+they describe. Diagnostics can include help, related locations and fixes that
+apply to a specific captured source revision. A rule descriptor records its
+category, subcategory, maturity and provider separately.
+
+Related locations must identify both a source revision and its coordinate
+model. WIT 0.2 related-location records have neither field. For those records,
+the host supplies the current request's captured revision and coordinate model
+only when the location's path exactly matches `Input.Path`. Native analyzers use
+the same rule. The host withholds locations in other documents unless they
+already identify a revision and coordinate model.
+
+Before reporting a related location, the host verifies the absolute document
+identity (or `<stdin>`), source digest, coordinate model, display path and entire
+range against its captured source. Supplying those fields does not bypass the
+check. The host omits each rejected location, keeps the primary diagnostic and
+reports their count in an `admission-rejected` error. The result is incomplete.
+Adding explicit revision and coordinate fields to WIT 0.3 or JSON2 requires
+versioned interface changes; it does not change WIT 0.2.
+
+Plugins requesting `dependencies` receive literal action and reusable-workflow
+references, including source ranges and the identities of their declarations.
+Dynamic references are omitted.
 
 Script engines analyze sanitized snippets through either the typed component interface or the version 1 JSON ABI.
 `--plugin` accepts either binary kind and selects the appropriate host from its
@@ -1045,14 +1112,15 @@ Resolve the occurrence owner through `CallGraph.Call`, or `CallGraph.Entry` for 
 Shell and runtime fields are empty for action inputs. `Input.Scripts`
 and `Input.Invoked`, including the existing portable analyzer WIT, continue to contain only `run` scripts.
 
-The internal tool contract supplies prepared snippets, source maps and execution
-context to a registered runner. A runner returns findings with their originating
+The host supplies prepared snippets, source maps and execution settings to each
+registered tool runner. The runner returns findings with their originating
 snippet index. Native process providers can use the same JSON request/result
 protocol as core WASM: a `ScriptRequest` on stdin and an object containing `ok`,
 `diagnostics` and `errors` on stdout. A nonzero process exit is an execution failure.
 Native CLIs with their own protocols require an adapter; their argument construction,
 configuration and diagnostic decoding belong to that adapter.
 
-The engine and application accept tool registrations and do not import the bundled
-Ruff/ShellCheck adapters or dispatch on their names. The bundled adapters
-preserve language-specific expression handling and source mapping.
+The checking engine and application receive registered tools from their caller.
+They neither import the bundled Ruff and ShellCheck adapters nor choose behavior
+by matching those tool names. The adapters handle each language's expressions
+and map findings back to source positions.

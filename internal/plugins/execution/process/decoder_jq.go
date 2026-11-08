@@ -5,11 +5,10 @@ import (
 	_ "embed"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
-	"errors"
 	"fmt"
 	"sync"
 
-	"github.com/itchyny/gojq"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/jq"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -48,7 +47,7 @@ var resultSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 // input and inputs do not compile, evaluation stops when ctx is done, and the
 // output is bounded by MaxOutputBytes and MaxDiagnostics.
 type JQ struct {
-	program *jqProgram
+	program *jq.Program
 	input   JQInput
 }
 
@@ -64,20 +63,8 @@ func NewJQ(program string, input JQInput) (*JQ, error) {
 	return &JQ{program: compiled, input: input}, nil
 }
 
-// jqProgram is one sandboxed, compiled jq program taking $vars.
-type jqProgram struct{ code *gojq.Code }
-
-func compileJQ(program string) (*jqProgram, error) {
-	query, err := gojq.Parse(program)
-	if err != nil {
-		return nil, fmt.Errorf("parse jq transform: %w", err)
-	}
-	// No environ loader, module loader or input iterator: each stays closed.
-	code, err := gojq.Compile(query, gojq.WithVariables([]string{"$vars"}))
-	if err != nil {
-		return nil, fmt.Errorf("compile jq transform: %w", err)
-	}
-	return &jqProgram{code: code}, nil
+func compileJQ(program string) (*jq.Program, error) {
+	return jq.New(program, MaxOutputBytes)
 }
 
 // stringVariables converts argument variables to jq values.
@@ -103,53 +90,11 @@ func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	case JQText:
 		input = string(stdout)
 	}
-	output, err := j.program.run(ctx, input, stringVariables(vars))
+	output, err := j.program.Apply(ctx, input, stringVariables(vars))
 	if err != nil {
 		return Result{}, err
 	}
 	return decodeTransformOutput(output)
-}
-
-// run evaluates the program and returns its single output value as JSON.
-// Errors retain no evaluator state: a cancellation is reported as ctx's error
-// and other failures by their message. The evaluator runs under a child of
-// ctx, released on return, and never sees ctx itself.
-func (p *jqProgram) run(ctx context.Context, input any, variables map[string]any) ([]byte, error) {
-	evaluation, release := context.WithCancel(ctx)
-	defer release()
-	iter := p.code.RunWithContext(evaluation, input, variables)
-	var output []byte
-	for count := 0; ; count++ {
-		value, ok := iter.Next()
-		if !ok {
-			if count == 0 {
-				return nil, errors.New("jq transform produced no value")
-			}
-			return output, nil
-		}
-		if err, failed := value.(error); failed {
-			if cause := ctx.Err(); cause != nil {
-				return nil, fmt.Errorf("jq transform: %w", cause)
-			}
-			return nil, errors.New("jq transform: " + err.Error())
-		}
-		if count > 0 {
-			return nil, errors.New("jq transform produced more than one value")
-		}
-		output, ok = encodeBounded(value)
-		if !ok {
-			return nil, fmt.Errorf("jq transform output exceeds %d bytes", MaxOutputBytes)
-		}
-	}
-}
-
-// encodeBounded marshals one jq value, refusing output over MaxOutputBytes.
-func encodeBounded(value any) ([]byte, bool) {
-	encoded, err := gojq.Marshal(value)
-	if err != nil || len(encoded) > MaxOutputBytes {
-		return nil, false
-	}
-	return encoded, true
 }
 
 // decodeTransformOutput validates transform output against the result schema

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/url"
 	"os"
 	"os/exec"
@@ -25,6 +24,8 @@ import (
 	"github.com/kjanat/go-yaml/v4"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
+
+const shellcheckSchemaPath = "schemas/shellcheck/0.11.0.schema.json"
 
 func generatedSchema(t *testing.T) []byte {
 	t.Helper()
@@ -358,28 +359,96 @@ func TestGeneratedSchemaFormatting(t *testing.T) {
 	}
 }
 
-func TestShellcheckSchemaSnapshot(t *testing.T) {
+func TestBundledProviderSchemas(t *testing.T) {
 	t.Chdir("../../../..")
-	generated, err := generateShellcheckSchema()
+	providers, err := manifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err := os.ReadFile(shellcheckSchemaPath)
+	for _, provider := range providers {
+		t.Run(provider.Rule.Name, func(t *testing.T) {
+			if len(provider.ConfigSchema) == 0 {
+				return
+			}
+			var want map[string]any
+			if err := json.Unmarshal(provider.ConfigSchema, &want); err != nil {
+				t.Fatal(err)
+			}
+			settings, err := settingsSchema(provider.Rule.Name, want)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var data []byte
+			if settings.Ref != "" {
+				data, err = os.ReadFile(settings.Ref)
+			} else {
+				data, err = json.Marshal(settings)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(data, &got); err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Fatalf("generated settings differ from provider schema (-provider +generated):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestProviderSettingsDoNotRequireHostFields(t *testing.T) {
+	t.Chdir("../../../..")
+	provider := manifests.Manifest{
+		ConfigSchema: json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"new-check-option":{"type":"integer","minimum":7}},"required":["new-check-option"]}`),
+	}
+	provider.Rule.Name = "new-check"
+	reflectMapping := func(value any) *jsonschema.Schema { return reflector().Reflect(value) }
+	generated, err := toolSchema(provider, reflectMapping)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got, want any
-	if err := json.Unmarshal(generated, &got); err != nil {
+	generated.Definitions, err = sharedDefinitions(reflectMapping)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := json.Unmarshal(snapshot, &want); err != nil {
+	data, err := json.Marshal(generated)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Fatalf("ShellCheck schema contract changed; add a versioned snapshot for new directives, or explicitly review corrections to the existing version. See README.md (-snapshot +current):\n%s", diff)
+	compiler := validator.NewCompiler()
+	var document any
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
 	}
-	if err := initializeShellcheckSchema(); !errors.Is(err, os.ErrExist) {
-		t.Fatalf("initialization must refuse to overwrite an existing version, got %v", err)
+	const location = "https://example.test/new-check.schema.json"
+	if err := compiler.AddResource(location, document); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := compiler.Compile(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		config string
+		valid  bool
+	}{
+		{`{"config":{"new-check-option":7}}`, true},
+		{`{"config":{"new-check-option":6}}`, false},
+		{`{"config":{"new-check-option":"7"}}`, false},
+		{`{"config":{}}`, false},
+		{`{"config":{"new-check-option":7,"unknown":true}}`, false},
+	} {
+		t.Run(tc.config, func(t *testing.T) {
+			var value any
+			if err := json.Unmarshal([]byte(tc.config), &value); err != nil {
+				t.Fatal(err)
+			}
+			if err := schema.Validate(value); (err == nil) != tc.valid {
+				t.Fatalf("validation error = %v, want valid=%t", err, tc.valid)
+			}
+		})
 	}
 }
 

@@ -44,7 +44,7 @@ func TestTOMLPairs(t *testing.T) {
 
 func TestRuffConfigTransform(t *testing.T) {
 	manifest := bundledManifest(t, "ruff")
-	source, err := program(manifest.Process.Config.Transform, bundled.Program)
+	source, err := manifests.ResolveTransform(manifest.Process.Config.Transform, bundled.Program)
 	if err != nil {
 		t.Fatal(err)
 	}

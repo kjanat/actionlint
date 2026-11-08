@@ -27,7 +27,9 @@ func (*fallbackGuest) ToolIntegration() *checkinputs.ToolIntegration {
 }
 
 func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*checkinputs.ToolNegotiation, error) {
-	var options documentSettings
+	var options struct {
+		RCFile string `json:"rc-file"`
+	}
 	if err := json.Unmarshal(data, &options); err != nil {
 		return nil, err
 	}

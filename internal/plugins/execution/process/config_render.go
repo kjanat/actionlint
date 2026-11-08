@@ -7,11 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"math/big"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/jq"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -47,10 +47,10 @@ func decodeConfig(data []byte) (any, error) {
 // configTransform runs a manifest's configuration transform. Its program maps
 // the configuration to {"config": ..., "vars": {...}} and sees the argument
 // variables as $vars.
-type configTransform struct{ program *jqProgram }
+type configTransform struct{ program *jq.Program }
 
 func (t *configTransform) apply(ctx context.Context, config any, vars map[string]string) (engineConfig, error) {
-	output, err := t.program.run(ctx, jqValue(config), stringVariables(vars))
+	output, err := t.program.Apply(ctx, config, stringVariables(vars))
 	if err != nil {
 		return engineConfig{}, fmt.Errorf("configuration transform: %w", err)
 	}
@@ -90,39 +90,6 @@ func (t *configTransform) apply(ctx context.Context, config any, vars map[string
 		return engineConfig{}, errors.New("configuration transform vars must be an object")
 	}
 	return result, nil
-}
-
-// jqValue converts decoded JSON numbers to the integer, big integer or float
-// values gojq accepts.
-func jqValue(value any) any {
-	switch value := value.(type) {
-	case json.Number:
-		if integer, err := strconv.Atoi(value.String()); err == nil {
-			return integer
-		}
-		if integer, ok := new(big.Int).SetString(value.String(), 10); ok {
-			return integer
-		}
-		float, err := value.Float64()
-		if err != nil {
-			return value.String()
-		}
-		return float
-	case map[string]any:
-		converted := make(map[string]any, len(value))
-		for key, item := range value {
-			converted[key] = jqValue(item)
-		}
-		return converted
-	case []any:
-		converted := make([]any, len(value))
-		for i, item := range value {
-			converted[i] = jqValue(item)
-		}
-		return converted
-	default:
-		return value
-	}
 }
 
 // checkForbidden rejects configuration setting any dotted key path in

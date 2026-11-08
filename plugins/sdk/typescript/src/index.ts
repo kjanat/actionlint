@@ -407,6 +407,14 @@ export interface ProcessOptions extends ProviderIdentity {
 }
 /** Existing executable that checks prepared run snippets. */
 export interface ProcessProvider extends ProcessOptions {
+	/** Use shell preparation to infer the interpreter, reproduce its options and map inserted comments. */
+	preparation?: 'shell';
+	/** JSON pointers to path strings or path arrays whose configuration variables the host expands. */
+	configurationPaths?: string[];
+	/** Convert validated config into {options, source_prefix?, language?, read_access?} before execution. */
+	configurationTransform?: { language: 'jq'; inline: string } | JQFile;
+	/** Choose generated comments, startup commands, options and argument variables from interpreter and environment facts. */
+	preparationTransform?: { language: 'jq'; inline: string } | JQFile;
 	/** Omit for a script wrapper; use DocumentProcessProvider for complete YAML documents. */
 	role?: 'script';
 	/** Canonical shell basenames to route to the executable, for example ['bash', 'sh']. */
