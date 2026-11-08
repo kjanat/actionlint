@@ -3,7 +3,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { yamlExampleLines } from './yaml-examples.mjs';
 
@@ -12,7 +13,8 @@ import { yamlExampleLines } from './yaml-examples.mjs';
 /** @typedef {{start: number, end: number, lang: Lang, topLevel: boolean, doc: boolean, lines: string[]}} PendingGroup */
 /** @typedef {{id: string, isResolved: boolean, path: string, comments: {nodes: Array<{body: string, viewerDidAuthor: boolean}>}}} ReviewThread */
 /** @typedef {{repository: {pullRequest: {reviewThreads: {pageInfo: {hasNextPage: boolean, endCursor: string | null}, nodes: ReviewThread[]}}}}} ReviewThreadsResponse */
-/** @typedef {Pick<import('@actions/github-script').AsyncFunctionArguments, 'github' | 'context' | 'core'>} RunArguments */
+/** @typedef {{filename: string, patch: string, source: string}} ChangedFile */
+/** @typedef {Pick<import('@actions/github-script').AsyncFunctionArguments, 'github' | 'context' | 'core'> & {files: ChangedFile[]}} RunArguments */
 /** @typedef {{character: '`' | '~', length: number} | null} Fence */
 
 /** @type {Array<[RegExp, Lang]>} */
@@ -328,7 +330,7 @@ function requiredString(value, name) {
 }
 
 /** @param {RunArguments} args */
-export default async function run({ github, context, core }) {
+export default async function run({ github, context, core, files }) {
 	const pullRequest = context.payload.pull_request;
 	if (pullRequest === undefined) throw new Error('pull_request payload is required');
 
@@ -336,39 +338,10 @@ export default async function run({ github, context, core }) {
 	const repo = context.repo.repo;
 	const pullNumber = pullRequest.number;
 	const headSha = requiredString(pullRequest.head.sha, 'pull request head SHA');
-	const files = await github.paginate(github.rest.pulls.listFiles, {
-		owner,
-		repo,
-		pull_number: pullNumber,
-		per_page: 100,
-	});
-
 	/** @type {Group[]} */
 	const groups = [];
-	const unscannedPaths = new Set();
 	for (const file of files) {
-		if (file.status === 'removed' || !scannable(file.filename)) continue;
-		if (file.patch === undefined) {
-			unscannedPaths.add(file.filename);
-			core.warning(`No patch available for ${file.filename}; skipping comment scan.`);
-			continue;
-		}
-
-		let source;
-		if (/\.(?:go|ya?ml)$/.test(file.filename) || langFor(file.filename) === 'md') {
-			try {
-				const contentsUrl = requiredString(file.contents_url, `contents URL for ${file.filename}`);
-				const response = await github.request(contentsUrl, {
-					headers: { accept: 'application/vnd.github.raw+json' },
-				});
-				source = requiredString(response.data, `contents of ${file.filename}`);
-			} catch (error) {
-				unscannedPaths.add(file.filename);
-				core.warning(`Could not read ${file.filename}; skipping comment scan: ${errorMessage(error)}`);
-				continue;
-			}
-		}
-		groups.push(...groupsFromPatch(file.filename, file.patch, source));
+		groups.push(...groupsFromPatch(file.filename, file.patch, file.source));
 	}
 
 	const presentKeys = new Set(groups.map(keyFor));
@@ -399,7 +372,7 @@ export default async function run({ github, context, core }) {
 			if (match === null) continue;
 			const key = match[1];
 			seenKeys.add(key);
-			if (!thread.isResolved && !presentKeys.has(key) && !unscannedPaths.has(thread.path)) {
+			if (!thread.isResolved && !presentKeys.has(key)) {
 				staleThreadIds.push(thread.id);
 			}
 		}
@@ -453,6 +426,68 @@ export default async function run({ github, context, core }) {
 }
 
 const git = (/** @type {string[]} */ args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
+
+/**
+ * Fetch both revisions together, then read PR files from Git objects without checking them out.
+ * @param {{cacheDirectory: string, repositoryUrl: string, baseSha: string, headSha: string, token?: string}} options
+ * @returns {ChangedFile[]}
+ */
+export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, headSha, token }) {
+	for (const sha of [baseSha, headSha]) {
+		if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Expected a full Git commit SHA');
+	}
+	mkdirSync(cacheDirectory, { recursive: true });
+	const repository = join(cacheDirectory, 'repository.git');
+	/** @type {NodeJS.ProcessEnv} */
+	const environment = { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_NO_REPLACE_OBJECTS: '1' };
+	if (token) {
+		const url = new URL(repositoryUrl);
+		if (url.protocol !== 'https:') throw new Error('Git authentication requires HTTPS');
+		const index = Number(environment.GIT_CONFIG_COUNT ?? 0);
+		environment.GIT_CONFIG_COUNT = String(index + 1);
+		environment[`GIT_CONFIG_KEY_${index}`] = `http.${url.origin}/.extraheader`;
+		environment[`GIT_CONFIG_VALUE_${index}`] = `AUTHORIZATION: basic ${
+			Buffer.from(`x-access-token:${token}`).toString('base64')
+		}`;
+	}
+	/** @param {string[]} args */
+	const execute = args =>
+		execFileSync('git', args, {
+			encoding: 'utf8',
+			maxBuffer: 1 << 28,
+			env: environment,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
+	execute(['init', '--bare', repository]);
+	/** @param {string[]} args */
+	const read = args => execute(['--git-dir', repository, ...args]);
+	read([
+		'fetch',
+		'--no-tags',
+		'--no-recurse-submodules',
+		repositoryUrl,
+		`+${baseSha}:refs/comment-cop/base`,
+		`+${headSha}:refs/comment-cop/head`,
+	]);
+	const base = read(['merge-base', baseSha, headSha]).trim();
+	const names = read(['diff', '--name-only', '-z', '--no-renames', '--diff-filter=AM', base, headSha, '--'])
+		.split('\0').filter(scannable);
+	return names.map(filename => ({
+		filename,
+		patch: read([
+			'diff',
+			'--no-ext-diff',
+			'--no-textconv',
+			'--no-renames',
+			'-U3',
+			base,
+			headSha,
+			'--',
+			`:(literal)${filename}`,
+		]),
+		source: read(['show', `${headSha}:${filename}`]),
+	}));
+}
 
 function defaultBase() {
 	for (const ref of ['origin/master', 'master']) {
