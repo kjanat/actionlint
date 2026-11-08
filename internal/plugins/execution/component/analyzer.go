@@ -53,7 +53,7 @@ func (p *Plugin) CheckDocument(ctx context.Context, input checkinputs.Input) ([]
 	}
 	ctx = context.WithValue(ctx, invocationGraphKey{}, input.CallGraph)
 	ctx = context.WithValue(ctx, environmentContextKey{}, documentEnvironments(input))
-	ctx = context.WithValue(ctx, shellScriptInputsKey{}, shellScriptInputScope{prepare: input.BuildShellScriptInput, occurrences: suppliedOccurrences(input)})
+	ctx = context.WithValue(ctx, shellScriptInputsKey{}, newShellScriptInputScope(input))
 	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
 	value, err := p.callAnalyzer(ctx, "analyze", lowerInput(input))
 	if err != nil {

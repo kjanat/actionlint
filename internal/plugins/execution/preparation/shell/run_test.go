@@ -10,11 +10,12 @@ import (
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
 
 func TestPrepareRunVariables(t *testing.T) {
-	exclude := strings.Join(Excluded(nil), "\n")
+	exclude := strings.Join([]string{"SC1091", "SC2194", "SC2050", "SC2157", "SC2043"}, "\n")
 	dash := "dash"
 	no := false
 	for _, tc := range []struct {
@@ -27,28 +28,28 @@ func TestPrepareRunVariables(t *testing.T) {
 	}{
 		{
 			name: "explicit bash", run: Run{Shell: Shell{Name: "bash"}, Sources: true, ConfigFile: "/rc"}, text: "echo $1",
-			vars:   map[string]string{VarDialect: "bash", VarExclude: exclude, VarConfigFile: "/rc", VarExternalSources: "true"},
+			vars:   map[string]string{"dialect": "bash", "exclude": exclude, "config_file": "/rc", "external_sources": "true"},
 			source: "set -e -o pipefail\necho $1\n",
 		},
 		{
 			name: "unknown directory follows no sources", run: Run{Shell: Shell{Name: "bash", Implicit: true}}, text: "echo $1",
-			vars:   map[string]string{VarDialect: "bash", VarExclude: exclude},
+			vars:   map[string]string{"dialect": "bash", "exclude": exclude},
 			source: "# shellcheck external-sources=false\nset -e\necho $1\n",
 		},
 		{
 			name: "directive selects the dialect", run: Run{Shell: Shell{Name: "sh"}, Sources: true}, text: "# shellcheck shell=bash\necho $1",
-			vars:   map[string]string{VarExclude: exclude, VarExternalSources: "true"},
+			vars:   map[string]string{"exclude": exclude, "external_sources": "true"},
 			source: "# shellcheck shell=bash\necho $1\n",
 		},
 		{
-			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Directives: &Directives{Shell: &dash, ExternalSources: &no}}, text: "echo ${{ x }}",
-			vars:   map[string]string{VarDialect: "dash", VarExclude: exclude},
+			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Settings: &integrationconfig.Settings{Language: &dash, ReadAccess: integrationconfig.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
+			vars:   map[string]string{"dialect": "dash", "exclude": exclude},
 			source: "# shellcheck external-sources=false\necho ________\n",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.run.Environment = scriptmodel.EnvironmentAlternatives(tc.run.Shell.Name, []runnerapi.OS{runnerapi.Linux})
-			prepared, err := PrepareRun(tc.run, tc.text)
+			prepared, err := prepareShellcheck(t, tc.run, tc.text)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -60,7 +61,7 @@ func TestPrepareRunVariables(t *testing.T) {
 }
 
 func TestPrepareRunLineOrigins(t *testing.T) {
-	prepared, err := PrepareRun(Run{Shell: Shell{Name: "bash"}, Directives: &Directives{Disable: []string{"SC2086"}}}, "echo $1")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &integrationconfig.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,14 +74,14 @@ func TestPrepareRunLineOrigins(t *testing.T) {
 }
 
 func TestPrepareRunSkipsUnknownDialects(t *testing.T) {
-	prepared, err := PrepareRun(Run{Shell: Shell{Name: "pwsh"}}, "Write-Host hi")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "pwsh"}}, "Write-Host hi")
 	if err != nil || prepared.Skip == "" || prepared.Source != "" {
 		t.Fatalf("got %+v, %v", prepared, err)
 	}
 }
 
 func TestPrepareRunForEngines(t *testing.T) {
-	prepared, err := PrepareRun(Run{Shell: Shell{Name: "sh"}, Sources: true, Engine: true}, "echo $1")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "sh"}, Sources: true, Engine: true}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,14 +100,14 @@ func TestPrepareRunForEngines(t *testing.T) {
 
 func TestEngineInputRefusesSources(t *testing.T) {
 	yes := true
-	if _, err := EngineInput("echo $1", "bash", &Directives{ExternalSources: &yes}, nil); !errors.Is(err, ErrNoSourceAccess) {
+	if _, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Settings: &integrationconfig.Settings{ReadAccess: integrationconfig.ReadAccess{Enabled: &yes}}}, "echo $1"); !errors.Is(err, ErrNoSourceAccess) {
 		t.Fatalf("got %v", err)
 	}
 }
 
 func TestInvalidInvocationCannotBeOverriddenByDirective(t *testing.T) {
 	for _, command := range []string{"bash -euo -pipefail {0}", "bash -O definitely_not_a_shopt {0}"} {
-		prepared, err := PrepareRun(Run{Shell: Shell{Name: command}}, "# shellcheck shell=bash\necho hi\n")
+		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: command}}, "# shellcheck shell=bash\necho hi\n")
 		if err != nil || prepared.Skip == "" || prepared.Source != "" {
 			t.Fatalf("prepared=%+v error=%v", prepared, err)
 		}

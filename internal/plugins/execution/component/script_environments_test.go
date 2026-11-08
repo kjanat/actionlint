@@ -118,3 +118,24 @@ func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 		t.Fatalf("canceled environment query = %v", err)
 	}
 }
+
+func TestSuppliedScriptWithoutEnvironmentFactsReturnsAnEmptyList(t *testing.T) {
+	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: checkinputs.ScriptOccurrence{ID: "selected"}}}}
+	document := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
+	result, err := (scriptEnvironments{}).ForScript(document, "selected")
+	value, ok := result.(bind.ResultListEnvironmentStringOk)
+	if err != nil || !ok || len(value.Value) != 0 {
+		t.Fatalf("missing facts=%+v, %v", result, err)
+	}
+	snippet := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(nil))
+	result, err = (scriptEnvironments{}).Current(snippet)
+	value, ok = result.(bind.ResultListEnvironmentStringOk)
+	if err != nil || !ok || len(value.Value) != 0 {
+		t.Fatalf("missing snippet facts=%+v, %v", result, err)
+	}
+	if result, err := (scriptEnvironments{}).ForScript(document, "unselected"); err != nil {
+		t.Fatal(err)
+	} else if _, refused := result.(bind.ResultListEnvironmentStringErr); !refused {
+		t.Fatal("an unselected occurrence obtained environment facts")
+	}
+}

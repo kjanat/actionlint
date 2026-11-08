@@ -132,7 +132,7 @@ func (observer *actionInputObserver) Analyze(_ context.Context, batch tools.Batc
 	return nil, nil
 }
 
-func TestDocumentPluginSkipsOtherToolInputsAndUnsupportedShells(t *testing.T) {
+func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 	guest, observer := &occurrenceGuest{}, &actionInputObserver{}
 	registration, err := shellcheckRegistration(scriptsbackend.Selection{Command: "shellcheck"}).WithAnalyzer(guest)
 	if err != nil {
@@ -151,8 +151,21 @@ func TestDocumentPluginSkipsOtherToolInputsAndUnsupportedShells(t *testing.T) {
 	if len(observer.inputs) != 1 || observer.inputs[0].Occurrence.Kind != checkinputs.ActionInputScript {
 		t.Fatalf("action-input route did not execute: %+v", observer.inputs)
 	}
-	if len(guest.inputs) != 1 || len(guest.inputs[0].Scripts) != 1 || guest.inputs[0].Scripts[0].Text != "echo shell" || guest.inputs[0].CallGraph.ScriptCount() != 3 {
-		t.Fatalf("ShellCheck processed an unrelated input: %+v", guest.inputs)
+	if len(guest.inputs) != 2 {
+		t.Fatalf("run calls=%d, want 2", len(guest.inputs))
+	}
+	for i, text := range []string{"echo shell", "print(1)"} {
+		input := guest.inputs[i]
+		if len(input.Scripts) != 1 || input.Scripts[0].Text != text || input.CallGraph.ScriptCount() != 3 {
+			t.Fatalf("call %d contains the wrong script", i)
+		}
+		prepared, err := input.BuildShellScriptInput(t.Context(), input.Scripts[0].Occurrence.ID, nil)
+		if err != nil || prepared == nil {
+			t.Fatalf("call %d preparation=%+v error=%v", i, prepared, err)
+		}
+		if i == 1 && prepared.Dialect != nil {
+			t.Fatal("host assigned a shell dialect to Python")
+		}
 	}
 }
 

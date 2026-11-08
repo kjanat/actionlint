@@ -69,7 +69,12 @@ func TestHeaderSelection(t *testing.T) {
 		{"echo ok\n# shellcheck shell=bash\n", false},
 		{"# Example: shellcheck shell=bash\n", false},
 	} {
-		_, _, selected := Header(tc.script)
+		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}}, tc.script)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, supplied := prepared.Vars["dialect"]
+		selected := !supplied
 		if selected != tc.want {
 			t.Errorf("%q: selected=%t, want %t", tc.script, selected, tc.want)
 		}

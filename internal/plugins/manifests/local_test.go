@@ -52,3 +52,32 @@ func TestReadLocal(t *testing.T) {
 		}
 	}
 }
+
+func TestReadLocalLoadsConfigurationTransforms(t *testing.T) {
+	const source = `{options:.config}`
+	sum := sha256.Sum256([]byte(source))
+	digest := "sha256:" + hex.EncodeToString(sum[:])
+	manifestJSON := strings.Replace(minimal, `"schema_version": 1,`, `"schema_version": 1, "configuration_transform":{"language":"jq","digest":"`+digest+`"},`, 1)
+	root := t.TempDir()
+	path := filepath.Join(root, "manifest.json")
+	if err := os.WriteFile(path, []byte(manifestJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader := inputfiles.New(t.Context(), nil, nil)
+	if _, _, err := manifests.ReadLocal(reader, path); err == nil {
+		t.Fatal("missing configuration transform accepted")
+	}
+	if err := os.WriteFile(filepath.Join(root, "configuration.jq"), []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manifest, programs, err := manifests.ReadLocal(reader, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.ConfigurationTransform == nil || manifest.ConfigurationTransform.Digest != digest {
+		t.Fatal("configuration transform was dropped")
+	}
+	if got, ok := programs(digest); !ok || string(got) != source {
+		t.Fatalf("loaded %q, found=%t", got, ok)
+	}
+}

@@ -13,22 +13,28 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
+	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // AuthoringResult is the host's evaluation of one fixture stdout. It never
 // invokes the manifest entry.
 type AuthoringResult struct {
-	Config    json.RawMessage   `json:"config"`
-	Variables map[string]string `json:"variables"`
-	Result    *Result           `json:"result,omitempty"`
+	Source      string                  `json:"source"`
+	Preparation *preparation.SourcePlan `json:"preparation,omitempty"`
+	Config      json.RawMessage         `json:"config"`
+	Variables   map[string]string       `json:"variables"`
+	Result      *Result                 `json:"result,omitempty"`
 }
 
-// AuthoringTester holds one compiled process pipeline for a fixture suite.
-// It does not retain per-fixture configuration or output.
+// AuthoringTester compiles a process pipeline once and evaluates each fixture independently.
 type AuthoringTester struct {
-	manifest manifests.Manifest
-	backend  *Backend
+	manifest      manifests.Manifest
+	backend       *Backend
+	configuration *configuration.Transform
+	preparation   *preparation.SourceTransform
 }
 
 // ValidateManifest compiles every jq program and schema in a process manifest
@@ -44,7 +50,15 @@ func NewAuthoringTester(manifest manifests.Manifest, programs manifests.Programs
 	if err != nil {
 		return nil, err
 	}
-	return &AuthoringTester{manifest: manifest, backend: backend}, nil
+	transform, err := configuration.New(manifest, programs)
+	if err != nil {
+		return nil, err
+	}
+	sourceTransform, err := preparation.NewSourceTransform(manifest.PreparationTransform, programs)
+	if err != nil {
+		return nil, err
+	}
+	return &AuthoringTester{manifest: manifest, backend: backend, configuration: transform, preparation: sourceTransform}, nil
 }
 
 // EvaluateFixture applies the exact config and stdout pipeline used by a
@@ -54,12 +68,12 @@ func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs 
 	if err != nil {
 		return AuthoringResult{}, err
 	}
-	return tester.Evaluate(ctx, request, stdout, variables, exitCode)
+	return tester.Evaluate(ctx, request, stdout, variables, exitCode, nil)
 }
 
 // Evaluate applies the compiled pipeline to one fixture. The per-case
 // context bounds jq evaluation; no child process runs.
-func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int) (AuthoringResult, error) {
+func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.ScriptContext) (AuthoringResult, error) {
 	if err := ctx.Err(); err != nil {
 		return AuthoringResult{}, err
 	}
@@ -78,6 +92,34 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 	if !filepath.IsAbs(request.Filename) {
 		values["filename_abs"] = filepath.Join(directory, request.Filename)
 	}
+	var plan *preparation.SourcePlan
+	if manifest.ConfigurationTransform != nil || manifest.PreparationTransform != nil || len(manifest.ConfigurationPaths) != 0 {
+		settings, err := t.configuration.Apply(ctx, request.Config, "", nil)
+		if err != nil {
+			return AuthoringResult{}, err
+		}
+		request.Config = settings.Options
+		if manifest.PreparationTransform != nil && facts == nil {
+			return AuthoringResult{}, errors.New("fixture needs preparation facts for the preparation transform")
+		}
+		context := preparation.ScriptContext{}
+		if facts != nil {
+			context = *facts
+		}
+		context.Source, context.Settings = request.Source, settings
+		prepared, err := t.preparation.Apply(ctx, context)
+		if err != nil {
+			return AuthoringResult{}, err
+		}
+		plan = &prepared
+		if prepared.Skip != "" {
+			return AuthoringResult{Source: request.Source, Preparation: plan, Config: request.Config, Variables: values}, nil
+		}
+		request.Source = shellprofile.Prepare(request.Source, prepared.Prefix, prepared.Startup).Text()
+		request.Config = prepared.Config
+		maps.Copy(values, prepared.Variables)
+	}
+
 	config, err := decodeConfig(request.Config)
 	if err != nil {
 		return AuthoringResult{}, fmt.Errorf("tools.%s.config: %w", backend.name, err)
@@ -106,8 +148,8 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 	if err != nil {
 		return AuthoringResult{}, err
 	}
-	out := AuthoringResult{Config: encoded, Variables: values}
-	if stdout == nil {
+	out := AuthoringResult{Source: request.Source, Preparation: plan, Config: encoded, Variables: values}
+	if stdout == nil || plan != nil && plan.Skip != "" {
 		return out, nil
 	}
 	if len(*stdout) > MaxOutputBytes {

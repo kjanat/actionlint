@@ -82,7 +82,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
-		PrepareInput: func(script tools.Script) (preparation.Prepared, error) {
+		PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 			return preparation.Prepared{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), LineMap: func(line int) preparation.Line {
 				if line < 2 {
 					return preparation.Line{Origin: preparation.LineDirective}
@@ -168,7 +168,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 
 func TestInputFilterCannotHideForeignSource(t *testing.T) {
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
-	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (preparation.Prepared, error) {
+	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 		return preparation.Prepared{Source: script.Text, AcceptDiagnostic: func(checkinputs.ScriptDiagnostic) bool { return false }}, nil
 	}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 	engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
@@ -192,7 +192,7 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	for _, contract := range []string{"", "unknown", checkinputs.TemplateEffectsContract} {
 		calls := 0
-		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (preparation.Prepared, error) {
+		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 			return preparation.Prepared{Source: script.Text, TemplateContract: checkinputs.TemplateEffectsContract}, nil
 		}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 		engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {

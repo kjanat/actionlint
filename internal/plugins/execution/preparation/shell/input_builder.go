@@ -3,12 +3,12 @@ package shell
 import (
 	"context"
 	"errors"
-	"strconv"
 	"strings"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 )
 
@@ -44,10 +44,9 @@ func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellS
 	}
 }
 
-// BuildShellScriptInput prepares a run block for a plugin. Directive comments the
-// workflow attaches to the step precede the script; override replaces an
-// inferred dialect. It returns nil when the script is not a supported shell
-// script and no directive selects one.
+// BuildShellScriptInput supplies masked source, attached comments and interpreter
+// facts. The plugin selects the languages it supports and interprets its own
+// directives. Invalid interpreter invocations return no input.
 func BuildShellScriptInput(script checkinputs.Script, override *string) (*checkinputs.ShellScriptInput, error) {
 	shell := Shell{Name: script.Shell, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
 	if script.Runtime != nil && script.Runtime.ShellKnown {
@@ -60,32 +59,21 @@ func BuildShellScriptInput(script checkinputs.Script, override *string) (*checki
 	var comments []workflowfacts.SourceComment
 	var prefix strings.Builder
 	for _, comment := range script.Comments {
-		text, ok := strings.CutPrefix(comment.Text, "#")
-		if ok && strings.HasPrefix(strings.TrimLeft(text, " \t"), "shellcheck") {
-			comments = append(comments, comment)
-			prefix.WriteString(comment.Text)
-			prefix.WriteByte('\n')
+		if !strings.HasPrefix(comment.Text, "#") || strings.ContainsAny(comment.Text, "\r\n") {
+			return nil, errors.New("script annotations must be physical YAML comment lines")
 		}
+		comments = append(comments, comment)
+		prefix.WriteString(comment.Text)
+		prefix.WriteByte('\n')
 	}
-	header, _, _ := Header(script.Text)
-	combined, _, selected := Header(prefix.String() + header)
-	if dialect == "" && !selected {
-		return nil, nil
+	if override != nil && *override != dialect {
+		dialect, setup = *override, ""
 	}
-	inferred := dialect
-	if selected {
-		dialect = HeaderDialect(combined)
-	} else if override != nil {
-		dialect = *override
-	}
-	if dialect != inferred {
-		setup = ""
-	}
-	setup, environmentExcluded := environmentStartup(setup, script.Environment)
+	setup, _ = EnvironmentStartup(setup, script.Environment)
 	masked := mask.Expressions(script.Text)
 	prepared := Prepare(masked, prefix.String(), setup)
 	result := &checkinputs.ShellScriptInput{Text: prepared.Text(), MaskedText: masked, Shell: shell.Name, ShellSetup: setup}
-	if !selected {
+	if dialect != "" {
 		result.Dialect = &dialect
 	}
 	commentIndex := 0
@@ -93,7 +81,7 @@ func BuildShellScriptInput(script checkinputs.Script, override *string) (*checki
 		switch {
 		case line > 0:
 			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptSourceLine, Line: line})
-		case index+1 == prepared.startupLine:
+		case prepared.Line(index+1).Origin == preparation.LineStartup:
 			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptGeneratedLine})
 		case commentIndex < len(comments):
 			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptCommentLine, Position: comments[commentIndex].Start})
@@ -101,13 +89,6 @@ func BuildShellScriptInput(script checkinputs.Script, override *string) (*checki
 		default:
 			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptGeneratedLine})
 		}
-	}
-	for _, code := range Excluded(environmentExcluded) {
-		number, err := strconv.ParseUint(strings.TrimPrefix(code, "SC"), 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		result.Excluded = append(result.Excluded, uint32(number))
 	}
 	return result, nil
 }

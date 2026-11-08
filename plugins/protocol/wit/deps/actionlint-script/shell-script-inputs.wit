@@ -2,8 +2,8 @@ package kjanat:actionlint-script@0.3.0;
 
 /// Shell text, dialect and source mapping supplied to a checker for one occurrence.
 /// Normative profile: shell-preparation-0.3.0.md in the protocol JSON directory.
-/// The host owns this transformation; guests must not repeat it or infer its
-/// results from the host version, package name, or diagnostic messages.
+/// The host supplies source mapping and interpreter facts. A guest interprets
+/// its own directives and chooses its diagnostic exclusions.
 interface shell-script-inputs {
     record position {
         line: u32,
@@ -19,19 +19,20 @@ interface shell-script-inputs {
         text: string,
         /// Original script text with substitutions masked, before inserted lines.
         masked-text: string,
-        /// Engine dialect override; none leaves selection to source directives.
+        /// Inferred interpreter dialect, or the override requested by the caller.
         dialect: option<string>,
         shell: string,
         shell-setup: string,
         /// One entry per physical input line; script indices refer to the raw
         /// input script and comment positions to its declaring document.
         lines: list<line>,
-        /// ShellCheck diagnostic numbers excluded by the preparation profile.
+        /// Additional diagnostic numbers supplied by a custom preparation builder.
+        /// The default host builder supplies an empty list.
         excluded: list<u32>,
     }
     /// Only run occurrences with supplied text in this analyze call are accepted.
     /// Every other ID returns an error, including known unselected occurrences,
-    /// action inputs, calls and the entry. None means an unsupported profile.
+    /// action inputs, calls and the entry. None means an invalid interpreter invocation.
     /// Line numbers and positions are one-based Unicode character coordinates.
     for-script: func(occurrence: string, dialect: option<string>) -> result<option<input>, string>;
 }

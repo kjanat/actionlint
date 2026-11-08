@@ -49,6 +49,12 @@ export async function compileProvider(definition: string | URL): Promise<Record<
 			throw new Error('manifest must default-export a valid SDK provider');
 		}
 		const processSpec = await processDefinition(provider, root, temporary, file);
+		const configurationTransform = 'configurationTransform' in provider
+			? await resolveJQ(provider.configurationTransform, root)
+			: undefined;
+		const preparationTransform = 'preparationTransform' in provider
+			? await resolveJQ(provider.preparationTransform, root)
+			: undefined;
 		const documentProvider = isDocumentProvider(provider) ? provider : undefined;
 		const metadata = {
 			metadata_version: 1,
@@ -71,7 +77,16 @@ export async function compileProvider(definition: string | URL): Promise<Record<
 			role: documentProvider ? 'document' : 'script',
 			scope: 'source',
 			transport: 'process',
-			preparation: documentProvider ? 'generic' : 'kjanat:actionlint/expression-mask@0.1.0',
+			preparation: documentProvider
+				? 'generic'
+				: 'preparation' in provider && provider.preparation === 'shell'
+				? 'kjanat:actionlint/shell-preparation@0.3.0'
+				: 'kjanat:actionlint/expression-mask@0.1.0',
+			...(configurationTransform ? { configuration_transform: configurationTransform } : {}),
+			...(preparationTransform ? { preparation_transform: preparationTransform } : {}),
+			...('configurationPaths' in provider && provider.configurationPaths
+				? { configuration_paths: provider.configurationPaths }
+				: {}),
 			rule: {
 				...provider.rule,
 				...(documentProvider ? { required_inputs: documentProvider.requiredInputs ?? ['source'] } : {}),
@@ -236,7 +251,9 @@ function isPluginProvider(value: unknown): value is PluginProvider {
 	if (value.role === 'document') {
 		return isOptionalDocumentKinds(value.documentKinds) && isOptionalDocumentRequirements(value.requiredInputs);
 	}
-	return (value.role === undefined || value.role === 'script') && isStringArray(value.shells);
+	return (value.role === undefined || value.role === 'script') && isStringArray(value.shells)
+		&& (value.preparation === undefined || value.preparation === 'shell')
+		&& (value.configurationPaths === undefined || isStringArray(value.configurationPaths));
 }
 
 function isStringArray(value: unknown): value is string[] {

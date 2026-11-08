@@ -46,7 +46,7 @@ func ReadLocal(reader *files.Reader, path string) (Manifest, Programs, error) {
 		return bytes.Clone(program), ok
 	}
 	var wanted []string
-	for _, transform := range manifest.transforms() {
+	for _, transform := range manifest.Transforms() {
 		if transform.Digest != "" {
 			wanted = append(wanted, transform.Digest)
 		}
@@ -87,7 +87,7 @@ func ReadLocal(reader *files.Reader, path string) (Manifest, Programs, error) {
 // now, so a later check does not depend on read's context.
 func LoadPrograms(manifest Manifest, read func(digest string) ([]byte, error)) (Programs, error) {
 	programs := map[string][]byte{}
-	for _, transform := range manifest.transforms() {
+	for _, transform := range manifest.Transforms() {
 		if transform.Digest == "" {
 			continue
 		}

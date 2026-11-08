@@ -45,12 +45,12 @@ type engineOptions struct {
 	enabled func(tools.Context) bool
 	// prepare replaces expression masking and plugin options for every
 	// selected script.
-	prepare func(tools.Script) (preparation.Prepared, error)
+	prepare func(context.Context, tools.Script) (preparation.Prepared, error)
 	// batch replaces prepare with a preparation bound to one batch, which
 	// may reject the settings of its scopes once. With it, run scripts
 	// reach the preparation even when no shell selects them; the profile
 	// skips the ones it does not prepare.
-	batch func(tools.Batch) (func(tools.Script) (preparation.Prepared, error), error)
+	batch func(context.Context, tools.Batch) (func(context.Context, tools.Script) (preparation.Prepared, error), error)
 	// filename is the virtual name of run snippets; its extension also names
 	// action-input snippets. Empty keeps "actionlint-script".
 	filename string
@@ -196,7 +196,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 	prepare := r.options.prepare
 	if r.options.batch != nil {
 		var err error
-		prepare, err = r.options.batch(batch)
+		prepare, err = r.options.batch(ctx, batch)
 		failures = errors.Join(failures, err)
 	}
 	for i, script := range batch.Scripts {
@@ -220,7 +220,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 		var prepared preparation.Prepared
 		if prepare != nil {
 			var err error
-			prepared, err = prepare(script)
+			prepared, err = prepare(ctx, script)
 			if err != nil {
 				failures = errors.Join(failures, err)
 				continue

@@ -17,6 +17,8 @@ import (
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -111,9 +113,25 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 	if !knownPreparation(m.Preparation) {
 		return tools.Registration{}, fmt.Errorf("tool provider %s names unknown preparation profile %q", name, m.Preparation)
 	}
+	if _, err := integrationconfig.New(m, p.Programs); err != nil {
+		return tools.Registration{}, fmt.Errorf("tool provider %s configuration: %w", name, err)
+	}
+	if _, err := preparation.NewSourceTransform(m.PreparationTransform, p.Programs); err != nil {
+		return tools.Registration{}, fmt.Errorf("tool provider %s preparation: %w", name, err)
+	}
 	// The registration keeps no storage the caller can change.
 	m.Rule = m.Rule.Clone()
 	m.InvocationDefinitions = commands.CloneDefinitions(m.InvocationDefinitions)
+	m.ConfigSchema = slices.Clone(m.ConfigSchema)
+	m.ConfigurationPaths = slices.Clone(m.ConfigurationPaths)
+	if m.ConfigurationTransform != nil {
+		transform := *m.ConfigurationTransform
+		m.ConfigurationTransform = &transform
+	}
+	if m.PreparationTransform != nil {
+		transform := *m.PreparationTransform
+		m.PreparationTransform = &transform
+	}
 	m.Selectors.Shells = slices.Clone(m.Selectors.Shells)
 	m.Selectors.Inputs = slices.Clone(m.Selectors.Inputs)
 	p.Manifest = m
@@ -123,7 +141,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 	if err := checkinputs.ValidateScriptInputs(m.Selectors.Inputs); err != nil {
 		return tools.Registration{}, err
 	}
-	if _, generic := newPreparation(m, routeProcess).(genericPreparation); generic && len(m.Selectors.Shells)+len(m.Selectors.Inputs) == 0 {
+	if _, generic := newPreparation(m, routeProcess, p.Programs).(genericPreparation); generic && len(m.Selectors.Shells)+len(m.Selectors.Inputs) == 0 {
 		return tools.Registration{}, fmt.Errorf("tool provider %s selects no scripts; declare selectors.shells or selectors.inputs", name)
 	}
 	scope := rule.SourceConfiguration
@@ -142,7 +160,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 		// working directory. See decision b4 in
 		// docs/design/tool-providers-decisions.md.
 		RequiresExecution: len(m.Selectors.Shells) != 0 || len(m.Capabilities.Resources) != 0,
-		PrepareInput:      newPreparation(m, routeEngine).input,
+		PrepareInput:      newPreparation(m, routeEngine, p.Programs).input,
 		Enabled: func(c tools.Context) bool {
 			possible, err := ProjectMayEnable(name, c.Config, c.ProjectConfig)
 			return sel.selected(name) && (possible || err != nil)
@@ -357,7 +375,7 @@ func (t *transports) register(key string, descriptor checkinputs.ScriptEngineDes
 	m := t.provider.Manifest
 	options := engineOptions{
 		enabled:  t.registration.Enabled,
-		batch:    newPreparation(m, via).batch,
+		batch:    newPreparation(m, via, t.provider.Programs).batch,
 		filename: m.Selectors.Filename,
 		findings: findingCapabilities{fixes: m.Capabilities.Fixes, reportedSources: m.Capabilities.ReportedSources, messageTemplate: m.Capabilities.MessageTemplate, severities: m.Capabilities.Severities},
 	}

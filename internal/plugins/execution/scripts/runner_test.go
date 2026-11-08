@@ -362,7 +362,7 @@ func TestLineOriginsAndMessages(t *testing.T) {
 	prepared := generated(script.Text)
 	prepared.Vars = map[string]string{"dialect": "bash"}
 	runner := buildRunner(t, backend, engineOptions{
-		prepare:  func(tools.Script) (preparation.Prepared, error) { return prepared, nil },
+		prepare:  func(context.Context, tools.Script) (preparation.Prepared, error) { return prepared, nil },
 		filename: "actionlint.sh",
 		findings: findingCapabilities{fixes: true, messageTemplate: "{code}:{severity}:{row}:{column}: {message}"},
 	})
@@ -384,7 +384,7 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		t.Errorf("end on a generated line kept: %+v", findings[1])
 	}
 
-	undeclared := buildRunner(t, backend, engineOptions{prepare: func(tools.Script) (preparation.Prepared, error) { return prepared, nil }})
+	undeclared := buildRunner(t, backend, engineOptions{prepare: func(context.Context, tools.Script) (preparation.Prepared, error) { return prepared, nil }})
 	if _, err := undeclared.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}}); err == nil || !strings.Contains(err.Error(), "does not declare them") {
 		t.Fatalf("undeclared fixes accepted: %v", err)
 	}
@@ -465,7 +465,7 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 		t.Fatal("an engine requesting the directory needs execution facts")
 	}
 	// The preparation's excluded codes travel with the request.
-	prepare := func(tools.Script) (preparation.Prepared, error) {
+	prepare := func(context.Context, tools.Script) (preparation.Prepared, error) {
 		return preparation.Prepared{Source: "echo $x\n", Excluded: []string{"X9"}}, nil
 	}
 	runner := buildEngineRunner(t, descriptor, backend, engineOptions{prepare: prepare})

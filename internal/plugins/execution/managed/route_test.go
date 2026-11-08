@@ -3,6 +3,9 @@ package managed
 import (
 	"slices"
 
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
+
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -20,4 +23,10 @@ var shellcheckManifest = func() pluginmanifests.Manifest {
 }()
 
 // shellcheckRoute negotiates the bundled ShellCheck provider's settings.
-var shellcheckRoute = documentRoute{name: shellcheckManifest.Rule.Name, capabilities: shellcheckManifest.Capabilities}
+var shellcheckRoute = func() documentRoute {
+	transform, err := integrationconfig.New(shellcheckManifest, bundled.Program)
+	if err != nil {
+		panic(err)
+	}
+	return documentRoute{name: shellcheckManifest.Rule.Name, capabilities: shellcheckManifest.Capabilities, transform: transform}
+}()

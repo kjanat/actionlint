@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 )
 
@@ -20,6 +21,14 @@ type (
 	}
 )
 type shellScriptInputs struct{}
+
+func newShellScriptInputScope(input checkinputs.Input) shellScriptInputScope {
+	prepare := input.BuildShellScriptInput
+	if prepare == nil {
+		prepare = shellprofile.NewShellScriptInputBuilder(slices.Concat(input.Scripts, input.Invoked))
+	}
+	return shellScriptInputScope{prepare: prepare, occurrences: suppliedOccurrences(input)}
+}
 
 func (shellScriptInputs) ForScript(ctx context.Context, id string, dialect shellinputbind.OptionString) (shellinputbind.ResultOptionInputString, error) {
 	scope, _ := ctx.Value(shellScriptInputsKey{}).(shellScriptInputScope)

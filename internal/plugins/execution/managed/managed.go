@@ -11,8 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
-	"strings"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 
@@ -20,6 +18,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -63,7 +62,11 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	if !defaultSelection(sel, name) {
 		return base, nil
 	}
-	route := documentRoute{name: name, capabilities: m.Capabilities}
+	transform, err := integrationconfig.New(m, p.Programs)
+	if err != nil {
+		return tools.Registration{}, err
+	}
+	route := documentRoute{name: name, capabilities: m.Capabilities, transform: transform}
 	next := base
 	next.Descriptor = guest.Descriptor().Descriptor
 	integration := *integrator.ToolIntegration()
@@ -82,7 +85,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 		// not only by tool gates as in backend.ConfigCandidates.
 		if declined == nil && project != nil && len(project.Overrides) != 0 {
 			candidates, err := scripts.ConfigVariants(project, func(candidate *config.Config) (string, error) {
-				return route.negotiationKey(candidate, base.Enabled(tools.Context{Config: candidate}))
+				return route.negotiationKey(ctx, candidate, base.Enabled(tools.Context{Config: candidate}))
 			})
 			if err != nil {
 				return false, err
@@ -121,6 +124,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 
 // documentRoute negotiates one provider's configuration with a guest.
 type documentRoute struct {
+	transform    *integrationconfig.Transform
 	name         string
 	capabilities manifests.Capabilities
 }
@@ -145,8 +149,8 @@ func (r documentRoute) declined(ctx context.Context, guest checkinputs.ToolInteg
 
 // negotiationKey identifies everything about cfg that the guest's
 // negotiation can depend on before a script is known.
-func (r documentRoute) negotiationKey(cfg *config.Config, enabled bool) (string, error) {
-	options, err := r.options(cfg)
+func (r documentRoute) negotiationKey(ctx context.Context, cfg *config.Config, enabled bool) (string, error) {
+	options, err := r.options(ctx, cfg, nil)
 	if err != nil {
 		return "", err
 	}
@@ -157,40 +161,33 @@ func (r documentRoute) negotiationKey(cfg *config.Config, enabled bool) (string,
 		}
 	}
 	data, err := json.Marshal(struct {
-		Enabled bool             `json:"enabled"`
-		Backend bool             `json:"backend"`
-		Options documentSettings `json:"options"`
-		Plugin  any              `json:"plugin"`
+		Enabled bool                       `json:"enabled"`
+		Backend bool                       `json:"backend"`
+		Options integrationconfig.Settings `json:"options"`
+		Plugin  any                        `json:"plugin"`
 	}{enabled, cfg != nil && cfg.Tools[r.name].Backend != nil, options, pluginOptions})
 	return string(data), err
 }
 
-// documentSettings are the provider settings a guest negotiates: the inline
-// directives and the native configuration path.
-type documentSettings struct {
-	shellprofile.Directives
-	RCFile string `json:"rc-file,omitempty"`
-}
-
-// options reads the settings sent to the guest, before script-relative
-// source paths are expanded.
-func (r documentRoute) options(cfg *config.Config) (documentSettings, error) {
-	var options documentSettings
-	if cfg == nil {
-		return options, nil
+// options validates configuration through the integration's schema and transforms
+// it without interpreting tool-specific property names.
+func (r documentRoute) options(ctx context.Context, cfg *config.Config, expand func(string) (string, error)) (integrationconfig.Settings, error) {
+	var inline json.RawMessage
+	file := ""
+	if cfg != nil {
+		settings := cfg.Tools[r.name].Config
+		file = settings.Path()
+		if values := settings.Inline(); values != nil {
+			var err error
+			inline, err = json.Marshal(values)
+			if err != nil {
+				return integrationconfig.Settings{}, err
+			}
+		}
 	}
-	settings := cfg.Tools[r.name].Config
-	options.RCFile = settings.Path()
-	if inline := settings.Inline(); inline != nil {
-		data, err := json.Marshal(inline)
-		if err != nil {
-			return documentSettings{}, fmt.Errorf("tools.%s.config: %w", r.name, err)
-		}
-		directives, err := shellprofile.ParseDirectives(data)
-		if err != nil {
-			return documentSettings{}, fmt.Errorf("tools.%s.config.%w", r.name, err)
-		}
-		options.Directives = *directives
+	options, err := r.transform.Apply(ctx, inline, file, expand)
+	if err != nil {
+		return integrationconfig.Settings{}, fmt.Errorf("tools.%s.config: %w", r.name, err)
 	}
 	return options, nil
 }
@@ -199,28 +196,16 @@ func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolInte
 	if cfg != nil && cfg.Tools[r.name].Backend != nil {
 		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
 	}
-	options, err := r.options(cfg)
-	if err != nil {
-		return nil, err
-	}
-	if script != nil && script.Scope != nil && len(options.SourcePath) != 0 {
-		options.SourcePath = slices.Clone(options.SourcePath)
+	var expand func(string) (string, error)
+	if script != nil && script.Scope != nil {
 		paths := scripts.PathContext(script.Scope)
-		for i, name := range options.SourcePath {
-			expanded, err := paths.Expand(name)
-			if err != nil {
-				return nil, err
-			}
-			if expanded != "SCRIPTDIR" && !strings.HasPrefix(expanded, "SCRIPTDIR/") {
-				expanded = sourceName(expanded, script.Execution.Directory)
-			}
-			options.SourcePath[i] = expanded
-		}
+		expand = paths.Expand
 	}
-	data, err := json.Marshal(options)
+	options, err := r.options(ctx, cfg, expand)
 	if err != nil {
 		return nil, err
 	}
+	data := options.Options
 	var pluginOptions json.RawMessage
 	if cfg != nil {
 		value, err := cfg.Lint.Rules.RuleOptions(guest.ToolIntegration().Tool)

@@ -235,7 +235,7 @@ func liftDescriptor(v wacogo.Val) (checkinputs.Descriptor, error) {
 	descriptor := checkinputs.Descriptor{Descriptor: rulemeta.
 		// The versioned analyzer ABI includes fix-availability. Ignore that legacy
 		// claim: only the fixes on a diagnostic describe edits this host can offer.
-		Descriptor{Name: name}}
+		Descriptor{Name: name}, SupportsActions: true}
 
 	for key, dest := range map[string]*string{"description": &descriptor.Description, "category": &descriptor.Category, "subcategory": &descriptor.Subcategory, "maturity": &descriptor.Maturity, "provider": &descriptor.Provider, "explanation": &descriptor.Explanation, "help": &descriptor.Help, "documentation-url": &descriptor.DocumentationURL} {
 		value, err := liftString(record, key)

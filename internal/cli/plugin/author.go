@@ -16,6 +16,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -44,24 +45,29 @@ type authoringReport struct {
 }
 
 type authoringFixture struct {
-	Name         string                    `json:"name"`
-	Request      checkinputs.ScriptRequest `json:"request"`
-	Stdout       *string                   `json:"stdout,omitempty"`
-	Variables    map[string]string         `json:"variables,omitempty"`
-	ExitCode     *int                      `json:"exit_code,omitempty"`
-	Expect       *process.Result           `json:"expect,omitempty"`
-	ExpectConfig json.RawMessage           `json:"expect_config,omitempty"`
-	ExpectVars   map[string]string         `json:"expect_vars,omitempty"`
-	ExpectError  string                    `json:"expect_error,omitempty"`
+	Preparation       *preparation.ScriptContext `json:"preparation,omitempty"`
+	ExpectSource      *string                    `json:"expect_source,omitempty"`
+	ExpectPreparation *preparation.SourcePlan    `json:"expect_preparation,omitempty"`
+	Name              string                     `json:"name"`
+	Request           checkinputs.ScriptRequest  `json:"request"`
+	Stdout            *string                    `json:"stdout,omitempty"`
+	Variables         map[string]string          `json:"variables,omitempty"`
+	ExitCode          *int                       `json:"exit_code,omitempty"`
+	Expect            *process.Result            `json:"expect,omitempty"`
+	ExpectConfig      json.RawMessage            `json:"expect_config,omitempty"`
+	ExpectVars        map[string]string          `json:"expect_vars,omitempty"`
+	ExpectError       string                     `json:"expect_error,omitempty"`
 }
 
 type authoringCaseResult struct {
-	Name      string            `json:"name"`
-	Passed    bool              `json:"passed"`
-	Config    json.RawMessage   `json:"config"`
-	Variables map[string]string `json:"variables"`
-	Result    *process.Result   `json:"result,omitempty"`
-	Error     string            `json:"error,omitempty"`
+	Source      string                  `json:"source"`
+	Preparation *preparation.SourcePlan `json:"preparation,omitempty"`
+	Name        string                  `json:"name"`
+	Passed      bool                    `json:"passed"`
+	Config      json.RawMessage         `json:"config"`
+	Variables   map[string]string       `json:"variables"`
+	Result      *process.Result         `json:"result,omitempty"`
+	Error       string                  `json:"error,omitempty"`
 }
 
 func Validate(ctx context.Context, streams commandstreams.Streams, r ValidateOptions) (int, error) {
@@ -248,19 +254,19 @@ func runAuthoringCase(parent context.Context, tester *process.AuthoringTester, f
 		problems = append(problems, "case name must be nonempty and unique")
 	}
 	seen[fixture.Name] = true
-	if fixture.Expect == nil && len(fixture.ExpectConfig) == 0 && fixture.ExpectVars == nil && fixture.ExpectError == "" {
+	if fixture.Expect == nil && len(fixture.ExpectConfig) == 0 && fixture.ExpectVars == nil && fixture.ExpectSource == nil && fixture.ExpectPreparation == nil && fixture.ExpectError == "" {
 		problems = append(problems, "case needs at least one expectation")
 	}
 	ctx, cancel := context.WithTimeout(parent, process.AuthoringTimeout)
 	defer cancel()
-	actual, err := tester.Evaluate(ctx, fixture.Request, fixture.Stdout, fixture.Variables, fixture.ExitCode)
+	actual, err := tester.Evaluate(ctx, fixture.Request, fixture.Stdout, fixture.Variables, fixture.ExitCode, fixture.Preparation)
 	if actual.Config != nil {
 		result.Config = actual.Config
 	}
 	if actual.Variables != nil {
 		result.Variables = actual.Variables
 	}
-	result.Result = actual.Result
+	result.Result, result.Source, result.Preparation = actual.Result, actual.Source, actual.Preparation
 	if err != nil {
 		result.Error = err.Error()
 	}
@@ -274,6 +280,12 @@ func runAuthoringCase(parent context.Context, tester *process.AuthoringTester, f
 		problems = append(problems, "pipeline error: "+err.Error())
 	}
 	if err == nil {
+		if fixture.ExpectSource != nil && *fixture.ExpectSource != actual.Source {
+			problems = append(problems, "prepared source did not match expect_source")
+		}
+		if fixture.ExpectPreparation != nil && !jsonEqual(mustJSON(fixture.ExpectPreparation), mustJSON(actual.Preparation)) {
+			problems = append(problems, "preparation plan did not match expect_preparation")
+		}
 		if len(fixture.ExpectConfig) != 0 && !jsonEqual(fixture.ExpectConfig, actual.Config) {
 			problems = append(problems, "effective config did not match expect_config")
 		}
@@ -285,7 +297,7 @@ func runAuthoringCase(parent context.Context, tester *process.AuthoringTester, f
 				problems = append(problems, "decoded result did not match expect")
 			}
 		}
-	} else if fixture.ExpectError != "" && (fixture.Expect != nil || len(fixture.ExpectConfig) != 0 || fixture.ExpectVars != nil) {
+	} else if fixture.ExpectError != "" && (fixture.Expect != nil || len(fixture.ExpectConfig) != 0 || fixture.ExpectVars != nil || fixture.ExpectSource != nil || fixture.ExpectPreparation != nil) {
 		problems = append(problems, "cannot check result/config/variables after a pipeline error")
 	}
 	result.Passed = len(problems) == 0

@@ -81,6 +81,15 @@ type Manifest struct {
 	Capabilities Capabilities `json:"capabilities"`
 	// ConfigSchema validates tools.<name>.config for every transport.
 	ConfigSchema json.RawMessage `json:"config_schema,omitempty"`
+	// ConfigurationTransform converts validated user settings into tool options,
+	// generated source comments and requests for read access.
+	ConfigurationTransform *Transform `json:"configuration_transform,omitempty"`
+	// PreparationTransform derives generated source and execution settings from
+	// the script, interpreter and configuration.
+	PreparationTransform *Transform `json:"preparation_transform,omitempty"`
+	// ConfigurationPaths lists JSON pointers to path strings or arrays of paths.
+	// Only these settings receive configuration/workspace path interpolation.
+	ConfigurationPaths []string `json:"configuration_paths,omitempty"`
 	// ConfigShorthands maps keys users may also write directly under
 	// tools.<name> to the ConfigSchema property they set. The host folds them
 	// into tools.<name>.config while decoding.

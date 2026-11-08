@@ -51,24 +51,31 @@ Enable `source-annotations` to import source comments through the optional
 `kjanat:actionlint/source-annotations@0.2.0` interface.
 This requires a host implementing that additional interface.
 
+Enable `shell-script-inputs` when a standalone analyzer checks shell scripts.
+Call `kjanat::actionlint_script::shell_script_inputs::for_script` with an occurrence
+from the current analysis to receive masked text, interpreter startup commands and
+a line map. This feature does not replace a registered tool. Combine it with
+`script-environments` for declared variable names or `source-annotations` for
+separate access to attached YAML comments.
+
 Enable `tool-integration` to implement the `managed-plugin` world. Its optional
 `tool-integration@0.2.0` export advertises a tool identity and versioned
 configuration profile, then accepts or rejects the host configuration. The
 analyzer descriptor name must equal that tool identity. Distribution names,
-repository names and engine names do not participate in replacement selection.
-Negotiation receives host profile configuration and explicit caller plugin
-options separately. The guest combines them and validates the effective options.
-Accepted options are opaque to the host; filesystem grants are separate typed
-requests. The [shell configuration profile](json/shellcheck-config-0.1.0.md)
-and its [JSON Schema](json/shellcheck-config-0.1.0.json) are part of the public
-contract and ship in this package.
+repository names and engine names do not select which tool is replaced.
+Negotiation receives host configuration and caller-supplied plugin options
+separately. The guest combines them and validates the resulting options. The
+host passes accepted options to the plugin without interpreting them.
+Filesystem access requires separate typed resource requests. The plugin supplies
+its configuration schema in `tool-integration.describe().configuration-schema`.
 
 That world imports `source-files@0.2.0` for explicit source/WASI mount mappings
 and `kjanat:actionlint-script/shell-script-inputs@0.3.0` for host-prepared shell text, masking, source lines
-and exclusions. Preparation is restricted to script references supplied in the
-current analysis. Unknown references fail; unsupported shell scripts return
-`none`. Guests must not infer mounts from host path conventions, prepare a
-second copy of the same script, or infer behavior from diagnostic wording.
+and interpreter startup commands. Preparation is restricted to script references
+supplied in the current analysis. Unknown references fail; invalid interpreter
+invocations return `none`. The plugin reads its tool directives and selects the
+supported languages and diagnostic exclusions. Use the returned line map for
+locations and source-file mappings for filesystem access.
 
 Enable `script-environments` to query scoped environment names without their
 values. Call `kjanat::actionlint_script::environments::for_script` with an
@@ -104,7 +111,8 @@ Enable `package` for a native packaging binary. Construct `package::Package`
 from the extension's own descriptor, Cargo identity, engine, languages,
 capabilities and license text, then call `write(input, output)`. It writes
 `plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`.
-Only the outer discovery section is replaced; nested components/modules survive.
+Packaging replaces only the outer discovery section and preserves nested
+components and modules.
 
 For a `runner-provider@0.2.0` component, use `package::RunnerPackage`. Generate
 guest bindings from `wit/runner.wit` with world `runner-plugin`; the analyzer
