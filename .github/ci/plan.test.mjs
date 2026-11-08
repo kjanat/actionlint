@@ -338,7 +338,6 @@ test('autofix installs Node.js tools and locked actionlint releases before gener
 	assert.match(bootstrap, /env: true/);
 	assert.match(bootstrap, /add_shims_to_path: false/);
 	assert.doesNotMatch(bootstrap, /working_directory:/);
-	assert.match(bootstrap, /mise_dir:.*actionlint-mise/);
 	assert.match(bootstrap, /MISE_ENABLE_TOOLS: "node,npm,bun,github:kjanat\/actionlint,github:rhysd\/actionlint"/);
 	assert.doesNotMatch(workflow, /uses: actions\/setup-node@/);
 	const readme = steps.findIndex(step => /id: readme\n/.test(step));
@@ -454,12 +453,15 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				assert.equal(step.uses, 'jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b');
 				const options = yamlMapping(step.with);
 				assert.equal(options.version, '2026.11.4', `${name}:${jobName}`);
-				assert.equal(options.mise_dir, '${{ github.workspace }}/../actionlint-mise', `${name}:${jobName}`);
+				assert.equal(options.mise_dir, '${{ github.workspace }}-mise', `${name}:${jobName}`);
 				assert.equal(options.cache, true);
 				assert.equal(options.auto_update, undefined);
-				assert.match(String(options.cache_key), /\{\{platform\}\}.*\{\{version\}\}.*\{\{env\.MISE_ENABLE_TOOLS\}\}/);
-				assert.match(String(options.cache_key), /mise\.lock/);
-				assert.equal(yamlMapping(workflow.env).MISE_CACHE_DIR, '${{ github.workspace }}/../actionlint-mise/cache');
+				assert.equal(
+					options.cache_key,
+					"{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.github/workflows/*.yml', '.mise/locks/**') }}",
+				);
+				assert.ok(!String(workflow.name).includes(','), `${name} cache key must not contain commas`);
+				assert.equal(yamlMapping(workflow.env).MISE_CACHE_DIR, '${{ github.workspace }}-mise/cache');
 				assert.equal(yamlMapping(workflow.env).MISE_LOCKED, '1');
 				assert.equal(yamlMapping(workflow.env).MISE_TASK_RUN_AUTO_INSTALL, 'false');
 				assert.equal(options.install_args, undefined, `${name}:${jobName} must use the locked tool selection`);
