@@ -336,8 +336,8 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 
 func TestGeneratedSchemaFormatting(t *testing.T) {
 	content := generatedSchema(t)
-	if _, err := exec.LookPath("dprint"); err != nil {
-		t.Skip("dprint is not installed")
+	if _, err := exec.LookPath("kprint"); err != nil {
+		t.Skip("kprint is not installed")
 	}
 	want, err := os.ReadFile("actionlint.schema.json")
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-// Write uses the current directory's dprint configuration and the destination's
+// Write uses the current directory's kprint configuration and the destination's
 // filename to format content. Exclusive writes preserve versioned snapshots.
 func Write(ctx context.Context, path string, content []byte, exclusive bool) error {
 	if exclusive {
@@ -20,7 +20,7 @@ func Write(ctx context.Context, path string, content []byte, exclusive bool) err
 			return err
 		}
 	}
-	command := exec.CommandContext(ctx, "dprint", "fmt", "--stdin", filepath.Base(path))
+	command := exec.CommandContext(ctx, "kprint", "fmt", "--stdin", filepath.Base(path))
 	command.Stdin = bytes.NewReader(content)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
