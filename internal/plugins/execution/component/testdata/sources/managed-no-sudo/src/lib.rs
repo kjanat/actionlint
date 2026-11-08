@@ -72,7 +72,7 @@ impl tool_integration::Guest for Plugin {
         tool_integration::Descriptor {
             tool: "shellcheck".into(),
             contract: "kjanat:actionlint/shellcheck-config@0.1.0".into(),
-            configuration_schema: actionlint_extension_api::SHELLCHECK_CONFIGURATION_SCHEMA.into(),
+            configuration_schema: r#"{"type":"object"}"#.into(),
         }
     }
     fn negotiate(

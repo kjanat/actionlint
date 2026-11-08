@@ -63,6 +63,9 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		if bytes.Contains(data, []byte("\r\n")) {
+			t.Errorf("%s uses CRLF line endings. Save it with LF before recording its digest, as Git checks out this file with LF", name)
+		}
 		sum := sha256.Sum256(data)
 		if digest := "sha256:" + hex.EncodeToString(sum[:]); !referenced[digest] {
 			t.Errorf("%s is not referenced by its manifest; its digest is %s", name, digest)
