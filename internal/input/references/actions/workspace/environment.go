@@ -3,6 +3,8 @@ package workspace
 import (
 	"strings"
 
+	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
@@ -72,11 +74,11 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 			return false
 		}
 		for _, word := range command.Args {
-			if _, literal := execution.LiteralShellWord(word.Parts); !literal {
+			if _, literal := scriptmodel.LiteralShellWord(word.Parts); !literal {
 				return false
 			}
 		}
-		name, _ := execution.LiteralShellWord(command.Args[0].Parts)
+		name, _ := scriptmodel.LiteralShellWord(command.Args[0].Parts)
 		switch name {
 		case "echo", ":", "true", "cd", "chmod":
 			return true

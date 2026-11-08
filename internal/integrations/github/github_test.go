@@ -29,10 +29,10 @@ func ref(t *testing.T, spec string) actions.Reference {
 	return r
 }
 
-func TestOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
+func TestDefaultOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
 	requests := 0
 	cache := t.TempDir()
-	client, err := New(Options{Mode: Online, CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
+	client, err := New(Options{CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		requests++
 		if r.URL.Host != "api.github.com" {
 			t.Fatalf("foreign host %s", r.URL.Host)

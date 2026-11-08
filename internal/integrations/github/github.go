@@ -56,7 +56,7 @@ const (
 
 func New(options Options) (*GitHub, error) {
 	if options.Mode == "" {
-		options.Mode = Off
+		options.Mode = Online
 	}
 	if options.Mode != Off && options.Mode != Offline && options.Mode != Online {
 		return nil, errors.New("action metadata mode must be off, offline or online")

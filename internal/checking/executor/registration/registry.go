@@ -142,6 +142,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 		}},
 		"deprecated-commands":     {Script: workflowcommands.Checker{}},
+		"invalid-output-file":     {Script: correctness.InvalidOutputFileChecker{}},
 		"if-cond":                 declarationImplementation(correctness.IfCondCheck()),
 		"uncancellable-condition": declarationImplementation(suspicious.UncancellableConditionCheck()),
 		"numeric-values":          declarationImplementation(correctness.NumericValuesCheck()),

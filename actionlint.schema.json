@@ -277,6 +277,12 @@
           "const": "inline-suppression"
         },
         {
+          "description": "Check literal writes to GITHUB_OUTPUT",
+          "markdownDescription": "Check literal writes to GITHUB_OUTPUT",
+          "type": "string",
+          "const": "invalid-output-file"
+        },
+        {
           "description": "Report undefined job dependencies and dependency cycles",
           "markdownDescription": "Report undefined job dependencies and dependency cycles",
           "type": "string",
@@ -287,6 +293,12 @@
           "markdownDescription": "Require explicit job timeouts within configured bounds",
           "type": "string",
           "const": "job-timeout"
+        },
+        {
+          "description": "Report redundant join calls on string literals",
+          "markdownDescription": "Report redundant join calls on string literals",
+          "type": "string",
+          "const": "join-literal"
         },
         {
           "description": "Validate matrix definitions, combinations, and filters",
@@ -1065,6 +1077,7 @@
                                 "unused-suppression",
                                 "missing-local-action",
                                 "string-conditions",
+                                "join-literal",
                                 "coercion",
                                 "suspicious-coercion",
                                 "mixed-type-comparisons",
@@ -1086,6 +1099,7 @@
                                 "workflow-call",
                                 "expression",
                                 "deprecated-commands",
+                                "invalid-output-file",
                                 "if-cond",
                                 "numeric-values",
                                 "empty-triggers",
@@ -1225,6 +1239,12 @@
                               "description": "Validate inline suppression directives",
                               "markdownDescription": "Validate inline suppression directives"
                             },
+                            "invalid-output-file": {
+                              "$ref": "#/$defs/rule-setting",
+                              "title": "invalid-output-file",
+                              "description": "Check literal writes to GITHUB_OUTPUT",
+                              "markdownDescription": "Check literal writes to GITHUB_OUTPUT"
+                            },
                             "job-needs": {
                               "$ref": "#/$defs/rule-setting",
                               "title": "job-needs",
@@ -1352,6 +1372,7 @@
                                 "require-action-metadata",
                                 "script-injection",
                                 "string-conditions",
+                                "join-literal",
                                 "coercion",
                                 "suspicious-coercion",
                                 "mixed-type-comparisons",
@@ -1676,6 +1697,7 @@
                                 "unused-suppression",
                                 "missing-local-action",
                                 "string-conditions",
+                                "join-literal",
                                 "coercion",
                                 "suspicious-coercion",
                                 "mixed-type-comparisons",
@@ -1698,6 +1720,7 @@
                                 "workflow-call",
                                 "expression",
                                 "deprecated-commands",
+                                "invalid-output-file",
                                 "if-cond",
                                 "numeric-values",
                                 "empty-triggers",
@@ -1754,6 +1777,12 @@
                               "title": "empty-triggers",
                               "description": "Report workflows that declare no triggers",
                               "markdownDescription": "Report workflows that declare no triggers"
+                            },
+                            "join-literal": {
+                              "$ref": "#/$defs/rule-setting",
+                              "title": "join-literal",
+                              "description": "Report redundant join calls on string literals. Nursery; disabled by default and excluded from stable presets.",
+                              "markdownDescription": "Report redundant join calls on string literals. Nursery; disabled by default and excluded from stable presets."
                             },
                             "level": {
                               "$ref": "#/$defs/level",
@@ -1842,6 +1871,7 @@
                                 "workflow-call",
                                 "expression",
                                 "deprecated-commands",
+                                "invalid-output-file",
                                 "if-cond",
                                 "numeric-values",
                                 "unpinned-reference",
@@ -2278,6 +2308,7 @@
                                           "unused-suppression",
                                           "missing-local-action",
                                           "string-conditions",
+                                          "join-literal",
                                           "coercion",
                                           "suspicious-coercion",
                                           "mixed-type-comparisons",
@@ -2299,6 +2330,7 @@
                                           "workflow-call",
                                           "expression",
                                           "deprecated-commands",
+                                          "invalid-output-file",
                                           "if-cond",
                                           "numeric-values",
                                           "empty-triggers",
@@ -2438,6 +2470,12 @@
                                         "description": "Validate inline suppression directives",
                                         "markdownDescription": "Validate inline suppression directives"
                                       },
+                                      "invalid-output-file": {
+                                        "$ref": "#/$defs/rule-setting",
+                                        "title": "invalid-output-file",
+                                        "description": "Check literal writes to GITHUB_OUTPUT",
+                                        "markdownDescription": "Check literal writes to GITHUB_OUTPUT"
+                                      },
                                       "job-needs": {
                                         "$ref": "#/$defs/rule-setting",
                                         "title": "job-needs",
@@ -2565,6 +2603,7 @@
                                           "require-action-metadata",
                                           "script-injection",
                                           "string-conditions",
+                                          "join-literal",
                                           "coercion",
                                           "suspicious-coercion",
                                           "mixed-type-comparisons",
@@ -2889,6 +2928,7 @@
                                           "unused-suppression",
                                           "missing-local-action",
                                           "string-conditions",
+                                          "join-literal",
                                           "coercion",
                                           "suspicious-coercion",
                                           "mixed-type-comparisons",
@@ -2911,6 +2951,7 @@
                                           "workflow-call",
                                           "expression",
                                           "deprecated-commands",
+                                          "invalid-output-file",
                                           "if-cond",
                                           "numeric-values",
                                           "empty-triggers",
@@ -2967,6 +3008,12 @@
                                         "title": "empty-triggers",
                                         "description": "Report workflows that declare no triggers",
                                         "markdownDescription": "Report workflows that declare no triggers"
+                                      },
+                                      "join-literal": {
+                                        "$ref": "#/$defs/rule-setting",
+                                        "title": "join-literal",
+                                        "description": "Report redundant join calls on string literals. Nursery; disabled by default and excluded from stable presets.",
+                                        "markdownDescription": "Report redundant join calls on string literals. Nursery; disabled by default and excluded from stable presets."
                                       },
                                       "level": {
                                         "$ref": "#/$defs/level",
@@ -3055,6 +3102,7 @@
                                           "workflow-call",
                                           "expression",
                                           "deprecated-commands",
+                                          "invalid-output-file",
                                           "if-cond",
                                           "numeric-values",
                                           "unpinned-reference",

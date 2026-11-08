@@ -267,7 +267,7 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
-	f.StringVar(&a.inv.Check.ActionMetadata, "action-metadata", "off", "Remote action metadata: off, offline cache only, or online GitHub acquisition")
+	f.StringVar(&a.inv.Check.ActionMetadata, "action-metadata", "online", "Remote action metadata: off, offline cache only, or online GitHub acquisition")
 	annotateFlag(f, "action-metadata", "Dependency resolution")
 	f.StringVar(&a.inv.Check.ResolverCommand, "resolve-with", "", "Resolve remote dependencies using this executable")
 	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")

@@ -570,6 +570,41 @@ Use a known rule name and place the directive on the declaration it is intended 
 
 Configure this rule with `lint.rules.correctness.inline-suppression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## invalid-output-file
+
+GITHUB_OUTPUT requires NAME=value records or multiline records enclosed by NAME<<delimiter and a matching delimiter. This check combines literal writes from Bash and sh scripts, then validates the complete file. It handles literal echo and printf commands, command groups, and cat or tee with literal text from a here-document or pipe. It skips the script if it contains dynamic values, unsupported commands, variable assignments or control flow. Commands that could redefine these utilities also cause the script to be skipped.
+
+Write NAME=value for a single-line output. For a multiline output, write NAME<<delimiter, the value, and the matching delimiter.
+
+- Category: `correctness/scripts`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.invalid-output-file`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Give the output a name instead of writing a JSON document directly.
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: echo '{"available":true}' >> "$GITHUB_OUTPUT"
+```
+
+```yaml
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: echo 'available=true' >> "$GITHUB_OUTPUT"
+```
+
 ## job-needs
 
 Report undefined job dependencies and dependency cycles.
@@ -617,6 +652,19 @@ Set timeout-minutes on the job within the configured bounds.
 
 Configure this rule with `lint.rules.conventions.job-timeout`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## join-literal
+
+join() accepts a string and returns it unchanged. Context names inside the quotes are literal text and are not evaluated. The separator has no effect on that string. This optional check reports a string literal as the first argument even when the call may be deliberate. Arrays and strings supplied by other expressions are not reported.
+
+If you meant to use literal text, remove the redundant call. To combine expression values, use format() or pass an array to join(). This rule does not offer an automatic edit.
+
+- Category: `suspicious/expressions`
+- Provider: `actionlint`
+- Maturity: `nursery`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.suspicious.join-literal`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## matrix
 
 Validate matrix definitions, combinations, and filters.
@@ -632,9 +680,9 @@ Configure this rule with `lint.rules.correctness.matrix`. Use `off`, `on`, `info
 
 ## missing-action-metadata
 
-Require usable metadata for remote action references without enabling network access.
+Report remote action metadata that could not be inspected. Offline cache misses and disabled downloads are recorded in coverage without a lint finding.
 
-Select --action-metadata=online to acquire full SHA-1 manifests, or warm the immutable cache and select offline. Named refs require an action-profile resolver with selection evidence. Invalid parse/schema metadata retains its diagnostics; this does not prove execution or transitive dependency coverage.
+Check access to the referenced repository and its action.yml or action.yaml. Named references need a resolver selected with --resolve-with; full SHA-1 references can be fetched directly.
 
 - Category: `conventions/dependencies`
 - Provider: `actionlint`

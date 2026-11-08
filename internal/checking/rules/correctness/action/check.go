@@ -49,10 +49,7 @@ func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.Refere
 
 func (rule *validator) expressionFindings(s string, bare bool, field string, inputs actionmeta.Inputs) []actionmeta.ExpressionProblem {
 	read := actionmeta.ReadExpressions(s, bare, field, inputs)
-	if rule.advisories {
-		return append(read.Problems, expressionCoercionFindings(read.Expressions, field)...)
-	}
-	return read.Problems
+	return append(read.Problems, expressionSemanticFindings(read.Expressions, field, rule.advisories)...)
 }
 
 func (rule *validator) Error(pos *workflowlang.Pos, code actionmeta.ProblemCode, message string) {
@@ -527,17 +524,15 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 	validation := actionmeta.Validate(meta)
 	problems := validation.Problems
-	if rule.advisories {
-		for _, field := range validation.ExpressionFields {
-			for _, finding := range expressionCoercionFindings(field.Expressions, field.SchemaPath) {
-				position := actionmeta.ExpressionPosition(meta, &field.Value, finding.Offset)
-				end := actionmeta.ExpressionEndPosition(meta, &field.Value, finding)
-				problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: sourcepos.Position{Line: position.Line, Column: position.Col}}
-				if end != nil {
-					problem.End = sourcepos.Position{Line: end.Line, Column: end.Col}
-				}
-				problems = append(problems, problem)
+	for _, field := range validation.ExpressionFields {
+		for _, finding := range expressionSemanticFindings(field.Expressions, field.SchemaPath, rule.advisories) {
+			position := actionmeta.ExpressionPosition(meta, &field.Value, finding.Offset)
+			end := actionmeta.ExpressionEndPosition(meta, &field.Value, finding)
+			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: sourcepos.Position{Line: position.Line, Column: position.Col}}
+			if end != nil {
+				problem.End = sourcepos.Position{Line: end.Line, Column: end.Col}
 			}
+			problems = append(problems, problem)
 		}
 	}
 	for _, problem := range problems {
@@ -580,8 +575,11 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 
 // problemRule selects the configurable check and its reported subcode.
 func problemRule(code actionmeta.ProblemCode) (ruleName, diagnosticCode string) {
-	if code == actionmeta.CodeCoercion {
-		return "coercion", ""
+	switch code {
+	case actionmeta.CodeCoercion, actionmeta.CodeStringCondition, actionmeta.CodeJoinLiteral:
+		return string(code), string(code)
+	case actionmeta.CodeInvalidJSON, actionmeta.CodeFormatPlaceholder:
+		return "expression-call", string(code)
 	}
 	return "action", string(code)
 }

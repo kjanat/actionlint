@@ -2,11 +2,13 @@ package checking
 
 import (
 	"fmt"
+	"slices"
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
@@ -26,7 +28,9 @@ func (s *analysisSession) buildChecks(context ruleexec.Inputs, toolContext tools
 		return selected, err
 	}
 	for _, a := range selected.Scripts {
-		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a})
+		execution := slices.Contains(a.Descriptor().RequiredInputs, rulemeta.Execution)
+		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
+		selected.resolveExecution = selected.resolveExecution || execution
 	}
 	for _, registration := range s.tools {
 		if registration.Enabled != nil && !registration.Enabled(toolContext) {

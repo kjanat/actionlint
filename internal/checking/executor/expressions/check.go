@@ -149,6 +149,7 @@ func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host reposito
 		SuspiciousCoercion:        config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
 		CaseInsensitiveConditions: config.RuleSet().DiagnosticLevel(config, "case-insensitive-conditions") != "off",
 		StringConditions:          config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
+		JoinLiteral:               config.RuleSet().DiagnosticLevel(config, "join-literal") != "off",
 		MixedTypeComparisons:      config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
 		JobReferences:             func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
 		UnsoundTernary:            config.RuleSet().DiagnosticLevel(config, "unsound-ternary") != "off",

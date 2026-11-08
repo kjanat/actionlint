@@ -15,8 +15,9 @@ import (
 )
 
 type FactAnalyzer struct {
-	Analyzer checkinputs.Checker
-	Options  json.RawMessage
+	Analyzer         checkinputs.Checker
+	Options          json.RawMessage
+	IncludeExecution bool
 }
 
 func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
@@ -24,6 +25,9 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		return nil, ErrInvalidBatch
 	}
 	available := []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}
+	if adapter.IncludeExecution {
+		available = append(available, rulemeta.Execution)
+	}
 	prepared, err := checkexecutor.Prepare(checkinputs.Registration{Checker: adapter.Analyzer, Options: adapter.Options}, available)
 	if err != nil {
 		return nil, err
@@ -42,7 +46,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if unit.Input != nil {
 			continue
 		}
-		script, exists := batch.Fact(index, false)
+		script, exists := batch.Fact(index, adapter.IncludeExecution)
 		if !exists {
 			failures = append(failures, fmt.Errorf("%w: script fact %d is unavailable", ErrInvalidBatch, index))
 			break
