@@ -19,6 +19,9 @@ func (r *ResolvedWorkflows) LookupForCall(spec string) (*calls.Metadata, error) 
 	if r == nil || r.cache == nil {
 		return nil, nil
 	}
+	if IsRemoteReference(spec) {
+		return r.cache.remote.Lookup(spec)
+	}
 	key, local := references.LocalWorkflow(spec)
 	if !local {
 		return nil, nil

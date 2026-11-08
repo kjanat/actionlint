@@ -19,6 +19,7 @@ import (
 
 // Cache shares captured reusable-workflow metadata within one repository.
 type Cache struct {
+	remote     *Remote
 	captures   *capture.Store
 	ctx        context.Context
 	sourceRoot string
@@ -240,8 +241,8 @@ func workflowPathToSpec(root, path string) (string, bool) {
 	return p, true
 }
 
-// NewCache creates a repository cache. SetSources supplies captures before reads.
-// An empty root disables lookups.
+// NewCache indexes reusable workflows under root. An empty root disables local
+// file reads. SetSources configures local captures; SetRemote supplies remote metadata.
 func NewCache(root string, dbg io.Writer) *Cache {
 	return &Cache{
 		root:  root,
