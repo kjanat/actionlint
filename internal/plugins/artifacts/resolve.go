@@ -83,7 +83,7 @@ func RequireRemotePin(source string) error {
 	return nil
 }
 
-// The bounds an Options value without Timeout or MaxBytes gets.
+// Default acquisition limits apply when Timeout or MaxBytes is not positive.
 const (
 	DefaultTimeout  = 30 * time.Second
 	DefaultMaxBytes = 128 << 20
@@ -363,6 +363,9 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 	}
 	if pin != "" && fmt.Sprintf("%x", sha256.Sum256(data)) != pin {
 		return nil, errors.New("downloaded plugin artifact SHA256 mismatch")
+	}
+	if cachePath == "" && options.CacheDir != "" {
+		cachePath = filepath.Join(options.CacheDir, fmt.Sprintf("%x", sha256.Sum256(data)))
 	}
 	if cachePath != "" {
 		if err := cacheFile(ctx, cachePath, data); err != nil {
