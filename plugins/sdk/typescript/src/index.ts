@@ -53,16 +53,16 @@ export interface Fix {
 }
 /**
  * An active finding after the plugin's native suppression processing.
- * The host maps snippet positions back to YAML, then applies actionlint ignores.
+ * actionlint maps snippet positions back to YAML, then applies its ignore rules.
  */
 export interface Diagnostic {
-	/** Copy request.filename so the host can bind the finding to the captured source. */
+	/** Copy request.filename so actionlint can bind the finding to the captured source. */
 	filename: string;
 	/** Stable upstream or plugin diagnostic code, such as "SC2086". */
 	code: string;
 	/** Human-readable explanation and correction; exclude terminal colour escapes. */
 	message: string;
-	/** Tool-reported severity; omit when the host should use its rule policy. */
+	/** Tool-reported severity; omit when actionlint should use its rule policy. */
 	severity?: Severity;
 	/** First affected position in request.source; snippet checks use snippet-local coordinates. */
 	location: Location;
@@ -394,7 +394,7 @@ export interface ProcessOptions extends ProviderIdentity {
 		};
 		/** Required for arbitrary JSON: map records into the host diagnostics format. jqOutput loads a file at pack time. */
 		transform?: {
-			/** Transform language; the host runs jq without an external jq installation. */
+			/** Transform language; actionlint runs jq without an external jq installation. */
 			language: 'jq';
 			/** jq source converting decoded tool output into a diagnostics array. */
 			inline: string;
@@ -409,7 +409,7 @@ export interface ProcessOptions extends ProviderIdentity {
 export interface ProcessProvider extends ProcessOptions {
 	/** Use shell preparation to infer the interpreter, reproduce its options and map inserted comments. */
 	preparation?: 'shell';
-	/** JSON pointers to path strings or path arrays whose configuration variables the host expands. */
+	/** JSON pointers to path strings or path arrays whose configuration variables actionlint expands. */
 	configurationPaths?: string[];
 	/** Convert validated config into {options, source_prefix?, language?, read_access?} before execution. */
 	configurationTransform?: { language: 'jq'; inline: string } | JQFile;
@@ -505,8 +505,8 @@ export function defineProcessProvider<const T extends Omit<DocumentProcessProvid
 	provider: T & Omit<DocumentProcessProvider, 'kind'>,
 ): T & DocumentProcessProvider;
 /**
- * Describe an installed executable for prepared script snippets; the host selects supported shells.
- * Arguments are separate tokens; jq transforms and schema are checked by the host.
+ * Describe an installed executable for prepared script snippets; actionlint selects supported shells.
+ * Arguments are separate tokens. actionlint checks the jq transforms and schema.
  * @example
  * ```ts
  * import { defineProcessProvider, jqOutput } from '@kjanat-actionlint/plugin-sdk';
@@ -565,7 +565,7 @@ export function defineDocumentProvider<const T extends Omit<DocumentProvider, 'k
 }
 /**
  * Reference a jq output transform relative to the provider definition file.
- * pack embeds the file contents, so authors need neither a manual digest nor a runtime jq executable.
+ * The pack command embeds the file contents in the plugin package.
  * @param path Source file to embed, for example './diagnostics.jq'.
  */
 export function jqOutput(path: string): JQFile {

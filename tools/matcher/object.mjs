@@ -1,4 +1,4 @@
-const ESCAPE = '(?:\\x1b\\[\\d+m)'; // Matching to ANSI color escape sequence
+const ESCAPE = '(?:\\x1b\\[\\d+m)'; // Match an ANSI color escape sequence.
 const FILEPATH = '.+?';
 const LINE = '\\d+';
 const COL = '\\d+';

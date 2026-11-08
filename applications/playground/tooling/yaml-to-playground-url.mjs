@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-// This script inputs YAML workflow code from stdin and outputs a playground URL
-// for the workflow to stdout.
+// Read a YAML workflow from stdin and write its playground URL to stdout.
 //
 // Usage:
 //   pbpaste | node ./applications/playground/tooling/yaml-to-playground-url.mjs

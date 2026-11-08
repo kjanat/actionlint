@@ -3,8 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-// Authoring fixtures deliberately exercise the current host's real jq/schema
-// boundary. Build that host once, then test SDK TypeScript sources directly.
+// These tests run actionlint's jq transforms and schema validation. Unless
+// ACTIONLINT selects an executable, build actionlint from this checkout once.
+// Test the SDK TypeScript source directly.
 const sdk = resolve(import.meta.dirname, '..');
 const repository = resolve(sdk, '../../..');
 const temporary = await mkdtemp(join(tmpdir(), 'actionlint-sdk-tests-'));

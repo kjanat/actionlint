@@ -145,7 +145,7 @@ async function pack(manifestPath: string, options: AuthoringOptions): Promise<st
 		packageData.files = withPublishedFiles(packageData.files, bundleFile);
 		packageChanged = true;
 	}
-	// All host validation precedes writes to the author's package.
+	// Validate with actionlint before writing to the author's package.
 	if (bundleFile !== undefined && isRecord(program) && typeof program.inline === 'string') {
 		await writeFile(join(root, bundleFile), program.inline);
 	}

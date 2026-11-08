@@ -42,7 +42,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 	exit
 fi
 
-# Default value is updated manually on release
+# Update the default version manually for each release.
 version="2.0.0"
 if [[ -n "$1" ]]; then
 	if [[ "$1" == 'latest' || "$1" == 'LATEST' ]]; then
@@ -150,11 +150,11 @@ installed_version="$("${exe}" -version)"
 echo "Done: ${installed_version}"
 
 if [[ -n "${GITHUB_ACTION}" ]]; then
-	# On GitHub Actions, set executable path to output
+	# On GitHub Actions, write the executable path to the step output.
 	if [[ -n "${GITHUB_OUTPUT}" ]]; then
 		echo "executable=${exe}" >>"${GITHUB_OUTPUT}"
 	else
-		# GitHub Enterprise instance may not introduce the new set-output command yet (see #240)
+		# Older GitHub Enterprise instances may not support the output file (see #240).
 		echo "::set-output name=executable::${exe}"
 	fi
 fi
