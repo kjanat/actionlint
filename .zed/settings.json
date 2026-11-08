@@ -9,6 +9,9 @@
   "prettier": {
     "allowed": false
   },
+  "file_types": {
+    "TOML": ["mise.lock"]
+  },
   "languages": {
     "JavaScript": {
       "language_servers": [

@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
@@ -37,11 +36,11 @@ export function replaceSection(document, section) {
 	return document.slice(0, start) + section + document.slice(finish + end.length);
 }
 
-/** @param {string} root @param {string} cwd @param {string[]} args @param {boolean} allowFindings */
-function command(root, cwd, args, allowFindings = false) {
+/** @param {string} root @param {string} tool @param {string[]} args @param {boolean} allowFindings */
+function command(root, tool, args, allowFindings = false) {
 	try {
 		return execFileSync('mise', args, {
-			cwd,
+			cwd: root,
 			encoding: 'utf8',
 			windowsHide: true,
 			stdio: ['ignore', 'pipe', 'pipe'],
@@ -50,7 +49,7 @@ function command(root, cwd, args, allowFindings = false) {
 				MISE_YES: '1',
 				MISE_SILENT: '1',
 				MISE_SAFE: '1',
-				MISE_ENABLE_TOOLS: `${fork},${upstream}`,
+				MISE_ENABLE_TOOLS: tool,
 				MISE_TRUSTED_CONFIG_PATHS: root,
 				MISE_MINIMUM_RELEASE_AGE_EXCLUDES: fork,
 			},
@@ -70,17 +69,11 @@ function command(root, cwd, args, allowFindings = false) {
 
 /** @param {string} root @param {string} tool */
 function releasedBinary(root, tool) {
-	const directory = mkdtempSync(join(tmpdir(), 'actionlint-readme-release-'));
-	try {
-		command(root, directory, ['install', `${tool}@latest`]);
-		const binary = command(root, directory, ['which', 'actionlint', '--tool', `${tool}@latest`]).trim();
-		if (!isAbsolute(binary) || /[\r\n]/.test(binary)) {
-			throw new Error(`Mise returned an invalid executable path for ${tool}.`);
-		}
-		return binary;
-	} finally {
-		rmSync(directory, { recursive: true, force: true });
+	const binary = command(root, tool, ['which', 'actionlint', '--tool', tool]).trim();
+	if (!isAbsolute(binary) || /[\r\n]/.test(binary)) {
+		throw new Error(`Mise returned an invalid executable path for ${tool}.`);
 	}
+	return binary;
 }
 
 /** @param {string} root @param {string} tool @param {boolean} configuration @param {(message: string) => void} log */
@@ -88,7 +81,7 @@ function measure(root, tool, configuration, log) {
 	const binary = releasedBinary(root, tool);
 	/** @param {string[]} args */
 	const run = (args, findings = false) =>
-		command(root, root, ['exec', '--no-deps', `${tool}@latest`, '--', binary, ...args], findings);
+		command(root, tool, ['exec', '--no-deps', tool, '--', binary, ...args], findings);
 	const firstLine = run(['-version']).trim().split(/\r?\n/)[0];
 	const version = configuration ? firstLine.slice(firstLine.lastIndexOf(' ') + 1) : firstLine;
 	if (!version) throw new Error(`Mise reported no version for ${tool}.`);
