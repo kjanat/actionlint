@@ -33,7 +33,7 @@ func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 }
 
 func TestRegisteredAnalyzerSuppressions(t *testing.T) {
-	const workflow = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	const workflow = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
 	for _, tc := range []struct {
 		name, directive, before, config string
 		want                            []string

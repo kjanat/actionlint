@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hi
+permissions: {}
 `
 
 const brokenWorkflow = `on: push
@@ -46,6 +47,7 @@ jobs:
     runs-on: unknown-runner
     steps:
       - run: echo hi
+permissions: {}
 `
 
 func knownRunnerOverlay(t *testing.T) repoconfig.Overlay {

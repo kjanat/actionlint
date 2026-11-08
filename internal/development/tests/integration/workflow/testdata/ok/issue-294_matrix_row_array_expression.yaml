@@ -8,3 +8,4 @@ jobs:
         PR: ${{ github.event.workflow_run.pull_requests.*.number }}
     steps:
       - run: echo '${{ matrix.PR }}'
+permissions: {}

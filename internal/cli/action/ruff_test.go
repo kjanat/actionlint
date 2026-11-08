@@ -29,6 +29,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `, ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: " + filepath.ToSlash(modulePath) + "\n"})
 	for _, tc := range []struct {
 		disabled, config string

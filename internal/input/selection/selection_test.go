@@ -2,8 +2,6 @@ package selection
 
 import (
 	"testing"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestValidPatternPortablePaths(t *testing.T) {
@@ -76,10 +74,10 @@ func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
 func TestSelectionYAMLRoundTrip(t *testing.T) {
 	for _, source := range []string{"includes: []\n", "excludes:\n    - local/skip.yml\nincludes:\n    - local/*\n"} {
 		var selection Selection
-		if err := yaml.Unmarshal([]byte(source), &selection); err != nil {
+		if err := decodeSelectionConfig([]byte(source), &selection); err != nil {
 			t.Fatal(err)
 		}
-		encoded, err := yaml.Marshal(selection)
+		encoded, err := encodeSelectionConfig(selection)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +86,7 @@ func TestSelectionYAMLRoundTrip(t *testing.T) {
 		}
 	}
 	var selection Selection
-	if err := yaml.Unmarshal([]byte("includes: [../*]\n"), &selection); err == nil {
+	if err := decodeSelectionConfig([]byte("includes: [../*]\n"), &selection); err == nil {
 		t.Fatal("accepted escaping include")
 	}
 }

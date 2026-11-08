@@ -17,3 +17,4 @@ jobs:
   job4:
     # ERROR: This workflow does not exist
     uses: ./.github/workflows/not-existing.yml
+permissions: {}

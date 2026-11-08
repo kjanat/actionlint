@@ -31,3 +31,4 @@ jobs:
     steps:
       # ERROR: Cannot access outputs across jobs
       - run: echo '${{ needs.build.outputs.built }}'
+permissions: {}

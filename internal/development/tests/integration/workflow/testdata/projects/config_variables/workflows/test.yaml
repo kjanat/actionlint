@@ -12,3 +12,4 @@ jobs:
       - run: echo '${{ vars.Foo }}'
       # ERROR: Undefined var
       - run: echo '${{ vars.PIYO }}'
+permissions: {}

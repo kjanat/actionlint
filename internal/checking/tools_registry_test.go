@@ -44,7 +44,7 @@ func TestIndependentProcessTool(t *testing.T) {
 		return registration
 	}
 	registration := register("ACTIONLINT_TEST_SCRIPT_PROVIDER=1")
-	const content = "on: push\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing\n        shell: python\n      - run: echo skipped\n        shell: bash\n"
+	const content = "on: push\njobs:\n  job:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing\n        shell: python\n      - run: echo skipped\n        shell: bash\npermissions: {}\n"
 	source := workspace.Source{Path: "test.yml", Content: []byte(content)}
 	result, err := checking.Analyze(t.Context(), checking.Options{Tools: []tools.Registration{registration}}, []workspace.Source{source})
 	if err != nil {

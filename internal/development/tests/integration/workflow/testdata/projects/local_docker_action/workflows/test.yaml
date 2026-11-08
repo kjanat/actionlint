@@ -14,3 +14,4 @@ jobs:
       - uses: ./invalid_dockerfile
       - uses: ./ok_docker_ghcr.io
       - uses: ./ok_docker_docker.io
+permissions: {}

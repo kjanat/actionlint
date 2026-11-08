@@ -27,3 +27,4 @@ jobs:
       queue: prefix-${{ vars.QUEUE }}
     steps:
       - run: echo
+permissions: {}

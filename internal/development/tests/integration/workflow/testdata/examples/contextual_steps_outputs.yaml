@@ -20,3 +20,4 @@ jobs:
     steps:
       # Access undefined step outputs. Step objects are job-local
       - run: echo '${{ steps.get_value.outputs.name }}'
+permissions: {}

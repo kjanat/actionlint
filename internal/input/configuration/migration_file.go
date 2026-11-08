@@ -11,8 +11,8 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // FileMigration holds a preview and the exact input graph used to prepare it.
@@ -83,12 +83,14 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, regist
 		}
 		return content, err
 	}
-	normalize := func(origin string, node *yaml.Node) (*yaml.Node, error) {
+	normalize := func(origin string, parsed document.Document) (document.Document, error) {
+		node := parsed.Value
 		if err := ValidateSourcePaths(origin, node); err != nil {
-			return nil, err
+			return document.Document{}, err
 		}
-		resolved, err := ruleSet.resolveNode(node, nil, false)
-		return resolved.Node, err
+		resolved, err := ruleSet.resolveValue(node, documentInputs(parsed), false)
+		parsed.Value = resolved.Value
+		return parsed, err
 	}
 	before, err := loadConfigTree(absolute, read, normalize)
 	if err != nil {
@@ -113,24 +115,24 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, regist
 	if err != nil {
 		return nil, err
 	}
-	effective := func(node *yaml.Node) (map[string]any, error) {
+	effective := func(node any) (map[string]any, error) {
 		// Compare the merged graphs in the same vocabulary. Comparing raw
 		// category mappings would reject every intentional category migration.
 		canonical, _, err := ruleSet.migrateRuleCategories(node, registrations)
 		if err != nil {
 			return nil, err
 		}
-		resolved, err := ruleSet.resolveNode(canonical, nil, false)
+		resolved, err := ruleSet.resolveValue(canonical, nil, false)
 		if err != nil {
 			return nil, err
 		}
 		return ruleSet.EffectiveValues(resolved.Config)
 	}
-	beforeValues, err := effective(before.Node)
+	beforeValues, err := effective(before.Value)
 	if err != nil {
 		return nil, err
 	}
-	afterValues, err := effective(after.Node)
+	afterValues, err := effective(after.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +156,14 @@ func (m *FileMigration) SetContent(content []byte) error {
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
 		return original.bytes(), nil
-	}, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+	}, func(origin string, parsed document.Document) (document.Document, error) {
+		node := parsed.Value
 		if err := ValidateSourcePaths(origin, node); err != nil {
-			return nil, err
+			return document.Document{}, err
 		}
-		resolved, err := ruleSet.resolveNode(node, nil, false)
-		return resolved.Node, err
+		resolved, err := ruleSet.resolveValue(node, documentInputs(parsed), false)
+		parsed.Value = resolved.Value
+		return parsed, err
 	}); err != nil {
 		return err
 	}

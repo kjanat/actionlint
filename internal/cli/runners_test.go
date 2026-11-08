@@ -42,7 +42,7 @@ func TestRunnerProviderCLI(t *testing.T) {
 		status int
 	}{{"buildkite", 0}, {"github", 1}} {
 		var output bytes.Buffer
-		command := Command{Stdin: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: buildkite-windows\n    steps: [{run: echo ok}]\n"), Stdout: &output, Stderr: &output}
+		command := Command{Stdin: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: buildkite-windows\n    steps: [{run: echo ok}]\npermissions: {}\n"), Stdout: &output, Stderr: &output}
 		status := command.MainContext(t.Context(), []string{"actionlint", "--config", "actionlint.yaml", "--no-tool=shellcheck", "--no-tool=ruff", "--plugin", artifact, "--runner-target", tc.target, "--runner-scope", "fixture", "--runner-snapshot", "runners.json", "-"})
 		if status != tc.status {
 			t.Fatalf("%s: status %d: %s", tc.target, status, &output)
@@ -84,7 +84,7 @@ func TestGitHubRunnerSnapshotCLI(t *testing.T) {
 		{"snapshot", "other", 3, "scope does not match"},
 	} {
 		var output bytes.Buffer
-		command := Command{Stdin: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: desktop-pool\n    steps: [{run: echo ok}]\n"), Stdout: &output, Stderr: &output}
+		command := Command{Stdin: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: desktop-pool\n    steps: [{run: echo ok}]\npermissions: {}\n"), Stdout: &output, Stderr: &output}
 		status := command.MainContext(t.Context(), []string{"actionlint", "--config", "actionlint.yaml", "--no-tool=shellcheck", "--no-tool=ruff", "--runner-provider", tc.provider, "--runner-scope", tc.scope, "--runner-snapshot", "runners.json", "-"})
 		if status != tc.status || !strings.Contains(output.String(), tc.message) {
 			t.Fatalf("provider=%s scope=%s status=%d output=%s", tc.provider, tc.scope, status, &output)

@@ -10,3 +10,4 @@ jobs:
           filters: ...
       - run: npm run lint:md
         if: ${{ steps.filter.outputs.md == 'true' }}
+permissions: {}

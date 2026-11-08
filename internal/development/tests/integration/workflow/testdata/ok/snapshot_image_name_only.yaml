@@ -6,3 +6,4 @@ jobs:
     snapshot: my-custom-image
     steps:
       - run: echo hello
+permissions: {}

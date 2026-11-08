@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // ToolsConfig configures tool providers, keyed by the rule name each provider
@@ -41,12 +41,9 @@ type ToolSettings struct {
 }
 
 type (
-	toolSettingsValue interface{ toolSettingsValue() }
-	toolSettingsPath  string
-	// toolSettingsInline is the YAML encoding of an inline settings mapping.
-	// Holding the encoding, not decoded values, means no caller can alias or
-	// mutate shared settings: every read decodes a fresh copy.
-	toolSettingsInline []byte
+	toolSettingsValue  interface{ toolSettingsValue() }
+	toolSettingsPath   string
+	toolSettingsInline map[string]any
 )
 
 func (toolSettingsPath) toolSettingsValue()   {}
@@ -61,21 +58,15 @@ func inlineSettings(values map[string]any) (toolSettingsInline, error) {
 	if _, err := json.Marshal(values); err != nil {
 		return nil, err
 	}
-	document, err := yaml.Marshal(values)
-	if err != nil {
-		return nil, err
+	owned := make(toolSettingsInline, len(values))
+	for key, value := range values {
+		owned[key] = binding.Native(value)
 	}
-	return toolSettingsInline(document), nil
+	return owned, nil
 }
 
-// values decodes a fresh copy of the settings. The encoding was produced by
-// inlineSettings, so a decoding failure is a defect in this package.
 func (inline toolSettingsInline) values() map[string]any {
-	values := map[string]any{}
-	if err := yaml.Unmarshal(inline, &values); err != nil {
-		panic("decode inline tool settings: " + err.Error())
-	}
-	return values
+	return cloneObject(map[string]any(inline))
 }
 
 // ToolConfigPath selects a configuration file or directory without reading
@@ -107,7 +98,7 @@ func validatedToolSettings(name string, known toolProvider, values map[string]an
 	}
 	if known.schema != nil {
 		if err := known.schema.Validate(document); err != nil {
-			return nil, fmt.Errorf("tools.%s.config: %w", name, err)
+			return nil, binding.Context(fmt.Sprintf("tools.%s.config", name), schemaBindingError(err))
 		}
 	}
 	inline, err := inlineSettings(values)
@@ -143,8 +134,8 @@ func (s *ToolSettings) FromInput() bool {
 	return s != nil && s.fromInput
 }
 
-// MarshalYAML preserves the selected path or inline mapping in resolved output.
-func (s *ToolSettings) MarshalYAML() (any, error) {
+// EncodeConfig preserves the selected path or inline mapping in resolved output.
+func (s *ToolSettings) EncodeConfig() (any, error) {
 	if s == nil {
 		return nil, nil
 	}
@@ -158,79 +149,65 @@ func (s *ToolSettings) MarshalYAML() (any, error) {
 	}
 }
 
-// UnmarshalYAML decodes each entry with its provider's shorthands and
+// DecodeConfig decodes each entry with its provider's shorthands and
 // configuration schema. Entry names are bound to registered providers later,
 // by ValidateRuleNames, as lint.rules.plugins names are.
-func (tools *ToolsConfig) UnmarshalYAML(node *yaml.Node) error {
-	var entries map[string]yaml.Node
-	if err := node.Decode(&entries); err != nil {
-		return err
+func (tools *ToolsConfig) DecodeConfig(value any) error {
+	if value == nil {
+		*tools = nil
+		return nil
 	}
-	decoded := make(ToolsConfig, len(entries))
+	entries, ok := value.(map[string]any)
+	if !ok {
+		return errors.New("tools must be a mapping")
+	}
+	next := make(ToolsConfig, len(entries))
 	for _, name := range slices.Sorted(maps.Keys(entries)) {
-		entry := entries[name]
-		tool, err := decodeToolConfig(name, &entry)
+		tool, err := decodeToolConfig(name, entries[name])
 		if err != nil {
-			return err
+			return binding.At(name, err)
 		}
-		decoded[name] = tool
+		next[name] = tool
 	}
-	*tools = decoded
+	*tools = next
 	return nil
 }
 
-func dealias(node *yaml.Node) *yaml.Node {
-	for node.Kind == yaml.AliasNode && node.Alias != nil {
-		node = node.Alias
-	}
-	return node
-}
-
-// decodeToolConfig decodes tools.<name>: null, the boolean shorthand for
-// enabled, or a mapping of host keys and provider shorthands.
-func decodeToolConfig(name string, node *yaml.Node) (ToolConfig, error) {
-	node = dealias(node)
-	if node.Kind == yaml.ScalarNode && node.ShortTag() == "!!null" {
+func decodeToolConfig(name string, value any) (ToolConfig, error) {
+	if value == nil {
 		return ToolConfig{}, nil
 	}
-	if node.Kind == yaml.ScalarNode && node.ShortTag() == "!!bool" {
-		var enabled bool
-		if err := node.Decode(&enabled); err != nil {
-			return ToolConfig{}, err
-		}
+	if enabled, ok := value.(bool); ok {
 		return ToolConfig{Enabled: &enabled}, nil
 	}
-	if node.Kind != yaml.MappingNode {
-		return ToolConfig{}, fmt.Errorf("tools.%s must be a boolean or a mapping at line %d", name, node.Line)
+	object, ok := value.(map[string]any)
+	if !ok {
+		return ToolConfig{}, fmt.Errorf("tools.%s must be a boolean or a mapping", name)
 	}
 	known, bundled := toolProviders()[name]
-	node, err := foldToolShorthands(name, node, known.shorthands)
+	normalized, err := foldToolShorthands(name, object, known.shorthands)
 	if err != nil {
 		return ToolConfig{}, err
 	}
-	var fields map[string]yaml.Node
-	if err := node.Decode(&fields); err != nil {
-		return ToolConfig{}, err
+	fields, ok := normalized.(map[string]any)
+	if !ok {
+		return ToolConfig{}, errors.New("normalized tool entry must be a mapping")
 	}
 	var tool ToolConfig
 	for _, key := range slices.Sorted(maps.Keys(fields)) {
-		field := fields[key]
-		value := dealias(&field)
+		value := fields[key]
 		switch key {
 		case "enabled":
-			if value.ShortTag() != "!!bool" && value.ShortTag() != "!!null" {
-				return ToolConfig{}, fmt.Errorf("tools.%s: enabled must be a boolean at line %d", name, value.Line)
-			}
-			err = value.Decode(&tool.Enabled)
+			err = binding.Decode(value, &tool.Enabled)
 		case "backend":
-			err = value.Decode(&tool.Backend)
+			err = binding.Decode(value, &tool.Backend)
 		case "config":
 			tool.Config, err = decodeToolSettings(name, value, known, bundled)
 		default:
-			return ToolConfig{}, fmt.Errorf("yaml: unknown key %q in tools.%s at line %d", key, name, value.Line)
+			return ToolConfig{}, binding.At(key, fmt.Errorf("unknown key %q in tools.%s", key, name))
 		}
 		if err != nil {
-			return ToolConfig{}, err
+			return ToolConfig{}, binding.At(key, err)
 		}
 	}
 	return tool, nil
@@ -240,218 +217,140 @@ func decodeToolConfig(name string, node *yaml.Node) (ToolConfig, error) {
 // validates inline settings, and a path is accepted only for providers that
 // read configuration files. Other providers validate their settings when the
 // engine loads.
-func decodeToolSettings(name string, node *yaml.Node, known toolProvider, bundled bool) (*ToolSettings, error) {
-	switch {
-	case node.Kind == yaml.ScalarNode && node.ShortTag() == "!!null":
+func decodeToolSettings(name string, value any, known toolProvider, bundled bool) (*ToolSettings, error) {
+	switch selected := value.(type) {
+	case nil:
 		return nil, nil
-	case node.Kind == yaml.ScalarNode && node.ShortTag() == "!!str":
+	case string:
 		if bundled && !known.configFiles {
 			return nil, fmt.Errorf("tools.%s.config must be a mapping; this tool reads no configuration files", name)
 		}
-		settings, err := ToolConfigPath(node.Value)
-		if err != nil {
-			return nil, fmt.Errorf("tools.%s.config: %w", name, err)
+		return ToolConfigPath(selected)
+	case map[string]any:
+		return validatedToolSettings(name, known, selected)
+	default:
+		return nil, fmt.Errorf("tools.%s.config must be a path or mapping", name)
+	}
+}
+
+// foldToolShorthands applies each provider's declared property paths and precedence.
+func foldToolShorthands(name string, value any, shorthands map[string]configschema.Shorthand) (any, error) {
+	if !isMapping(value) {
+		return value, nil
+	}
+	next := cloneMapping(value)
+	config := field(value, "config")
+	var selected []string
+	for key := range members(value) {
+		if _, ok := shorthands[key]; ok {
+			selected = append(selected, key)
 		}
-		return settings, nil
-	case node.Kind == yaml.MappingNode:
-		var values map[string]any
-		if err := node.Decode(&values); err != nil {
+	}
+	if len(selected) == 0 {
+		return value, nil
+	}
+	slices.Sort(selected)
+	merged := any(mapping())
+	if config != nil && !isNull(config) {
+		if !isMapping(config) {
+			return nil, binding.At(selected[0], fmt.Errorf("tools.%s.%s cannot be combined with a configuration file path", name, selected[0]))
+		}
+		merged = config
+	}
+	for _, key := range selected {
+		shorthand := shorthands[key]
+		child := members(value)[key]
+		replace := shorthand.Precedence == configschema.PrecedenceShorthand && child != nil
+		var err error
+		merged, err = foldShorthand(merged, shorthand.Path, 0, child, replace)
+		if err != nil {
+			return nil, binding.At(key, fmt.Errorf("tools.%s.%s: %w", name, key, err))
+		}
+		removeField(next, key)
+	}
+	setField(next, "config", merged)
+	return next, nil
+}
+
+func foldShorthand(value any, path []string, depth int, selected any, replace bool) (any, error) {
+	next := cloneMapping(value)
+	previous := field(value, path[depth])
+	if previous == nil {
+		setField(next, path[depth], shorthandMapping(path[depth+1:], selected))
+		return next, nil
+	}
+	switch {
+	case depth == len(path)-1:
+		if replace || isNull(previous) {
+			setField(next, path[depth], selected)
+		}
+	case isNull(previous):
+		setField(next, path[depth], shorthandMapping(path[depth+1:], selected))
+	case isMapping(previous):
+		nested, err := foldShorthand(previous, path, depth+1, selected, replace)
+		if err != nil {
 			return nil, err
 		}
-		return validatedToolSettings(name, known, values)
+		setField(next, path[depth], nested)
 	default:
-		return nil, fmt.Errorf("tools.%s.config must be a path or mapping at line %d", name, node.Line)
+		return nil, fmt.Errorf("config.%s must be a mapping to hold it", strings.Join(path[:depth+1], "."))
 	}
+	return next, nil
 }
 
-// foldToolShorthands moves provider shorthand keys of a tools.<name> mapping
-// to the config properties they set. When the mapping also sets a property
-// under config, the shorthand's precedence picks the value kept. It returns
-// node itself when there is nothing to fold, and an error when a shorthand
-// meets a configuration file path or a property path through a non-mapping.
-func foldToolShorthands(name string, node *yaml.Node, shorthands map[string]configschema.Shorthand) (*yaml.Node, error) {
-	var folded []*yaml.Node
-	rest := make([]*yaml.Node, 0, len(node.Content))
-	var config *yaml.Node
-	for i := 0; i+1 < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
-		_, shorthand := shorthands[key.Value]
-		switch {
-		case shorthand:
-			folded = append(folded, key, value)
-		case key.Value == "config":
-			config = dealias(value)
-			rest = append(rest, key, value)
-		default:
-			rest = append(rest, key, value)
-		}
-	}
-	if len(folded) == 0 {
-		return node, nil
-	}
-	merged := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Line: node.Line, Column: node.Column}
-	if config != nil {
-		switch {
-		case config.Kind == yaml.MappingNode:
-			merged = config
-		case !isNull(config):
-			return nil, fmt.Errorf("tools.%s.%s cannot be combined with a configuration file path at line %d", name, folded[0].Value, folded[0].Line)
-		}
-	}
-	for i := 0; i < len(folded); i += 2 {
-		key, value := folded[i], folded[i+1]
-		shorthand := shorthands[key.Value]
-		replace := shorthand.Precedence == configschema.PrecedenceShorthand && !isNull(dealias(value))
-		var err error
-		if merged, err = foldShorthand(merged, shorthand.Path, 0, value, replace); err != nil {
-			return nil, fmt.Errorf("tools.%s.%s at line %d: %w", name, key.Value, key.Line, err)
-		}
-	}
-	normalized := *node
-	normalized.Content = rest
-	if config == nil {
-		normalized.Content = append(normalized.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "config"}, merged)
-	} else {
-		for i := 0; i+1 < len(normalized.Content); i += 2 {
-			if normalized.Content[i].Value == "config" {
-				normalized.Content[i+1] = merged
-			}
-		}
-	}
-	return &normalized, nil
-}
-
-func isNull(node *yaml.Node) bool {
-	return node.Kind == yaml.ScalarNode && node.ShortTag() == "!!null"
-}
-
-// foldShorthand returns a copy of mapping with the property at path[depth:]
-// set to value. An absent or null property is always set; an existing value
-// is replaced only when replace is true. Missing mappings along the path are
-// created, and mapping itself is never modified.
-func foldShorthand(mapping *yaml.Node, path []string, depth int, value *yaml.Node, replace bool) (*yaml.Node, error) {
-	folded := *mapping
-	folded.Content = slices.Clone(mapping.Content)
-	for i := 0; i+1 < len(folded.Content); i += 2 {
-		if folded.Content[i].Value != path[depth] {
-			continue
-		}
-		existing := dealias(folded.Content[i+1])
-		switch {
-		case depth == len(path)-1:
-			if replace || isNull(existing) {
-				folded.Content[i+1] = value
-			}
-		case isNull(existing):
-			folded.Content[i+1] = shorthandMapping(path[depth+1:], value)
-		case existing.Kind == yaml.MappingNode:
-			nested, err := foldShorthand(existing, path, depth+1, value, replace)
-			if err != nil {
-				return nil, err
-			}
-			folded.Content[i+1] = nested
-		default:
-			return nil, fmt.Errorf("config.%s must be a mapping to hold it", strings.Join(path[:depth+1], "."))
-		}
-		return &folded, nil
-	}
-	folded.Content = append(folded.Content, shorthandKey(path[depth], value), shorthandMapping(path[depth+1:], value))
-	return &folded, nil
-}
-
-// shorthandMapping nests value under path, one mapping per property name.
-func shorthandMapping(path []string, value *yaml.Node) *yaml.Node {
+func shorthandMapping(path []string, value any) any {
 	if len(path) == 0 {
 		return value
 	}
-	return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Line: value.Line, Column: value.Column, Content: []*yaml.Node{
-		shorthandKey(path[0], value), shorthandMapping(path[1:], value),
-	}}
+	return map[string]any{path[0]: shorthandMapping(path[1:], value)}
 }
 
-func shorthandKey(name string, value *yaml.Node) *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name, Line: value.Line, Column: value.Column}
+func normalizeToolSwitch(value any) any {
+	if !isMapping(value) {
+		return value
+	}
+	next := cloneMapping(value)
+	if tools := field(value, "tools"); isMapping(tools) {
+		entries := cloneMapping(tools)
+		for name, entry := range members(tools) {
+			setField(entries, name, normalizeToolEntry(name, entry))
+		}
+		setField(next, "tools", entries)
+	}
+	return next
 }
 
-// normalizeToolSwitch rewrites every tools.<name> entry before merging, so a
-// partial setting overrides only what it names: the boolean shorthand becomes
-// {enabled: ...}, provider shorthands fold into config, and selecting one
-// backend transport resets the other.
-func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
-	if node == nil {
-		return nil
+func normalizeToolEntry(name string, value any) any {
+	if isBool(value) {
+		return map[string]any{"enabled": value}
 	}
-	if node.Kind == yaml.DocumentNode && len(node.Content) == 1 {
-		normalized := *node
-		normalized.Content = []*yaml.Node{normalizeToolSwitch(node.Content[0])}
-		return &normalized
+	if !isMapping(value) {
+		return value
 	}
-	if node.Kind != yaml.MappingNode {
-		return node
+	if folded, err := foldToolShorthands(name, value, toolProviders()[name].shorthands); err == nil {
+		value = folded
 	}
-	normalized := *node
-	normalized.Content = slices.Clone(node.Content)
-	for i := 0; i+1 < len(normalized.Content); i += 2 {
-		tools := normalized.Content[i+1]
-		if normalized.Content[i].Value != "tools" || tools.Kind != yaml.MappingNode {
-			continue
-		}
-		entries := *tools
-		entries.Content = slices.Clone(tools.Content)
-		for j := 0; j+1 < len(entries.Content); j += 2 {
-			entries.Content[j+1] = normalizeToolEntry(entries.Content[j].Value, entries.Content[j+1])
-		}
-		normalized.Content[i+1] = &entries
+	next := cloneMapping(value)
+	if backend := field(value, "backend"); backend != nil {
+		setField(next, "backend", normalizeBackendSelection(backend))
 	}
-	return &normalized
+	return next
 }
 
-func normalizeToolEntry(name string, entry *yaml.Node) *yaml.Node {
-	if entry.Kind == yaml.ScalarNode && entry.Tag == "!!bool" {
-		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Line: entry.Line, Column: entry.Column, Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "enabled", Line: entry.Line, Column: entry.Column}, entry,
-		}}
+func normalizeBackendSelection(value any) any {
+	if !isMapping(value) {
+		return value
 	}
-	if entry.Kind != yaml.MappingNode {
-		return entry
+	_, process := members(value)["process"]
+	_, wasm := members(value)["wasm"]
+	if process == wasm {
+		return value
 	}
-	// A conflicting shorthand stays in place for decoding to report.
-	if folded, err := foldToolShorthands(name, entry, toolProviders()[name].shorthands); err == nil {
-		entry = folded
+	next := cloneMapping(value)
+	if process {
+		setField(next, "wasm", nil)
+	} else {
+		setField(next, "process", nil)
 	}
-	normalized := *entry
-	normalized.Content = slices.Clone(entry.Content)
-	for i := 0; i+1 < len(normalized.Content); i += 2 {
-		if normalized.Content[i].Value == "backend" {
-			normalized.Content[i+1] = normalizeBackendSelection(normalized.Content[i+1])
-		}
-	}
-	return &normalized
-}
-
-// normalizeBackendSelection adds a null for the transport a backend mapping
-// does not select, so merging it replaces an inherited selection.
-func normalizeBackendSelection(backend *yaml.Node) *yaml.Node {
-	if backend.Kind != yaml.MappingNode {
-		return backend
-	}
-	selected := ""
-	for i := 0; i+1 < len(backend.Content); i += 2 {
-		if backend.Content[i].Value == "process" || backend.Content[i].Value == "wasm" {
-			if selected != "" {
-				return backend
-			}
-			selected = backend.Content[i].Value
-		}
-	}
-	if selected == "" {
-		return backend
-	}
-	other := "wasm"
-	if selected == "wasm" {
-		other = "process"
-	}
-	normalized := *backend
-	normalized.Content = append(slices.Clone(backend.Content), &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: other}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
-	return &normalized
+	return next
 }

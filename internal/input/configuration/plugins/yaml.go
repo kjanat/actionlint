@@ -7,7 +7,23 @@ import (
 	"github.com/kjanat/go-yaml/v4"
 )
 
-func editYAMLPlugins(original []byte, root, sequence *yaml.Node) ([]byte, error) {
+func editYAMLPlugins(original []byte, values []any) ([]byte, error) {
+	var document yaml.Node
+	if err := yaml.Unmarshal(original, &document); err != nil {
+		return nil, err
+	}
+	root := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	if len(document.Content) > 0 {
+		root = document.Content[0]
+	}
+	var sequence yaml.Node
+	if err := sequence.Encode(values); err != nil {
+		return nil, err
+	}
+	return editYAMLNodes(original, root, &sequence)
+}
+
+func editYAMLNodes(original []byte, root, sequence *yaml.Node) ([]byte, error) {
 	if root.Style&yaml.FlowStyle != 0 {
 		copyRoot := *root
 		copyRoot.Content = slices.Clone(root.Content)

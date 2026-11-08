@@ -54,3 +54,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hi
+permissions: {}

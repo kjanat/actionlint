@@ -3,11 +3,12 @@ package tools
 import (
 	"maps"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func TestBackendSelectsOneTransport(t *testing.T) {
@@ -21,7 +22,7 @@ func TestBackendSelectsOneTransport(t *testing.T) {
 		"wasm: {path: a, extra: 1}": "extra",
 	} {
 		var backend Backend
-		err := yaml.Unmarshal([]byte(input), &backend)
+		err := decodeBackendConfig([]byte(input), &backend)
 		if want == "" {
 			if err != nil {
 				t.Fatalf("%q: %v", input, err)
@@ -33,7 +34,7 @@ func TestBackendSelectsOneTransport(t *testing.T) {
 		}
 	}
 	var backend Backend
-	if err := yaml.Unmarshal([]byte("wasm: {path: ./engines/ruff.wasm}"), &backend); err != nil {
+	if err := decodeBackendConfig([]byte("wasm: {path: ./engines/ruff.wasm}"), &backend); err != nil {
 		t.Fatal(err)
 	}
 	module, isWasm := backend.Wasm()
@@ -48,11 +49,13 @@ func TestBackendRoundTripsThroughYAML(t *testing.T) {
 		"wasm:\n    path: engines/ruff.wasm\n",
 	} {
 		var backend Backend
-		if err := yaml.Unmarshal([]byte(input), &backend); err != nil {
+		if err := decodeBackendConfig([]byte(input), &backend); err != nil {
 			t.Fatal(err)
 		}
-		data, err := yaml.Marshal(&backend)
-		if err != nil || string(data) != input {
+		data, err := encodeBackendConfig(&backend)
+		original, parseErr := document.Parse("test.yaml", []byte(input))
+		roundTrip, roundTripErr := document.Parse("test.yaml", data)
+		if err != nil || parseErr != nil || roundTripErr != nil || !reflect.DeepEqual(original.Value, roundTrip.Value) {
 			t.Fatalf("%q encoded as %q, err=%v", input, data, err)
 		}
 	}
@@ -89,13 +92,13 @@ func TestCommandOwnsItsArgumentsAndEnvironment(t *testing.T) {
 func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
 	root := t.TempDir()
 	absolute := filepath.Join(root, "opt", "shellcheck.wasm")
-	var node yaml.Node
-	if err := yaml.Unmarshal([]byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n  shellcheck:\n    backend:\n      wasm: {path: '"+strings.ReplaceAll(absolute, "'", "''")+"'}\noverrides:\n  - includes: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          process: {executable: ./bin/ruff}\n"), &node); err != nil {
+	node, err := document.Parse("test.yaml", []byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n  shellcheck:\n    backend:\n      wasm: {path: '"+strings.ReplaceAll(absolute, "'", "''")+"'}\noverrides:\n  - includes: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          process: {executable: ./bin/ruff}\n"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	NormalizePaths(&node, filepath.Join(root, ".github"))
+	NormalizePaths(node.Value, filepath.Join(root, ".github"))
 	var out string
-	if data, err := yaml.Marshal(&node); err == nil {
+	if data, err := document.Marshal("test.yaml", node.Value); err == nil {
 		out = string(data)
 	} else {
 		t.Fatal(err)
@@ -109,14 +112,14 @@ func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
 
 func TestNormalizePathsPreservesPluginURIs(t *testing.T) {
 	for _, uri := range []string{"https://example.com/ruff.wasm.gz#sha256=abc", "file:///opt/ruff.wasm", "http://localhost:8123/ruff"} {
-		var node yaml.Node
 		input := "tools:\n  ruff:\n    backend:\n      wasm: {path: '" + uri + "'}\noverrides:\n  - files: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: '" + uri + "'}\n"
-		if err := yaml.Unmarshal([]byte(input), &node); err != nil {
+		node, err := document.Parse("test.yaml", []byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
-		NormalizePaths(&node, t.TempDir())
-		data, err := yaml.Marshal(&node)
-		if err != nil || strings.Count(string(data), "path: '"+uri+"'") != 2 {
+		NormalizePaths(node.Value, t.TempDir())
+		data, err := document.Marshal("test.yaml", node.Value)
+		if err != nil || strings.Count(string(data), uri) != 2 {
 			t.Fatalf("URI rebased: %s %v", data, err)
 		}
 	}

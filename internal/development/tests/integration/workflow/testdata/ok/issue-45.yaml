@@ -9,3 +9,4 @@ jobs:
           fi
         env:
           SENDER: ${{ github.event.sender.login}}
+permissions: {}

@@ -8,3 +8,4 @@ jobs:
         working-directory: ./foo
       - run: echo "$(pwd)"
         working-directory: ./foo
+permissions: {}

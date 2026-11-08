@@ -13,3 +13,4 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: echo ...
+permissions: {}

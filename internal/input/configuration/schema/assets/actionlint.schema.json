@@ -217,12 +217,6 @@
           "const": "executable-bit"
         },
         {
-          "description": "Require explicit token permissions at workflow or job scope",
-          "markdownDescription": "Require explicit token permissions at workflow or job scope",
-          "type": "string",
-          "const": "explicit-permissions"
-        },
-        {
           "description": "Validate expression values assigned to workflow fields",
           "markdownDescription": "Validate expression values assigned to workflow fields",
           "type": "string",
@@ -325,10 +319,10 @@
           "const": "missing-local-action"
         },
         {
-          "description": "Report jobs that inherit repository token permissions",
-          "markdownDescription": "Report jobs that inherit repository token permissions",
+          "description": "Report missing token permission declarations",
+          "markdownDescription": "Report missing token permission declarations",
           "type": "string",
-          "const": "missing-workflow-permissions"
+          "const": "missing-permissions"
         },
         {
           "description": "Flag condition comparisons that implicitly convert scalar types",
@@ -380,13 +374,6 @@
           "deprecated": true,
           "type": "string",
           "const": "require-job-timeout"
-        },
-        {
-          "description": "Deprecated alias. Use explicit-permissions instead.",
-          "markdownDescription": "Deprecated alias. Use explicit-permissions instead.",
-          "deprecated": true,
-          "type": "string",
-          "const": "require-permissions"
         },
         {
           "description": "Analyze embedded Python scripts with Ruff",
@@ -1067,7 +1054,7 @@
                                 "vendor-lock-in",
                                 "container-runner",
                                 "uncancellable-condition",
-                                "missing-workflow-permissions",
+                                "missing-permissions",
                                 "expression-syntax",
                                 "expression-reference",
                                 "context-availability",
@@ -1114,8 +1101,6 @@
                                 "empty-run",
                                 "unpinned-reference",
                                 "require-commit-hash",
-                                "explicit-permissions",
-                                "require-permissions",
                                 "cache-write-untrusted",
                                 "cache-call-unrestricted",
                                 "cache-operation",
@@ -1374,7 +1359,7 @@
                             "not": {
                               "enum": [
                                 "uncancellable-condition",
-                                "missing-workflow-permissions",
+                                "missing-permissions",
                                 "missing-action-metadata",
                                 "require-action-metadata",
                                 "script-injection",
@@ -1396,8 +1381,6 @@
                                 "require-commit-hash",
                                 "job-timeout",
                                 "require-job-timeout",
-                                "explicit-permissions",
-                                "require-permissions",
                                 "cache-write-untrusted",
                                 "cache-call-unrestricted"
                               ]
@@ -1457,11 +1440,17 @@
                               "description": "Detect hardcoded passwords in job and service containers",
                               "markdownDescription": "Detect hardcoded passwords in job and service containers"
                             },
-                            "explicit-permissions": {
+                            "level": {
+                              "$ref": "#/$defs/level",
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group."
+                            },
+                            "missing-permissions": {
                               "$ref": "#/$defs/plugin-setting",
-                              "title": "explicit-permissions",
-                              "description": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
+                              "title": "missing-permissions",
+                              "description": "Report missing token permission declarations",
+                              "markdownDescription": "Report missing token permission declarations",
                               "properties": {
                                 "options": {
                                   "title": "options",
@@ -1477,46 +1466,45 @@
                                           "type": "object"
                                         },
                                         {
-                                          "oneOf": [
-                                            {
-                                              "type": "boolean"
-                                            },
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "scope": {
-                                                  "title": "scope",
-                                                  "description": "Require a workflow-level declaration or a declaration on every job.",
-                                                  "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
-                                                  "default": "workflow",
+                                          "type": "object",
+                                          "properties": {
+                                            "require-at": {
+                                              "title": "require-at",
+                                              "description": "Allowed locations for permissions. Use a location string or a nonempty array. Set the rule to off to disable it.",
+                                              "markdownDescription": "Allowed locations for permissions. Use a location string or a nonempty array. Set the rule to off to disable it.",
+                                              "default": [
+                                                "workflow",
+                                                "every-job"
+                                              ],
+                                              "anyOf": [
+                                                {
                                                   "type": "string",
                                                   "enum": [
                                                     "workflow",
-                                                    "job"
+                                                    "every-job"
                                                   ]
+                                                },
+                                                {
+                                                  "type": "array",
+                                                  "minItems": 1,
+                                                  "items": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "workflow",
+                                                      "every-job"
+                                                    ]
+                                                  }
                                                 }
-                                              },
-                                              "additionalProperties": false
+                                              ]
                                             }
-                                          ]
+                                          },
+                                          "additionalProperties": false
                                         }
                                       ]
                                     }
                                   ]
                                 }
                               }
-                            },
-                            "level": {
-                              "$ref": "#/$defs/level",
-                              "title": "level",
-                              "description": "Default diagnostic level for rules in this group.",
-                              "markdownDescription": "Default diagnostic level for rules in this group."
-                            },
-                            "missing-workflow-permissions": {
-                              "$ref": "#/$defs/rule-setting",
-                              "title": "missing-workflow-permissions",
-                              "description": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset.",
-                              "markdownDescription": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset."
                             },
                             "preset": {
                               "$ref": "#/$defs/preset",
@@ -1567,56 +1555,6 @@
                                             }
                                           },
                                           "additionalProperties": false
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                }
-                              }
-                            },
-                            "require-permissions": {
-                              "$ref": "#/$defs/plugin-setting",
-                              "title": "require-permissions",
-                              "description": "Deprecated alias. Use explicit-permissions instead.",
-                              "markdownDescription": "Deprecated alias. Use explicit-permissions instead.",
-                              "deprecated": true,
-                              "properties": {
-                                "options": {
-                                  "title": "options",
-                                  "description": "Options specific to this rule; null resets to defaults.",
-                                  "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                  "anyOf": [
-                                    {
-                                      "type": "null"
-                                    },
-                                    {
-                                      "allOf": [
-                                        {
-                                          "type": "object"
-                                        },
-                                        {
-                                          "oneOf": [
-                                            {
-                                              "type": "boolean"
-                                            },
-                                            {
-                                              "type": "object",
-                                              "properties": {
-                                                "scope": {
-                                                  "title": "scope",
-                                                  "description": "Require a workflow-level declaration or a declaration on every job.",
-                                                  "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
-                                                  "default": "workflow",
-                                                  "type": "string",
-                                                  "enum": [
-                                                    "workflow",
-                                                    "job"
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
                                         }
                                       ]
                                     }
@@ -1851,7 +1789,7 @@
                               "enum": [
                                 "vendor-lock-in",
                                 "container-runner",
-                                "missing-workflow-permissions",
+                                "missing-permissions",
                                 "missing-action-metadata",
                                 "require-action-metadata",
                                 "expression-syntax",
@@ -1893,8 +1831,6 @@
                                 "require-commit-hash",
                                 "job-timeout",
                                 "require-job-timeout",
-                                "explicit-permissions",
-                                "require-permissions",
                                 "cache-write-untrusted",
                                 "cache-call-unrestricted",
                                 "cache-operation",
@@ -2307,7 +2243,7 @@
                                           "vendor-lock-in",
                                           "container-runner",
                                           "uncancellable-condition",
-                                          "missing-workflow-permissions",
+                                          "missing-permissions",
                                           "expression-syntax",
                                           "expression-reference",
                                           "context-availability",
@@ -2354,8 +2290,6 @@
                                           "empty-run",
                                           "unpinned-reference",
                                           "require-commit-hash",
-                                          "explicit-permissions",
-                                          "require-permissions",
                                           "cache-write-untrusted",
                                           "cache-call-unrestricted",
                                           "cache-operation",
@@ -2614,7 +2548,7 @@
                                       "not": {
                                         "enum": [
                                           "uncancellable-condition",
-                                          "missing-workflow-permissions",
+                                          "missing-permissions",
                                           "missing-action-metadata",
                                           "require-action-metadata",
                                           "script-injection",
@@ -2636,8 +2570,6 @@
                                           "require-commit-hash",
                                           "job-timeout",
                                           "require-job-timeout",
-                                          "explicit-permissions",
-                                          "require-permissions",
                                           "cache-write-untrusted",
                                           "cache-call-unrestricted"
                                         ]
@@ -2697,11 +2629,17 @@
                                         "description": "Detect hardcoded passwords in job and service containers",
                                         "markdownDescription": "Detect hardcoded passwords in job and service containers"
                                       },
-                                      "explicit-permissions": {
+                                      "level": {
+                                        "$ref": "#/$defs/level",
+                                        "title": "level",
+                                        "description": "Default diagnostic level for rules in this group.",
+                                        "markdownDescription": "Default diagnostic level for rules in this group."
+                                      },
+                                      "missing-permissions": {
                                         "$ref": "#/$defs/plugin-setting",
-                                        "title": "explicit-permissions",
-                                        "description": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Require explicit token permissions at workflow or job scope. Stable; not enabled by the recommended preset.",
+                                        "title": "missing-permissions",
+                                        "description": "Report missing token permission declarations",
+                                        "markdownDescription": "Report missing token permission declarations",
                                         "properties": {
                                           "options": {
                                             "title": "options",
@@ -2717,46 +2655,45 @@
                                                     "type": "object"
                                                   },
                                                   {
-                                                    "oneOf": [
-                                                      {
-                                                        "type": "boolean"
-                                                      },
-                                                      {
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "scope": {
-                                                            "title": "scope",
-                                                            "description": "Require a workflow-level declaration or a declaration on every job.",
-                                                            "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
-                                                            "default": "workflow",
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "require-at": {
+                                                        "title": "require-at",
+                                                        "description": "Allowed locations for permissions. Use a location string or a nonempty array. Set the rule to off to disable it.",
+                                                        "markdownDescription": "Allowed locations for permissions. Use a location string or a nonempty array. Set the rule to off to disable it.",
+                                                        "default": [
+                                                          "workflow",
+                                                          "every-job"
+                                                        ],
+                                                        "anyOf": [
+                                                          {
                                                             "type": "string",
                                                             "enum": [
                                                               "workflow",
-                                                              "job"
+                                                              "every-job"
                                                             ]
+                                                          },
+                                                          {
+                                                            "type": "array",
+                                                            "minItems": 1,
+                                                            "items": {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "workflow",
+                                                                "every-job"
+                                                              ]
+                                                            }
                                                           }
-                                                        },
-                                                        "additionalProperties": false
+                                                        ]
                                                       }
-                                                    ]
+                                                    },
+                                                    "additionalProperties": false
                                                   }
                                                 ]
                                               }
                                             ]
                                           }
                                         }
-                                      },
-                                      "level": {
-                                        "$ref": "#/$defs/level",
-                                        "title": "level",
-                                        "description": "Default diagnostic level for rules in this group.",
-                                        "markdownDescription": "Default diagnostic level for rules in this group."
-                                      },
-                                      "missing-workflow-permissions": {
-                                        "$ref": "#/$defs/rule-setting",
-                                        "title": "missing-workflow-permissions",
-                                        "description": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset.",
-                                        "markdownDescription": "Report jobs that inherit repository token permissions. Stable; not enabled by the recommended preset."
                                       },
                                       "preset": {
                                         "$ref": "#/$defs/preset",
@@ -2807,56 +2744,6 @@
                                                       }
                                                     },
                                                     "additionalProperties": false
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                          }
-                                        }
-                                      },
-                                      "require-permissions": {
-                                        "$ref": "#/$defs/plugin-setting",
-                                        "title": "require-permissions",
-                                        "description": "Deprecated alias. Use explicit-permissions instead.",
-                                        "markdownDescription": "Deprecated alias. Use explicit-permissions instead.",
-                                        "deprecated": true,
-                                        "properties": {
-                                          "options": {
-                                            "title": "options",
-                                            "description": "Options specific to this rule; null resets to defaults.",
-                                            "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                            "anyOf": [
-                                              {
-                                                "type": "null"
-                                              },
-                                              {
-                                                "allOf": [
-                                                  {
-                                                    "type": "object"
-                                                  },
-                                                  {
-                                                    "oneOf": [
-                                                      {
-                                                        "type": "boolean"
-                                                      },
-                                                      {
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "scope": {
-                                                            "title": "scope",
-                                                            "description": "Require a workflow-level declaration or a declaration on every job.",
-                                                            "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
-                                                            "default": "workflow",
-                                                            "type": "string",
-                                                            "enum": [
-                                                              "workflow",
-                                                              "job"
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
                                                   }
                                                 ]
                                               }
@@ -3091,7 +2978,7 @@
                                         "enum": [
                                           "vendor-lock-in",
                                           "container-runner",
-                                          "missing-workflow-permissions",
+                                          "missing-permissions",
                                           "missing-action-metadata",
                                           "require-action-metadata",
                                           "expression-syntax",
@@ -3133,8 +3020,6 @@
                                           "require-commit-hash",
                                           "job-timeout",
                                           "require-job-timeout",
-                                          "explicit-permissions",
-                                          "require-permissions",
                                           "cache-write-untrusted",
                                           "cache-call-unrestricted",
                                           "cache-operation",

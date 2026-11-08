@@ -11,3 +11,4 @@ jobs:
       - run: echo '${{ github.repository.owner }}'
       # ERROR: Objects, arrays and null should not be evaluated at ${{ }} since the outputs are useless
       - run: echo '${{ env }}'
+permissions: {}

@@ -44,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
 			if err != nil {
@@ -91,6 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 				sources := []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
 				if inMemory {
@@ -130,6 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 					if strings.EqualFold(path, producer) {
@@ -172,6 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}})
 			if err != nil {
@@ -214,6 +218,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{
 				{Path: ".github/workflows/build.yml", Content: []byte("name: '" + tc.name + "'\n" + testutil.GoodWorkflow), Project: project},
@@ -256,6 +261,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "."}, []workspace.Source{
 				{Path: ".github/workflows/build.yml", Content: []byte(producerContent), Project: project, Config: cfg},
@@ -282,6 +288,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 			read := false
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
@@ -314,6 +321,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 	project := workspace.Identity(root)
 	sources := []workspace.Source{{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project}, {Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project}}

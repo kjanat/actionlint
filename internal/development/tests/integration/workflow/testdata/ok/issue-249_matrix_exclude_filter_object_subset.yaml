@@ -24,3 +24,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo 'name is ${{ matrix.os.name }} and arch is ${{ matrix.arch.name }}'
+permissions: {}

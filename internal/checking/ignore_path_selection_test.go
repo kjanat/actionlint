@@ -18,7 +18,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ invalid }}'\n"
+	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ invalid }}'\npermissions: {}\n"
 	workflow := writeFixture(t, root, ".github/workflows/ci.yml", source)
 	for _, pattern := range []string{".github/workflows/**", ".github/workflows/other.yml"} {
 		t.Run(pattern, func(t *testing.T) {

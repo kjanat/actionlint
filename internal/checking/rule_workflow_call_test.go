@@ -39,6 +39,7 @@ jobs:
     steps:
       - run: printf '%s\n' "$RESULT"
         env: {RESULT: '${{ needs.call.outputs.result }}'}
+permissions: {}
 `)
 				for _, pass := range []string{"cold cache", "warm cache"} {
 					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}, nil, nil, cache)

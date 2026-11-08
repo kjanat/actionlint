@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	GoodWorkflow    = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-	BadWorkflow     = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\n"
+	GoodWorkflow    = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
+	BadWorkflow     = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\npermissions: {}\n"
 	WorkflowSteps   = "    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"
 	CompositeAction = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
 )

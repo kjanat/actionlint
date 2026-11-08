@@ -33,3 +33,4 @@ jobs:
     steps:
       - run: |
           echo "x"	$FOO
+permissions: {}

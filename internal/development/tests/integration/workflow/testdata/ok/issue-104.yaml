@@ -14,3 +14,4 @@ jobs:
           TEST_OUTPUT: ${{ steps.test.outputs.foo }}
         run: |
           echo "Test output: $TEST_OUTPUT"
+permissions: {}

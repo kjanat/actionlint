@@ -112,3 +112,4 @@ jobs:
     steps:
       - run: echo hello
         env: *expr
+permissions: {}

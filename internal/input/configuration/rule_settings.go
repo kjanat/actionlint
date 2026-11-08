@@ -97,7 +97,7 @@ func (ruleSet RuleSet) LegacyGroup(name string) string {
 		return "style"
 	case "uncancellable-condition":
 		return "correctness"
-	case "unpinned-reference", "job-timeout", "explicit-permissions", "missing-action-metadata", "forbidden-suppression":
+	case "unpinned-reference", "job-timeout", "missing-action-metadata", "forbidden-suppression":
 		return "policy"
 	default:
 		if descriptor, known := ruleSet.FindRule(name); known {

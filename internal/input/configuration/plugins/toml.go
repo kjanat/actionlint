@@ -9,31 +9,38 @@ import (
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
-	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2/unstable"
 )
 
-func editTOMLPlugins(original []byte, sequence *yaml.Node) ([]byte, error) {
+func editTOMLPlugins(original []byte, sequence []any) ([]byte, error) {
 	var values []string
-	for _, entry := range sequence.Content {
-		if entry.Kind == yaml.ScalarNode {
-			value, err := json.Marshal(entry.Value)
+	for _, entry := range sequence {
+		switch value := entry.(type) {
+		case string:
+			encoded, err := json.Marshal(value)
 			if err != nil {
 				return nil, err
 			}
-			values = append(values, string(value))
-		} else {
+			values = append(values, string(encoded))
+		case map[string]any:
 			var fields []string
-			for i := 0; i < len(entry.Content); i += 2 {
-				value, err := json.Marshal(entry.Content[i+1].Value)
+			for _, key := range []string{"name", "version", "registry", "sha256"} {
+				v, ok := value[key]
+				if !ok {
+					continue
+				}
+				encoded, err := json.Marshal(v)
 				if err != nil {
 					return nil, err
 				}
-				fields = append(fields, entry.Content[i].Value+" = "+string(value))
+				fields = append(fields, key+" = "+string(encoded))
 			}
 			values = append(values, "{ "+strings.Join(fields, ", ")+" }")
+		default:
+			return nil, errors.New("invalid plugin declaration")
 		}
 	}
+
 	replacement := []byte("plugins = [" + strings.Join(values, ", ") + "]")
 	parser := unstable.Parser{}
 	parser.Reset(original)
@@ -85,7 +92,7 @@ func editTOMLPlugins(original []byte, sequence *yaml.Node) ([]byte, error) {
 		}
 		original = spliceManifest(original, section[0], end, nil)
 	}
-	if len(sequence.Content) != 0 {
+	if len(sequence) != 0 {
 		newline := "\n"
 		if bytes.Contains(original, []byte("\r\n")) {
 			newline = "\r\n"
@@ -140,11 +147,11 @@ func editTOMLPlugins(original []byte, sequence *yaml.Node) ([]byte, error) {
 	return spliceManifest(original, position, position, replacement), nil
 }
 
-func pluginTOMLTables(sequence *yaml.Node, newline string) ([]byte, error) {
+func pluginTOMLTables(sequence []any, newline string) ([]byte, error) {
 	var tables []byte
-	for index, entry := range sequence.Content {
+	for index, entry := range sequence {
 		var declarations config.PluginDeclarations
-		if err := declarations.UnmarshalYAML(&yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{entry}}); err != nil {
+		if err := declarations.DecodeConfig([]any{entry}); err != nil {
 			return nil, err
 		}
 		ref := declarations[0]

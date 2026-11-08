@@ -10,3 +10,4 @@ jobs:
       - run: echo "foo=bar" >> "$GITHUB_OUTPUT"
       # OK: 'debug' command is not deprecated
       - run: echo "::debug::Set the Octocat variable"
+permissions: {}

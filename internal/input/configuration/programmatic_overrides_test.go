@@ -23,6 +23,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 				t.Fatal(err)
 			}
 			config.Overrides[0].toolsNode = nil
+			config.Overrides[0].toolsSet = false
 			for range 2 {
 				got, err := rules.ForFile(config, "ci.yml", "")
 				if err != nil {

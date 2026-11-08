@@ -1,13 +1,11 @@
 package config
 
-import "github.com/kjanat/go-yaml/v4"
-
 // normalizeRuleLocations gives named settings one merge key across accepted
 // category spellings. Group defaults stay in their declared groups because
 // their membership can depend on plugin declarations loaded later.
-func (ruleSet RuleSet) normalizeRuleLocations(lint *yaml.Node) (*yaml.Node, error) {
+func (ruleSet RuleSet) normalizeRuleLocations(lint any) (any, error) {
 	rules := field(lint, "rules")
-	if rules == nil || rules.Kind != yaml.MappingNode {
+	if !isMapping(rules) {
 		return lint, nil
 	}
 	nextRules := cloneMapping(rules)
@@ -24,7 +22,7 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint *yaml.Node) (*yaml.Node, erro
 		if len(categories) == 0 {
 			continue
 		}
-		var setting *yaml.Node
+		var setting any
 		level := Level("default")
 		for _, category := range append(categories, descriptor.Category) {
 			candidate := ruleSet.ruleSettingNode(field(nextRules, category), descriptor.Name)
@@ -50,12 +48,12 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint *yaml.Node) (*yaml.Node, erro
 			return nil, err
 		}
 		if ownLevel == "default" && level != "default" {
-			if setting.Kind == yaml.MappingNode {
+			if isMapping(setting) {
 				setting = cloneMapping(setting)
 			} else {
 				setting = mapping()
 			}
-			setField(setting, "level", textNode(string(level)))
+			setField(setting, "level", string(level))
 		}
 		names := []string{descriptor.Name}
 		for _, alias := range descriptor.Aliases {
@@ -63,7 +61,7 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint *yaml.Node) (*yaml.Node, erro
 		}
 		for _, category := range append(categories, descriptor.Category) {
 			group := field(nextRules, category)
-			if group == nil || group.Kind != yaml.MappingNode {
+			if !isMapping(group) {
 				continue
 			}
 			group = cloneMapping(group)
@@ -88,23 +86,23 @@ func (ruleSet RuleSet) normalizeRuleLocations(lint *yaml.Node) (*yaml.Node, erro
 	return next, nil
 }
 
-func (ruleSet RuleSet) ruleSettingNode(group *yaml.Node, name string) *yaml.Node {
-	for i := 0; group != nil && group.Kind == yaml.MappingNode && i+1 < len(group.Content); i += 2 {
-		if ruleSet.ResolveAlias(group.Content[i].Value) == name {
-			return group.Content[i+1]
+func (ruleSet RuleSet) ruleSettingNode(group any, name string) any {
+	for key := range members(group) {
+		if ruleSet.ResolveAlias(key) == name {
+			return field(group, key)
 		}
 	}
 	return nil
 }
 
-func settingLevelNode(setting *yaml.Node) (Level, error) {
-	if setting.Kind == yaml.MappingNode {
+func settingLevelNode(setting any) (Level, error) {
+	if isMapping(setting) {
 		setting = field(setting, "level")
 	}
-	if setting == nil || setting.ShortTag() == "!!null" {
+	if setting == nil || isNull(setting) {
 		return "default", nil
 	}
 	var level Level
-	err := setting.Decode(&level)
+	err := decodeValue(setting, &level)
 	return level, err
 }

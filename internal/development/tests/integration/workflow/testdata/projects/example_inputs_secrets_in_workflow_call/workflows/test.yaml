@@ -24,3 +24,4 @@ jobs:
       message: null
     secrets:
       password: p@ssw0rd
+permissions: {}

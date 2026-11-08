@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"strconv"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // LintConfig configures built-in and registered analysis rules.
 type LintConfig struct {
-	source *yaml.Node
+	source any
 	// Enabled controls lint diagnostics only, leaving other features independent.
 	Enabled *bool `yaml:"enabled,omitempty" jsonschema:"nullable,default=true"`
 	// Rules selects diagnostic groups, individual levels and options.
@@ -52,40 +54,46 @@ type LintRulesConfig struct {
 type bindingSource struct {
 	origin string
 	rules  LintRulesConfig
+	inputs map[string]Input
+	prefix []string
 }
 
-func ruleBindingSources(origin string, config *Config) []bindingSource {
-	sources := []bindingSource{{origin: origin, rules: config.Lint.Rules}}
+func ruleBindingSources(origin string, config *Config, locations ...map[string]Input) []bindingSource {
+	var inputs map[string]Input
+	if len(locations) > 0 {
+		inputs = maps.Clone(locations[0])
+	}
+	sources := []bindingSource{{origin: origin, rules: config.Lint.Rules, inputs: inputs}}
 	for i, override := range config.Overrides {
 		if override.Lint != nil {
-			sources = append(sources, bindingSource{origin: fmt.Sprintf("%s override %d", origin, i+1), rules: override.Lint.Rules})
+			sources = append(sources, bindingSource{origin: fmt.Sprintf("%s override %d", origin, i+1), rules: override.Lint.Rules, inputs: inputs, prefix: []string{"overrides", strconv.Itoa(i)}})
 		}
 	}
 	return sources
 }
 
-// UnmarshalYAML rejects misspelled lint settings.
-func (c *LintConfig) UnmarshalYAML(n *yaml.Node) error {
+// DecodeConfig rejects misspelled lint settings.
+func (c *LintConfig) DecodeConfig(value any) error {
 	type plain LintConfig
 	var next plain
-	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := binding.Decode(value, &next); err != nil {
 		return err
 	}
 	for pattern := range next.MessageIgnores {
 		if !doublestar.ValidatePattern(pattern) {
-			return fmt.Errorf("invalid glob pattern %q in lint.message-ignores", pattern)
+			return binding.At("message-ignores", binding.At(pattern, fmt.Errorf("invalid glob pattern %q", pattern)))
 		}
 	}
 	*c = LintConfig(next)
-	c.source = n
+	c.source = value
 	return nil
 }
 
-// UnmarshalYAML rejects misspelled rule groups.
-func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
+// DecodeConfig rejects misspelled rule groups.
+func (c *LintRulesConfig) DecodeConfig(value any) error {
 	type plain LintRulesConfig
 	var next plain
-	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := binding.Decode(value, &next); err != nil {
 		return err
 	}
 	*c = LintRulesConfig(next)
@@ -118,10 +126,7 @@ func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 			if setting.Level() != "" && !setting.Level().Valid() {
 				return fmt.Errorf("yaml: invalid rule level %q for %q", setting.Level(), name)
 			}
-			if options, overridden := ruleSet.optionOverrides[d.Name]; overridden {
-				if err := validateOptionsJSON(d, options); err != nil {
-					return fmt.Errorf("yaml: options for rule %q: %w", name, err)
-				}
+			if _, overridden := ruleSet.optionOverrides[d.Name]; overridden {
 				continue
 			}
 			if _, provider := toolProviders()[d.Name]; provider {
@@ -129,11 +134,15 @@ func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 				continue
 			}
 			if err := validateOptions(d, setting); err != nil {
-				return fmt.Errorf("yaml: options for rule %q: %w", name, err)
+				return ruleOptionsError(category, name, err)
 			}
 		}
 	}
 	return nil
+}
+
+func ruleOptionsError(category, name string, err error) error {
+	return binding.Context(fmt.Sprintf("options for rule %q", name), binding.At(category, binding.At(name, binding.At("options", err))))
 }
 
 // validateOptions checks a rule's JSON Schema or decodes its registered Go type.

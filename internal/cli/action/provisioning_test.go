@@ -19,7 +19,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 	}{
 		{name: "defaults", shellcheck: true},
 		{name: "composite process under workflow wasm", files: map[string]string{
-			".github/workflows/clean.yml": "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/shell-action}]}}\n",
+			".github/workflows/clean.yml": "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/shell-action}]}}\npermissions: {}\n",
 			"shell-action/action.yml":     "name: Shell\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo hello}]}\n",
 			".github/actionlint.yaml":     "tools: {shellcheck: {backend: {wasm: {path: never-load.wasm}}}}\noverrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}}]\n",
 		}, inputs: map[string]string{"INPUT_FILES": ".github/workflows/clean.yml"}, shellcheck: true},

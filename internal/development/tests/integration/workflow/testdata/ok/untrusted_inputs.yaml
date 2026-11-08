@@ -18,3 +18,4 @@ jobs:
         env:
           BODIES: ${{ toJSON(github.event.*.body) }}
           EMAILS: ${{ toJSON(github.event.*.*.email) }}
+permissions: {}

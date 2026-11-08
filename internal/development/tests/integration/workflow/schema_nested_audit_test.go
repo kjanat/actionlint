@@ -40,6 +40,7 @@ jobs:
     ` + tc.job + `
     steps:
       - run: echo test
+permissions: {}
 `
 			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
@@ -93,6 +94,7 @@ jobs:
     steps:
       - uses: docker://alpine:3
         with: ${{ fromJSON('{"args":"echo test"}') }}
+permissions: {}
 `
 			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))

@@ -18,3 +18,4 @@ jobs:
         timeout-minutes: 3
       - run: echo 'ok 3'
         timeout-minutes: ${{ 3.5 }}
+permissions: {}

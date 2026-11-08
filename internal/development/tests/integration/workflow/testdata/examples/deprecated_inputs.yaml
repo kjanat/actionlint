@@ -7,3 +7,4 @@ jobs:
         with:
           # ERROR: Using a deprecated input
           fail_on_error: true
+permissions: {}

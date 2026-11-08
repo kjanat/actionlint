@@ -72,6 +72,7 @@ jobs:
     steps:
       - uses: actions/cache/save@v5
         with: {key: test, path: cache}
+permissions: {}
 `
 	const caller = `on: push
 cache-mode: read
@@ -90,21 +91,25 @@ jobs:
 jobs:
   nested:
     uses: $/leaf.yaml
+permissions: {}
 `, leaf: save, kind: "cache-operation", file: "caller.yaml", fragment: `of "$/leaf.yaml"`},
 		{name: "nested explicit ceiling stays at callee", caller: `on: push
 jobs:
   call:
     uses: $/callee.yaml
+permissions: {}
 `, callee: `on: workflow_call
 jobs:
   nested:
     cache-mode: read
     uses: $/leaf.yaml
+permissions: {}
 `, leaf: save},
 		{name: "cycle", caller: caller, callee: `on: workflow_call
 jobs:
   recurse:
     uses: $/callee.yaml
+permissions: {}
 `},
 		{name: "remote", caller: strings.ReplaceAll(caller, "$/callee.yaml", "owner/repo/.github/workflows/callee.yaml@main")},
 		{name: "missing", caller: caller, kind: "workflow-call", file: "caller.yaml", fragment: "could not read reusable workflow"},
@@ -157,6 +162,7 @@ jobs:
       - parallel:
           - uses: actions/cache/save@v5
             with: {key: test, path: cache}
+permissions: {}
 `
 	files := map[string]string{
 		"callee.yaml": callee,
@@ -165,12 +171,14 @@ cache-mode: read
 jobs:
   call:
     uses: $/callee.yaml
+permissions: {}
 `,
 		"write.yaml": `on: push
 cache-mode: write
 jobs:
   call:
     uses: $/callee.yaml
+permissions: {}
 `,
 	}
 	for name, source := range files {
@@ -255,11 +263,13 @@ jobs:
     steps:
       - uses: actions/cache/save@v5
         with: {key: test, path: cache}
+permissions: {}
 `,
 				}
 				if suppressed != "" {
 					files[suppressed] += " # actionlint:ignore cache-operation -- reviewed skipped save\n"
 				}
+				files["caller.yaml"] = strings.TrimRight(files["caller.yaml"], "\n") + "\npermissions: {}\n"
 				root := t.TempDir()
 				for name, source := range files {
 					if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
@@ -378,6 +388,9 @@ jobs:
 // metadata itself must be identical, and per-caller policy results stay uncached.
 func checkCacheOperationCalls(t *testing.T, sources map[string]string, config string, check func(*testing.T, []*findingmodel.Finding)) {
 	t.Helper()
+	if caller := sources["caller.yaml"]; !strings.Contains(caller, "permissions:") {
+		sources["caller.yaml"] = strings.TrimRight(caller, "\n") + "\npermissions: {}\n"
+	}
 	root := t.TempDir()
 	for name, source := range sources {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {

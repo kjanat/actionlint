@@ -61,6 +61,7 @@ jobs:
     ` + tc.field + `
     steps:
       - run: echo ok
+permissions: {}
 `
 			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))

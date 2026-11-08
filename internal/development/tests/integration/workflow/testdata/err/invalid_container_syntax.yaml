@@ -118,3 +118,4 @@ jobs:
       command: -lc 'echo hello'
     steps:
       - run: echo service-only keys must stay invalid for container
+permissions: {}

@@ -56,7 +56,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				t.Fatal(err)
 			}
 			workspace := workspaceWith(t, map[string]string{
-				".git": "", "ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
+				".git": "", "ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",
 				".github/base.yaml":       "plugins:\n  - name: " + fixtureregistry.FixturePluginName + "\n    version: v1.0.0\n    registry: " + fixtureregistry.FixtureRegistryURL + "\n",
 				".github/actionlint.yaml": "extends: [base.yaml]\n",
 			})
@@ -155,9 +155,9 @@ func TestActionConfiguredWasm(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n"
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
 			if strings.Contains(fixture, "/component/") {
-				workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing();\n"
+				workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing();\npermissions: {}\n"
 			}
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", "ci.yml": workflow,
@@ -196,7 +196,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 		t.Run(strconv.FormatBool(configured), func(t *testing.T) {
 			files := map[string]string{
 				".git":   "",
-				"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
+				"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n",
 			}
 			if configured {
 				files[".github/actionlint.yaml"] = "tools: {ruff: {backend: {process: {executable: missing-ruff}}}}\n"
@@ -259,7 +259,7 @@ func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{
 		".git":                    "",
 		".github/actionlint.yaml": "policy: {require-job-timeout: false}\n",
-		"ci.yml":                  "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
+		"ci.yml":                  "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",
 	})
 	lockPath := filepath.Join(workspace, ".github", plugininstall.LockName)
 	lock, err := plugininstall.OpenLock(t.Context(), lockPath)
@@ -403,7 +403,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetFile(url, wasm)
 	workspace := workspaceWith(t, map[string]string{
-		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
+		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",
 	})
 	env := map[string]string{
 		"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck,ruff",

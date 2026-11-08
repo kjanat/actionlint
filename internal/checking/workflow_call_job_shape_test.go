@@ -39,6 +39,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `},
 		} {
 			t.Run(field.key+"/"+leaf.name, func(t *testing.T) {
@@ -48,6 +49,7 @@ cache-mode: read
 jobs:
   call:
     uses: $/callee.yaml
+permissions: {}
 `)
 				callee := []byte(`on: workflow_call
 jobs:

@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -11,8 +10,8 @@ import (
 	"strings"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"}
@@ -20,12 +19,8 @@ var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "c
 // NormalizeForMerge expands and canonicalizes one document before inheritance
 // merging. Plugin-rule binding is deferred until providers are installed.
 // Callers must validate the resulting configuration before analysis.
-func (ruleSet RuleSet) NormalizeForMerge(node *yaml.Node) (*yaml.Node, error) {
-	expanded, err := configtree.Expand(node, map[*yaml.Node]bool{})
-	if err != nil {
-		return nil, err
-	}
-	canonical, _, err := ruleSet.migrateNode(normalizeToolSwitch(expanded))
+func (ruleSet RuleSet) NormalizeForMerge(node any) (any, error) {
+	canonical, _, err := ruleSet.migrateNode(normalizeToolSwitch(node))
 	return canonical, err
 }
 
@@ -39,14 +34,11 @@ type Migration struct {
 // MigrateDocument converts legacy syntax without reading or writing files.
 // Explicit migrated policy levels now survive presets and --strict.
 func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registrations ...rule.Descriptor) (Migration, error) {
-	root, err := configtree.Decode(path, content)
+	parsed, err := document.Parse(path, content)
 	if err != nil {
 		return Migration{}, err
 	}
-	root, err = configtree.Expand(root, map[*yaml.Node]bool{})
-	if err != nil {
-		return Migration{}, err
-	}
+	root := parsed.Value
 	for _, warning := range configWarnings(root, nil) {
 		if strings.Contains(warning.Message, `"self-hosted-runner.`) || strings.Contains(warning.Message, `"paths[`) {
 			return Migration{}, fmt.Errorf("cannot migrate without dropping an unknown setting: %s", warning.Message)
@@ -72,29 +64,26 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 		result.Notes = append(result.Notes, "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.")
 	}
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".json", ".jsonc":
-		var value map[string]any
-		if err := next.Decode(&value); err != nil {
-			return Migration{}, err
-		}
-		result.Content, err = json.MarshalIndent(value, "", "  ")
-		if err != nil {
-			return Migration{}, err
-		}
 	case ".toml":
 		result.Content, err = migrateTOML(content, next)
-		if err != nil {
-			return Migration{}, err
-		}
+	case ".json", ".jsonc":
+		result.Content, err = document.Marshal(path, next)
 	default:
-		var output bytes.Buffer
-		encoder := yaml.NewEncoder(&output)
-		encoder.SetIndent(2)
-		if err := errors.Join(encoder.Encode(next), encoder.Close()); err != nil {
-			return Migration{}, err
+		relocated := ruleSet.migrationInputs(root, documentInputs(parsed))
+		locations := map[string]document.Location{}
+		for pointer, origin := range relocated {
+			line, column := origin.KeyLine, origin.KeyColumn
+			if line == 0 {
+				line, column = origin.Line, origin.Column
+			}
+			locations[pointer] = document.Location{File: origin.File, Line: line, Column: column}
 		}
-		result.Content = output.Bytes()
+		result.Content, err = document.RewriteYAML(content, next, locations)
 	}
+	if err != nil {
+		return Migration{}, err
+	}
+
 	if !bytes.HasSuffix(result.Content, []byte("\n")) {
 		result.Content = append(result.Content, '\n')
 	}
@@ -106,77 +95,46 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 
 // The valid v2 expression selector cannot distinguish old broad intent from a
 // deliberate field-value selection. Warn during legacy conversion; do not alias it.
-func legacyExpressionControls(root *yaml.Node) bool {
+func legacyExpressionControls(root any) bool {
 	rules := field(field(root, "lint"), "rules")
 	if field(field(rules, "correctness"), "expression") != nil {
 		return true
 	}
 	if disabled := field(rules, "disable"); disabled != nil {
-		for _, item := range disabled.Content {
-			if item.Value == "expression" {
+		for _, item := range elements(disabled) {
+			if text(item) == "expression" {
 				return true
 			}
 		}
 	}
 	if ignores := field(root, "ignores"); ignores != nil {
-		for _, item := range ignores.Content {
-			if selected := field(item, "rule"); selected != nil && selected.Value == "expression" {
+		for _, item := range elements(ignores) {
+			if selected := field(item, "rule"); selected != nil && text(selected) == "expression" {
 				return true
 			}
 		}
 	}
 	if overrides := field(root, "overrides"); overrides != nil {
-		return slices.ContainsFunc(overrides.Content, legacyExpressionControls)
+		return slices.ContainsFunc(elements(overrides), legacyExpressionControls)
 	}
 	return false
 }
 
-func field(node *yaml.Node, key string) *yaml.Node {
-	if node != nil && node.Kind == yaml.MappingNode {
-		for i := 0; i+1 < len(node.Content); i += 2 {
-			if node.Content[i].Value == key {
-				return node.Content[i+1]
-			}
-		}
+func (ruleSet RuleSet) migrateNode(root any) (any, bool, error) {
+	updated, permissionsChanged, err := ruleSet.migratePermissionsRule(root)
+	if err != nil {
+		return nil, false, err
 	}
-	return nil
-}
-
-func mapping() *yaml.Node { return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"} }
-func textNode(value string) *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
-}
-
-func setField(node *yaml.Node, key string, value *yaml.Node) {
-	for i := 0; i+1 < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
-			node.Content[i+1] = value
-			return
-		}
-	}
-	node.Content = append(node.Content, textNode(key), value)
-}
-
-func cloneMapping(node *yaml.Node) *yaml.Node {
-	if node == nil {
-		return mapping()
-	}
-	next := *node
-	next.Content = append([]*yaml.Node{}, node.Content...)
-	return &next
-}
-
-func (ruleSet RuleSet) migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
-	next, renamed, err := ruleSet.migrateRuleAliases(root)
+	next, renamed, err := ruleSet.migrateRuleAliases(updated)
 	if err != nil {
 		return nil, false, err
 	}
 	next, changed, err := ruleSet.migrateLegacyNode(next)
-	return next, renamed || changed, err
+	return next, permissionsChanged || renamed || changed, err
 }
 
-func (ruleSet RuleSet) migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, error) {
-	if root == nil || root.Kind != yaml.MappingNode {
+func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
+	if !isMapping(root) {
 		return root, false, nil
 	}
 	root, changed, err := ruleSet.migrateRepositoryFacts(root)
@@ -191,32 +149,32 @@ func (ruleSet RuleSet) migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, err
 	}
 	next := cloneMapping(root)
 	lint := cloneMapping(field(root, "lint"))
-	if lint.Kind != yaml.MappingNode {
+	if !isMapping(lint) {
 		return nil, false, errors.New("cannot migrate legacy settings alongside non-mapping lint; remove the conflicting lint reset")
 	}
 	rules := cloneMapping(field(lint, "rules"))
-	if rules.Kind != yaml.MappingNode {
+	if !isMapping(rules) {
 		return nil, false, errors.New("cannot migrate legacy settings alongside non-mapping lint.rules")
 	}
-	install := func(name string, setting *yaml.Node, origin string) error {
+	install := func(name string, setting any, origin string) error {
 		descriptor, found := ruleSet.FindRule(name)
 		if !found {
 			return fmt.Errorf("cannot migrate %s: no rule declaration for %q", origin, name)
 		}
 		name = descriptor.Name
 		group := cloneMapping(field(rules, descriptor.Group))
-		if group.Kind != yaml.MappingNode {
+		if !isMapping(group) {
 			// Expand a valid group shorthand without dropping its baseline.
 			var decoded Group
-			if err := group.Decode(&decoded); err != nil {
+			if err := decodeValue(group, &decoded); err != nil {
 				return err
 			}
 			group = mapping()
 			if decoded.Level() != "" {
-				setField(group, "level", textNode(string(decoded.Level())))
+				setField(group, "level", textValue(string(decoded.Level())))
 			}
 			if decoded.Preset() != "" {
-				setField(group, "preset", textNode(string(decoded.Preset())))
+				setField(group, "preset", textValue(string(decoded.Preset())))
 			}
 		}
 		if previous := field(group, name); previous != nil {
@@ -239,25 +197,24 @@ func (ruleSet RuleSet) migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, err
 		switch key {
 		case "paths":
 			var paths map[string]PathConfig
-			if err = value.Decode(&paths); err != nil {
+			if err = decodeValue(value, &paths); err != nil {
 				break
 			}
-			messages := mapping()
-			if value.ShortTag() == "!!null" {
+			messages := any(mapping())
+			if isNull(value) {
 				messages = value
 			} else {
-				for i := 0; i < len(value.Content); i += 2 {
-					pattern, config := value.Content[i], value.Content[i+1]
+				for pattern, config := range members(value) {
 					ignored := field(config, "ignore")
 					if ignored == nil {
-						if config.Kind == yaml.MappingNode {
+						if isMapping(config) {
 							// An empty mapping inherits the existing path entry;
 							// replacing it with [] would erase its patterns.
 							continue
 						}
-						ignored = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+						ignored = []any{}
 					}
-					messages.Content = append(messages.Content, pattern, ignored)
+					setField(messages, pattern, ignored)
 				}
 			}
 			if previous := field(lint, "message-ignores"); previous != nil {
@@ -266,39 +223,39 @@ func (ruleSet RuleSet) migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, err
 			setField(lint, "message-ignores", messages)
 		case "policy":
 			var policy policyWire
-			if err = value.Decode(&policy); err != nil {
+			if err = decodeValue(value, &policy); err != nil {
 				break
 			}
 			policies := value
-			if value.ShortTag() == "!!null" {
+			if isNull(value) {
 				policies = mapping()
-				for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "require-permissions"} {
+				for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "missing-permissions"} {
 					setField(policies, name, value)
 				}
 			}
-			for i := 0; i < len(policies.Content) && err == nil; i += 2 {
-				name, selected := policies.Content[i].Value, policies.Content[i+1]
+			for name, selected := range members(policies) {
+				if err != nil {
+					break
+				}
 				setting := mapping()
-				setting.Line, setting.Column = selected.Line, selected.Column
 				level := "default"
-				setField(setting, "options", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
-				switch selected.ShortTag() {
-				case "!!bool":
+				setField(setting, "options", explicitNull{})
+				switch selected.(type) {
+				case bool:
 					level = "off"
 					var enabled bool
-					if err = selected.Decode(&enabled); err != nil {
+					if err = decodeValue(selected, &enabled); err != nil {
 						break
 					}
 					if enabled {
 						level = "on"
 					}
-				case "!!map":
+				case map[string]any:
 					level = "on"
 					setField(setting, "options", selected)
 				}
-				levelNode := textNode(level)
-				levelNode.Line, levelNode.Column = selected.Line, selected.Column
-				if selected.ShortTag() == "!!null" {
+				levelNode := textValue(level)
+				if isNull(selected) {
 					levelNode = selected
 					setField(setting, "options", selected)
 				}
@@ -307,19 +264,14 @@ func (ruleSet RuleSet) migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, err
 			}
 		}
 		if err != nil {
-			return nil, false, err
+			return nil, false, binding.At(key, err)
 		}
-		for i := 0; i < len(next.Content); i += 2 {
-			if next.Content[i].Value == key {
-				next.Content = append(next.Content[:i], next.Content[i+2:]...)
-				break
-			}
-		}
+		removeField(next, key)
 	}
-	if len(rules.Content) != 0 {
+	if len(members(rules)) != 0 {
 		setField(lint, "rules", rules)
 	}
-	if len(lint.Content) != 0 {
+	if len(members(lint)) != 0 {
 		setField(next, "lint", lint)
 	}
 	return next, true, nil
@@ -328,30 +280,33 @@ func (ruleSet RuleSet) migrateLegacyNode(root *yaml.Node) (*yaml.Node, bool, err
 // mergeMigration combines distinct fields but refuses to choose between two
 // explicitly configured values. "default" levels introduced for knowledge
 // options never override a user-specified diagnostic level.
-func mergeMigration(current, legacy *yaml.Node, path, origin string) (*yaml.Node, error) {
-	if current.Kind == yaml.ScalarNode && legacy.Kind == yaml.MappingNode && field(legacy, "level") != nil {
+func mergeMigration(current, legacy any, path, origin string) (any, error) {
+	if !isMapping(current) && isMapping(legacy) && field(legacy, "level") != nil {
 		wrapped := mapping()
 		setField(wrapped, "level", current)
 		current = wrapped
 	}
 	if strings.HasSuffix(path, ".level") {
 		var a, b Level
-		if err := current.Decode(&a); err != nil {
+		if err := decodeValue(current, &a); err != nil {
 			return nil, err
 		}
-		if err := legacy.Decode(&b); err != nil {
+		if err := decodeValue(legacy, &b); err != nil {
 			return nil, err
 		}
 		if a == b {
 			return current, nil
 		}
 	}
-	if current.Kind == yaml.MappingNode && legacy.Kind == yaml.MappingNode && !strings.HasPrefix(path, "repository.") {
+	if isMapping(current) && isMapping(legacy) && !strings.HasPrefix(path, "repository.") {
 		next := cloneMapping(current)
-		for i := 0; i < len(legacy.Content); i += 2 {
-			key, value := legacy.Content[i].Value, legacy.Content[i+1]
+		for key, raw := range members(legacy) {
+			value := raw
+			if value == nil {
+				value = explicitNull{}
+			}
 			if previous := field(current, key); previous != nil {
-				if key == "level" && (value.Value == "default" || value.ShortTag() == "!!null") {
+				if key == "level" && (text(value) == "default" || isNull(value)) {
 					continue
 				}
 				merged, err := mergeMigration(previous, value, path+"."+key, origin)
@@ -365,10 +320,10 @@ func mergeMigration(current, legacy *yaml.Node, path, origin string) (*yaml.Node
 		return next, nil
 	}
 	var a, b any
-	if err := current.Decode(&a); err != nil {
+	if err := decodeValue(current, &a); err != nil {
 		return nil, err
 	}
-	if err := legacy.Decode(&b); err != nil {
+	if err := decodeValue(legacy, &b); err != nil {
 		return nil, err
 	}
 	if !reflect.DeepEqual(a, b) {

@@ -83,6 +83,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - run: echo ok
+permissions: {}
 `)
 	bad := []byte(`on: push
 jobs:
@@ -91,6 +92,7 @@ jobs:
     if: true
     steps:
       - run: echo '${{ typo.value }}'
+permissions: {}
 `)
 	request := checking.Options{WorkingDir: root}
 	var requestSources []workspace.Source

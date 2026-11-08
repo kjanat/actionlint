@@ -65,6 +65,7 @@ jobs:
     steps:
       - run: |
           echo $VALUE
+permissions: {}
 `
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", "my workflow.yml": workflow, "work/my workflow.yml": workflow, ".github/workflows/my workflow.yml": workflow,
@@ -177,6 +178,7 @@ jobs:
     steps:
       - run: |
           echo é 🐚 $VALUE
+permissions: {}
 `,
 	})
 	resultPath := filepath.Join(t.TempDir(), "result.json")
@@ -255,6 +257,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `, "json", 0, 0, true},
 		{"findings without step failure", `on: push
 jobs:
@@ -262,6 +265,7 @@ jobs:
     runs-on: invalid-runner
     steps:
       - run: echo ok
+permissions: {}
 `, "sarif", 0, 1, true},
 		{"invalid format", "", "invalid", 2, 2, false},
 	} {

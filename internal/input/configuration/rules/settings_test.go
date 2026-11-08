@@ -2,10 +2,11 @@ package rules
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func TestSettingCanonicalLevels(t *testing.T) {
@@ -21,22 +22,22 @@ func TestSettingCanonicalLevels(t *testing.T) {
 		{"{level: default}", "default"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
-			var document yaml.Node
-			if err := yaml.Unmarshal([]byte(tc.input), &document); err != nil {
-				t.Fatal(err)
-			}
-			setting, err := parseSetting(document.Content[0])
+			parsed, err := document.Parse("test.yaml", []byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
-			encoded, err := yaml.Marshal(setting)
+			setting, err := parseSetting(parsed.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := encodeTestConfig(setting)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var normalized struct {
 				Level string `yaml:"level"`
 			}
-			if err := yaml.Unmarshal(encoded, &normalized); err != nil {
+			if err := decodeTestConfig(encoded, &normalized); err != nil {
 				t.Fatal(err)
 			}
 			if normalized.Level != tc.want {
@@ -46,12 +47,20 @@ func TestSettingCanonicalLevels(t *testing.T) {
 	}
 }
 
-// editingOptions overwrites the node it decodes, as a careless UnmarshalYAML might.
+// editingOptions mutates the values it receives to exercise ownership.
 type editingOptions struct{ name string }
 
-func (o *editingOptions) UnmarshalYAML(n *yaml.Node) error {
-	o.name = n.Content[1].Value
-	n.Content[1].Value = "edited"
+func (o *editingOptions) DecodeConfig(value any) error {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return errors.New("options are not a mapping")
+	}
+	name, ok := object["name"].(string)
+	if !ok {
+		return errors.New("name is not a string")
+	}
+	o.name = name
+	object["name"] = "edited"
 	return nil
 }
 
@@ -95,7 +104,7 @@ func TestNewSettingParsesJSONRawMessage(t *testing.T) {
 			t.Fatalf("%q: setting=%+v err=%v", raw, setting, err)
 		}
 	}
-	for _, raw := range []json.RawMessage{json.RawMessage("[1]"), json.RawMessage("{"), json.RawMessage("max-count: 3")} {
+	for _, raw := range []json.RawMessage{json.RawMessage("[1]"), json.RawMessage("{"), json.RawMessage("max-count: 3"), json.RawMessage(`{"count":1,"count":2}`)} {
 		if _, err := NewSetting("on", raw); err == nil {
 			t.Fatalf("accepted %q", raw)
 		}
@@ -109,7 +118,7 @@ func TestGroupKeepsItsRulesAndOmitsWhenEmpty(t *testing.T) {
 	if setting, ok := group.Rule("expression"); !ok || setting.Level() != "off" {
 		t.Fatalf("group shares the caller's map: %+v", setting)
 	}
-	encoded, err := yaml.Marshal(struct {
+	encoded, err := encodeTestConfig(struct {
 		Group Group `yaml:"group,omitempty"`
 	}{})
 	if err != nil || string(encoded) != "{}\n" {
@@ -120,7 +129,7 @@ func TestGroupKeepsItsRulesAndOmitsWhenEmpty(t *testing.T) {
 func TestLevelErrorsUseNamedLevels(t *testing.T) {
 	for _, input := range []string{"''", "0", "[]", "{}"} {
 		var level Level
-		err := yaml.Unmarshal([]byte(input), &level)
+		err := decodeTestConfig([]byte(input), &level)
 		if err == nil {
 			t.Fatalf("accepted %s", input)
 		}

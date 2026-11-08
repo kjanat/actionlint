@@ -40,6 +40,7 @@ jobs:
         id: broken
       - env: {RESULT: '${{ steps.broken.outputs.result }}'}
         run: echo "$RESULT"
+permissions: {}
 `)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, Sources: []sourceUnit{{Path: "ci.yml", Content: source, Project: workspace.Identity(root)}}})
 	if err != nil {

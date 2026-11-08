@@ -13,3 +13,4 @@ jobs:
       - *recursive1
       # ERROR
       - *recursive2
+permissions: {}

@@ -1,6 +1,7 @@
 package configschema_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -45,5 +46,35 @@ func TestValidateNamesFailingLocations(t *testing.T) {
 	}
 	if err := schema.Validate([]byte(`{`)); err == nil {
 		t.Fatal("validated malformed JSON")
+	}
+}
+
+func TestValidationErrorsRetainDetachedPaths(t *testing.T) {
+	schema, err := configschema.Compile([]byte(`{"type":"object","additionalProperties":false,"properties":{"count":{"type":"integer"}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ document, path, unknown string }{
+		{`{"count":"three"}`, "/count", ""},
+		{`{"extra/key":true}`, "", "extra/key"},
+	} {
+		err := schema.Validate([]byte(test.document))
+		failure, ok := errors.AsType[*configschema.ValidationError](err)
+		if !ok {
+			t.Fatalf("missing structured schema error: %v", err)
+		}
+		found := false
+		for _, unit := range failure.Failures {
+			if unit.Path != test.path {
+				continue
+			}
+			if test.unknown != "" && (len(unit.UnknownKeys) != 1 || unit.UnknownKeys[0] != test.unknown) {
+				continue
+			}
+			found = true
+		}
+		if !found {
+			t.Fatalf("paths: %#v, want %q and unknown key %q", failure.Failures, test.path, test.unknown)
+		}
 	}
 }

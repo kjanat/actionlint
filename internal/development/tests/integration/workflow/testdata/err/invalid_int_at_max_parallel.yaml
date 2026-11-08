@@ -43,3 +43,4 @@ jobs:
       max-parallel: ${{ 3 }}
     steps:
       - run: echo hello
+permissions: {}

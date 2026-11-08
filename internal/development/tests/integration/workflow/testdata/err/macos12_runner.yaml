@@ -5,3 +5,4 @@ jobs:
     runs-on: macos-12
     steps:
       - run: echo 'macOS 12 is no longer supported'
+permissions: {}

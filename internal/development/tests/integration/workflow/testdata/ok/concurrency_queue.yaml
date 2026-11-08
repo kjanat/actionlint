@@ -21,3 +21,4 @@ jobs:
       queue: single
     steps:
       - run: echo "single"
+permissions: {}

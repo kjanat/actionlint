@@ -45,3 +45,4 @@ jobs:
         foooo: unknown key
       - run: echo hello
         foooo: unknown key
+permissions: {}

@@ -1,1 +1,2 @@
+workflows/test.yaml:6:3: job "silent" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]
 workflows/test.yaml:7:11: nested job "snapshot" of "./workflows/reusable.yaml" requires "pull-requests: write" but the calling job grants "pull-requests: none" [workflow-call]

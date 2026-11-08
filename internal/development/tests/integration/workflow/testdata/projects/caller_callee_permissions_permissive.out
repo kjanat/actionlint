@@ -1,1 +1,2 @@
+workflows/test.yaml:4:3: job "caller" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]
 workflows/test.yaml:5:11: nested job "attest" of "./workflows/reusable.yaml" requires "id-token: write" but the calling job grants "id-token: none" [workflow-call]

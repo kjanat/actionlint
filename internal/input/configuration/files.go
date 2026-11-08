@@ -7,10 +7,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // FilesConfig is the shared include/exclude scope for input files.
@@ -53,161 +51,146 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func (ruleSet RuleSet) normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, capture func(*yaml.Node) error, additional ...string) (*yaml.Node, []Warning, error) {
-	// Validate each source independently, so overridden bad settings still fail.
-	resolved, err := ruleSet.ResolveNode(node, nil, additional...)
+func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]Input, inherited bool, capture func(any), additional ...string) (any, []Warning, error) {
+	resolved, err := ruleSet.ResolveValue(value, inputs, additional...)
 	if err != nil {
 		return nil, nil, err
 	}
-	node = resolved.Node
+	value = resolved.Value
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}
-	remote := address.Remote(path)
-	if remote {
-		if err := ValidateSourcePaths(path, node); err != nil {
+	if address.Remote(path) {
+		if err := ValidateSourcePaths(path, value); err != nil {
 			return nil, nil, err
 		}
 	} else {
-		toolconfig.NormalizePaths(node, filepath.Dir(path))
+		normalizeSourcePaths(value, filepath.Dir(path), inherited)
 	}
-	// Preserve the declaring origin of inherited relative tool configuration
-	// paths. A "*" key matches every entry of a mapping.
-	var visit func(*yaml.Node, []string)
-	visit = func(n *yaml.Node, keys []string) {
-		if len(keys) == 0 {
-			if n.Kind == yaml.ScalarNode && n.ShortTag() == "!!str" {
-				value := expandInheritedConfigDirectory(n.Value, filepath.Dir(path))
-				if !filepath.IsAbs(value) && !strings.Contains(value, "${{") {
-					value = filepath.Join(filepath.Dir(path), value)
-				}
-				n.Value = value
-			}
-			return
+	capture(value)
+	if local := field(value, "local-actions"); local != nil {
+		normalizeLocalActionSourceNode(local)
+	}
+	if lint := field(value, "lint"); lint != nil {
+		lint, err := ruleSet.normalizeRuleLocations(lint)
+		if err != nil {
+			return nil, nil, err
 		}
-		if n.Kind == yaml.MappingNode {
-			for i := 0; i < len(n.Content); i += 2 {
-				if keys[0] == "*" || n.Content[i].Value == keys[0] {
-					visit(n.Content[i+1], keys[1:])
-				}
-			}
-		}
+		setField(value, "lint", ruleSet.expandLintShorthands(lint))
 	}
-	if inherited && !remote {
-		visit(node, []string{"tools", "*", "config"})
-		if node.Kind == yaml.MappingNode {
-			for i := 0; i < len(node.Content); i += 2 {
-				if node.Content[i].Value == "overrides" {
-					for _, override := range node.Content[i+1].Content {
-						visit(override, []string{"tools", "*", "config"})
-					}
-				}
-			}
-		}
-	}
-	if err := capture(node); err != nil {
-		return nil, nil, err
-	}
-	if node.Kind == yaml.MappingNode {
-		for i := 0; i < len(node.Content); i += 2 {
-			if node.Content[i].Value == "local-actions" {
-				normalizeLocalActionSourceNode(node.Content[i+1])
-			}
-			if node.Content[i].Value == "lint" {
-				lint, err := ruleSet.normalizeRuleLocations(node.Content[i+1])
-				if err != nil {
-					return nil, nil, err
-				}
-				node.Content[i+1] = ruleSet.expandLintShorthands(lint)
-			}
-		}
-	}
-	return normalizeToolSwitch(node), resolved.Warnings, nil
+	return normalizeToolSwitch(value), resolved.Warnings, nil
 }
 
-// ValidateSourcePaths rejects settings that require a declaring local directory
-// in an HTTPS source. Plugin discovery calls this before its partial projection.
-func ValidateSourcePaths(origin string, node *yaml.Node) error {
+func normalizeSourcePaths(value any, directory string, inherited bool) {
+	for _, entry := range members(field(value, "tools")) {
+		backend := field(entry, "backend")
+		for _, item := range []struct {
+			parent     any
+			key        string
+			executable bool
+		}{
+			{field(backend, "process"), "executable", true}, {field(backend, "wasm"), "path", false},
+		} {
+			path, ok := field(item.parent, item.key).(string)
+			if ok && path != "" && !filepath.IsAbs(path) && ((item.executable && strings.ContainsAny(path, `/\`)) || (!item.executable && !strings.Contains(path, "://"))) {
+				setField(item.parent, item.key, filepath.Join(directory, path))
+			}
+		}
+		if inherited {
+			path, ok := field(entry, "config").(string)
+			if ok {
+				path = expandInheritedConfigDirectory(path, directory)
+				if !filepath.IsAbs(path) && !strings.Contains(path, "${{") {
+					path = filepath.Join(directory, path)
+				}
+				setField(entry, "config", path)
+			}
+		}
+	}
+	for _, child := range elements(field(value, "overrides")) {
+		normalizeSourcePaths(child, directory, inherited)
+	}
+}
+
+// ValidateSourcePaths rejects local paths in an HTTPS source.
+func ValidateSourcePaths(origin string, value any) error {
 	if !address.Remote(origin) {
 		return nil
 	}
-	if err := validateRemoteToolPaths(node); err != nil {
+	if err := validateRemoteToolPaths(value); err != nil {
 		return err
 	}
-	if plugins := field(node, "plugins"); plugins != nil {
-		for _, entry := range plugins.Content {
-			if registry := field(entry, "registry"); registry != nil && strings.HasPrefix(strings.ToLower(registry.Value), "file:") {
-				return errors.New("plugins.registry: remote config cannot select a local file registry")
-			}
+	for _, entry := range elements(field(value, "plugins")) {
+		if strings.HasPrefix(strings.ToLower(text(field(entry, "registry"))), "file:") {
+			return errors.New("plugins.registry: remote config cannot select a local file registry")
 		}
 	}
 	return nil
 }
 
-// Remote declarations have no local config directory. Repository paths and
-// runtime workspace expressions retain their existing local meaning.
-func validateRemoteToolPaths(node *yaml.Node) error {
-	if tools := field(node, "tools"); tools != nil && tools.Kind == yaml.MappingNode {
-		for i := 0; i < len(tools.Content); i += 2 {
-			name, entry := tools.Content[i].Value, tools.Content[i+1]
-			settings := field(entry, "config")
-			if err := rejectRemoteConfigDir(settings); err != nil {
-				return fmt.Errorf("tools.%s.config: %w", name, err)
+func validateRemoteToolPaths(value any) error {
+	for name, entry := range members(field(value, "tools")) {
+		settings := field(entry, "config")
+		if err := rejectRemoteConfigDir(settings); err != nil {
+			return fmt.Errorf("tools.%s.config: %w", name, err)
+		}
+		if path, ok := settings.(string); ok && !filepath.IsAbs(path) && !runtimeAbsolutePath(path) {
+			return fmt.Errorf("tools.%s.config: remote config cannot declare a relative filesystem path; use an absolute path or a workspace path expression", name)
+		}
+		backend := field(entry, "backend")
+		for _, item := range []struct {
+			value      any
+			label      string
+			executable bool
+		}{{field(field(backend, "process"), "executable"), "backend.process.executable", true}, {field(field(backend, "wasm"), "path"), "backend.wasm.path", false}} {
+			if item.value == nil {
+				continue
 			}
-			if settings != nil && settings.Kind == yaml.ScalarNode && settings.ShortTag() == "!!str" && !filepath.IsAbs(settings.Value) && !runtimeAbsolutePath(settings.Value) {
-				return fmt.Errorf("tools.%s.config: remote config cannot declare a relative filesystem path; use an absolute path or a workspace path expression", name)
+			if err := rejectRemoteConfigDir(item.value); err != nil {
+				return fmt.Errorf("tools.%s.%s: %w", name, item.label, err)
 			}
-			backend := field(entry, "backend")
-			if executable := field(field(backend, "process"), "executable"); executable != nil {
-				if err := rejectRemoteConfigDir(executable); err != nil {
-					return fmt.Errorf("tools.%s.backend.process.executable: %w", name, err)
-				}
-				if !filepath.IsAbs(executable.Value) && (strings.ContainsAny(executable.Value, `/\`) || filepath.VolumeName(executable.Value) != "" || executable.Value == "." || executable.Value == "..") {
-					return fmt.Errorf("tools.%s.backend.process.executable: remote config cannot declare a relative filesystem path", name)
-				}
-			}
-			if module := field(field(backend, "wasm"), "path"); module != nil {
-				if err := rejectRemoteConfigDir(module); err != nil {
-					return fmt.Errorf("tools.%s.backend.wasm.path: %w", name, err)
-				}
-				if !filepath.IsAbs(module.Value) && !strings.Contains(module.Value, "://") {
-					return fmt.Errorf("tools.%s.backend.wasm.path: remote config cannot declare a relative filesystem path", name)
-				}
+			path := text(item.value)
+			if !filepath.IsAbs(path) && ((item.executable && (strings.ContainsAny(path, `/\`) || filepath.VolumeName(path) != "" || path == "." || path == "..")) || (!item.executable && !strings.Contains(path, "://"))) {
+				return fmt.Errorf("tools.%s.%s: remote config cannot declare a relative filesystem path", name, item.label)
 			}
 		}
 	}
-	if overrides := field(node, "overrides"); overrides != nil {
-		for _, override := range overrides.Content {
-			if err := validateRemoteToolPaths(override); err != nil {
+	for _, child := range elements(field(value, "overrides")) {
+		if err := validateRemoteToolPaths(child); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rejectRemoteConfigDir(value any) error {
+	switch value := value.(type) {
+	case string:
+		for {
+			_, expression, found := strings.Cut(value, "${{")
+			if !found {
+				break
+			}
+			name, after, closed := strings.Cut(expression, "}}")
+			if !closed {
+				break
+			}
+			if strings.EqualFold(strings.TrimSpace(name), "configdir") {
+				return errors.New("configdir is unavailable in a remote config; use github.workspace, gitdir or github.action_path")
+			}
+			value = after
+		}
+	case map[string]any:
+		for _, child := range value {
+			if err := rejectRemoteConfigDir(child); err != nil {
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-func rejectRemoteConfigDir(node *yaml.Node) error {
-	if node == nil {
-		return nil
-	}
-	value := node.Value
-	for {
-		_, expression, found := strings.Cut(value, "${{")
-		if !found {
-			break
-		}
-		name, after, closed := strings.Cut(expression, "}}")
-		if !closed {
-			break
-		}
-		if strings.EqualFold(strings.TrimSpace(name), "configdir") {
-			return errors.New("configdir is unavailable in a remote config; use github.workspace, gitdir or github.action_path")
-		}
-		value = after
-	}
-	for _, child := range node.Content {
-		if err := rejectRemoteConfigDir(child); err != nil {
-			return err
+	case []any:
+		for _, child := range value {
+			if err := rejectRemoteConfigDir(child); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -254,4 +237,51 @@ func expandInheritedConfigDirectory(value, directory string) string {
 		}
 		value = after
 	}
+}
+
+// SourceError identifies the source location of a configuration error.
+type SourceError struct {
+	File         string
+	Line, Column int
+	Cause        error
+}
+
+func (e *SourceError) Error() string {
+	if e.File != "" {
+		return fmt.Sprintf("%s:%d:%d: %v", e.File, e.Line, e.Column, e.Cause)
+	}
+	return fmt.Sprintf("line %d, column %d: %v", e.Line, e.Column, e.Cause)
+}
+func (e *SourceError) Unwrap() error { return e.Cause }
+func sourceError(err error, inputs map[string]Input) error {
+	if err == nil {
+		return nil
+	}
+	if group, ok := err.(interface{ Unwrap() []error }); ok {
+		var failures []error
+		for _, failure := range group.Unwrap() {
+			failures = append(failures, sourceError(failure, inputs))
+		}
+		return errors.Join(failures...)
+	}
+	var bindingError *binding.Error
+	if !errors.As(err, &bindingError) {
+		return err
+	}
+	pointer := bindingError.Path
+	for {
+		if input, ok := inputs[pointer]; ok && input.Line > 0 {
+			line, column := input.Line, input.Column
+			if errors.Is(err, binding.ErrUnknownKey) && input.KeyLine > 0 {
+				line, column = input.KeyLine, input.KeyColumn
+			}
+			return &SourceError{File: input.File, Line: line, Column: column, Cause: err}
+		}
+		at := strings.LastIndex(pointer, "/")
+		if at < 0 {
+			break
+		}
+		pointer = pointer[:at]
+	}
+	return err
 }

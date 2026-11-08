@@ -108,3 +108,4 @@ jobs:
           INPUT23: ${{ inputs.input23 }}
           INPUT24: ${{ inputs.input24 }}
           INPUT25: ${{ inputs.input25 }}
+permissions: {}

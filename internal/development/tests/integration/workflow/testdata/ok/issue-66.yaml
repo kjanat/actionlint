@@ -26,3 +26,4 @@ jobs:
           channel-id: ${{ secrets.SLACK_TEMPLATES_CHANNEL_ID }}
           template: result
           results: "${{ join(needs.*.result, ' ') }}"
+permissions: {}

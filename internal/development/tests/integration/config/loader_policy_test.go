@@ -1,13 +1,14 @@
 package config_test
 
 import (
+	"errors"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestConfigTimeoutBounds(t *testing.T) {
@@ -52,7 +53,8 @@ func TestConfigTimeoutBounds(t *testing.T) {
 	} {
 		t.Run(tc.mapping, func(t *testing.T) {
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-job-timeout: " + tc.mapping))
-			if err == nil || !strings.Contains(err.Error(), tc.message) || !strings.Contains(err.Error(), "line:2,col:") {
+			var source *repoconfig.SourceError
+			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
 			}
 		})
@@ -85,7 +87,7 @@ func TestJobTimeoutRangeAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := yaml.Unmarshal([]byte("true"), p); err != nil {
+	if err := decodeConfigYAML([]byte("true"), p); err != nil {
 		t.Fatal(err)
 	}
 	if lower, ok := p.MinMinutes(); lower != 0 || ok {
@@ -95,42 +97,55 @@ func TestJobTimeoutRangeAPI(t *testing.T) {
 
 func TestConfigRequirePermissions(t *testing.T) {
 	for _, tc := range []struct {
-		value   string
-		set     bool
-		enabled bool
-		scope   string
+		value     string
+		level     repoconfig.Level
+		locations []repoconfig.PermissionLocation
 	}{
-		{"null", false, false, ""},
-		{"false", true, false, ""},
-		{"true", true, true, "workflow"},
-		{"{}", true, true, "workflow"},
-		{"{scope: workflow}", true, true, "workflow"},
-		{"{scope: job}", true, true, "job"},
+		{"null", "error", repoconfig.PermissionLocations()},
+		{"false", "off", nil},
+		{"true", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
+		{"{}", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
+		{"{scope: workflow}", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
+		{"{scope: job}", "error", []repoconfig.PermissionLocation{repoconfig.EveryJobPermissions}},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {require-permissions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			p := cfg.RequiresPermissions()
-			if (p != nil) != tc.set || p.Enabled() != tc.enabled || p.Scope() != tc.scope {
-				t.Fatalf("unexpected policy %+v", p)
+			resolved, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := checking.ConfigurationRules().DiagnosticLevel(resolved, "missing-permissions"); got != tc.level {
+				t.Fatalf("level %q, want %q", got, tc.level)
+			}
+			if tc.locations != nil {
+				got, err := resolved.PermissionDeclarationLocations()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Equal(got, tc.locations) {
+					t.Fatalf("locations %v, want %v", got, tc.locations)
+				}
 			}
 		})
 	}
+
 	for _, tc := range []struct{ value, message string }{
-		{"1", "must be a boolean or a mapping"},
-		{"'true'", "must be a boolean or a mapping"},
-		{"[]", "must be a boolean or a mapping"},
+		{"1", "must be a boolean or a scope mapping"},
+		{"'true'", "must be a boolean or a scope mapping"},
+		{"[]", "must be a boolean or a scope mapping"},
 		{"{level: job}", "unknown key"},
-		{"{scope: step}", `must be "workflow" or "job"`},
-		{"{scope: null}", `must be "workflow" or "job"`},
-		{"{scope: 1}", `must be "workflow" or "job"`},
-		{"{scope: [job]}", `must be "workflow" or "job"`},
+		{"{scope: step}", "must be workflow or job"},
+		{"{scope: null}", "must be workflow or job"},
+		{"{scope: 1}", "must be workflow or job"},
+		{"{scope: [job]}", "must be workflow or job"},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-permissions: " + tc.value))
-			if err == nil || !strings.Contains(err.Error(), tc.message) || !strings.Contains(err.Error(), "line:2,col:") {
+			var source *repoconfig.SourceError
+			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
 			}
 		})

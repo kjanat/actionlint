@@ -182,7 +182,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 {
 			t.Fatal(got.Policy)
 		}
-		if got.RequiresPermissions().Scope() != "job" || got.Policy.DisallowSuppressions.Report() != "violation" {
+		if (len(permissionLocations(t, got)) != 1 || permissionLocations(t, got)[0] != repoconfig.EveryJobPermissions) || got.Policy.DisallowSuppressions.Report() != "violation" {
 			t.Fatal(got.Policy)
 		}
 		if checking.ConfigurationRules().DiagnosticLevel(got, "expression") != "warn" {
@@ -251,7 +251,7 @@ func TestNewSettingRejectsDisabledPolicies(t *testing.T) {
 		"require-permissions":   &repoconfig.PermissionsPolicy{},
 		"disallow-suppressions": &repoconfig.SuppressionsPolicy{},
 	} {
-		if _, err := repoconfig.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "!!bool") {
+		if _, err := repoconfig.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "boolean") {
 			t.Fatalf("%s: disabled policy accepted as options: %v", name, err)
 		}
 	}

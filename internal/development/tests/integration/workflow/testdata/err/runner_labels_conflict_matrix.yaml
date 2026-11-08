@@ -7,3 +7,4 @@ jobs:
     runs-on: [ubuntu-latest, '${{matrix.os}}']
     steps:
       - run: echo ...
+permissions: {}

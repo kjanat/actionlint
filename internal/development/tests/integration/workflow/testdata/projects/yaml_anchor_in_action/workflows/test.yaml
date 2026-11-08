@@ -7,3 +7,4 @@ jobs:
       - uses: ./action
         id: test
       - run: echo ${{ steps.test.outputs.foo }}
+permissions: {}

@@ -26,3 +26,4 @@ jobs:
       # OK
       - uses: rhysd/action-setup-vim@v1
         with: &valid_inputs
+permissions: {}

@@ -20,8 +20,8 @@ func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
 	root := t.TempDir()
 	realPath := filepath.Join(root, "buffer.yml")
 	entryAlias := filepath.Join(root, "entry.yml")
-	disk := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo disk}]}}\n"
-	unsaved := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo ::set-output name=result::unsaved'}]}}\n"
+	disk := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo disk}]}}\npermissions: {}\n"
+	unsaved := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo ::set-output name=result::unsaved'}]}}\npermissions: {}\n"
 	if err := os.WriteFile(realPath, []byte(disk), 0o600); err != nil {
 		t.Fatal(err)
 	}

@@ -26,7 +26,7 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 			writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n"+tc.config)
 			writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
 			workflow := func(ignore string) string {
-				return "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + ignore + "      - uses: ./inner\n"
+				return "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + ignore + "      - uses: ./inner\npermissions: {}\n"
 			}
 			first := writeFixture(t, root, ".github/workflows/a.yml", workflow(tc.firstIgnore))
 			second := writeFixture(t, root, ".github/workflows/b.yml", workflow(""))
@@ -54,7 +54,7 @@ func TestMetadataDedupKeepsInvocationErrorsAcrossWorkflows(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\ninputs:\n  token:\n    required: true\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n      - uses: ./inner\n"
+	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n      - uses: ./inner\npermissions: {}\n"
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)
 	second := writeFixture(t, root, ".github/workflows/b.yml", workflow)
 	session := checking.Options{WorkingDir: root}
@@ -91,7 +91,7 @@ func TestMetadataDedupKeepsDistinctSuppressionViolations(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\npolicy: {disallow-suppressions: {report: suppression}}\nignores:\n  - {rule: action, file: '.github/workflows/a.yml'}\n  - {rule: action, file: '.github/workflows/b.yml'}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)
 	second := writeFixture(t, root, ".github/workflows/b.yml", workflow)
 	session := checking.Options{WorkingDir: root}

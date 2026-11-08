@@ -204,6 +204,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: $/local
+permissions: {}
 `),
 			}}})
 			if err != nil {

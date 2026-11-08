@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 )
 
 // location identifies every schema while it compiles. The address is never
@@ -22,6 +23,28 @@ const location = "https://actionlint.invalid/provider-config.json"
 // Schema validates tools.<name>.config values for one provider.
 type Schema struct {
 	schema *jsonschema.Schema
+}
+
+// Failure records the path and reason for a rejected value.
+type Failure struct {
+	Path        string
+	Message     string
+	UnknownKeys []string
+}
+
+// ValidationError lists validation failures with their configuration paths.
+type ValidationError struct{ Failures []Failure }
+
+func (e *ValidationError) Error() string {
+	problems := make([]string, 0, len(e.Failures))
+	for _, failure := range e.Failures {
+		at := failure.Path
+		if at == "" {
+			at = "/"
+		}
+		problems = append(problems, fmt.Sprintf("at %s: %s", at, failure.Message))
+	}
+	return strings.Join(problems, "; ")
 }
 
 // Compile compiles a configuration schema. Schemas must bundle their
@@ -55,13 +78,19 @@ func (s *Schema) Validate(document []byte) error {
 	if err == nil {
 		return nil
 	}
-	// Report text only: a validation error references the compiled schema.
+	// The validator's error contains schema objects. Return only its paths and messages.
 	invalid, ok := errors.AsType[*jsonschema.ValidationError](err)
 	if !ok {
 		return errors.New(err.Error())
 	}
+	result := new(ValidationError)
+	output := invalid.BasicOutput()
+	units := output.Errors
+	if output.Error != nil {
+		units = append(units, *output)
+	}
 	var problems []string
-	for _, unit := range invalid.BasicOutput().Errors {
+	for _, unit := range units {
 		if unit.Error == nil {
 			continue
 		}
@@ -72,12 +101,17 @@ func (s *Schema) Validate(document []byte) error {
 		problem := fmt.Sprintf("at %s: %s", at, unit.Error)
 		if !slices.Contains(problems, problem) {
 			problems = append(problems, problem)
+			failure := Failure{Path: unit.InstanceLocation, Message: unit.Error.String()}
+			if unknown, ok := unit.Error.Kind.(*kind.AdditionalProperties); ok {
+				failure.UnknownKeys = slices.Clone(unknown.Properties)
+			}
+			result.Failures = append(result.Failures, failure)
 		}
 	}
 	if len(problems) == 0 {
 		return errors.New(err.Error())
 	}
-	return errors.New(strings.Join(problems, "; "))
+	return result
 }
 
 // refuseLoader refuses every external reference.

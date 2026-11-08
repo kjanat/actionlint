@@ -10,3 +10,4 @@ jobs:
           fi
         env:
           VALUE: ${{ env.FOO }}
+permissions: {}

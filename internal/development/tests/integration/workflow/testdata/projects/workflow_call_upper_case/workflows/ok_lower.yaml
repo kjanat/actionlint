@@ -9,3 +9,4 @@ jobs:
     secrets:
       my_secret_1: hello
       my_secret_2: world
+permissions: {}

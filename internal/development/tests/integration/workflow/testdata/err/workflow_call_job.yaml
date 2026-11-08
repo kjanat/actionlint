@@ -34,3 +34,4 @@ jobs:
   # missing ref
   call8:
     uses: "foo/bar/workflow.yml"
+permissions: {}

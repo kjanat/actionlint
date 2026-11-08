@@ -31,7 +31,7 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 	config := fmt.Sprintf("tools:\n  shellcheck: false\n  ruff:\n    backend:\n      wasm: {path: %q}\n", filepath.ToSlash(path))
 	root := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": config,
-		".github/workflows/wasm.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing = 1\n        shell: python\n",
+		".github/workflows/wasm.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing = 1\n        shell: python\npermissions: {}\n",
 	})
 	env := map[string]string{"GITHUB_WORKSPACE": root, "ACTIONLINT_RUFF_COMMAND": "retired-command-must-not-run"}
 	lookup := func(key string) string { return env[key] }
@@ -91,7 +91,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				t.Fatal(err)
 			}
 			config := fmt.Sprintf("tools:\n  %s: false\n  %s:\n    backend:\n      wasm: {path: %q}\n", tc.other, tc.name, filepath.ToSlash(path))
-			workflow := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: %q\n        shell: %s\n", tc.source, tc.shell)
+			workflow := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: %q\n        shell: %s\npermissions: {}\n", tc.source, tc.shell)
 			root := workspaceWith(t, map[string]string{
 				".git": "", ".github/actionlint.yaml": config,
 				".github/workflows/ci.yml": workflow,
@@ -181,7 +181,7 @@ func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 	config := fmt.Sprintf("tools:\n  shellcheck: false\n  ruff:\n    backend:\n      wasm: {path: %q}\n", filepath.ToSlash(module))
 	root := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": config,
-		".github/workflows/ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
+		".github/workflows/ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n",
 	})
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	result := runLinter(req)

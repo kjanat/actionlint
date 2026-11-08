@@ -30,7 +30,7 @@ func TestCachePolicyRemoteCallBoundaries(t *testing.T) {
 			source := `on: pull_request_target
 jobs:
   call:
-` + tc.before + "    uses: " + tc.uses + "\n"
+` + tc.before + "    uses: " + tc.uses + "\npermissions: {}\n"
 			var kinds []string
 			for _, err := range testutil.WorkflowDiagnostics(t, source, tc.config) {
 				kinds = append(kinds, err.Rule)
@@ -66,7 +66,7 @@ jobs:
 	} {
 		for _, value := range []string{"true", "false", "null"} {
 			t.Run(tc.name+"/"+value, func(t *testing.T) {
-				errs := testutil.WorkflowDiagnostics(t, tc.source, fmt.Sprintf("policy: {%s: %s}", tc.name, value))
+				errs := testutil.WorkflowDiagnostics(t, tc.source+"permissions: {}\n", fmt.Sprintf("policy: {%s: %s}", tc.name, value))
 				if value == "false" {
 					if len(errs) != 0 {
 						t.Fatal(errs)

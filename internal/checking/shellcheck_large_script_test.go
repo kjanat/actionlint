@@ -38,6 +38,7 @@ jobs:
 			if findings {
 				workflow += "          echo $ACTIONLINT_STDIN_REGRESSION\n"
 			}
+			workflow += "permissions: {}\n"
 			var result *checking.Result
 			done := make(chan error, 1)
 			go func() {

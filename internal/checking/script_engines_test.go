@@ -99,8 +99,8 @@ func writeScriptEngineRepository(t *testing.T) (root string, workflows []string)
 	for path, content := range map[string]string{
 		".git/HEAD":                   "ref: refs/heads/main\n",
 		".github/actionlint.yaml":     "tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n",
-		".github/workflows/ci.yml":    "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
-		".github/workflows/night.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
+		".github/workflows/ci.yml":    "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n",
+		".github/workflows/night.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n",
 	} {
 		full := filepath.Join(root, filepath.FromSlash(path))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -229,7 +229,7 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 	files := map[string]string{
 		".git/HEAD":                        "ref: refs/heads/main\n",
 		".github/actionlint.yaml":          "tools:\n  shellcheck:\n    backend:\n      wasm: {path: workflow.wasm}\noverrides:\n  - includes: ['.github/actions/**/action.yml']\n    tools:\n      shellcheck:\n        backend:\n          wasm: {path: action.wasm}\n",
-		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: echo workflow\n",
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: echo workflow\npermissions: {}\n",
 		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: echo action\n      shell: bash\n",
 	}
 	for path, content := range files {
@@ -275,7 +275,7 @@ func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range workflows {
-		if err := os.WriteFile(path, []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $missing\n"), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $missing\npermissions: {}\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -10,3 +10,4 @@ jobs:
           for x in "${values[@]}"; do
             echo "$x"
           done
+permissions: {}

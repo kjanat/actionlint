@@ -13,3 +13,4 @@ jobs:
       - run: echo ${{ steps.my_action.outputs.some_value }}
       # ERROR: No output named 'some-value' (typo)
       - run: echo ${{ steps.my_action.outputs.some-value }}
+permissions: {}

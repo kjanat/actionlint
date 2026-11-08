@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo $VALUE
+permissions: {}
 `)
 	for _, selection := range []string{
 		"${{ gitdir }}/.shellcheckrc",

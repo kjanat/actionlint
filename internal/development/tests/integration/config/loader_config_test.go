@@ -1,14 +1,16 @@
 package config_test
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/google/go-cmp/cmp"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
@@ -115,7 +117,7 @@ paths:
   foo:
     ignore: foo+
 `,
-			want: `"ignore" must be a sequence node`,
+			want: `ignore patterns must be an array`,
 		},
 		{
 			in: `
@@ -123,7 +125,7 @@ paths:
   foo:
     ignore: ['(foo']
 `,
-			want: `invalid regular expression "(foo" in "ignore"`,
+			want: `error parsing regexp: missing closing )`,
 		},
 		{
 			in: `
@@ -134,11 +136,11 @@ paths:
 		},
 		{
 			in:   "assume-default-permissions: foo\n",
-			want: `yaml: "assume-default-permissions" must be "restricted" or "permissive" but got "foo" at line:1,col:29`,
+			want: `"assume-default-permissions" must be "restricted" or "permissive" but got "foo"`,
 		},
 		{
 			in:   "assume-default-permissions: [restricted]\n",
-			want: `yaml: "assume-default-permissions" must be "restricted" or "permissive" but got "" at line:1,col:29`,
+			want: `"assume-default-permissions" must be "restricted" or "permissive" but got ["restricted"]`,
 		},
 	}
 
@@ -150,6 +152,12 @@ paths:
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("wanted error message %q to contain %q", err.Error(), tc.want)
+			}
+			if strings.HasPrefix(tc.in, "assume-default-permissions:") {
+				var source *repoconfig.SourceError
+				if !errors.As(err, &source) || source.Line != 1 || source.Column != 29 {
+					t.Fatalf("wrong source position: %v", err)
+				}
 			}
 		})
 	}
@@ -191,7 +199,7 @@ func TestConfigPathConfigIgnores(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.input+"_"+tc.msg, func(t *testing.T) {
 			var c repoconfig.PathConfig
-			if err := yaml.Unmarshal([]byte(tc.input), &c); err != nil {
+			if err := decodeConfigYAML([]byte(tc.input), &c); err != nil {
 				t.Fatal(err)
 			}
 			have := c.Ignore.Match(tc.msg)
@@ -397,9 +405,9 @@ func TestConfigParsePolicyUnknownKey(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error occurred")
 	}
-	want := `unknown key "require-commit-hashes" in "policy" at line:2,col:3`
-	if !strings.Contains(err.Error(), want) {
-		t.Fatalf("wanted error message %q to contain %q", err.Error(), want)
+	var source *repoconfig.SourceError
+	if !errors.As(err, &source) || source.Line != 2 || source.Column != 3 || !strings.Contains(err.Error(), "require-commit-hashes") || !strings.Contains(err.Error(), "unknown key") {
+		t.Fatalf("unexpected positioned unknown key error: %v", err)
 	}
 }
 
@@ -408,9 +416,9 @@ func TestConfigParsePolicyNotAMapping(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error occurred")
 	}
-	want := `"policy" must be a mapping node at line:1,col:9`
-	if !strings.Contains(err.Error(), want) {
-		t.Fatalf("wanted error message %q to contain %q", err.Error(), want)
+	var source *repoconfig.SourceError
+	if !errors.As(err, &source) || source.Line != 1 || source.Column != 9 || !strings.Contains(err.Error(), "expected a map") {
+		t.Fatalf("unexpected positioned mapping error: %v", err)
 	}
 }
 
@@ -679,8 +687,29 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 			if err == nil {
 				t.Fatal("no error occurred")
 			}
-			if !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("wanted error message %q to contain %q", err.Error(), tc.want)
+			var line, column int
+			matched := regexp.MustCompile(`line:(\d+),col:(\d+)`).FindStringSubmatch(tc.want)
+			if len(matched) != 3 {
+				t.Fatalf("missing expected location in %q", tc.want)
+			}
+			if _, scanErr := fmt.Sscanf(matched[0], "line:%d,col:%d", &line, &column); scanErr != nil {
+				t.Fatal(scanErr)
+			}
+			var source *repoconfig.SourceError
+			if !errors.As(err, &source) || source.Line != line || source.Column != column {
+				t.Fatalf("source location: %v, want %d:%d", err, line, column)
+			}
+			message := "must be a boolean or a mapping"
+			switch tc.what {
+			case "unknown key in the mapping":
+				message = "unknown key"
+			case "max-minutes is zero", "max-minutes is negative":
+				message = "greater than zero"
+			case "max-minutes is not a number", "max-minutes is a mapping":
+				message = "must be a number"
+			}
+			if !strings.Contains(err.Error(), message) {
+				t.Fatalf("error %q lacks %q", err, message)
 			}
 		})
 	}

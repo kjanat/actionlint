@@ -1,149 +1,159 @@
 package tree
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
-
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
-// Loaded contains the merged configuration, its source files, and the source of
-// each YAML node.
+// Loaded contains merged values, source files, and source locations by JSON pointer.
 type Loaded struct {
-	Node    *yaml.Node
+	Value   any
 	Files   []string
-	Origins map[*yaml.Node]string
+	Origins map[string]Input
 }
 
-// Load resolves extends relative to their declaring file or HTTPS address. The
-// caller supplies all bytes and validates each document before merging.
-func Load(path string, read func(string) ([]byte, error), normalize func(string, *yaml.Node) (*yaml.Node, error)) (Loaded, error) {
+func Load(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error)) (Loaded, error) {
 	return LoadWithMerge(path, read, normalize, Merge)
 }
 
-// LoadWithMerge lets the caller choose how mappings are merged. It detects cycles
-// in extends and records the source of each node.
-func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, *yaml.Node) (*yaml.Node, error), merge func(*yaml.Node, *yaml.Node, map[*yaml.Node]Input) *yaml.Node) (Loaded, error) {
-	result := Loaded{Origins: map[*yaml.Node]string{}}
-	inputs := map[*yaml.Node]Input{}
+func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error), merge func(any, any) any) (Loaded, error) {
 	active := map[string]bool{}
-	cache := map[string]*yaml.Node{}
-	var load func(string, int) (*yaml.Node, error)
-	load = func(path string, depth int) (*yaml.Node, error) {
+	cache := map[string]Loaded{}
+	var files []string
+	var load func(string, int) (Loaded, error)
+	load = func(path string, depth int) (Loaded, error) {
 		readPath := path
 		path, err := address.Normalize(path)
 		if err != nil {
-			return nil, err
+			return Loaded{}, err
 		}
-		// Use physical identity when available; virtual readers still use clean paths.
 		identity := path
 		if !address.Remote(path) {
-			if actual, err := filepath.EvalSymlinks(path); err == nil {
+			if actual, e := filepath.EvalSymlinks(path); e == nil {
 				identity = actual
 			}
 		}
 		if active[identity] {
-			return nil, fmt.Errorf("cyclic config extends at %q", path)
+			return Loaded{}, fmt.Errorf("cyclic config extends at %q", path)
 		}
 		if depth > 32 {
-			return nil, fmt.Errorf("config extends exceeds 32 levels at %q", path)
+			return Loaded{}, fmt.Errorf("config extends exceeds 32 levels at %q", path)
 		}
-		if n, ok := cache[path]; ok {
-			return n, nil
+		if cached, ok := cache[path]; ok {
+			return cached, nil
 		}
 		active[identity] = true
 		defer delete(active, identity)
 		data, err := read(readPath)
 		if err != nil {
-			return nil, fmt.Errorf("read config %q: %w", path, err)
+			return Loaded{}, fmt.Errorf("read config %q: %w", path, err)
 		}
-		node, err := Decode(readPath, data)
+		doc, err := document.Parse(readPath, data)
 		if err != nil {
-			return nil, fmt.Errorf("config %q: %w", path, err)
-		}
-		node, err = Expand(node, map[*yaml.Node]bool{})
-		if err != nil {
-			return nil, err
+			return Loaded{}, fmt.Errorf("config %q: %w", path, err)
 		}
 		if normalize != nil {
-			node, err = normalize(path, node)
+			doc, err = normalize(path, doc)
 			if err != nil {
-				return nil, fmt.Errorf("config %q: %w", path, err)
+				return Loaded{}, fmt.Errorf("config %q: %w", path, err)
 			}
 		}
 		var bases []string
-		if node.Kind == yaml.MappingNode {
-			for i := 0; i < len(node.Content); i += 2 {
-				if node.Content[i].Value == "extends" {
-					for _, entry := range node.Content[i+1].Content {
-						if entry.Kind != yaml.ScalarNode || entry.ShortTag() != "!!str" {
-							return nil, fmt.Errorf("config %q extends entries must be strings", path)
-						}
+		if object, ok := doc.Value.(map[string]any); ok {
+			if value, present := object["extends"]; present && value != nil {
+				list, ok := value.([]any)
+				if !ok {
+					return Loaded{}, fmt.Errorf("config %q extends must be a list of strings", path)
+				}
+				for _, entry := range list {
+					name, ok := entry.(string)
+					if !ok {
+						return Loaded{}, fmt.Errorf("config %q extends entries must be strings", path)
 					}
-					if err := node.Content[i+1].Decode(&bases); err != nil {
-						return nil, fmt.Errorf("config %q extends: %w", path, err)
-					}
+					bases = append(bases, name)
 				}
 			}
 		}
-		var base *yaml.Node
+		result := Loaded{Origins: map[string]Input{}}
 		for _, name := range bases {
-			name, err := address.Resolve(path, name)
+			resolved, err := address.Resolve(path, name)
 			if err != nil {
-				return nil, fmt.Errorf("extends in %q: %w", path, err)
+				return Loaded{}, fmt.Errorf("extends in %q: %w", path, err)
 			}
-			n, err := load(name, depth+1)
+			inherited, err := load(resolved, depth+1)
 			if err != nil {
-				// A missing base invalidates this graph, rather than making the
-				// selected leaf eligible for repository-discovery fallback.
-				return nil, extendsError{origin: path, detail: err.Error(), canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded)}
-			}
-			base = merge(base, n, inputs)
-		}
-		var mark func(*yaml.Node)
-		mark = func(n *yaml.Node) {
-			result.Origins[n] = path
-			inputs[n] = Input{File: path}
-			for _, child := range n.Content {
-				mark(child)
-			}
-		}
-		mark(node)
-		merged := merge(base, node, inputs)
-		if len(bases) == 0 && merged.Kind == yaml.MappingNode {
-			leaf := *merged
-			leaf.Content = append([]*yaml.Node{}, merged.Content...)
-			for i := 0; i < len(leaf.Content); i += 2 {
-				if leaf.Content[i].Value == "extends" {
-					leaf.Content = append(leaf.Content[:i], leaf.Content[i+2:]...)
-					break
+				cause := err
+				if errors.Is(err, os.ErrNotExist) {
+					cause = errors.New(err.Error())
 				}
+				return Loaded{}, extendsError{origin: path, cause: cause}
 			}
-			inputs[&leaf] = inputs[merged]
-			merged = &leaf
+			mergeOrigins(result.Origins, inherited.Origins, result.Value, inherited.Value, "")
+			result.Value = merge(result.Value, inherited.Value)
 		}
-		cache[path] = merged
-		result.Files = append(result.Files, path)
-		return merged, nil
+		source := map[string]Input{}
+		for pointer, loc := range doc.ValueLocations {
+			key := doc.Locations[pointer]
+			source[pointer] = Input{File: path, Line: loc.Line, Column: loc.Column, KeyLine: key.Line, KeyColumn: key.Column}
+		}
+		if object, ok := doc.Value.(map[string]any); ok {
+			object = maps.Clone(object)
+			delete(object, "extends")
+			doc.Value = object
+		}
+		mergeOrigins(result.Origins, source, result.Value, doc.Value, "")
+		result.Value = merge(result.Value, doc.Value)
+		cache[path] = result
+		files = append(files, path)
+		return result, nil
 	}
-	node, err := load(path, 0)
-	for node, input := range inputs {
-		result.Origins[node] = input.File
-	}
-	result.Node = node
+	result, err := load(path, 0)
+	result.Files = files
 	return result, err
 }
 
-type extendsError struct {
-	origin, detail     string
-	canceled, deadline bool
+// mergeOrigins updates source locations for values supplied by the overlay.
+func mergeOrigins(dst, src map[string]Input, base, value any, path string) {
+	if object, ok := value.(map[string]any); ok {
+		old, existed := dst[path]
+		if in, found := src[path]; found {
+			if existed && base == nil {
+				reset := old
+				in.Reset = &reset
+			} else if existed && old.Reset != nil {
+				in.Reset = old.Reset
+			}
+			dst[path] = in
+		}
+		baseObject, _ := base.(map[string]any)
+		for key, child := range object {
+			mergeOrigins(dst, src, baseObject[key], child, document.Path(path, key))
+		}
+		return
+	}
+	for key := range dst {
+		if key == path || strings.HasPrefix(key, path+"/") {
+			delete(dst, key)
+		}
+	}
+	for key, input := range src {
+		if key == path || strings.HasPrefix(key, path+"/") {
+			dst[key] = input
+		}
+	}
 }
 
-func (e extendsError) Error() string { return fmt.Sprintf("extends in %q: %s", e.origin, e.detail) }
-func (e extendsError) Is(target error) bool {
-	return e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded
+type extendsError struct {
+	origin string
+	cause  error
 }
+
+func (e extendsError) Error() string { return fmt.Sprintf("extends in %q: %s", e.origin, e.cause) }
+func (e extendsError) Unwrap() error { return e.cause }

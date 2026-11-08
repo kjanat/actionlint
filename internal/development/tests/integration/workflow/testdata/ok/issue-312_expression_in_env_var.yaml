@@ -28,3 +28,4 @@ jobs:
           foo-${{ github.event_name }}: ''
           ${{ github.event_name }}-bar: ''
           ${{ github.event_name }}-${{ github.event_path }}: ''
+permissions: {}

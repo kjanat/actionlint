@@ -9,3 +9,4 @@ jobs:
           - ${{ fromJson('{"foo":{"bar":"test"}}') }}
     steps:
       - run: echo ${{ matrix.test.foo.bar }}
+permissions: {}

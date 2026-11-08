@@ -38,3 +38,4 @@ jobs:
       - run: echo "$VALUE"
         env:
           VALUE: ${{ matrix.foo[0] }}
+permissions: {}

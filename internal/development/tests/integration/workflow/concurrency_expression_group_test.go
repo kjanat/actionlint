@@ -56,6 +56,7 @@ func TestConcurrencyExpressionGroups(t *testing.T) {
 					}
 					source += `    steps:
       - run: echo ok
+permissions: {}
 `
 					request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 					var requestSources []workspace.Source

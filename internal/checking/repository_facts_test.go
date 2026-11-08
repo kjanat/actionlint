@@ -12,7 +12,7 @@ import (
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 )
 
-const variableWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.%s }}'}\n"
+const variableWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.%s }}'}\npermissions: {}\n"
 
 func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
 	first, second, unknown := t.TempDir(), t.TempDir(), t.TempDir()
@@ -72,9 +72,9 @@ func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *tes
 			t.Fatal(err)
 		}
 	}
-	write(".github/workflows/reuse.yml", "on: {workflow_call: {inputs: {required: {type: string, required: true}}}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
+	write(".github/workflows/reuse.yml", "on: {workflow_call: {inputs: {required: {type: string, required: true}}}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n")
 	write(".github/actions/hello/action.yml", "name: Hello\ndescription: Greet the caller\nruns: {using: composite, steps: [{shell: bash, run: echo hello}]}\n")
-	content := "on: push\njobs:\n  caller: {uses: ./.github/workflows/reuse.yml}\n  action: {runs-on: ubuntu-latest, steps: [{uses: ./.github/actions/hello}]}\n"
+	content := "on: push\njobs:\n  caller: {uses: ./.github/workflows/reuse.yml}\n  action: {runs-on: ubuntu-latest, steps: [{uses: ./.github/actions/hello}]}\npermissions: {}\n"
 	result, err := Analyze(t.Context(), Options{
 		WorkingDir: root,
 		Repository: func(context.Context, string) repository.Snapshot {
@@ -115,7 +115,7 @@ func TestEnvironmentNamesAreScopedPerJob(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			content := "on: " + test.trigger + "\njobs:\n  test:\n" + test.environment + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.DEPLOY }}', TOKEN: '${{ secrets.ENV_TOKEN }}'}\n"
+			content := "on: " + test.trigger + "\njobs:\n  test:\n" + test.environment + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.DEPLOY }}', TOKEN: '${{ secrets.ENV_TOKEN }}'}\npermissions: {}\n"
 			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte(content)}})
 			if err != nil {
 				t.Fatal(err)
@@ -149,7 +149,7 @@ func TestUnavailableRunnerLabelsDoNotBecomeAnEmptyAllowlist(t *testing.T) {
 				t.Fatal(err)
 			}
 			root := t.TempDir()
-			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + test.selector + "\n    steps:\n      - run: echo ok\n")}})
+			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + test.selector + "\n    steps:\n      - run: echo ok\npermissions: {}\n")}})
 			if err != nil {
 				t.Fatal(err)
 			}

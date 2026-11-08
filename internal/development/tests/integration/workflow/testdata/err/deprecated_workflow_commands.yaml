@@ -18,3 +18,4 @@ jobs:
       - run: echo "::endgroup::"
       - run: echo "::add-mask::Mona The Octocat"
       - run: echo "::stop-commands::hogehoge"
+permissions: {}

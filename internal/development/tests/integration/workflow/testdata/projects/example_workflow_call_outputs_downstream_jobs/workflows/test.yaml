@@ -11,3 +11,4 @@ jobs:
       - run: echo '${{ needs.get_build_info.outputs.version }}'
       # ERROR: `tag` is not defined in the reusable workflow
       - run: echo '${{ needs.get_build_info.outputs.tag }}'
+permissions: {}

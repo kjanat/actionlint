@@ -11,3 +11,4 @@ jobs:
         shell: PowerShell
       - run: echo hi
         shell: POWERSHELL
+permissions: {}

@@ -8,3 +8,4 @@ jobs:
         with:
           entrypoint: foo
           args: bar
+permissions: {}

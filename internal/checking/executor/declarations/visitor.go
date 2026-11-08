@@ -134,10 +134,6 @@ func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTi
 	return New(rules, conventions.JobTimeoutCheck(options))
 }
 
-func NewRuleRequirePermissions(rules repoconfig.RuleSet, policy *repoconfig.PermissionsPolicy) workflowvisit.Rule {
-	return New(rules, security.ExplicitPermissionsCheck(policy.Scope()))
-}
-
 func NewRuleRequireCommitHash(rules repoconfig.RuleSet, excluded func(string) bool) workflowvisit.Rule {
 	return New(rules, security.UnpinnedReferenceCheck(excluded))
 }

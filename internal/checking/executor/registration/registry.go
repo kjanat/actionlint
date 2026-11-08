@@ -51,6 +51,8 @@ import (
 // It contains no process pool, application session or engine implementation.
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
+	RequiredPermissionLocations []repoconfig.PermissionLocation
+
 	Debug                         io.Writer
 	Rules                         repoconfig.RuleSet
 	SourceSnapshot                parsing.SourceSnapshot
@@ -128,11 +130,13 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 				Index: c.ExecutableIndex, Runners: c.Runners,
 			})
 		}, Enabled: func(c Inputs) bool { return c.ProjectRoot != "" && c.Index != nil }},
-		"env-var":                      declarationImplementation(correctness.EnvVarCheck()),
-		"id":                           declarationImplementation(correctness.IdCheck()),
-		"glob":                         declarationImplementation(correctness.GlobCheck()),
-		"permissions":                  declarationImplementation(correctness.PermissionsCheck()),
-		"missing-workflow-permissions": declarationImplementation(security.MissingWorkflowPermissionsCheck()),
+		"env-var":     declarationImplementation(correctness.EnvVarCheck()),
+		"id":          declarationImplementation(correctness.IdCheck()),
+		"glob":        declarationImplementation(correctness.GlobCheck()),
+		"permissions": declarationImplementation(correctness.PermissionsCheck()),
+		"missing-permissions": {Prepare: preparePermissionRequirements, Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.New(c.Rules, security.MissingPermissionsCheck(c.RequiredPermissionLocations))
+		}},
 		"workflow-call": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			logger := reporting.Logger{Tag: "workflow-call", Writer: c.Debug}
@@ -164,9 +168,6 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"job-timeout": {Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.NewRuleRequireJobTimeout(c.Rules, c.Config.RequiresJobTimeout())
 		}, Enabled: func(c Inputs) bool { return c.Config.RequiresJobTimeout().Enabled() }},
-		"explicit-permissions": {Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.NewRuleRequirePermissions(c.Rules, c.Config.RequiresPermissions())
-		}, Enabled: func(c Inputs) bool { return c.Config.RequiresPermissions().Enabled() }},
 		"cache-write-untrusted": {Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			return declarationchecks.New(c.Rules, security.CacheWriteUntrustedCheck(workflow))
@@ -275,5 +276,14 @@ func prepareExecutableIndex(c Inputs) (InputPreparation, error) {
 	}
 	c.Reader.Record(snapshot.Path())
 	c.ExecutableIndex = snapshot
+	return PreparedInputs{Inputs: c}, nil
+}
+
+func preparePermissionRequirements(c Inputs) (InputPreparation, error) {
+	locations, err := c.Config.PermissionDeclarationLocations()
+	if err != nil {
+		return nil, err
+	}
+	c.RequiredPermissionLocations = locations
 	return PreparedInputs{Inputs: c}, nil
 }

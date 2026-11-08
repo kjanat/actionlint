@@ -82,3 +82,4 @@ jobs:
     steps:
       - run: echo "${{ matrix.tagged_str.v }}"
       - run: echo "${{ matrix.obj.props[matrix.rejected_index.v] }}"
+permissions: {}

@@ -40,3 +40,4 @@ jobs:
       # 'wait' and 'wait-all' cannot be combined in one step
       - wait: build
         wait-all:
+permissions: {}

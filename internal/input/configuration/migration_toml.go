@@ -7,8 +7,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/kjanat/go-yaml/v4"
-	"github.com/pelletier/go-toml/v2"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"github.com/pelletier/go-toml/v2/unstable"
 )
 
@@ -27,21 +26,18 @@ type tomlMigrationExpression struct {
 
 // migrateTOML rewrites legacy settings and the merged lint subtree using parser
 // spans to distinguish comments from '#' characters in strings.
-func migrateTOML(source []byte, migrated *yaml.Node) ([]byte, error) {
+func migrateTOML(source []byte, migrated any) ([]byte, error) {
 	if hasUnknownRepositoryFacts(migrated) {
 		return nil, errors.New("TOML cannot preserve unknown values or null resets; convert the selected config to YAML or JSON first")
 	}
-	var values map[string]any
-	if err := migrated.Decode(&values); err != nil {
-		return nil, err
-	}
+	values := members(migrated)
 	canonical := make(map[string]any)
 	for _, key := range []string{"lint", "repository", "overrides"} {
 		if value, exists := values[key]; exists {
 			canonical[key] = value
 		}
 	}
-	generated, err := toml.Marshal(canonical)
+	generated, err := document.Marshal("actionlint.toml", canonical)
 	if err != nil {
 		return nil, err
 	}
@@ -153,22 +149,24 @@ func migrateTOML(source []byte, migrated *yaml.Node) ([]byte, error) {
 	return output, nil
 }
 
-func containsNull(node *yaml.Node) bool {
-	if node == nil {
-		return false
-	}
-	if node.ShortTag() == "!!null" {
+func containsNull(value any) bool {
+	if isNull(value) {
 		return true
 	}
-	return slices.ContainsFunc(node.Content, containsNull)
+	for _, child := range members(value) {
+		if containsNull(child) {
+			return true
+		}
+	}
+	return slices.ContainsFunc(elements(value), containsNull)
 }
 
-func hasUnknownRepositoryFacts(node *yaml.Node) bool {
-	if containsNull(field(node, "repository")) {
+func hasUnknownRepositoryFacts(node any) bool {
+	if repository := field(node, "repository"); repository != nil && containsNull(repository) {
 		return true
 	}
 	if overrides := field(node, "overrides"); overrides != nil {
-		return slices.ContainsFunc(overrides.Content, hasUnknownRepositoryFacts)
+		return slices.ContainsFunc(elements(overrides), hasUnknownRepositoryFacts)
 	}
 	return false
 }

@@ -8,3 +8,4 @@ jobs:
 
     steps:
       - run: echo 'hello'
+permissions: {}

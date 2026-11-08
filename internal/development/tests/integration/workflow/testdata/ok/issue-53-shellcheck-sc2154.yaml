@@ -6,3 +6,4 @@ jobs:
       - run: echo hello "$thing"
         env:
           thing: world
+permissions: {}

@@ -11,3 +11,4 @@ jobs:
     uses: $/
   only-slashes:
     uses: $//
+permissions: {}

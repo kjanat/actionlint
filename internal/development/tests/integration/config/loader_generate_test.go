@@ -13,6 +13,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+
 	providerconfig "actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -64,10 +65,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var value any
-				if err := node.Decode(&value); err != nil {
-					t.Fatal(err)
-				}
+				value := node.Value
 				encoded, err := json.Marshal(value)
 				if err != nil {
 					t.Fatal(err)

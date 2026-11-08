@@ -7,3 +7,4 @@ jobs:
     steps:
       - run: echo "${{ vars.FOO.bar }}"
       - run: echo "${{ vars }}"
+permissions: {}

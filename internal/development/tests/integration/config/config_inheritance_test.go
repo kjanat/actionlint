@@ -11,7 +11,6 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 func TestConfigExtends(t *testing.T) {
@@ -57,7 +56,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if cfg.IncludesFile(".github/workflows/skip.yml", root) || !cfg.IncludesFile(".github/workflows/ci.yml", root) {
 		t.Fatal(cfg.Files)
 	}
-	encoded, err := codec.Marshal(cfg.Tools["shellcheck"].Config)
+	encoded, err := encodeConfigYAML(cfg.Tools["shellcheck"].Config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +71,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 		{"cycle", "extends: [actionlint.yml]", "cyclic"},
 		{"insecure remote", "extends: ['http://example.com/config.yml']", "requires a local file or an absolute HTTPS URL"},
 		{"empty", "extends: ['']", "nonempty"},
-		{"nonstring", "extends: [123]", "strings"},
+		{"nonstring", "extends: [123]", "expected a string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := fixturefiles.Write(t, t.TempDir(), "actionlint.yml", tc.content)

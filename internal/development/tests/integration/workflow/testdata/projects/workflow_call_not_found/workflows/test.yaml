@@ -8,3 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo 'Unknown output ${{ needs.caller.outputs.foo }}'
+permissions: {}

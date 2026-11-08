@@ -14,3 +14,4 @@ jobs:
           input6: test
           input7: test
           input8: test
+permissions: {}

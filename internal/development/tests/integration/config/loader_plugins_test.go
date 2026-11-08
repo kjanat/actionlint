@@ -10,7 +10,6 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 	"github.com/google/go-cmp/cmp"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestDirectPluginDeclaration(t *testing.T) {
@@ -22,12 +21,12 @@ func TestDirectPluginDeclaration(t *testing.T) {
 	if len(cfg.Plugins) != 1 || cfg.Plugins[0].DirectSource() != source {
 		t.Fatalf("unexpected declarations: %+v", cfg.Plugins)
 	}
-	data, err := yaml.Marshal(cfg.Plugins)
+	data, err := encodeConfigYAML(cfg.Plugins)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var refs repoconfig.PluginDeclarations
-	if err := yaml.Unmarshal(data, &refs); err != nil || !refs[0].Equal(cfg.Plugins[0]) {
+	if err := decodeConfigYAML(data, &refs); err != nil || !refs[0].Equal(cfg.Plugins[0]) {
 		t.Fatalf("roundtrip: %s %v", data, err)
 	}
 	duplicate := "plugins: [\"" + source + "\", \"" + strings.ReplaceAll(source, "abab", "cdcd") + "\"]"
@@ -89,12 +88,12 @@ func TestPluginAliasRegistryScope(t *testing.T) {
 		cfg.Plugins[2].String() != "github.com/kjanat/actionlint-plugin-ruff" {
 		t.Fatalf("alias scope or explicit repository rewritten: %+v", cfg.Plugins)
 	}
-	data, err := yaml.Marshal(cfg.Plugins)
+	data, err := encodeConfigYAML(cfg.Plugins)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var roundTrip repoconfig.PluginDeclarations
-	if err := yaml.Unmarshal(data, &roundTrip); err != nil {
+	if err := decodeConfigYAML(data, &roundTrip); err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(cfg.Plugins, roundTrip); diff != "" {

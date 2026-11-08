@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	goodWorkflow    = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	goodWorkflow    = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
 	compositeAction = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
 )
 
@@ -86,7 +86,7 @@ func TestRuffPlanningHelper(t *testing.T) {
 	os.Exit(0)
 }
 
-const badWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\n"
+const badWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\npermissions: {}\n"
 
 func executableFixture(t *testing.T) (string, func(...string)) {
 	t.Helper()

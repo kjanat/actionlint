@@ -16,3 +16,4 @@ jobs:
     uses: octocat/octo-repo/.github/workflows/deployment.yml@main
     with:
       target: ${{ matrix.target }}
+permissions: {}

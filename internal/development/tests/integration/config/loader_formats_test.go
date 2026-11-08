@@ -2,6 +2,7 @@ package config_test
 
 import (
 	jsonv2 "encoding/json/v2"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,11 +126,12 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 func TestTOMLConfigReportsPositions(t *testing.T) {
 	dir := t.TempDir()
 	_, err := checking.ConfigurationRules().Load(writeConfig(t, dir, "actionlint.toml", "config-variables = [\"A\"]\n\n[self-hosted-runner]\nlabels = 7\n"))
-	if err == nil || !strings.Contains(err.Error(), "repository names must be a sequence at line:4,col:10") {
+	location, located := errors.AsType[*repoconfig.SourceError](err)
+	if err == nil || !located || location.Line != 4 || location.Column != 10 {
 		t.Fatalf("type error: %v", err)
 	}
 	_, err = checking.ConfigurationRules().Load(writeConfig(t, dir, "broken.toml", "config-variables = [\"A\"]\nconfig-variables = [\"B\"]\n"))
-	if err == nil || !strings.Contains(err.Error(), `line 2, column 1: key "config-variables" defined twice`) {
+	if err == nil || !strings.Contains(err.Error(), ":2:1:") || !strings.Contains(err.Error(), "key config-variables is already defined") {
 		t.Fatalf("duplicate key: %v", err)
 	}
 	loaded, err := checking.ConfigurationRules().Read(writeConfig(t, dir, "warn.toml", "[self-hosted-runner]\nlabel = [\"x\"]\n"), os.ReadFile)

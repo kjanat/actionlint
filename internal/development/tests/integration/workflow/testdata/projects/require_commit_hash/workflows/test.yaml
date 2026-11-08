@@ -29,3 +29,4 @@ jobs:
   call-unpinned:
     # ERROR: reusable workflow pinned to a tag
     uses: some-owner/some-repo/.github/workflows/ci.yaml@v1
+permissions: {}

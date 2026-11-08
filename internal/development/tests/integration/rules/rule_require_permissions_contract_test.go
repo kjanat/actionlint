@@ -9,6 +9,7 @@ import (
 
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
+	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -17,10 +18,7 @@ import (
 )
 
 func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {
-	policy, err := repoconfig.RequirePermissions("workflow")
-	if err != nil {
-		t.Fatal(err)
-	}
+	locations := []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}
 	for _, tc := range []struct {
 		prefix string
 		line   int
@@ -44,7 +42,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (workflowlang.Pos{Line: tc.line, Col: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}
-				rule := declarationchecks.NewRuleRequirePermissions(checking.ConfigurationRules(), policy)
+				rule := declarationchecks.New(checking.ConfigurationRules(), security.MissingPermissionsCheck(locations))
 				if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
 					t.Fatal(err)
 				}
@@ -54,7 +52,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			}
 		}
 	}
-	rule := declarationchecks.NewRuleRequirePermissions(checking.ConfigurationRules(), policy)
+	rule := declarationchecks.New(checking.ConfigurationRules(), security.MissingPermissionsCheck(locations))
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(&workflowlang.Workflow{})); err != nil {
 		t.Fatal(err)
 	}

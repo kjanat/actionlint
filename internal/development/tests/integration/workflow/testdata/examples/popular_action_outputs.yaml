@@ -16,3 +16,4 @@ jobs:
       - run: echo ${{ steps.cache.outputs.cache-hit }}
       # ERROR: Typo at output name
       - run: echo ${{ steps.cache.outputs.cache_hit }}
+permissions: {}

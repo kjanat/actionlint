@@ -102,6 +102,9 @@ deny  = [
 [linters.settings.exhaustive]
 default-signifies-exhaustive = false
 
+[linters.settings.recvcheck]
+exclusions = ["*.DecodeConfig"]
+
 [linters.settings.gochecksumtype]
 default-signifies-exhaustive = false
 

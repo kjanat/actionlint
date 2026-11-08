@@ -58,3 +58,4 @@ jobs:
         env:
           GUI_FIRST: ${{ matrix.gui[0] }}
           GUI_LAST: ${{ matrix.gui[1] }}
+permissions: {}

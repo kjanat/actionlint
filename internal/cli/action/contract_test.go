@@ -80,6 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `, 0, false},
 		{"remote metadata unavailable", `on: push
 jobs:
@@ -87,6 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: example/action@v1
+permissions: {}
 `, 0, false},
 		{"findings", `on: push
 jobs:
@@ -94,6 +96,7 @@ jobs:
     runs-on: invalid-runner
     steps:
       - run: echo ok
+permissions: {}
 `, 1, false},
 		{"symlinked workspace", `on: push
 jobs:
@@ -101,6 +104,7 @@ jobs:
     runs-on: invalid-runner
     steps:
       - run: echo ok
+permissions: {}
 `, 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -48,7 +48,7 @@ func At(part string, err error) error {
 	return prefixError(pointer, err)
 }
 
-// Context adds a readable description while retaining each failing value's path.
+// Context adds the description to each validation error.
 func Context(message string, err error) error {
 	if err == nil {
 		return nil
@@ -164,7 +164,7 @@ func decodeNumber(number json.Number, target reflect.Type) (any, error) {
 }
 
 // Native owns a runtime value and converts numbers only when a native Go number
-// represents them exactly. Large integers and inexact decimals retain Number.
+// represents them exactly. Other numbers use json.Number.
 func Native(value any) any {
 	switch selected := value.(type) {
 	case json.Number:

@@ -33,18 +33,6 @@ func configureJobTimeout(c *Config, s Setting) {
 	}
 }
 
-func configurePermissions(c *Config, s Setting) {
-	if s.Level() == "off" {
-		c.Policy.RequirePermissions = nil
-		return
-	}
-	if options := new(PermissionsPolicy); loadOptions(s, options) {
-		c.Policy.RequirePermissions = options
-	} else if !c.Policy.RequirePermissions.Enabled() {
-		c.Policy.RequirePermissions, _ = RequirePermissions("workflow")
-	}
-}
-
 func configureSuppressionsPolicy(c *Config, s Setting) {
 	if s.Level() == "off" {
 		c.Policy.DisallowSuppressions = nil

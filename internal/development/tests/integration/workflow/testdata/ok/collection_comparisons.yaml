@@ -27,3 +27,4 @@ jobs:
       - run: echo '${{ 'foo' >= matrix.o }}'
       # Array ordering uses NaN.
       - run: echo '${{ false <= matrix.a }}'
+permissions: {}

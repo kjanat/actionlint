@@ -25,3 +25,4 @@ jobs:
     runs-on: label3
     steps:
       - run: echo
+permissions: {}

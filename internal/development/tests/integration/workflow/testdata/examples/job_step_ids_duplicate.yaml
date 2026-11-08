@@ -15,3 +15,4 @@ jobs:
       - run: echo 'hello'
         # OK. Step ID uniqueness is job-local
         id: step_id
+permissions: {}

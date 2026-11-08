@@ -8,3 +8,4 @@ jobs:
         with:
           packages_dir: /path/to/dir
           repository_url: https://github.com/foo/bar
+permissions: {}

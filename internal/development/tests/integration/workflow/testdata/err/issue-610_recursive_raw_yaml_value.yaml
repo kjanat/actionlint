@@ -10,3 +10,4 @@ jobs:
             nested: *recursive_include
     steps:
       - run: echo "recursive test"
+permissions: {}

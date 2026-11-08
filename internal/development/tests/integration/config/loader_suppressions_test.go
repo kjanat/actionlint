@@ -6,7 +6,6 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestDisallowSuppressionsConfig(t *testing.T) {
@@ -33,14 +32,14 @@ func TestDisallowSuppressionsConfig(t *testing.T) {
 		})
 	}
 	var policy repoconfig.SuppressionsPolicy
-	if err := yaml.Unmarshal([]byte("rules: [cache-operation, cache-operation]\nreport: violation"), &policy); err != nil {
+	if err := decodeConfigYAML([]byte("rules: [cache-operation, cache-operation]\nreport: violation"), &policy); err != nil {
 		t.Fatal(err)
 	}
 	if policy.ReportFor("cache-operation") != repoconfig.ReportViolation || policy.ReportFor("cache-call-unrestricted") != repoconfig.SuppressionsAllowed || len(policy.Rules()) != 1 {
 		t.Fatalf("rule selection: %+v", policy)
 	}
 	for _, value := range []string{"false", "true", "{}"} {
-		if err := yaml.Unmarshal([]byte(value), &policy); err != nil {
+		if err := decodeConfigYAML([]byte(value), &policy); err != nil {
 			t.Fatal(err)
 		}
 		if len(policy.Rules()) != 0 {

@@ -60,7 +60,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			if err := os.WriteFile(metadataPath, []byte("name: [\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			unit := sourceUnit{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}]}}\n")}
+			unit := sourceUnit{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}]}}\npermissions: {}\n")}
 			probe := metadataAdmissionAnalyzer{}
 			var result *Result
 			var err, conflict error

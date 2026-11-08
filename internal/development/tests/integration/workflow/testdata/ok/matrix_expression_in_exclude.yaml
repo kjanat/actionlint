@@ -65,3 +65,4 @@ jobs:
             - ["${{ fromJSON(github.event.client_payload.matrix) }}"]
     steps:
       - run: echo ${{ matrix.foo[0][0] }}
+permissions: {}

@@ -27,9 +27,10 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		cancel()
 		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`), nil
-	}}})}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(badWorkflow + `        shell: bash
+	}}})}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(strings.Replace(badWorkflow, "permissions: {}\n", "", 1) + `        shell: bash
       - run: print(1)
         shell: python
+permissions: {}
 `)}})
 	if !errors.Is(err, context.Canceled) || result == nil {
 		t.Fatalf("cancellation lost partial result or cause: %v, %v", result, err)
@@ -60,8 +61,9 @@ jobs:
         shell: bash
       - run: echo keep_shellcheck_finding
         shell: bash
+permissions: {}
 `
-	successful := badWorkflow + "        shell: pwsh\n"
+	successful := strings.Replace(badWorkflow, "permissions: {}\n", "        shell: pwsh\npermissions: {}\n", 1)
 	for name, content := range map[string]string{"failing.yml": failing, "successful.yml": successful} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
 			t.Fatal(err)
