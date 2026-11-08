@@ -30,6 +30,7 @@ jobs:
     env: { REPOSITORY_URL: "${{ github.repositoryUsrl }}" }
     steps:
       - run: echo $VALUE
+permissions: {}
 `
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {

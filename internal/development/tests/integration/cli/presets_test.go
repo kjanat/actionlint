@@ -14,6 +14,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
+permissions: {}
 `
 	for _, modern := range []bool{false, true} {
 		for _, tc := range []struct {
@@ -40,13 +41,21 @@ jobs:
 			if got.Status != wantStatus {
 				t.Fatalf("%v: %+v", args, got)
 			}
-			for _, rule := range []string{"unpinned-reference", "job-timeout", "explicit-permissions"} {
+			for _, rule := range []string{"unpinned-reference", "job-timeout"} {
 				if strings.Contains(got.Stdout, "["+rule+"]") != tc.strict {
 					t.Fatalf("%v: %+v", args, got)
 				}
 			}
 			if strings.Contains(got.Stdout, "[case-insensitive-conditions]") != tc.strict {
 				t.Fatalf("%v: %+v", args, got)
+			}
+			if strings.Contains(got.Stdout, "[missing-permissions]") {
+				t.Fatalf("explicit permissions were ignored: %v: %+v", args, got)
+			}
+			withoutPermissions := strings.TrimSuffix(source, "permissions: {}\n")
+			missing := testRunCommand(withoutPermissions, args...)
+			if missing.Status != 1 || !strings.Contains(missing.Stdout, "error[missing-permissions]") {
+				t.Fatalf("missing permissions were not checked by default: %v: %+v", args, missing)
 			}
 		}
 	}

@@ -62,7 +62,7 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 	if got.Status != 1 || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("remote backend: %+v", got)
 	}
-	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo true\n"
+	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo true\npermissions: {}\n"
 	source := fmt.Sprintf("%s#sha256=%x", componentURL, sha256.Sum256(component))
 	got = testRunCommand(workflow, "check", "--no-config", "--plugin", source, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "sudo") {
@@ -109,7 +109,7 @@ func TestRealRuffEngineConfiguration(t *testing.T) {
 		t.Skip("set ACTIONLINT_TEST_RUFF_WASM to a packaged Ruff artifact")
 	}
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
-	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          if True:\n            print(1)\n        shell: python\n"
+	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          if True:\n            print(1)\n        shell: python\npermissions: {}\n"
 	for _, command := range [][]string{nil, {"check"}} {
 		for _, configured := range []bool{false, true} {
 			for _, tc := range []struct {
@@ -150,7 +150,7 @@ func TestRealShellcheckComponentConfiguration(t *testing.T) {
 		t.Skip("set ACTIONLINT_TEST_SHELLCHECK_WASM to a packaged ShellCheck component")
 	}
 	config := filepath.Join(t.TempDir(), "actionlint.yaml")
-	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $HOME\n        shell: bash\n"
+	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $HOME\n        shell: bash\npermissions: {}\n"
 	for _, tc := range []struct {
 		options, want string
 		status        int

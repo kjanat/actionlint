@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 	bad := strings.Replace(good, "echo ok", `echo "${{ missing.value }}"`, 1)
 	for name, src := range map[string]string{"bad.yml": bad, "good.yml": good, ".github/workflows/ci.yml": good} {

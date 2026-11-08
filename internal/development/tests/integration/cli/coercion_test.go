@@ -14,6 +14,7 @@ jobs:
     steps:
       - if: contains(null, '') && startsWith(true, 'TR')
         run: echo ok
+permissions: {}
 `
 	for _, tc := range []struct {
 		name, config, severity string

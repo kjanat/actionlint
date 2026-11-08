@@ -56,7 +56,7 @@ func TestFixGitHubContextEnvironment(t *testing.T) {
 
 func TestFixEnvironmentAvailabilityPerFinding(t *testing.T) {
 	t.Chdir(t.TempDir())
-	const content = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo \"${{ github.workspace }}\"\n          echo '${{ github.workspace }}'\n"
+	const content = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo \"${{ github.workspace }}\"\n          echo '${{ github.workspace }}'\npermissions: {}\n"
 	if err := os.WriteFile("workflow.yml", []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}

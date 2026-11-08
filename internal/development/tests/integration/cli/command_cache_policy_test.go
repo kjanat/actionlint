@@ -23,11 +23,12 @@ func TestCommandCachePolicyDefaults(t *testing.T) {
 cache-mode: write
 jobs:
   build:
-` + cachePolicySteps},
+` + cachePolicySteps + "\npermissions: {}\n"},
 		{"cache-call-unrestricted", "security", `on: pull_request_target
 jobs:
   call:
     uses: example/repo/.github/workflows/build.yaml@main
+permissions: {}
 `},
 		{"cache-operation", "correctness", `on: push
 cache-mode: none
@@ -37,6 +38,7 @@ jobs:
     steps:
       - uses: actions/cache@v5
         with: {path: .cache, key: test}
+permissions: {}
 `},
 	} {
 		for _, config := range []struct {

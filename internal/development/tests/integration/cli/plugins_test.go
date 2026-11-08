@@ -9,7 +9,7 @@ import (
 )
 
 func TestPluginSuppressionsUseInvocationRegistry(t *testing.T) {
-	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo make install # actionlint:ignore no-sudo -- intentional\n"
+	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo make install # actionlint:ignore no-sudo -- intentional\npermissions: {}\n"
 	args := []string{"check", "--no-config", "--plugin", pluginFixture("no-sudo"), "-"}
 	got := testRunCommand(workflow, args...)
 	if got.Status != 0 || got.Stdout != "" {
@@ -41,7 +41,7 @@ func TestPluginSuppressionsUseInvocationRegistry(t *testing.T) {
 	}
 }
 
-const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n      - run: wget --no-check-certificate https://example.com/x.sh\n"
+const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n      - run: wget --no-check-certificate https://example.com/x.sh\npermissions: {}\n"
 
 var componentTestdata = func() string {
 	dir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata"))
@@ -65,7 +65,7 @@ func TestCheckLoadsComponentPlugins(t *testing.T) {
 			t.Fatalf("stdout lacks %q:\n%s", want, got.Stdout)
 		}
 	}
-	clean := testRunCommand("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n", "check", "--no-config", "--plugin", pluginFixture("pipe-to-shell"), "-")
+	clean := testRunCommand("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\npermissions: {}\n", "check", "--no-config", "--plugin", pluginFixture("pipe-to-shell"), "-")
 	if clean.Status != 0 || clean.Stdout != "" || clean.Stderr != "" {
 		t.Fatalf("clean: %+v", clean)
 	}

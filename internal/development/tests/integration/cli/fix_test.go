@@ -23,7 +23,7 @@ func TestFixPreviewAndApplyRechecks(t *testing.T) {
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "workflow.yml")
-	content := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo $HOME\n"
+	content := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo $HOME\npermissions: {}\n"
 	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -63,8 +63,8 @@ func TestFixUnusedSuppressions(t *testing.T) {
 			t.Run(tc.name+ending, func(t *testing.T) {
 				t.Chdir(t.TempDir())
 				const prefix = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n"
-				before := strings.ReplaceAll(prefix+tc.before, "\n", ending)
-				after := strings.ReplaceAll(prefix+tc.after, "\n", ending)
+				before := strings.ReplaceAll(prefix+tc.before+"permissions: {}\n", "\n", ending)
+				after := strings.ReplaceAll(prefix+tc.after+"permissions: {}\n", "\n", ending)
 				if err := os.WriteFile("ci.yml", []byte(before), 0o600); err != nil {
 					t.Fatal(err)
 				}

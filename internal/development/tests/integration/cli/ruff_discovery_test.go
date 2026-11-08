@@ -45,6 +45,7 @@ jobs:
     steps:
       - shell: python
         run: print(1)
+permissions: {}
 `
 	for _, prefix := range [][]string{nil, {"check"}} {
 		for _, tc := range []struct {
@@ -63,7 +64,7 @@ jobs:
 			{name: "non python", version: "ruff 0.9.0", source: commandGoodWorkflow},
 			{name: "tool disabled", version: "ruff 0.9.0", source: python, config: "tools: {ruff: false}"},
 			{name: "rule disabled", version: "ruff 0.9.0", source: python, config: "lint: {rules: {external: {ruff: off}}}"},
-			{name: "independent findings", version: "ruff 0.9.0", source: python + "      - run: echo '${{ missing.value }}'\n", warning: true, probe: true, status: 1},
+			{name: "independent findings", version: "ruff 0.9.0", source: strings.TrimSuffix(python, "permissions: {}\n") + "      - run: echo '${{ missing.value }}'\npermissions: {}\n", warning: true, probe: true, status: 1},
 		} {
 			t.Run(fmt.Sprint(prefix, tc.name), func(t *testing.T) {
 				// The tool runs with a scrubbed environment; the fake reads

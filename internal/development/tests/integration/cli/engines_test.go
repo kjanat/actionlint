@@ -11,7 +11,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 )
 
-const pythonWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n"
+const pythonWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
 
 func writeEngineConfig(t *testing.T, module string) string {
 	t.Helper()

@@ -17,7 +17,7 @@ func TestCommandContainerRunner(t *testing.T) {
 	} {
 		t.Run(tc.level, func(t *testing.T) {
 			commandTestRepo(t)
-			if err := os.WriteFile(".github/workflows/ci.yml", []byte("on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: docker://alpine:3\n"), 0o600); err != nil {
+			if err := os.WriteFile(".github/workflows/ci.yml", []byte("on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: docker://alpine:3\npermissions: {}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {preset: none, correctness: {container-runner: " + tc.level + "}}}\n"
