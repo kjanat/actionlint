@@ -18,14 +18,14 @@ bun pm pack --filename plugin-sdk-0.1.0.tgz
 
 Copy the resulting tarball into the author package and run `bun add --dev file:./plugin-sdk-0.1.0.tgz`. A normal registry version range is not installable until publication. Pull requests also run the repository's `pkg-pr-new` package preview workflow; use the preview links it reports after that workflow completes.
 
-For `validate`, `test`, and `pack`, use a matching actionlint CLI. The CI release-snapshot job uploads native archives and SHA-256 checksums as `actionlint-cli-preview`. Find the CI run for the SDK preview's commit, then download its host archives:
+For `validate`, `test`, and `pack`, use a matching actionlint CLI. The CI release-snapshot job uploads native archives and SHA-256 checksums as `actionlint-cli-preview`. Find the CI run for the SDK preview's commit, then download its CLI archives:
 
 ```sh
 gh run list --repo kjanat/actionlint --workflow ci.yml --commit <preview-commit>
 gh run download <run-id> --repo kjanat/actionlint --name actionlint-cli-preview --dir actionlint-host
 ```
 
-Extract the archive for your operating system and CPU, then set `ACTIONLINT` to the extracted executable or pass `--actionlint` to the SDK CLI. Host preview artifacts are retained for seven days. From a source checkout, `go build -o actionlint ./cmd/actionlint` builds the current host instead.
+Extract the archive for your operating system and CPU, then set `ACTIONLINT` to the extracted executable or pass `--actionlint` to the SDK CLI. The preview artifacts are available for seven days. To build actionlint from a source checkout, run `go build -o actionlint ./cmd/actionlint`.
 
 ## Public exports and runtimes
 
@@ -104,11 +104,11 @@ bun run --filter @kjanat-actionlint/plugin-sdk typecheck
 bun run --filter @kjanat-actionlint/plugin-sdk test
 ```
 
-The SDK test script builds the current `cmd/actionlint` host once, then runs Bun
-tests against SDK source. It removes the host and its temporary directory when
-the tests finish. Set `ACTIONLINT` to an existing host binary to skip the Go
-build. Running `bun test` directly does not prepare a host; for authoring
-integration tests, set `ACTIONLINT` to a host with `plugin validate/test` support.
+The SDK test script builds `cmd/actionlint` once, then runs Bun tests against SDK
+source. It removes the executable and its temporary directory when the tests finish.
+Set `ACTIONLINT` to an existing actionlint executable to skip the Go build. Running
+`bun test` directly does not build actionlint; for authoring integration tests, set
+`ACTIONLINT` to an executable with `plugin validate/test` support.
 
 ## Author a process provider
 
@@ -172,7 +172,7 @@ The process manifest can also declare fixed `env`, removed `env_unset`, accepted
 
 Use `configurationTransform` to convert user settings before execution. The jq program receives
 `{config, config_file}` and returns `{options, source_prefix?, language?, read_access?}`.
-The host validates user settings against `configSchema` first. Declare path options in
+Actionlint validates user settings against `configSchema` first. Declare path options in
 `configurationPaths` as JSON pointers when their values need configuration-variable expansion.
 
 Use `preparationTransform` when preparation depends on interpreter or environment facts.
@@ -188,7 +188,7 @@ preparationTransform: {
 The program can also return `variables`, `excluded` or a `skip` reason.
 See the [preparation fields](../../../docs/plugins.md#local-tool-provider-manifests) for the supplied facts.
 
-For a complete real-world wrapper, see [`plugins/examples/psscriptanalyzer/actionlint.plugin.ts`](../../examples/psscriptanalyzer/actionlint.plugin.ts), its [`output.jq`](../../examples/psscriptanalyzer/output.jq), and its [`manifest.test.ts`](../../examples/psscriptanalyzer/manifest.test.ts). That example shows config schema, a PowerShell version probe, UTF-16 coordinates, suggested fixes, and captured output. Run its host-backed tests from the repository root with `bun run --filter @kjanat-actionlint/plugin-psscriptanalyzer test`; set `ACTIONLINT` to a compatible host binary.
+For a process-wrapper example, see [`plugins/examples/psscriptanalyzer/actionlint.plugin.ts`](../../examples/psscriptanalyzer/actionlint.plugin.ts), its [`output.jq`](../../examples/psscriptanalyzer/output.jq), and its [`manifest.test.ts`](../../examples/psscriptanalyzer/manifest.test.ts). It demonstrates a config schema, a PowerShell version probe, UTF-16 coordinates, suggested fixes, and captured output. Run its actionlint-backed tests from the repository root with `bun run --filter @kjanat-actionlint/plugin-psscriptanalyzer test`; set `ACTIONLINT` to a compatible actionlint executable.
 
 Its [`installation.ts`](../../examples/psscriptanalyzer/installation.ts) is a separate registry fixture: it runs the installed PSScriptAnalyzer over both PowerShell shells, checks Unicode source ranges, and verifies that corrected snippets pass. Unlike recorded-output tests, it requires `pwsh` and PSScriptAnalyzer 1.25.0 or newer on the test host. The registry harness uses a fresh home and omits the caller's `PSModulePath`; install the module in a standard system module location when running that harness.
 
@@ -202,7 +202,7 @@ When initializing before installing a preview or local SDK, supply its dependenc
 actionlint-plugin init --sdk file:./plugin-sdk-0.1.0.tgz
 ```
 
-Otherwise an installed SDK dependency (including `workspace:*` or a preview URL) is retained; a new dependency defaults to the CLI package's version. After editing the TypeScript definition and adding fixture data, use:
+Otherwise the CLI keeps an installed SDK dependency (including `workspace:*` or a preview URL); a new dependency defaults to the CLI package's version. After editing the TypeScript definition and adding fixture data, use:
 
 ```sh
 actionlint-plugin validate ./plugins/my-check/actionlint.plugin.ts
@@ -210,13 +210,13 @@ actionlint-plugin test ./plugins/my-check/actionlint.plugin.ts ./plugins/my-chec
 actionlint-plugin pack ./plugins/my-check/actionlint.plugin.ts
 ```
 
-`validate` and `test` require a kjanat/actionlint host with `plugin validate/test` support. `pack` requires host manifest validation. Select the host with `ACTIONLINT` or `--actionlint`. `validate` and `test` accept TypeScript definitions or packed JSON manifests; `test --json` prints the machine-readable report. `pack` validates before writing provider outputs.
+`validate` and `test` require a kjanat/actionlint executable with `plugin validate/test` support. `pack` requires actionlint manifest validation. Select the executable with `ACTIONLINT` or `--actionlint`. `validate` and `test` accept TypeScript definitions or packed JSON manifests; `test --json` prints the machine-readable report. `pack` validates before writing provider outputs.
 
 TypeScript definitions load through jiti in both ESM and CommonJS projects, without changing the project's module type. Loading executes the author's module code; jq fixture evaluation then runs in actionlint without launching the declared scanner. Each compilation reloads the definition and its imports without writing a transpilation cache into the author project.
 
 `bun run --filter @kjanat-actionlint/plugin-sdk test:package` separately checks the built SDK tarball from a standalone installed consumer, including the Node CLI, fixtures, and the resulting provider tarball. Normal SDK tests run against TypeScript source.
 
-Fixture tests record scanner stdout and request source/config; they exercise the actual host schema and jq transforms without launching the wrapped scanner or accessing the network. They do not prove installed scanner compatibility. A JSON fixture case has a unique `name`, a `request` with `source` and `filename` (optional `config`), recorded `stdout`, and at least one assertion:
+Fixture tests record scanner stdout and request source/config; they exercise the actual actionlint schema and jq transforms without launching the wrapped scanner or accessing the network. They do not prove installed scanner compatibility. A JSON fixture case has a unique `name`, a `request` with `source` and `filename` (optional `config`), recorded `stdout`, and at least one assertion:
 
 ```json
 [
@@ -242,7 +242,7 @@ and must be accepted by the manifest. Assertions can check decoded diagnostics
 with `expect`, transformed configuration with `expect_config`, the complete jq
 variable map with `expect_vars`, generated source with `expect_source`, a preparation
 plan with `expect_preparation`, or an expected processing failure with
-`expect_error`. The host rejects empty suites, duplicate names and cases without
+`expect_error`. Actionlint rejects empty suites, duplicate names and cases without
 assertions.
 
 For providers with `preparationTransform`, include `preparation` facts in each fixture:
@@ -256,10 +256,10 @@ For providers with `preparationTransform`, include `preparation` facts in each f
 }
 ```
 
-The host supplies `source` and normalized `settings` from the fixture request. It then evaluates
+Actionlint supplies `source` and normalized `settings` from the fixture request. It then evaluates
 the preparation program and checks any recorded scanner output against the generated source.
 
-For typed fixtures, `createPluginTester` works with Bun, Node, Deno, Vitest, or another test runner. It loads the trusted author definition, compiles the manifest, then sends captured cases to the host:
+For typed fixtures, `createPluginTester` works with Bun, Node, Deno, Vitest, or another test runner. It loads the trusted author definition, compiles the manifest, then sends captured cases to actionlint:
 
 ```ts
 import { test } from 'bun:test';
@@ -288,7 +288,7 @@ test('captured warning output maps to a finding', async () => {
 });
 ```
 
-`plugin.validate()` checks host schemas and jq compilation. `plugin.test(cases)` returns case reports; `plugin.assert(cases)` throws `ProviderTestError` when validation or an assertion fails. The host executable defaults to `ACTIONLINT`, then `actionlint` on PATH; subprocess timeout defaults to 30 seconds.
+`plugin.validate()` checks actionlint schemas and jq compilation. `plugin.test(cases)` returns case reports; `plugin.assert(cases)` throws `ProviderTestError` when validation or an assertion fails. The actionlint executable defaults to `ACTIONLINT`, then `actionlint` on PATH; subprocess timeout defaults to 30 seconds.
 
 ## Pack and distribute
 
@@ -308,13 +308,13 @@ accept a package and its host-specific compatibility evidence.
 
 ## Other subpaths
 
-- `/stdio` provides native `serveScriptEngine` and `serveDocumentEngine`; stdout must remain protocol JSON.
+- `/stdio` provides native `serveScriptEngine` and `serveDocumentEngine`. Each reads one request from stdin and writes a JSON response to stdout. Send logs to stderr so stdout contains only protocol JSON.
 - `/authoring` compiles TypeScript definitions and embeds provider-relative jq files.
-- `/testing` offers host-backed manifest and fixture validation.
+- `/testing` uses actionlint to validate manifests and fixtures.
 - `/config` reads optional JSON settings with type and allowed-value checks.
 - `/files` materializes captured documents in a temporary directory for file-based tools.
 - `/process` runs commands without a shell and includes JSON response decoding helpers.
-- `/sarif` decodes active SARIF 2.1.0 findings with a caller-supplied URI allowlist. Applied/accepted native suppressions are honored; rejected or under-review requests remain findings.
+- `/sarif` decodes active SARIF 2.1.0 findings with a caller-supplied URI allowlist. The reader honors applied or accepted native suppressions and reports findings whose suppression requests were rejected or are under review.
 - `/images` extracts static OCI references from workflow/action YAML and builds image findings.
 
 These helpers do not install scanners, register packages, fetch images or
@@ -324,6 +324,6 @@ imports and examples.
 Native suppression syntax belongs to your callback or wrapped linter: process it
 from the supplied source and return active diagnostics. Actionlint applies its
 own YAML/config ignores after mapping those diagnostics. Its
-`disallow-suppressions` policy does not audit directives or filters inside an
+`forbidden-suppression` rule does not audit directives or filters inside an
 external tool. See [suppression ownership](../../../docs/plugins.md#suppression-ownership)
 for the contract shared by process, component and embedded plugins.

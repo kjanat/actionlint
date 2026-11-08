@@ -206,7 +206,8 @@ projection into expression types and Actions-specific overlays. Both checking an
 editor completion consume that projection. The expression checker does not load
 Octokit data, read configuration or perform network requests.
 
-Unknown event variants allow arbitrary properties and branch guards do not yet refine payload
-variants. Splitting diagnostic identities does not change those analysis limits.
+Unknown event variants allow arbitrary properties. Equality checks on
+`github.event_name` and `github.event.action` now narrow payload variants in
+short-circuit branches.
 The workflow visitor still supplies context and source mapping; migrating that
 stateful traversal is separate from the identity and observation boundaries.

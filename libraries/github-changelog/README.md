@@ -31,10 +31,10 @@ It loads the current feed, caches entries in IndexedDB, and wires up filtering,
 pagination, refresh, and article rendering. The displayed feed date comes from
 page 1; loading historical pages does not move it backwards.
 
-The XML view loads CodeMirror on demand, with syntax highlighting, folding,
-search, page navigation, and an article selector. It remains focusable for keyboard
-search and copying, but cannot be edited. If the CDN fails, the rendered reader
-remains available and the XML panel offers a page reload.
+The XML view loads CodeMirror on demand for syntax highlighting, folding,
+search, page navigation, and article selection. You can focus the view to search
+or copy its contents, but you cannot edit it. If the CDN fails, the reader still
+works and the XML panel offers a reload.
 
 The site builds the reader from this checkout. Its import map pins the XML viewer
 and its shared dependencies on esm.sh; external imports are limited to the XML
@@ -52,7 +52,7 @@ Pin a published version in production deployments.
 ## GitHub Actions monitor
 
 The `action` subpath exports the function used by the repository's composite action.
-It is designed to run inside `actions/github-script`:
+Run it inside `actions/github-script`:
 
 ```js
 const { default: run } = require('@kjlint/changelog-rss/action');

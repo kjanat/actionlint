@@ -5,8 +5,8 @@ description: Implement or change actionlint lint rules, including diagnostic fix
 
 # Write an actionlint rule
 
-Implement the rule and test it through actionlint, including its configuration
-and diagnostics. Use the existing interfaces described in the implementation reference.
+Implement the rule and test its configuration and diagnostics through actionlint.
+The implementation reference identifies the interfaces for each kind of check.
 Read the applicable repository instructions and task definitions before choosing
 implementation, formatting, and validation commands.
 
@@ -40,7 +40,7 @@ Read the matching section of [implementation.md](references/implementation.md):
   and register the implementation in `internal/checking/executor/registration`.
   Report findings through the host. If several rules need the same analysis,
   implement it once in the semantic model.
-- **External linter:** author a plugin using the manifest/SDK contracts. Test its
+- **External linter:** author a plugin using the manifest format and SDK interfaces. Test its
   output conversion through actionlint; do not add a tool-specific host adapter.
 - **Rename or configuration change:** identify where the rule emits findings and
   where users select or suppress it. For renames and compatibility migrations,

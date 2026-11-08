@@ -38,19 +38,25 @@ lint:
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
 
-Repository facts are independent of diagnostic levels. Configure them under
-`repository`. Each field is independently available. Omission inherits host knowledge; explicit `null` makes the
-fact unknown. Configuration overrides the host after inheritance and file selection.
-Each field replaces the complete fact, including variable and environment mappings.
-Unknown defaults skip only permission comparisons requiring that default; explicit
-workflow/job permissions and reusable-workflow argument checks still run.
-Job name checks combine repository names with the statically selected environment.
-Dynamic environments or unavailable environment facts keep membership unknown.
-Variable values are retained for host integrations; they do not yet produce literal expression types.
+Repository facts do not set rule severity. Configure them under `repository`.
+Omit a field to use host-detected information; set it to `null` to mark that fact
+unknown. A configured value replaces the host value after configuration
+inheritance and file selection. Each field replaces the whole fact, including all
+variable or environment mappings.
 
-Unavailable runner-label facts do not establish that a custom label is invalid.
-Built-in label compatibility still runs. Use `repository.runners: []` to validate
-against only built-in labels, or provide the complete set of additional labels.
+If the default token permission is unknown, actionlint skips only permission
+comparisons that require that default. It still checks explicit workflow and job
+permissions and reusable-workflow arguments. For expression-reference checks in
+a job with a statically named environment, actionlint combines repository and
+environment variable and secret names. If the environment is dynamic or its facts
+are unavailable, actionlint cannot validate those environment names. Host
+integrations receive configured variable values, but expression checking does not
+yet use those values as literals.
+
+If actionlint does not know the configured runner labels, it cannot reject a
+custom label as unknown. It still checks compatibility with built-in labels. Set
+`repository.runners: []` to accept only built-in labels, or list every additional
+label that workflows may use.
 
 ### JSON and TOML
 
@@ -172,12 +178,12 @@ External tool provisioning uses each selected file's effective settings.
 
 ## Lint rules
 
-The `lint` section controls analysis. Rules belong to `correctness`, `suspicious`,
-`security`, or `conventions`. Stable plugins registered explicitly are selected by
-default; the recommended preset selects rules marked recommended. Nursery rules
-are under development. Analysis frontends use the same configuration resolver.
-Top-level `overrides` select files and can also support future formatter settings.
-Formatting and LSP options are not implemented yet; do not add placeholder keys for them.
+The `lint` section controls rule selection and severity. Rules belong to
+`correctness`, `suspicious`, `security`, or `conventions`. Registering a stable
+plugin selects its rule by default; the recommended preset selects rules marked
+recommended. Nursery rules are under development. The CLI, Action, and language
+server use the same configuration resolver. `overrides` selects files and applies
+per-file lint and tool settings. This version has no formatting or LSP settings.
 
 ```yaml
 lint:
@@ -678,8 +684,9 @@ Disable with `lint: {rules: {correctness: {cache-operation: off}}}`.
 ### cache-write-untrusted
 
 Reports explicit `write` or `write-only` cache grants on low-trust triggers using
-default-branch caches. Only declarations are checked; `if` guards and cache
-contents are ignored.
+default-branch caches. The check excludes an event when a job's `if` condition
+is provably false for that event. Unknown conditions remain reachable; cache
+contents are not inspected.
 Use `read` or `none`, or document a reviewed [inline exception](#inline-diagnostic-suppressions).
 Ordinary `pull_request`, review events, `merge_group`, trusted write-default events
 such as `push`, and standalone `workflow_call` do not trigger this policy.
@@ -750,7 +757,7 @@ cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed default-
 ```
 
 Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
-reported line. `actionlint-ignore-next-line` and `ignore-next-line` work too. The ` -- reason` suffix is
+reported line. `actionlint-ignore-next-line` and `ignore-next-line` work too. The `-- reason` suffix is
 optional. These trailing comment spellings are equivalent:
 
 ```yaml

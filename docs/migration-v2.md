@@ -62,9 +62,9 @@ explicitly when its category changed and its former selection is still wanted.
 
 Tools are selected by id: `--tool ID[=COMMAND]`, `--no-tool ID`,
 `ACTIONLINT_TOOL_<ID>_BIN`, `_FLAGS` and `_ENV`, and the Action input `disable-tools`.
-The two v1.17.0 options still work for one release
-as hidden, deprecated aliases and print a warning. The v1.17.0 Action inputs are
-accepted and ignored.
+The v1.17.0 `-shellcheck` and `-pyflakes` options remain hidden, deprecated aliases
+for one release and print a warning. The v1.17.0 Action inputs with those names
+are accepted but ignored.
 
 | v1.17.0 surface           | v2 replacement                                                         |
 | ------------------------- | ---------------------------------------------------------------------- |

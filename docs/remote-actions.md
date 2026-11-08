@@ -33,9 +33,10 @@ are refused. Each response is limited to 1 MiB, each HTTP request to 15 seconds,
 and the complete lookup, including an injected resolver, to 30 seconds. Caller
 cancellation also stops acquisition.
 
-The acquired data records what the host observed in the repository. It does not prove that GitHub would authorize
-execution, that the commit is reachable from a particular branch, or that a
-runner executed these bytes. The host uses GitHub's [commit object
+The acquired data records the repository identity and manifest returned by GitHub
+for the selected commit. It does not prove that GitHub would authorize a workflow
+to use the action, that a runner executed these bytes, or that the commit is
+reachable from a particular branch. The host uses GitHub's [commit object
 endpoint](https://docs.github.com/en/rest/git/commits#get-a-commit-object) and
 [repository contents endpoint](https://docs.github.com/en/rest/repos/contents#get-repository-content),
 never the general commits endpoint to select between named refs.
@@ -82,8 +83,10 @@ The analysis API exposes `ActionMetadata`; version-1 JSON results expose
 `action_metadata`. Each entry describes one distinct static remote reference
 requested by active metadata-dependent checks:
 
-- `available` means parsing and structural manifest validation succeeded. Checks
-  can use the declared inputs, outputs and runtime.
+- `available` means actionlint parsed the manifest and its structural checks
+  passed. Checks can use the declared inputs, outputs and runtime. This does not
+  verify that runtime files exist or that every check which depends on those files
+  completed.
 - `unavailable` gives a reason for the missing metadata and supplies no metadata
   facts.
 - `invalid` includes parse or schema diagnostics in the selected manifest. Their
@@ -91,11 +94,11 @@ requested by active metadata-dependent checks:
   the calling workflow.
 
 Invalid manifest diagnostics are also reported at the calling `uses` position.
-Structural validation is not a claim that every runtime or filesystem-dependent
-action check completed. Local actions, Docker references, dynamically constructed
-references, reusable workflow metadata and transitive dependencies are outside
-this remote-action coverage list. Disabling every metadata-dependent rule can
-leave the list empty; it does not establish full coverage.
+This list covers only static remote action references requested by enabled
+metadata-dependent checks. It does not cover local actions, Docker references,
+dynamic references, reusable-workflow metadata, or transitive dependencies. An
+empty list means no enabled check requested remote action metadata; it does not
+mean the workflow has no remote references or that every dependency was checked.
 
 An omitted `outputs` declaration leaves output names unknown. It does not prove
 the action produces no outputs; explicit output declarations remain checkable.

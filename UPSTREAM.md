@@ -1,6 +1,6 @@
 # Upstream tracker
 
-This tracker lists open issues and pull requests in [`rhysd/actionlint`] to help maintainers decide what to integrate into the fork. It records whether each item still applies, is worth porting, or already has an equivalent local implementation. The tracker is separate from the fork's implementation backlog. Upstream patches may be redesigned before integration. An item's presence does not confirm its report or show that it still applies. The `Author` column identifies the upstream author; equivalent local behavior alone does not establish code authorship or inspiration. Verified contribution, idea, and report credits are recorded in [CHANGELOG.md], with supporting evidence here.
+This tracker records a snapshot of open issues and pull requests in [`rhysd/actionlint`], plus selected archived items. It helps maintainers decide what to integrate into the fork, but its entries may need rechecking. The tracker is separate from the fork's implementation backlog, and upstream patches may be redesigned before integration. An entry does not confirm its report or show that it still applies. The `Author` column identifies the upstream author; equivalent local behavior alone does not establish code authorship or inspiration. Verified contribution, idea, and report credits are recorded in [CHANGELOG.md], with supporting evidence here.
 
 ## Snapshot
 
@@ -35,7 +35,7 @@ itself mean the related feature is implemented.
 - `Merge` and `Review` are volatile upstream snapshot fields. Re-query them before acting on a PR.
 - A linked PR is shown only when GitHub reports that the open PR closes the issue. Title-only or informal relationships are not inferred.
 
-## Reconciliation by Local disposition
+## Reconciliation by local disposition
 
 Items are grouped by local disposition. Within each pull-request or issue table, they follow their original upstream order.
 

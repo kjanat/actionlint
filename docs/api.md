@@ -75,10 +75,19 @@ Authoritative component interfaces live under
 schemas live under [`plugins/protocol/json`](../plugins/protocol/json). SDK and
 host bindings derive from those definitions.
 
-Return locations and edits using the coordinate and source rules of the selected
-contract. Do not reuse a finding from an earlier request against changed source.
-A fix belongs to a specific finding and may require review; a rule need not offer
-a fix for every finding.
+Positions and edits follow the coordinate convention of the selected interface.
+Analyzer component positions and TypeScript SDK fixes use one-based Unicode
+character columns with exclusive range ends. A process-provider manifest can
+declare the tool's row, column, and end conventions; when omitted, the host uses
+LF rows, Unicode character columns, and exclusive ends.
+
+Revision requirements also depend on the interface. Analyzer component fixes
+include a digest for each edited document. TypeScript fixes have no revision
+field, so the host binds an edit to the current source only when it targets the
+document that produced the finding. Before applying fixes, actionlint checks the
+recorded revisions and ranges against current files. The language server also
+ties quick fixes to the open document version. Do not reuse findings after source
+changes. Fixes are optional, and some need review before application.
 
 ## Host implementation and registry validation
 

@@ -392,26 +392,25 @@ when it loads and forwards its log lines, stdout and stderr.
 Actionlint interprets its own YAML directives (`actionlint:ignore`,
 `actionlint-ignore`, `ignore[...]` and the next-line forms) and configured
 `ignores`. Plugins return findings that their own directives have not suppressed.
-The host validates their source ranges, maps snippet positions to YAML, then
-applies actionlint ignores and the repository's suppression policy.
+Actionlint validates their source ranges, maps snippet positions to YAML, then
+applies its ignores and the repository's suppression policy.
 Plugins must not reinterpret actionlint directives as native linter directives.
-Selectors use the registered host rule ID; upstream check IDs remain diagnostic
-codes. Native per-code suppression stays with the plugin. Rule IDs must not
-contain whitespace, commas or square brackets, so every host spelling can select them.
+Selectors use the rule ID registered with actionlint; upstream check IDs are diagnostic
+codes. The plugin handles native per-code suppression. Rule IDs must not
+contain whitespace, commas or square brackets, so every actionlint selector can select them.
 
-Native directives inside submitted code remain the plugin or wrapped linter's
-responsibility. The host does not translate `noqa`, `shellcheck disable`, or other
-tool syntax. The source-annotations interface supplies raw YAML comments, not
-effective suppression decisions. Script providers receive prepared source;
-document providers receive captured YAML. Their declared preparation can mask
-expressions or add mapped startup/configuration lines. A preparation profile may
-forward raw declaration comments; their suppression meaning still belongs to
-the linter, and generated rows must retain their source mapping.
+The plugin or wrapped linter interprets native directives in submitted code, such
+as `noqa` and `shellcheck disable`. Actionlint does not translate them. The
+source-annotations interface supplies raw YAML comments without interpreting them.
+Script providers receive prepared source; document providers receive captured YAML.
+Actionlint can mask expressions, insert startup or configuration lines, and pass
+attached YAML comments to a script provider. It tracks which lines came from the script, YAML comments, or generated text;
+the plugin or linter interprets any directives.
 
-`disallow-suppressions` governs actionlint's own inline and configured ignores.
+`forbidden-suppression` governs actionlint's own inline and configured ignores.
 It does not disable native linter directives or tool-specific filtering options,
 and cannot recover findings a plugin did not return. A plugin may offer a native
-suppression as a suggested source fix; the host validates that edit normally.
+suppression as a suggested source fix; actionlint validates that edit normally.
 The built-in LSP suppression action always adds an actionlint directive.
 
 The Go and SDK SARIF readers normalize native suppression metadata identically:
@@ -780,8 +779,8 @@ versions are rejected.
 - `kjanat:actionlint/script-engine@0.3.0` ([`0.3.0/script-engine.wit`](../plugins/protocol/wit/deps/actionlint-0.3.0/script-engine.wit))
   declares in its descriptor the capabilities that a process-provider manifest declares for a native tool.
   The descriptor's `capabilities` record declares `fixes`, `reported-sources` and the `resources` the
-  engine needs for each check. The request adds `excluded`, the diagnostic codes the host's preparation profile
-  excludes (strings such as `SC1091`), and `directory`. Each diagnostic adds `fixes`, edits in snippet coordinates,
+  engine needs for each check. The request adds `excluded`, diagnostic codes selected during source preparation
+  (strings such as `SC1091`), and `directory`. Each diagnostic adds `fixes`, edits in snippet coordinates,
   and `source`, a file the engine read besides the snippet. The diagnostic severity is the engine's own string,
   such as `style`; the host maps it as it maps a process tool's severity. A template-aware engine pairs it with
   [`template-effects@0.3.0`](../plugins/protocol/wit/deps/actionlint-0.3.0/template-effects.wit), whose check
@@ -967,33 +966,33 @@ For a `.wasm.gz` artifact, use the checksum of the compressed
 file. The CLI caches pinned downloads under the user cache directory's
 `actionlint/artifacts` folder and verifies cached bytes on every use. Unpinned
 URLs are fetched on each invocation. A corrupted pinned cache entry is an error;
-remove that entry to download it again. Library callers opt into caching through
-`Options.Artifact.CacheDir` or `EngineOptions.Artifact.CacheDir`.
+remove that entry to download it again.
 
 Acquisition has a 30-second deadline and a 128 MiB limit on both downloaded and
 decompressed bytes. Redirects are bounded and cannot downgrade HTTPS to HTTP.
-HTTP is supported explicitly, including local development servers. Library
-callers can set acquisition limits through `ArtifactOptions`, independently of
-the runtime's execution limits. URI userinfo is rejected; query strings are
+HTTP is supported explicitly, including local development servers. URI userinfo is rejected; query strings are
 omitted from reported artifact locations.
 
-`actionlint plugin inspect` and Go's `plugin.Inspect` read the binary header and
-the top-level `actionlint.plugin` custom section without compiling or executing
-the plugin. Inspection reports the binary kind, distributed checksum and size,
-decoded size, and the section's JSON metadata. It preserves the complete metadata
-object, including engine identity, rule descriptors, configuration schema, and
-advertised interfaces when supplied by the artifact. Nested modules cannot supply
-metadata for their enclosing component. Duplicate sections, duplicate JSON keys,
-invalid UTF-8, and metadata exceeding 1 MiB are rejected.
+The `actionlint.plugin` custom section stores JSON metadata inside the Wasm file.
+`actionlint plugin inspect` reads this section and the binary header without
+compiling or running the plugin. It reports the binary kind, checksum, downloaded
+and decoded sizes, and all metadata fields supplied by the plugin. These can
+include its name, rule descriptions, configuration schema and supported interfaces.
+actionlint reads this section only in the outermost module or component and ignores
+metadata inside nested modules. It rejects
+duplicate sections, duplicate JSON keys, invalid UTF-8 and metadata exceeding 1 MiB.
 
-Static metadata is a declaration; successful inspection does not establish that
-the plugin's code or ABI is valid. The selected runtime still checks the module.
-For core script engines, an incompatible ABI or transport in the custom section
-is rejected before compilation, and the runtime `metadata()` response must agree
-with the section, allowing differences in whitespace and object key order.
-Engines without the section use runtime metadata discovery. Component analyzers
-use WIT `describe`; their custom section is exposed
-for inspection but does not replace that contract.
+When loading a core script engine, actionlint checks the section's ABI version and
+transport before compilation. It then calls the engine's `metadata()` function
+and requires the returned JSON to match the section. Whitespace and object key
+order can differ. If the section is absent, actionlint reads metadata from that
+function alone.
+
+When loading a component analyzer, actionlint checks its imported and exported
+WIT interfaces and calls its `describe` function to obtain the rule name,
+description and settings schema. If the custom section contains `invocation_definitions`,
+actionlint also reads and validates those shell command definitions for script checks.
+`actionlint plugin inspect` displays all JSON metadata embedded in that section.
 
 ## Contribute a rule
 
@@ -1025,27 +1024,36 @@ the checks. The index generates [`docs/rules.md`](rules.md);
 [`docs/checks.md`](checks.md) provides behavior examples. External plugins use the
 [plugin SDKs and delivery contracts](api.md#write-and-test-a-plugin).
 
-## Rule and source contracts
+## Source positions and fixes
 
-Documents, scripts, invocations and mappings identify the source declarations
-they describe. Diagnostics can include help, related locations and fixes that
-apply to a specific captured source revision. A rule descriptor records its
-category, subcategory, maturity and provider separately.
+actionlint captures source before analysis. Coordinate conventions depend on the
+interface: analyzer WIT positions use one-based Unicode character columns and
+exclusive range ends. Process-provider manifests can specify the tool's row,
+column, and end conventions. If they omit `coordinates`, actionlint assumes LF
+rows, Unicode character columns, and exclusive ends, then converts those
+positions to the analyzer convention. TypeScript SDK fixes also use one-based
+Unicode character columns and exclusive ends. Rule descriptors record category,
+subcategory, maturity, and provider as separate fields.
 
-Related locations must identify both a source revision and its coordinate
-model. WIT 0.2 related-location records have neither field. For those records,
-the host supplies the current request's captured revision and coordinate model
-only when the location's path exactly matches `Input.Path`. Native analyzers use
-the same rule. The host withholds locations in other documents unless they
-already identify a revision and coordinate model.
+Revision requirements also depend on the interface. Analyzer WIT fixes include a
+digest for each edited document. TypeScript and process-provider fixes have no
+revision field. actionlint records the current source revision for an edit only
+when an edit targets the document that produced the finding. Fix application
+checks the recorded revisions and ranges against current files.
 
-Before reporting a related location, the host verifies the absolute document
-identity (or `<stdin>`), source digest, coordinate model, display path and entire
-range against its captured source. Supplying those fields does not bypass the
-check. The host omits each rejected location, keeps the primary diagnostic and
-reports their count in an `admission-rejected` error. The result is incomplete.
-Adding explicit revision and coordinate fields to WIT 0.3 or JSON2 requires
-versioned interface changes; it does not change WIT 0.2.
+WIT 0.2 related locations contain a path and range but no source revision or
+coordinate format. actionlint adds the current request's revision and coordinate format only
+when the related path exactly matches `Input.Path`. WIT 0.2 cannot carry those
+facts for a different document, so actionlint omits cross-document related
+locations from that interface. Interfaces with revision and coordinate
+fields can report locations in other documents. actionlint checks document
+identity, source digest, coordinate format, display path, and range against the
+captured text before reporting a location. It omits locations that fail these
+checks, keeps the main diagnostic, and reports the number omitted in an
+`admission-rejected` error. That error marks the analysis incomplete. Native
+analyzers follow the same checks. Adding revision and coordinate fields to WIT
+0.3 or JSON2 requires a versioned interface change; WIT 0.2 keeps its current
+fields.
 
 Plugins requesting `dependencies` receive literal action and reusable-workflow
 references, including source ranges and the identities of their declarations.

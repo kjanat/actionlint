@@ -119,7 +119,7 @@ missing/null/value state, and positions for file settings.
 provider manifest that **--plugin** or the configuration installs.
 
 **rules** [*name*]
-: List checks under Correctness, Security, Suspicious, Policy, and External linters,
+: List checks by category,
 alphabetically within each group, or explain one check. **--json** returns the
 alphabetical array of rule metadata.
 
@@ -343,7 +343,7 @@ variables and repository backend. Also available on **doctor** and **lsp**.
 Unknown ids are rejected with the list of valid ids once plugins load.
 
 **--no-tool** *ID*
-: Disable the tool *ID*, overriding **--tool** and environment settings. Plugins
+: Disable the tool *ID* and override its environment settings. Plugins
 providing the tool are not loaded: a locked plugin whose name or alias is *ID* is
 not downloaded. Repeatable.
 
@@ -363,7 +363,7 @@ including inherited files and file overrides. Without this flag, selecting
 `tools.<name>.backend.process` reports an error before the executable is launched.
 Explicit CLI and environment tool selections authorize their own executable.
 
-A disable flag takes precedence when both forms are supplied.
+For each tool ID, the last **--tool** or **--no-tool** option wins.
 
 **--init-config**, **--init**
 : Aliases for **config init**, supported on the root and **config** command.
@@ -388,7 +388,6 @@ release tag or `latest` as described above.
 **--help-legacy**
 : Explain supported legacy option spellings and parsing rules without
 introducing deprecation warnings.
-
 
 # CONFIGURATION
 
@@ -469,7 +468,7 @@ Alternatively, place `# actionlint:ignore-next-line RULE -- REASON` immediately 
 reported declaration. The trailing forms `# actionlint-ignore RULE`, `# ignore RULE`
 and `# ignore[RULE]` also work. Before a declaration, `# actionlint-ignore-next-line RULE`
 and `# ignore-next-line RULE` work too. Separate
-multiple rule IDs with commas, spaces, or both; the ` -- REASON` suffix is optional.
+multiple rule IDs with commas, spaces, or both; the `-- REASON` suffix is optional.
 These directives can suppress any registered diagnostic rule. CLI and configured
 ignore patterns still apply afterwards. See the configuration document for the full trigger
 list, cache action modes, nested-call behavior, and suppression controls.
@@ -522,7 +521,7 @@ ShellCheck runs for recognized `bash`, `sh`, `dash`, and `ksh` interpreters or a
 dialect selected by a leading `# shellcheck shell=...` directive. Unresolved explicit
 shell expressions, unknown wrappers, and non-shell scripts are otherwise skipped. Global
 dialect settings and command flags alone do not select them. If no shell is configured
-and the runner platform is unknown, actionlint assumes Bash.
+and the runner's default shell is unknown, the shell remains unknown.
 
 # OUTPUT
 
@@ -650,16 +649,16 @@ to built-in output.
 : Presentation defaults: auto, always or never. NO_COLOR and NO_HYPERLINKS
 override these defaults; explicit CLI controls take precedence over the environment.
 
-**ACTIONLINT_TOOL_**_ID_**_BIN**
-: Literal executable name or path of the bundled tool *ID*, upper-cased with
+`ACTIONLINT_TOOL_<ID>_BIN`
+: Literal executable name or path of the bundled tool `<ID>`, upper-cased with
 dashes replaced by underscores, such as `ACTIONLINT_TOOL_SHELLCHECK_BIN`. Empty
 disables the tool.
 
-**ACTIONLINT_TOOL_**_ID_**_FLAGS**
+`ACTIONLINT_TOOL_<ID>_FLAGS`
 : Additional arguments as a JSON string array or a quoted argument list. No shell
 execution or variable expansion is performed.
 
-**ACTIONLINT_TOOL_**_ID_**_ENV**
+`ACTIONLINT_TOOL_<ID>_ENV`
 : Child environment overrides, as a JSON object or quoted NAME=value entries and
 variable names. JSON null or bare names forward inherited values; strings set values.
 **--tool** and **--no-tool** override the BIN, FLAGS and ENV settings together.

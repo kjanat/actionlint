@@ -16,10 +16,12 @@ Invalid configuration file contents still produce an operational error (exit 3).
 ## Configuration and input
 
 `ACTIONLINT_STRICT` (`--strict`) selects all stable rules, including opt-in policies,
-while preserving explicit group/rule exceptions.
-`ACTIONLINT_EXPERIMENTAL` (`--experimental`) enables nursery rules while
-honoring individual exclusions; false clears nursery selections without affecting stable suspicious rules.
-Both accept booleans and are off unless requested. They apply only to checks.
+while preserving explicit group and rule exceptions. It does not select nursery rules.
+`ACTIONLINT_EXPERIMENTAL` (`--experimental`) enables nursery rules unless an
+individual rule or group disables them. You can also enable a nursery rule with an
+explicit rule setting, without this flag. Setting this variable to false disables
+nursery rules, including individually enabled rules. Both variables accept booleans.
+When unset, they add no CLI preset. They apply only to checks.
 See [rule presets](usage.md) for scope and precedence.
 
 | Variable                    | Equivalent flag               | Value                                                                                                       |

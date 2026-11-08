@@ -35,8 +35,9 @@ go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m .
 ```
 
 `make conformance` runs both commands. The harness, adapters, assessment logic, and baselines live together in
-[`internal/development/tests/conformance/`](../internal/development/tests/conformance/). The harness uses the public actionlint APIs from an external test
-package. Ordinary `go test ./...` does not fetch or require these archives.
+[`internal/development/tests/conformance/`](../internal/development/tests/conformance/). The harness uses
+actionlint's internal checking and parsing packages from an external test package.
+Ordinary `go test ./...` does not fetch or require these archives.
 
 Relative archive and report paths are resolved from the repository root, including when the tests run from the
 `internal/development/tests/conformance` package directory.

@@ -47,12 +47,12 @@ List of checks:
 - [Deprecated inputs usage](#deprecated-inputs-usage)
 - [YAML anchors](#yaml-anchors)
 
-The checks in this document run by default, including the configurable cache safety policies. Other policy checks
-are opt-in, as described in [the configuration document](config.md#policy-checks). For
-general code style checks, please consider using a general YAML checker like [yamllint][yamllint].
+The checks in this document run by default, including the configurable cache safety checks. Enable other policy checks
+through [the configuration](config.md#policy-checks). Use a YAML checker such as [yamllint][yamllint]
+to check formatting and general YAML style.
 
-Additional [suspicious rules](config.md#stable-suspicious-rules) inspect condition
-coercion and matrix filter types. They are disabled by default and are not policies.
+Additional [suspicious rules](config.md#stable-suspicious-rules) report surprising type conversions in conditions
+and matrix filters. These rules are disabled by default and do not enforce project policies.
 
 <a id="check-unexpected-keys"></a>
 
@@ -258,7 +258,7 @@ invalid characters, missing parentheses, and unexpected end of input.
 
 ## Type checks for expression syntax in `${{ }}`
 
-actionlint checks the types of expressions in `${{ }}` template placeholders. It supports the following types.
+actionlint checks the types of expressions in `${{ }}` template placeholders. It supports these types:
 
 | Type          | Description                                                                                | Notation                 |
 | ------------- | ------------------------------------------------------------------------------------------ | ------------------------ |
@@ -332,7 +332,7 @@ echo '${{ toJSON(github.event) }}'
 actionlint uses two kinds of object types. A strict object reports a type error when an unknown property is accessed.
 An open object permits unknown properties and gives them the type `any`.
 
-When actionlint cannot determine a type statically, it uses `any` (for example, for the return type of `fromJSON()`).
+When actionlint cannot determine a type statically, it uses `any`. This can happen when it cannot determine the value passed to `fromJSON()`.
 
 An expression in `${{ }}` can also expand an object or array value.
 
@@ -388,10 +388,9 @@ jobs:
           ${{ insert }}: ${{ fromJSON(vars.ENVIRONMENT) }}
 ```
 
-actionlint validates the inserted value in the surrounding `env:` context.
-Known arrays and scalars are rejected as insertion sources. Literal mappings
-undergo environment-name and expression checks. Unknown object expressions are
-accepted and keep checkout and executable-bit analysis conservative. The
+actionlint checks the inserted value as part of the surrounding `env:` mapping.
+It rejects known arrays and scalars, and checks environment names and expressions in literal mappings.
+It accepts object expressions whose contents are unknown, but cannot establish checkout or executable-bit facts that depend on those contents. The
 directive applies to workflow, job, step, container and service environment
 mappings. `${{ insert }}` in an ordinary value is an undefined variable.
 
@@ -413,27 +412,25 @@ jobs:
           ${{ insert }}: ${{ fromJSON(vars.ACTION_INPUTS) }}
 ```
 
-Known inserted action inputs still receive unknown-name and required-input
-checks. Unknown mappings may provide required inputs, so missing-input findings
-are deferred. Known inserted axes and filters participate in matrix and
-runner-label checks; unknown insertions keep the matrix open.
+actionlint checks known inserted action inputs for unknown names and missing required inputs.
+It defers missing-input findings when an unknown mapping could supply those inputs.
+Matrix and runner-label checks include known inserted axes and filters.
+An unknown insertion can supply additional axes or values that actionlint cannot enumerate.
 
 An expression-produced array inside a matrix axis or `include`/`exclude` sequence
 splices one level into that sequence. A literal nested array counts as one
 value. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
 values, while `[before, [1,2], after]` has three.
 
-`case(predicate, result, ..., default)` requires Boolean predicates, preserves
-falsy and structured results, and evaluates only the selected branch. Use it to
-select an object for insertion. `condition && value || fallback` also preserves
-short-circuit evaluation, but chooses the fallback when `value` is falsy.
+`case(predicate, result, ..., default)` requires boolean predicates and evaluates only the selected result branch.
+The result can be falsy, an object or an array. Use it to select an object for insertion.
+`condition && value || fallback` short-circuits too, but chooses the fallback when `value` is falsy.
 
 The result type of `case()` merges every reachable value branch and the final
 default, excluding predicates. `case(github.ref == 'refs/heads/main',
 'production', 'development')` has type `string`, so using it for
-`timeout-minutes` reports a type error. Objects and arrays merge by the
-existing property and element rules; string, number and boolean combinations
-follow the scalar merging rules; incompatible results fall back to `any`.
+`timeout-minutes` reports a type error. Objects and arrays merge according to their property and element types.
+Strings, numbers and booleans follow the scalar merging rules. Incompatible results fall back to `any`.
 If a constant predicate makes a branch unreachable, that branch does not affect
 the result type. For example, `case(true, 10, 'never')` has type `number`.
 String literals are typed as `string`.
@@ -502,10 +499,10 @@ The checker handles these function signatures:
 
 Context and function names are case-insensitive. For example, `toJSON` and `toJson` are the same function.
 
-In addition, actionlint performs special checks on some built-in functions.
+actionlint also checks the contents of arguments to these functions:
 
-- `format()`: Checks placeholders in the first parameter which represents the format string.
-- `fromJSON()`: Checks the JSON string is valid and the return value is strongly typed.
+- `format()`: Checks placeholders in the format string passed as the first argument.
+- `fromJSON()`: Checks the JSON string and infers the result type from its contents.
 
 Example input:
 
@@ -553,8 +550,7 @@ test.yaml:14:31: invalid-json: broken JSON string is passed to fromJSON() at off
 
 [Playground](https://kjanat.github.io/actionlint/#eNqMj8FKxDAQhu99it9BSAupuOstj+BBD3ori6Td1EbapGQSVwh5d2l1j4KXmcP833z83il0a+JJwjInw6eq+vA9qwqIhuO2gZAct1v0NmeMwS+PL89Ptch0sY7UNs/+wu2sN4QkzdalL1KU+uRimq+HIppOLHoQJ5SyP+ZoVv5xAO3mUTDD5EG7yYdFx1rk+5IPRUgcJI4SDw1Kof9B+Xjl/oJeJ8uwDA1ezWD1jD5oN0w3v1nAjgqDd1Fbx/Xenr2rRUeLto4kBTMbzYYknc0niUbi3cYp9XfBjG9OL6b5HgDCamyw)
 
-GitHub Actions does not provide the syntax to create an array or object constant. It [is popular](https://github.com/search?q=fromJSON%28%27+lang%3Ayaml&type=code)
-to create such constants via `fromJSON()`.
+GitHub Actions has no syntax for array or object literals. Use `fromJSON()` to create them.
 
 <a id="check-contextual-step-object"></a>
 
@@ -615,8 +611,8 @@ Copying a step without updating its references can cause it to access the wrong 
 actionlint reports invalid references to step outputs.
 
 When a metadata provider supplies the selected action's manifest, its declared outputs constrain the outputs object.
-Without that metadata, output names remain dynamic. The example below checks step order and unsafe script interpolation;
-with the manifest available, the misspelled `cache_hit` is also reported as an unknown property.
+Without that metadata, actionlint cannot determine the output names. In the example below, it checks step order and unsafe script interpolation.
+When the manifest is available, it also reports the misspelled `cache_hit` as an unknown property.
 
 Example input:
 
@@ -800,11 +796,10 @@ test.yaml:34:24: unknown-property: property "os" is not defined in matrix [expre
 
 [Playground](https://kjanat.github.io/actionlint/#eNqMUu1qwjAU/e9THGRQBVtwWITAnkT2I7apZmuTkJvohsu7j1iz+tGx/Qr35pybc8+JVgzG037yprfEJoAT5OIJkLPcid1nXwEdd1Z+pArQxLDxW6+cz1seeQscpar1kS716w9W6VowbJarBZbl0Da8euc7McwEcijeCYZpo/X0qg9o46RWvGVw1osxypbb3ygNb2ngSFW1vr5/96xxWd5MUKZjWBdlsTq3rVeUR8+eTqeLIYUmhHBxTBhKQ/MIZhDVXiO7gpuWu0bbDiFkf0F7e4paHB7RX1c6e2YM5F5X9oCKa+IgLMm7Pc4XY4yUEkakRecRAmbJ6pcRULpDCPPRnZXpkiRIAhlRyUaKetAim/75SivHpaJZEm26BbJ1UWbzPoX4757ZbVg3n/T/SfUGfgcAAP//e8Dkyg==)
 
-Types of `matrix` context are contextually checked by the semantics checker. Type of matrix values in `matrix:` section
-is deduced from element values of its array. When the matrix value is an array of objects, objects' properties are checked
-strictly like `package.name` in above example.
+actionlint infers the type of each matrix axis from the elements in its array.
+For an array of objects, it checks property names and types, such as `package.name` in the example above.
 
-When a type of the array elements is not persistent, the type of the matrix value falls back to `any`.
+When actionlint cannot infer a common type for the array elements, it uses `any` for the matrix value.
 
 ```yaml
 strategy:
@@ -1054,7 +1049,7 @@ Detection is deliberately conservative. It checks direct literal calls in plain
 Bash or sh steps on recognized GitHub-hosted Linux/macOS runners after a self checkout.
 Literal script operands to `exec` and `command` are also checked, with an optional
 `--` separator; other options and lookup-only forms such as `command -v` are skipped.
-Self-hosted and grouped runners may retain repository settings from previous jobs.
+Repository settings on self-hosted and grouped runners can come from previous jobs.
 Reusable workflows may check out a different caller repository, so their local
 index modes are not assumed to match the runner. Steps that can run after failure,
 such as `if: always()`, cannot assume checkout completed successfully.
@@ -1114,9 +1109,9 @@ test.yaml:14:19: SC2086: Double quote to prevent globbing and word splitting [sh
 [shellcheck][shellcheck] is a famous linter for ShellScript. actionlint runs shellcheck for scripts at `run:` step in a workflow.
 For installation instructions, see [the ShellCheck documentation][shellcheck-install].
 
-actionlint detects which shell is used to run the scripts following [the documentation][shell-doc]. On Linux or macOS the
-default shell is `bash`, and on Windows it is `pwsh`. Shell can be configured by `shell:` configuration at a workflow
-level or job level. Each step can configure shell to run scripts by `shell:`.
+actionlint determines the script's shell according to [GitHub's shell selection rules][shell-doc].
+The default is `bash` on Linux and macOS, and `pwsh` on Windows.
+Set `shell:` on a step or under the job or workflow defaults to choose a shell.
 
 In the above example output, `SC2086:info:1:6:` means that shellcheck reported SC2086 rule violation and the location is at
 line 1, column 6 relative to the script of the `run:` section. When that script position can be mapped exactly to the YAML
@@ -1137,9 +1132,9 @@ By default, actionlint passes `--norc` to disable rc-file discovery. Set
 the selected actionlint configuration file's directory. Additional options can use `--tool shellcheck='<command line>'` or the
 `SHELLCHECK_OPTS` environment variable described below.
 
-Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
-shellcheck. To avoid it, actionlint replaces `${{ }}` with underscores. For example `echo '${{ matrix.os }}'` is replaced
-with `echo '________________'`.
+ShellCheck parses `${{ }}` placeholders as shell syntax, which can cause false positives.
+Before calling ShellCheck, actionlint replaces each placeholder with underscores.
+For example, `echo '${{ matrix.os }}'` becomes `echo '________________'`.
 
 actionlint disables [SC2050][SC2050], [SC2194][SC2194], [SC2157][SC2157] and [SC2043][SC2043] because expression
 placeholders can trigger them. It also disables [SC1091][SC1091] because sourced files may exist only on the runner,
@@ -1148,8 +1143,8 @@ These exclusions still apply when optional checks are enabled through configurat
 
 When an explicit shell expression cannot be resolved, or a custom wrapper's script language cannot be inferred, actionlint
 skips ShellCheck unless a leading native `shell` directive selects a supported dialect. Global dialect settings and command
-flags alone do not select unknown or non-shell scripts. If no shell is configured and the runner platform is unknown,
-actionlint still assumes Bash. Set `shell:` explicitly to identify the interpreter, for example for a step guarded by a
+flags alone do not select unknown or non-shell scripts. If no shell is configured and the runner's default shell is unknown,
+actionlint leaves the shell unknown. Set `shell:` explicitly to identify the interpreter, for example for a step guarded by a
 matrix value:
 
 ```yaml
@@ -1236,16 +1231,16 @@ test.yaml:25:24: unknown-script-value: interpolated scalar is not proved to occu
 
 [Playground](https://kjanat.github.io/actionlint/#eNqMkUFrGzEQhe/+FY+lYKdkt+2xCoUcWkobSALJzZggyxNL9a5mqxk5lLD/vWg3mLjFtCcxzJv3PZ6i7cjgnkRnHA2WfW7bh0Q/M4meo8/iV7PZD16LmQFKouUFUo5Sl4O8zlFz3dqyG1ei1MukAmpMgNsUoqKY48UcGrSlF9loaEDOM+Zvnp+xDerzuqE9RW1eZ2rGMwzD/EDIQmJgnQaO8k7UtnS5//D+YP0U1JvDBCTquVbeUTQoLCGXSKW5v7n6co1heCUdzeo+1R2J2C0Z/F84PFmBa1locyLm5FGLS6HXy/3Hk2knhYHjKNxS0/J28XdFnuzmwXHXBW1sVs+pKcWXns7++IqvpChKiiqn6lf+fndzvThCvG3WvPl1dlT95PiZIdyR+hC3Y344T25XJtmF/hgSHrFEVSCOo9oQZfGPPs8xX95dfbtdzQu8widUmjJVWF1APcUpd1VQ1QUew+8BALAe5HM=)
 
-Since `${{ }}` placeholders are evaluated and replaced directly by GitHub Actions runtime, you need to use them carefully in
-inline scripts at `run:`. For example, if we have step as follows,
+GitHub Actions substitutes `${{ }}` values into `run:` scripts before the shell parses them.
+An untrusted value can therefore become shell code. For example:
 
 ```yaml
 - run: echo 'issue ${{github.event.issue.title}}'
 ```
 
 an attacker can create a new issue with the title `'; malicious_command ...`, and the inline script will run
-`echo 'issue'; malicious_command ...` in your workflow. The remediation of such script injection is passing potentially untrusted
-inputs via environment variables. See [the official document][security-doc] for more details.
+`echo 'issue'; malicious_command ...` in your workflow. Pass potentially untrusted values through environment variables
+to prevent them from becoming shell code. See [GitHub's guidance][security-doc].
 
 ```yaml
 - run: echo "issue ${TITLE}"
@@ -1275,17 +1270,16 @@ directly in a script, actionlint will report it as an error.
 - `github.event.pull_request.head.repo.default_branch`
 - `github.head_ref`
 
-Not only direct access to the untrusted properties, actionlint also detects those properties indirectly accessed via
-[object filter syntax][object-filter-syntax]. For example, `github.event.*.body` collects all `body` properties in child objects
-of `github.event` as array. Those properties include untrusted inputs like `github.event.comment.body`,
-`github.event.pull_request.body`, ...
+actionlint also detects untrusted properties accessed through [object filters][object-filter-syntax].
+For example, `github.event.*.body` collects the `body` properties of child objects into an array.
+These can include `github.event.comment.body` and `github.event.pull_request.body`.
 
 ```sh
 # Echo list of github.event.comment.body, github.event.pull_request.body, ...
 echo '${{ toJSON(github.event.*.body) }}'
 ```
 
-Instead, you should store the JSON string in an environment variable:
+Pass the JSON string through an environment variable:
 
 ```sh
 - run: echo "${BODIES}"
@@ -1457,7 +1451,7 @@ combination of matrix values. actionlint checks
 - duplicate variations of matrix values
 
 GitHub processes `exclude:` before `include:`. Exclusions can only match values in the original rows.
-Scalar comparisons preserve YAML types: `1` and `"1"` are different values, while `1` and `1.0` are the same number.
+Scalar comparisons use YAML types. `1` and `"1"` are different values, while `1` and `1.0` are the same number.
 
 <a id="check-webhook-events"></a>
 
@@ -1516,8 +1510,8 @@ test.yaml:15:3: unknown Webhook event "pullreq". see https://docs.github.com/en/
 
 [Playground](https://kjanat.github.io/actionlint/#eNpcjkGuwyAMRPecYtaRIHvfhuT7h1QIU2wq9fYVJJt2NbLf6NlSyAG1axoJbC2WPRH+ReZcoyWlGavJ+rX251Gk8S89VTvrpbN3ZSXsjaPxnwMaZ47KN42HEl5LWMIyv8i58ZOce8g2BcZqV7X1ol4KoW+9WPc5DjaRGtf7HOBHk8B7EoQQPgEAAP//dVRCRg==)
 
-At `on:`, Webhook events can be specified to trigger the workflow. [Webhook event documentation][webhook-doc] defines
-which Webhook events are available and what types can be specified at `types:` for each event.
+Declare events under `on:` to trigger the workflow. [GitHub's event documentation][webhook-doc] lists
+the supported webhook events and the activity types allowed in each event's `types:` list.
 
 actionlint validates the Webhook configurations:
 
@@ -1875,19 +1869,17 @@ test.yaml:23:14: label "macos-10.13" is unknown. available labels are "windows-l
 
 [Playground](https://kjanat.github.io/actionlint/#eNqEj8GqwyAQRfd+xV28ZZSXNmThr5QubGqTlESDo5AS8u9FNBSh0JVcZ+ZyjjUSS6CBPe2NJAO8Jh9fgLxTXvevlIBZeTeuRwJcMEa7TwY4ZtVZ4pOKLcVgGk1Yvw0upKcHHyx5fa/SWoW1ba7FlnJz2xQ//RJYpiAeLf62LSOKRIZ9zx56oQOTxwMJ3Q0WQgiWjU+yLEse9b+ozz873gEAAP//SPlVEA==)
 
-GitHub Actions provides two kinds of job runners, [GitHub-hosted runner][gh-hosted-runner] and [self-hosted runner][self-hosted-runner].
-Each runner has one or more labels. GitHub Actions runtime finds a proper runner based on label(s) specified at `runs-on:`
-to run the job. So specifying proper labels at `runs-on:` is important.
+GitHub Actions jobs run on [GitHub-hosted][gh-hosted-runner] or [self-hosted][self-hosted-runner] runners.
+Each runner has one or more labels. GitHub selects a runner with the labels specified in `runs-on:`.
 
-actionlint checks proper label is used at `runs-on:` configuration. Even if an expression is used in the section like
-`runs-on: ${{ matrix.foo }}`, actionlint parses the expression and resolves the possible values, then validates the values.
+actionlint checks labels in `runs-on:`. For an expression such as
+`runs-on: ${{ matrix.foo }}`, it determines the possible values and checks each one.
 
 If your self-hosted runners use custom labels, add the labels to the [`actionlint.yaml` configuration file](config.md)
 so actionlint can recognize them.
 
-In addition to checking label values, actionlint checks combinations of labels. `runs-on:` section can be an array that contains
-multiple labels. In this case, a runner which has all the labels will be selected. However, those labels combinations can have
-conflicts.
+When `runs-on:` lists several labels, GitHub selects a runner that has all of them.
+actionlint reports conflicting combinations.
 
 Example input:
 
@@ -1911,8 +1903,8 @@ test.yaml:4:30: label "windows-latest" conflicts with label "ubuntu-latest" defi
 
 [Playground](https://kjanat.github.io/actionlint/#eNosi0EKgDAMBO99xT7A9gH9iniwWqgiSTEJ/b5EPS3LzDBldJMWTi6SA6BV1Be4jSQ6n60YqcVrdThhHLTzkP8vryxau3wdEL3NqFtjpJSeAAAA//9e4h8M)
 
-In most cases, this is a misunderstanding that a matrix combination can be specified at `runs-on:` directly. It should use
-`matrix:` and expand it with `${{ }}` at `runs-on:` to run the workflow on multiple runners.
+To run a job on multiple runners, define an axis in `matrix:` and reference it with `${{ }}` in `runs-on:`.
+Listing several labels directly in `runs-on:` selects one runner that has all those labels.
 
 <a id="check-action-format"></a>
 
@@ -1959,14 +1951,14 @@ test.yaml:13:15: invalid-reference: specifying action ".github/my-actions/do-som
 
 [Playground](https://kjanat.github.io/actionlint/#eNpczbEKwzAMBNA9XyGyu4aOnvortiNsN7UUIqnQvy9uyeLp4N7BMQU4TOry5CRhAVAUHQlwGokbbslIzb3isB+J4iH/FYADE5QAMWtjEp8r5p1NJ77qx/s+ybpx3vEM3rceC4Z18ltpWi35/nHXx8ZOuKPWRuUbAAD//6YoPB4=)
 
-Action needs to be specified in a format defined in [the document][action-uses-doc]. There are 4 types of actions:
+The `uses:` value must follow one of [GitHub's action reference formats][action-uses-doc]:
 
 - action hosted on GitHub: `owner/repo/path@ref`
 - local action: `./path/to/my-action`
 - action in the workflow's repository at the running commit: `$/path/to/my-action`
 - Docker action: `docker://image:tag`
 
-actionlint checks values at `uses:` sections follow one of these formats.
+actionlint checks that each `uses:` value follows one of these formats.
 
 Leading slashes after the `$/` prefix are stripped, so `$//path/to/my-action` and `$/path/to/my-action` name the same action.
 For actions, `$/`, `$//`, and `$///` refer to the repository root. Reusable workflow calls still require a workflow file path.
@@ -2040,20 +2032,21 @@ test.yaml:13:11: input "additions" is not defined in action "My action" defined 
 
 <!-- Skip playground link -->
 
-When a local or self-repository action is run in `uses:` of `step:`, actionlint reads `action.yml` from the repository and
-validates inputs at `with:` in the workflow are correct. Missing required inputs and unexpected inputs can be detected.
+For a step that uses a local or self-repository action, actionlint reads its repository metadata file and
+checks `with:` for missing required inputs and unexpected input names.
 
 <a id="check-popular-action-inputs"></a>
 
 ## Remote action inputs and outputs
 
 Remote reference syntax is checked without metadata. Input names, required inputs
-and declared outputs are checked when dependency resolution supplies the action
-manifest. Both checks use the same request-scoped metadata service and selected content.
+and declared outputs are checked when actionlint acquires the action manifest.
+Metadata-dependent checks use the same request-scoped service and selected content.
 
-There is no bundled popular-action list. Without a provider, remote metadata is
-unavailable; metadata-dependent checks skip that action. Local action validation
-continues to use the actual local manifest. See [remote action metadata](remote-actions.md).
+There is no bundled popular-action list. Online acquisition supports full commit
+hashes directly; named references need a resolver. When metadata is unavailable,
+metadata-dependent checks skip that action. Local action validation uses the local
+manifest. See [remote action metadata](remote-actions.md).
 
 <a id="detect-outdated-popular-actions"></a>
 
@@ -2064,10 +2057,9 @@ runner source. Deprecated runtimes do not disable input/output validation.
 The declared runtime determines the finding; an action's tag or release age does
 not. Unfetched metadata does not establish that a runtime or service is retired.
 
-A provider selection preserves the requested ref, original selected object,
-terminal commit, repository identity and lookup route. A raw tag-object ID may
-peel to a different commit. Selection and fetched bytes are distinct from proof
-of what a runner actually executed.
+The provider records the requested ref, the Git object it selected, the final commit,
+the repository identity and how it looked up the ref. A tag object can point to a different commit object.
+These records describe what actionlint fetched. They do not record what a runner executed.
 
 <a id="check-shell-names"></a>
 
@@ -2256,10 +2248,10 @@ test.yaml:7:7: environment variable name "FOO BAR" is invalid. '&', '=' and spac
 
 [Playground](https://kjanat.github.io/actionlint/#eNrKz7NSKCgtzuDKyk8qtuJSUChJLS4B0QoKRaV5xbog+dKk0rySUt2cRJAcWCo1rwyiRkHBzd/f1skxyEohLT8fIaSAIlRcklpQDNOgCzLYSiE1OSNfQT0jNScnXx0QAAD///hYJMc=)
 
-`=` must not be included in environment variable names. And `&` and spaces should not be included in them. In almost all
-cases they are mistakes, and they may cause some issues on using them in shell since they have special meaning in shell syntax.
+Environment variable names must not contain `=`. Avoid `&` and spaces too, because
+they have special meanings in shell syntax and usually indicate a mistake in a variable name.
 
-actionlint checks environment variable names are correct in `env:` configuration.
+actionlint checks environment variable names under `env:`.
 
 <a id="cache-mode"></a>
 
@@ -2426,11 +2418,11 @@ test.yaml:17:29: "write" is invalid as permission of scope "vulnerability-alerts
 
 [Playground](https://kjanat.github.io/actionlint/#eNpUjtGtwyAMRf+ZwguwANtAYgnecwD52q26fUWqVM2XpXOvjz16oumoIUzWowFtdCR6ajMO4W8UpEBkDFuTSL0jriUv3s2j5JWd0a/gBERb5e3/sn1QA5yRSDnvuciFj7Gz4F59uHTWXJo0e8UsrHZrwHh+T8X1WiLe6qDKIuMdAAD//6u/RE0=)
 
-Permissions of `GITHUB_TOKEN` token can be configured at workflow-level or job-level by [`permissions:` section][perm-config-doc].
-Each permission scopes have their access levels. The default levels and available levels are described in
+Set [`permissions:`][perm-config-doc] on a workflow or job to control access through `GITHUB_TOKEN`.
+Each permission scope has its own access levels. The default and available levels are described in
 [the document][permissions-doc].
 
-actionlint checks permission scopes and access levels in a workflow are correct.
+actionlint checks permission scopes and access levels in the workflow.
 
 <a id="check-reusable-workflows"></a>
 
@@ -2570,18 +2562,17 @@ test.yaml:19:11: could not read reusable workflow file for "./.github/workflows/
 
 [Playground](https://kjanat.github.io/actionlint/#eNqEzjFywyAQBdBep9gLIEZJKqpcBTQrgYJYhl1CcnsPYuxxZVdQ/P/2UzKQK/vpIMdmAjjILf0FqIxsgFrCogtm0tmK10K6UfnZIrX5/4zfv8sVLjWx6lh1NUlV0QqyDO/j2Zv1vAfx1T0Y1mu4qNOGNBqfo9GC+PED2IgMOFteXwNgwcz3kupJA7h6Ao8x0uC/3g1KJAr/AktIe592CwAA//9tJVzI)
 
-When calling an external workflow, [only specific keys are available][reusable-workflow-call-keys] at job configuration.
-For example, `secrets:` is not available when running steps in a normal job. And `runs-on:` is not available when calling
-a reusable workflow since the called workflow determines which OS is used. actionlint checks such keys are used correctly
-to call a reusable workflow or to run steps in a normal job.
+Jobs that call reusable workflows accept [a specific set of keys][reusable-workflow-call-keys].
+For example, a caller can pass `secrets:`, but a job that runs steps cannot.
+A caller cannot set `runs-on:` because the called workflow selects its runners.
+actionlint checks each job's keys according to whether it calls a workflow or runs steps.
 
-And the workflow syntax at `uses:` must follow the format `owner/repo/path/to/workflow.yml@ref`,
+The workflow reference in `uses:` must follow the format `owner/repo/path/to/workflow.yml@ref`,
 `./path/to/workflow.yml`, or `$/path/to/workflow.yml` as described in [the official document][create-reusable-workflow-doc].
 actionlint checks if the value follows the format.
 
-actionlint also validates the called workflow file is actually existing when it is local or self-repository referenced
-(starting with `./` or `$/`).
-actionlint reports an error when it does not exist.
+For a local or self-repository reference starting with `./` or `$/`, actionlint also checks
+that the called workflow file exists and reports an error if it is missing.
 
 ### Check types of `inputs.*` and `secrets.*` in reusable workflow
 
@@ -2880,8 +2871,9 @@ test.yaml:13:24: property "tag" is not defined in object type {version: string} 
 A workflow call exposes its outputs through the calling job's outputs object. Another job can access them by listing the calling job in its own `needs:`.
 The reusable workflow defines the outputs; actionlint uses those definitions to check downstream references.
 
-In the above example, `get-build-info.yaml` has one output `version`. actionlint types the outputs object of workflow call job
-as `{version: string}`. In the downstream job, actionlint can report an error at undefined key `tag` in the object.
+In this example, `get-build-info.yaml` defines one output, `version`.
+actionlint gives the calling job's outputs the type `{version: string}`.
+It then reports the downstream job's reference to the undefined output `tag`.
 
 Note that this check only works with local or self-repository reusable workflows (starting with `./` or `$/`).
 
@@ -3063,12 +3055,11 @@ test.yaml:32:33: unavailable-function: calling function "success" is not allowed
 
 [Playground](https://kjanat.github.io/actionlint/#eNp8j81qwzAQhO96ijkU0h6cB/CltNDSQyDQPIHtrGO3imT2J2kIfvciJ45NIT2J0Xy7MxtDjs6kcW5LdWFeJXcAW0gPIA15n+PhfAaFw3Lz8bZaoe+d+4rlQCqJXlHlQml3uihgXyi3P6MCti1TpZFP0xeQDat3rTZWLo+Rv2sfjyngL8IWAvFSad+NNluQLPW30oJa5otUZrDmt1zRKfXeTcmjcBjB9/V6gl5fPkdElLrb4mw+8d/UveCZnUqCqiZisbGqIpHngZWLeHxC3y9udFvnk/MbAAD//3L9fcg=)
 
-Some contexts are only available in some places. For example, `env` context is not available at `jobs.<job_id>.env`, but it is
-available at `jobs.<job_id>.steps.env`.
+GitHub limits which contexts each workflow key can use. For example, `jobs.<job_id>.env` cannot use the `env` context,
+but `jobs.<job_id>.steps.env` can.
 
-Similarly, some status functions are special since they limit where they can be called. For example, `success()`, `failure()`,
-`always()`, and `cancelled()` are only available at `if:` section. At the time of writing this document, the following functions
-are special.
+GitHub also limits where some functions can be called. The status functions `success()`, `failure()`,
+`always()` and `cancelled()` can only be used in `if:` conditions. These functions have location restrictions:
 
 - `hashFiles()`
 - `always()`
@@ -3079,8 +3070,7 @@ are special.
 [The official contexts document][availability-doc] describes which contexts and special functions are available at which workflow
 keys.
 
-actionlint checks if these contexts and special functions are used correctly. It reports an error when it finds that some context
-or special function is not available in your workflow.
+actionlint reports an error when a context or function is not available at the key where it is used.
 
 <a id="#check-deprecated-workflow-commands"></a>
 
@@ -3185,19 +3175,17 @@ test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github
 
 [Playground](https://kjanat.github.io/actionlint/#eNq0zz1OxDAQBeA+p3hYyK7CASxtw484ATVyYEKM1vZqZ0yz+O7Iy18iohBAVFH03nwzTtFil3lomsfUsW0AIZb6BfY5clsLuctRcrt1NTtGLLTj1xbQ1qYF3Q0J6vLq/Ob6BKeHAx68DLk7oyeKchtdIJSi3mYA31v0bss0o5iLFIIXeD4eR/dmMjaPbzYwtW1Qys/N548/LNl/g//jcPU9CrWGhSQE5+OUX5K1fo/31H+GY+QXG1e8R+tx6+tylPISAAD//9rl1qA=)
 
-actionlint reports conditions whose outcome is provably constant. Removing `if: true`
-preserves the default success gate. An always-false condition skips the guarded work;
-removing it would enable that work. The diagnostic therefore does not suggest removal
-for false conditions. Blank and YAML-null conditions use `success()`. A sole string
+actionlint reports conditions whose outcome it can prove is constant. Removing `if: true`
+still requires the default `success()` check. Removing an always-false condition would enable
+the work it skips, so the diagnostic does not suggest removing false conditions.
+Blank and YAML-null conditions use `success()`. A sole string
 literal expression is folded and parsed as condition source. See
 [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string) for computed strings.
 
-In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
-and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is
-treated as string hence it is **always** evaluated to `true`.
+When an `if:` value contains only a `${{ }}` expression that produces a boolean, the boolean determines the condition.
+Characters outside the expression turn the condition into a nonempty string, which evaluates to `true`.
 
-It means that multi-line string must not be used at `if:` condition (`if: |`) because the condition is always evaluated to true.
-Multi-line string inserts newline character at end of each line.
+A literal block such as `if: |` adds newline characters outside the expression, making the condition evaluate to `true`.
 
 ```yaml
 if: |
@@ -3210,8 +3198,7 @@ is equivalent to
 if: "${{ false }}\n"
 ```
 
-Unlike using `${{ }}`, putting an expression directly ignores white spaces around it. It's the reason why the following `if:`
-condition works as intended.
+An expression written directly in `if:` ignores surrounding whitespace. The following condition therefore works as intended:
 
 ```yaml
 if: |
@@ -3295,9 +3282,9 @@ test.yaml:8:15: "env" is not allowed in "runs" section because "My action" is a 
 
 <!-- Skip playground link -->
 
-All actions require a metadata file `action.yml` or `action.yaml`. The syntax is defined in [the official document][action-metadata-doc].
+Action metadata files are named `action.yml` or `action.yaml`. Their syntax is defined in [the official document][action-metadata-doc]. A local Dockerfile-only action has no manifest schema to check.
 
-actionlint checks metadata files used in workflows and reports errors when they are not following the syntax.
+actionlint checks the following in metadata files used by workflows:
 
 - `name:`, `description:`, `runs:` sections are required
 - Runner name at `using:` is `composite`, `docker`, or a JavaScript runtime accepted by GitHub's manifest parser.
@@ -3307,16 +3294,13 @@ actionlint checks metadata files used in workflows and reports errors when they 
   honors the Node 20 opt-out. This hosted-service policy does not change the generated runner bundle inventory.
   `node22` is a valid Node.js release but is not accepted
   as an action's `runs.using` value. The check does not infer action runtime support from Node.js release numbers.
-- Keys under `runs:` section are correct. Required/Valid keys are different depending on the type of action; Docker action or
-  Composite action or JavaScript action (e.g. `image:` is required for Docker action).
-- Each step in `steps:` of Composite action is a mapping the runner accepts; a script step with `run:` and `shell:`, or
-  an action step with `uses:`.
-- Files specified in some keys under `runs` are existing. For example, JavaScript action defines a script file path for
-  entrypoint at `main:`.
-- Icon name at `icon:` in `branding:` section is correct. Supported icon names are listed in
-  [the official document][branding-icons-doc].
-- Icon color at `color:` in `branding:` section is correct. Supported icon colors are white, yellow, blue, green, orange, red,
-  purple, or gray-dark.
+- Missing or unexpected keys under `runs:`. The required and allowed keys depend on whether the action uses Docker,
+  composite steps or JavaScript. For example, Docker actions require `image:`.
+- Invalid composite steps. A script step needs `run:` and `shell:`, and an action step needs `uses:`.
+- Missing files referenced under `runs:`, such as the JavaScript entry point at `main:`.
+- An unsupported icon name at `branding.icon`. See [the supported icons][branding-icons-doc].
+- An unsupported icon color at `branding.color`. Supported colors are white, yellow, blue, green, orange, red,
+  purple and gray-dark.
 
 actionlint checks action metadata used by workflows. You can also pass `action.yml` or `action.yaml` directly on the command line.
 
