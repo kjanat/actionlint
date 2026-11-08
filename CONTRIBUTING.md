@@ -83,21 +83,23 @@ The PR must explain the motivation, scope, compatibility impact, and validation 
 
 ## Development
 
-Root tasks are defined in `tasks.toml` and run with `mise run <task>` or `run <task>`. Shared task templates live in `.mise.toml`; `sources` and `outputs` control rebuilds. The Makefile forwards existing commands to these tasks.
+Root tasks are defined in `tasks.toml`. Run them with `mise run <task>` or `run <task>`. Shared task templates live in `.mise.toml`. Their `sources` and `outputs` settings determine when a task needs to run again.
+
+CI pins mise and runs one setup per job. `MISE_ENABLE_TOOLS` selects that job's tools, and `MISE_LOCKED=1` makes installation use `mise.lock`. The cache includes installed tools and mise's metadata, with separate keys for each platform and tool selection.
+
+After changing a tool version, run `mise lock <tool>` and commit `mise.lock` with any dependency files under `.mise/locks/`. The platform list in `.mise.toml` covers Linux, macOS and Windows on x64 and ARM64. To update a floating request such as `latest`, run `mise lock --bump <tool>`. The README maintenance workflow refreshes its two actionlint versions this way before generating the comparison.
 
 ### Selecting CI checks
 
-The CI, CodeQL, matcher, upstream-conformance and expression-probe workflows select profiles from `.github/ci/filters.yml`. YAML anchors share ordered path lists; brace globs group related directories and extensions. Paths start at the repository root: `*` matches within one directory, `**/` crosses directories, and a later `!` pattern excludes an earlier match. A later positive pattern can include a path again. Each changed file is matched independently, so an excluded documentation change does not suppress checks for a source file in the same PR.
+The planner asks mise which workspace projects changed and which projects depend on them. Mise reads Cargo and Bun workspace manifests. The project declarations in `.mise.toml` add the Go modules, the standalone Rust test host, and dependencies that cross languages. The planner maps the selected projects to CI jobs. It does not maintain file-matching rules.
 
-Required workflows still start on every PR. Unneeded jobs are skipped; the unit-test matrix keeps its exact required check names using `ubuntu-slim` jobs with their setup and test steps skipped. Go test-only changes keep the relevant test and lint jobs without rebuilding packages. PR comparisons cover the full diff from the merge-base; pushes cover all commits in the push. Manual and scheduled runs select every check in their workflow. If comparison history, a path pattern or a trailer is invalid, selection falls back to running every check.
+A change confined to the Rust test host selects plugin and conformance checks. Changes to the Go implementation, embedded files or checked-in Wasm fixtures select the Go checks and their consumers. New projects without an assigned set of CI jobs run every check.
 
-Lint, JavaScript tests, Go guest-module tests and native Rust checks run before the expensive builds and platform matrices. A failed selected check blocks those jobs; an unselected check does not. Native Rust tests run before component builds, fixture rebuilding and Wasmtime parity tests. All six unit-test platforms still run when selected.
+Required workflows start on every PR. Jobs that are not selected are skipped. The unit-test matrix reports its required check names through `ubuntu-slim` jobs that skip setup and tests. PR comparisons start at the merge base. Push comparisons include all pushed commits. Manual and scheduled runs select every check. If Git history or dependency information is unavailable, or a commit trailer is invalid, the planner runs every check.
 
-CI runs the Go checks after changes to Go source, embedded resources or test fixtures. For changes limited to the Rust test host, CI runs the plugin and conformance checks. The Go checks and package builds are skipped for those changes.
+Lint, JavaScript tests, Go guest-module tests and native Rust checks run before the expensive builds and platform matrices. A failed selected check blocks those jobs. A skipped check does not. All six unit-test platforms run when selected.
 
-Jobs reuse path patterns defined with YAML anchors in `filters.yml`.
-
-To test selection and job dependencies locally, run `mise exec -- bun test --cwd .github/ci ./plan.test.mjs`.
+Run `mise exec -- run //.github/ci:test` to test the planner and job dependencies.
 
 To skip optional PR checks, add trailers to the **latest PR head commit** after a blank line:
 

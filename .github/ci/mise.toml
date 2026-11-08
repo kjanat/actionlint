@@ -1,5 +1,5 @@
 [tasks.test]
-description = "Test CI path selection, commit trailers and protocol synchronization"
+description = "Test CI dependency selection, commit trailers and protocol synchronization"
 run         = "bun test --timeout 30000"
 
 [tasks.typecheck]

@@ -1,5 +1,6 @@
 ---
 name: CI
+env: { MISE_CACHE_DIR: "${{ github.workspace }}/../actionlint-mise/cache", MISE_LOCKED: "1", MISE_TASK_RUN_AUTO_INSTALL: "false" }
 on:
   push: { branches: [master] }
   pull_request: null
@@ -26,7 +27,7 @@ jobs:
       matrix: { os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm] }
     # Keep every required platform check present without allocating its native runner when unselected.
     runs-on: ${{ (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit']) && matrix.os || 'ubuntu-slim' }}
-    env: { CI_UNIT: "${{ needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit'] }}" }
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck", CI_UNIT: "${{ needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit'] }}" }
     steps:
       - uses: &ActionsCheckout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: env.CI_UNIT == 'true'
@@ -38,29 +39,17 @@ jobs:
       - uses: &SetupUv astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         if: env.CI_UNIT == 'true'
         with: &NoCache { enable-cache: false }
-      - &PrepareMiseCache
-        name: Keep mise metadata with cached tools
-        shell: bash
-        run: |
-          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
-          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
-          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
-      - name: Install Node.js, npm and Bun
+      - name: Install Node.js, npm, Bun and ShellCheck
         if: env.CI_UNIT == 'true'
         uses: &SetupMise jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
-        with: &NodeTools
+        with: &TestTools
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}/../actionlint-mise"
           cache: true
-          auto_update: true
-          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}"
           cache_save_post: true
-          cache_key: &MiseCacheKey >-
-            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: node npm bun
           add_shims_to_path: false
-        env: &NodeToolsEnv { MISE_ENABLE_TOOLS: "node,npm,bun" }
-      - name: Install ShellCheck
-        if: env.CI_UNIT == 'true'
-        uses: $/.github/actions/setup-shellcheck
+        env: &TestToolsEnv { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck" }
       - name: Install Ruff for integration tests
         if: env.CI_UNIT == 'true'
         run: uv tool install ruff==0.17.0
@@ -73,7 +62,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - if: env.CI_UNIT == 'true'
         run: go test -v ./...
-      # Check build without CGO
+      # Check that actionlint builds without CGO.
       - if: env.CI_UNIT == 'true'
         run: go build ./cmd/actionlint
         env: { CGO_ENABLED: 0 }
@@ -83,24 +72,23 @@ jobs:
     name: Race detector and coverage
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck" }
     steps:
       - &ActCheckNocred { uses: *ActionsCheckout, with: *NoCreds }
       - &GoGomod { uses: *SetupGo, with: *GoMod }
-      - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - &Uv { uses: *SetupUv, with: *NoCache }
-      - *PrepareMiseCache
-      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
+      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *TestTools, env: *TestToolsEnv }
       - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
       - { name: Install the YAML language server for editor completion tests, run: bun install --frozen-lockfile --ignore-scripts }
 
       - run: go test -v -race -coverpkg=./... -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
 
-      # Set -race for catching data races on dog fooding (#333)
+      # Detect data races when actionlint checks its own workflows (#333).
       - run: go build -race ./cmd/actionlint
 
       - name: Dog fooding 🐶
-        # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
+        # actionlint passes --norc to ShellCheck, so it ignores .shellcheckrc.
         run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color --shellcheck='shellcheck -o all'
 
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
@@ -110,25 +98,22 @@ jobs:
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['wasm']) }}
     name: Wasm
     runs-on: ubuntu-latest
+    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc" }
     steps:
       - *ActCheckNocred
-      - *PrepareMiseCache
       - name: Install project tools
         uses: *SetupMise
         with:
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}/../actionlint-mise"
           cache: true
-          auto_update: true
-          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}"
           cache_save_post: true
-          cache_key: *MiseCacheKey
-          install_args: go node npm bun
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc" }
       - name: Install runner
-        uses: $/.github/actions/setup-runner
+        uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
         with: { version-file: .tool-versions }
-      - name: Install Pandoc
-        uses: $/.github/actions/setup-pandoc
       - name: Install JavaScript dependencies
         run: runner install --pm bun --no-tools --frozen
       - name: Build command manual
@@ -158,22 +143,21 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['javascript']) }}
     name: JavaScript
     runs-on: ubuntu-latest
+    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
     steps:
       - *ActCheckNocred
-      - *PrepareMiseCache
       - name: Install project tools
         uses: *SetupMise
         with:
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}/../actionlint-mise"
           cache: true
-          auto_update: true
-          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}"
           cache_save_post: true
-          cache_key: *MiseCacheKey
-          install_args: go node npm bun
           add_shims_to_path: false
         env: { MISE_ENABLE_TOOLS: "go,node,npm,bun" }
       - name: Install runner
-        uses: $/.github/actions/setup-runner
+        uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
         with: { version-file: .tool-versions }
       - name: Install dependencies and test JavaScript tooling
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
@@ -187,17 +171,25 @@ jobs:
     if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['release']) }}
     name: Release snapshot
     runs-on: ubuntu-latest
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc" }
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
-      - *PrepareMiseCache
       - parallel:
           - &Go { uses: *SetupGo, with: *GoMod }
-          - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
-          - &Runner { uses: $/.github/actions/setup-runner, with: { version-file: .tool-versions } }
+          - &Runner { uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4, with: { version-file: .tool-versions } } # v0.28.0
           - name: Install syft for SBOM generation
             uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-          - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
+          - name: Install Node.js, npm, Bun and Pandoc
+            uses: *SetupMise
+            with: {
+              version: 2026.11.4,
+              mise_dir: "${{ github.workspace }}/../actionlint-mise",
+              cache: true,
+              cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}",
+              add_shims_to_path: false,
+            }
+            env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc" }
       - name: Build JavaScript Action release files outside the checkout
         run: bun install --frozen-lockfile --ignore-scripts;
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
@@ -254,12 +246,20 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['lint']) }}
     name: Lint
     runs-on: ubuntu-latest
+    env: { MISE_ENABLE_TOOLS: "shellcheck" }
     steps:
       - *ActCheckNocred
       - *Go
-      - parallel: [*Uv, *InstallShellCheck, *Runner]
+      - parallel: [*Uv, *Runner]
       - uses: *SetupMise
-        with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
+        with: {
+          version: 2026.11.4,
+          mise_dir: "${{ github.workspace }}/../actionlint-mise",
+          cache: true,
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}",
+          add_shims_to_path: false,
+        }
+        env: { MISE_ENABLE_TOOLS: shellcheck }
       - name: Install golangci-lint
         run: version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)";
           go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
@@ -284,7 +284,16 @@ jobs:
     steps:
       - *ActCheckNocred
       - uses: *SetupMise
-        with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
+        with: {
+          version: 2026.11.4,
+          mise_dir: "${{ github.workspace }}/../actionlint-mise",
+          cache: true,
+          cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}",
+          install: false,
+          env: false,
+          add_shims_to_path: false,
+          working_directory: "${{ runner.temp }}",
+        }
       - name: Install the pinned Rust toolchain and targets
         run: rustup toolchain install
       - name: Cache Cargo dependencies and workspace builds
@@ -317,23 +326,21 @@ jobs:
     name: Component plugins
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env: { MISE_ENABLE_TOOLS: "bun,tinygo,wasi-sdk,kprint,wasm-tools,wit-bindgen" }
     steps:
       - *ActCheckNocred
-      - *PrepareMiseCache
       - parallel:
           - *Go
-          - uses: $/.github/actions/setup-wasm-toolchain
-          - name: Install TinyGo, wasi-sdk and the generated-code formatter
+          - name: Install the WebAssembly build tools and formatter
             uses: *SetupMise
             with:
+              version: 2026.11.4
+              mise_dir: "${{ github.workspace }}/../actionlint-mise"
               cache: true
-              auto_update: true
-              mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+              cache_key: "actionlint-mise-v5-{{platform}}-{{version}}-{{env.MISE_ENABLE_TOOLS}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock', '.mise/locks/**') }}"
               cache_save_post: true
-              cache_key: *MiseCacheKey
-              install_args: bun tinygo wasi-sdk kprint
               add_shims_to_path: false
-            env: { MISE_ENABLE_TOOLS: "bun,tinygo,wasi-sdk,kprint" }
+            env: { MISE_ENABLE_TOOLS: "bun,tinygo,wasi-sdk,kprint,wasm-tools,wit-bindgen" }
           - name: Install the pinned Rust toolchain and targets
             run: rustup toolchain install
       - name: Cache Cargo dependencies and workspace builds
@@ -408,16 +415,14 @@ jobs:
       matrix: { os: [ubuntu-latest, macos-latest, windows-latest] }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck" }
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
-      - *PrepareMiseCache
       # Parallel setup steps race while the runner rewrites event.json on Windows.
       - *GoGomod
       - *Runner
-      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
-      - name: Install native ShellCheck for explicit backend tests
-        uses: $/.github/actions/setup-shellcheck
+      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *TestTools, env: *TestToolsEnv }
       - name: Install JavaScript Action build dependencies
         # Packaging also runs when JavaScript-only tests are not selected.
         run: bun install --frozen-lockfile --ignore-scripts
