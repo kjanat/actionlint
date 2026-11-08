@@ -16,3 +16,4 @@ jobs:
       - run: echo hello
         # ERROR: No context is available here
         shell: ${{ env.SHELL}}
+permissions: {}

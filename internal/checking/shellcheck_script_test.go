@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n        shell: " + tc.shell + "\n"
+          ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n        shell: " + tc.shell + "\npermissions: {}\n"
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(workflow), NormalizePath: false, Name: "workflow.yml"})
 			if err != nil {
 				t.Fatal(err)

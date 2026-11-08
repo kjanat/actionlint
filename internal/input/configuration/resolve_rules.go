@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
@@ -194,11 +195,6 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	}
 	for _, d := range descriptors {
 		setting := ruleSet.SettingFor(config, d, p, seen[d.Name])
-		if options, overridden := optionOverrides[d.Name]; overridden {
-			if err := validateOptionsJSON(d, options); err != nil {
-				return nil, fmt.Errorf("options for rule %q: %w", d.Name, err)
-			}
-		}
 		resolved[d.Name] = setting.Level()
 		next.Lint.Rules.boundSettings[d.Name] = setting
 		if d.Configure != nil {
@@ -262,6 +258,11 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 				return nil, fmt.Errorf("options schema for rule %q: %w", descriptor.Name, err)
 			}
 		}
+		if len(registration.Options) != 0 {
+			if err := validateOptionsJSON(Rule{Descriptor: descriptor}, registration.Options); err != nil {
+				return nil, binding.Context(fmt.Sprintf("options for rule %q", descriptor.Name), err)
+			}
+		}
 		replaced := false
 		for i := range descriptors {
 			if descriptors[i].Name == descriptor.Name {
@@ -310,6 +311,13 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []Rule, register
 	for _, source := range config.Lint.Rules.bindingSources {
 		settings := Config{Lint: LintConfig{Rules: source.rules}}
 		if err := ruleSet.bindSettings(&settings, descriptors, registered, optionOverrides); err != nil {
+			for _, v := range slices.Backward(source.prefix) {
+				err = binding.At(v, err)
+			}
+			err = sourceError(err, source.inputs)
+			if source.origin == "" {
+				return err
+			}
 			return fmt.Errorf("config source %q: %w", source.origin, err)
 		}
 	}
@@ -419,7 +427,7 @@ func validateOptionsJSON(descriptor Rule, document json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	return schema.Validate(document)
+	return schemaBindingError(schema.Validate(document))
 }
 
 func policyEnabled(cfg *Config, name string) (bool, bool) {
@@ -430,8 +438,6 @@ func policyEnabled(cfg *Config, name string) (bool, bool) {
 		return cfg.RequiresCommitHash(), true
 	case "job-timeout":
 		return cfg.RequiresJobTimeout().Enabled(), true
-	case "explicit-permissions":
-		return cfg.RequiresPermissions().Enabled(), true
 	case "cache-write-untrusted", "cache-call-unrestricted", "cache-operation":
 		return cfg.CachePolicyEnabled(name), true
 	default:

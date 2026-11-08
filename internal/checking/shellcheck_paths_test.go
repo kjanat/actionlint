@@ -61,6 +61,7 @@ jobs:
 			if tc.unknown {
 				workflow += "        working-directory: ${{ vars.DIRECTORY }}\n"
 			}
+			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
 			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args}}})}
 			var err error
@@ -117,6 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo $VALUE
+permissions: {}
 `)
 			options := checking.Options{WorkingDir: root}
 			optionsTools := registry.Selections{"shellcheck": {Command: command}}
@@ -395,6 +397,7 @@ jobs:
         run: |
           . ./value.sh
           echo $VALUE
+permissions: {}
 `)
 			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
@@ -462,6 +465,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo $VALUE
+permissions: {}
 `)
 			overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte("tools: {shellcheck: {config: '"+selection+"'}}"))
 			if err != nil {

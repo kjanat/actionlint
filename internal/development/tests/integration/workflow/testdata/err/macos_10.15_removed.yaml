@@ -9,3 +9,4 @@ jobs:
     runs-on: macos-10
     steps:
       - run: echo test
+permissions: {}

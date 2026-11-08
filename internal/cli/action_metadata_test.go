@@ -17,7 +17,7 @@ import (
 
 func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 	var out, log bytes.Buffer
-	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"), Stdout: &out, Stderr: &log}
+	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
 	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=off", "--output-format=json", "--summary=false", "-"})
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
@@ -62,7 +62,7 @@ func TestExplicitOfflineAndOffDoNotFailForUncachedMetadata(t *testing.T) {
 	} {
 		t.Run(tc.mode+"/"+tc.ref, func(t *testing.T) {
 			var out, log bytes.Buffer
-			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\n"), Stdout: &out, Stderr: &log}
+			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
 			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", path, "--action-metadata=" + tc.mode, "--output=json", "--summary=false", "-"})
 			if code != 0 {
 				t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)

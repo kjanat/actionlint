@@ -13,3 +13,4 @@ jobs:
       empty_input:
   caller5:
     uses: ./reusable/broken_secrets.yaml
+permissions: {}

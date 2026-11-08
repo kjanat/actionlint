@@ -14,3 +14,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Declared inputs and outputs stay checked; additional API parameters are allowed.
       - run: "echo latest release: ${{ steps.get_latest_release.outputs.this_output_does_not_exist }}"
+permissions: {}

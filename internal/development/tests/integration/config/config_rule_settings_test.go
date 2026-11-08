@@ -14,6 +14,7 @@ jobs:
     if: true
     steps:
       - run: echo ok
+permissions: {}
 `
 	for _, level := range []string{"off", "on", "info", "warn", "error"} {
 		t.Run(level, func(t *testing.T) {

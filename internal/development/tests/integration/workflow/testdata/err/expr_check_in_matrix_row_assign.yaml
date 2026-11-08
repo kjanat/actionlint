@@ -21,3 +21,4 @@ jobs:
     steps:
       # OK: matrix.test is any type
       - run: echo ${{ matrix.test.foo }}
+permissions: {}

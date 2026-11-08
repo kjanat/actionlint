@@ -1,47 +1,41 @@
 package config
 
 import (
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
-	"github.com/kjanat/go-yaml/v4"
 )
 
-func loadConfigTree(path string, read func(string) ([]byte, error), normalize func(string, *yaml.Node) (*yaml.Node, error)) (configtree.Loaded, error) {
+func loadConfigTree(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error)) (configtree.Loaded, error) {
 	return configtree.LoadWithMerge(path, read, normalize, MergeDocuments)
 }
 
-// MergeDocuments applies the configuration document's inheritance rules before
-// plugin discovery or analysis, including atomic repository facts.
-func MergeDocuments(base, overlay *yaml.Node, inputs map[*yaml.Node]Input) *yaml.Node {
-	merged := configtree.Merge(base, overlay, inputs)
-	if selected := field(overlay, "repository"); selected != nil && merged.Kind == yaml.MappingNode {
+// MergeDocuments applies inheritance rules, including atomic repository facts.
+func MergeDocuments(base, overlay any) any {
+	merged := configtree.Merge(base, overlay)
+	if selected := field(overlay, "repository"); selected != nil && isMapping(merged) {
 		next := cloneMapping(merged)
-		inputs[next] = inputs[merged]
-		setField(next, "repository", mergeRepositoryNodes(field(base, "repository"), selected, inputs))
+		setField(next, "repository", mergeRepositoryNodes(field(base, "repository"), selected))
 		return next
 	}
 	return merged
 }
 
-// Each repository field is a complete fact. Inheriting fields is useful;
-// merging two available name sets would invent a fact neither source supplied.
-func mergeRepositoryNodes(base, overlay *yaml.Node, inputs map[*yaml.Node]Input) *yaml.Node {
-	if overlay.Kind != yaml.MappingNode {
-		return overlay
+func mergeRepositoryNodes(base, overlay any) any {
+	if !isMapping(overlay) {
+		return rawValue(overlay)
 	}
 	next := cloneMapping(base)
-	if base != nil && base.ShortTag() == "!!null" {
+	if base != nil && isNull(base) {
 		next = mapping()
-		reset := *base
 		for _, key := range []string{"default-workflow-permissions", "runners", "variables", "secrets", "environments"} {
-			setField(next, key, &reset)
+			setField(next, key, nil)
 		}
 	}
-	if next.Kind != yaml.MappingNode {
+	if !isMapping(next) {
 		return overlay
 	}
-	for i := 0; i < len(overlay.Content); i += 2 {
-		setField(next, overlay.Content[i].Value, overlay.Content[i+1])
+	for key, value := range members(overlay) {
+		setField(next, key, cloneValue(value))
 	}
-	inputs[next] = inputs[overlay]
 	return next
 }

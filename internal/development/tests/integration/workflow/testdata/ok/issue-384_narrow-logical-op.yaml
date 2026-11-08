@@ -17,3 +17,4 @@ jobs:
       - run: echo hello
         # `timeout-minutes` only allow number type value
         timeout-minutes: ${{ ('...' || 60) && 20 }}
+permissions: {}

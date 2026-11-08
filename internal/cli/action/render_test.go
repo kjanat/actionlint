@@ -18,6 +18,7 @@ jobs:
   test:
     runs-on: "a<b>&c"
     steps: [{run: 'echo ok'}]
+permissions: {}
 `
 	return analysisForRenderSource(t, source)
 }
@@ -54,6 +55,7 @@ jobs:
   test:
     runs-on: "é🐚"
     steps: [{run: 'echo ok'}]
+permissions: {}
 `)
 			analysis.Diagnostics[0].End = tc.end
 			for _, format := range []outputFormat{formatDefault, formatGitHub, formatMarkdown} {

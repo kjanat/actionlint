@@ -3,37 +3,40 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strconv"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // PluginDeclarations lists the plugin dependencies requested by the project.
 // An empty or null list disables plugins, including inherited declarations.
 type PluginDeclarations []pluginref.Reference
 
-// UnmarshalYAML accepts repository strings and explicit catalogue mappings.
-func (p *PluginDeclarations) UnmarshalYAML(node *yaml.Node) error {
-	if node.Kind == yaml.ScalarNode && node.ShortTag() == "!!null" {
+// DecodeConfig accepts repository strings and explicit catalogue mappings.
+func (p *PluginDeclarations) DecodeConfig(value any) error {
+	if value == nil {
 		*p = PluginDeclarations{}
 		return nil
 	}
-	if node.Kind != yaml.SequenceNode {
-		return fmt.Errorf("plugins must be a sequence at line:%d,col:%d", node.Line, node.Column)
+	list, ok := value.([]any)
+	if !ok {
+		return errors.New("plugins must be a sequence")
 	}
-	next := make(PluginDeclarations, 0, len(node.Content))
+	next := make(PluginDeclarations, 0, len(list))
 	seen := map[string]bool{}
-	for _, entry := range node.Content {
+	for i, entry := range list {
 		ref, err := decodePluginDeclaration(entry)
 		if err != nil {
-			return fmt.Errorf("plugins entry at line:%d,col:%d: %w", entry.Line, entry.Column, err)
+			return binding.At(strconv.Itoa(i), err)
 		}
 		key := ref.Name()
 		if ref.IsAlias() {
 			key = ref.Registry() + "\n" + ref.Name()
 		}
 		if seen[key] {
-			return fmt.Errorf("duplicate plugin declaration %q at line:%d,col:%d", ref.Name(), entry.Line, entry.Column)
+			return binding.At(strconv.Itoa(i), fmt.Errorf("duplicate plugin declaration %q", ref.Name()))
 		}
 		seen[key] = true
 		next = append(next, ref)
@@ -42,26 +45,24 @@ func (p *PluginDeclarations) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
-	if node.Kind == yaml.ScalarNode && node.ShortTag() == "!!str" {
-		return pluginref.Parse(node.Value)
+func decodePluginDeclaration(value any) (pluginref.Reference, error) {
+	if selected, ok := value.(string); ok {
+		return pluginref.Parse(selected)
 	}
-	if node.Kind != yaml.MappingNode {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return pluginref.Reference{}, errors.New("expected a repository string or a mapping with name, version, and registry")
 	}
 	values := map[string]string{}
-	for i := 0; i+1 < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
-		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry" && key.Value != "source" && key.Value != "sha256") {
-			return pluginref.Reference{}, fmt.Errorf("unknown plugin field %q", key.Value)
+	for key, value := range object {
+		if key != "name" && key != "version" && key != "registry" && key != "source" && key != "sha256" {
+			return pluginref.Reference{}, binding.At(key, fmt.Errorf("unknown plugin field %q", key))
 		}
-		if _, exists := values[key.Value]; exists {
-			return pluginref.Reference{}, fmt.Errorf("duplicate plugin field %q", key.Value)
+		selected, ok := value.(string)
+		if !ok || selected == "" {
+			return pluginref.Reference{}, binding.At(key, fmt.Errorf("plugin %s must be a nonempty string", key))
 		}
-		if value.Kind != yaml.ScalarNode || value.ShortTag() != "!!str" || value.Value == "" {
-			return pluginref.Reference{}, fmt.Errorf("plugin %s must be a nonempty string", key.Value)
-		}
-		values[key.Value] = value.Value
+		values[key] = selected
 	}
 	if source, exists := values["source"]; exists {
 		if len(values) != 1 {
@@ -82,8 +83,8 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 	return pluginref.New(values["name"], values["version"], values["registry"])
 }
 
-// MarshalYAML emits concise strings unless a custom catalogue is required.
-func (p PluginDeclarations) MarshalYAML() (any, error) {
+// EncodeConfig emits concise strings unless a custom catalogue is required.
+func (p PluginDeclarations) EncodeConfig() (any, error) {
 	entries := make([]any, 0, len(p))
 	for _, ref := range p {
 		if ref.DirectSource() != "" || ref.Registry() == pluginref.DefaultRegistry {

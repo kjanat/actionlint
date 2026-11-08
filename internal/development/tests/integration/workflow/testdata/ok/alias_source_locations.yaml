@@ -12,3 +12,4 @@ jobs:
       - run: &Script |
           echo "$SOURCE_REF"
       - run: *Script
+permissions: {}

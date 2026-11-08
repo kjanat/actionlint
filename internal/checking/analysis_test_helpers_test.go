@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 
 const commandBadWorkflow = `on: push
@@ -38,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo '${{ missing.value }}'
+permissions: {}
 `
 
 // capturedWorkflowCache is a workflow metadata cache reading from captures.

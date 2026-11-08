@@ -11,3 +11,4 @@ jobs:
       - run: sleep 200
         # ERROR: Float value is expected
         timeout-minutes: two minutes
+permissions: {}

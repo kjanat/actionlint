@@ -8,3 +8,4 @@ jobs:
       if: ${{ github.ref == 'refs/head/build' }}
     steps:
       - run: ./build-image.sh
+permissions: {}

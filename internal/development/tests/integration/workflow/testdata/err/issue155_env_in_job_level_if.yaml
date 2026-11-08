@@ -20,3 +20,4 @@ jobs:
   test4:
     uses: org/repo/workflow.yml@v1
     if: env.FOO == 'aaa'
+permissions: {}

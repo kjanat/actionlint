@@ -39,3 +39,4 @@ jobs:
       - run: echo "${{ matrix.obj.props[matrix.blank.v] }}"
       - run: echo "${{ matrix.obj.props[matrix.tilde.v] }}"
       - run: echo "${{ matrix.obj.props[matrix.upper_null.v] }}"
+permissions: {}

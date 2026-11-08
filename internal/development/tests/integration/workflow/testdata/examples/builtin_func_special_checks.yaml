@@ -12,3 +12,4 @@ jobs:
       - run: echo This is special branch!
         # ERROR: Broken JSON string. Special check for fromJSON()
         if: contains(fromJson('["main","release","dev"'), github.ref_name)
+permissions: {}

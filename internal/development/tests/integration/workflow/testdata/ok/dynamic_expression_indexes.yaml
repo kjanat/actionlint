@@ -43,3 +43,4 @@ jobs:
       - name: Chained indexes and property access in an expression condition
         if: ${{ fromJSON('{"settings":{"channel":{"d":"x"}}}')[matrix.first][matrix.second].d == 'x' }}
         run: echo chain
+permissions: {}

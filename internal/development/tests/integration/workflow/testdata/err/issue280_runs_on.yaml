@@ -71,3 +71,4 @@ jobs:
         hello: world
     steps:
       - run: echo 'hello'
+permissions: {}

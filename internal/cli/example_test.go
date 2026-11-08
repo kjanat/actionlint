@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
+permissions: {}
 `),
 		Stdout: &output,
 		Stderr: &output,

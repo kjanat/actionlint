@@ -5,12 +5,16 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
+	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func TestMissingWorkflowPermissions(t *testing.T) {
+func TestMissingPermissions(t *testing.T) {
+	if security.MissingPermissionsDeclaration().DefaultLevel != "error" || !security.MissingPermissionsDeclaration().Recommended {
+		t.Fatal("missing permissions must be an error by default")
+	}
 	const local = "    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 	const call = "    uses: example/repo/.github/workflows/build.yml@main\n"
 	for _, tc := range []struct {
@@ -47,8 +51,8 @@ func TestMissingWorkflowPermissions(t *testing.T) {
 			}
 			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
 			var lines []int
-			for _, finding := range security.MissingWorkflowPermissionsCheck().Workflow(view) {
-				if finding.Rule != "missing-workflow-permissions" || finding.Severity != "warning" || finding.Start.Column != 3 {
+			for _, finding := range security.MissingPermissionsCheck(config.PermissionLocations()).Workflow(view) {
+				if finding.Rule != "missing-permissions" || finding.Severity != "" || finding.Start.Column != 3 {
 					t.Fatalf("unexpected diagnostic: %+v", finding)
 				}
 				lines = append(lines, finding.Start.Line)

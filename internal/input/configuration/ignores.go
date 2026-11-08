@@ -3,11 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/selection"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/selection"
 )
 
 // IgnoreConfig suppresses one rule where all supplied selectors match.
@@ -29,37 +30,46 @@ type IgnoreConfig struct {
 // IgnoreConfigs is the reusable suppression list.
 type IgnoreConfigs []IgnoreConfig
 
-// UnmarshalYAML accepts a list of mappings and rejects empty list entries.
-func (c *IgnoreConfigs) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.SequenceNode {
+// DecodeConfig accepts a list of mappings and rejects empty list entries.
+func (c *IgnoreConfigs) DecodeConfig(value any) error {
+	if value == nil {
+		*c = nil
+		return nil
+	}
+	list, ok := value.([]any)
+	if !ok {
 		return errors.New("ignores must be a list of selector mappings")
 	}
-	next := make(IgnoreConfigs, 0, len(n.Content))
-	for _, entry := range n.Content {
-		if entry.Kind != yaml.MappingNode {
-			return errors.New("ignores entries must be selector mappings")
+	next := make(IgnoreConfigs, 0, len(list))
+	for i, entry := range list {
+		if _, ok := entry.(map[string]any); !ok {
+			return binding.At(strconv.Itoa(i), errors.New("ignores entries must be selector mappings"))
 		}
-		var ignore IgnoreConfig
-		if err := entry.Decode(&ignore); err != nil {
-			return err
+		var selected IgnoreConfig
+		if err := selected.DecodeConfig(entry); err != nil {
+			return binding.At(strconv.Itoa(i), err)
 		}
-		next = append(next, ignore)
+		next = append(next, selected)
 	}
 	*c = next
 	return nil
 }
 
-// UnmarshalYAML rejects ineffective selectors and unknown fields.
-func (c *IgnoreConfig) UnmarshalYAML(n *yaml.Node) error {
+// DecodeConfig rejects ineffective selectors and unknown fields.
+func (c *IgnoreConfig) DecodeConfig(value any) error {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return errors.New("ignore must be a selector mapping")
+	}
 	type plain IgnoreConfig
 	var next plain
-	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := binding.Decode(object, &next); err != nil {
 		return err
 	}
-	for i := 0; i < len(n.Content); i += 2 {
-		value := n.Content[i+1]
-		if value.Kind != yaml.ScalarNode || value.ShortTag() != "!!str" || strings.TrimSpace(value.Value) == "" {
-			return fmt.Errorf("ignores.%s must be a nonempty string", n.Content[i].Value)
+	for key, value := range object {
+		selected, ok := value.(string)
+		if !ok || strings.TrimSpace(selected) == "" {
+			return binding.At(key, errors.New("ignore selector must be a nonempty string"))
 		}
 	}
 	if err := IgnoreConfig(next).validateStructure(); err != nil {

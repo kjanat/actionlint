@@ -31,3 +31,4 @@ jobs:
         with:
           entrypoint: /bin/bash
       - uses: 'docker://ubuntu:latest'
+permissions: {}

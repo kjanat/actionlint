@@ -86,6 +86,7 @@ Use the boolean value directly when checking branch protection.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -96,6 +97,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -121,6 +123,7 @@ Compare the object properties that matter to the condition.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -131,6 +134,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -156,6 +160,7 @@ Use a Linux runner with Docker for a job container.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: windows-latest
@@ -166,6 +171,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -204,6 +210,7 @@ Read container credentials from a secret.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -218,6 +225,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -260,6 +268,7 @@ Give the job steps to run.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -268,6 +277,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -292,6 +302,7 @@ Write the commands the step runs.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -301,6 +312,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -325,6 +337,7 @@ Declare the events that start the workflow.
 
 ```yaml
 on:
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -334,6 +347,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -358,6 +372,7 @@ Use environment names without spaces.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -369,6 +384,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -416,19 +432,6 @@ Record the executable bit for the referenced script in Git, or invoke it explici
 - Enabled by default: `true`
 
 Configure this rule with `lint.rules.correctness.executable-bit`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
-
-## explicit-permissions
-
-Require explicit token permissions at workflow or job scope.
-
-Declare explicit permissions at the scope required by repository policy.
-
-- Category: `security/permissions`
-- Provider: `actionlint`
-- Maturity: `stable`
-- Enabled by default: `false`
-
-Configure this rule with `lint.rules.security.explicit-permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
 ## expression
 
@@ -538,6 +541,7 @@ Begin step IDs with a letter or underscore.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -548,6 +552,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -573,6 +578,7 @@ Remove an unconditional truthy condition.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -583,6 +589,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -620,6 +627,7 @@ Give the output a name instead of writing a JSON document directly.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -630,6 +638,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -655,6 +664,7 @@ Remove a dependency on a job that does not exist.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -665,6 +675,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -737,20 +748,20 @@ Check the uses path and ensure the action has a manifest or Dockerfile. If paths
 
 Configure this rule with `lint.rules.correctness.missing-local-action`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
-## missing-workflow-permissions
+## missing-permissions
 
-Report each job without explicit workflow-level or job-level token permissions when the workflow has a trigger other than workflow_call. Mirrors CodeQL's actions/missing-workflow-permissions check. Workflows triggered only by workflow_call inherit the caller's token ceiling; callers must declare permissions. This check does not infer the token scopes required by arbitrary actions. Warning when enabled; error with --strict.
+Require explicit token permissions. By default, a workflow-level declaration or a declaration on every job satisfies the rule. Set require-at to workflow, every-job, or a nonempty array of those locations. With both locations allowed, this rule skips workflows triggered only by workflow_call. The workflow-call rule compares permissions for calls being analysed. Selecting one location requires declarations there, including in reusable workflows. This check does not determine which token scopes an action needs.
 
-Declare least-privilege permissions at workflow or job scope. An empty mapping, read-all, write-all or a scope mapping counts as an explicit declaration; this check does not certify that the declared permissions are minimal. See [CodeQL's query](https://github.com/github/codeql/blob/main/actions/ql/src/Security/CWE-275/MissingActionsPermissions.ql).
+Add permissions at an allowed location. An empty mapping declares no token permissions. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it.
 
 - Category: `security/permissions`
 - Provider: `actionlint`
 - Maturity: `stable`
-- Enabled by default: `false`
+- Enabled by default: `true`
 
-Configure this rule with `lint.rules.security.missing-workflow-permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.security.missing-permissions`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
-Declare only the token permissions this job needs; this job uses no token scopes.
+This job uses no token permissions.
 
 ```yaml
 on: push
@@ -763,10 +774,10 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: {}
     steps:
       - run: echo ok
 ```
@@ -814,6 +825,7 @@ Write the whole number GitHub uses for max-parallel.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -827,6 +839,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -868,6 +881,7 @@ Choose an allowed access level for the permission scope.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -879,6 +893,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -932,6 +947,7 @@ Prefer the tool's native environment variable: GitHub CLI reads GH_TOKEN directl
 ```yaml
 # wrong: secret in script text
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -942,6 +958,7 @@ jobs:
 ```yaml
 # correct: secret in environment variable
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -956,6 +973,7 @@ When supported, pass secrets through stdin. Bash's printf builtin feeds Docker's
 ```yaml
 # wrong: password in command arguments
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -968,6 +986,7 @@ jobs:
 ```yaml
 # correct: password through stdin
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -997,6 +1016,7 @@ Keep a dynamic value out of generated shell source.
 ```yaml
 # wrong: template value in script text
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1007,6 +1027,7 @@ jobs:
 ```yaml
 # better: template value in environment variable
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1020,6 +1041,7 @@ Best when logging untrusted text: keep the environment binding and suspend workf
 ```yaml
 # best: untrusted log output cannot issue workflow commands
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1050,6 +1072,7 @@ Correct the shell name.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1060,6 +1083,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1124,6 +1148,7 @@ When this job should stop on cancellation, use !cancelled(). Do not make this ch
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1134,6 +1159,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1198,6 +1224,7 @@ Remove the GitHub URL prefix without changing the action or its version.
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -1207,6 +1234,7 @@ jobs:
 
 ```yaml
 on: push
+permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest

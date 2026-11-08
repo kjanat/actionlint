@@ -7,3 +7,4 @@ jobs:
         id: foo
       # Check if the 'outputs' object is typed as {string => string}
       - run: echo ${{ steps.foo.outputs }}
+permissions: {}

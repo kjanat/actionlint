@@ -67,6 +67,7 @@ jobs:
       - run: |
           . env.sh
           echo $VALUE
+permissions: {}
 `)
 	for _, selection := range []string{
 		`"${{ github.workspace }}/rc/.shellcheckrc"`,

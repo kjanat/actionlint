@@ -14,3 +14,4 @@ jobs:
       - run: cat xxx\yyy.txt
         if: ${{ matrix.os == 'windows-latest' }}
         shell: 'pwsh {0}'
+permissions: {}

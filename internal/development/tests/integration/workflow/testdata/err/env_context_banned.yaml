@@ -31,3 +31,4 @@ jobs:
         MYPATH: ${{ env.PATH }}
     steps:
       - run: echo hello
+permissions: {}

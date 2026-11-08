@@ -98,7 +98,7 @@ func TestCheckingLegacyConfigDoesNotWriteProjectFiles(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"), 0600); err != nil {
+	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\npermissions: {}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, 0, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")

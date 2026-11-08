@@ -5,24 +5,23 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestValueSetsDriveValidationAndDiagnostics(t *testing.T) {
 	for _, level := range Levels() {
 		var decoded Level
-		if err := yaml.Unmarshal([]byte(level), &decoded); err != nil || decoded != level || !level.Valid() {
+		if err := decodeTestConfig([]byte(level), &decoded); err != nil || decoded != level || !level.Valid() {
 			t.Fatalf("level %q: decoded=%q error=%v", level, decoded, err)
 		}
 	}
 	for _, preset := range Presets() {
 		var decoded Preset
-		if err := yaml.Unmarshal([]byte(preset), &decoded); err != nil || decoded != preset || !preset.Valid() {
+		if err := decodeTestConfig([]byte(preset), &decoded); err != nil || decoded != preset || !preset.Valid() {
 			t.Fatalf("preset %q: decoded=%q error=%v", preset, decoded, err)
 		}
 	}
 	var level Level
-	levelError := yaml.Unmarshal([]byte("unknown-level"), &level)
+	levelError := decodeTestConfig([]byte("unknown-level"), &level)
 	if levelError == nil {
 		t.Fatal("unknown level accepted")
 	}
@@ -32,7 +31,7 @@ func TestValueSetsDriveValidationAndDiagnostics(t *testing.T) {
 		}
 	}
 	var preset Preset
-	presetError := yaml.Unmarshal([]byte("unknown-preset"), &preset)
+	presetError := decodeTestConfig([]byte("unknown-preset"), &preset)
 	if presetError == nil {
 		t.Fatal("unknown preset accepted")
 	}

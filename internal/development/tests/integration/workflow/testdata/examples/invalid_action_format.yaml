@@ -17,3 +17,4 @@ jobs:
       - uses: /repo@ref
       # ERROR: repo is empty
       - uses: owner/@ref
+permissions: {}

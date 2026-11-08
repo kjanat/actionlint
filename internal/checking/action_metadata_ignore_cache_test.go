@@ -24,7 +24,7 @@ func TestMetadataCacheWithReusableIgnores(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nignores: "+tc.ignores+"\n")
 			writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
-			source := "on: push\njobs:\n  first:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n  second:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+			source := "on: push\njobs:\n  first:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n  second:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/ci.yml", source)
 			session := checking.Options{WorkingDir: root}
 			var err error

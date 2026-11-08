@@ -16,3 +16,4 @@ jobs:
       - run: echo "$VALUE"
         env:
           VALUE: ${{ inputs.LOGLEVEL }}
+permissions: {}

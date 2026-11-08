@@ -11,7 +11,7 @@ import (
 
 func TestNetworkStatisticsDoNotPolluteDiagnosticJSON(t *testing.T) {
 	var out, log bytes.Buffer
-	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"), Stdout: &out, Stderr: &log}
+	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
 	status := command.Main([]string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--output=json", "--summary=false", "--network-stats", "-"})
 	if status != 0 || !json.Valid(out.Bytes()) {
 		t.Fatalf("status=%d stdout=%s stderr=%s", status, &out, &log)

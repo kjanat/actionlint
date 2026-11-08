@@ -8,3 +8,4 @@ jobs:
       - run: echo '${{ secrets.GITHUB_TOKEN }}'
       # ERROR: The list is empty so no secret is allowed
       - run: echo '${{ secrets.FOO }}'
+permissions: {}

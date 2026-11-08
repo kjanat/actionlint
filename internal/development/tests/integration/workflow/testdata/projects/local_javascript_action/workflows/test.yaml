@@ -10,3 +10,4 @@ jobs:
       - uses: ./all_invalid_keys
       - uses: ./missing_files
       - uses: ./invalid_if_sections
+permissions: {}

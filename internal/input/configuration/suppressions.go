@@ -1,13 +1,15 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	"github.com/kjanat/go-yaml/v4"
+	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 )
 
 type SuppressionReport uint8
@@ -33,14 +35,14 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 }
 
 // SuppressionsPolicy controls whether inline and configured exceptions may hide diagnostic
-// findings. Its YAML representation is a boolean or a rules/report mapping.
+// findings. Its configuration representation is a boolean or a rules/report mapping.
 // A nil pointer or zero value permits suppressions. Use DisallowSuppressions
 // to construct an enabled policy.
 type SuppressionsPolicy struct {
 	names     rulemeta.Names
 	report    SuppressionReport
 	rules     []string
-	locations map[string]*yaml.Node
+	locations map[string]int
 }
 
 // DisallowSuppressions enables restrictions with report set to "suppression",
@@ -100,63 +102,54 @@ func (p *SuppressionsPolicy) Rules() []string {
 	return slices.Clone(p.rules)
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler. Each successful decode replaces the
+// DecodeConfig validates the shared configuration value. Each successful decode replaces the
 // previous rule selection and reporting mode.
-func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
-	next := SuppressionsPolicy{report: ReportAll, locations: make(map[string]*yaml.Node)}
-	switch {
-	case n.Kind == yaml.ScalarNode && n.Tag == "!!bool":
-		var enabled bool
-		if err := n.Decode(&enabled); err != nil {
-			return err
-		}
-		if !enabled {
+func (p *SuppressionsPolicy) DecodeConfig(value any) error {
+	next := SuppressionsPolicy{report: ReportAll, locations: make(map[string]int)}
+	switch selected := value.(type) {
+	case bool:
+		if !selected {
 			next.report = SuppressionsAllowed
 		}
-	case n.Kind == yaml.MappingNode:
-		seen := map[string]bool{}
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			key, value := n.Content[i], n.Content[i+1]
-			if seen[key.Value] {
-				return suppressionConfigError(key, fmt.Sprintf("duplicate key %q", key.Value))
-			}
-			seen[key.Value] = true
-			switch key.Value {
+	case map[string]any:
+		for key, value := range selected {
+			switch key {
 			case "report":
-				if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-					return suppressionConfigError(value, "report must be suppression, violation, or all")
-				}
-				mode, ok := parseSuppressionReport(value.Value)
+				name, ok := value.(string)
 				if !ok {
-					return suppressionConfigError(value, fmt.Sprintf("unknown report %q; expected suppression, violation, or all", value.Value))
+					return binding.At(key, errors.New("report must be suppression, violation, or all"))
+				}
+				mode, ok := parseSuppressionReport(name)
+				if !ok {
+					return binding.At(key, fmt.Errorf("unknown report %q; expected suppression, violation, or all", name))
 				}
 				next.report = mode
 			case "rules":
-				if value.Kind != yaml.SequenceNode || len(value.Content) == 0 {
-					return suppressionConfigError(value, "rules must be a nonempty list of suppressible rule IDs")
+				var rules []string
+				if err := binding.Decode(value, &rules); err != nil {
+					return binding.At(key, err)
 				}
-				for _, rule := range value.Content {
-					if rule.Kind != yaml.ScalarNode || rule.Tag != "!!str" || strings.TrimSpace(rule.Value) == "" {
-						return suppressionConfigError(rule, fmt.Sprintf("unknown suppressible rule %q", rule.Value))
+				if len(rules) == 0 {
+					return binding.At(key, errors.New("rules must be a nonempty list of suppressible rule IDs"))
+				}
+				for i, rule := range rules {
+					if strings.TrimSpace(rule) == "" {
+						return binding.At(key, binding.At(strconv.Itoa(i), fmt.Errorf("unknown suppressible rule %q", rule)))
 					}
-					if !slices.Contains(next.rules, rule.Value) {
-						next.rules = append(next.rules, rule.Value)
-						next.locations[rule.Value] = rule
+					if !slices.Contains(next.rules, rule) {
+						next.rules = append(next.rules, rule)
+						next.locations[rule] = i
 					}
 				}
 			default:
-				return suppressionConfigError(key, fmt.Sprintf("unknown key %q", key.Value))
+				return binding.At(key, fmt.Errorf("unknown suppression policy key %q", key))
 			}
 		}
 	default:
-		return suppressionConfigError(n, "expected a boolean or mapping")
+		return errors.New("disallow-suppressions must be a boolean or mapping")
 	}
 	*p = next
 	return nil
-}
-
-func suppressionConfigError(n *yaml.Node, message string) error {
-	return fmt.Errorf("yaml: disallow-suppressions: %s at line:%d,col:%d", message, n.Line, n.Column)
 }
 
 func (p *SuppressionsPolicy) ReportFor(rule string) SuppressionReport {

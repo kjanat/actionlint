@@ -3,81 +3,46 @@ package config
 import (
 	"maps"
 	"strings"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
-// configOrigins asks the YAML decoder to resolve each mapping, including merge precedence.
-func configOrigins(node *yaml.Node, prefix string, origins map[string]Origin, inputs map[*yaml.Node]Input) error {
-	if node == nil {
-		return nil
-	}
-	if node.Kind == yaml.DocumentNode {
-		if len(node.Content) == 0 {
-			return nil
+// configOrigins assigns source locations after inheritance and Action overrides.
+func configOrigins(value any, prefix string, origins map[string]Origin, inputs map[string]Input) error {
+	selected, found := inputs[prefix]
+	if found {
+		reset := selected.Reset
+		if value == nil && selected.Name != "" {
+			reset = &selected
 		}
-		node = node.Content[0]
-	}
-	if node.Kind == yaml.AliasNode {
-		node = node.Alias
-	}
-	reset := inputs[node].Reset
-	if node.Tag == "!!null" && inputs[node].Name != "" {
-		reset = node
-	}
-	if reset != nil {
-		// An input reset also explains why its descendants now use defaults.
-		for pointer := range origins {
-			if strings.HasPrefix(pointer, prefix+"/") {
-				origins[pointer] = configNodeOrigin(reset, inputs)
+		if reset != nil {
+			for pointer := range origins {
+				if strings.HasPrefix(pointer, prefix+"/") {
+					origins[pointer] = configValueOrigin(nil, *reset)
+				}
 			}
 		}
 	}
-	if node.Kind != yaml.MappingNode {
-		return nil
-	}
-	values := map[string]*yaml.Node{}
-	if inputs != nil {
-		// Overlay resolution expands aliases and merges before attaching inputs.
-		for i := 0; i < len(node.Content); i += 2 {
-			values[node.Content[i].Value] = node.Content[i+1]
-		}
-	} else {
-		var decoded map[string]yaml.Node
-		if err := node.Decode(&decoded); err != nil {
-			return err
-		}
-		for key, value := range decoded {
-			values[key] = &value
-		}
-	}
-	for key, value := range values {
+	for key, child := range members(value) {
 		pointer := prefix + "/" + configPointerPart(key)
-		if _, ok := origins[pointer]; !ok {
+		if _, present := origins[pointer]; !present {
 			continue
 		}
-		// Synthetic migration nodes have no source location.
-		if value.Line != 0 || value.Column != 0 {
-			origins[pointer] = configNodeOrigin(value, inputs)
+		if source, exists := inputs[pointer]; exists && (source.Line != 0 || source.Column != 0 || source.Name != "") {
+			origins[pointer] = configValueOrigin(child, source)
 		}
-		if err := configOrigins(value, pointer, origins, inputs); err != nil {
+		if err := configOrigins(child, pointer, origins, inputs); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func configNodeOrigin(node *yaml.Node, inputs map[*yaml.Node]Input) Origin {
-	origin := Origin{Source: "config", State: "null", File: inputs[node].File}
-	if node == nil {
-		return origin
-	}
-	origin.Line, origin.Column = node.Line, node.Column
-	if node.Tag != "!!null" {
+func configValueOrigin(value any, input Input) Origin {
+	origin := Origin{Source: "config", State: "null", File: input.File, Line: input.Line, Column: input.Column}
+	if value != nil {
 		origin.State = "value"
 	}
-	if input := inputs[node].Name; input != "" {
-		origin.Source, origin.Input = "input", input
+	if input.Name != "" {
+		origin.Source, origin.Input = "input", input.Name
 	}
 	return origin
 }
@@ -108,19 +73,15 @@ func (ruleSet RuleSet) EffectiveValues(cfg *Config) (map[string]any, error) {
 		}
 		resolved.Tools[name] = tool
 	}
-	document, err := ruleSet.EncodeNode(&resolved)
+	value, err := ruleSet.EncodeValue(&resolved)
 	if err != nil {
 		return nil, err
 	}
-	var values map[string]any
-	if err := document.Decode(&values); err != nil {
-		return nil, err
-	}
-	return values, nil
+	return members(value), nil
 }
 
-// MarshalYAML serializes regular expressions as pattern strings.
-func (pats IgnorePatterns) MarshalYAML() (any, error) {
+// EncodeConfig serializes regular expressions as pattern strings.
+func (pats IgnorePatterns) EncodeConfig() (any, error) {
 	values := make([]string, len(pats))
 	for i, pattern := range pats {
 		values[i] = pattern.String()
@@ -128,8 +89,8 @@ func (pats IgnorePatterns) MarshalYAML() (any, error) {
 	return values, nil
 }
 
-// MarshalYAML emits false or the enabled policy's timeout bounds.
-func (p *JobTimeoutPolicy) MarshalYAML() (any, error) {
+// EncodeConfig emits false or the enabled policy's timeout bounds.
+func (p *JobTimeoutPolicy) EncodeConfig() (any, error) {
 	if !p.Enabled() {
 		return false, nil
 	}
@@ -143,16 +104,16 @@ func (p *JobTimeoutPolicy) MarshalYAML() (any, error) {
 	return bounds, nil
 }
 
-// MarshalYAML emits false or the enabled policy's declaration scope.
-func (p *PermissionsPolicy) MarshalYAML() (any, error) {
+// EncodeConfig emits false or the enabled policy's declaration scope.
+func (p *PermissionsPolicy) EncodeConfig() (any, error) {
 	if !p.Enabled() {
 		return false, nil
 	}
 	return map[string]string{"scope": p.Scope()}, nil
 }
 
-// MarshalYAML emits false or the enabled policy's rule selection and reporting mode.
-func (p *SuppressionsPolicy) MarshalYAML() (any, error) {
+// EncodeConfig emits false or the enabled policy's rule selection and reporting mode.
+func (p *SuppressionsPolicy) EncodeConfig() (any, error) {
 	if !p.Enabled() {
 		return false, nil
 	}

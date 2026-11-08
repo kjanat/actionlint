@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func MergeWarnings(groups ...[]Warning) []Warning {
@@ -22,40 +22,37 @@ func MergeWarnings(groups ...[]Warning) []Warning {
 	return result
 }
 
-// Only these legacy mappings permit unknown fields. New tool and policy settings
-// already reject unknown keys in their decoders.
-func configWarnings(root *yaml.Node, inputs map[*yaml.Node]Input) []Warning {
+func configWarnings(root any, inputs map[string]Input) []Warning {
 	var warnings []Warning
-	var check func(*yaml.Node, string, []string)
-	check = func(node *yaml.Node, prefix string, allowed []string) {
-		if node == nil || node.Kind != yaml.MappingNode {
-			return
+	var check func(any, string, string, []string)
+	check = func(value any, prefix, path string, allowed []string) {
+		keys := make([]string, 0, len(members(value)))
+		for key := range members(value) {
+			keys = append(keys, key)
 		}
-		for i := 0; i < len(node.Content); i += 2 {
-			key, value := node.Content[i], node.Content[i+1]
-			name := prefix + key.Value
-			if !slices.Contains(allowed, key.Value) {
-				warnings = append(warnings, Warning{
-					File: inputs[key].File, Line: key.Line, Column: key.Column,
-					Message: fmt.Sprintf("unknown configuration key %q; ignored. Expected one of: %s", name, strings.Join(allowed, ", ")),
-				})
+		slices.Sort(keys)
+		for _, key := range keys {
+			child := field(value, key)
+			name := prefix + key
+			pointer := document.Path(path, key)
+			if !slices.Contains(allowed, key) {
+				loc := inputs[pointer]
+				warnings = append(warnings, Warning{File: loc.File, Line: loc.KeyLine, Column: loc.KeyColumn, Message: fmt.Sprintf("unknown configuration key %q; ignored. Expected one of: %s", name, strings.Join(allowed, ", "))})
 				continue
 			}
 			if prefix != "" {
 				continue
 			}
-			switch key.Value {
+			switch key {
 			case "self-hosted-runner":
-				check(value, name+".", []string{"labels"})
+				check(child, name+".", pointer, []string{"labels"})
 			case "paths":
-				if value.Kind == yaml.MappingNode {
-					for j := 0; j < len(value.Content); j += 2 {
-						check(value.Content[j+1], name+"["+value.Content[j].Value+"].", []string{"ignore"})
-					}
+				for k, v := range members(child) {
+					check(v, name+"["+k+"].", document.Path(pointer, k), []string{"ignore"})
 				}
 			}
 		}
 	}
-	check(root, "", append(append(Keys(), legacyKeys...), "$schema"))
+	check(root, "", "", append(append(Keys(), legacyKeys...), "$schema"))
 	return warnings
 }

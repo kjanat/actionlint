@@ -6,3 +6,4 @@ jobs:
       - uses: ./missing-action
       - uses: ./missing-action
       - uses: $/missing-action
+permissions: {}

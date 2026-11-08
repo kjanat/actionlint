@@ -46,3 +46,4 @@ jobs:
           password: '${{ secrets.PASS }}'
     steps:
       - run: echo hello
+permissions: {}

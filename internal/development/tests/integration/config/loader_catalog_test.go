@@ -5,6 +5,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
 func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
@@ -21,8 +22,15 @@ func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
 		if rule.Description == "" {
 			t.Errorf("rule %q has no description", rule.Name)
 		}
-		if rule.Options != nil && rule.Configure == nil {
-			t.Errorf("rule %q declares options without a policy projection", rule.Name)
+		if rule.Options != nil {
+			target := rule.Options()
+			if target == nil {
+				t.Errorf("rule %q returns nil option settings", rule.Name)
+				continue
+			}
+			if err := binding.Decode(map[string]any{}, target); err != nil {
+				t.Errorf("rule %q cannot bind empty options: %v", rule.Name, err)
+			}
 		}
 	}
 	if !checking.ConfigurationRules().Suppressible("shellcheck") || checking.ConfigurationRules().Suppressible("unknown-rule") {

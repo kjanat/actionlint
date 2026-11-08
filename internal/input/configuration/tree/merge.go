@@ -1,113 +1,49 @@
-// Package tree owns immutable YAML alias expansion and configuration merging.
+// Package tree merges configuration values and records their sources through extends.
 package tree
 
-import (
-	"fmt"
+import "maps"
 
-	"github.com/kjanat/go-yaml/v4"
-)
-
-// Input tracks explicit overlays and null resets during merging.
+// Input identifies the source of a value and any inherited null reset.
 type Input struct {
-	Name  string
-	Reset *yaml.Node
-	File  string
+	Name, File         string
+	Line, Column       int
+	KeyLine, KeyColumn int
+	Reset              *Input
 }
 
-// Expand resolves aliases and YAML merge keys before overlaying. Otherwise replacing an
-// anchor's value can invalidate aliases elsewhere in an unchanged section.
-func Expand(node *yaml.Node, visiting map[*yaml.Node]bool) (*yaml.Node, error) {
-	if node == nil {
-		return nil, nil
+// Merge overlays mappings recursively. Lists and scalars replace their base.
+func Merge(base, overlay any) any {
+	b, bok := base.(map[string]any)
+	o, ook := overlay.(map[string]any)
+	if !bok || !ook {
+		return clone(overlay)
 	}
-	if visiting[node] {
-		return nil, fmt.Errorf("cyclic YAML alias at line %d", node.Line)
-	}
-	visiting[node] = true
-	defer delete(visiting, node)
-	if node.Kind == yaml.AliasNode {
-		return Expand(node.Alias, visiting)
-	}
-	expandedNode := *node
-	expandedNode.Anchor = ""
-	expandedNode.Content = make([]*yaml.Node, len(node.Content))
-	for i, child := range node.Content {
-		expanded, err := Expand(child, visiting)
-		if err != nil {
-			return nil, err
-		}
-		expandedNode.Content[i] = expanded
-	}
-	if expandedNode.Kind != yaml.MappingNode {
-		return &expandedNode, nil
-	}
-	entries := make([]*yaml.Node, 0, len(expandedNode.Content))
-	keys := make(map[string]bool)
-	var inherited []*yaml.Node
-	for i := 0; i < len(expandedNode.Content); i += 2 {
-		key, value := expandedNode.Content[i], expandedNode.Content[i+1]
-		if key.ShortTag() != "!!merge" {
-			entries = append(entries, key, value)
-			keys[key.Value] = true
-			continue
-		}
-		if value.Kind == yaml.SequenceNode {
-			inherited = append(inherited, value.Content...)
+	result := maps.Clone(b)
+	for key, value := range o {
+		if prior, ok := b[key]; ok {
+			result[key] = Merge(prior, value)
 		} else {
-			inherited = append(inherited, value)
+			result[key] = clone(value)
 		}
 	}
-	// Explicit keys win; in a merge sequence, the first mapping wins.
-	for _, mapping := range inherited {
-		if mapping.Kind != yaml.MappingNode {
-			return nil, fmt.Errorf("YAML merge must contain mappings at line %d", mapping.Line)
-		}
-		for i := 0; i < len(mapping.Content); i += 2 {
-			key, value := mapping.Content[i], mapping.Content[i+1]
-			if !keys[key.Value] {
-				entries = append(entries, key, value)
-				keys[key.Value] = true
-			}
-		}
-	}
-	expandedNode.Content = entries
-	return &expandedNode, nil
+	return result
 }
 
-// Merge returns a fresh mapping, never mutating a loaded config or
-// an input. Lists/scalars replace; explicit null resets; empty maps inherit.
-func Merge(base, overlay *yaml.Node, inputs map[*yaml.Node]Input) *yaml.Node {
-	for base != nil && base.Kind == yaml.AliasNode {
-		base = base.Alias
-	}
-	for overlay.Kind == yaml.AliasNode {
-		overlay = overlay.Alias
-	}
-	if base == nil || base.Kind != yaml.MappingNode || overlay.Kind != yaml.MappingNode {
-		if base != nil && base.Tag == "!!null" && inputs[base].Name != "" && overlay.Kind == yaml.MappingNode {
-			// Omitted fields inherit the prior null reset.
-			replacement := *overlay
-			inputs[&replacement] = Input{Name: inputs[overlay].Name, Reset: base}
-			return &replacement
+func clone(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for k, item := range v {
+			out[k] = clone(item)
 		}
-		return overlay
-	}
-	merged := *base
-	inputs[&merged] = inputs[base]
-	merged.Content = append([]*yaml.Node{}, base.Content...)
-	for i := 0; i < len(overlay.Content); i += 2 {
-		key, value := overlay.Content[i], overlay.Content[i+1]
-		found := false
-		for j := 0; j < len(merged.Content); j += 2 {
-			if merged.Content[j].Value == key.Value {
-				merged.Content[j+1] = Merge(merged.Content[j+1], value, inputs)
-				found = true
-				break
-			}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = clone(item)
 		}
-		if !found {
-			merged.Content = append(merged.Content, key, value)
-		}
+		return out
+	default:
+		return value
 	}
-	return &merged
 }

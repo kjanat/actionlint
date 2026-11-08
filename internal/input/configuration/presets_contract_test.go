@@ -71,7 +71,7 @@ lint: {rules: {disable: [require-commit-hash], suspicious: {case-insensitive-con
 	if !reflect.DeepEqual(got.Policy.RequireJobTimeout, cfg.Policy.RequireJobTimeout) || !reflect.DeepEqual(got.Policy.RequirePermissions, cfg.Policy.RequirePermissions) || !reflect.DeepEqual(got.Policy.DisallowSuppressions, cfg.Policy.DisallowSuppressions) {
 		t.Fatal("preset replaced configured options")
 	}
-	if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 || got.RequiresPermissions().Scope() != "job" || got.Policy.DisallowSuppressions.Report() != "violation" {
+	if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 || (len(permissionLocations(t, got)) != 1 || permissionLocations(t, got)[0] != repoconfig.EveryJobPermissions) || got.Policy.DisallowSuppressions.Report() != "violation" {
 		t.Fatal("configured options lost")
 	}
 	if len(got.Lint.Rules.Disable) != 1 || checking.ConfigurationRules().DiagnosticLevel(got, "case-insensitive-conditions") != "off" || checking.ConfigurationRules().DiagnosticLevel(got, "string-conditions") == "off" {

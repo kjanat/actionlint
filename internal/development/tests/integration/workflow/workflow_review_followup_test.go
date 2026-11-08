@@ -28,7 +28,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 			t.Fatalf("path interpolation %q: error=%v diagnostics=%+v", expression, err, result.Diagnostics)
@@ -41,6 +41,7 @@ jobs:
     steps:
       - env: {WORKFLOW_PATH: '${{ github.event.workflow_run.path }}'}
         run: printf '%s\n' "$WORKFLOW_PATH"
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 	if err != nil || len(result.Diagnostics) != 0 {
@@ -61,7 +62,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 				t.Fatalf("name interpolation: error=%v diagnostics=%+v", err, result.Diagnostics)
@@ -73,6 +74,7 @@ jobs:
     steps:
       - env: {WORKFLOW_NAME: ` + strconv.Quote("${{ "+expression+" }}") + `}
         run: printf '%s\n' "$WORKFLOW_NAME"
+permissions: {}
 `
 			result, err = checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil || len(result.Diagnostics) != 0 {
@@ -87,6 +89,7 @@ func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
 		t.Run(reference, func(t *testing.T) {
 			source := "on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `], types: [completed]}}
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
+permissions: {}
 `
 			workflow, errs := workflowparser.Parse([]byte(source))
 			if workflow == nil || reference != "" && len(errs) != 0 {
@@ -117,6 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 	request := checking.Options{WorkingDir: root}
 	requestSources := []workspace.Source{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}
@@ -151,7 +155,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil {
 				t.Fatal(err)
@@ -172,7 +176,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
@@ -194,6 +198,7 @@ jobs:
       - env:
           HEAD_REF: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
         run: printf '%s\n' "$HEAD_REF"
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 	if err != nil || len(result.Diagnostics) != 0 {
@@ -227,6 +232,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}})
 			if err != nil {

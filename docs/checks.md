@@ -73,6 +73,7 @@ jobs:
       - run: echo hello
         # ERROR: `shell:` must be in lower case
         Shell: bash
+permissions: {}
 ```
 
 Output:
@@ -88,7 +89,7 @@ test.yaml:12:9: unexpected key "Shell" for step to run shell command. expected o
    |         ^~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNo8jEEOAiEMRfdzin8Bwp5reAIYqqCEEtrGeHsDcVy1zXuv3AOGSTmenCQcgJLomsC0Lm5xS9bVXIuLbZTpHq39vG1eK/Dm+ar94XKddCrPT4AfUYtX9rnO7YnSkCtxuwedhVGoNf6/uq0zIEUp3wAAAP//tPsxjA==)
+[Playground](https://kjanat.github.io/actionlint/#eNo8jE2uwjAMBvc9xXeBqPtc450gbf1IIMSRf4QQ4u4oEWVlWzNjbhHdNS9X3jQugJHamIB40zC4b97MQ02DTXTQf/L69aZ5rsCD5VbaJRxFaDeWZ8Tak+XVeD2KTE+Nup5JmD1oz4xMtfLv1d84I7akeekk96JauGnE6/0ZAAB+N6Q=)
 
 [Workflow syntax][syntax-doc] defines which keys each mapping can contain. Unknown keys cause the workflow run to fail.
 
@@ -113,6 +114,7 @@ jobs:
     # ERROR: runs-on is missing
     steps:
       - run: echo 'hello'
+permissions: {}
 ```
 
 Output:
@@ -128,7 +130,7 @@ test.yaml:8:9: key "VERSION_NAME" is duplicated in "matrix" section. previously 
   |         ^~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNo8zLEKwkAQhOE+TzFdmljEcjuLFBZGULgmSDhl8SLJbbjdHPr2Ihqr4eeDkUiYFw3FQ65KBWCs9llALXnj++tbwOQtDc+1gMxJB4l99BMTulxXyNvLn11zOu+Pbd/uDg2hc3UF92M1nnU92iAtkcC3ICgDj6OU7wAAAP//Nm8osg==)
+[Playground](https://kjanat.github.io/actionlint/#eNo8jL/KwkAQB/s8xa9Lk6/IV25nkcLCCAppgoQoi3eS+8Pt5lDEd5egsRqGgQmeEGcxxS2chQpAWXQhIJpG5evjY4AbNdn7akDmJDb4wY+OCX2uK+T/0y93zeG43bdDu9k1hL6rK3TfLMpR1tEf0uwJfDEBpeFpCmUROTkry10Iz9d7APQ0Lso=)
 
 Some mappings must include specific keys. For example, job mappings must include `runs-on:` and `steps:`.
 
@@ -145,6 +147,7 @@ Example input:
 ```yaml
 on: push
 jobs:
+permissions: {}
 ```
 
 Output:
@@ -156,7 +159,7 @@ test.yaml:2:6: "jobs" section should not be empty. please remove this section if
   |      ^
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNrKz7NSKCgtzuDKyk8qtgIEAAD//yULBOo=)
+[Playground](https://kjanat.github.io/actionlint/#eNrKz7NSKCgtzuDKyk8qtuIqSC3KzSwuzszPK7ZSqK4FDACmMgsC)
 
 Some mappings and sequences, such as `jobs:`, must not be empty. The parser reports these errors.
 GitHub accepts an empty `steps:` list, but actionlint's `empty-job` rule warns that the job does nothing.
@@ -181,6 +184,7 @@ jobs:
       - run: sleep 200
         # ERROR: Float value is expected
         timeout-minutes: two minutes
+permissions: {}
 ```
 
 Output:
@@ -200,7 +204,7 @@ test.yaml:13:26: expecting a single ${{...}} expression or float number literal,
    |                          ^~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNo0zEEKAjEMheH9nOJdoDIKbnKbDKQ6kmlLk6DeXqp1Fd5P+GohtLD78qib0QK4mI8LmHd2ub1/C8i8a8psTqg5z3jwKzXurCpKOJ+u396jWBp0bFE8kvJgpyrN/mQanwRTkYbLus4M+H5IDU/HXsLFCP6smOMTAAD//2y5NWY=)
+[Playground](https://kjanat.github.io/actionlint/#eNo0zF2KQjEMxfH3u4qzgQ53BuYlu8mFVCv9oklQEfcu1foUzp/wa5XQXc/bpR1KG2CiNi+gNtjkdP8sIHLKIbIaocW4YuFb6Dw4Z8mE35//dx9eNUzaD6/mIfNklypdv2SYnwTNIh1/+74yYKlIcwslVTdRgl0b1ti6jJJUU6tKeDxfAwD1zTt+)
 
 Workflow fields can require a value from a fixed set of strings, a boolean, or a
 number. actionlint checks literal values against the field's allowed values and
@@ -226,6 +230,7 @@ jobs:
       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
       # unexpected end of input
       - run: echo '${{ github.event. }}'
+permissions: {}
 ```
 
 Output:
@@ -249,7 +254,7 @@ test.yaml:13:38: invalid-syntax: unexpected end of input while parsing object pr
    |                                      ^~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp0zUGKwzAMheF9TvEwA85kJgnZ5gBd9BaJEXVaY4VK7ib47kXtOisJ/g8e5xl7kdjceZW5AZRE7QLPkqW3XtaStfRpsfZJorTLVwG9yRkUIsP/HAdcpJTYoVZ/Rib8YToBzoDyVTi3cZF42RJJ67tuTBwe/h/2hiVEGv0vanVnI7dNY1kHelHWwcbeAQAA///H30Qz)
+[Playground](https://kjanat.github.io/actionlint/#eNp0zUGqgzAQxvG9p/gID+KzVXGbA3TRW2gYmrRpRpykG8ndS+za1Qz8f/BxNFizuObJi5gGSCSpXmDLUfra85Jjyn2YazuSJFrlp4C+SgOyjqH/9h3KUQisUIo+IxMumE6AqiDxXTi2bhZ384Gk1V03BrYvfUV97WwdjfofpaizkYdPLi8DfSim4RhbaXt7Ec9RDPbyHQA94UpL)
 
 actionlint parses expressions in `${{ }}` using [the expression syntax][expr-doc]. It reports syntax errors such as
 invalid characters, missing parentheses, and unexpected end of input.
@@ -294,6 +299,7 @@ jobs:
       - run: echo '${{ github.repository.owner }}'
       # ERROR: Objects and arrays cannot be interpolated as strings
       - run: echo '${{ env }}'
+permissions: {}
 ```
 
 Output:
@@ -317,7 +323,7 @@ test.yaml:13:20: object and array values should not be evaluated in template wit
    |                    ^~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8yzEKwzAMheE9p3hDIVNMZ1+ldIiDqB2KZCwppYTcvbidm+kN//eEI6prHlZJGgfASK0v0Jx16t2Ts/n0nHv7JjWq+lPA1GUELVkwXvYdxNvtesdxjP/EKikswjYXphZEz+yjWPYUGlXRYtLeQV5M7exCvPX8CQAA//+nCkLw)
+[Playground](https://kjanat.github.io/actionlint/#eNp8yzEOwjAMheG9p3gDUqdGzLkKYmgqi6YCO4rtIlT17ihlptMb/u8JRxTXuVskaewAI7W2QHXWoXVPzubDc2ztSGpU9KeAockImmZBf9k2EK+36x373v8Ti6QwCduYmWoQPbOPbLOnUKmIZpP6CfJmqmcX4vXIheorq2Zhjdj27wAI3EkI)
 
 The GitHub Actions runner permits loose conversions in `${{ }}` expressions. It converts an object to `'Object'`;
 for example, `echo '${{ env }}'` becomes `echo 'Object'`. It also converts an array to `'Array'`. These conversions
@@ -358,6 +364,7 @@ jobs:
       # ERROR: String value cannot be expanded as object
       - run: echo "$FOO"
         env: ${{ matrix.env_string }}
+permissions: {}
 ```
 
 Output:
@@ -369,7 +376,7 @@ test.yaml:19:14: env must be object but found string [expression]
    |              ^~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqckL0KgzAUhXef4hBc0wcIdNBB6JTi1qmoBH9oE0luSovk3UuqIuLWKdyPnJMv12iB0bsuGUztRAKQchRPwJGtSLWfeQKeFdn+vU6A0q+7I9vrdmMAByukPOdZyY70erlJtisw9aAa2hcUUgrkWXmEMf+j1mvHo7uvvSbPH1X0XrTV6NZCHm8KqKYzYGkh968LpNO0/Ou02SCE/+LzNhDCNwAA//9t+VlA)
+[Playground](https://kjanat.github.io/actionlint/#eNqckLFqhTAUhnef4ie4pg8Q6KCD0CnFrVNRCRqpieSclBbx3S+5KiJudwrnI/+fL8c7hTnSkI2+JZUBbIjTCRCHhk3/v03A1HCwf8cEGPf7TRys608GSIhK6/eyqMWdfn58aXEp8O1oOr4WVForlEV9hyn/pCE6ksk9ttFxlD9N8t61zUxHoUw3FUw3eIi80tfXFfJl2f/1dtpgXV+Lb9tI8dmEyRJZ70hhWR8DADTaX1g=)
 
 In this example, the environment variable mapping is expanded in `env:`. actionlint checks the type of the expanded value.
 
@@ -386,6 +393,7 @@ jobs:
         env:
           MODE: test
           ${{ insert }}: ${{ fromJSON(vars.ENVIRONMENT) }}
+permissions: {}
 ```
 
 actionlint checks the inserted value as part of the surrounding `env:` mapping.
@@ -410,6 +418,7 @@ jobs:
         with:
           path: source
           ${{ insert }}: ${{ fromJSON(vars.ACTION_INPUTS) }}
+permissions: {}
 ```
 
 actionlint checks known inserted action inputs for unknown names and missing required inputs.
@@ -463,6 +472,7 @@ jobs:
       # fromJSON() supplies an array of event names to contains().
       - if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
         run: echo 'Push or pull request'
+permissions: {}
 ```
 
 Output:
@@ -486,7 +496,7 @@ test.yaml:13:24: argument-count: number of arguments is wrong. function "startsW
    |                        ^~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqckUFO6zAQhvc9xch6ktsnNwfIEVgAEgsWVRU5YYoDzjh4ZihSlbsjlwpaRLvoKov5vn8m/hPVsBqVg4OeWZHXs5fUcj0DEGQpX4CsxMtCaqskuoy+zPYjFhz5iwJYFrIG7EIC+2+3A6VXSltqukSCHwLTZM+hz70EbSt8RxI+A5oCsvgsj72EuQ0YY3KwTTk+WQc2JmcXME3most/yNdZ7uTqixnlBXxPfMXR3+rxsmrfVhV9i5Gr/xX5AR1YpOCpwwFJfoX2m/onaZPTcPNwdzu3K1PKNw7MqDE2Gd8UWczaLk5/rikLFoc0OC7vXjlAylB8OPj2cwCohrtJ)
+[Playground](https://kjanat.github.io/actionlint/#eNqckUFO6zAQhvc9xch6ktsnJwfIEVgAEgsWVRU5YYoNzjh4xhQpyt2RSwUtol10lcV83z8T/5EaWI+ZnQHPnJE3i5fYcbMAEGQpX4CUiatC5i6T5CrYMtuPWHDkLwqgKmQD2LsI+t80QaZXijtq+0iCHwLzrM+hz15c7mp8RxI+A6oCstgkj17cUjsMIRrYxRSetAEdotErmGd10eU/5Ossc3L1xYzyAtYTX3H0t3q8rN63VQfbYeD6f012QAMayVnqcUCSX6F+2/wkbVMcbh7ubpd6rUr5yoAacwhtwreMLGqjV6c/15YFq0MaHJd3n9lBTFB8OPh6MWIaPLOPxA1M8+cAkFHBYQ==)
 
 [Contexts][contexts-doc] and [built-in functions][funcs-doc] are strongly typed. actionlint reports misspelled context
 properties and function names, as well as invalid calls with the wrong number or types of arguments.
@@ -521,6 +531,7 @@ jobs:
       - run: echo This is a special branch!
         # ERROR: Broken JSON string. Special check for fromJSON()
         if: contains(fromJson('["main","release","dev"'), github.ref_name)
+permissions: {}
 ```
 
 Output:
@@ -548,7 +559,7 @@ test.yaml:14:31: invalid-json: broken JSON string is passed to fromJSON() at off
    |                               ^~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqMj8FKxDAQhu99it9BSAupuOstj+BBD3ori6Td1EbapGQSVwh5d2l1j4KXmcP833z83il0a+JJwjInw6eq+vA9qwqIhuO2gZAct1v0NmeMwS+PL89Ptch0sY7UNs/+wu2sN4QkzdalL1KU+uRimq+HIppOLHoQJ5SyP+ZoVv5xAO3mUTDD5EG7yYdFx1rk+5IPRUgcJI4SDw1Kof9B+Xjl/oJeJ8uwDA1ezWD1jD5oN0w3v1nAjgqDd1Fbx/Xenr2rRUeLto4kBTMbzYYknc0niUbi3cYp9XfBjG9OL6b5HgDCamyw)
+[Playground](https://kjanat.github.io/actionlint/#eNqMj8FKAzEQhu/7FL+DkF1IxdZbHsGDHvRWimS3qRvZnSyZxAoh7y5b7VHwMnOY/5uPP7DBfskyaniR7OTQNB+hF9MAyUlaNxAzy2aN3paCUwzz48vzU6sKnT2TWecxnGUz2RUhTZPn/EWGcp855el6qKrbq9kO6oBaL48luUV+HMBm9Ri4YQygiynE2aZWlftatlVpbDV2Gg8daqX/QWV35f6CXkcv8AILWdzg7YQ+Wh7Gm98s4E8GQ+BkPUt7aS+BW7Wn2XomTdFNzoojTUf3SarTePdpzP1ddKc3trPrmsXF2Yv4wGJQ6vcAwFpyyA==)
 
 GitHub Actions has no syntax for array or object literals. Use `fromJSON()` to create them.
 
@@ -581,6 +592,7 @@ jobs:
     steps:
       # ERROR: Access undefined step outputs. Step objects are job-local
       - run: echo '${{ steps.get_value.outputs.name }}'
+permissions: {}
 ```
 
 Output:
@@ -600,7 +612,7 @@ test.yaml:22:24: unknown-property: property "get_value" is not defined in steps 
    |                        ^~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqskLFqhUAQRXu/4rIIVvoBC7FIk6RKCq1FzRoNZkecmTTiv4fdmFTCe/BeNcU9Zy5c8haL8ph8Usc2AcSxhAus6jkPuXbqRfO5DVmMSGVR4V8OGIgsTLptYHELFx9Omu92VlccYOHbL4d9N1GI0J+bhx4L14+E7IoX2YlnBqKHSBuUJUz69FI914/Na1291ZU5DGB6t/h/fMf+U68n38/KE/nDIhndenHa28b5CQAA//8V15Jb)
+[Playground](https://kjanat.github.io/actionlint/#eNqskDFLxEAQhfv7FY/l4KrkByx4hY1aaZHURy5OTCTZWTIzNiH/XXaNVgEFr5rifd88eBw8okl/eOer+AOgJJouMFuQIuV2taBWjE3KcsSm0VS+OKBj9nDHZYEoRSnfSC8fzWhUbmAZmomwri4LGfp2i9TjQW3POP3hxWnHcx3zXaYdzme448NT9VjfX57r6qWu3GYAw6vHz+Mb9u96LYd2NBk4bBZrT/Ov0/5znEjzNEhqFY9l/RwAbpWYcw==)
 
 Access step outputs through `steps.<step_id>`. The `steps` context is dynamic:
 
@@ -635,6 +647,7 @@ jobs:
       - run: echo ${{ steps.cache.outputs.cache-hit }}
       # A metadata provider can also detect this misspelled output name
       - run: echo ${{ steps.cache.outputs.cache_hit }}
+permissions: {}
 ```
 
 Output:
@@ -654,7 +667,7 @@ test.yaml:18:23: unknown-script-value: interpolated value may contain characters
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkjsFKxDAQhu99iv8grBba3jzMyZOvIdk4OLElCc6MIsu+uyRd6lUwlzDzfT//lEyorjIM7+WsNADGau0HPjzr1AQ/ezafttBYR2pcdbeAqZkEjlJwd7nscI4hCs/FrbrdpkmS4Xo9Yq6shBAtlaxLV54+H28YSK+Evjw2X8mEjglY+Zt6pQSV57Sx3p/GcRnnrcT19PDb1V4NJoR5qSGu4Y31v9f/Mfayx34CAAD//4sbbN4=)
+[Playground](https://kjanat.github.io/actionlint/#eNqkj8FKxTAQRff9irsQnhba7lzMypW/IXlxcGJrE97MKFL675K21K1gNmHmnMtN8kwortI07/mq1ADGavUGbj5rVwW/+mzeTaGyDalx0d0CumoSOErG3bLssI8hCvfZrbgdUyfJsK5nzJWVEKKlPOuwKU+fjwcG0ithW56br2RC5wSM/E1bpQSV5zSx3l/admj7Kcfx8vDbVU8JJoR+KCGO4Y31v6//Y+zliBW+fSTV+lXCsv4MAIvrcvY=)
 
 In the above example, [actions/cache][actions-cache] action sets `cache-hit` output so that the following steps can know
 whether the cache was hit or not. At line 8, the cache action is not run yet. So `cache` property does not exist in the
@@ -696,6 +709,7 @@ jobs:
       - run: echo ${{ steps.my_action.outputs.some_value }}
       # ERROR: No output named 'some-value' (typo)
       - run: echo ${{ steps.my_action.outputs.some-value }}
+permissions: {}
 ```
 
 Output:
@@ -759,6 +773,7 @@ jobs:
     steps:
       # Matrix values in other job is not accessible
       - run: echo '${{ matrix.os }}'
+permissions: {}
 ```
 
 Output:
@@ -794,7 +809,7 @@ test.yaml:34:24: unknown-property: property "os" is not defined in matrix [expre
    |                        ^~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqMUu1qwjAU/e9THGRQBVtwWITAnkT2I7apZmuTkJvohsu7j1iz+tGx/Qr35pybc8+JVgzG037yprfEJoAT5OIJkLPcid1nXwEdd1Z+pArQxLDxW6+cz1seeQscpar1kS716w9W6VowbJarBZbl0Da8euc7McwEcijeCYZpo/X0qg9o46RWvGVw1osxypbb3ygNb2ngSFW1vr5/96xxWd5MUKZjWBdlsTq3rVeUR8+eTqeLIYUmhHBxTBhKQ/MIZhDVXiO7gpuWu0bbDiFkf0F7e4paHB7RX1c6e2YM5F5X9oCKa+IgLMm7Pc4XY4yUEkakRecRAmbJ6pcRULpDCPPRnZXpkiRIAhlRyUaKetAim/75SivHpaJZEm26BbJ1UWbzPoX4757ZbVg3n/T/SfUGfgcAAP//e8Dkyg==)
+[Playground](https://kjanat.github.io/actionlint/#eNqMUu1q4zAQ/J+nGMKBE4gNOWICgnuScD8UW07U2pLQSklLqncviq06Hy7tL7GrmdXsjLRiMJ6Osxe9JzYDnCAXT4Cc5U4c3vsK6Liz8i1VgCaGnd975Xze8shb4SxVrc801P+/sErXgmG33qywLse24dUrP4hxJpBD8U4wzBut5zd9QBsnteItg7NeTFH23H5HaXhLI0eqqvX147tXjevyboIyHcO2KIvNtW29ojx69udyGQwpNCGEwTFhKA3NI5hBVEeN7AZuWu4abTuEkP0E7e0panF6Rn/c6OyZMZBHXdkTKq6Jk7AkH/a4XkwxUkqYkBadRwhYJKv/TYDSHUJYTu6sTJckQRLIiEo2UtSjFtn0z1daOS4VLZJo062QbYsyW/YpxH/3l92HdfdJf5/UYKARtpMUtRHDJXwOAPu56uI=)
 
 actionlint infers the type of each matrix axis from the elements in its array.
 For an array of objects, it checks property names and types, such as `package.name` in the example above.
@@ -879,6 +894,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo '${{ matrix.version }} ${{ matrix.flag }} ${{ matrix.released }}'
+permissions: {}
 ```
 
 Output:
@@ -898,7 +914,7 @@ test.yaml:14:13: tag of a YAML scalar must be one of "!!str", "!!bool", "!!int",
    |             ^~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpcj8FOgDAQRO98xUBMONUUDsbwN62uUFNa0t0aDem/myqg4dTM9GXzJoYJW+aleY+WpwYQYqkvwJKM0Pz1m4DVSHKfZwI+KLGL4a8AFNrWBYG2g77qN2/mO2Rj9OgkZequn0SeDNPrnRW3EotZN4x6fFL6WY3DD5JyYFUHZJuDZOVNlT/caePzkKrkBHpZIvqHfT+WPB4DUAr+tVX3Vp1mKKX/HgDm31SO)
+[Playground](https://kjanat.github.io/actionlint/#eNpcj81OxCAUhfd9ijMTk1lhmC6M4W1ArzMY/sK9GE3Duxu0raYrcg4f5Ds5GZTG9+k9OzYTIMQyToClWqHb128CopXqP7cEfFBln9NfASicTj4JtLvqvX4L9naEXM4BZ6mNzvtNpUCW6fXIio/EYmPBrOcnpZ/VfP1BakusxoDmWpKmgh3yqzsV3j5SgzSgl3vG5WFZ1iWP6wD0jn/t0D1Umxl6v0yFavQ8HrLB0r8HAGKgWqY=)
 
 GitHub reads a matrix scalar with the YAML 1.2 core schema and rejects a workflow whose explicit tag does not fit the
 scalar. A tag other than `!!str` is allowed only on a plain scalar, and `!!bool`, `!!int`, `!!float` and `!!null` accept
@@ -946,6 +962,7 @@ jobs:
     steps:
       # ERROR: Cannot access outputs across jobs
       - run: echo '${{ needs.build.outputs.built }}'
+permissions: {}
 ```
 
 Output:
@@ -977,7 +994,7 @@ test.yaml:33:24: unknown-property: property "build" is not defined in needs [exp
    |                        ^~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkkd1KxDAQhe/7FIdF2BubB8iriEhrRtOlJqEzwYul7y6Tzaaoi4q9KHQ6P985pzFYpMy+O8WRbQdMgWWYZ30FYpaUhS9F65GzOBhjDuXzkgP3eiaPOUju50GIpbRYKLXlXict6NlHHOslcHwj8VN4PXZAWigNC91E195+sl7R5zP629jd+YxA5NhUsqmCrrXDuurmmKfZXUhl3uKhmru/in68ZUj3ZLebQt+s4H0Sj017VdK0tx+IdcUQHP5s84eAvkJeYvx9SSU/neJYJ6N4Wuz/c9gOl0SalpKyMj4CAAD//41M6vc=)
+[Playground](https://kjanat.github.io/actionlint/#eNqkkdFq8zAMhe/zFIfyQ2/+5AH8KmOMZNEWl9Qylswugt992HUdtpVtrBeBKJLOd47CzsBHWboTT2I6wDrRcV3zK8BRfVS5FK1Hs8FhGIZD+Ryikz7LxCk6jf06KomWlij5ttznSQN6XhjHqgThM+li3euxA3wgPwa6ia69+8lZJT8f0V/G/m0bHNEsQyUP1dC1npFS3pyiXecLqcwbPNRw/6+mH28Fynt6d5pC36PgzeqC3Xt10ry3H4iUMLoZv475zYE+Q16Yf17Klp9OPNVJ1oWC+fsdduFykeYlV1oYnsLZilh2YrCl9wEAcCTxDw==)
 
 Define job dependencies with [`needs:`][needs-doc]. A job runs after all jobs in its `needs:` list finish.
 The [`needs` context][needs-context-doc] gives downstream jobs access to those jobs' outputs.
@@ -1015,6 +1032,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: ./bad.sh # ERROR: tracked with Git mode 100644
+permissions: { contents: read }
 ```
 
 Output:
@@ -1089,6 +1107,7 @@ jobs:
       # This script is run with bash due to 'shell:' configuration
       - run: echo $FOO
         shell: bash
+permissions: {}
 ```
 
 Output:
@@ -1206,6 +1225,7 @@ jobs:
       - name: Do something with checking skip
         # OK: This placeholder uses an untrusted input, but the input cannot be injected to the script
         run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
+permissions: {}
 ```
 
 Output:
@@ -1229,7 +1249,7 @@ test.yaml:25:24: unknown-script-value: interpolated scalar is not proved to occu
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqMkUFrGzEQhe/+FY+lYKdkt+2xCoUcWkobSALJzZggyxNL9a5mqxk5lLD/vWg3mLjFtCcxzJv3PZ6i7cjgnkRnHA2WfW7bh0Q/M4meo8/iV7PZD16LmQFKouUFUo5Sl4O8zlFz3dqyG1ei1MukAmpMgNsUoqKY48UcGrSlF9loaEDOM+Zvnp+xDerzuqE9RW1eZ2rGMwzD/EDIQmJgnQaO8k7UtnS5//D+YP0U1JvDBCTquVbeUTQoLCGXSKW5v7n6co1heCUdzeo+1R2J2C0Z/F84PFmBa1locyLm5FGLS6HXy/3Hk2knhYHjKNxS0/J28XdFnuzmwXHXBW1sVs+pKcWXns7++IqvpChKiiqn6lf+fndzvThCvG3WvPl1dlT95PiZIdyR+hC3Y344T25XJtmF/hgSHrFEVSCOo9oQZfGPPs8xX95dfbtdzQu8widUmjJVWF1APcUpd1VQ1QUew+8BALAe5HM=)
+[Playground](https://kjanat.github.io/actionlint/#eNqMkUFr20AQhe/6FQ9RsFMitT12QyGHltIGkkByMybI64l3a2lH3Zl1KEb/vawUjN1i2tMyzJv3Pd6GpiODRxItOBgs+tS2T5F+JhK9RJ/ELYviB6/EFICSaH6BmIJU+SCtUtBUtU3ejStR6mVSARUmwH30QZHN8WoO9drSq2w0NCDrGLM3+z02Xl1a1bSjoPVxpno8wzDMDoQkJAaNVc9B3ok2LV3vPrw/WL94deYwAZF6rpS3FAwyS8hGUqkf726+3GIYjqSjWdXHqiORZkMG/xcOL43Atiy0PhNz8qjERt/r9e7j2bSTwsByEG6pbnkz/7siR836yXLXea2bpI5jnYvPPV388RVfSZGVFFTO1a/8/eHudn6CeFuveP3r4qT6yfEzQ7gjdT5sxvywjuw2T7L1/SnEP2OBMkMsB218kPk/+rzEbPFw8+1+OcvwEp9QakxUYnkFdRSm3GVGlVd49kVPsfMiuWeD/fB7ACq26os=)
 
 GitHub Actions substitutes `${{ }}` values into `run:` scripts before the shell parses them.
 An untrusted value can therefore become shell code. For example:
@@ -1320,6 +1340,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo 'build'
+permissions: {}
 ```
 
 Output:
@@ -1331,7 +1352,7 @@ test.yaml:3:3: cyclic dependencies in "needs" job configurations are detected. d
   |   ^~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkjjEOwyAMRXdO8TcmLsBVqg7QWEoqZBC2719BvWTOZvn5v+/OGcPkDN9eJQdgTBpl0hoBJjok41Xtasd7r6axpJWyaqyWWlES3UiUhvyDQFqXGfQ5O6JLYwAuFi2t3f3OHzS4djXsZ+9+pw/8Wxp/AQAA//+/J1vk)
+[Playground](https://kjanat.github.io/actionlint/#eNqkjjGuAyEMRHtOMd1WewGu8vULyFpaImIQg6sod48gNFtvZ/l53rioRzWe7lkivQNqkxqajBFQkYMef9FSPv7nqplyHymLpt32HLqwT8Qulb8gsI9LD3mcBduSbg5Iyh5yvvoXv9GwtKNhPnv1L3rDP6Wbq9JeiUxF6fH+fAcAsEhh/A==)
 
 Define job dependencies with [`needs:`][needs-doc]. Jobs with cyclic dependencies cannot start. actionlint reports cycles,
 undefined jobs, and duplicate jobs in `needs:`.
@@ -1351,6 +1372,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo 'hi'
+permissions: {}
 ```
 
 Output:
@@ -1366,7 +1388,7 @@ test.yaml:8:3: job "bar" needs job "unknown" which does not exist in this workfl
   |   ^~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkjDsOAjEMRPucYrptyAXcwRFoEUUMRuEjexXb4vooS0VNNdLMvGdKWNN7eRg7FeBmNgNQkasTTtzGDof98by1I9XrhJJTI+urhXhsk4es/mWBOp8EuXTD0u9LAbiNX3PqU+2t/4k/AQAA//96DTh7)
+[Playground](https://kjanat.github.io/actionlint/#eNqkjD0OQjEMg/eewttb6AWywRFYEUMLQS0/SdU0YkDcHfUxMTNZsv19KoTmVsJVs1EALqozAGE+G+GQU99gt90f17a7WJyQZ5fh8Z4G21gnG9zsywJxPgl8Koql1CUAOfVfs8tN9Cl/ihv3RzWrKkZ4vT8DADSAPpM=)
 
 <a id="check-parallel-step-refs"></a>
 
@@ -1388,6 +1410,7 @@ jobs:
         background: true
       - run: echo 'tests'
       - cancel: serverr
+permissions: {}
 ```
 
 Output:
@@ -1399,7 +1422,7 @@ test.yaml:11:17: "serverr" is not the ID of a preceding background step. "wait" 
    |                 ^~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpczssNAjEMBND7VjG3nNKA26CCJGuxwOKs/KF+FD4R4mTJz6NxF8IRti3XXo0WwNl8TEBDLA+PGuKR9zLsReZ82PsKyJByZ8LJizqM9cH6IeCy0v9KQwjcto5kI5Km1NJuZ+0hK8E1eBb8RMYPlqa0Io33b4c+AwAA//+anjvx)
+[Playground](https://kjanat.github.io/actionlint/#eNpczksOwjAMBNB9TzG7rnoBX4MTpKlFC60T+cMGcXcUPhFiZcnPo3ERQg1bh0uZjQbA2bxNQENsah5ziMe0p2YvMudq7ytggqSDCSdP6jDWG+uHgG2h/5WGEDivBaO1yNhlTvl61hKyEFyDe8FPpP1gY5ecJPP+7dChsh6b2VbECPfHcwCMcUIJ)
 
 <a id="check-matrix-values"></a>
 
@@ -1423,6 +1446,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: echo ...
+permissions: {}
 ```
 
 Output:
@@ -1442,7 +1466,7 @@ test.yaml:12:13: "platform" in "exclude" section does not exist in matrix. avail
    |             ^~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpskMGOhCAQRO9+RR32KER298SvmD2gsuNMlDY0JE6M/z4h4jgmHggpqHrpanIaU+S+eFDDugCC5ZBugIM3wd6emwJGE/x93hXgqLMatapKqO8S6jedv/c3sUYdm+hCFINJ2BKjaYmzOpx2bofY2YMMiExXPx+PG/OEvIpUp8g0mPBPfrwK+uhYpA18LUuuJ4mxrrm/nXgfSiSzhm17gpTyFQAA//9UwlNB)
+[Playground](https://kjanat.github.io/actionlint/#eNpskEFrxCAQhe/5Fe/QY5S17cm/svTgZqfdlOiIo7Al5L8XiWkayEHk6Xsf84aDRSzy6L75JrYDMkmuNyA5uUxfP6sCvMtpfG4KCHwni6u59DCvPcx7PR9/3ywW13IrIRc1uYrt4d3A0tTupOcwlTvtZEA1unn797gyD8izyOUQiZPLn5z8WTCVIKpu4GWeWz3NgmVp/SnKNpSqZgsaHgytdRcp+VFk5CAW8/I7ALukWVk=)
 
 [`matrix:`][matrix-doc] defines combinations of multiple values. Nested `include:` and `exclude:` can add/remove specific
 combination of matrix values. actionlint checks
@@ -1481,6 +1505,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ...
+permissions: {}
 ```
 
 Output:
@@ -1508,7 +1533,7 @@ test.yaml:15:3: unknown Webhook event "pullreq". see https://docs.github.com/en/
    |   ^~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpcjkGuwyAMRPecYtaRIHvfhuT7h1QIU2wq9fYVJJt2NbLf6NlSyAG1axoJbC2WPRH+ReZcoyWlGavJ+rX251Gk8S89VTvrpbN3ZSXsjaPxnwMaZ47KN42HEl5LWMIyv8i58ZOce8g2BcZqV7X1ol4KoW+9WPc5DjaRGtf7HOBHk8B7EoQQPgEAAP//dVRCRg==)
+[Playground](https://kjanat.github.io/actionlint/#eNpcjkFuxCAMRfec4q8jQfa+DUndQEUxxaZSVc3dRyHZzKy+7Pf1bKnkgDY0nQlsPdY9ET5F5tyiJaUZq8n6svb5qNL5nWbVwXrp7K+xEvbO0fjDAZ0LR+WbxkMJv0tYwjK/KKXzDzn3JdsUGKtd1T6qeqmEsY1qw5d4sonUuN3nAH82CbwnQQjBNe7fWTVLVcL/4zkAzHdIXg==)
 
 Declare events under `on:` to trigger the workflow. [GitHub's event documentation][webhook-doc] lists
 the supported webhook events and the activity types allowed in each event's `types:` list.
@@ -1582,6 +1607,7 @@ jobs:
       - run: echo "${{ env[inputs.age] }}"
       # ERROR: `github.event.inputs` is also not defined
       - run: echo "${{ github.event.inputs.massage }}"
+permissions: {}
 ```
 
 Output:
@@ -1625,7 +1651,7 @@ test.yaml:39:24: unknown-property: property "massage" is not defined in github.e
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqMkcFOwzAMhu97Cmvi2j5Ar5y5cUMIOa3XmrZ2VTsd07R3R+0CEwpM3KzPn538iUq1Azjq3B8GPb41bBN63a0QgGWKbtcagJuvCsBPE1Xg9OEJ9SxZu+6Ua0pQcKS7AoBOzip2swAKeMYRf4An7m8jDR0wDl7BY6eBEx7JDNvsNPOZpU1woTmoZU5QHQgl338iS/CXzRLHQHM+5ESy271r2DI5mV8n5yhWqFQQQxSPxYBrb2uZ0/T9AsVqVkB1p7B/OJ/Th5QjbgHhctn/ZZIsL8lOUV//qWN7X23ZuxhKWki8zC/0GQAA//+bKqYK)
+[Playground](https://kjanat.github.io/actionlint/#eNqMkcFugzAMhu88hVXtCg/AdefddpumKQEXMogdxQ5dhXj3CZqtmuiq3qzPnw1/zFQXACeOw3Hk00frJBht+hUCOApJ5VIDuPanAtBzwBoUvzSjwdGu3fTsGsyQjMe7AgAHdUxytQBKeDXe/AEvbriOtHg0adQannu2LmOPIqbbfU00OuoynDBalp1jmUc0tN9/RsnwxmZK3mLcDykiFcUn2y2TouhlMiaSkqmGZBNpKkez9raWKIbfFyhXswZseobD0zzng1TebAFhWQ7/mUjTW7Zz1PcHddPdVzunfbIVTkha3fihgNE7ke2SMC/fAwAu9qwi)
 
 Use [`workflow_dispatch`][workflow-dispatch-event] to trigger a workflow manually. It can define parameters called inputs,
 each with a name, description, default value and [input type][workflow-dispatch-input-type-announce].
@@ -1712,6 +1738,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ...
+permissions: {}
 ```
 
 Output:
@@ -1735,7 +1762,7 @@ test.yaml:14:9: '.' and '..' are not allowed in glob path. note: filter pattern 
    |         ^~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpMjMGqAyEMRfd+xcXle+jQZf2V0oIOTqWURDQp/fwyunEVTs7hMgUDVO3lvEBqkfaS+yTAwT4OZmcHS3yu5vP3bxe6Xd3lPh81SllKvx3MW4rNy1eMeXEaUnKXGTWl7pgCNCmJunc83VBdcl2mmlJA3gvDe/8LAAD//yaAMCw=)
+[Playground](https://kjanat.github.io/actionlint/#eNpMjEEKAjEMRfc9RZil0g4u7VVEoR06dkST0iQiiHeXaTddhZf3+ITeABTlvF+AWAMuOXEnAAvTbSWyU2MJ99G8D8dpoMvZnq79UYLkoXTzSjTHUJ18xJgHxSYlsfSoKrIl9KBRUdQ+w+6aYkllmKqKHtKSCZxzpqT62pg3Qvbw/f0HAFv0NkQ=)
 
 For filtering branches, tags and paths in Webhook events, [glob syntax][filter-pattern-doc] is available.
 actionlint validates glob patterns `branches:`, `branches-ignore:`, `tags:`, `tags-ignore:`, `paths:`, `paths-ignore:` in a
@@ -1771,6 +1798,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ...
+permissions: {}
 ```
 
 Output:
@@ -1790,7 +1818,7 @@ test.yaml:9:17: invalid timezone "Asia/Somewhere" in schedule event. it must be 
   |                 ^~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpkjUHKwjAQRvc5xUeWgSQ//LjJzjN4gjYOpNJmJJMgeHoZaxfibnhv+B7XZADJha5jJb0Bj9y4Jtg/uPgPB2e/uTv4r4mnnR8G6MtGT66UYM+yTPHCGz0KNbLG3HgWbXaSvrfbqOJ1asyj9uHXSd1bSae7pM+q188EyoURQngFAAD//7JoMrw=)
+[Playground](https://kjanat.github.io/actionlint/#eNpkzU2qwzAMBOC9TzF4aXDy4NGNdj1DT5CkgrgkUrBsCi29e3F/oKU7MZ+YUSEH2DTzsS7cbiBiyioE/4fQ/yMg+O88vPNf6XcInwKUtPJFhQl+b2noD7ryeebM3rmTjkYOKGzluZ2rWGxVdaxSalyGZg+ywpvRqzW2TwJPs6LrOrdxXpNZUjHC9XYfABDrONQ=)
 
 To trigger a workflow in specific interval, [scheduled event][schedule-event-doc] can be defined in [POSIX CRON syntax][cron-syntax].
 
@@ -1848,6 +1876,7 @@ jobs:
     runs-on: macos-10.13
     steps:
       - run: echo ...
+permissions: {}
 ```
 
 Output:
@@ -1867,7 +1896,7 @@ test.yaml:23:14: label "macos-10.13" is unknown. available labels are "windows-l
    |              ^~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqEj8GqwyAQRfd+xV28ZZSXNmThr5QubGqTlESDo5AS8u9FNBSh0JVcZ+ZyjjUSS6CBPe2NJAO8Jh9fgLxTXvevlIBZeTeuRwJcMEa7TwY4ZtVZ4pOKLcVgGk1Yvw0upKcHHyx5fa/SWoW1ba7FlnJz2xQ//RJYpiAeLf62LSOKRIZ9zx56oQOTxwMJ3Q0WQgiWjU+yLEse9b+ozz873gEAAP//SPlVEA==)
+[Playground](https://kjanat.github.io/actionlint/#eNqEj81qxCAUhfc+xVl0OUqnHWbhq5QubHqbWOIPXoWUkHcvoqEIhVnJ8d57+L7gNWLhRXyHD9YCyMS5vgDnZDLNPy0BzuRktzMBqXhP6S8DEs5MgeVqasswWK0v23+DN6b1Sy6BM31e2toF2/32PmyZ5O634WeORXQKltXiad87ompkOI7uQZFPTFkPNGhaApRSohu/6LGseVyf1fX1cUek5CyzDZ419uN3AMzLWyg=)
 
 GitHub Actions jobs run on [GitHub-hosted][gh-hosted-runner] or [self-hosted][self-hosted-runner] runners.
 Each runner has one or more labels. GitHub selects a runner with the labels specified in `runs-on:`.
@@ -1890,6 +1919,7 @@ jobs:
     runs-on: [ubuntu-latest, windows-latest]
     steps:
       - run: echo ...
+permissions: {}
 ```
 
 Output:
@@ -1901,7 +1931,7 @@ test.yaml:4:30: label "windows-latest" conflicts with label "ubuntu-latest" defi
   |                              ^~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNosi0EKgDAMBO99xT7A9gH9iniwWqgiSTEJ/b5EPS3LzDBldJMWTi6SA6BV1Be4jSQ6n60YqcVrdThhHLTzkP8vryxau3wdEL3NqFtjpJSeAAAA//9e4h8M)
+[Playground](https://kjanat.github.io/actionlint/#eNosi8ENAjEMBP+pYgsgKSCtIB4cWLogsKNbW/dA9I4M91qtZsa0YwbX8rCFvQAu9FxgC2VNfo4l1KM+rwlP2IfebefxLz+ZLpP/DqjZdshtNbTWypTtNchhyo735zsAgkclJA==)
 
 To run a job on multiple runners, define an axis in `matrix:` and reference it with `${{ }}` in `runs-on:`.
 Listing several labels directly in `runs-on:` selects one runner that has all those labels.
@@ -1926,6 +1956,7 @@ jobs:
       - uses: "docker://image:"
       # ERROR: local action must start with './'
       - uses: .github/my-actions/do-something
+permissions: { contents: read }
 ```
 
 Output:
@@ -1949,7 +1980,7 @@ test.yaml:13:15: invalid-reference: specifying action ".github/my-actions/do-som
    |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpczbEKwzAMBNA9XyGyu4aOnvortiNsN7UUIqnQvy9uyeLp4N7BMQU4TOry5CRhAVAUHQlwGokbbslIzb3isB+J4iH/FYADE5QAMWtjEp8r5p1NJ77qx/s+ybpx3vEM3rceC4Z18ltpWi35/nHXx8ZOuKPWRuUbAAD//6YoPB4=)
+[Playground](https://kjanat.github.io/actionlint/#eNpczcGKwzAMBNB7vkLk7jXsUaf9FccRsTe1FCypUEr/vbgll5wG5g2MMMLhWqZ/WRQnACO1kQDdWcNwX5zNwy0N+5AaHfpdAQRwJUVI2aqwxlwo7+J24bP+u/9eZF4l79QxxtrSRjhf/GerVnyJ7RHOj1WCSiMrlbfpoN6q6gCEJ2RhIzZF6JRWeL0HAO2eR9o=)
 
 The `uses:` value must follow one of [GitHub's action reference formats][action-uses-doc]:
 
@@ -2013,6 +2044,7 @@ jobs:
           name: rhysd
           message: hello
           additions: foo, bar
+permissions: {}
 ```
 
 Output:
@@ -2098,6 +2130,7 @@ jobs:
       - run: echo 'hello'
         # OK: 'powershell' is only available on Windows
         shell: powershell
+permissions: {}
 ```
 
 Output:
@@ -2121,7 +2154,7 @@ test.yaml:27:16: shell name "sh" is invalid on Windows. available names are "bas
    |                ^~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkkM2qgzAQhfd5ioMbV8Jd522ijsTLmAlOBgul715ipRRX/dmd5HwkH0eSRzaN7l969Q7gOdmlBmC1pF0FrLdUrONQSMteaaGsDwroKulBQxS0kZilPRpA69ljDBrfp7NstO7ZAUsYTjpLGERfbUaagnF5CtUPzm9O82HwqXqTaWVc/26NA7Y5jbLpSei4/WWg7+a5BwAA//84lH6a)
+[Playground](https://kjanat.github.io/actionlint/#eNqkkEGKhTAQRPc5ReHGlTDr3CZqSzLEdEincUC8+xBHho+rj39XST2SR3GyyCrefPMo1gAxJP1pASiaZGiAjpqqDtFVknpWUinLHwUMjbSgyTN6TzFyfzWAtLPF7MS/T2feqJzZAKubbjqrm1hebWZanMb6L9Q+uL+5BPGP1LtMJWL/OjoDbCHNvMlN6Lr9ZKCH82QqaxAJnMRiP34HAFUzhLI=)
 
 [GitHub documents the available runner shells][shell-doc]. actionlint checks the shell names in `shell:` settings.
 
@@ -2149,6 +2182,7 @@ jobs:
       - run: echo 'hello'
         # OK. Step ID uniqueness is job-local
         id: step_id
+permissions: {}
 ```
 
 Output:
@@ -2164,7 +2198,7 @@ test.yaml:12:3: key "TEST" is duplicated in "jobs" section. previously defined a
    |   ^~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNrKz7NSKCgtzuDKyk8qtuJSUChJLS4B0QoKRaV5xbog+dKk0rySUt2cRJAcWKq4JLWgGKJKQUEXpNJKITU5I19BPSM1JydfHSqjoJCZYgVWHJ+Zgk11UmUqqtrgENeAeE8XLgWFENfgEJq4AxAAAP//ioFDag==)
+[Playground](https://kjanat.github.io/actionlint/#eNq0zqEOwjAQxnG/p/jcVF/gNBM4ktUvlF3SktJrdj1BCO9OOjAkWNQn/j/xSSFU0zhcJSgNQGNtfYHNirreLVhp5vK5tz1p46pvBbguCXyJgjFyzjJ+CpBW2vGS1l863Pnbzn46LcfDAPhp9v/5UXm7JdUkRQmP52sA8+RJgg==)
 
 Job IDs must be unique in a workflow, and step IDs must be unique within each job. actionlint compares IDs without regard to case and reports duplicates.
 
@@ -2194,6 +2228,7 @@ jobs:
           password: pass
     steps:
       - run: echo 'hello'
+permissions: {}
 ```
 
 Output:
@@ -2209,7 +2244,7 @@ test.yaml:17:21: "password" section in "redis" service should be specified via s
    |                     ^~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp0kLFuxSAMRff3FdZb3pRm528IuWqowEY2NP38CpqiDumEdY4vFyHsqDQ7Hh+ymXsQVVjtJ5E2tqX7tjWubUm+u6GCcPWRoT+bRDH7dzh64svnkvAWJK9yMnQd5nmtBcUOrtEn+00SNYOyz3Bjmrh4s1N0d2Ma2KCfMWBmFXv8c9H1iEEnvK38t/S+tqLM8NL/xRHCIfQ6kJK8vgMAAP//SSdduQ==)
+[Playground](https://kjanat.github.io/actionlint/#eNp0kEFuxCAMRfc5hTWbWaWz5zYM+WqowEY2NJWq3r2CpnSTrrDe8+cjhB2VZvvyJk9zC1GF1X4SaWNbu2/PxrWtyXc3VBCuPjL0Z5MoZv8KRzd8+FwSXoLkhxwMfQxzO9eCYgPX6JP9JomaQdlnuDFNXLzZIbq5MQ1s0PcYMLOKLdrfRecjBp3wsvLf0uvaijLDa/8XRwi70H1HSnJfCjRHsyhsjj6/vgcAV5hj0Q==)
 
 [Credentials for container][credentials-doc] can be put in `container:` configuration. Password should be put in secrets
 and the value should be expanded with `${{ }}` syntax at `password:`. actionlint checks hardcoded credentials, and reports
@@ -2231,6 +2266,7 @@ jobs:
       FOO BAR: foo
     steps:
       - run: echo 'hello'
+permissions: {}
 ```
 
 Output:
@@ -2246,7 +2282,7 @@ test.yaml:7:7: environment variable name "FOO BAR" is invalid. '&', '=' and spac
   |       ^~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNrKz7NSKCgtzuDKyk8qtuJSUChJLS4B0QoKRaV5xbog+dKk0rySUt2cRJAcWCo1rwyiRkHBzd/f1skxyEohLT8fIaSAIlRcklpQDNOgCzLYSiE1OSNfQT0jNScnXx0QAAD///hYJMc=)
+[Playground](https://kjanat.github.io/actionlint/#eNpUjDGqAkEQRPM5RWUbzQUafvANTBe8gSstszJ2D1vTJuLdZRQRo4L3qspN0IIlXXyhJKAr+0hgC2MePpawHrkeh3sptdu7A+zn+W/3fxCc3b8IP4hdGz+DPI4FeiqOqWitPqWm23UlVzcK7o/nAHd8Kt8=)
 
 Environment variable names must not contain `=`. Avoid `&` and spaces too, because
 they have special meanings in shell syntax and usually indicate a mistake in a variable name.
@@ -2268,6 +2304,7 @@ jobs:
     cache-mode: read-write
     steps:
       - run: echo ok
+permissions: {}
 ```
 
 Output:
@@ -2331,6 +2368,7 @@ jobs:
     steps:
       - uses: actions/cache/restore@v5
         with: { path: .cache, key: build }
+permissions: {}
 ```
 
 Output:
@@ -2477,6 +2515,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
+permissions: {}
 ```
 
 Output:
@@ -2508,7 +2547,7 @@ test.yaml:31:84: unknown-script-value: interpolated value may contain characters
    |                                                                                    ^~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8kbtu8zAMhff/KQjjX52gl0nP0KEXdC5kma6cyqJCUUiDQO9eKHYCw4272R/JwyMe8uofwIH4q3N0+DDauQIAeh+SxPEbIBqLA17+AFqMhvsgPXkFb+ciUAfvr0+zlk4nJwqsSIhXLMeACqJw7z8naCmK+j2H33oIDjeGhr+mA7GsGHsmllVblbq7f3isFtI+DQ3yBPcJ+bii/VJqS/FRg5odGrnY02LX7GmxSwXGfeoZWwXCCW+4rm7fYkfNOayWxmWcfKzLktQkL6l2WjCOnqJguAZbl04FaCxB9f90mnLfjIFDzmq7neESVYEzVO4POc9JeVfO1U8AAAD//6DQrqw=)
+[Playground](https://kjanat.github.io/actionlint/#eNp8kU1uAjEMhfecwhp1C6g/q5yhi/6o62ommCY0EwfbEUUod6/CABpRprvks/3y4kfRzAB2xN/rQLtP24ZQAYCPKasMZwCxDns83wBWKJZ9Uk/RwPuxCLSGj7fnUcu6zUENONUkF6z7hAZE2cevE3Qkav7O4U/bp4ALS/1/04lYJ4y9EOukrcbcPzw+NVfSMfcd8gluM/J+Qvu11q7FBw3qNmj1bK9VN2WvVXetwLjNnnFlQDnjDdfN7V1sqDuGtSJzbOAcZV4fyV2OmuehVZTBkyimS7Dz2mkArSNo7g6HU+6LIXAoxSyXI1yjqnCE6v6hlDGp/yqlmSXk3ot4imLgUH4HAL68tMQ=)
 
 Unlike action inputs, workflow inputs must specify their types. actionlint validates the types and default values.
 See [GitHub's documentation][create-reusable-workflow-doc] for details.
@@ -2537,6 +2576,7 @@ jobs:
   job4:
     # ERROR: This workflow does not exist
     uses: ./.github/workflows/not-existing.yml
+permissions: {}
 ```
 
 Output:
@@ -2560,7 +2600,7 @@ test.yaml:19:11: could not read reusable workflow file for "./.github/workflows/
    |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqEzjFywyAQBdBep9gLIEZJKqpcBTQrgYJYhl1CcnsPYuxxZVdQ/P/2UzKQK/vpIMdmAjjILf0FqIxsgFrCogtm0tmK10K6UfnZIrX5/4zfv8sVLjWx6lh1NUlV0QqyDO/j2Zv1vAfx1T0Y1mu4qNOGNBqfo9GC+PED2IgMOFteXwNgwcz3kupJA7h6Ao8x0uC/3g1KJAr/AktIe592CwAA//9tJVzI)
+[Playground](https://kjanat.github.io/actionlint/#eNqEzkFORCEMBuD9O0UvwCOjrlh5FZh0ho68ltAiGuPdDUM0rnQFi///+gsHqF3zdpOkYQO4STrNF6AragAZjM03rOJrtOxN/JD2ciky9vejPL+e7uHWWd3Eeups3ZVoqLa8h9/e7vcrWe7ph1F/pjt1ROLVeFyNQZbXD+AiEiDF9vc1ADWs+l1yMxkAz1kgYymy+Kf/BrGYwzdSI77OaVvFdpAqCWuAj8+vAQBshmLg)
 
 Jobs that call reusable workflows accept [a specific set of keys][reusable-workflow-call-keys].
 For example, a caller can pass `secrets:`, but a job that runs steps cannot.
@@ -2602,6 +2642,7 @@ jobs:
         env:
           # ERROR: credentials is typo of credential
           TOKEN: ${{ secrets.credentials }}
+permissions: {}
 ```
 
 Output:
@@ -2621,7 +2662,7 @@ test.yaml:23:22: unknown-property: property "credentials" is not defined in secr
    |                      ^~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8UM1q8zAQvPspBvNdbT5KTrr31NJCf87BlrdFjbIyK22DCXr3Esu1Qw+5LbPzs7OBTQWcghw+fDjtbef9BQAcj5pimQEV/zsCA0UrbkwusEE9BRW8vzzW6z5NIxnEJI4/F9CrPUx71mNPctNoJqIQ/zoWdAYjWaHtPCs0ECfX3b5yo9VV9RX6WZ8opqIS5dhc2NorJ23udu3/XYlLNK5hDbg7ksEr8YChS90aKcoGVsXj3/m8fLBVccgZzXANXv8DOa8OxN9bA+Dt+eH+yczCpXG7dYjI+ScAAP//iUeEiA==)
+[Playground](https://kjanat.github.io/actionlint/#eNp8ULtqxEAM7P0Vg0lrE8JV26dKSCCP+rDXStjcWmu0qxzG+N+DH7GPK64To3loFNhkwDnI6cuH89FW3k8A4LjTFJcZUPH/I9BQtOK65AIb5H1Qwefbc77tU9+RQUzi+HsFvdpTf2Rta5KbRjMRC/HacUFnMJIV2s+zQg1xctXtK3danmU/oZ71iWJaVKIci4mttXLS4uFQ3h+WuETdFlaAq5YM3okbNFWqtkhRNrAqHnfDsH6wVHEYRxTNJXj5D4zj5kD8uzcAPl6fHl/MLFwbl3uHOAk7ktbF6AJHg2H8GwAE1Yqg)
 
 Inputs of reusable workflow calls are set to `inputs.*` properties following the definitions at `on.workflow_call.inputs`.
 And in a job of a reusable workflow, `secrets.*` are passed from caller of the workflow so it is set following the definitions at
@@ -2659,6 +2700,7 @@ jobs:
     steps:
       # OK: This reports no error. FOO is assumed to be inherited from caller
       - run: echo ${{ secrets.FOO }}
+permissions: {}
 ```
 
 this workflow causes no error. And
@@ -2674,6 +2716,7 @@ jobs:
     steps:
       # ERROR: Secret FOO is not defined
       - run: echo ${{ secrets.FOO }}
+permissions: {}
 ```
 
 this workflow causes 'no such secret' error at `secrets.FOO`.
@@ -2698,6 +2741,7 @@ jobs:
     steps:
       - run: ./output_image_tag.sh
         id: get_tag
+permissions: {}
 ```
 
 Output:
@@ -2709,7 +2753,7 @@ test.yaml:7:20: unknown-property: property "imagetag" is not defined in jobs.gen
   |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp0j7FuxSAMRff3FVbUFboz9z8iXuJSGgoRNskQ5d8rxylSVZWNq2Of65LdA2AvdXlPZR8nn5IEAKXx2pj0AxC/fECzYaWoI/pmpKnGlSWE4a1MC1Zl4WaHzm4+NXTwchzwWZ5kA2bza629nfZK2Qc4z4eg4vtDa4naMhmRt2fL3EzyjMT/XjCyDw4G6UCMq5RgybparVr6In7Gjagc2Fclx77O0kc/Mc4O7o3fAQAA///Y5G5j)
+[Playground](https://kjanat.github.io/actionlint/#eNp0j8FuwyAQRO/+ipHVK/TOuf9hEWfr0hCw2CU5WP73aoONVFU9MnrMm83JDcAzl9tnzM9p9jFqAOQqaxVuDyDc/ULmQYVDTmcIXInnElbREONHnm9UGouDHTv78LGSw9u24Ttf2C6UzK9aezjtKxW/YN8HRdX3h24jSk1sVF4vNUk10Qux/HvBJH5xGHUDC606QjTr6mZto1/E+d2oysG+N3LqdZa/+onh6nA0DiuVe2Bdyg7b/jMA8gR0ew==)
 
 Define outputs of a reusable workflow at `on.workflow_call.outputs`, as described in [the GitHub documentation][reusable-workflow-outputs].
 Use the `jobs` context to refer to job outputs when defining a workflow output. actionlint checks that the context is used correctly.
@@ -2739,6 +2783,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo '${{ outputs.required_input }}'
+permissions: {}
 ```
 
 Example input:
@@ -2770,6 +2815,7 @@ jobs:
       message: null
     secrets:
       password: p@ssw0rd
+permissions: {}
 ```
 
 Output:
@@ -2835,6 +2881,7 @@ jobs:
     steps:
       - run: ...
         id: get_version
+permissions: {}
 ```
 
 Example input:
@@ -2853,6 +2900,7 @@ jobs:
       - run: echo '${{ needs.get_build_info.outputs.version }}'
       # ERROR: `tag` is not defined in the reusable workflow
       - run: echo '${{ needs.get_build_info.outputs.tag }}'
+permissions: {}
 ```
 
 Output:
@@ -2906,6 +2954,7 @@ jobs:
   # ERROR: The calling job does not grant "pull-requests: write", which the called job requires
   caller:
     uses: ./.github/workflows/reusable.yaml
+permissions: {}
 ```
 
 Output:
@@ -2957,6 +3006,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo 'oops'
+permissions: {}
 ```
 
 Output:
@@ -2980,7 +3030,7 @@ test.yaml:17:3: invalid job ID "2d-game". job ID must start with a letter or _ a
    |   ^~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqkzTEOgzAMheGdU7yNyUilG3OXHgOKaUBpHooTuH6VNjdgtPzp/QwD9myuaTZONjTAQspx6/ruXi4g5mBSWJ5ySFn8mNTS72VJd/srQIocoC9HtBsnPB841+RwaLSVoa0OWOfKFkbUMXHqPeVk9LNcCJO7lVI/y3v86NWlbwAAAP//gyJUhw==)
+[Playground](https://kjanat.github.io/actionlint/#eNqkzjGugzAQBNCeU0xHtUif37lOk2NAWGIj47W8NhRR7h458Q0oV/s0MxIMYlHbdZvMajpgFaHjbxiH/3oBqQSlyspcQi7kp8yavy/NHPWnAKrSgB9W0G8y437D6bLFwUmdhL45wC2NrZLQwsiy90KnJL/QhWKRqLVpXOg57Xw5KXLandb9avB6fwYA/mRanw==)
 
 IDs must start with a letter or `_` and contain only alphanumeric characters, `-` or `_`. actionlint checks the naming
 convention, and reports invalid IDs as errors.
@@ -3026,6 +3076,7 @@ jobs:
         run: echo 'Success? ${{ success() }}'
         # OK: 'success()' function is available here
         if: success()
+permissions: {}
 ```
 
 Output:
@@ -3053,7 +3104,7 @@ test.yaml:32:33: unavailable-function: calling function "success" is not allowed
    |                                 ^~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8j81qwzAQhO96ijkU0h6cB/CltNDSQyDQPIHtrGO3imT2J2kIfvciJ45NIT2J0Xy7MxtDjs6kcW5LdWFeJXcAW0gPIA15n+PhfAaFw3Lz8bZaoe+d+4rlQCqJXlHlQml3uihgXyi3P6MCti1TpZFP0xeQDat3rTZWLo+Rv2sfjyngL8IWAvFSad+NNluQLPW30oJa5otUZrDmt1zRKfXeTcmjcBjB9/V6gl5fPkdElLrb4mw+8d/UveCZnUqCqiZisbGqIpHngZWLeHxC3y9udFvnk/MbAAD//3L9fcg=)
+[Playground](https://kjanat.github.io/actionlint/#eNp8j8Fq8zAQhO96ijn8kL8H+wF8KS209BAINE9gO+tYrS0Z7W7TYPTuRU4cm0J6EqP5dmfWuwKDcmvMgZpSO+HCAEFdegBuqesK/BtHkPvK928v2y1iNObDVxMpxHJFJZRCx/NFAX0pwX7PCjjYQLX4cF6+gGxafbTSapWffPhsOn9KAb+RoM5RyIX6YbaDOs5Sf63UiWZdmcpM1vqWK7qk3rsJQPqYwdfdboGen95nhIWG2+JsPfHX1L3glZ1KgurWY7PXuibmx4nli/j/gBg3N9o2xeKYgUJvma13XGCMPwMAgnyD4A==)
 
 GitHub limits which contexts each workflow key can use. For example, `jobs.<job_id>.env` cannot use the `env` context,
 but `jobs.<job_id>.steps.env` can.
@@ -3091,6 +3142,7 @@ jobs:
       - run: echo "foo=bar" >> "$GITHUB_OUTPUT"
       # OK: 'debug' command is not deprecated
       - run: echo "::debug::Set the Octocat variable"
+permissions: {}
 ```
 
 Output:
@@ -3102,7 +3154,7 @@ test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}=
   |                      ^~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpsyjGOgzAQRuGeU/yyVqLyBUaCYpvdrVgpUEc2GUIi4kH2TM4fOWmpXvE+SYTdyto0d4mFGkC5aC2QLRVfgUVLan4L9b1XUd7LRwG+SgLPq6AlKqxeTHdTpPDgbhEhiiG3B9wtIl0M2aHv4b5+/sbf6fs8TOP/NLojT3ThaFeiEyt0ZQyzyhwUz5BvIW7sXgEAAP//zI0+6A==)
+[Playground](https://kjanat.github.io/actionlint/#eNpsyjFOAzEQRuHep/hlIaXyBUZKChqgChK7NbKXCbso8VieGRrE3ZFJu9Ur3ieV0FzXEL6kKAXAWG0U6F41DeDFq3m65vH+lxo3vSsgDUngZRUciJQtiVtzQ803Pl5EiEruhx0eLyLHknvE6YT48PQyPc+P7+d5ep2nuOeJPrj4J9EbG2xlnBeTJRu+c99yuXIMjfttU92kKuHn928A7dBFAA==)
 
 GitHub deprecated the following workflow commands.
 
@@ -3150,6 +3202,7 @@ jobs:
       - run: echo 'Commit is pushed to main'
         # ERROR: It is always evaluated to true
         if: ${{ github.event_name == 'push' }} && ${{ github.ref_name == 'main' }}
+permissions: {}
 ```
 
 Output:
@@ -3173,7 +3226,7 @@ test.yaml:29:13: if: condition "${{ github.event_name == 'push' }} && ${{ github
    |             ^~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNq0zz1OxDAQBeA+p3hYyK7CASxtw484ATVyYEKM1vZqZ0yz+O7Iy18iohBAVFH03nwzTtFil3lomsfUsW0AIZb6BfY5clsLuctRcrt1NTtGLLTj1xbQ1qYF3Q0J6vLq/Ob6BKeHAx68DLk7oyeKchtdIJSi3mYA31v0bss0o5iLFIIXeD4eR/dmMjaPbzYwtW1Qys/N548/LNl/g//jcPU9CrWGhSQE5+OUX5K1fo/31H+GY+QXG1e8R+tx6+tylPISAAD//9rl1qA=)
+[Playground](https://kjanat.github.io/actionlint/#eNq0kM1OxCAUhfd9iiMxsKoPQDIbf+ITuDZUby1mgKb34qby7obxbyZOatW4IuR897sHUrQYMw9N85g6tg0gxFJPYMqR2wrkLkfJ7dbVbBex0MivFNBW0oLuhgR1eXV+c32C03nGg5chd2f0RFFuowuEUtTbDOB7i95tmY5YzEUKwQs878rRvTkYOy7fbGAqbVDKz53PHzcsuf8m/o/i6nsp1BotJCE4Hw/1S2at3+OJ+s9wX/KLjSveo/U+9XV5/ciRpuCZfYpsMZeXAQB4Pty4)
 
 actionlint reports conditions whose outcome it can prove is constant. Removing `if: true`
 still requires the default `success()` check. Removing an always-false condition would enable
@@ -3247,6 +3300,7 @@ jobs:
     steps:
       # actionlint checks an action when it is actually used in a workflow
       - uses: ./.github/actions/my-invalid-action
+permissions: {}
 ```
 
 Output:
@@ -3348,6 +3402,7 @@ jobs:
         with:
           # ERROR: Using a deprecated input
           fail_on_error: true
+permissions: {}
 ```
 
 Expected diagnostic:
@@ -3399,6 +3454,7 @@ jobs:
         with:
           # ERROR: Using a deprecated input
           old-input: some value
+permissions: {}
 ```
 
 Output:
@@ -3459,6 +3515,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: ./do_something.sh
+permissions: {}
 ```
 
 Output:
@@ -3478,7 +3535,7 @@ test.yaml:12:11: unexpected key "email" for "credentials" section. expected one 
    |           ^~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNp8kMtK9DAcxfd9igMffAuh1XVWA+Ja6QtI2hzbaC4l/8TOvL3EGUtAcBV+55JwEoPCVmTtuvc4ieqATMn1BITp086UKwFhseH8A4D1eqG6qU7X3uHNiYYhW+1E4X9D+IencXweFR4bUSeCfqIxNDA2cc7uAhuwx/Tx5uJ+XAwUYQraU8Ff+gp9pSawaZE9JqPwchLZH5JpTHptnYLniWftN8dhjv7mJxorv/Zd1b/23TX0nUglSF9/tkwl5NI3Zcncjjf6mlQY7k18leiZVxuWQdavAAAA///OgHrq)
+[Playground](https://kjanat.github.io/actionlint/#eNp8kM1K/DAUxfd9igN/+C+Ejq6zGhDXSl9A0ubaXs1HuTexM4jvLnHGEhBchd/5SDhJ0WAtunTdaxrVdEAmzfUElOSdJ9ILAXHmePoBgIOdyVxVb2tv9yYhRzGz9WrwvyH8w8MwPA4G941ohUBhJOfIwbHQlP0ZHLEleXvxadsvBoqSRBvIIJz7Cn2lJrBa1S2JM3g6qm534hqTgmVvEOhIJxtWT4cphasv5Fh/7buof+27aeg7ISVqX3+2jCXm0jdlzbTub/Q1aXC4delZU6C8cJwPunQrSWBVTlENPj6/BgCwH4EC)
 
 actionlint also checks how anchors and aliases are used. In the following example, it reports recursive aliases and unused
 anchors as errors.
@@ -3508,6 +3565,7 @@ jobs:
         run: ./some_script.sh
         # ERROR: Recursively referencing the anchor
         env: *recursive
+permissions: {}
 ```
 
 Output:
@@ -3531,7 +3589,7 @@ test.yaml:22:14: recursive alias "recursive" is found. anchor was declared at li
    |              ^~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNpsj8FqwzAQRO/+ijkUHwp27/qZothLomKvxI7kFEL+vYjGwiE5mRm/p92N6pAKL133E090HZCFuX4Bim1hEv4nQM9Bf/cAhNWfxT3axVev/ZtMZtEc/EKH/pAaARSKqV/F4eN2A2UyyRxri/v9wCVPXqPNz9ze7qwV5VCvKaeiuQyHhZgltSOGSjqMX3O86hL9PPLSholuDp+v6zappLdK/07pTaZiDJs0+PEK4yrfnCyk/Dq9WX8BAAD//wHceU8=)
+[Playground](https://kjanat.github.io/actionlint/#eNpsj8FugzAQRO98xRwqDpWgd/9M5cAqcQVra8cmlRD/XqEGlyo5oRne8+5GdUiFt6b5ihe6BsjCvH8Bii1hEP4mQK9Bv48AhNlfxT3aye9e/TeYjKI5+IkO7SlVAigUUz+Lw9u6gjKYZPZ7i207ccmT92jjf+5oD9aKstuvKZeiuXSnhZgl1SO6nXToP8Z41yn6seetDhNdHN6f161SSS+V9pXSmgzFGBap8OMVxlk+OVhI+Xn6n5XE5kCGqHRYt58BAMm8f2c=)
 
 actionlint reports dangling aliases at the alias use when no matching anchor has been defined.
 
@@ -3547,6 +3605,7 @@ jobs:
       - run: ./download.sh
         # ERROR: &credentials is not defined
         env: *credentials
+permissions: {}
 ```
 
 Output:
@@ -3558,7 +3617,7 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
   |              ^~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNosyjEOwjAMheE9p3gzUsqe26TEUkGRXeXZcH1k6PQP/2facAaPUl62sxXAhZ4FVihrgthDPers+X6LLif/CqgpG7b7sI9O62PjcS1A9N1weywZov7sk98AAAD//6p1Iic=)
+[Playground](https://kjanat.github.io/actionlint/#eNosyjEOAiEQheGeU7zahLXnNqxMshgcCG9GC+PdDbrVX/xf14ThPEK4950pACa0VWC6Mi7gu6t5bHm936LJ4F8BccmE7Vr6S1vPZeNxLkD0mXC5TSmiVnNjGDIflaxdmfD+fAcA/4ooPw==)
 
 ---
 

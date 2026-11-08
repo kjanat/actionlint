@@ -17,3 +17,4 @@ jobs:
         if: ${{ 'false' }} && ${{ 'false' }}
       - run: echo This is true
         if: '!${{ true }}'
+permissions: {}

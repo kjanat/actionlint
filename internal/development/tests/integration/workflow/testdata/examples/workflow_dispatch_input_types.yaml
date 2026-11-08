@@ -37,3 +37,4 @@ jobs:
       - run: echo "${{ env[inputs.age] }}"
       # ERROR: `github.event.inputs` is also not defined
       - run: echo "${{ github.event.inputs.massage }}"
+permissions: {}

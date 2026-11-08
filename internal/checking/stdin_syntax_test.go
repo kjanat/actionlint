@@ -13,6 +13,7 @@ func TestStdinFlowMappingCompatibility(t *testing.T) {
 	for _, separator := range []string{":,", ": ,", ": null,"} {
 		t.Run(separator, func(t *testing.T) {
 			source := "name: autofix.ci\nrun-name: test\non: { pull_request" + separator + " push: { branches: [master] } }\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			source += "permissions: {}\n"
 			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, inputmodel.Request{
 				Kind: inputmodel.Stdin, Name: "autofix.yml", Reader: strings.NewReader(source),
 			})

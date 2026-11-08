@@ -44,16 +44,24 @@ migration refuses the rewrite; convert that selected document to YAML or JSON fi
 <a id="rule-id-migration"></a>
 
 Rule IDs also changed. Runtime configuration and both suppression forms accept
-the old IDs as aliases; diagnostics report the current IDs. Explicit migration
+the old IDs as aliases, except for the permission-rule names described below. Diagnostics report the current IDs. Explicit migration
 rewrites rule settings and suppression selectors to the current names.
 
 | Previous ID               | Current ID                |
 | ------------------------- | ------------------------- |
 | `require-commit-hash`     | `unpinned-reference`      |
 | `require-job-timeout`     | `job-timeout`             |
-| `require-permissions`     | `explicit-permissions`    |
+| `require-permissions`     | `missing-permissions`     |
 | `require-action-metadata` | `missing-action-metadata` |
 | `disallow-suppressions`   | `forbidden-suppression`   |
+
+`missing-permissions` also replaces `explicit-permissions` and
+`missing-workflow-permissions`. Migration converts `scope: workflow` to
+`require-at: workflow`, and `scope: job` to `require-at: every-job`.
+An explicit selection of the former `missing-workflow-permissions` rule keeps
+its warning level. New configurations report missing declarations as errors.
+Update inline suppression comments to use `missing-permissions`; its previous
+names are accepted only during configuration migration.
 
 Current categories are `correctness`, `suspicious`, `security` and
 `conventions`. The former `style` group maps to `conventions`; former `policy`

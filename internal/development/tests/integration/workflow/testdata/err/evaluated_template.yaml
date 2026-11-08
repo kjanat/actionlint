@@ -22,3 +22,4 @@ jobs:
       - run: echo "${{github.event}} ${{steps.cache.outputs}} ${{github.event.commits.*}}"
       # OK: null becomes an empty string in a data argument
       - run: echo "${{null}}"
+permissions: {}

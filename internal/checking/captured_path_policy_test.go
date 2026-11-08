@@ -56,7 +56,7 @@ func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliase
 		root = alias
 	}
 	first, second := filepath.Join(root, "ci.yml"), filepath.Join(t.TempDir(), "other.yml")
-	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
+	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n")
 	for _, path := range []string{first, second} {
 		if err := os.WriteFile(path, content, 0o600); err != nil {
 			t.Fatal(err)

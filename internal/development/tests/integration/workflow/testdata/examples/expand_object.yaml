@@ -17,3 +17,4 @@ jobs:
       # ERROR: String value cannot be expanded as object
       - run: echo "$FOO"
         env: ${{ matrix.env_string }}
+permissions: {}

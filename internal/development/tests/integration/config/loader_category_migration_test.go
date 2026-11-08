@@ -12,6 +12,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func TestCategoryMigrationPreservesSelection(t *testing.T) {
@@ -162,7 +163,15 @@ func TestCategoryFileMigrationChecksInheritedSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(prepared.Content, []byte("suspicious:")) || !bytes.Contains(prepared.Content, []byte("empty-job: off")) {
+	parsed, err := document.Parse(leaf, prepared.Content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := parsed.Value.(map[string]any)
+	lint := root["lint"].(map[string]any)
+	rules := lint["rules"].(map[string]any)
+	group, ok := rules["suspicious"].(map[string]any)
+	if !ok || group["empty-job"] != "off" {
 		t.Fatalf("wrong migration: %s", prepared.Content)
 	}
 }

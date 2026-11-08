@@ -13,7 +13,7 @@ import (
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
@@ -53,11 +53,11 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 	if err != nil {
 		return nil, err
 	}
-	leaf, err := configtree.Decode(migration.Path, migration.Content)
+	leaf, err := document.Parse(migration.Path, migration.Content)
 	if err != nil {
 		return nil, err
 	}
-	_, declaredLocally, err := configplugins.References(leaf)
+	_, declaredLocally, err := configplugins.References(leaf.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -381,11 +381,11 @@ func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, ve
 	if err != nil {
 		return "", err
 	}
-	node, err := configtree.Decode(path, content)
+	node, err := document.Parse(path, content)
 	if err != nil {
 		return "", err
 	}
-	defaults, _, err := configplugins.References(node)
+	defaults, _, err := configplugins.References(node.Value)
 	if err != nil {
 		return "", err
 	}

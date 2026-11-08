@@ -21,3 +21,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: print('hello')
+permissions: {}

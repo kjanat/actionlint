@@ -2,15 +2,15 @@
 package selection
 
 import (
-	"errors"
 	"fmt"
 	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // Selection is a feature-independent file scope over validated patterns. Nil
@@ -23,7 +23,7 @@ type Selection struct {
 	excludes []string
 }
 
-// selectionDocument is the YAML wire form of a Selection.
+// selectionDocument is the wire form of a Selection.
 type selectionDocument struct {
 	Includes []string `yaml:"includes,omitempty"`
 	Excludes []string `yaml:"excludes,omitempty"`
@@ -60,28 +60,25 @@ func ValidPattern(pattern string) bool {
 	return p != "" && !strings.ContainsAny(p, "\\:") && !strings.HasPrefix(p, "/") && !strings.Contains("/"+p+"/", "/../") && doublestar.ValidatePattern(p)
 }
 
-// UnmarshalYAML validates the whole scope and rejects unknown keys.
-func (s *Selection) UnmarshalYAML(n *yaml.Node) error {
+// DecodeConfig validates the whole scope and rejects unknown keys.
+func (s *Selection) DecodeConfig(value any) error {
+	if value == nil {
+		*s = Selection{}
+		return nil
+	}
 	var next selectionDocument
-	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := binding.Decode(value, &next); err != nil {
 		return err
 	}
 	if err := validatePatterns(next.Includes, next.Excludes); err != nil {
 		return err
 	}
-	for i := 0; i < len(n.Content); i += 2 {
-		for _, p := range n.Content[i+1].Content {
-			if p.ShortTag() != "!!str" {
-				return errors.New("file patterns must be strings")
-			}
-		}
-	}
 	*s = Selection{includes: next.Includes, excludes: next.Excludes}
 	return nil
 }
 
-// MarshalYAML preserves an explicit empty includes list across round trips.
-func (s Selection) MarshalYAML() (any, error) {
+// EncodeConfig preserves an explicit empty includes list across round trips.
+func (s Selection) EncodeConfig() (any, error) {
 	v := map[string]any{}
 	if s.includes != nil {
 		v["includes"] = slices.Clone(s.includes)

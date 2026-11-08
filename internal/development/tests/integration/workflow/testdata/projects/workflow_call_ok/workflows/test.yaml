@@ -33,3 +33,4 @@ jobs:
       bool: ${{ true }}
     secrets:
       foo: ${{ 'bar' }}
+permissions: {}

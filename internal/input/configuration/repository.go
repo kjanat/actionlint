@@ -6,9 +6,10 @@ import (
 	"path"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // RepositoryConfig supplies overrides for host knowledge. Omission inherits the
@@ -45,32 +46,29 @@ func (r RepositoryConfig) Apply(host repository.Snapshot) repository.Snapshot {
 	return host
 }
 
-func decodeFact[T any](node *yaml.Node, decode func(*yaml.Node) (T, error)) (*T, error) {
-	if node.ShortTag() == "!!null" {
+func decodeFact[T any](value any, decode func(any) (T, error)) (*T, error) {
+	if value == nil {
 		return new(T), nil
 	}
-	value, err := decode(node)
+	selected, err := decode(value)
 	if err != nil {
 		return nil, err
 	}
-	return new(value), nil
+	return new(selected), nil
 }
 
-func repositoryNames(node *yaml.Node) (repository.Names, error) {
-	if node.Kind != yaml.SequenceNode {
-		return repository.Names{}, fmt.Errorf("repository names must be a sequence at line:%d,col:%d", node.Line, node.Column)
+func repositoryNames(value any) (repository.Names, error) {
+	if value == nil {
+		return repository.Names{}, errors.New("repository names must be a sequence")
 	}
-	values := make([]string, len(node.Content))
-	for i, item := range node.Content {
-		if item.ShortTag() != "!!str" {
-			return repository.Names{}, fmt.Errorf("repository names must be strings at line:%d,col:%d", item.Line, item.Column)
-		}
-		values[i] = item.Value
+	var values []string
+	if err := binding.Decode(value, &values); err != nil {
+		return repository.Names{}, err
 	}
 	return repository.NewNames(values...)
 }
 
-func repositoryRunners(node *yaml.Node) (repository.Names, error) {
+func repositoryRunners(node any) (repository.Names, error) {
 	names, err := repositoryNames(node)
 	if err != nil {
 		return repository.Names{}, err
@@ -83,57 +81,54 @@ func repositoryRunners(node *yaml.Node) (repository.Names, error) {
 	return names, nil
 }
 
-func repositoryVariables(node *yaml.Node) (repository.Variables, error) {
-	if node.Kind != yaml.MappingNode {
-		return repository.Variables{}, fmt.Errorf("repository variables must be a mapping at line:%d,col:%d", node.Line, node.Column)
+func repositoryVariables(value any) (repository.Variables, error) {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return repository.Variables{}, errors.New("repository variables must be a mapping")
 	}
-	entries := make([]repository.Variable, 0, len(node.Content)/2)
-	for i := 0; i < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
-		entry := repository.Variable{Name: key.Value}
-		if key.ShortTag() != "!!str" {
-			return repository.Variables{}, errors.New("variable name must be a string")
-		}
-		switch value.ShortTag() {
-		case "!!str":
-			entry.Value = availability.Available(value.Value)
-		case "!!null":
+	entries := make([]repository.Variable, 0, len(object))
+	for key, value := range object {
+		entry := repository.Variable{Name: key}
+		switch selected := value.(type) {
+		case string:
+			entry.Value = availability.Available(selected)
+		case nil:
 		default:
-			return repository.Variables{}, fmt.Errorf("repository variable %q must have a string or null value", key.Value)
+			return repository.Variables{}, binding.At(key, fmt.Errorf("repository variable %q must have a string or null value", key))
 		}
 		entries = append(entries, entry)
 	}
 	return repository.NewVariables(entries...)
 }
 
-func repositoryEnvironments(node *yaml.Node) (repository.Environments, error) {
-	if node.Kind != yaml.MappingNode {
+func repositoryEnvironments(value any) (repository.Environments, error) {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return repository.Environments{}, errors.New("repository environments must be a mapping")
 	}
-	entries := make([]repository.Environment, 0, len(node.Content)/2)
-	for i := 0; i < len(node.Content); i += 2 {
-		name, value := node.Content[i], node.Content[i+1]
-		if name.ShortTag() != "!!str" || value.Kind != yaml.MappingNode {
-			return repository.Environments{}, errors.New("repository environment must be a named mapping")
+	entries := make([]repository.Environment, 0, len(object))
+	for name, value := range object {
+		fields, ok := value.(map[string]any)
+		if !ok {
+			return repository.Environments{}, binding.At(name, errors.New("repository environment must be a named mapping"))
 		}
-		entry := repository.Environment{Name: name.Value}
-		for j := 0; j < len(value.Content); j += 2 {
-			key, item := value.Content[j], value.Content[j+1]
-			switch key.Value {
+		entry := repository.Environment{Name: name}
+		for key, item := range fields {
+			switch key {
 			case "variables":
 				fact, err := decodeFact(item, repositoryVariables)
 				if err != nil {
-					return repository.Environments{}, err
+					return repository.Environments{}, binding.At(name, binding.At(key, err))
 				}
 				entry.Variables = *fact
 			case "secrets":
 				fact, err := decodeFact(item, repositoryNames)
 				if err != nil {
-					return repository.Environments{}, err
+					return repository.Environments{}, binding.At(name, binding.At(key, err))
 				}
 				entry.Secrets = *fact
 			default:
-				return repository.Environments{}, fmt.Errorf("unknown repository environment key %q", key.Value)
+				return repository.Environments{}, binding.At(name, binding.At(key, fmt.Errorf("unknown repository environment key %q", key)))
 			}
 		}
 		entries = append(entries, entry)
@@ -141,25 +136,26 @@ func repositoryEnvironments(node *yaml.Node) (repository.Environments, error) {
 	return repository.NewEnvironments(entries...)
 }
 
-func (r *RepositoryConfig) UnmarshalYAML(node *yaml.Node) error {
-	if node.ShortTag() == "!!null" {
+func (r *RepositoryConfig) DecodeConfig(value any) error {
+	if value == nil {
 		*r = RepositoryConfig{reset: true}
 		return nil
 	}
-	if node.Kind != yaml.MappingNode {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return errors.New("repository must be a mapping")
 	}
-	next := RepositoryConfig{}
-	for i := 0; i < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
+	var next RepositoryConfig
+	for key, value := range object {
 		var err error
-		switch key.Value {
+		switch key {
 		case "default-workflow-permissions":
-			next.permissions, err = decodeFact(value, func(n *yaml.Node) (repository.Permissions, error) {
-				if n.ShortTag() != "!!str" {
+			next.permissions, err = decodeFact(value, func(value any) (repository.Permissions, error) {
+				selected, ok := value.(string)
+				if !ok {
 					return repository.Permissions{}, errors.New("default-workflow-permissions must be a string")
 				}
-				return repository.ParsePermissions(n.Value)
+				return repository.ParsePermissions(selected)
 			})
 		case "runners":
 			next.runners, err = decodeFact(value, repositoryRunners)
@@ -170,10 +166,10 @@ func (r *RepositoryConfig) UnmarshalYAML(node *yaml.Node) error {
 		case "environments":
 			next.environments, err = decodeFact(value, repositoryEnvironments)
 		default:
-			return fmt.Errorf("unknown repository key %q", key.Value)
+			return binding.At(key, fmt.Errorf("unknown repository key %q", key))
 		}
 		if err != nil {
-			return err
+			return binding.At(key, err)
 		}
 	}
 	*r = next
@@ -203,7 +199,7 @@ func encodeVariables(variables repository.Variables) map[string]*string {
 	return values
 }
 
-func (r RepositoryConfig) MarshalYAML() (any, error) {
+func (r RepositoryConfig) EncodeConfig() (any, error) {
 	if r.reset {
 		return nil, nil
 	}

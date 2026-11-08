@@ -32,3 +32,4 @@ jobs:
       - uses: ./action_entrypoint
       # OK
       - uses: ./action_none
+permissions: {}

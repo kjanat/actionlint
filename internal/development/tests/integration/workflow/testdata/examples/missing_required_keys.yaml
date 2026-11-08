@@ -9,3 +9,4 @@ jobs:
     # ERROR: runs-on is missing
     steps:
       - run: echo 'hello'
+permissions: {}

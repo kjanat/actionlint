@@ -10,3 +10,4 @@ jobs:
       - run: echo hello
         # ERROR: `shell:` must be in lower case
         Shell: bash
+permissions: {}

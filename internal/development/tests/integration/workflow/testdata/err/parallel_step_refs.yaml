@@ -29,3 +29,4 @@ jobs:
               - run: echo nested
       # The invalid background child above is not an addressable background step.
       - wait: parallel-child
+permissions: {}

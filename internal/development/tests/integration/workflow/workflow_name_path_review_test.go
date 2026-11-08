@@ -31,6 +31,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
 					{Path: ".github/workflows/build.yml", Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},
@@ -64,6 +65,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: workspace.Identity(root)}})
 				if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "glob" || result.Diagnostics[0].Start.Line != 3 {
@@ -98,6 +100,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{
 					{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: project},

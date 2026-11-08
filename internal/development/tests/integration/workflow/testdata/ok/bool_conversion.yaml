@@ -5,3 +5,4 @@ jobs:
     steps:
       - run: echo '${{ !!42 }}'
         if: github.event_name
+permissions: {}

@@ -38,8 +38,8 @@ func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
 		WorkingDir: t.TempDir(),
 		Analyzers:  []checkinputs.Registration{{Checker: suppressionCompletionProbe{cause}}},
 	}, []workspace.Source{
-		{Path: "failing.yml", Content: []byte(prefix + "      - run: echo ok # ignore completion-probe\n")},
-		{Path: "complete.yml", Content: []byte(prefix + "      - run: echo ok # ignore expression-reference\n")},
+		{Path: "failing.yml", Content: []byte(prefix + "      - run: echo ok # ignore completion-probe\npermissions: {}\n")},
+		{Path: "complete.yml", Content: []byte(prefix + "      - run: echo ok # ignore expression-reference\npermissions: {}\n")},
 	})
 	if !errors.Is(err, cause) || result == nil {
 		t.Fatalf("lost partial result or analyzer failure: result=%v error=%v", result, err)
@@ -93,7 +93,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 				Tools: registry.Registrations(registry.Selections{"shellcheck": {
 					Command: "shellcheck", Process: &processconfig.Options{Executable: &missing, Optional: true},
 				}}),
-			}, []workspace.Source{{Path: "workflow.yml", Config: cfg, Content: []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # ignore shellcheck expression-reference\n")}})
+			}, []workspace.Source{{Path: "workflow.yml", Config: cfg, Content: []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # ignore shellcheck expression-reference\npermissions: {}\n")}})
 			if err != nil || result == nil {
 				t.Fatalf("optional tool became a fatal error: %v", err)
 			}
@@ -121,7 +121,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 func TestUnavailableToolRetainsNestedActionSuppression(t *testing.T) {
 	root := t.TempDir()
 	writeSuppressionFixture(t, root, ".git/HEAD", "ref: refs/heads/master\n")
-	path := writeSuppressionFixture(t, root, "workflow.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n      - uses: ./inner\n")
+	path := writeSuppressionFixture(t, root, "workflow.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n      - uses: ./inner\npermissions: {}\n")
 	writeSuppressionFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok # ignore shellcheck expression-reference\n")
 	missing := filepath.Join(root, "scanner-not-installed")
 	result, err := Check(t.Context(), Options{

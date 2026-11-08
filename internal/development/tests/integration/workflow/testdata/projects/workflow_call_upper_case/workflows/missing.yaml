@@ -7,3 +7,4 @@ jobs:
       my_input_1: hello
     secrets:
       my_secret_1: hello
+permissions: {}

@@ -21,3 +21,4 @@ jobs:
     steps:
       # jobs.<job_id>.steps.run only allows hashFiles
       - run: echo 'success? ${{ success() }}'
+permissions: {}

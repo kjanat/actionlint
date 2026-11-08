@@ -32,3 +32,4 @@ jobs:
     steps:
       # Matrix values in other job is not accessible
       - run: echo '${{ matrix.os }}'
+permissions: {}

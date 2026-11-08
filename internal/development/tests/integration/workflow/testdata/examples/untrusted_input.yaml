@@ -23,3 +23,4 @@ jobs:
       - name: Do something with checking skip
         # The boolean result avoids untrusted text, but this condition is not a proved script data argument
         run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
+permissions: {}

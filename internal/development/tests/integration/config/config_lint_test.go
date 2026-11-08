@@ -39,6 +39,7 @@ jobs:
       - run: echo ok
 `
 					}
+					body += "permissions: {}\n"
 					errs := testutil.WorkflowDiagnostics(t, body, config)
 					if strings.Contains(config, ": on") {
 						if len(errs) != 1 || errs[0].Rule != "case-insensitive-conditions" {

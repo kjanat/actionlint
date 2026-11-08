@@ -8,3 +8,4 @@ jobs:
       - run: echo "$RUNNER_LABEL"
         env:
           RUNNER_LABEL: ${{ runner.name }}
+permissions: {}

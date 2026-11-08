@@ -7,3 +7,4 @@ jobs:
       -
         with:
           info: test
+permissions: {}

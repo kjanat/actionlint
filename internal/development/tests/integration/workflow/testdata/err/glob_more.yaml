@@ -34,3 +34,4 @@ jobs:
       version: 'v[0-'
     steps:
       - run: echo hi
+permissions: {}

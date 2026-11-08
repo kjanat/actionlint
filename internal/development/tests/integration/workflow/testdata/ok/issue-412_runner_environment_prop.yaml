@@ -6,3 +6,4 @@ jobs:
     steps:
       - run: echo 'self-hosted runner'
         if: ${{ runner.environment == 'self-hosted' }}
+permissions: {}

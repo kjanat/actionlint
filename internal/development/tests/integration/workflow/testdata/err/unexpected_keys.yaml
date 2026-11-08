@@ -54,3 +54,4 @@ jobs:
     invalid_key:
 
 invalid_key:
+permissions: {}

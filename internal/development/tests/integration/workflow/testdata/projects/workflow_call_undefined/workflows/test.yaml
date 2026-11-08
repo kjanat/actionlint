@@ -21,3 +21,4 @@ jobs:
       input1: this is not existing
     secrets:
       secret1: this is not existing
+permissions: {}

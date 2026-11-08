@@ -26,3 +26,4 @@ jobs:
       - run: echo ${{ matrix.object }}
       - run: echo ${{ matrix.object.array }}
       - run: echo ${{ contains(matrix.object, matrix.string) }}
+permissions: {}

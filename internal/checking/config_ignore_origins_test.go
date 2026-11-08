@@ -16,6 +16,7 @@ jobs:
   b:
     runs-on: ubuntu-latest
     steps: *shared
+permissions: {}
 `
 	for _, job := range []string{"a", "b"} {
 		for _, source := range []string{source, strings.NewReplacer("steps: &shared\n      - id:", "steps:\n      - &shared\n        id:", "steps: *shared", "steps:\n      - *shared").Replace(source)} {
@@ -38,6 +39,7 @@ jobs:
   b:
     runs-on: ubuntu-latest
     steps: *shared
+permissions: {}
 `
 	findings := analyzeConfiguredWorkflow(t, source, "ignores: [{rule: action, job: a, uses: invalid}]")
 	if len(findings) != 1 || findings[0].Rule != "action" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "b" {

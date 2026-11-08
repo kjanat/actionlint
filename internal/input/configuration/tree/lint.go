@@ -1,47 +1,41 @@
 package tree
 
-import (
-	"slices"
-
-	"github.com/kjanat/go-yaml/v4"
-)
+import "slices"
 
 // SelectLintRules projects a lint tree without altering reset or preset semantics.
-func SelectLintRules(node *yaml.Node, rules map[string][]string) *yaml.Node {
-	if node == nil || node.Kind != yaml.MappingNode {
-		return node
+func SelectLintRules(value any, rules map[string][]string) any {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return value
 	}
-	next := *node
-	next.Content = nil
-	for i := 0; i < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
-		switch key.Value {
+	next := make(map[string]any)
+	for key, child := range object {
+		switch key {
 		case "enabled":
-			next.Content = append(next.Content, key, value)
+			next[key] = child
 		case "rules":
-			next.Content = append(next.Content, key, selectRuleNode(value, "", rules))
+			next[key] = selectRuleNode(child, "", rules)
 		}
 	}
-	return &next
+	return next
 }
 
-func selectRuleNode(node *yaml.Node, category string, rules map[string][]string) *yaml.Node {
-	if node.Kind != yaml.MappingNode {
-		return node
+func selectRuleNode(value any, category string, rules map[string][]string) any {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return value
 	}
-	next := *node
-	next.Content = nil
-	for i := 0; i < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
-		_, selectedCategory := rules[key.Value]
+	next := make(map[string]any)
+	for key, child := range object {
+		_, selected := rules[key]
 		switch {
-		case key.Value == "preset", category != "" && key.Value == "level", category == "" && key.Value == "disable":
-			next.Content = append(next.Content, key, value)
-		case category == "" && selectedCategory:
-			next.Content = append(next.Content, key, selectRuleNode(value, key.Value, rules))
-		case category != "" && slices.Contains(rules[category], key.Value):
-			next.Content = append(next.Content, key, value)
+		case key == "preset", category != "" && key == "level", category == "" && key == "disable":
+			next[key] = child
+		case category == "" && selected:
+			next[key] = selectRuleNode(child, key, rules)
+		case category != "" && slices.Contains(rules[category], key):
+			next[key] = child
 		}
 	}
-	return &next
+	return next
 }

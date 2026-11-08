@@ -7,3 +7,4 @@ jobs:
         name: ${{ missing.value }}
         run: echo ok
       - *Step
+permissions: {}

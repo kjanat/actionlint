@@ -10,3 +10,4 @@ jobs:
       - run: echo "hello, $HOST"
         env:
           HOST: ${{ matrix.host }}
+permissions: {}

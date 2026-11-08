@@ -3,66 +3,61 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+
+	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 )
 
-func removeField(node *yaml.Node, name string) {
-	for i := 0; node != nil && i+1 < len(node.Content); i += 2 {
-		if node.Content[i].Value == name {
-			node.Content = append(node.Content[:i], node.Content[i+2:]...)
-			return
-		}
-	}
-}
-
-func migrateVariableNames(node *yaml.Node) (*yaml.Node, error) {
-	if node.ShortTag() == "!!null" {
+func migrateVariableNames(node any) (any, error) {
+	if isNull(node) {
 		return node, nil
 	}
-	if _, err := repositoryNames(node); err != nil {
-		return nil, err
+	entries, ok := node.([]any)
+	if !ok {
+		return nil, errors.New("repository names must be a sequence")
 	}
+	names := make([]string, len(entries))
 	variables := mapping()
-	variables.Line, variables.Column = node.Line, node.Column
-	for _, name := range node.Content {
-		variables.Content = append(variables.Content, name, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
+	for i, item := range entries {
+		name, ok := item.(string)
+		if !ok {
+			return nil, binding.At(strconv.Itoa(i), errors.New("repository names must be strings"))
+		}
+		names[i] = name
+		variables[name] = nil
+	}
+	if _, err := repository.NewNames(names...); err != nil {
+		return nil, err
 	}
 	return variables, nil
 }
 
-func migratePermissions(node *yaml.Node, key string) (*yaml.Node, error) {
-	if node.ShortTag() == "!!null" {
+func migratePermissions(node any, key string) (any, error) {
+	if isNull(node) {
 		return node, nil
 	}
-	invalid := func() (*yaml.Node, error) {
-		return nil, fmt.Errorf("yaml: %q must be %q or %q but got %q at line:%d,col:%d", key, "restricted", "permissive", node.Value, node.Line, node.Column)
-	}
-	if node.ShortTag() != "!!str" {
-		return invalid()
-	}
-	value := *node
-	switch node.Value {
+	switch text(node) {
 	case "restricted":
-		value.Value = "read"
+		return "read", nil
 	case "permissive":
-		value.Value = "write"
+		return "write", nil
 	default:
-		return invalid()
+		return nil, fmt.Errorf("%q must be %q or %q but got %q", key, "restricted", "permissive", node)
 	}
-	return &value, nil
 }
 
 // migrateRepositoryFacts moves old knowledge settings without changing a rule's level.
-func (ruleSet RuleSet) migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool, error) {
-	if root == nil || root.Kind != yaml.MappingNode {
+func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
+	if !isMapping(root) {
 		return root, false, nil
 	}
 	next := cloneMapping(root)
 	repo := cloneMapping(field(root, "repository"))
 	changed := false
-	install := func(name string, value *yaml.Node, origin string) error {
-		if repo.Kind != yaml.MappingNode {
+	install := func(name string, value any, origin string) error {
+		if !isMapping(repo) {
 			return fmt.Errorf("cannot migrate %s alongside a repository reset", origin)
 		}
 		if previous := field(repo, name); previous != nil {
@@ -89,9 +84,9 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool
 		var err error
 		switch legacy.key {
 		case "self-hosted-runner":
-			if value.ShortTag() != "!!null" {
-				if value.Kind != yaml.MappingNode {
-					return nil, false, errors.New("self-hosted-runner must be a mapping")
+			if !isNull(value) {
+				if !isMapping(value) {
+					return nil, false, binding.At(legacy.key, errors.New("self-hosted-runner must be a mapping"))
 				}
 				value = field(value, "labels")
 			}
@@ -101,17 +96,17 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool
 			value, err = migratePermissions(value, legacy.key)
 		}
 		if err != nil {
-			return nil, false, err
+			return nil, false, binding.At(legacy.key, err)
 		}
 		if value != nil {
 			if err := install(legacy.name, value, legacy.key); err != nil {
-				return nil, false, err
+				return nil, false, binding.At(legacy.key, err)
 			}
 		}
 		removeField(next, legacy.key)
 		changed = true
 	}
-	if lint := field(root, "lint"); lint != nil && lint.Kind == yaml.MappingNode {
+	if lint := field(root, "lint"); isMapping(lint) {
 		lint = cloneMapping(lint)
 		rules := cloneMapping(field(lint, "rules"))
 		type optionMigration struct{ old, next string }
@@ -127,11 +122,11 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool
 			descriptor, _ := ruleSet.FindRule(name)
 			group := cloneMapping(field(rules, descriptor.Group))
 			setting := field(group, name)
-			if setting == nil || setting.Kind != yaml.MappingNode {
+			if !isMapping(setting) {
 				continue
 			}
 			options := field(setting, "options")
-			if options == nil || options.Kind != yaml.MappingNode {
+			if !isMapping(options) {
 				continue
 			}
 			setting, options = cloneMapping(setting), cloneMapping(options)
@@ -148,14 +143,14 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool
 					value, err = migratePermissions(value, "default-permissions")
 				}
 				if err != nil {
-					return nil, false, err
+					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.old, err))))))
 				}
 				if err := install(option.next, value, "lint.rules."+descriptor.Group+"."+name+".options."+option.old); err != nil {
-					return nil, false, err
+					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.old, err))))))
 				}
 				removeField(options, option.old)
 			}
-			if len(options.Content) == 0 {
+			if len(members(options)) == 0 {
 				removeField(setting, "options")
 			} else {
 				setField(setting, "options", options)
@@ -163,33 +158,33 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool
 			setField(group, name, setting)
 			setField(rules, descriptor.Group, group)
 		}
-		if rules.Kind == yaml.MappingNode && len(rules.Content) != 0 {
+		if isMapping(rules) && len(members(rules)) != 0 {
 			setField(lint, "rules", rules)
 		}
 		setField(next, "lint", lint)
 	}
-	if changed && len(repo.Content) != 0 {
+	if changed && len(members(repo)) != 0 {
 		setField(next, "repository", repo)
 	}
-	if overrides := field(root, "overrides"); overrides != nil && overrides.Kind == yaml.SequenceNode {
-		entries := *overrides
-		entries.Content = append([]*yaml.Node{}, overrides.Content...)
+	if overrides, ok := field(root, "overrides").([]any); ok {
+		entries := append([]any(nil), overrides...)
 		convertedEntries := false
-		for i, entry := range entries.Content {
+		for i, entry := range entries {
 			migrated, converted, err := ruleSet.migrateRepositoryFacts(entry)
 			if err != nil {
 				return nil, false, err
 			}
 			if converted {
-				entries.Content[i] = migrated
+				entries[i] = migrated
 				convertedEntries = true
 			}
 		}
 		if convertedEntries {
-			setField(next, "overrides", &entries)
+			setField(next, "overrides", entries)
 			changed = true
 		}
 	}
+
 	if !changed {
 		return root, false, nil
 	}

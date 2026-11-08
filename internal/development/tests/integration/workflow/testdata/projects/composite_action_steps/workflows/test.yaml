@@ -6,3 +6,4 @@ jobs:
     steps:
       - uses: ./ok
       - uses: ./invalid_steps
+permissions: {}

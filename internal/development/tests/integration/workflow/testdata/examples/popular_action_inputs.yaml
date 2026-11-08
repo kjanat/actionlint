@@ -11,3 +11,4 @@ jobs:
             ${{ hashFiles('**/*.cache') }}
           path: ./packages
       - run: make
+permissions: {}

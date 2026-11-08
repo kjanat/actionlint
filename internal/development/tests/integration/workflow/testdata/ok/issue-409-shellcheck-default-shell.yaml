@@ -10,3 +10,4 @@ jobs:
     steps:
       # This script should not be checked by shellcheck
       - run: $Env:FOO = "FOO"
+permissions: {}

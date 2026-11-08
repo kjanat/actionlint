@@ -41,6 +41,7 @@ cache-mode: read
 jobs:
   call:
     uses: $/callee.yaml
+permissions: {}
 `)
 			callee := fmt.Appendf(nil, `on: workflow_call
 %s: %s
@@ -48,6 +49,7 @@ cache-mode: %s
 jobs:
   nested:
     uses: $/leaf.yaml
+permissions: {}
 `, tc.key, tc.first, tc.second)
 			leaf := fmt.Appendf(nil, `on: workflow_call
 cache-mode: %s
@@ -55,6 +57,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `, tc.leaf)
 			for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee, "leaf.yaml": leaf} {
 				if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {
@@ -159,6 +162,7 @@ cache-mode: read
 jobs:
   call:
     uses: $/callee.yaml
+permissions: {}
 `)
 				callee := fmt.Appendf(nil, `on: workflow_call
 %s: %s
@@ -166,6 +170,7 @@ cache-mode: %s
 jobs:
   nested:
     uses: $/leaf.yaml
+permissions: {}
 `, entry.key, tc.invalid, tc.valid)
 				leaf := fmt.Appendf(nil, `on: workflow_call
 cache-mode: %s
@@ -173,6 +178,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `, tc.leaf)
 				for name, source := range map[string][]byte{"caller.yaml": caller, "callee.yaml": callee, "leaf.yaml": leaf} {
 					if err := os.WriteFile(filepath.Join(root, name), source, 0o600); err != nil {

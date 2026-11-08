@@ -2,8 +2,6 @@ package rules
 
 import (
 	"testing"
-
-	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestCommitHashExclusions(t *testing.T) {
@@ -39,7 +37,7 @@ func TestCommitHashExclusions(t *testing.T) {
 	}
 	for _, input := range []string{"exclude: ['[']", "exclude: ['']", "excluded: [org/*]"} {
 		var options CommitHashOptions
-		if err := yaml.Unmarshal([]byte(input), &options); err == nil {
+		if err := decodeTestConfig([]byte(input), &options); err == nil {
 			t.Fatalf("accepted %s", input)
 		}
 	}

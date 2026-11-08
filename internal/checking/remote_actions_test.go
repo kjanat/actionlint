@@ -56,6 +56,7 @@ jobs:
         with: {unlisted-input: true}
       - run: echo "$RESULT"
         env: {RESULT: '${{ steps.action.outputs.unlisted }}'}
+permissions: {}
 `)}})
 	if err != nil {
 		t.Fatal(err)
@@ -87,6 +88,7 @@ jobs:
         with: {unlisted-input: true}
       - run: echo "$RESULT"
         env: {RESULT: '${{ steps.checkout.outputs.unlisted }}'}
+permissions: {}
 `)}})
 	if err != nil {
 		t.Fatal(err)

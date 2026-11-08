@@ -7,7 +7,6 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // ErrRuleMetadataRequired means a category migration needs plugin descriptors.
@@ -16,31 +15,35 @@ var ErrRuleMetadataRequired = errors.New("registered rule metadata required")
 
 // migrateRuleAliases changes identifiers before inheritance, without flattening
 // group defaults. The latter must be merged before their effect can be resolved.
-func (ruleSet RuleSet) migrateRuleAliases(root *yaml.Node) (*yaml.Node, bool, error) {
-	if root == nil || root.Kind != yaml.MappingNode {
+func (ruleSet RuleSet) migrateRuleAliases(root any) (any, bool, error) {
+	if !isMapping(root) {
 		return root, false, nil
 	}
 	next := cloneMapping(root)
 	changed := false
 	lint := cloneMapping(field(root, "lint"))
 	rules := cloneMapping(field(lint, "rules"))
-	for i := 0; rules.Kind == yaml.MappingNode && i+1 < len(rules.Content); i += 2 {
-		category, original := rules.Content[i].Value, rules.Content[i+1]
+	for category, original := range members(rules) {
+		if original == nil {
+			original = explicitNull{}
+		}
 		if category == "disable" {
 			updated, renamed := ruleSet.renameSelectorList(original)
-			rules.Content[i+1] = updated
+			setField(rules, category, updated)
 			changed = changed || renamed
 			continue
 		}
-		if !rule.ValidCategory(category) && !slices.Contains([]string{"style", "policy", "external", "plugins", "nursery"}, category) || original.Kind != yaml.MappingNode {
+		if !rule.ValidCategory(category) && !slices.Contains([]string{"style", "policy", "external", "plugins", "nursery"}, category) || !isMapping(original) {
 			continue
 		}
 		group := cloneMapping(original)
-		for j := 0; j+1 < len(original.Content); j += 2 {
-			name, setting := original.Content[j].Value, original.Content[j+1]
-			canonical := ruleSet.ResolveAlias(name)
+		for name, setting := range members(original) {
+			if setting == nil {
+				setting = explicitNull{}
+			}
+			canonical := ruleSet.ResolveAlias(migratedPermissionsName(name))
 			if canonical == "forbidden-suppression" {
-				if options := field(setting, "options"); options != nil && options.Kind == yaml.MappingNode {
+				if options := field(setting, "options"); isMapping(options) {
 					if list := field(options, "rules"); list != nil {
 						updated, renamed := ruleSet.renameSelectorList(list)
 						if renamed {
@@ -68,40 +71,41 @@ func (ruleSet RuleSet) migrateRuleAliases(root *yaml.Node) (*yaml.Node, bool, er
 			setField(group, canonical, setting)
 			changed = true
 		}
-		rules.Content[i+1] = group
+		setField(rules, category, group)
 	}
 	if changed {
 		setField(lint, "rules", rules)
 		setField(next, "lint", lint)
 	}
-	if ignores := field(root, "ignores"); ignores != nil && ignores.Kind == yaml.SequenceNode {
-		entries := *ignores
-		entries.Content = slices.Clone(ignores.Content)
-		for i, entry := range entries.Content {
-			if name := field(entry, "rule"); name != nil && name.Tag == "!!str" && ruleSet.ResolveAlias(name.Value) != name.Value {
-				updated := *name
-				updated.Value = ruleSet.ResolveAlias(name.Value)
-				entry = cloneMapping(entry)
-				setField(entry, "rule", &updated)
-				entries.Content[i] = entry
-				changed = true
+	if ignores, ok := field(root, "ignores").([]any); ok {
+		entries := slices.Clone(ignores)
+		for i, entry := range entries {
+			name, ok := field(entry, "rule").(string)
+			if ok {
+				updated := ruleSet.ResolveAlias(migratedPermissionsName(name))
+				if updated != name {
+					entry = cloneMapping(entry)
+					setField(entry, "rule", updated)
+					entries[i] = entry
+					changed = true
+				}
 			}
 		}
-		setField(next, "ignores", &entries)
+		setField(next, "ignores", entries)
 	}
-	if overrides := field(root, "overrides"); overrides != nil && overrides.Kind == yaml.SequenceNode {
-		entries := *overrides
-		entries.Content = slices.Clone(overrides.Content)
-		for i, entry := range entries.Content {
+	if overrides, ok := field(root, "overrides").([]any); ok {
+		entries := slices.Clone(overrides)
+		for i, entry := range entries {
 			updated, renamed, err := ruleSet.migrateRuleAliases(entry)
 			if err != nil {
 				return nil, false, err
 			}
-			entries.Content[i] = updated
+			entries[i] = updated
 			changed = changed || renamed
 		}
-		setField(next, "overrides", &entries)
+		setField(next, "overrides", entries)
 	}
+
 	if !changed {
 		// Origins are keyed by node identity. A no-op migration must not
 		// replace nodes carrying overlay or reset origins.
@@ -110,28 +114,30 @@ func (ruleSet RuleSet) migrateRuleAliases(root *yaml.Node) (*yaml.Node, bool, er
 	return next, changed, nil
 }
 
-func (ruleSet RuleSet) renameSelectorList(node *yaml.Node) (*yaml.Node, bool) {
-	if node == nil || node.Kind != yaml.SequenceNode {
+func (ruleSet RuleSet) renameSelectorList(node any) (any, bool) {
+	entries, ok := node.([]any)
+	if !ok {
 		return node, false
 	}
-	next := *node
-	next.Content = slices.Clone(node.Content)
+	next := slices.Clone(entries)
 	changed := false
-	for i, name := range node.Content {
-		if name.Tag == "!!str" && ruleSet.ResolveAlias(name.Value) != name.Value {
-			updated := *name
-			updated.Value = ruleSet.ResolveAlias(name.Value)
-			next.Content[i] = &updated
-			changed = true
+	for i, item := range entries {
+		name, ok := item.(string)
+		if ok {
+			updated := ruleSet.ResolveAlias(migratedPermissionsName(name))
+			if updated != name {
+				next[i] = updated
+				changed = true
+			}
 		}
 	}
-	return &next, changed
+	return next, changed
 }
 
 // migrateRuleCategories rewrites an explicit migration candidate. Runtime
 // normalization keeps legacy controls until the complete registration is known.
-func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []rule.Descriptor) (*yaml.Node, bool, error) {
-	if root == nil || root.Kind != yaml.MappingNode {
+func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Descriptor) (any, bool, error) {
+	if !isMapping(root) {
 		return root, false, nil
 	}
 	// Binding validates duplicate IDs, category contracts and replacement rules.
@@ -162,7 +168,7 @@ func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []ru
 	changed := false
 	originalRules := cloneMapping(rules)
 	explicitSelections := map[string]bool{}
-	install := func(category, name string, setting *yaml.Node, origin string) error {
+	install := func(category, name string, setting any, origin string) error {
 		group, err := migrationGroup(field(rules, category))
 		if err != nil {
 			return err
@@ -183,15 +189,15 @@ func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []ru
 			continue
 		}
 		var group Group
-		if err := node.Decode(&group); err != nil {
+		if err := decodeValue(node, &group); err != nil {
 			return nil, false, err
 		}
 		legacy := !rule.ValidCategory(category)
 		if (category == "plugins" || category == "nursery") && len(registrations) == 0 && (group.Level() != "" || group.Preset() != "") {
 			return nil, false, fmt.Errorf("cannot migrate lint.rules.%s: %w", category, ErrRuleMetadataRequired)
 		}
-		selections := map[string]*yaml.Node{}
-		if legacy && (group.Level() != "" || group.Preset() != "" || node.ShortTag() == "!!null") {
+		selections := map[string]any{}
+		if legacy && (group.Level() != "" || group.Preset() != "" || isNull(node)) {
 			for _, descriptor := range descriptors {
 				member := ruleSet.LegacyGroup(descriptor.Name) == category
 				switch category {
@@ -210,16 +216,18 @@ func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []ru
 				if group.Level() != "" && group.Level() != "default" {
 					level = group.Level()
 				}
-				if node.ShortTag() == "!!null" {
+				if isNull(node) {
 					selections[descriptor.Name] = node
 				} else {
-					selections[descriptor.Name] = textNode(string(level))
+					selections[descriptor.Name] = string(level)
 				}
 			}
 		}
-		if node.Kind == yaml.MappingNode {
-			for i := 0; i+1 < len(node.Content); i += 2 {
-				name, setting := node.Content[i].Value, node.Content[i+1]
+		if isMapping(node) {
+			for name, setting := range members(node) {
+				if setting == nil {
+					setting = explicitNull{}
+				}
 				if name == "level" || name == "preset" {
 					continue
 				}
@@ -239,7 +247,7 @@ func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []ru
 				if baseline := selections[name]; baseline != nil {
 					explicit, _ := group.Rule(name)
 					if explicit.Level() == "" || explicit.Level() == "default" {
-						if setting.Kind == yaml.MappingNode {
+						if isMapping(setting) {
 							setting = cloneMapping(setting)
 							setField(setting, "level", baseline)
 						} else {
@@ -263,7 +271,7 @@ func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []ru
 				}
 				var target Group
 				if destination := field(originalRules, descriptor.Category); destination != nil {
-					if err := destination.Decode(&target); err != nil {
+					if err := decodeValue(destination, &target); err != nil {
 						return nil, false, err
 					}
 				}
@@ -289,23 +297,23 @@ func (ruleSet RuleSet) migrateRuleCategories(root *yaml.Node, registrations []ru
 		setField(lint, "rules", rules)
 		setField(next, "lint", lint)
 	}
-	if overrides := field(root, "overrides"); overrides != nil && overrides.Kind == yaml.SequenceNode {
-		entries := *overrides
-		entries.Content = slices.Clone(overrides.Content)
-		for i, entry := range entries.Content {
+	if overrides, ok := field(root, "overrides").([]any); ok {
+		entries := slices.Clone(overrides)
+		for i, entry := range entries {
 			updated, migrated, err := ruleSet.migrateRuleCategories(entry, registrations)
 			if err != nil {
 				return nil, false, err
 			}
-			entries.Content[i] = updated
+			entries[i] = updated
 			changed = changed || migrated
 		}
-		setField(next, "overrides", &entries)
+		setField(next, "overrides", entries)
 	}
+
 	return next, changed, nil
 }
 
-func sortedSelectionNames(selections map[string]*yaml.Node) []string {
+func sortedSelectionNames(selections map[string]any) []string {
 	names := make([]string, 0, len(selections))
 	for name := range selections {
 		names = append(names, name)
@@ -314,20 +322,20 @@ func sortedSelectionNames(selections map[string]*yaml.Node) []string {
 	return names
 }
 
-func migrationGroup(node *yaml.Node) (*yaml.Node, error) {
-	if node == nil || node.Kind == yaml.MappingNode {
+func migrationGroup(node any) (any, error) {
+	if node == nil || isMapping(node) {
 		return cloneMapping(node), nil
 	}
 	var group Group
-	if err := node.Decode(&group); err != nil {
+	if err := decodeValue(node, &group); err != nil {
 		return nil, err
 	}
 	next := mapping()
 	if group.Level() != "" {
-		setField(next, "level", textNode(string(group.Level())))
+		setField(next, "level", string(group.Level()))
 	}
 	if group.Preset() != "" {
-		setField(next, "preset", textNode(string(group.Preset())))
+		setField(next, "preset", string(group.Preset()))
 	}
 	return next, nil
 }

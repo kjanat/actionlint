@@ -5,3 +5,4 @@ jobs:
     services: ${{ fromJSON('{}') }}
     steps:
       - run: echo
+permissions: {}

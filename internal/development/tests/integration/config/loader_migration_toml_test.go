@@ -8,6 +8,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -71,7 +72,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before)
+	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before.Value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,10 +81,10 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 		t.Fatal(err)
 	}
 	var expected, actual map[string]any
-	if err := canonical.Decode(&expected); err != nil {
+	if err := binding.Decode(canonical, &expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := after.Decode(&actual); err != nil {
+	if err := binding.Decode(after.Value, &actual); err != nil {
 		t.Fatal(err)
 	}
 	encodedExpected, err := toml.Marshal(expected)
@@ -134,7 +135,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(root, nil)
+			resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(root.Value, nil)
 			if err != nil {
 				t.Fatalf("%v\n%s", err, migration.Content)
 			}
@@ -220,7 +221,7 @@ value = "kept"
 	if err != nil {
 		t.Fatal(err)
 	}
-	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before)
+	canonical, err := checking.ConfigurationRules().NormalizeForMerge(before.Value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,10 +230,10 @@ value = "kept"
 		t.Fatal(err)
 	}
 	var expected, actual map[string]any
-	if err := canonical.Decode(&expected); err != nil {
+	if err := binding.Decode(canonical, &expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := after.Decode(&actual); err != nil {
+	if err := binding.Decode(after.Value, &actual); err != nil {
 		t.Fatal(err)
 	}
 	encodedExpected, err := toml.Marshal(expected)
@@ -250,7 +251,7 @@ value = "kept"
 	if !bytes.Equal(encodedExpected, encodedActual) {
 		t.Fatalf("migration changed decoded legacy settings:\nexpected: %#v\nactual: %#v", tomlExpected, actual)
 	}
-	resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(after, nil)
+	resolved, err := checking.ConfigurationRules().ResolveBeforePlugins(after.Value, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

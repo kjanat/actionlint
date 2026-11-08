@@ -12,11 +12,11 @@ import (
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // ReadMode selects which configuration fields are normalized during plugin discovery.
@@ -41,7 +41,7 @@ type File struct {
 	Exists     bool
 	original   []byte
 	snapshots  map[string][]byte
-	node       *yaml.Node
+	node       any
 	readSource func(context.Context, string) ([]byte, error)
 }
 
@@ -92,24 +92,27 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 			manifest.snapshots[name] = bytes.Clone(content)
 		}
 		return content, err
-	}, func(origin string, node *yaml.Node) (*yaml.Node, error) {
-		if err := ValidateRoot(node); err != nil {
-			return nil, err
+	}, func(origin string, doc document.Document) (document.Document, error) {
+		if err := ValidateRoot(doc.Value); err != nil {
+			return doc, err
 		}
-		if err := config.ValidateSourcePaths(origin, node); err != nil {
-			return nil, err
+		if err := config.ValidateSourcePaths(origin, doc.Value); err != nil {
+			return doc, err
 		}
+		var err error
 		if mode == PluginDeclarationsOnly {
-			return pluginDependencyNode(node)
+			doc.Value, err = pluginDependencyNode(doc.Value)
+		} else {
+			doc.Value, err = rules.NormalizeForMerge(doc.Value)
 		}
-		return rules.NormalizeForMerge(node)
+		return doc, err
 	}, config.MergeDocuments)
 	if err != nil {
 		return nil, err
 	}
 	manifest.original = manifest.snapshots[absolute]
-	manifest.node = loaded.Node
-	manifest.References, manifest.Declared, err = References(loaded.Node)
+	manifest.node = loaded.Value
+	manifest.References, manifest.Declared, err = References(loaded.Value)
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
@@ -119,19 +122,17 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 // The tree loader expands aliases before this projection, so plugin references
 // may still use anchors declared under unrelated fields. Validate every source
 // declaration before merging: a leaf reset cannot hide a malformed base.
-func pluginDependencyNode(node *yaml.Node) (*yaml.Node, error) {
-	if _, _, err := References(node); err != nil {
+func pluginDependencyNode(value any) (any, error) {
+	if _, _, err := References(value); err != nil {
 		return nil, err
 	}
-	projected := *node
-	projected.Content = nil
-	for i := 0; i < len(node.Content); i += 2 {
-		key := node.Content[i]
-		if key.Value == "plugins" || key.Value == "extends" {
-			projected.Content = append(projected.Content, key, node.Content[i+1])
+	projected := map[string]any{}
+	for _, key := range []string{"plugins", "extends"} {
+		if v, ok := value.(map[string]any)[key]; ok {
+			projected[key] = v
 		}
 	}
-	return &projected, nil
+	return projected, nil
 }
 
 // Like an explicitly selected lock, an explicit manifest trusts its containing
@@ -323,7 +324,7 @@ func (m *File) Save(ctx context.Context, refs []pluginref.Reference) (err error)
 }
 
 // MergedDocument returns the loaded configuration after inheritance has been merged.
-func (m *File) MergedDocument() *yaml.Node { return m.node }
+func (m *File) MergedDocument() any { return m.node }
 
 // SourceContents returns copies of the source bytes used to build the merged document.
 func (m *File) SourceContents() map[string][]byte {

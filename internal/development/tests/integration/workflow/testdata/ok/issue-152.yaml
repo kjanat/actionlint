@@ -15,3 +15,4 @@ jobs:
       - run: echo "$VALUE"
         env:
           VALUE: ${{ inputs.my_input }}
+permissions: {}

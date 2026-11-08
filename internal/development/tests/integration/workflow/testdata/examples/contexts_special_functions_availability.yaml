@@ -24,3 +24,4 @@ jobs:
         run: echo 'Success? ${{ success() }}'
         # OK: 'success()' function is available here
         if: success()
+permissions: {}

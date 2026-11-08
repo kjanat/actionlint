@@ -18,6 +18,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `
 }
 

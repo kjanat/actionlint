@@ -204,7 +204,7 @@ Every catalog rule accepts `off`, `on` (use its native severity), `info`, `warn`
 or `error`. Use `default` to reset a rule or group override to the applicable
 preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule's options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
 the rule supports them. Unknown groups, rules, levels and option keys are rejected.
-For example, `explicit-permissions` accepts `{scope: job}`; `job-timeout`
+For example, `missing-permissions` accepts `{require-at: every-job}`; `job-timeout`
 accepts timeout bounds. The generated schema describes each rule's own options.
 `actionlint rules --json` exposes each rule's concern, recommended status and
 maturity (`stable` or `nursery`) from the same catalog.
@@ -772,7 +772,7 @@ least one rule; an empty list does not ignore everything. Selectors accept
 any diagnostic rule ID listed by `actionlint rules`, including `expression`,
 `syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
 The previous IDs `require-commit-hash`, `require-job-timeout`,
-`require-permissions`, `require-action-metadata` and `disallow-suppressions`
+`require-action-metadata` and `disallow-suppressions`
 are accepted as aliases in configured and inline suppressions. Findings use
 the current IDs shown by `actionlint rules`.
 Exceptions apply to the reported physical line. A directive on a YAML block scalar
@@ -852,13 +852,22 @@ lint:
 Either bound may be omitted; both must be finite and positive, with minimum no
 greater than maximum. Omitted options require the key only. Expression values are not compared.
 
-### explicit-permissions
+### missing-permissions
 
-`lint.rules.security.explicit-permissions: on` requires workflow-level `permissions`.
-Use `{level: on, options: {scope: job}}` to require it on every job,
-including reusable calls. Empty mappings, named scopes, `read-all` and `write-all`
-all satisfy the check. This policy only requires a declaration; it does not assess
-least privilege.
+The recommended `security.missing-permissions` rule reports missing token permission declarations as errors. By default, a workflow-level `permissions` declaration or a declaration on every job satisfies the rule. The default skips workflows triggered only by `workflow_call`.
+
+Set `options.require-at` to `workflow` to require a workflow-level declaration, or to `every-job` to require a declaration on each job, including reusable workflow calls. Either option also applies to workflows triggered only by `workflow_call`. A nonempty array containing both values restores the default behavior. An empty array is invalid. Set the rule to `off` to disable it.
+
+```yaml
+lint:
+  rules:
+    security:
+      missing-permissions:
+        level: error
+        options: { require-at: every-job }
+```
+
+Empty mappings, named scopes, `read-all`, and `write-all` satisfy the rule. The rule requires a declaration; it does not determine which permissions a job needs.
 
 ## Generate the initial configuration
 

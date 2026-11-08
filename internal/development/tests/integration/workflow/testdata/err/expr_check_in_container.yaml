@@ -10,3 +10,4 @@ jobs:
         - ${{ 'data' == }}
     steps:
       - run: echo
+permissions: {}

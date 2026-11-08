@@ -62,3 +62,4 @@ jobs:
       - run: echo "${{ matrix.os.container[matrix.off_word.version] }}"
       - run: echo "${{ matrix.os.container[matrix.label.version] }}"
       - run: echo "${{ matrix.os.container[matrix.date.version] }}"
+permissions: {}

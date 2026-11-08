@@ -11,3 +11,4 @@ jobs:
       # This output is missing in action.yml of actions/download-artifact@v3-node20 (#442).
       # Omitted output declarations leave names unknown; script interpolation checks still apply.
       - run: echo ${{ steps.dl.outputs.download-path }}
+permissions: {}

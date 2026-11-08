@@ -15,3 +15,4 @@ jobs:
       - run: echo "$PROPERTY_NAME"
         env:
           PROPERTY_NAME: ${{ inputs.property_name }}
+permissions: {}

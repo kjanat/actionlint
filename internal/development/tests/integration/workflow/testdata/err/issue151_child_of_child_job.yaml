@@ -31,3 +31,4 @@ jobs:
     steps:
       - run: echo '${{ toJSON(needs.second.outputs) }}'
       - run: echo '${{ toJSON(needs.first.outputs) }}'
+permissions: {}

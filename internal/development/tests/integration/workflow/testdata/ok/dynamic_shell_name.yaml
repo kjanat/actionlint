@@ -13,3 +13,4 @@ jobs:
     steps:
       - run: echo hi
         shell: ${{ 'sh {0}' }}
+permissions: {}

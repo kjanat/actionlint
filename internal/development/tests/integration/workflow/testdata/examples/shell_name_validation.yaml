@@ -28,3 +28,4 @@ jobs:
       - run: echo 'hello'
         # OK: 'powershell' is only available on Windows
         shell: powershell
+permissions: {}

@@ -7,3 +7,4 @@ jobs:
       FOO BAR: foo
     steps:
       - run: echo 'hello'
+permissions: {}

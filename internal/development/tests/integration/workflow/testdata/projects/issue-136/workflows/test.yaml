@@ -6,3 +6,4 @@ jobs:
       group: some-group
       cancel-in-progress: true
     uses: ./workflows/reusable.yaml
+permissions: {}

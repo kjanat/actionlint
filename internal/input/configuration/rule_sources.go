@@ -5,33 +5,28 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
-	"github.com/kjanat/go-yaml/v4"
 )
 
-// ruleSources stores captured documents before rule groups are resolved.
-// Registration can change provider membership, so that resolution must use
-// the original layers rather than the result of an earlier normalization.
 type ruleSources struct {
 	root      string
-	documents map[string]*yaml.Node
-	base      *yaml.Node
-	overlays  []*yaml.Node
+	documents map[string]any
+	base      any
+	overlays  []any
 }
 
-func (s *ruleSources) withOverlay(node *yaml.Node) *ruleSources {
+func (s *ruleSources) withOverlay(value any) *ruleSources {
 	next := *s
-	next.overlays = append(slices.Clone(s.overlays), node)
+	next.overlays = append(slices.Clone(s.overlays), value)
 	return &next
 }
 
-func (ruleSet RuleSet) normalizeRuleDocument(node *yaml.Node) (*yaml.Node, error) {
-	if node == nil || node.Kind != yaml.MappingNode {
-		return node, nil
+func (ruleSet RuleSet) normalizeRuleDocument(value any) (any, error) {
+	if !isMapping(value) {
+		return value, nil
 	}
-	next := cloneMapping(node)
+	next := cloneMapping(value)
 	removeField(next, "extends")
-	if lint := field(node, "lint"); lint != nil {
+	if lint := field(value, "lint"); lint != nil {
 		lint, err := ruleSet.normalizeRuleLocations(lint)
 		if err != nil {
 			return nil, err
@@ -47,23 +42,23 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 	}
 	sources := config.Lint.Rules.sources
 	merged := sources.base
-	cache := map[string]*yaml.Node{}
-	var load func(string) (*yaml.Node, error)
-	load = func(path string) (*yaml.Node, error) {
-		if node, found := cache[path]; found {
-			return node, nil
+	cache := map[string]any{}
+	var load func(string) (any, error)
+	load = func(path string) (any, error) {
+		if value, found := cache[path]; found {
+			return value, nil
 		}
-		node, found := sources.documents[path]
+		value, found := sources.documents[path]
 		if !found {
 			return nil, fmt.Errorf("captured configuration source %q is missing", path)
 		}
 		var parents []string
-		if extends := field(node, "extends"); extends != nil {
-			if err := extends.Decode(&parents); err != nil {
+		if extends := field(value, "extends"); extends != nil {
+			if err := decodeValue(extends, &parents); err != nil {
 				return nil, err
 			}
 		}
-		var base *yaml.Node
+		var base any
 		for _, parent := range parents {
 			path, err := address.Resolve(path, parent)
 			if err != nil {
@@ -73,13 +68,13 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			base = MergeDocuments(base, inherited, map[*yaml.Node]Input{})
+			base = MergeDocuments(base, inherited)
 		}
-		normalized, err := ruleSet.normalizeRuleDocument(node)
+		normalized, err := ruleSet.normalizeRuleDocument(value)
 		if err != nil {
 			return nil, err
 		}
-		result := MergeDocuments(base, normalized, map[*yaml.Node]Input{})
+		result := MergeDocuments(base, normalized)
 		cache[path] = result
 		return result, nil
 	}
@@ -101,32 +96,30 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		merged = MergeDocuments(merged, normalized, map[*yaml.Node]Input{})
+		merged = MergeDocuments(merged, normalized)
 	}
 	if merged == nil {
 		return config, nil
 	}
 	var decoded Config
-	if err := ruleSet.DecodeNode(merged, &decoded); err != nil {
+	if err := ruleSet.DecodeValue(merged, &decoded); err != nil {
 		return nil, err
 	}
 	next := *config
 	next.Lint = decoded.Lint
 	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
-	// Overrides own their original lint nodes. ForFile applies the selected
-	// overrides; reconstructing that list here would undo planning projections.
 	return &next, nil
 }
 
-func captureRuleDocument(node *yaml.Node) (*yaml.Node, error) {
-	if node == nil {
-		return nil, nil
+func captureRuleDocument(value any) any {
+	if value == nil {
+		return nil
 	}
 	captured := mapping()
 	for _, name := range []string{"extends", "lint"} {
-		if value := field(node, name); value != nil {
-			setField(captured, name, value)
+		if child := field(value, name); child != nil {
+			setField(captured, name, cloneValue(child))
 		}
 	}
-	return configtree.Expand(captured, map[*yaml.Node]bool{})
+	return captured
 }

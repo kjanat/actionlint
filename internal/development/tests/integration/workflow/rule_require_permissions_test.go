@@ -20,7 +20,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 		name, policy, workflowPermissions, job string
 		wantLine                               int
 	}{
-		{"unset", "null", "", steps, 0},
+		{"default", "null", "", steps, 3},
 		{"disabled", "false", "", steps, 0},
 		{"workflow missing", "true", "", steps, 1},
 		{"workflow empty", "true", "permissions: {}\n", steps, 0},
@@ -61,7 +61,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 					}
 					return
 				}
-				if len(errs) != 1 || errs[0].Rule != "explicit-permissions" || errs[0].Start.Line != tc.wantLine || !strings.Contains(errs[0].Message, "permissions: {}") {
+				if len(errs) != 1 || errs[0].Rule != "missing-permissions" || errs[0].Start.Line != tc.wantLine || !strings.Contains(errs[0].Message, "permissions: {}") {
 					t.Fatalf("expected one permissions error at line %d, got %v", tc.wantLine, errs)
 				}
 			})
@@ -73,9 +73,9 @@ func TestWorkflowPermissionsSuppressionLocation(t *testing.T) {
 	for _, prefix := range []string{"# license\n", "\n\n", "# license\n\n---\n"} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			for _, declaration := range []string{
-				"on: push # actionlint:ignore require-permissions -- reviewed",
-				"# actionlint:ignore-next-line require-permissions -- reviewed\non: push",
-				`name: # actionlint:ignore require-permissions -- reviewed
+				"on: push # actionlint:ignore missing-permissions -- reviewed",
+				"# actionlint:ignore-next-line missing-permissions -- reviewed\non: push",
+				`name: # actionlint:ignore missing-permissions -- reviewed
   !!str
   |
     CI
@@ -97,10 +97,10 @@ func TestWorkflowPermissionsSuppressionBoundaries(t *testing.T) {
 		header, declaration, policy string
 		want                        []string
 	}{
-		{"# actionlint:ignore require-permissions -- detached\n# license\n", "on: push", "require-permissions: true", []string{"explicit-permissions"}},
-		{"# license\n", "on: push # actionlint:ignore require-permissions", "require-permissions: true", nil},
-		{"# license\n", "on: push # actionlint:ignore require-permissions -- reviewed", "require-permissions: true, disallow-suppressions: true", []string{"explicit-permissions", "forbidden-suppression"}},
-		{"# license\n", "on: push # actionlint:ignore require-permissions -- workflow only", "require-permissions: {scope: job}", []string{"unused-suppression", "explicit-permissions"}},
+		{"# actionlint:ignore missing-permissions -- detached\n# license\n", "on: push", "require-permissions: true", []string{"missing-permissions"}},
+		{"# license\n", "on: push # actionlint:ignore missing-permissions", "require-permissions: true", nil},
+		{"# license\n", "on: push # actionlint:ignore missing-permissions -- reviewed", "require-permissions: true, disallow-suppressions: true", []string{"missing-permissions", "forbidden-suppression"}},
+		{"# license\n", "on: push # actionlint:ignore missing-permissions -- workflow only", "require-permissions: {scope: job}", []string{"unused-suppression", "missing-permissions"}},
 	} {
 		source := tc.header + tc.declaration + `
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}

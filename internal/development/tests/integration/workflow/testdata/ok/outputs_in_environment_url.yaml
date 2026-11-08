@@ -9,3 +9,4 @@ jobs:
     steps:
       - run: echo "test=hello" >> "$GITHUB_OUTPUT"
         id: test
+permissions: {}

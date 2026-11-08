@@ -57,7 +57,6 @@ func NewRuleSet(declarations []rulemeta.Declaration) (RuleSet, error) {
 		"unpinned-reference":      boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash }),
 		"missing-action-metadata": boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata }),
 		"job-timeout":             configureJobTimeout,
-		"explicit-permissions":    configurePermissions,
 		"cache-write-untrusted":   boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted }),
 		"cache-call-unrestricted": boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted }),
 		"cache-operation":         boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation }),

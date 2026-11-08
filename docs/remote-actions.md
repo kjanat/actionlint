@@ -84,6 +84,10 @@ workflows. actionlint reads the referenced workflow file at its resolved commit.
 The `workflow-call` rule checks required and unknown inputs and secrets, then
 compares the caller's known token permissions with the callee's declared job
 permissions. Expression checks use the declared workflow outputs.
+The recommended `missing-permissions` rule checks whether the caller declares token
+permissions. By default, it also checks independently triggered workflows, but skips
+workflows triggered only by `workflow_call`. Its `require-at` option can instead
+require declarations at the workflow level or on every job, including reusable calls.
 
 Full SHA-1 references work without a resolver. Named references require
 `--resolve-with` and use the resolver's workflow selection, separately from

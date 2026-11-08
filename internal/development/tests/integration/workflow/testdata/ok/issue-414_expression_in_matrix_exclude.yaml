@@ -10,3 +10,4 @@ jobs:
           - foo: ${{ github.event_name }}
     steps:
       - run: echo ${{ matrix.foo }}
+permissions: {}

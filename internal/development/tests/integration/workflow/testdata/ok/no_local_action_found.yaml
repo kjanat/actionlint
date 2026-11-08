@@ -7,3 +7,4 @@ jobs:
         with:
           foo: aaa
           bar: bbb
+permissions: {}

@@ -8,3 +8,4 @@ jobs:
         b: [[true]]
     steps:
       - run: echo '${{ matrix.a == matrix.b }}'
+permissions: {}

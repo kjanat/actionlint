@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./local
+permissions: {}
 `
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)
 	second := writeFixture(t, root, ".github/workflows/b.yml", workflow)
@@ -107,7 +108,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      `+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\n")
+      `+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\npermissions: {}\n")
 			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 

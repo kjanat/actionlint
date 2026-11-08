@@ -35,6 +35,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: echo ok
+permissions: {}
 `
 			errs := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 			if len(errs) != 1 || errs[0].Rule != "runner-label" || !strings.Contains(errs[0].Message, fmt.Sprintf("label %q is unknown", tc.label)) {
@@ -71,6 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: echo ok
+permissions: {}
 `
 			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
@@ -130,6 +132,7 @@ jobs:
     ` + strategy + "\n    runs-on: " + runsOn + `
     steps:
       - run: echo ok
+permissions: {}
 `
 					errors := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 					if len(errors) != len(tc.want) {
@@ -182,6 +185,7 @@ jobs:
       matrix: ` + tc.matrix + "\n    runs-on: " + runsOn + `
     steps:
       - run: echo ok
+permissions: {}
 `
 			errors := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 			if tc.want == "" {
@@ -203,6 +207,7 @@ jobs:
     runs-on: ["${{ matrix.os }}", "${{ matrix.image }}"]
     steps:
       - run: echo ok
+permissions: {}
 `
 	errors := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 	if len(errors) != 1 || errors[0].Rule != "runner-label" || !strings.Contains(errors[0].Message, `label "${{ vars.RUNNER }}" is unknown`) {

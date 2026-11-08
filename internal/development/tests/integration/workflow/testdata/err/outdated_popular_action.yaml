@@ -8,3 +8,4 @@ jobs:
       - uses: actions/checkout@v2
       # ERROR: This version is outdated
       - uses: actions/stale@v4
+permissions: {}

@@ -1,105 +1,49 @@
 package config
 
 import (
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
-// configWire owns YAML decoding independently of the runtime settings DTO.
-type configWire struct {
-	settings Config
-	ruleSet  RuleSet
-}
-
-// policyWire validates legacy policy syntax before migration into rule settings.
 type policyWire Policy
 
-// Unmarshal decodes external YAML settings through the configuration wire adapter.
+// Unmarshal reads YAML configuration and applies the shared migrations and validation.
 func (ruleSet RuleSet) Unmarshal(source []byte, dst *Config) error {
-	wire := configWire{ruleSet: ruleSet}
-
-	if err := yaml.Unmarshal(source, &wire); err != nil {
-		return err
-	}
-	*dst = wire.settings
-	return nil
-}
-
-// DecodeNode decodes one configuration value, including legacy normalization.
-// Successful decoding replaces dst; errors leave it untouched.
-func (ruleSet RuleSet) DecodeNode(node *yaml.Node, dst *Config) error {
-	wire := configWire{ruleSet: ruleSet}
-
-	if err := node.Decode(&wire); err != nil {
-		return err
-	}
-	*dst = wire.settings
-	return nil
-}
-
-// EncodeNode emits canonical syntax, including programmatic policy projections.
-func (ruleSet RuleSet) EncodeNode(cfg *Config) (*yaml.Node, error) {
-	if cfg == nil {
-		var node yaml.Node
-		if err := node.Encode(nil); err != nil {
-			return nil, err
-		}
-		return &node, nil
-	}
-	var node yaml.Node
-	if err := node.Encode(configWire{settings: *cfg, ruleSet: ruleSet}); err != nil {
-		return nil, err
-	}
-	return &node, nil
-}
-
-// Marshal encodes settings through the canonical configuration wire contract.
-func (ruleSet RuleSet) Marshal(cfg *Config) ([]byte, error) {
-	node, err := ruleSet.EncodeNode(cfg)
+	parsed, err := document.Parse("actionlint.yaml", source)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return yaml.Marshal(node)
+	return ruleSet.DecodeValue(parsed.Value, dst)
 }
 
-// UnmarshalYAML normalizes old documents at the boundary. Runtime values and
-// subsequent serialization use the same canonical grouped configuration.
-func (wire *configWire) UnmarshalYAML(node *yaml.Node) error {
-	ruleSet := wire.ruleSet
-
-	next, err := ruleSet.NormalizeForMerge(node)
+// DecodeValue replaces dst only after the complete configuration has decoded.
+func (ruleSet RuleSet) DecodeValue(value any, dst *Config) error {
+	normalized, err := ruleSet.NormalizeForMerge(value)
 	if err != nil {
 		return err
 	}
 	var decoded Config
-	if err := next.Decode(&decoded); err != nil {
+	if err := binding.DecodeKnown(rawValue(normalized), &decoded); err != nil {
 		return err
 	}
-	if repository := field(next, "repository"); repository != nil && repository.ShortTag() == "!!null" {
+	if repository := field(normalized, "repository"); repository != nil && isNull(repository) {
 		decoded.Repository = RepositoryConfig{reset: true}
 	}
 	ruleSet.projectSettings(&decoded)
-	wire.settings = decoded
+	*dst = decoded
 	return nil
 }
 
-// MarshalYAML includes programmatically selected policy fields while emitting
-// the current configuration syntax.
-func (wire configWire) MarshalYAML() (any, error) {
-	ruleSet := wire.ruleSet
-
-	cfg := wire.settings
-	var root yaml.Node
-	if err := root.Encode(cfg); err != nil {
+// EncodeValue returns the current configuration syntax as ordinary Go values.
+func (ruleSet RuleSet) EncodeValue(cfg *Config) (any, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+	encoded, err := binding.Encode(*cfg)
+	if err != nil {
 		return nil, err
 	}
-	add := func(key string, value any) error {
-		var node yaml.Node
-		if err := node.Encode(value); err != nil {
-			return err
-		}
-		setField(&root, key, &node)
-		return nil
-	}
+	root := members(encoded)
 	hasRule := func(name string) bool {
 		descriptor, known := ruleSet.FindRule(name)
 		if !known {
@@ -112,24 +56,34 @@ func (wire configWire) MarshalYAML() (any, error) {
 		return ok
 	}
 	if cfg.Lint.MessageIgnores == nil && cfg.Paths != nil {
-		if err := add("paths", cfg.Paths); err != nil {
+		paths, err := binding.Encode(cfg.Paths)
+		if err != nil {
 			return nil, err
 		}
+		root["paths"] = paths
 	}
-	var policy yaml.Node
-	if err := policy.Encode(cfg.Policy); err != nil {
+	policy, err := binding.Encode(cfg.Policy)
+	if err != nil {
 		return nil, err
 	}
 	selected := mapping()
-	for i := 0; i < len(policy.Content); i += 2 {
-		key, value := policy.Content[i], policy.Content[i+1]
-		if !hasRule(key.Value) && value.ShortTag() != "!!null" && (value.Kind != yaml.SequenceNode || len(value.Content) != 0) {
-			selected.Content = append(selected.Content, key, value)
+	for key, value := range members(policy) {
+		if !hasRule(key) && !isNull(value) && (!isList(value) || len(elements(value)) != 0) {
+			selected[key] = value
 		}
 	}
-	if len(selected.Content) > 0 {
-		setField(&root, "policy", selected)
+	if len(selected) != 0 {
+		root["policy"] = selected
 	}
-	next, _, err := ruleSet.migrateNode(&root)
+	next, _, err := ruleSet.migrateNode(root)
 	return next, err
+}
+
+// Marshal writes the current configuration in YAML format.
+func (ruleSet RuleSet) Marshal(cfg *Config) ([]byte, error) {
+	value, err := ruleSet.EncodeValue(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return document.Marshal("actionlint.yaml", value)
 }

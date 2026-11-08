@@ -35,3 +35,4 @@ jobs:
       - run: echo "${{ github.event.*[inputs.environment] }}"
       # Number value is not available for object key
       - run: echo "${{ github[inputs.number] }}"
+permissions: {}

@@ -5,8 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // CommitHashOptions selects exceptions to immutable action references. The
@@ -17,7 +18,7 @@ type CommitHashOptions struct {
 	exclude []string
 }
 
-// commitHashWire is the YAML form of CommitHashOptions.
+// commitHashWire is the wire form of CommitHashOptions.
 type commitHashWire struct {
 	Exclude []string `yaml:"exclude"`
 }
@@ -36,10 +37,10 @@ func NewCommitHashOptions(exclude ...string) (*CommitHashOptions, error) {
 	return &CommitHashOptions{exclude: slices.Clone(exclude)}, nil
 }
 
-// UnmarshalYAML reads the exclude list and rejects malformed patterns.
-func (o *CommitHashOptions) UnmarshalYAML(n *yaml.Node) error {
+// DecodeConfig reads the exclude list and rejects malformed patterns.
+func (o *CommitHashOptions) DecodeConfig(value any) error {
 	var wire commitHashWire
-	if err := n.Load(&wire, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := binding.Decode(value, &wire); err != nil {
 		return err
 	}
 	next, err := NewCommitHashOptions(wire.Exclude...)
@@ -50,8 +51,8 @@ func (o *CommitHashOptions) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// MarshalYAML writes the exclude list.
-func (o *CommitHashOptions) MarshalYAML() (any, error) {
+// EncodeConfig writes the exclude list.
+func (o *CommitHashOptions) EncodeConfig() (any, error) {
 	if o == nil {
 		return commitHashWire{}, nil
 	}

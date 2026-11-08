@@ -16,3 +16,4 @@ jobs:
       - run: echo "$MESSAGE"
         env:
           MESSAGE: ${{ matrix.msg }}
+permissions: {}

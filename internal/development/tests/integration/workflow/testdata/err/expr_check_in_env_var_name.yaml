@@ -16,3 +16,4 @@ jobs:
       - run: echo "$Linux"
         env:
           ${{ runner.name }}: ''
+permissions: {}

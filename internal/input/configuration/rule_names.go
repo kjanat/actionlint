@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
 // ValidateRuleNames binds structurally decoded suppression settings to the
@@ -20,7 +23,7 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 	config.Lint.Rules.ruleSet = ruleSet
 
 	if err := ruleSet.validateSettings(&config.Lint.Rules); err != nil {
-		return err
+		return binding.At("lint", binding.At("rules", err))
 	}
 	for _, ignore := range config.Ignores {
 		if err := ruleSet.ValidateIgnore(ignore, additional...); err != nil {
@@ -33,8 +36,8 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 		}
 		for _, name := range policy.Rules() {
 			if !ruleSet.Suppressible(name, additional...) {
-				if node := policy.locations[name]; node != nil {
-					return suppressionConfigError(node, fmt.Sprintf("unknown suppressible rule %q", name))
+				if index, found := policy.locations[name]; found {
+					return binding.At("rules", binding.At(strconv.Itoa(index), fmt.Errorf("unknown suppressible rule %q", name)))
 				}
 				return fmt.Errorf("unknown suppressible rule %q", name)
 			}

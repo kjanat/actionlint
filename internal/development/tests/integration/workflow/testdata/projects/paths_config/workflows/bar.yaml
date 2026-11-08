@@ -11,3 +11,4 @@ jobs:
     runs-on: unknown
     steps:
       - run: echo
+permissions: {}

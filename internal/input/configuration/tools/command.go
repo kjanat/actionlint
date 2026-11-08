@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
 // Backend selects one transport: a native process or a core WebAssembly engine.
@@ -50,7 +50,7 @@ func (b *Backend) Wasm() (Module, bool) {
 	return module, ok
 }
 
-// backendDocument is the YAML form of a Backend. A transport the backend does
+// backendDocument is the wire form of a Backend. A transport the backend does
 // not select is omitted or null.
 type backendDocument struct {
 	Process *commandDocument `yaml:"process,omitempty"`
@@ -67,25 +67,25 @@ type moduleDocument struct {
 	Path string `yaml:"path"`
 }
 
-// UnmarshalYAML reads exactly one of a process or a wasm mapping and checks
+// DecodeConfig reads exactly one of a process or a wasm mapping and checks
 // it as NewCommand or NewModule does.
-func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
+func (b *Backend) DecodeConfig(value any) error {
 	var document backendDocument
-	if err := n.Load(&document, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	if err := binding.Decode(value, &document); err != nil {
 		return err
 	}
 	var next Backend
 	if document.Process != nil {
 		command, err := NewCommand(document.Process.Executable, document.Process.Args, document.Process.Env)
 		if err != nil {
-			return err
+			return binding.At("process", err)
 		}
 		next.transport = command
 	}
 	if document.Wasm != nil {
 		module, err := NewModule(document.Wasm.Path)
 		if err != nil {
-			return err
+			return binding.At("wasm", err)
 		}
 		next.transport = module
 	}
@@ -96,9 +96,9 @@ func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// MarshalYAML writes the selected transport in the form UnmarshalYAML reads.
+// EncodeConfig writes the selected transport in the form DecodeConfig reads.
 // The zero Backend is written as null.
-func (b *Backend) MarshalYAML() (any, error) {
+func (b *Backend) EncodeConfig() (any, error) {
 	if command, ok := b.Process(); ok {
 		return backendDocument{Process: &commandDocument{Executable: command.Executable(), Args: command.Args(), Env: command.Env()}}, nil
 	}
@@ -173,47 +173,26 @@ func (c Command) Env() map[string]string { return maps.Clone(c.env) }
 // NormalizePaths binds every tool's configured executable and module paths to
 // their declaring file, including overrides, before independently declared
 // configs are merged.
-func NormalizePaths(node *yaml.Node, directory string) {
-	if node == nil {
+func NormalizePaths(value any, directory string) {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return
 	}
-	if node.Kind == yaml.DocumentNode {
-		for _, child := range node.Content {
-			NormalizePaths(child, directory)
+	tools, _ := object["tools"].(map[string]any)
+	for _, value := range tools {
+		entry, _ := value.(map[string]any)
+		backend, _ := entry["backend"].(map[string]any)
+		process, _ := backend["process"].(map[string]any)
+		if executable, ok := process["executable"].(string); ok && strings.ContainsAny(executable, `/\`) && !filepath.IsAbs(executable) {
+			process["executable"] = filepath.Join(directory, executable)
 		}
-		return
-	}
-	field := func(n *yaml.Node, name string) *yaml.Node {
-		if n == nil || n.Kind != yaml.MappingNode {
-			return nil
-		}
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			if n.Content[i].Value == name {
-				return n.Content[i+1]
-			}
-		}
-		return nil
-	}
-	var entries []*yaml.Node
-	if tools := field(node, "tools"); tools != nil && tools.Kind == yaml.MappingNode {
-		for i := 1; i < len(tools.Content); i += 2 {
-			entries = append(entries, tools.Content[i])
+		wasm, _ := backend["wasm"].(map[string]any)
+		if module, ok := wasm["path"].(string); ok && module != "" && !strings.Contains(module, "://") && !filepath.IsAbs(module) {
+			wasm["path"] = filepath.Join(directory, module)
 		}
 	}
-	for _, entry := range entries {
-		backend := field(entry, "backend")
-		executable := field(field(backend, "process"), "executable")
-		if executable != nil && executable.Tag == "!!str" && strings.ContainsAny(executable.Value, `/\`) && !filepath.IsAbs(executable.Value) {
-			executable.Value = filepath.Join(directory, executable.Value)
-		}
-		module := field(field(backend, "wasm"), "path")
-		if module != nil && module.Tag == "!!str" && module.Value != "" && !strings.Contains(module.Value, "://") && !filepath.IsAbs(module.Value) {
-			module.Value = filepath.Join(directory, module.Value)
-		}
-	}
-	if overrides := field(node, "overrides"); overrides != nil {
-		for _, child := range overrides.Content {
-			NormalizePaths(child, directory)
-		}
+	overrides, _ := object["overrides"].([]any)
+	for _, override := range overrides {
+		NormalizePaths(override, directory)
 	}
 }

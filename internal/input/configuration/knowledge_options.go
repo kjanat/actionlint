@@ -31,8 +31,6 @@ func (ruleSet RuleSet) projectSettings(c *Config) {
 			switch descriptor.Name {
 			case "job-timeout":
 				c.Policy.RequireJobTimeout = &JobTimeoutPolicy{}
-			case "explicit-permissions":
-				c.Policy.RequirePermissions = &PermissionsPolicy{}
 			case "forbidden-suppression":
 				c.Policy.DisallowSuppressions = &SuppressionsPolicy{}
 			}

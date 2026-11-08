@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: action
-        uses: ` + uses + tc.extra + "\n"
+        uses: ` + uses + tc.extra + "\npermissions: {}\n"
 				request := checking.Options{WorkingDir: root, RemoteActions: literalMetadataFixture{remote}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.Source
 				var err error
@@ -134,7 +134,7 @@ func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
 		requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(`on: push
 jobs:
   call:
-    uses: ` + uses + "\n"), Project: nil}}
+    uses: ` + uses + "\npermissions: {}\n"), Project: nil}}
 		errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 		if err != nil {
 			t.Fatal(err)

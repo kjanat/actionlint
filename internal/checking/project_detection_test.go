@@ -23,6 +23,7 @@ func TestContentPathDetectsProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	content = append(content, []byte("\npermissions: {}\n")...)
 	for _, tc := range []struct {
 		name, path   string
 		wantFindings bool

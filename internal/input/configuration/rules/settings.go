@@ -10,9 +10,10 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.
@@ -36,35 +37,31 @@ func choices[T ~string](values []T) string {
 	return strings.Join(names[:len(names)-1], ", ") + ", or " + names[len(names)-1]
 }
 
-// UnmarshalYAML normalizes booleans to on/off and null to the default level.
+// DecodeConfig normalizes booleans to on/off and null to the default level.
 // The zero value represents an omitted/null level, never an empty string input.
-func (l *Level) UnmarshalYAML(n *yaml.Node) error {
-	switch n.ShortTag() {
-	case "!!null":
+func (l *Level) DecodeConfig(value any) error {
+	switch selected := value.(type) {
+	case nil:
 		*l = "default"
 		return nil
-	case "!!bool":
-		var enabled bool
-		if err := n.Decode(&enabled); err != nil {
-			return err
-		}
+	case bool:
 		*l = "off"
-		if enabled {
+		if selected {
 			*l = "on"
 		}
 		return nil
-	case "!!str":
-		value := Level(n.Value)
-		if value.Valid() {
-			*l = value
+	case string:
+		next := Level(selected)
+		if next.Valid() {
+			*l = next
 			return nil
 		}
 	}
-	return fmt.Errorf("yaml: rule level must be %s; empty strings are not allowed", choices(Levels()))
+	return fmt.Errorf("rule level must be %s; empty strings are not allowed", choices(Levels()))
 }
 
-// MarshalYAML uses the canonical named level.
-func (l Level) MarshalYAML() (any, error) {
+// EncodeConfig uses the canonical named level.
+func (l Level) EncodeConfig() (any, error) {
 	if l == "" {
 		return "default", nil
 	}
@@ -85,24 +82,25 @@ func Presets() []Preset { return []Preset{"recommended", "all", "none"} }
 // Valid reports whether the preset is a named baseline selection.
 func (p Preset) Valid() bool { return slices.Contains(Presets(), p) }
 
-// UnmarshalYAML rejects unknown preset names.
-func (p *Preset) UnmarshalYAML(n *yaml.Node) error {
-	if n.ShortTag() != "!!str" || !Preset(n.Value).Valid() {
-		return fmt.Errorf("yaml: rule preset must be %s", choices(Presets()))
+// DecodeConfig rejects unknown preset names.
+func (p *Preset) DecodeConfig(value any) error {
+	selected, ok := value.(string)
+	if !ok || !Preset(selected).Valid() {
+		return fmt.Errorf("rule preset must be %s", choices(Presets()))
 	}
-	*p = Preset(n.Value)
+	*p = Preset(selected)
 	return nil
 }
 
-// Setting is one rule's level and options. In YAML it is a level shorthand or
-// a level/options mapping. The options stay in their YAML form; LoadOptions
+// Setting is one rule's level and options. In configuration it is a level shorthand or
+// a level/options mapping. The options stay in their configuration form; LoadOptions
 // decodes them into the rule's registered type on every call, so each caller
 // gets its own copy.
 type Setting struct {
 	level Level
-	// options is a mapping node, or nil when the setting has no options.
+	// options is an owned mapping, or nil when the setting has no options.
 	// options: null also leaves it nil, which resets the rule's options.
-	options *yaml.Node
+	options map[string]any
 }
 
 // NewSetting returns a setting with the given level and options. An empty
@@ -110,29 +108,29 @@ type Setting struct {
 //
 // options must form a mapping. A json.RawMessage is parsed as a JSON object,
 // the form analyzer.Registration.Options uses. Any other value is encoded with
-// the YAML encoder: struct fields are named by their yaml tags, json tags and
-// MarshalJSON methods are ignored, and a value whose MarshalYAML returns a
+// the configuration encoder: struct fields are named by their yaml tags, json tags and
+// MarshalJSON methods are ignored, and a value whose EncodeConfig returns a
 // scalar, such as a disabled policy that encodes as false, is rejected.
 func NewSetting(level Level, options any) (Setting, error) {
 	setting := Setting{level: level}
 	if raw, ok := options.(json.RawMessage); options == nil || ok && len(raw) == 0 {
 		return setting, nil
 	}
-	node, err := encodeOptions(options)
+	value, err := encodeOptions(options)
 	if err != nil {
 		return Setting{}, fmt.Errorf("rule options: %w", err)
 	}
-	if node.ShortTag() == "!!null" {
+	if value == nil {
 		return setting, nil
 	}
-	if node.Kind != yaml.MappingNode {
-		return Setting{}, fmt.Errorf("rule options must be a mapping, not %s", node.ShortTag())
+	object, ok := value.(map[string]any)
+	if !ok {
+		if _, boolean := value.(bool); boolean {
+			return Setting{}, errors.New("rule options must be a mapping, got a boolean")
+		}
+		return Setting{}, errors.New("rule options must be a mapping")
 	}
-	owned, err := ownOptions(node)
-	if err != nil {
-		return Setting{}, fmt.Errorf("rule options: %w", err)
-	}
-	setting.options = owned
+	setting.options = object
 	return setting, nil
 }
 
@@ -151,130 +149,90 @@ func (s Setting) HasOptions() bool { return s.options != nil }
 
 // LoadOptions decodes the options into dst, which must point to the rule's
 // registered options type. It reports false and leaves dst unchanged when the
-// setting has no options. dst is decoded from a copy of the stored node, so
-// an UnmarshalYAML method in dst that keeps or edits its node cannot reach
+// setting has no options. dst is decoded from a copy of the stored values, so
+// a DecodeConfig method in dst that keeps or edits its values cannot reach
 // the setting.
 func (s Setting) LoadOptions(dst any) (bool, error) {
 	if s.options == nil {
 		return false, nil
 	}
-	if err := cloneTree(s.options).Load(dst, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+	owned, err := binding.Encode(s.options)
+	if err != nil {
+		return false, err
+	}
+	if err := binding.Decode(owned, dst); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-// encodeOptions returns options as a YAML node. JSON is valid YAML flow
-// syntax, so the YAML parser reads a json.RawMessage into the same tree the
-// encoder builds for the equivalent Go value.
-func encodeOptions(options any) (*yaml.Node, error) {
-	raw, ok := options.(json.RawMessage)
-	if !ok {
-		var node yaml.Node
-		if err := node.Encode(options); err != nil {
+// encodeOptions owns an options value, including already serialized JSON.
+func encodeOptions(options any) (any, error) {
+	if raw, ok := options.(json.RawMessage); ok {
+		if !json.Valid(raw) {
+			return nil, errors.New("json.RawMessage options are not valid JSON")
+		}
+		parsed, err := document.Parse("options.json", raw)
+		if err != nil {
 			return nil, err
 		}
-		return &node, nil
+		return parsed.Value, nil
 	}
-	if !json.Valid(raw) {
-		return nil, errors.New("json.RawMessage options are not valid JSON")
-	}
-	var document yaml.Node
-	if err := yaml.Unmarshal(raw, &document); err != nil {
-		return nil, err
-	}
-	if document.Kind != yaml.DocumentNode || len(document.Content) != 1 {
-		return nil, errors.New("json.RawMessage options must hold one JSON value")
-	}
-	return document.Content[0], nil
-}
-
-// ownOptions returns a copy of an options mapping with aliases and merge keys
-// expanded, so the setting holds a tree that shares no node with the document
-// it came from.
-func ownOptions(n *yaml.Node) (*yaml.Node, error) {
-	return configtree.Expand(n, map[*yaml.Node]bool{})
-}
-
-// cloneTree returns a deep copy of n through Content. n must be a tree without
-// alias nodes, as ownOptions produces; Alias and Stream are not copied.
-func cloneTree(n *yaml.Node) *yaml.Node {
-	c := &yaml.Node{
-		Kind: n.Kind, Style: n.Style, Tag: n.Tag, Value: n.Value, Anchor: n.Anchor,
-		HeadComment: n.HeadComment, LineComment: n.LineComment, FootComment: n.FootComment,
-		Line: n.Line, Column: n.Column,
-	}
-	if n.Content != nil {
-		c.Content = make([]*yaml.Node, len(n.Content))
-		for i, child := range n.Content {
-			c.Content[i] = cloneTree(child)
-		}
-	}
-	return c
+	return binding.Encode(options)
 }
 
 // parseSetting reads a level shorthand or a level/options mapping. It checks
 // the level and that options form a mapping; the catalog validates the
 // options against the rule's type.
-func parseSetting(n *yaml.Node) (Setting, error) {
+func parseSetting(value any) (Setting, error) {
 	var next Setting
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if err := n.Decode(&next.level); err != nil {
-			return Setting{}, err
-		}
-	case yaml.MappingNode:
-		var wire struct {
-			Level   yaml.Node `yaml:"level"`
-			Options yaml.Node `yaml:"options"`
-		}
-		if err := n.Load(&wire, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
-			return Setting{}, err
-		}
-		if wire.Level.Kind == 0 {
-			return Setting{}, errors.New("yaml: rule setting requires level")
-		}
-		if err := wire.Level.Decode(&next.level); err != nil {
-			return Setting{}, err
-		}
-		if wire.Options.Kind != 0 && wire.Options.ShortTag() != "!!null" {
-			if wire.Options.Kind != yaml.MappingNode {
-				return Setting{}, errors.New("yaml: options must be a mapping")
+	if object, ok := value.(map[string]any); ok {
+		for key := range object {
+			if key != "level" && key != "options" {
+				return Setting{}, binding.At(key, fmt.Errorf("unknown rule setting key %q", key))
 			}
-			owned, err := ownOptions(&wire.Options)
+		}
+		level, present := object["level"]
+		if !present {
+			return Setting{}, errors.New("rule setting requires level")
+		}
+		if err := next.level.DecodeConfig(level); err != nil {
+			return Setting{}, binding.At("level", err)
+		}
+		if options := object["options"]; options != nil {
+			mapping, ok := options.(map[string]any)
+			if !ok {
+				return Setting{}, binding.At("options", errors.New("options must be a mapping"))
+			}
+			owned, err := binding.Encode(mapping)
 			if err != nil {
 				return Setting{}, err
 			}
-			next.options = owned
+			ownedMapping, ok := owned.(map[string]any)
+			if !ok {
+				return Setting{}, errors.New("encoded rule options must be a mapping")
+			}
+			next.options = ownedMapping
 		}
-	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
-		// Only levels and mappings configure a setting.
-		fallthrough
-	default:
-		return Setting{}, errors.New("yaml: rule setting must be a level or level/options mapping")
-	}
-	if next.level != "" && !next.level.Valid() {
-		return Setting{}, fmt.Errorf("yaml: rule level must be %s", choices(Levels()))
+	} else if err := next.level.DecodeConfig(value); err != nil {
+		return Setting{}, err
 	}
 	return next, nil
 }
 
-// settingYAML decodes one Setting inside a group mapping. Decoding through it
-// lets go-yaml report a bad setting at the setting's own line and column.
-type settingYAML struct{ setting Setting }
-
-func (s *settingYAML) UnmarshalYAML(n *yaml.Node) error {
-	setting, err := parseSetting(n)
+// DecodeConfig validates a rule level or level/options mapping.
+func (s *Setting) DecodeConfig(value any) error {
+	next, err := parseSetting(value)
 	if err != nil {
 		return err
 	}
-	s.setting = setting
+	*s = next
 	return nil
 }
 
-// MarshalYAML writes the level/options mapping. The options are decoded into
-// a fresh generic value, so the encoder never sees the stored node.
-func (s Setting) MarshalYAML() (any, error) {
+// EncodeConfig writes the level/options mapping. The options are decoded into
+// a fresh value so callers cannot mutate the stored options.
+func (s Setting) EncodeConfig() (any, error) {
 	var wire struct {
 		Level   Level `yaml:"level"`
 		Options any   `yaml:"options,omitempty"`
@@ -293,7 +251,7 @@ type Group struct {
 	rules  map[string]Setting
 }
 
-// groupWire is the YAML mapping MarshalYAML writes for a Group.
+// groupWire is the configuration mapping EncodeConfig writes for a Group.
 type groupWire struct {
 	Preset Preset             `yaml:"preset,omitempty"`
 	Level  Level              `yaml:"level,omitempty"`
@@ -320,53 +278,47 @@ func (g Group) Rule(name string) (Setting, bool) {
 	return setting, ok
 }
 
-// IsZero reports whether the group sets no preset, level or rule. YAML
-// encoding calls it to apply omitempty, because it cannot see private fields.
+// IsZero reports whether the group sets no preset, level or rule. The shared
+// encoder uses it to apply omitempty to fields with private state.
 func (g Group) IsZero() bool { return g.preset == "" && g.level == "" && len(g.rules) == 0 }
 
 // Rules yields each rule with an explicit setting, in no particular order.
 func (g Group) Rules() iter.Seq2[string, Setting] { return maps.All(g.rules) }
 
-// UnmarshalYAML accepts a group level or a preset/rule mapping.
-func (g *Group) UnmarshalYAML(n *yaml.Node) error {
-	var next struct {
-		Preset Preset                 `yaml:"preset,omitempty"`
-		Level  Level                  `yaml:"level,omitempty"`
-		Rules  map[string]settingYAML `yaml:",inline"`
-	}
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if n.ShortTag() == "!!str" && n.Value == "all" {
-			next.Preset = "all"
-		} else if err := n.Decode(&next.Level); err != nil {
-			return err
+// DecodeConfig accepts a group level or a preset/rule mapping.
+func (g *Group) DecodeConfig(value any) error {
+	var next Group
+	if object, ok := value.(map[string]any); ok {
+		next.rules = make(map[string]Setting)
+		for key, entry := range object {
+			switch key {
+			case "preset":
+				if err := next.preset.DecodeConfig(entry); err != nil {
+					return binding.At(key, err)
+				}
+			case "level":
+				if err := next.level.DecodeConfig(entry); err != nil {
+					return binding.At(key, err)
+				}
+			default:
+				var setting Setting
+				if err := setting.DecodeConfig(entry); err != nil {
+					return binding.At(key, err)
+				}
+				next.rules[key] = setting
+			}
 		}
-	case yaml.MappingNode:
-		if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
-			return err
-		}
-	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
-		// Only levels and mappings configure a group.
-		fallthrough
-	default:
-		return errors.New("yaml: rule group must be a level or mapping")
+	} else if name, ok := value.(string); ok && name == "all" {
+		next.preset = "all"
+	} else if err := next.level.DecodeConfig(value); err != nil {
+		return err
 	}
-	if next.Level != "" && !next.Level.Valid() {
-		return fmt.Errorf("yaml: invalid rule group level %q", next.Level)
-	}
-	var rules map[string]Setting
-	if next.Rules != nil {
-		rules = make(map[string]Setting, len(next.Rules))
-		for name, decoded := range next.Rules {
-			rules[name] = decoded.setting
-		}
-	}
-	*g = Group{preset: next.Preset, level: next.Level, rules: rules}
+	*g = next
 	return nil
 }
 
-// MarshalYAML preserves group shorthand across configuration round trips.
-func (g Group) MarshalYAML() (any, error) {
+// EncodeConfig preserves group shorthand across configuration round trips.
+func (g Group) EncodeConfig() (any, error) {
 	if g.level != "" && g.preset == "" && len(g.rules) == 0 {
 		return string(g.level), nil
 	}

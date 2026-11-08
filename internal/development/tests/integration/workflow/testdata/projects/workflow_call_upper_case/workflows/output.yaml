@@ -33,3 +33,4 @@ jobs:
       - run: echo 'ERROR ${{ needs.upper.outputs.MY_OUTPUT_3 }}'
       - run: echo 'ERROR ${{ needs.lower.outputs.my_output_3 }}'
       - run: echo 'ERROR ${{ needs.lower.outputs.MY_OUTPUT_3 }}'
+permissions: {}

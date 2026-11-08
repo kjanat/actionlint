@@ -7,3 +7,4 @@ jobs:
       - uses: ./ok
       - uses: ./missing_steps
       - uses: ./all_invalid_keys
+permissions: {}

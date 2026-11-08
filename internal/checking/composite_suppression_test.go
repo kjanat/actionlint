@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./local
+permissions: {}
 `)
 	unused := writeShellcheckFixture(t, root, ".github/workflows/unused.yml", `on: push
 jobs:
@@ -37,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `)
 	project := workspace.Identity(root)
 	actions := workspaceactions.NewCache(t.Context(), projectRoot(project), nil)

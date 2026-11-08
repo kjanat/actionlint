@@ -37,3 +37,4 @@ jobs:
       labels: []
     steps:
       - run: echo hello
+permissions: {}

@@ -47,7 +47,7 @@ func TestCLIRepositoryProcessOptIn(t *testing.T) {
 	if err := os.WriteFile("actionlint.yaml", []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("ci.yml", []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"), 0o600); err != nil {
+	if err := os.WriteFile("ci.yml", []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\npermissions: {}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, allow := range []bool{false, true} {

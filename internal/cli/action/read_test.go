@@ -118,11 +118,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./.github/actions/local
+permissions: {}
 `
 	const reusableWorkflow = `on: push
 jobs:
   test:
     uses: ./.github/workflows/called.yml
+permissions: {}
 `
 	for _, tc := range []struct {
 		name, link, content, caller string

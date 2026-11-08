@@ -20,11 +20,13 @@ cache-mode: read
 jobs:
   call:
     uses: $/middle.yaml
+permissions: {}
 `)
 			middle := []byte(`on: workflow_call
 jobs:
   nested:
     uses: $/leaf.yaml
+permissions: {}
 `)
 			if err := os.WriteFile(filepath.Join(root, "caller.yaml"), caller, 0o600); err != nil {
 				t.Fatal(err)

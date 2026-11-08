@@ -21,3 +21,4 @@ jobs:
       - image-id: my-custom-image-2
     steps:
       - run: echo hello
+permissions: {}

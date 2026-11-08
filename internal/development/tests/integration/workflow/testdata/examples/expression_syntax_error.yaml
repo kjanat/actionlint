@@ -11,3 +11,4 @@ jobs:
       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
       # unexpected end of input
       - run: echo '${{ github.event. }}'
+permissions: {}

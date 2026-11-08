@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -201,9 +202,13 @@ jobs:
 			// No caller permissions are known. Argument and output checking must
 			// still run without inventing a token-permission mismatch.
 			source := "on: push\njobs:\n  call:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n" + tc.arguments + "  consume:\n    needs: call\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          RESULT: ${{ needs.call.outputs." + tc.output + " }}\n"
+			config := filepath.Join(t.TempDir(), "actionlint.yaml")
+			if err := os.WriteFile(config, []byte("lint: {rules: {security: {missing-permissions: off}}}\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
 			var out, log bytes.Buffer
 			command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}
-			status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--tool=shellcheck=", "-"})
+			status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--output-format=json", "--summary=false", "--tool=shellcheck=", "-"})
 			var result resultreport.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatalf("status=%d error=%v stderr=%s stdout=%s", status, err, &log, &out)

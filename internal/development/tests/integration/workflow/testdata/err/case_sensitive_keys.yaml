@@ -67,3 +67,4 @@ jobs:
     steps:
       - RUN: echo
         run: echo
+permissions: {}

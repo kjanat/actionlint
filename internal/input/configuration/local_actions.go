@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	"github.com/kjanat/go-yaml/v4"
+	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
 )
 
 // LocalActionSources maps generated local action directories to source directories.
@@ -14,13 +14,15 @@ type LocalActionSources map[string]string
 
 // Canonical keys make equivalent ./ and $/ aliases override each other during extends merging.
 // Each source document has already been validated before this function runs.
-func normalizeLocalActionSourceNode(node *yaml.Node) {
-	if node.Kind != yaml.MappingNode {
+func normalizeLocalActionSourceNode(value any) {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return
 	}
-	for i := 0; i < len(node.Content); i += 2 {
-		if normalized, err := reference.NormalizeLocalDirectory(node.Content[i].Value); err == nil {
-			node.Content[i].Value = normalized
+	for key, value := range object {
+		if normalized, err := reference.NormalizeLocalDirectory(key); err == nil && normalized != key {
+			delete(object, key)
+			object[normalized] = value
 		}
 	}
 }
@@ -29,42 +31,43 @@ func normalizedLocalActionSources(sources LocalActionSources) (LocalActionSource
 	if sources == nil {
 		return nil, nil
 	}
-	var node yaml.Node
-	if err := node.Encode(sources); err != nil {
+	value, err := binding.Encode(sources)
+	if err != nil {
 		return nil, err
 	}
-	var normalized LocalActionSources
-	if err := node.Decode(&normalized); err != nil {
+	var result LocalActionSources
+	if err := result.DecodeConfig(value); err != nil {
 		return nil, err
 	}
-	return normalized, nil
+	return result, nil
 }
 
-// UnmarshalYAML validates and normalizes explicit source mappings.
-func (sources *LocalActionSources) UnmarshalYAML(node *yaml.Node) error {
-	if node.ShortTag() == "!!null" {
+// DecodeConfig validates and normalizes explicit source mappings.
+func (sources *LocalActionSources) DecodeConfig(value any) error {
+	if value == nil {
 		*sources = nil
 		return nil
 	}
-	if node.Kind != yaml.MappingNode {
+	object, ok := value.(map[string]any)
+	if !ok {
 		return errors.New("local-actions must map action directories to source directories")
 	}
-	next := make(LocalActionSources, len(node.Content)/2)
-	for i := 0; i < len(node.Content); i += 2 {
-		key, value := node.Content[i], node.Content[i+1]
-		if key.ShortTag() != "!!str" || value.ShortTag() != "!!str" {
-			return errors.New("local-actions paths must be strings")
+	next := make(LocalActionSources, len(object))
+	for key, value := range object {
+		selected, ok := value.(string)
+		if !ok {
+			return binding.At(key, errors.New("local-actions paths must be strings"))
 		}
-		from, err := reference.NormalizeLocalDirectory(key.Value)
+		from, err := reference.NormalizeLocalDirectory(key)
 		if err != nil {
-			return err
+			return binding.At(key, err)
 		}
-		to, err := reference.NormalizeLocalDirectory(value.Value)
+		to, err := reference.NormalizeLocalDirectory(selected)
 		if err != nil {
-			return err
+			return binding.At(key, err)
 		}
 		if _, exists := next[from]; exists {
-			return fmt.Errorf("duplicate local-actions directory %q", from)
+			return binding.At(key, fmt.Errorf("duplicate local-actions directory %q", from))
 		}
 		next[from] = to
 	}

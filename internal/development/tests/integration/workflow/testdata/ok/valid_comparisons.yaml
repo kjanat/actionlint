@@ -28,3 +28,4 @@ jobs:
       - run: echo '${{ matrix.a == matrix.a }}'
       # string is converted to number implicitly on <
       - run: echo '${{ '41' < 42 }}'
+permissions: {}

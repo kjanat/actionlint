@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: ${{ ` + tc.timeout + ` }}
     steps:
       - run: echo "$MY_ENV_VAR"
+permissions: {}
 `
 			sources := []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, sources))

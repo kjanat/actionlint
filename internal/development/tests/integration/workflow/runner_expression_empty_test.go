@@ -30,6 +30,7 @@ jobs:
     runs-on: ` + tc.value + `
     steps:
       - run: echo ok
+permissions: {}
 `
 			errs := testutil.WorkflowDiagnostics(t, source, "repository: {runners: []}")
 			if tc.kind != "" {

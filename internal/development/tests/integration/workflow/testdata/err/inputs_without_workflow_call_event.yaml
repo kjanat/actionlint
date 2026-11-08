@@ -5,3 +5,4 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - run: echo ${{ inputs.some_input }}
+permissions: {}

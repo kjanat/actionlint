@@ -44,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo
+permissions: {}
 `
 		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &repoconfig.Config{}}}
 		errs, err := testFindings(runTestAnalysis(t.Context(), request))
@@ -63,6 +64,7 @@ jobs:
     steps:
       - run: echo
       - run: echo
+permissions: {}
 `
 		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &repoconfig.Config{}}}
 		errs, err := testFindings(runTestAnalysis(t.Context(), request))

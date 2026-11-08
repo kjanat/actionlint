@@ -8,3 +8,4 @@ jobs:
         with:
           input1: foo
           input2: bar
+permissions: {}

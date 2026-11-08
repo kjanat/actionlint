@@ -39,7 +39,7 @@ func TestLinterMissingLocalAction(t *testing.T) {
 		var err error
 
 		lConfig = &repoconfig.Config{}
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
+		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps + "permissions: {}\n"
 		requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: proj, Config: lConfig}}
 		errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 		if err != nil || len(errs) != tc.want {
@@ -69,7 +69,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 			request := checking.Options{}
 			var requestSources []workspace.Source
 			lConfig := cfg
-			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\n"
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\npermissions: {}\n"
 			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(t.TempDir()), Config: lConfig}}
 			findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil || len(findings) != 1 || findings[0].Rule != tc.want {

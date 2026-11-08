@@ -7,3 +7,4 @@ jobs:
       - uses: ./action
         with:
           args: test
+permissions: {}

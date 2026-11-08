@@ -19,3 +19,4 @@ jobs:
       - run: 'echo "latest release: $RELEASE_DATA"'
         env:
           RELEASE_DATA: ${{ steps.get_latest_release.outputs.data }}
+permissions: {}

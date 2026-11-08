@@ -29,3 +29,4 @@ jobs:
       labels: [x64, self-hosted]
     steps:
       - uses: actions/checkout@v7
+permissions: {}

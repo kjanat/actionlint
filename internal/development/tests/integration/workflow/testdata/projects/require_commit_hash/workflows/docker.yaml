@@ -22,3 +22,4 @@ jobs:
       - uses: docker://registry:5000/image:1.0
       # ERROR: a digest after ":" is a tag, which is what upstream accepted
       - uses: docker://image:sha256:f3302f1e3ff5f4d94d6a7d3f2e148b2cca81073dc03822b6b16300b6319dd178
+permissions: {}

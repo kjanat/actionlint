@@ -9,3 +9,4 @@ jobs:
       version: 2.*
     steps:
       - run: echo hello
+permissions: {}

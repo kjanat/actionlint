@@ -4,6 +4,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -13,12 +14,13 @@ import (
 	"slices"
 	"strconv"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+
 	configaddress "actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/kjanat/go-yaml/v4"
 )
 
 // IgnorePatterns contains regular expressions that match diagnostic messages.
@@ -34,20 +36,38 @@ func (pats IgnorePatterns) Match(message string) bool {
 	return false
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (pats *IgnorePatterns) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.SequenceNode {
-		return fmt.Errorf("yaml: \"ignore\" must be a sequence node at line:%d,col:%d", n.Line, n.Column)
+// DecodeConfig validates the shared configuration value.
+func (pats *IgnorePatterns) DecodeConfig(value any) error {
+	if value == nil {
+		*pats = nil
+		return nil
 	}
-	rs := make([]*regexp.Regexp, 0, len(n.Content))
-	for _, p := range n.Content {
-		r, err := regexp.Compile(p.Value)
-		if err != nil {
-			return fmt.Errorf("invalid regular expression %q in \"ignore\" at line%d,col:%d: %w", p.Value, n.Line, n.Column, err)
+	patterns, ok := value.([]any)
+	if !ok {
+		return errors.New("ignore patterns must be an array")
+	}
+	next := make(IgnorePatterns, 0, len(patterns))
+	for i, value := range patterns {
+		var pattern string
+		switch scalar := value.(type) {
+		case string:
+			pattern = scalar
+		case bool:
+			pattern = strconv.FormatBool(scalar)
+		case json.Number:
+			pattern = string(scalar)
+		case nil:
+			pattern = "null"
+		default:
+			pattern = fmt.Sprint(scalar)
 		}
-		rs = append(rs, r)
+		compiled, err := regexp.Compile(pattern)
+		if err != nil {
+			return binding.At(strconv.Itoa(i), fmt.Errorf("invalid regular expression %q: %w", pattern, err))
+		}
+		next = append(next, compiled)
 	}
-	*pats = rs
+	*pats = next
 	return nil
 }
 
@@ -59,6 +79,17 @@ type PathConfig struct {
 	// `["shellcheck reported issue in this script: SC2086"]` ignores that ShellCheck diagnostic.
 	// Omit this key, use `null`, or use `[]` to suppress nothing. The `-ignore` CLI option also matches messages.
 	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
+}
+
+// DecodeConfig preserves ignored legacy path keys while binding known settings.
+func (p *PathConfig) DecodeConfig(value any) error {
+	type plain PathConfig
+	var next plain
+	if err := binding.DecodeKnown(value, &next); err != nil {
+		return err
+	}
+	*p = PathConfig(next)
+	return nil
 }
 
 // Policy configures checks for cache safety and repository conventions.
@@ -111,38 +142,14 @@ type Policy struct {
 	RequirePermissions *PermissionsPolicy `yaml:"require-permissions" jsonschema:"nullable"`
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (p *policyWire) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.MappingNode {
-		return fmt.Errorf("yaml: \"policy\" must be a mapping node at line:%d,col:%d", n.Line, n.Column)
+// DecodeConfig validates the shared configuration value.
+func (p *policyWire) DecodeConfig(value any) error {
+	type plain policyWire
+	var next plain
+	if err := binding.Decode(value, &next); err != nil {
+		return err
 	}
-	for i := 0; i+1 < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-		var err error
-		switch k.Value {
-		case "cache-write-untrusted":
-			err = v.Decode(&p.CacheWriteUntrusted)
-		case "cache-call-unrestricted":
-			err = v.Decode(&p.CacheCallUnrestricted)
-		case "cache-operation":
-			err = v.Decode(&p.CacheOperation)
-		case "disallow-suppressions":
-			err = v.Decode(&p.DisallowSuppressions)
-		case "require-commit-hash":
-			err = v.Decode(&p.RequireCommitHash)
-		case "require-action-metadata":
-			err = v.Decode(&p.RequireActionMetadata)
-		case "require-job-timeout":
-			err = v.Decode(&p.RequireJobTimeout)
-		case "require-permissions":
-			err = v.Decode(&p.RequirePermissions)
-		default:
-			return fmt.Errorf("yaml: unknown key %q in \"policy\" at line:%d,col:%d", k.Value, k.Line, k.Column)
-		}
-		if err != nil {
-			return err
-		}
-	}
+	*p = policyWire(next)
 	return nil
 }
 
@@ -196,49 +203,50 @@ func (p *JobTimeoutPolicy) MaxMinutes() (float64, bool) {
 	return p.maxMinutes, true
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
-	*p = JobTimeoutPolicy{}
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if err := n.Decode(&p.enabled); err != nil {
-			return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
-		}
-	case yaml.MappingNode:
-		p.enabled = true
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			k, v := n.Content[i], n.Content[i+1]
-			if k.Value != "min-minutes" && k.Value != "max-minutes" {
-				return fmt.Errorf("yaml: unknown key %q in \"require-job-timeout\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+// DecodeConfig validates the shared configuration value.
+func (p *JobTimeoutPolicy) DecodeConfig(value any) error {
+	var next JobTimeoutPolicy
+	switch selected := value.(type) {
+	case bool:
+		next.enabled = selected
+	case map[string]any:
+		next.enabled = true
+		for key, value := range selected {
+			if key != "min-minutes" && key != "max-minutes" {
+				return binding.At(key, fmt.Errorf("unknown key %q in job timeout policy: %w", key, binding.ErrUnknownKey))
 			}
-			// Decoding through the YAML library reads a leading zero as YAML 1.1 octal, so
-			// "max-minutes: 017" would become 15. The workflow parser reads numbers from the raw
-			// text with strconv, and so does this.
-			f, err := strconv.ParseFloat(v.Value, 64)
-			if err != nil || v.Kind != yaml.ScalarNode {
-				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be a number but got %q at line:%d,col:%d", k.Value, v.Value, v.Line, v.Column)
+			var bound float64
+			if value == nil {
+				return binding.At(key, errors.New("job timeout bound must be a number"))
 			}
-			if math.IsNaN(f) || math.IsInf(f, 0) {
-				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be finite but got %q at line:%d,col:%d", k.Value, v.Value, v.Line, v.Column)
-			}
-			if f <= 0 {
-				return fmt.Errorf("yaml: %q in \"require-job-timeout\" must be greater than zero but got %v at line:%d,col:%d", k.Value, f, v.Line, v.Column)
-			}
-			if k.Value == "min-minutes" {
-				p.minMinutes = f
+			var err error
+			if scalar, ok := value.(string); ok {
+				bound, err = strconv.ParseFloat(scalar, 64)
 			} else {
-				p.maxMinutes = f
+				err = binding.Decode(value, &bound)
+			}
+			if err != nil {
+				return binding.At(key, errors.New("job timeout bound must be a number"))
+			}
+			if math.IsNaN(bound) || math.IsInf(bound, 0) {
+				return binding.At(key, errors.New("job timeout bound must be finite"))
+			}
+			if bound <= 0 {
+				return binding.At(key, errors.New("job timeout bound must be greater than zero"))
+			}
+			if key == "min-minutes" {
+				next.minMinutes = bound
+			} else {
+				next.maxMinutes = bound
 			}
 		}
-		if p.maxMinutes > 0 && p.minMinutes > p.maxMinutes {
-			return fmt.Errorf("yaml: \"min-minutes\" must not exceed \"max-minutes\" in \"require-job-timeout\" at line:%d,col:%d", n.Line, n.Column)
+		if next.maxMinutes > 0 && next.minMinutes > next.maxMinutes {
+			return binding.At("min-minutes", errors.New("min-minutes must not exceed max-minutes"))
 		}
-	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
-		// Only booleans and mappings configure this policy.
-		fallthrough
 	default:
-		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		return errors.New("require-job-timeout must be a boolean or a mapping")
 	}
+	*p = next
 	return nil
 }
 
@@ -269,32 +277,28 @@ func (p *PermissionsPolicy) Scope() string {
 	return p.scope
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
-	*p = PermissionsPolicy{scope: "workflow"}
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if err := n.Decode(&p.enabled); err != nil {
-			return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
-		}
-	case yaml.MappingNode:
-		p.enabled = true
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			k, v := n.Content[i], n.Content[i+1]
-			if k.Value != "scope" {
-				return fmt.Errorf("yaml: unknown key %q in \"require-permissions\" at line:%d,col:%d", k.Value, k.Line, k.Column)
+// DecodeConfig validates the shared configuration value.
+func (p *PermissionsPolicy) DecodeConfig(value any) error {
+	next := PermissionsPolicy{scope: "workflow"}
+	switch selected := value.(type) {
+	case bool:
+		next.enabled = selected
+	case map[string]any:
+		next.enabled = true
+		for key, value := range selected {
+			if key != "scope" {
+				return binding.At(key, fmt.Errorf("unknown permissions policy key %q: %w", key, binding.ErrUnknownKey))
 			}
-			if v.Kind != yaml.ScalarNode || v.Tag != "!!str" || (v.Value != "workflow" && v.Value != "job") {
-				return fmt.Errorf("yaml: \"scope\" in \"require-permissions\" must be \"workflow\" or \"job\" at line:%d,col:%d", v.Line, v.Column)
+			scope, ok := value.(string)
+			if !ok || (scope != "workflow" && scope != "job") {
+				return binding.At(key, errors.New("scope must be workflow or job"))
 			}
-			p.scope = v.Value
+			next.scope = scope
 		}
-	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
-		// Only booleans and mappings configure this policy.
-		fallthrough
 	default:
-		return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
+		return errors.New("require-permissions must be a boolean or a mapping")
 	}
+	*p = next
 	return nil
 }
 
@@ -407,8 +411,8 @@ func (ruleSet RuleSet) Parse(b []byte, additional ...string) (*Config, error) {
 // Resolved keeps validated values and their provenance from the same document.
 type Resolved struct {
 	Provenance Provenance
-	Node       *yaml.Node
-	Inputs     map[*yaml.Node]Input
+	Value      any
+	Inputs     map[string]Input
 	Config     *Config
 	Values     map[string]any
 	Origins    map[string]Origin
@@ -416,58 +420,54 @@ type Resolved struct {
 }
 
 func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (Resolved, error) {
-	var document yaml.Node
-	if err := yaml.Unmarshal(b, &document); err != nil {
+	doc, err := document.Parse("", b)
+	if err != nil {
 		return Resolved{}, decodeError{cause: err}
 	}
-	var root *yaml.Node
-	if len(document.Content) > 0 {
-		root = document.Content[0]
-	}
-	return ruleSet.ResolveNode(root, nil, additional...)
+	return ruleSet.ResolveValue(doc.Value, documentInputs(doc), additional...)
 }
 
-func (ruleSet RuleSet) ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, additional ...string) (Resolved, error) {
-	return ruleSet.resolveNode(root, inputs, true, additional...)
+func documentInputs(doc document.Document) map[string]Input {
+	inputs := map[string]Input{}
+	for path, location := range doc.ValueLocations {
+		key := doc.Locations[path]
+		inputs[path] = Input{File: location.File, Line: location.Line, Column: location.Column, KeyLine: key.Line, KeyColumn: key.Column}
+	}
+	return inputs
 }
 
-func (ruleSet RuleSet) resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, additional ...string) (Resolved, error) {
-	if inputs == nil {
-		expanded, err := configtree.Expand(root, make(map[*yaml.Node]bool))
-		if err != nil {
-			return Resolved{}, err
-		}
-		root = normalizeToolSwitch(expanded)
-	}
+func (ruleSet RuleSet) ResolveValue(root any, inputs map[string]Input, additional ...string) (Resolved, error) {
+	return ruleSet.resolveValue(root, inputs, true, additional...)
+}
+
+func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules bool, additional ...string) (Resolved, error) {
+	inputs = ruleSet.migrationInputs(root, inputs)
+	root = normalizeToolSwitch(root)
 	legacyWarnings := configWarnings(root, inputs)
 	var err error
 	root, _, err = ruleSet.migrateNode(root)
 	if err != nil {
-		return Resolved{}, err
+		return Resolved{}, sourceError(err, inputs)
 	}
+
 	var c Config
 	if root != nil {
-		if err := ruleSet.DecodeNode(root, &c); err != nil {
-			return Resolved{}, decodeError{cause: err}
+		if err := ruleSet.DecodeValue(root, &c); err != nil {
+			return Resolved{}, decodeError{cause: sourceError(err, inputs)}
 		}
-		// YAML null bypasses field decoders. Preserve its explicit selection of
-		// no plugins, including when it replaces an inherited declaration.
-		for i := 0; root.Kind == yaml.MappingNode && i+1 < len(root.Content); i += 2 {
-			if root.Content[i].Value == "plugins" && root.Content[i+1].ShortTag() == "!!null" {
-				c.Plugins = PluginDeclarations{}
-			}
+		if plugins := field(root, "plugins"); plugins != nil && isNull(plugins) {
+			c.Plugins = PluginDeclarations{}
 		}
 	}
 	ruleSet.projectSettings(&c)
-
 	if bindRules {
 		if err := ruleSet.ValidateRuleNames(&c, additional...); err != nil {
-			return Resolved{}, err
+			return Resolved{}, sourceError(err, inputs)
 		}
 	}
 	for pat := range c.Paths {
 		if !doublestar.ValidatePattern(pat) {
-			return Resolved{}, fmt.Errorf("invalid glob pattern %q in \"paths\"", pat)
+			return Resolved{}, fmt.Errorf("invalid glob pattern %q in paths", pat)
 		}
 	}
 	values, err := ruleSet.EffectiveValues(&c)
@@ -493,7 +493,8 @@ func (ruleSet RuleSet) resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input,
 			}
 		}
 	}
-	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
+	c.Lint.Rules.bindingSources = ruleBindingSources("", &c, inputs)
+	return Resolved{Value: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
 // Load reads settings from a configuration file. Read also retains source provenance.
@@ -521,23 +522,32 @@ func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile fu
 	reader := configsource.New(ctx, readFile)
 	warningsByFile := map[string][]Warning{}
 	var bindingSources []bindingSource
-	documents := map[string]*yaml.Node{}
-	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
-		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, node, absPath(path) != origin, func(node *yaml.Node) error {
-			captured, err := captureRuleDocument(node)
-			documents[origin] = captured
-			return err
+	documents := map[string]any{}
+	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, doc document.Document) (document.Document, error) {
+		inputs := ruleSet.migrationInputs(doc.Value, documentInputs(doc))
+		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, doc.Value, inputs, absPath(path) != origin, func(value any) {
+			documents[origin] = captureRuleDocument(value)
 		}, additional...)
 		warningsByFile[origin] = warnings
 		if err != nil {
-			return nil, err
+			return doc, err
 		}
 		var settings Config
-		if err := ruleSet.DecodeNode(normalized, &settings); err != nil {
-			return nil, err
+		if err := ruleSet.DecodeValue(normalized, &settings); err != nil {
+			return doc, err
 		}
-		bindingSources = append(bindingSources, ruleBindingSources(origin, &settings)...)
-		return normalized, nil
+		bindingSources = append(bindingSources, ruleBindingSources(origin, &settings, inputs)...)
+		doc.Value = normalized
+		for pointer, input := range inputs {
+			location := document.Location{File: input.File, Line: input.Line, Column: input.Column}
+			if _, ok := doc.Locations[pointer]; !ok {
+				doc.Locations[pointer] = document.Location{File: input.File, Line: input.KeyLine, Column: input.KeyColumn}
+			}
+			if _, ok := doc.ValueLocations[pointer]; !ok {
+				doc.ValueLocations[pointer] = location
+			}
+		}
+		return doc, nil
 	})
 	if err != nil {
 		if _, ok := errors.AsType[*os.PathError](err); ok {
@@ -545,13 +555,7 @@ func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile fu
 		}
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	inputs := map[*yaml.Node]Input{}
-	if len(loaded.Files) > 1 {
-		for node, file := range loaded.Origins {
-			inputs[node] = Input{File: file}
-		}
-	}
-	resolved, err := ruleSet.ResolveNode(loaded.Node, inputs, additional...)
+	resolved, err := ruleSet.ResolveValue(loaded.Value, loaded.Origins, additional...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
