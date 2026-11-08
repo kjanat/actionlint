@@ -148,6 +148,9 @@ func outputStatement(stmt *syntax.Stmt, input *string) (string, []outputWrite, b
 				return "", nil, false
 			}
 			destination = redirect
+		case syntax.RdrIn, syntax.RdrInOut, syntax.DplIn, syntax.DplOut, syntax.RdrClob,
+			syntax.AppClob, syntax.WordHdoc, syntax.RdrAll, syntax.RdrAllClob, syntax.AppAll, syntax.AppAllClob:
+			return "", nil, false
 		default:
 			return "", nil, false
 		}
@@ -163,6 +166,7 @@ func outputStatement(stmt *syntax.Stmt, input *string) (string, []outputWrite, b
 			return "", nil, false
 		}
 		ok = true
+		var blockOutput strings.Builder
 		for _, child := range command.Stmts {
 			out, childWrites, supported := outputStatement(child, input)
 			if !supported {
@@ -171,9 +175,10 @@ func outputStatement(stmt *syntax.Stmt, input *string) (string, []outputWrite, b
 			if destination != nil && len(childWrites) != 0 {
 				return "", nil, false
 			}
-			stdout += out
+			blockOutput.WriteString(out)
 			writes = append(writes, childWrites...)
 		}
+		stdout = blockOutput.String()
 	case *syntax.BinaryCmd:
 		if command.Op != syntax.Pipe {
 			return "", nil, false
@@ -188,7 +193,6 @@ func outputStatement(stmt *syntax.Stmt, input *string) (string, []outputWrite, b
 			return "", nil, false
 		}
 		stdout, writes, ok = outputStatement(command.Y, &stdout)
-		writes = append(leftWrites, writes...)
 	default:
 		return "", nil, false
 	}

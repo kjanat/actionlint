@@ -200,7 +200,7 @@ func (p pythonPreparation) prepareOptions(ctx context.Context, script tools.Scri
 		return nil, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}
 	if settings.Prefix != "" || settings.Language != nil || settings.ReadAccess.Enabled != nil || len(settings.ReadAccess.Directories) != 0 {
-		return nil, errors.New("Python preparation accepts converted options; generated comments, language overrides and source access require another preparation profile")
+		return nil, errors.New("the Python script profile does not support source_prefix, language or read_access settings")
 	}
 	return settings.Options, nil
 }

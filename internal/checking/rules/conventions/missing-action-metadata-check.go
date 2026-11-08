@@ -39,8 +39,7 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 	if availability.State() == actions.MetadataAvailable {
 		return nil
 	}
-	switch availability.Reason() {
-	case factavailability.LookupDisabledReason, factavailability.OfflineReason, factavailability.CacheMissReason:
+	if reason := availability.Reason(); reason == factavailability.LookupDisabledReason || reason == factavailability.OfflineReason || reason == factavailability.CacheMissReason {
 		return nil
 	}
 	reason := string(availability.Reason())
