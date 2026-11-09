@@ -80,14 +80,24 @@ jobs:
             if (!Array.isArray(drafts) || !Number.isSafeInteger(limit) || limit <= 0 || drafts.length > limit) {
               throw new Error('Invalid changelog issue list')
             }
+            const publications = []
+            const marker = /<!-- github-changelog-guid: (\S+) -->/g
             for (const draft of drafts) {
               if (draft === null || typeof draft !== 'object' || typeof draft.title !== 'string' ||
                   typeof draft.body !== 'string' || draft.title.length === 0 || draft.title.length > 256 ||
                   draft.body.length > 65536) {
                 throw new Error('Invalid changelog issue title or body')
               }
+              const guids = Array.from(draft.body.matchAll(marker), match => match[1])
+              if (guids.length !== 1) throw new Error('Invalid changelog GUID marker')
+              publications.push({ ...draft, guid: guids[0] })
             }
             const label = process.env.CHANGELOG_LABEL
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo, state: 'all', labels: label, per_page: 100,
+            })
+            const reported = new Set(issues.flatMap(issue =>
+              typeof issue.body === 'string' ? Array.from(issue.body.matchAll(marker), match => match[1]) : []))
             try {
               await github.rest.issues.getLabel({ ...context.repo, name: label })
             } catch (error) {
@@ -96,9 +106,11 @@ jobs:
                 description: 'GitHub Actions changelog entries' })
             }
             const urls = []
-            for (const draft of drafts) {
+            for (const draft of publications) {
+              if (reported.has(draft.guid)) continue
               const { data } = await github.rest.issues.create({ ...context.repo,
                 title: draft.title, body: draft.body, labels: [label] })
+              reported.add(draft.guid)
               urls.push(data.html_url)
             }
             core.setOutput('issues-created', urls.length)
