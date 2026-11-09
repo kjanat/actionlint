@@ -40,7 +40,7 @@ permissions: { contents: read }
 jobs:
   autofix:
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint" }
+    env: { MISE_ENABLE_TOOLS: "kprint,node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
@@ -61,24 +61,24 @@ jobs:
             base=${BASE_SHA}
           fi
           bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
-      - uses: kjanat/install-dprint@ad298f8bd07a6bf8dcb3bd13cd567a3e6a85af71 # v2
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
         run: bash tools/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
-      - name: Set up mise for the affected generators
+      - name: Set up mise for formatting and affected generators
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: 2026.11.4
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
           cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
-          install: ${{ steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true' }}
+          install: true
           env: true
           monorepo: false
           add_shims_to_path: false
           cache_save_post: true
-        env: { MISE_ENABLE_TOOLS: "node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint" }
+        env:
+          MISE_ENABLE_TOOLS: ${{ (steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true') && 'kprint,node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint' || 'kprint,bun' }}
       - name: Regenerate the configuration schema
         id: schema
         run: bash tools/ci/autofix-step.bash mise run generate:config-schema
@@ -95,14 +95,14 @@ jobs:
         if: steps.inputs.outputs.readme == 'true'
         run: bash tools/ci/autofix-step.bash node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
-      # dprint runs rustfmt per file in parallel; each would install the
+      # kprint runs rustfmt per file in parallel; each would install the
       # rust-toolchain.toml channel at once and the rustup installs collide.
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
       - name: format the code
         id: format
         # autofix-ci will fail if the .github directory is touched
-        run: bash tools/ci/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
+        run: bash tools/ci/autofix-step.bash kprint fmt --allow-no-files --diff --excludes .github
       - name: Describe applied fixes
         id: fixes
         env:
