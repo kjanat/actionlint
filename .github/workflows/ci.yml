@@ -295,7 +295,7 @@ jobs:
       - name: Build through Makefile
         run: run make:build
         env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
-      - run: run -s make:lint make:lint-docs
+      - run: run -s make:lint-check make:lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
         run: shellcheck tools/ci/*.bash distribution/docker/*.bash tools/release/*.bash distribution/install/*.bash

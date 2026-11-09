@@ -95,10 +95,14 @@ cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
 # Rebuild on every run: analyzer changes must not leave a stale binary active.
-.PHONY: lint-build lint-architecture test-analyzers
-lint-build:
+.PHONY: lint-build lint-build-custom lint-build-architecture lint-check lint-architecture test-analyzers
+lint-build: lint-build-custom lint-build-architecture
+
+lint-build-custom:
 	golangci-lint custom
 	./custom-gcl cache clean
+
+lint-build-architecture:
 	go build -C analyzers -o ../.bin/actionlintarch ./cmd/actionlintarch
 
 test-analyzers:
@@ -107,7 +111,10 @@ test-analyzers:
 lint-architecture: lint-build
 	./.bin/actionlintarch ./...
 
-lint: lint-build
+lint: lint-build-custom
+	$(MAKE) lint-check
+
+lint-check: lint-build-architecture
 	./custom-gcl run
 	./.bin/actionlintarch ./...
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
