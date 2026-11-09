@@ -73,8 +73,127 @@ pub struct RunnerPackage<'a> {
     pub license_text: &'a str,
 }
 
+/// A static action input that contains code for this engine.
+#[derive(Serialize)]
+pub struct ScriptInput<'a> {
+    pub action: &'a str,
+    pub input: &'a str,
+    pub language: &'a str,
+}
+
+/// The world exported by a script engine component.
+#[derive(Clone, Copy)]
+pub enum ScriptWorld {
+    /// The component exports only script-engine.
+    ScriptEngine,
+    /// The component also exports template-effects.
+    TemplateScriptEngine,
+}
+
+/// Discovery metadata for a script engine, using its exported descriptor.
+pub struct ScriptPackage<'a, D> {
+    pub identity: Identity<'a>,
+    pub descriptor: &'a D,
+    pub world: ScriptWorld,
+    pub script_inputs: &'a [ScriptInput<'a>],
+    pub license_text: &'a str,
+}
+
+/// A script engine descriptor generated from a supported WIT world.
+pub trait ScriptDescriptor {
+    #[doc(hidden)]
+    fn metadata(
+        &self,
+        identity: &Identity<'_>,
+        inputs: &[ScriptInput<'_>],
+    ) -> Result<serde_json::Value>;
+    #[doc(hidden)]
+    fn schema(&self) -> Result<Option<serde_json::Value>>;
+}
+
+impl<D: ScriptDescriptor> ScriptPackage<'_, D> {
+    /// Serialize metadata that agrees with the descriptor returned by the guest.
+    pub fn metadata(&self) -> Result<Vec<u8>> {
+        let mut metadata = self
+            .descriptor
+            .metadata(&self.identity, self.script_inputs)?;
+        if let ScriptWorld::TemplateScriptEngine = self.world {
+            metadata["template_contract"] = json!("kjanat:actionlint/template-effects@0.1.0");
+        }
+        pretty_json(&metadata)
+    }
+
+    /// Write the component, metadata, schema, license and checksums.
+    pub fn write(&self, input: &Path, output: &Path) -> Result<()> {
+        let schema = self.descriptor.schema()?.unwrap_or_else(|| json!({}));
+        write_distribution(
+            input,
+            output,
+            self.metadata()?,
+            pretty_json(&schema)?,
+            self.license_text,
+        )
+    }
+}
+
+macro_rules! script_descriptor {
+    ($module:path, $version:literal, $digest:expr, $capabilities:expr) => {
+        const _: () = {
+            use $module as generated;
+            impl ScriptDescriptor for generated::Descriptor {
+                fn schema(&self) -> Result<Option<serde_json::Value>> {
+                    options_schema(&self.rule.options_schema)
+                }
+
+                fn metadata(&self, identity: &Identity<'_>, inputs: &[ScriptInput<'_>]) -> Result<serde_json::Value> {
+                    if identity.id != self.id || identity.name != self.name || identity.version != self.version {
+                        return Err("package identity must match the script descriptor".into());
+                    }
+                    let mut metadata = component_metadata(identity, concat!("kjanat:actionlint/script-engine@", $version), $digest)?;
+                    let rule = &self.rule;
+                    let schema = self.schema()?;
+                    let examples: Vec<_> = rule.examples.iter().map(|example| json!({
+                        "description": example.description, "before": example.before, "after": example.after
+                    })).collect();
+                    let mut rule_metadata = json!({
+                        "name": rule.name, "description": rule.description, "category": rule.category,
+                        "subcategory": rule.subcategory, "maturity": rule.maturity, "provider": rule.provider,
+                        "recommended": rule.recommended, "explanation": rule.explanation, "help": rule.help,
+                        "documentation_url": rule.documentation_url,
+                    });
+                    if let Some(schema) = &schema { rule_metadata["options_schema"] = schema.clone(); }
+                    if !examples.is_empty() { rule_metadata["examples"] = json!(examples); }
+                    metadata["engine"] = json!({"name": self.engine, "version": self.engine_version});
+                    metadata["capabilities"] = $capabilities(self, inputs);
+                    metadata["rules"] = json!([rule_metadata]);
+                    if let Some(schema) = schema { metadata["config_schema"] = schema; }
+                    Ok(metadata)
+                }
+            }
+        };
+    };
+}
+
+macro_rules! script_02 {
+    ($module:path) => { script_descriptor!($module, "0.2.0", crate::SCRIPT_ENGINE_02_WIT_SHA256, |d: &generated::Descriptor, inputs: &[ScriptInput<'_>]| json!({
+        "script_shells": d.shells, "script_inputs": inputs, "fixes": false, "format": false
+    })); };
+}
+macro_rules! script_03 {
+    ($module:path) => { script_descriptor!($module, "0.3.0", crate::SCRIPT_ENGINE_03_WIT_SHA256, |d: &generated::Descriptor, inputs: &[ScriptInput<'_>]| json!({
+        "script_shells": d.shells, "script_inputs": inputs, "fixes": d.capabilities.fixes,
+        "reported_sources": d.capabilities.reported_sources,
+        "resources": d.capabilities.resources.iter().map(|resource| match resource { generated::ResourceKind::Directory => "directory" }).collect::<Vec<_>>(), "format": false
+    })); };
+}
+script_02!(crate::script_engine::v0_2::exports::kjanat::actionlint0_2_0::script_engine);
+script_03!(crate::script_engine::v0_3::exports::kjanat::actionlint::script_engine);
+
 fn digest(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 fn pretty_json(value: &serde_json::Value) -> Result<Vec<u8>> {
@@ -568,6 +687,149 @@ mod tests {
             ]
         );
         Ok(())
+    }
+
+    #[test]
+    fn script_engine_metadata_matches_supported_descriptors() -> Result<()> {
+        use crate::script_engine::v0_2::exports::kjanat::actionlint0_2_0::script_engine::{
+            Descriptor as Descriptor02, RuleDescriptor,
+        };
+        let descriptor = Descriptor02 {
+            id: "example".into(),
+            name: "Example".into(),
+            version: "1.0.0".into(),
+            engine: "check".into(),
+            engine_version: "2.0.0".into(),
+            shells: vec!["python".into()],
+            rule: RuleDescriptor {
+                name: "check".into(),
+                description: "Check".into(),
+                category: "correctness".into(),
+                subcategory: "python".into(),
+                maturity: "stable".into(),
+                provider: "example".into(),
+                recommended: true,
+                explanation: String::new(),
+                help: String::new(),
+                documentation_url: String::new(),
+                options_schema: r#"{"type":"object"}"#.into(),
+                examples: vec![],
+            },
+        };
+        let package = ScriptPackage {
+            identity: Identity {
+                id: "example",
+                name: "Example",
+                version: "1.0.0",
+                description: "",
+                license: "MIT",
+                repository: "https://example.com",
+            },
+            descriptor: &descriptor,
+            world: ScriptWorld::ScriptEngine,
+            script_inputs: &[],
+            license_text: "MIT",
+        };
+        let metadata: serde_json::Value = serde_json::from_slice(&package.metadata()?)?;
+        assert_eq!(
+            metadata["interface"],
+            "kjanat:actionlint/script-engine@0.2.0"
+        );
+        assert_eq!(metadata["wit_sha256"], crate::SCRIPT_ENGINE_02_WIT_SHA256);
+        assert_eq!(
+            metadata["engine"],
+            json!({"name":"check", "version":"2.0.0"})
+        );
+        assert_eq!(metadata["capabilities"]["script_shells"], json!(["python"]));
+        assert_eq!(
+            metadata["rules"][0]["options_schema"],
+            json!({"type":"object"})
+        );
+        assert_eq!(metadata["config_schema"], json!({"type":"object"}));
+        Ok(())
+    }
+
+    #[test]
+    fn script_engine_03_metadata_includes_resources() -> Result<()> {
+        use crate::script_engine::v0_3::exports::kjanat::actionlint::script_engine::{
+            Capabilities as EngineCapabilities, Descriptor as Descriptor03, ResourceKind,
+            RuleDescriptor,
+        };
+        let descriptor = Descriptor03 {
+            id: "example".into(),
+            name: "Example".into(),
+            version: "1.0.0".into(),
+            engine: "check".into(),
+            engine_version: "2.0.0".into(),
+            shells: vec!["bash".into()],
+            rule: RuleDescriptor {
+                name: "check".into(),
+                description: String::new(),
+                category: "correctness".into(),
+                subcategory: String::new(),
+                maturity: "stable".into(),
+                provider: "example".into(),
+                recommended: true,
+                explanation: String::new(),
+                help: String::new(),
+                documentation_url: String::new(),
+                options_schema: String::new(),
+                examples: vec![],
+            },
+            capabilities: EngineCapabilities {
+                fixes: true,
+                reported_sources: true,
+                resources: vec![ResourceKind::Directory],
+            },
+        };
+        let package = ScriptPackage {
+            identity: Identity {
+                id: "example",
+                name: "Example",
+                version: "1.0.0",
+                description: "",
+                license: "MIT",
+                repository: "https://example.com",
+            },
+            descriptor: &descriptor,
+            world: ScriptWorld::ScriptEngine,
+            script_inputs: &[],
+            license_text: "MIT",
+        };
+        let metadata: serde_json::Value = serde_json::from_slice(&package.metadata()?)?;
+        assert_eq!(
+            metadata["interface"],
+            "kjanat:actionlint/script-engine@0.3.0"
+        );
+        assert_eq!(metadata["wit_sha256"], crate::SCRIPT_ENGINE_03_WIT_SHA256);
+        assert_eq!(metadata["capabilities"]["fixes"], true);
+        assert_eq!(metadata["capabilities"]["reported_sources"], true);
+        assert_eq!(metadata["capabilities"]["resources"], json!(["directory"]));
+        Ok(())
+    }
+
+    #[test]
+    fn script_contract_digests_match_sources() {
+        for (source, expected) in [
+            (
+                crate::SCRIPT_ENGINE_02_WIT,
+                crate::SCRIPT_ENGINE_02_WIT_SHA256,
+            ),
+            (
+                crate::SCRIPT_ENGINE_03_WIT,
+                crate::SCRIPT_ENGINE_03_WIT_SHA256,
+            ),
+            (
+                crate::TEMPLATE_EFFECTS_02_WIT,
+                crate::TEMPLATE_EFFECTS_02_WIT_SHA256,
+            ),
+            (
+                crate::TEMPLATE_EFFECTS_03_WIT,
+                crate::TEMPLATE_EFFECTS_03_WIT_SHA256,
+            ),
+        ] {
+            assert_eq!(digest(source.replace("\r\n", "\n").as_bytes()), expected);
+        }
     }
 
     // Reject a valid core module and a component with a truncated section payload.

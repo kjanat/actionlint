@@ -136,6 +136,19 @@ pub mod bindings {
     });
 }
 
+/// Descriptor types for script-engine packaging. Generate guest exports from the
+/// Cargo-provided WIT directory described in the README.
+pub mod script_engine {
+    /// Types from the 0.2.0 template-aware script engine world.
+    pub mod v0_2 {
+        wit_bindgen::generate!({ path: "wit", world: "template-script-engine-plugin", pub_export_macro: false });
+    }
+    /// Types from the 0.3.0 template-aware script engine world.
+    pub mod v0_3 {
+        wit_bindgen::generate!({ path: "wit/deps/actionlint-0.3.0", world: "template-script-engine-plugin", pub_export_macro: false });
+    }
+}
+
 /// Guest exports use one namespace even when host imports have another version.
 pub mod exports {
     pub mod kjanat {
@@ -171,6 +184,25 @@ pub const RUNNER_PROVIDER_INTERFACE: &str = "kjanat:actionlint/runner-provider@0
 pub const RUNNER_PROVIDER_WIT: &str = include_str!("../wit/runner.wit");
 /// SHA-256 of the runner-provider WIT source with LF line endings.
 pub const RUNNER_PROVIDER_WIT_SHA256: &str = env!("ACTIONLINT_RUNNER_WIT_SHA256");
+
+/// script-engine 0.2.0 WIT source.
+pub const SCRIPT_ENGINE_02_WIT: &str = include_str!("../wit/script-engine.wit");
+/// SHA-256 of the script-engine 0.2.0 WIT source with LF line endings.
+pub const SCRIPT_ENGINE_02_WIT_SHA256: &str = env!("ACTIONLINT_SCRIPT_ENGINE_02_WIT_SHA256");
+/// template-effects 0.2.0 WIT source.
+pub const TEMPLATE_EFFECTS_02_WIT: &str = include_str!("../wit/template-effects.wit");
+/// SHA-256 of the template-effects 0.2.0 WIT source with LF line endings.
+pub const TEMPLATE_EFFECTS_02_WIT_SHA256: &str = env!("ACTIONLINT_TEMPLATE_EFFECTS_02_WIT_SHA256");
+/// script-engine 0.3.0 WIT source.
+pub const SCRIPT_ENGINE_03_WIT: &str =
+    include_str!("../wit/deps/actionlint-0.3.0/script-engine.wit");
+/// SHA-256 of the script-engine 0.3.0 WIT source with LF line endings.
+pub const SCRIPT_ENGINE_03_WIT_SHA256: &str = env!("ACTIONLINT_SCRIPT_ENGINE_03_WIT_SHA256");
+/// template-effects 0.3.0 WIT source.
+pub const TEMPLATE_EFFECTS_03_WIT: &str =
+    include_str!("../wit/deps/actionlint-0.3.0/template-effects.wit");
+/// SHA-256 of the template-effects 0.3.0 WIT source with LF line endings.
+pub const TEMPLATE_EFFECTS_03_WIT_SHA256: &str = env!("ACTIONLINT_TEMPLATE_EFFECTS_03_WIT_SHA256");
 
 /// Export the component using this crate's generated bindings.
 #[macro_export]
