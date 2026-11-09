@@ -15,10 +15,10 @@ import (
 // ActionType distinguishes an exhaustive output declaration from unknown names.
 // Output values are strings even when their names could not be determined.
 func ActionType(definition actionmeta.Definition) exprtypes.ObjectType {
-	if !definition.Present() || definition.SkipOutputs() {
-		return exprtypes.NewMapObjectType(exprtypes.StringType())
-	}
 	var object exprtypes.ObjectBuilder
+	if !definition.OutputsComplete() {
+		object.SetMapped(exprtypes.StringType())
+	}
 	for _, name := range definition.OutputNames() {
 		object.SetProperty(name, exprtypes.StringType())
 	}

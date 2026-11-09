@@ -71,7 +71,7 @@ func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 			t.Fatalf("%s: missing definition: %v", reference, err)
 		}
 		input, exists := definition.Input("token")
-		if definition.Using() != "composite" || definition.SkipOutputs() || !slices.Equal(definition.OutputNames(), []string{"value"}) || !exists || !input.Required {
+		if definition.Using() != "composite" || !definition.OutputsComplete() || !slices.Equal(definition.OutputNames(), []string{"value"}) || !exists || !input.Required {
 			t.Fatalf("%s: inconsistent inputs, outputs or runtime: %+v", reference, definition)
 		}
 	}

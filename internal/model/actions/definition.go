@@ -77,12 +77,12 @@ const (
 // Definition owns the immutable facts used to validate an action call.
 // It exposes no manifest syntax, source bytes, or writable metadata pointers.
 type Definition struct {
-	present       bool
-	using         string
-	inputContract inputContract
-	skipOutputs   bool
-	inputs        map[string]Input
-	outputs       []string
+	present         bool
+	using           string
+	inputContract   inputContract
+	outputsComplete bool
+	inputs          map[string]Input
+	outputs         []string
 }
 
 // NewDefinition copies call-site facts from parsed metadata.
@@ -102,13 +102,14 @@ func NewDefinition(metadata *Metadata) Definition {
 		outputs = append(outputs, name)
 	}
 	slices.Sort(outputs)
-	// An omitted declaration does not establish that an action produces no outputs.
-	return Definition{present: true, using: metadata.Runs.Using, inputContract: declaredInputs, skipOutputs: metadata.SkipOutputs || metadata.Outputs == nil, inputs: inputs, outputs: outputs}
+	// Only a validated composite action publishes outputs through a fixed mapping.
+	complete := metadata.Runs.Using == "composite" && metadata.Runs.Steps != nil && !metadata.SkipOutputs && metadata.Root != nil && len(Validate(metadata).Problems) == 0
+	return Definition{present: true, using: metadata.Runs.Using, inputContract: declaredInputs, outputsComplete: complete, inputs: inputs, outputs: outputs}
 }
 
 func (d Definition) Present() bool                   { return d.present }
 func (d Definition) Using() string                   { return d.using }
-func (d Definition) SkipOutputs() bool               { return d.skipOutputs }
+func (d Definition) OutputsComplete() bool           { return d.outputsComplete }
 func (d Definition) Input(name string) (Input, bool) { input, ok := d.inputs[name]; return input, ok }
 
 // AllowsAdditionalInputs reports implementation-backed support for parameters

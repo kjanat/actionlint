@@ -9,7 +9,7 @@ import (
 )
 
 func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
-	definition := actionmeta.NewDefinition(&actionmeta.Metadata{Outputs: actionmeta.Outputs{"result": {Name: "result"}}})
+	definition := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
 	for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
 		checker := New(Dependencies{Action: func(got string) (actionmeta.Definition, error) {
 			if got != reference {
@@ -37,17 +37,18 @@ func TestUnavailableActionOutputsAreUnknown(t *testing.T) {
 
 func TestActionOutputDeclarationCompleteness(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		metadata *actionmeta.Metadata
-		strict   bool
+		name, source string
+		strict       bool
 	}{
-		{"omitted outputs", &actionmeta.Metadata{}, false},
-		{"explicit empty outputs", &actionmeta.Metadata{Outputs: actionmeta.Outputs{}}, true},
-		{"dynamic outputs", &actionmeta.Metadata{Outputs: actionmeta.Outputs{"value": {Name: "value"}}, SkipOutputs: true}, false},
+		{"composite omitted", "runs: {using: composite, steps: []}\n", true},
+		{"composite empty", "outputs: {}\nruns: {using: composite, steps: []}\n", true},
+		{"node declared", "outputs: {value: {description: value}}\nruns: {using: node24, main: index.js}\n", false},
+		{"invalid runtime", "outputs: {}\nruns: {using: unknown}\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, reference := range []string{"./action", "example/action@v1"} {
-				checker := New(Dependencies{Action: func(string) (actionmeta.Definition, error) { return actionmeta.NewDefinition(tc.metadata), nil }}, Options{})
+			definition := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\n" + tc.source))
+			for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
+				checker := New(Dependencies{Action: func(string) (actionmeta.Definition, error) { return definition, nil }}, Options{})
 				outputs := checker.getActionOutputsType(ownedStringFixture(&workflowlang.String{Value: reference}))
 				if outputs.IsStrict() != tc.strict {
 					t.Fatalf("%s: strict=%t, want %t", reference, outputs.IsStrict(), tc.strict)

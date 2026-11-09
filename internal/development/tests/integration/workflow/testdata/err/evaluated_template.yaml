@@ -18,7 +18,7 @@ jobs:
       # OK: Expanding object value
       - run: echo "$FOO"
         env: ${{ matrix.env }}
-      # ERROR: loose object, strict object, and array
+      # ERROR: Objects and arrays in a text template.
       - run: echo "${{github.event}} ${{steps.cache.outputs}} ${{github.event.commits.*}}"
       # OK: null becomes an empty string in a data argument
       - run: echo "${{null}}"

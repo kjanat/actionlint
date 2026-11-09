@@ -30,34 +30,34 @@ func property(t *testing.T, object exprtypes.ObjectType, path ...string) exprtyp
 }
 
 func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
+	composite := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {value: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
+	node := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {value: {description: result}}\nruns: {using: node24, main: index.js}\n"))
 	for _, tc := range []struct {
-		name     string
-		metadata *actionmeta.Metadata
-		strict   bool
+		name          string
+		definition    actionmeta.Definition
+		strict, named bool
 	}{
-		{"unavailable", nil, false},
-		{"omitted", &actionmeta.Metadata{}, false},
-		{"dynamic", &actionmeta.Metadata{SkipOutputs: true}, false},
-		{"declared empty", &actionmeta.Metadata{Outputs: actionmeta.Outputs{}}, true},
+		{"unavailable", actionmeta.Definition{}, false, false},
+		{"node", node, false, true},
+		{"composite", composite, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			object := outputs.ActionType(actionmeta.NewDefinition(tc.metadata))
+			object := outputs.ActionType(tc.definition)
 			mapped, open := object.Mapped()
 			if object.IsStrict() != tc.strict || open == tc.strict || open && mapped.Kind() != exprtypes.KindString {
-				t.Fatalf("output names and values were conflated: %v", object)
+				t.Fatalf("incorrect output type: %v", object)
+			}
+			value, named := object.Property("value")
+			if named != tc.named || named && value.Kind() != exprtypes.KindString {
+				t.Fatalf("declared names lost: %v", object)
+			}
+			step := outputs.StepType(object)
+			for _, path := range [][]string{{"conclusion"}, {"outcome"}} {
+				if property(t, step, path...).Kind() != exprtypes.KindString {
+					t.Fatal(step)
+				}
 			}
 		})
-	}
-	definition := actionmeta.NewDefinition(&actionmeta.Metadata{Outputs: actionmeta.Outputs{"value": {Name: "value"}}})
-	object := outputs.ActionType(definition)
-	if !object.IsStrict() || property(t, object, "value").Kind() != exprtypes.KindString {
-		t.Fatal(object)
-	}
-	step := outputs.StepType(object)
-	for _, path := range [][]string{{"outputs", "value"}, {"conclusion"}, {"outcome"}} {
-		if property(t, step, path...).Kind() != exprtypes.KindString {
-			t.Fatal(step)
-		}
 	}
 }
 

@@ -76,23 +76,36 @@ func TestInspectDefinitionRejectsEmptyManifest(t *testing.T) {
 
 func TestInspectDefinitionOutputKnowledge(t *testing.T) {
 	for _, test := range []struct {
-		name, declaration string
-		unknown           bool
-		names             []string
+		name, declaration, runs string
+		complete                bool
+		names                   []string
 	}{
-		{name: "omitted outputs", unknown: true},
-		{name: "explicit empty outputs", declaration: "outputs: {}\n"},
-		{name: "declared output", declaration: "outputs: {result: {description: result, value: ready}}\n", names: []string{"result"}},
+		{"composite omitted", "", "{using: composite, steps: []}", true, nil},
+		{"composite empty", "outputs: {}\n", "{using: composite, steps: []}", true, nil},
+		{"composite declared", "outputs: {result: {description: result, value: ready}}\n", "{using: composite, steps: []}", true, []string{"result"}},
+		{"node omitted", "", "{using: node24, main: index.js}", false, nil},
+		{"node empty", "outputs: {}\n", "{using: node24, main: index.js}", false, nil},
+		{"node declared", "outputs: {result: {description: result}}\n", "{using: node24, main: index.js}", false, []string{"result"}},
+		{"docker declared", "outputs: {result: {description: result}}\n", "{using: docker, image: Dockerfile}", false, []string{"result"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			inspection := InspectDefinition([]byte("name: fixture\ndescription: fixture\n" + test.declaration + "runs: {using: composite, steps: []}\n"))
+			inspection := InspectDefinition([]byte("name: fixture\ndescription: fixture\n" + test.declaration + "runs: " + test.runs + "\n"))
 			definition, valid := inspection.Definition()
 			if !valid {
 				t.Fatal(inspection.Problems())
 			}
-			if definition.SkipOutputs() != test.unknown || !slices.Equal(definition.OutputNames(), test.names) {
-				t.Fatalf("output knowledge: unknown=%v names=%v", definition.SkipOutputs(), definition.OutputNames())
+			if definition.OutputsComplete() != test.complete || !slices.Equal(definition.OutputNames(), test.names) {
+				t.Fatalf("output knowledge: complete=%v names=%v", definition.OutputsComplete(), definition.OutputNames())
 			}
 		})
+	}
+	for _, runs := range []string{"{}", "{using: unknown}", "{using: composite}"} {
+		definition := ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {}\nruns: " + runs + "\n"))
+		if definition.OutputsComplete() {
+			t.Fatalf("invalid runtime %s established complete outputs", runs)
+		}
+	}
+	if NewDefinition(&Metadata{Runs: Runs{Using: "composite"}}).OutputsComplete() {
+		t.Fatal("unvalidated metadata established complete outputs")
 	}
 }
