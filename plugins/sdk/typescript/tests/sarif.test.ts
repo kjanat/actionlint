@@ -6,6 +6,7 @@ function log(suppressions: unknown, kind?: string, region: Record<string, number
 	return JSON.stringify({
 		version: '2.1.0',
 		runs: [{
+			columnKind: 'unicodeCodePoints',
 			results: [{
 				ruleId: 'X1',
 				message: { text: 'finding' },

@@ -15,8 +15,9 @@ export function parseRunnerGuardSarif(
 	filename: string,
 	directory: string,
 	relativeFile: string,
+	source?: string,
 ): DocumentDiagnostic[] {
-	return parseSarif(output, filename, exactStagedUri(directory, relativeFile));
+	return parseSarif(output, filename, exactStagedUri(directory, relativeFile), source);
 }
 
 export default defineDocumentProvider({
@@ -50,7 +51,7 @@ export default defineDocumentProvider({
 				if (output.trim().length === 0) {
 					throw new Error(`Runner Guard produced no SARIF output${result.stderr ? `: ${result.stderr.trim()}` : ''}`);
 				}
-				return parseRunnerGuardSarif(output, request.filename, directory, relativeFile);
+				return parseRunnerGuardSarif(output, request.filename, directory, relativeFile, request.source);
 			} finally {
 				await rm(report, { force: true });
 			}
