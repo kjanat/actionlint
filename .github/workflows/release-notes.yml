@@ -19,7 +19,10 @@ defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
 jobs:
   sync:
     name: Copy docs/releases to the GitHub releases
-    if: github.repository == 'kjanat/actionlint' && github.ref == 'refs/heads/master' && inputs.tag == ''
+    if: >-
+      github.repository == 'kjanat/actionlint' &&
+      ((github.ref == 'refs/heads/master' && inputs.tag == '') ||
+      (github.event_name == 'release' && !github.event.release.draft))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency: { group: release-notes, cancel-in-progress: false, queue: max }
@@ -29,15 +32,26 @@ jobs:
         id: beepboop
         with: { permission-contents: write }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { fetch-depth: 0, persist-credentials: false }
+        with:
+          ref: ${{ github.event_name == 'release' && 'refs/heads/master' || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .node-version, package-manager-cache: false }
       - name: Update every release whose notes file changed
         env:
           GH_TOKEN: ${{ steps.beepboop.outputs.token }}
           BEFORE: ${{ github.event.before }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == push && "${BEFORE}" =~ ^[0-9a-f]{40}$ && "${BEFORE}" != 0000000000000000000000000000000000000000 ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == release ]]; then
+            [[ "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+            if [[ ! -f "docs/releases/${TAG}.md" ]]; then
+              echo "${TAG}: no notes file on master."
+              exit 0
+            fi
+            changed="docs/releases/${TAG}.md"
+          elif [[ "${GITHUB_EVENT_NAME}" == push && "${BEFORE}" =~ ^[0-9a-f]{40}$ && "${BEFORE}" != 0000000000000000000000000000000000000000 ]]; then
             deleted="$(git diff --name-only --no-renames --diff-filter=D "${BEFORE}" "${GITHUB_SHA}" -- 'docs/releases/v*.md')"
             if [[ -n "${deleted}" ]]; then
               echo "::error::Release notes files were deleted; their releases keep a body without a source: ${deleted//$'\n'/, }"
@@ -60,7 +74,11 @@ jobs:
             tags+=("${tag}")
           done
           for tag in "${tags[@]}"; do
-            if lookup="$(gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName 2>&1)"; then
+            if lookup="$(gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json body --jq .body 2>&1)"; then
+              if [[ "${lookup}" == "$(<"${RUNNER_TEMP}/${tag}.md")" ]]; then
+                echo "${tag}: published notes match docs/releases/${tag}.md"
+                continue
+              fi
               gh release edit "${tag}" --repo "${GITHUB_REPOSITORY}" --notes-file "${RUNNER_TEMP}/${tag}.md"
               echo "${tag}: notes updated from docs/releases/${tag}.md"
             elif [[ "${lookup}" == *"release not found"* ]]; then
