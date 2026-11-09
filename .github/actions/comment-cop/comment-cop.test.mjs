@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test, { mock } from 'node:test';
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -108,6 +108,54 @@ test('reads every source and patch in a large diff with Unicode and binary files
 });
 
 /** @typedef {Parameters<Parameters<typeof run>[0]['github']['rest']['pulls']['createReview']>[0]} ReviewParams */
+
+for (const scenario of ['unsupported patch', 'combined patches', 'combined blobs', 'single patch and blob']) {
+	test(`reads supported files beyond the subprocess buffer limit: ${scenario}`, t => {
+		const directory = mkdtempSync(join(tmpdir(), 'comment-cop-volume-'));
+		t.after(() => rmSync(directory, { recursive: true, force: true }));
+		const origin = join(directory, 'origin');
+		mkdirSync(origin);
+		const git = (/** @type {string[]} */ args) =>
+			execFileSync('git', ['-C', origin, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+		git(['init', '--quiet', '--initial-branch=master', '--template=']);
+		git(['config', 'user.name', 'Test']);
+		git(['config', 'user.email', 'test@example.invalid']);
+		git(['config', 'commit.gpgsign', 'false']);
+		git(['config', 'core.hooksPath', join(directory, 'no-hooks')]);
+		const line = 'That said, café 😀.\n';
+		const expected = scenario === 'unsupported patch'
+			? new Map([['small.md', line]])
+			: scenario === 'single patch and blob'
+			? new Map([['large.md', line.repeat(4_000)]])
+			: new Map(Array.from({ length: 4 }, (_, index) => [`file-${index}.md`, line.repeat(400)]));
+		if (scenario === 'combined blobs') {
+			for (const [name, source] of expected) writeFileSync(join(origin, name), source.replace('That said', 'Old text'));
+			git(['add', '.']);
+		}
+		git(['commit', '--quiet', '--allow-empty', '-m', 'Base']);
+		const baseSha = git(['rev-parse', 'HEAD']);
+		for (const [name, source] of expected) writeFileSync(join(origin, name), source);
+		if (scenario === 'unsupported patch') writeFileSync(join(origin, 'unsupported.txt'), line.repeat(4_000));
+		git(['add', '.']);
+		git(['commit', '--quiet', '-m', 'Contribution']);
+		const files = readPullRequestFiles({
+			cacheDirectory: join(directory, 'cache'),
+			repositoryUrl: origin,
+			baseSha,
+			headSha: git(['rev-parse', 'HEAD']),
+			maxBuffer: 16 * 1_024,
+		});
+		assert.deepEqual(files.map(({ filename, source }) => [filename, source]), [...expected]);
+		for (const { patch, source } of files) {
+			assert.deepEqual(
+				patch.split('\n').filter(row => row.startsWith('+') && !row.startsWith('+++'))
+					.map(row => row.slice(1)),
+				scenario === 'combined blobs' ? [line.trimEnd()] : source.trimEnd().split('\n'),
+			);
+		}
+		assert.deepEqual(readdirSync(join(directory, 'cache')), ['repository.git']);
+	});
+}
 
 test('flags a long implementation comment', () => {
 	const groups = groupsFromPatch(
@@ -282,7 +330,10 @@ test('recognizes unchanged YAML parents around partial diff hunks', () => {
 });
 
 test('does not flag the generated configuration examples by length', () => {
-	const source = readFileSync(new URL('../../../internal/config/config_default.yaml', import.meta.url), 'utf8');
+	const source = readFileSync(
+		new URL('../../../internal/input/configuration/config_default.yaml', import.meta.url),
+		'utf8',
+	);
 	const lines = source.split('\n');
 	const patch = `@@ -0,0 +1,${lines.length} @@\n${lines.map(line => `+${line}`).join('\n')}`;
 	const groups = groupsFromPatch('config_default.yaml', patch, source);
