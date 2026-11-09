@@ -432,7 +432,12 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		return out
 	case "workflow":
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: &repoconfig.Config{}}})
+		config := &repoconfig.Config{Lint: repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
+			Preset:      "none",
+			Correctness: repoconfig.NewGroup("recommended", "", nil),
+			Suspicious:  repoconfig.NewGroup("recommended", "", nil),
+		}}}
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}

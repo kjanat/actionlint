@@ -155,3 +155,28 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 		t.Fatal("empty scope reused an old context")
 	}
 }
+
+func TestUpstreamConformanceWorkflowChecks(t *testing.T) {
+	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+	for _, tc := range []struct {
+		name, input, rule string
+	}{
+		{"accept workflow without permission declarations", workflow, ""},
+		{"reject invalid permission values", workflow + "permissions: {contents: write-all}\n", "permissions"},
+		{"check expression references", strings.Replace(workflow, "echo ok", "echo ${{ missing.value }}", 1), "expression-reference"},
+		{"check empty steps", strings.Replace(workflow, "echo ok", "''", 1), "empty-run"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			findings := checkUpstreamCase(t, upstreamCase{Kind: "workflow", Input: tc.input})
+			if tc.rule == "" {
+				if len(findings) != 0 {
+					t.Fatalf("valid workflow was rejected: %v", findings)
+				}
+				return
+			}
+			if len(findings) != 1 || !strings.HasSuffix(findings[0], "["+tc.rule+"]") {
+				t.Fatalf("expected one %s diagnostic, got %v", tc.rule, findings)
+			}
+		})
+	}
+}
