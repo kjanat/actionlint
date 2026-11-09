@@ -86,11 +86,35 @@ func TestNativeHostDoesNotResolveNamesOrSHA256(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, spec := range []string{"example/action@v4", "example/action@" + strings.Repeat("a", 64)} {
-		m, err := client.Lookup(t.Context(), ref(t, spec))
-		if err != nil || m.Reason() != availability.UnsupportedReason {
-			t.Fatalf("%s = %v, %v", spec, m, err)
+	for _, tc := range []struct {
+		spec string
+		want availability.Reason
+	}{
+		{"example/action@v4", availability.ResolverNotConfiguredReason},
+		{"example/action@" + strings.Repeat("a", 64), availability.UnsupportedObjectFormatReason},
+	} {
+		m, err := client.Lookup(t.Context(), ref(t, tc.spec))
+		if err != nil || m.Reason() != tc.want {
+			t.Fatalf("%s = %v, %v; want %s", tc.spec, m, err, tc.want)
 		}
+	}
+}
+
+func TestUnsupportedMetadataHostDoesNotUseNetwork(t *testing.T) {
+	client, err := New(Options{Transport: transport(func(*http.Request) (*http.Response, error) {
+		t.Fatal("unsupported host used the GitHub API")
+		return nil, errors.New("unexpected network request")
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reference, err := actions.ParseReference("codeberg.org", "example/action@v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := client.Lookup(t.Context(), reference)
+	if err != nil || result.Reason() != availability.UnsupportedHostReason {
+		t.Fatalf("result=%v error=%v", result, err)
 	}
 }
 

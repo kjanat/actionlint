@@ -108,7 +108,7 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 		return unavailableFile(availability.LookupDisabled()), nil
 	}
 	if ref.Host() != "github.com" {
-		return unavailableFile(availability.Unsupported()), nil
+		return unavailableFile(availability.UnsupportedHost()), nil
 	}
 	if g.mode == Offline {
 		if !fullSHA1(ref.Ref()) {
@@ -116,8 +116,11 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 		}
 		return g.offline(ctx, ref, filenames)
 	}
-	if !fullSHA1(ref.Ref()) && (fullSHA256(ref.Ref()) || g.resolver == nil) {
-		return unavailableFile(availability.Unsupported()), nil
+	if fullSHA256(ref.Ref()) {
+		return unavailableFile(availability.UnsupportedObjectFormat()), nil
+	}
+	if !fullSHA1(ref.Ref()) && g.resolver == nil {
+		return unavailableFile(availability.ResolverNotConfigured()), nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -148,15 +151,15 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 			return unavailableError(resolveErr)
 		}
 		if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID != repo.ID || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.FetchLog) == 0 {
-			return unavailableFile(availability.Unsupported()), nil
+			return unavailableFile(availability.InvalidResolverResult()), nil
 		}
 		if kind == "action" {
 			if !fullSHA1(resolved.SelectedObject) {
-				return unavailableFile(availability.Unsupported()), nil
+				return unavailableFile(availability.InvalidResolverResult()), nil
 			}
 			route, err = actions.RefRoute(resolved.SelectedRef)
 			if err != nil {
-				return unavailableFile(availability.Unsupported()), nil
+				return unavailableFile(availability.InvalidResolverResult()), nil
 			}
 		}
 		commit, object, observed = resolved.Commit, resolved.SelectedObject, resolved.ObservedAt
