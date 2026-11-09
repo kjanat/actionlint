@@ -22,8 +22,13 @@ export const build = command('build')
 		'out',
 		flag.path({ type: 'directory', create: true }).required().describe('Directory the wheels go to'),
 	)
+	.flag(
+		'build',
+		flag.string({ pattern: /^[1-9]\d*$/ }).describe('Wheel build number when repackaging an existing release'),
+	)
 	.action(async ({ flags, out }) => {
-		for (const wheel of await buildWheels(flags.version, flags.assets)) {
+		const options = flags.build === undefined ? {} : { buildNumber: flags.build };
+		for (const wheel of await buildWheels(flags.version, flags.assets, options)) {
 			const path = join(flags.out, wheel.name);
 			await writeFile(path, wheel.data, { flag: 'wx' });
 			out.log(path);

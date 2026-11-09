@@ -148,7 +148,7 @@ test('a wheel carries the launcher, the archived binary and licence, and its met
 	);
 	assert.equal(
 		text(files, `${info}/entry_points.txt`),
-		'[console_scripts]\nactionlint = actionlint_kjanat:main\n',
+		'[console_scripts]\nactionlint = actionlint_kjanat:main\nactionlint-kjanat = actionlint_kjanat:main\n',
 	);
 	const [headers = '', description = ''] = text(files, `${info}/METADATA`).split(/\n\n(.*)/s);
 	assert.deepEqual(headers.split('\n'), [
@@ -164,11 +164,14 @@ test('a wheel carries the launcher, the archived binary and licence, and its met
 		'Project-URL: Documentation, https://github.com/kjanat/actionlint/tree/v1.2.3/docs',
 		'Project-URL: Repository, https://github.com/kjanat/actionlint',
 		'Project-URL: Issues, https://github.com/kjanat/actionlint/issues',
+		'Project-URL: Funding, https://github.com/sponsors/kjanat',
 		'Description-Content-Type: text/markdown',
 	]);
-	assert.match(description, /^# actionlint-kjanat\n/);
-	assert.match(description, /\npip install actionlint-kjanat\n/);
+	assert.match(description, /^# actionlint\n/);
+	assert.match(description, /\npython -m pip install actionlint-kjanat\n/);
 	assert.match(description, /\(https:\/\/github\.com\/kjanat\/actionlint\/releases\/tag\/v1\.2\.3\)/);
+	assert.match(description, /\(https:\/\/github\.com\/sponsors\/kjanat\)/);
+	assert.doesNotMatch(description, /\{\{version\}\}/);
 });
 
 test('RECORD lists the hash and size of every other file in the wheel', async () => {
@@ -184,6 +187,42 @@ test('RECORD lists the hash and size of every other file in the wheel', async ()
 			assert.equal(hash, `sha256=${createHash('sha256').update(data).digest('base64url')}`);
 			assert.equal(size, String(data.length));
 		}
+	}
+});
+
+test('a wheel build number changes the archive name without changing the release version or binary', async () => {
+	const directory = join(root, 'repacked');
+	const result = spawnSync(process.execPath, [
+		cli,
+		'build',
+		'--version',
+		version,
+		'--assets',
+		await stage(),
+		'--out',
+		directory,
+		'--build',
+		'1',
+	], { encoding: 'utf8' });
+	assert.equal(result.status, 0, result.stderr);
+	assert.deepEqual(
+		(await readdir(directory)).sort(),
+		expectedWheels.map(name => name.replace(`-${version}-`, `-${version}-1-`)).sort(),
+	);
+	for (const name of expectedWheels) {
+		const original = readZip(await readFile(join(out, name)));
+		const repacked = readZip(await readFile(join(directory, name.replace(`-${version}-`, `-${version}-1-`))));
+		assert.match(text(repacked, `${info}/WHEEL`), /\nBuild: 1\n$/);
+		assert.equal(text(repacked, `${info}/METADATA`), text(original, `${info}/METADATA`));
+		for (const path of ['actionlint_kjanat/bin/actionlint', 'actionlint_kjanat/bin/actionlint.exe']) {
+			assert.deepEqual(repacked.get(path), original.get(path));
+		}
+	}
+});
+
+test('buildWheels rejects an invalid wheel build number', async () => {
+	for (const buildNumber of ['', '0', '-1', '1.1', 'one']) {
+		await assert.rejects(buildWheels(version, root, { buildNumber }), /positive integer/);
 	}
 });
 
@@ -250,6 +289,11 @@ func main() {
 	assert.equal(ok.stderr, '');
 	assert.equal(ok.status, 0);
 	assert.match(ok.stdout, /^actionlint 1\.2\.3\nargs -version\npid (\d+)\n$/);
+	const packageCommand = join(scripts, process.platform === 'win32' ? 'actionlint-kjanat.exe' : 'actionlint-kjanat');
+	const packageInvocation = spawnSync(packageCommand, ['-version'], { encoding: 'utf8' });
+	assert.equal(packageInvocation.stderr, '');
+	assert.equal(packageInvocation.status, 0);
+	assert.match(packageInvocation.stdout, /^actionlint 1\.2\.3\nargs -version\npid (\d+)\n$/);
 	if (process.platform === 'win32') {
 		assert.notEqual(ok.stdout, `actionlint 1.2.3\nargs -version\npid ${ok.pid}\n`);
 	} else {
