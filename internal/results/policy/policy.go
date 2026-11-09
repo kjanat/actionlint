@@ -24,6 +24,7 @@ type Policy struct {
 	Metadata             *actionmeta.Metadata
 	AdditionalRules      []string
 	IgnorePatterns       repoconfig.IgnorePatterns
+	IgnoreSelectors      IgnoreSelectors
 	Log                  func(...any)
 	Debug                func(string, ...any)
 	// UsedSuppression records a matched selector for invocation-wide reconciliation.
@@ -127,6 +128,9 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 			return false
 		})
 		for _, finding := range findings {
+			if p.IgnoreSelectors.matches(processor.RuleSet, finding.Diagnostic) {
+				continue
+			}
 			all = append(all, filterErrors(p, []*findingmodel.Finding{finding}, cfg.PathConfigs(findingKey(finding.Path)))...)
 		}
 	}
@@ -163,7 +167,7 @@ func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []repoconfig.Path
 Loop:
 	for _, err := range errs {
 		if matchesIgnorePatterns(p.IgnorePatterns, err) {
-			debug(p, "Error %q is ignored due to -ignore command line option", err.Message)
+			debug(p, "Error %q is ignored due to --ignore-regex command line option", err.Message)
 			continue Loop
 		}
 		for _, c := range cfgs {
@@ -175,7 +179,7 @@ Loop:
 		filtered = append(filtered, err)
 	}
 	if len(filtered) != len(errs) {
-		log(p, "Filtered", len(errs)-len(filtered), "error(s) due to \"-ignore\" command line option and \"ignore\" configuration")
+		log(p, "Filtered", len(errs)-len(filtered), "error(s) due to \"--ignore-regex\" command line option and \"ignore\" configuration")
 	}
 	return filtered
 }

@@ -276,7 +276,7 @@ lint:
 }
 
 func TestLegacyInitValidatesBeforeWriting(t *testing.T) {
-	for _, args := range [][]string{{"-ignore", "["}, {"-format", "{{"}, {"--template-file", "missing.tmpl"}} {
+	for _, args := range [][]string{{"--ignore-regex", "["}, {"-format", "{{"}, {"--template-file", "missing.tmpl"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			commandTestRepo(t)
 			got := testRunCommand("", append([]string{"-init-config"}, args...)...)

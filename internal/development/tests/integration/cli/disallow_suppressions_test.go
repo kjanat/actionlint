@@ -141,7 +141,7 @@ jobs:
 				args = append(args, "-format", tc.format)
 			}
 			if tc.cliIgnore != "" {
-				args = append(args, "-ignore", tc.cliIgnore)
+				args = append(args, "--ignore-regex", tc.cliIgnore)
 			}
 			status := cmd.Main(append(args, "-"))
 			wantStatus := commandstatus.ExitSuccessNoProblem

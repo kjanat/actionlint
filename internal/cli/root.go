@@ -42,17 +42,18 @@ func (*outputModes) Type() string { return "MODE" }
 type commandApp struct {
 	// ctx is the invocation context. Cobra leaves Command.Context nil for
 	// commands it did not execute, such as help targets, so help output uses this.
-	ctx          context.Context
-	root         *cobra.Command
-	streams      Command
-	inv          invocation
-	opts         commandOptions
-	set          map[string]bool
-	status       int
-	errorJSON    bool
-	helpShown    bool
-	prefixIgnore []string
-	directory    directoryOption
+	ctx                   context.Context
+	root                  *cobra.Command
+	streams               Command
+	inv                   invocation
+	opts                  commandOptions
+	set                   map[string]bool
+	status                int
+	errorJSON             bool
+	helpShown             bool
+	prefixIgnore          []string
+	prefixIgnoreSelectors []string
+	directory             directoryOption
 }
 
 const commandGroupAnnotation = "actionlint/group"
@@ -297,7 +298,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.BoolVar(&a.inv.Check.NoIgnore, "no-ignore", false, "Include Git-ignored files during discovery; configured file filters still apply")
 	annotateFlag(f, "no-ignore", "Input")
-	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
+	f.StringArrayVar(&a.inv.Check.IgnoreSelectors, "ignore", nil, "Ignore a `RULE`, diagnostic code or rule/code (repeatable)")
 	f.VarP(&a.opts.output, "output-format", "o", "Output mode: text, pretty, oneline, gcc, json, jsonl, sarif or github (repeatable)")
 	f.IntVar(&a.inv.Render.Width, "diagnostic-width", 100, "Pretty diagnostic width in columns (40-400)")
 	f.Var(&a.opts.output, "output", "Alias for --output-format (repeatable)")
@@ -330,7 +331,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	for _, name := range []string{"yes", "help", "help-legacy"} {
 		annotateFlag(f, name, "Information")
 	}
-	for _, name := range []string{"ignore", "output", "format", "oneline", "verbose", "debug", "no-color"} {
+	for _, name := range []string{"output", "format", "oneline", "verbose", "debug", "no-color"} {
 		_ = f.MarkHidden(name)
 	}
 	if !modern {
@@ -388,8 +389,11 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 		}
 		check := c.Name() == "check" || c.Name() == "fix" || a.inv.Check.PreCommit
 		c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
-		if check && (c.Flags().Changed("ignore-regex") || c.Flags().Changed("ignore")) {
+		if check && c.Flags().Changed("ignore-regex") {
 			a.inv.Check.IgnoreRegex = append(a.prefixIgnore, a.inv.Check.IgnoreRegex...)
+		}
+		if check && c.Flags().Changed("ignore") {
+			a.inv.Check.IgnoreSelectors = append(a.prefixIgnoreSelectors, a.inv.Check.IgnoreSelectors...)
 		}
 		if check && c.Flags().Changed("color") {
 			a.set["modern-color"] = true

@@ -192,6 +192,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 			{"config", "Read configuration from `PATH`"},
 			{"no-ignore", "Include Git-ignored files during discovery"},
 			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
+			{"ignore", "Ignore a `RULE`, diagnostic code or rule/code (repeatable)"},
 			{"json", "Write JSON results"},
 			{"output-format", "Output `FMT`: text, pretty, oneline, gcc, json, jsonl, sarif, github (repeatable)"},
 			{"output-file", "Write results to `PATH`"},
@@ -224,7 +225,6 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
 	_, _ = fmt.Fprintln(out, styleHelpFlags(`
   -format TEMPLATE        --template TEMPLATE
   -oneline                --output-format=oneline
-  -ignore REGEX           --ignore-regex REGEX (repeatable, matches diagnostic messages)
   -config-file PATH       --config PATH
   -init / -init-config    config init
   -completion SHELL       completion SHELL
@@ -283,7 +283,7 @@ func describeCommand(c *cobra.Command) commandDescription {
 		d.Description = c.Short
 	}
 	if c == c.Root() {
-		d.LegacyAliases = map[string]string{"-flag": "--flag", "completions": "completion", "format": "template", "ignore": "ignore-regex", "config-file": "config", "init": "config init", "init-config": "config init"}
+		d.LegacyAliases = map[string]string{"-flag": "--flag", "completions": "completion", "format": "template", "config-file": "config", "init": "config init", "init-config": "config init"}
 	}
 	c.InitDefaultHelpFlag()
 	annotateFlag(c.Flags(), "help", "Information")

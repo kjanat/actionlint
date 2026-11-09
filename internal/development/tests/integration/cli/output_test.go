@@ -17,7 +17,7 @@ func TestCommandJSONErrorsAndLogs(t *testing.T) {
 		{[]string{"--unknown", "--json"}, 2, false},
 		{[]string{"--unknown", "--output", "json"}, 2, false},
 		{[]string{"--unknown", "-ojson"}, 2, false},
-		{[]string{"--json", "--ignore", "[", "-"}, 3, false},
+		{[]string{"--json", "--ignore-regex", "[", "-"}, 3, false},
 		{[]string{"--output=jsonl", "missing.yml"}, 3, false},
 		{[]string{"--json", "--debug", "--config-file=does-not-exist.yml", "-"}, 3, true},
 	}

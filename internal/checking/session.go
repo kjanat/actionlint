@@ -35,6 +35,7 @@ import (
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -69,6 +70,7 @@ type Options struct {
 	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
 	Presets                      repoconfig.Presets
 	IgnorePatterns               []string
+	IgnoreSelectors              policy.IgnoreSelectors
 	LogWriter                    io.Writer
 	Verbose, Debug, LogSelection bool
 	LegacyErrors                 bool
@@ -200,6 +202,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		request.LogLevel = LogLevelDebug
 	}
 	request.IgnorePatterns, err = repoconfig.CompileIgnorePatterns(options.IgnorePatterns)
+	request.IgnoreSelectors = options.IgnoreSelectors
 	if err != nil {
 		return nil, err
 	}

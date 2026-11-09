@@ -24,11 +24,16 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
 	c, r := inv.Check, inv.Render
+	ignoreSelectors, err := policy.CompileIgnoreSelectors(c.IgnoreSelectors)
+	if err != nil {
+		return 0, commandargs.UsageError{Cause: err}
+	}
 	overwrite, err := selectReportDestination(ctx, streams, r.OutputFile, inv.Yes, slices.Contains(c.Paths, "-"))
 	if err != nil {
 		return 0, err
@@ -67,7 +72,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""),
 
 		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
-		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
+		IgnoreSelectors: ignoreSelectors,
+		Debug:           c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
 		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
 	}
 	if c.ResolverCommand != "" {

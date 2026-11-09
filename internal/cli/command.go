@@ -103,6 +103,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 		rest = normalizeCommandArgs(app.root, rest)
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
+		app.prefixIgnoreSelectors = slices.Clone(app.inv.Check.IgnoreSelectors)
 		if err := app.root.ExecuteContext(ctx); err != nil {
 			return app.reportError(commandargs.UsageError{Cause: err})
 		}
