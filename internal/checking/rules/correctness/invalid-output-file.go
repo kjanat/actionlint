@@ -29,7 +29,7 @@ func InvalidOutputFileDeclaration() rule.Declaration {
 		DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#invalid-output-file",
 		SupportsActions:  true, Scope: rule.SourceConfiguration,
 		RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution},
-		Examples: []rule.Example{rule.WorkflowExample("Give the output a name instead of writing a JSON document directly.",
+		Examples: []rule.Example{rule.WorkflowExample("Write the value as a named output.",
 			"    steps:\n      - shell: bash\n        run: echo '{\"available\":true}' >> \"$GITHUB_OUTPUT\"\n",
 			"    steps:\n      - shell: bash\n        run: echo 'available=true' >> \"$GITHUB_OUTPUT\"\n")},
 	}

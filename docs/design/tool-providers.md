@@ -335,11 +335,11 @@ type ToolConfig struct {
 
 Commit `11770d95` maps `--no-ruff` to `"python"` and `--no-shellcheck` to `"shell"` at `cli/plugin.go:72-77`. It then skips plugins whose metadata lists a disabled `languages` entry at `localapp/plugins.go:46-50,195-213`. This happens after artifact resolution at `plugins.go:40`. The review found no other reader or schema for `languages`.
 
-Replace the language mapping, `DisabledLanguages` and `declaresLanguage` with disabling by tool ID before resolution. Match `PluginSelection.DisabledTools` against `Pin.Name`, `Pin.Alias` at `model.go:122-123`, and bundled manifest IDs before calling `artifact.Resolve`. A disabled tool must not be downloaded or loaded.
+Replace the language mapping, `DisabledLanguages` and `declaresLanguage` with disabling by tool ID. Match `PluginSelection.DisabledTools` against `Pin.Name`, `Pin.Alias` at `model.go:122-123`, and bundled manifest IDs before calling `artifact.Resolve`. Resolve other sources to read their metadata, then disable matching tools before loading them. See the three cases in [the review decisions](tool-providers-decisions.md).
 
 For optional providers, log load failures and skip the provider, following `composition.go:34-37`. This addresses the bug that motivated the commit, where an incompatible artifact aborted the run. The Action's `PluginSelection` also omitted the disabling field at `provisioning.go:32`, according to an investigator. The shared selection data must cover that caller too.
 
-Test that disabling happens before resolution with `TestDisabledToolIsNotResolved`.
+Test that disabling bundled and alias-matched tools happens before resolution with `TestDisabledToolIsNotResolved`. Test that other matching tools are disabled after metadata resolution and before instantiation.
 
 ## Design decisions
 
@@ -477,7 +477,7 @@ Tests: Before deleting adapters, capture snapshots from the current adapters (th
 ### Stage 5. Update commands, APIs and plugin disabling
 
 Files: `internal/cli/root.go:236-256`, `env.go:83-125`, `plugin.go:68-95`, `doctor.go:54-84,120-140`, `help.go:249-251`, `check.go:49`; `analysis/analysis.go:40-67`; `internal/cli/action/{inputs.go:103-126, lint.go:67-106,155-157, main.go:10-23, outputs.go}` + `action.yml`; `internal/localapp/{config_migration.go:19-54,121-125, plugins.go:31-82,195-213, plugin_selection.go:21-46,106-113}`; delete `internal/localapp/plugin_languages_test.go`; docs `config.md`, `usage.md`, `env.md`, `action.md`, `migration-v2.md`, `plugins.md`.
-Tests: CLI `--tool/--no-tool` parsing incl. `=false`, env prefix per id, doctor JSON snapshot with a manifest probe, Action input tests, `TestDisabledToolIsNotResolved` (no `artifact.Resolve` call for a disabled id), public API example tests.
+Tests: CLI `--tool/--no-tool` parsing incl. `=false`, env prefix per id, doctor JSON snapshot with a manifest probe, Action input tests, `TestDisabledToolIsNotResolved` (no `artifact.Resolve` call for a disabled bundled or alias-matched tool), metadata resolution followed by disabling for other sources, public API example tests.
 
 ### Stage 6. Download OCI artifacts and write lock version 2
 

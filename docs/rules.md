@@ -668,7 +668,7 @@ Write NAME=value for a single-line output. For a multiline output, write NAME<<d
 
 Configure this rule with `lint.rules.correctness.invalid-output-file`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
-Give the output a name instead of writing a JSON document directly.
+Write the value as a named output.
 
 ```yaml
 on: push
@@ -1254,7 +1254,7 @@ Configure this rule with `lint.rules.correctness.unused-suppression`. Use `off` 
 
 ## vendor-lock-in
 
-GitHub Actions accepts repository shorthand in uses, not full repository URLs. On the github execution target, report URL references in action steps and reusable-workflow calls. An HTTPS github.com URL offers a safe fix that removes its prefix while preserving the repository, action path and ref. Other hosts have no automatic substitution: the same owner/repository name on GitHub does not establish the same action. Docker registry URLs, local actions and dynamic references are excluded. Other execution targets are not restricted by this rule.
+GitHub Actions accepts repository shorthand in uses. It does not accept full repository URLs. On the github execution target, report URL references in action steps and reusable-workflow calls. An HTTPS github.com URL offers a safe fix that removes its prefix while preserving the repository, action path and ref. Other hosts have no automatic substitution: the same owner/repository name on GitHub does not establish the same action. Docker registry URLs, local actions and dynamic references are excluded. Other execution targets are not restricted by this rule.
 
 Use owner/repo[/path]@ref for an action hosted in the current GitHub instance. To use an externally hosted action, choose and verify a GitHub mirror, or check out the external source and invoke its local action. The prefix fix is unavailable for URLs with credentials, ports, URL encoding, queries, fragments or invalid shorthand.
 
@@ -1302,7 +1302,7 @@ Configure this rule with `lint.rules.correctness.workflow-call`. Use `off` to di
 
 ## workflow-command-syntax
 
-The runner prints malformed or unknown :: commands as ordinary text instead of creating annotations or applying command effects.
+The runner prints malformed or unknown :: commands as ordinary text. They do not create annotations or apply command effects.
 
 This opt-in warning checks literal echo and printf output in Bash or POSIX shells, print calls in Python, and Write-Host, Write-Output or echo calls in PowerShell. It joins writes into stdout lines, including stop and resume tokens split across writes. Command processing is evaluated separately for each possible execution path. Comments and unused strings do not produce findings.
 
