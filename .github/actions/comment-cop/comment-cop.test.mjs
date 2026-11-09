@@ -407,19 +407,20 @@ test('uses opaque location-specific marker keys', () => {
 	assert.notEqual(keys[0], keys[1]);
 });
 
-test('tailors advice to the finding and keeps contributor guidance in a sub footer', () => {
+test('links review comments to the shared writing instructions', () => {
 	const group = { path: 'rule.go', start: 1, end: 3, text: '// Explanation', reasons: ['3 lines'] };
-	const lengthBody = bodyFor(group);
-	const consequenceBody = bodyFor({ ...group, reasons: ['counterfactual justification'] });
-
-	assert.match(lengthBody, /length-only flag/);
-	assert.doesNotMatch(consequenceBody, /length-only flag/);
-	assert.match(consequenceBody, /consequence or failure mode/);
-	assert.match(consequenceBody, /<sub>[^<]*advisory[^<]*resolve this thread[^<]*<\/sub>/);
-	assert.match(consequenceBody, /<br><sub>Any AI agents[^<]*justify the closure with a reply[^<]*<\/sub>$/);
+	assert.ok(readFileSync(new URL('../../../.agents/writing.md', import.meta.url), 'utf8').length > 0);
+	for (const reasons of [['3 lines'], ['counterfactual justification']]) {
+		const body = bodyFor({ ...group, reasons });
+		assert.ok(body.includes(`Flagged for: ${reasons.join(', ')}.`));
+		assert.ok(
+			body.endsWith('[Writing instructions](https://github.com/kjanat/actionlint/blob/master/.agents/writing.md)'),
+		);
+		assert.doesNotMatch(body, /<sub>|```/);
+	}
 });
 
-test('combines different advice and deduplicates equivalent contrast advice', () => {
+test('reports several reasons with one writing-instructions link', () => {
 	const group = {
 		path: 'rule.go',
 		start: 1,
@@ -429,9 +430,9 @@ test('combines different advice and deduplicates equivalent contrast advice', ()
 	};
 	const body = bodyFor(group);
 
-	assert.equal(body.split('\n').filter(line => line.startsWith('- ')).length, 2);
-	assert.match(body, /length-only flag/);
-	assert.match(body, /comparison explains a real constraint/);
+	assert.ok(body.includes('Flagged for: 3 lines, "X instead of Y", "X rather than Y".'));
+	assert.equal(body.match(/\[Writing instructions\]/g)?.length, 1);
+	assert.equal(body.split('\n\n').length, 2);
 });
 
 const reviewFiles = [
