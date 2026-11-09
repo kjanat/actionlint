@@ -7,7 +7,8 @@ import { resolve } from 'node:path';
 
 import { defaultClientConditions, defineConfig, searchForWorkspaceRoot } from 'vite';
 
-import { buildVersion, renderBuildVersion } from './src/build-version.ts';
+import { buildVersion, renderBuildVersion } from '#build-version';
+import { goMetadata, renderGoMetadata, writeGoImportPage } from '#go-metadata';
 
 const here = import.meta.dirname;
 const repositoryRoot = resolve(here, '../..');
@@ -17,6 +18,7 @@ const manual = resolve(repositoryRoot, 'man/actionlint.1.html');
 const manualStyle = resolve(repositoryRoot, 'man/manual.css');
 
 const version = buildVersion(repositoryRoot, process.env.ACTIONLINT_LATEST_RELEASE);
+const metadata = goMetadata(repositoryRoot);
 
 function buildLanguageServer(): void {
 	execFileSync('bun', ['run', '--cwd', resolve(repositoryRoot, 'libraries/browser-lsp'), 'build'], {
@@ -42,6 +44,7 @@ function sitePages(): import('vite').Plugin {
 		apply: 'build',
 		async writeBundle() {
 			await copyFile(resolve(outDir, 'index.html'), resolve(outDir, '404.html'));
+			await writeGoImportPage(outDir, metadata);
 
 			if (!existsSync(manual)) {
 				this.warn(`${manual} does not exist, so man.html and usage.html are not emitted. Run \`mise run man\` first.`);
@@ -73,7 +76,8 @@ export default defineConfig({
 		},
 		{
 			name: 'actionlint:version',
-			transformIndexHtml: html => renderBuildVersion(html, version),
+			transformIndexHtml: html =>
+				renderGoMetadata(renderBuildVersion(html, version), metadata.root, metadata.repository),
 		},
 		sitePages(),
 	],
