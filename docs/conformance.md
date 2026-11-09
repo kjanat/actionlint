@@ -4,6 +4,10 @@ The conformance job runs reference-project fixtures through actionlint's Go impl
 with the recorded expectations. Reference expectations can reflect missing features or validation. Assessments use
 implementation or runtime evidence to explain reviewed differences.
 
+Workflow fixtures run with recommended correctness and suspicious checks to match
+the upstream parser's scope. Security rules and project conventions have their
+own tests under `internal/checking/rules/`.
+
 For live GitHub expression evaluation, coercion and `fromJSON()` behavior, see the separate
 [expression reference and reproduction workflow](expression-behavior.md).
 
