@@ -24,7 +24,7 @@ The path points at the SDK in the adjacent checkout. Use the analyzer implementa
 Run [Publish Rust SDK](../../../.github/workflows/sdk-publish.yml) from `master`, supplying the version in this crate's [Cargo.toml](Cargo.toml). Dry-run is enabled by default. The workflow tests default and all features, runs clippy, and builds the packaged crate before publication.
 
 ```sh
-gh workflow run sdk-publish.yml --ref master -f version=0.1.0 -F dry-run=true
+gh workflow run sdk-publish.yml --ref master -f version=0.2.0 -F dry-run=true
 ```
 
 For local verification, run these commands from the repository root:
@@ -40,7 +40,7 @@ cargo publish --locked -p actionlint-extension-api --all-features --registry cra
 The [first publication requires an API token](https://crates.io/docs/trusted-publishing). Select `authentication=bootstrap-token` and disable dry-run when ready to publish. This uses `CARGO_REGISTRY_TOKEN` from the repository's `crates-io` environment. No tag or actionlint release is created.
 
 ```sh
-gh workflow run sdk-publish.yml --ref master -f version=0.1.0 -F dry-run=false -f authentication=bootstrap-token
+gh workflow run sdk-publish.yml --ref master -f version=0.2.0 -F dry-run=false -f authentication=bootstrap-token
 ```
 
 After the first publication, add a GitHub trusted publisher in the crate's crates.io settings:

@@ -246,6 +246,19 @@ run     = [
   "cargo test --locked -p actionlint-extension-api --all-features"
 ]
 
+["plugins-check-rust-sdk"]
+description = "Build and load Rust SDK consumer worlds through the Go host"
+depends     = ["protocol:sdk"]
+sources     = [
+  "internal/plugins/execution/component/**/*.go",
+  "plugins/protocol/**",
+  "plugins/sdk/rust/**",
+  "rust-toolchain.toml",
+  "Cargo.lock"
+]
+env         = { ACTIONLINT_RUST_SDK_INTEGRATION = "1" }
+run         = "go test ./internal/plugins/execution/component -run '^TestRustSDKScriptWorlds$' -count=1 -p 1 -timeout 10m"
+
 ["plugins:wat"]
 sources = ["internal/plugins/execution/{component,module}/testdata/wat/*.wat"]
 outputs = ["internal/plugins/execution/{component,module}/testdata/wat/*.wasm"]

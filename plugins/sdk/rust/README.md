@@ -100,12 +100,38 @@ fn environments_for(
 }
 ```
 
-Script engines implement the `script-engine-plugin` world of
-[`wit/script-engine.wit`](wit/script-engine.wit) (0.2.0) or
-[`wit/deps/actionlint-0.3.0/script-engine.wit`](wit/deps/actionlint-0.3.0/script-engine.wit) (0.3.0, adding fixes,
-reported sources, excluded codes and the directory resource). Each version is its
-own WIT package directory; generate bindings from the directory of the version
-the engine exports. This crate's `bindings` module covers the analyzer worlds only.
+Script engines can generate either the `script-engine-plugin` or
+`template-script-engine-plugin` world for 0.2.0 or 0.3.0 without vendoring WIT.
+Add the SDK as a direct dependency and use its Cargo metadata in your `build.rs`:
+
+```rust,no_run
+use std::{env, fs, path::PathBuf};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let wit = PathBuf::from(env::var("DEP_ACTIONLINT_EXTENSION_API_WIT")?);
+    let output = PathBuf::from(env::var("OUT_DIR")?).join("bindings.rs");
+    fs::write(
+        output,
+        format!(
+            "wit_bindgen::generate!({{ path: {:?}, world: \"script-engine-plugin\" }});",
+            wit.to_string_lossy()
+        ),
+    )?;
+    Ok(())
+}
+```
+
+Include the generated invocation with `include!(concat!(env!("OUT_DIR"),
+"/bindings.rs"));` and depend on `wit-bindgen` in the guest. For 0.3.0, append
+`deps/actionlint-0.3.0` to `wit` before writing the invocation. The SDK exports
+WIT sources and LF-normalized SHA-256 values for each script-engine and
+template-effects version. Use `package::ScriptPackage` with the matching
+`script_engine::v0_2` or `script_engine::v0_3` descriptor type to write
+discovery metadata and distribution files. Set `ScriptWorld` to match the
+world exported by the guest. The package identity and descriptor must match
+the guest descriptor. The SDK descriptor types and the guest bindings are
+separately generated types, so construct the package descriptor from the same
+values used by the guest.
 
 Enable `package` for a native packaging binary. Construct `package::Package`
 from the extension's own descriptor, Cargo identity, engine, languages,

@@ -377,6 +377,8 @@ jobs:
         env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host" }
         run: test -x "${ACTIONLINT_RUNNER_HOST}";
           go test -count=1 -v ./internal/plugins/execution/component ./internal/plugins/execution/module ./internal/development/tests/integration/plugins
+      - name: Test Rust SDK consumers through the Go host
+        run: mise run plugins-check-rust-sdk
       - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/checking ./internal/lsp ./internal/development/tests/integration/checking ./internal/development/tests/integration/cli
   docker:
     needs: [changes, checks]
