@@ -66,8 +66,12 @@ func collectRuntimes(sources map[string][]byte) (map[string]runtimeInfo, error) 
 			return nil, fmt.Errorf("bundled runtime %s is missing from the manifest parsers", name)
 		}
 	}
-	migrations := migrationConstantPattern.FindAllSubmatch(sources[runtimeSourcePaths[3]], -1)
-	if len(migrations) != len(migrationDeclarationPattern.FindAll(sources[runtimeSourcePaths[3]], -1)) {
+	constants := sources[runtimeSourcePaths[3]]
+	if !bytes.Contains(constants, []byte("class Constants")) {
+		return nil, errors.New("runner constants source has no Constants class")
+	}
+	migrations := migrationConstantPattern.FindAllSubmatch(constants, -1)
+	if len(migrations) != len(migrationDeclarationPattern.FindAll(constants, -1)) {
 		return nil, errors.New("unrecognized runtime migration declaration; review upstream source changes")
 	}
 	for _, match := range migrations {
@@ -86,9 +90,6 @@ func collectRuntimes(sources map[string][]byte) (map[string]runtimeInfo, error) 
 			info.RemovalDate = value
 		}
 		out[name] = info
-	}
-	if !bytes.Contains(sources[runtimeSourcePaths[3]], []byte("class NodeMigration")) {
-		return nil, errors.New("runner migration constants changed shape; review runtime lifecycle extraction")
 	}
 	for name, info := range out {
 		if info.RemovalDate != "" && !info.Deprecated {

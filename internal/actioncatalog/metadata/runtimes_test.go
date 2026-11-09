@@ -20,9 +20,11 @@ func testRuntimeSources() map[string][]byte {
 		runtimeSourcePaths[0]: []byte(parser.String()),
 		runtimeSourcePaths[1]: []byte(parser.String()),
 		runtimeSourcePaths[2]: []byte("NODE20_VERSION=\"20.0.0\"\nNODE24_VERSION=\"24.0.0\"\n"),
-		runtimeSourcePaths[3]: []byte(`public static class NodeMigration {
+		runtimeSourcePaths[3]: []byte(`public static class Constants {
+public static class NodeMigration {
 public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/example/";
 public static readonly string Node20RemovalDate = "September 23rd, 2026";
+}
 }`),
 	}
 }
@@ -64,6 +66,25 @@ func TestRuntimeLifecycle(t *testing.T) {
 	runtimes, err = collectRuntimes(sources)
 	if err != nil || !runtimes["node20"].Removed {
 		t.Fatalf("actual binary removal not recognized: %#v, %v", runtimes, err)
+	}
+}
+
+func TestRuntimeLifecycleAfterMigrationConstantsAreRemoved(t *testing.T) {
+	sources := testRuntimeSources()
+	// Runner.Common/Constants.cs no longer defines NodeMigration after the
+	// runner removes Node 20. Accepted metadata values still include node20.
+	sources[runtimeSourcePaths[3]] = []byte("public static class Constants {}")
+	sources[runtimeSourcePaths[2]] = []byte("NODE24_VERSION=\"24.0.0\"\n")
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !runtimes["node20"].Removed || runtimes["node24"].Removed || runtimes["node24"].Deprecated {
+		t.Fatalf("incorrect lifecycle: %#v", runtimes)
+	}
+	generated, err := generateRuntimes(sources, testRevision)
+	if err != nil || !bytes.Contains(generated, []byte(`"node20": {Removed: true`)) {
+		t.Fatalf("removed runtime was lost: %s, %v", generated, err)
 	}
 }
 
