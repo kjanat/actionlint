@@ -16,12 +16,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
+	environment.IsolateUserCache(t)
 	// This module has an invalid code section. Static inspection succeeds, while
 	// compilation or execution would fail; inspection must never start a runtime.
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 10, 1, 255)
