@@ -72,7 +72,7 @@ jobs:
           version: 2026.11.4
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
-          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.github/workflows/*.yml', '.mise/locks/**') }}"
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           install: ${{ steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true' }}
           env: true
           monorepo: false
