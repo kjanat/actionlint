@@ -622,9 +622,11 @@ Access step outputs through `steps.<step_id>`. The `steps` context is dynamic:
 Copying a step without updating its references can cause it to access the wrong outputs.
 actionlint reports invalid references to step outputs.
 
-When a metadata provider supplies the selected action's manifest, its declared outputs constrain the outputs object.
-Without that metadata, actionlint cannot determine the output names. In the example below, it checks step order and unsafe script interpolation.
-When the manifest is available, it also reports the misspelled `cache_hit` as an unknown property.
+When actionlint has a valid composite action manifest, its output mapping determines the available output names.
+It checks those names in workflows, nested composite steps, and composite output values.
+actionlint accepts references to undeclared outputs of JavaScript and Docker actions because they can create outputs at runtime.
+Without metadata, actionlint cannot determine the declared output names.
+In the JavaScript example below, actionlint accepts `cache_hit` and checks step order and unsafe script interpolation.
 
 Example input:
 

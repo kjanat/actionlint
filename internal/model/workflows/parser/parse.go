@@ -2178,7 +2178,7 @@ func parseDocument(source []byte, root *syntax.Node) (*workflowlang.Workflow, []
 	projected, aliases := projectYAMLAliases(root, uses)
 	p.aliases = aliases
 	workflow := p.parse(projected)
-	workflow.ExpressionSources = p.workflowExpressionSources(projected)
+	workflow.ExpressionSources = p.ExpressionSources(projected)
 	p.IndexDependencySpans(workflow)
 	return workflow, p.errs
 }

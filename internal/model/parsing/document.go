@@ -115,7 +115,18 @@ func actionFacts(metadata *actionmeta.Metadata) *workflowlang.Workflow {
 	for _, step := range metadata.Runs.Steps {
 		job.Steps = append(job.Steps, actionStep(step, parser))
 	}
-	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}}
+	// Composite output values are evaluated after its steps, like job outputs.
+	// Reuse the validated fields so schema recovery and source positions agree.
+	for _, field := range actionmeta.Validate(metadata).ExpressionFields {
+		if field.SchemaPath != "outputs.*.value" || field.IsKey {
+			continue
+		}
+		if job.Outputs == nil {
+			job.Outputs = make(map[string]*workflowlang.Output)
+		}
+		job.Outputs[field.FieldPath] = &workflowlang.Output{Value: &workflowlang.String{Value: field.Value.Value, Pos: &workflowlang.Pos{Line: field.Value.Line, Col: field.Value.Column}}}
+	}
+	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}, ExpressionSources: parser.ExpressionSources(metadata.Root)}
 	parser.IndexDependencySpans(workflow)
 	return workflow
 }
