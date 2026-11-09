@@ -14,15 +14,15 @@ import (
 func PinSource(ctx context.Context, source string) (string, error) {
 	if !pluginartifact.IsOCI(source) {
 		u, err := url.Parse(source)
-		if err != nil || u.Scheme != "https" || u.Fragment != "" {
-			return source, nil
+		if err == nil && u.Scheme == "https" && u.Fragment == "" {
+			info, err := Inspect(ctx, source)
+			if err != nil {
+				return "", err
+			}
+			u.Fragment = "sha256=" + info.SHA256
+			return u.String(), nil
 		}
-		info, err := Inspect(ctx, source)
-		if err != nil {
-			return "", err
-		}
-		u.Fragment = "sha256=" + info.SHA256
-		return u.String(), nil
+		return source, nil
 	}
 	grant, err := pluginartifact.ExplicitSource(source)
 	if err != nil {
