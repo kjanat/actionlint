@@ -1,4 +1,4 @@
-ARG GOLANG_VER=1.27.0
+ARG GOLANG_VER=1.27.3
 ARG ALPINE_VER=3.24
 
 FROM golang:${GOLANG_VER} AS builder
@@ -14,7 +14,7 @@ FROM koalaman/shellcheck-alpine:stable AS shellcheck
 FROM alpine:${ALPINE_VER} AS runtime
 LABEL org.opencontainers.image.source="https://github.com/kjanat/actionlint"
 LABEL org.opencontainers.image.licenses="MIT"
-RUN apk add --no-cache python3 py3-pyflakes
+RUN apk upgrade --no-cache && apk add --no-cache python3 py3-pyflakes
 COPY --from=builder /go/src/app/actionlint /usr/local/bin/
 COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 

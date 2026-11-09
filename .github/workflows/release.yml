@@ -8,6 +8,9 @@ concurrency:
 
 permissions: { contents: read }
 
+env:
+  OSV_SCANNER_IMAGE: ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0
+
 jobs:
   nix:
     uses: $/.github/workflows/nix.yml
@@ -57,6 +60,8 @@ jobs:
         run: echo VERSION="${GITHUB_REF#refs/tags/v}" >> "${GITHUB_ENV}"
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      - name: Check Go packages for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest -scan=package ./cmd/actionlint ./cmd/actionlint-action
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with: { version: v2.18.0, args: "release --clean --release-notes=${{ runner.temp }}/release-notes.md" }
         env: {
@@ -166,11 +171,17 @@ jobs:
           build-args: |
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           load: true
+          no-cache-filters: runtime
           cache-from: type=gha,scope=release-cli
           cache-to: type=gha,scope=release-cli,mode=max
           tags: actionlint:smoke
       - name: Smoke-test the CLI image
         run: docker run --rm --mount type=bind,source="${PWD}",target=/w -- actionlint:smoke -color -verbose
+      - name: Scan CLI image packages
+        run: |
+          docker save --output "${RUNNER_TEMP}/actionlint-cli.tar" actionlint:smoke
+          docker run --rm --mount "type=bind,source=${RUNNER_TEMP},target=/audit,readonly" \
+            "${OSV_SCANNER_IMAGE}" scan image --archive /audit/actionlint-cli.tar
       - name: Build and push CLI image
         id: push-cli
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -214,11 +225,17 @@ jobs:
           build-args: |
             ACTIONLINT_VER=${{ steps.tag.outputs.name }}
           load: true
+          no-cache-filters: runtime
           cache-from: type=gha,scope=release-action
           cache-to: type=gha,scope=release-action,mode=max
           tags: actionlint-action:smoke
       - name: Smoke-test the GitHub Action image
         run: ./scripts/test-action.bash actionlint-action:smoke
+      - name: Scan GitHub Action image packages
+        run: |
+          docker save --output "${RUNNER_TEMP}/actionlint-action.tar" actionlint-action:smoke
+          docker run --rm --mount "type=bind,source=${RUNNER_TEMP},target=/audit,readonly" \
+            "${OSV_SCANNER_IMAGE}" scan image --archive /audit/actionlint-action.tar
       - name: Build and push GitHub Action image
         id: push-action
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0

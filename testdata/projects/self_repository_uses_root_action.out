@@ -1,1 +1,2 @@
-workflows/test.yaml:7:15: specifying action "$//" in invalid format because path is missing. available formats are "{owner}/{repo}@{ref}", "{owner}/{repo}/{path}@{ref}", "./{path}", or "$/{path}" [action]
+workflows/test.yaml:12:24: property "undefined_output" is not defined in object type {result: string} [expression]
+workflows/test.yaml:15:11: input "undefined_input" is not defined in action "Root action" defined at "$/". available inputs are "message" [action]

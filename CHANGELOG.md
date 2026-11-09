@@ -2,6 +2,16 @@
 
 # Unreleased
 
+<a id="v1.17.1"></a>
+
+## [v1.17.1](https://github.com/kjanat/actionlint/releases/tag/v1.17.1) - 2026-11-09
+
+- Build binaries and container images with Go 1.27.3 to include standard-library security fixes. Update installed Alpine packages and scan Go packages and container images before publishing. (kjanat/actionlint#356)
+
+- Accept `uses: $/` for an action at the repository root and validate its inputs and outputs. (kjanat/actionlint#200)
+
+[Changes][v1.17.1]
+
 <a id="v1.17.0"></a>
 
 ## [v1.17.0](https://github.com/kjanat/actionlint/releases/tag/v1.17.0) - 2026-09-13
@@ -2541,6 +2551,7 @@ See documentation for more details:
 
 [Changes][v1.0.0]
 
+[v1.17.1]: https://github.com/kjanat/actionlint/compare/v1.17.0...v1.17.1
 [v1.17.0]: https://github.com/kjanat/actionlint/compare/v1.16.1...v1.17.0
 [v1.16.1]: https://github.com/kjanat/actionlint/compare/v1.16.0...v1.16.1
 [v1.16.0]: https://github.com/kjanat/actionlint/compare/v1.15.1...v1.16.0
