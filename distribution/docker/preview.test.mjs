@@ -110,7 +110,7 @@ test('prebuilt CLI stage skips the source compiler while source CLI and Action s
 	const dependencies = new Map();
 	let stage;
 	for (const line of dockerfile.split(/\r?\n/)) {
-		const from = /^FROM (\S+) AS (\S+)$/i.exec(line);
+		const from = /^FROM(?: --platform=\S+)? (\S+) AS (\S+)$/i.exec(line);
 		if (from) {
 			const [, base, name] = from;
 			assert.ok(base && name);
@@ -126,6 +126,7 @@ test('prebuilt CLI stage skips the source compiler while source CLI and Action s
 		return new Set([...parents].flatMap(parent => [parent, ...ancestors(parent)]));
 	};
 	assert.ok(dependencies.has('cli-prebuilt'));
+	assert.ok(dependencies.has('builder'));
 	assert.ok(!ancestors('cli-prebuilt').has('builder'));
 	assert.ok(![...ancestors('cli-prebuilt')].some(stage => stage.startsWith('golang:')));
 	for (const name of ['cli', 'action']) assert.ok(ancestors(name).has('builder'), name);
