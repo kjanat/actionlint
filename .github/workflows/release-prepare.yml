@@ -20,6 +20,7 @@ jobs:
   prepare:
     name: Build release candidate
     runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
     timeout-minutes: 40
     outputs:
       source: ${{ steps.candidate.outputs.source }}
@@ -27,6 +28,9 @@ jobs:
       tree: ${{ steps.candidate.outputs.tree }}
       version: ${{ steps.candidate.outputs.version }}
     steps:
+      - uses: &BeepboopToken kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: read }
       - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
       - name: Check requested source and version
@@ -102,10 +106,7 @@ jobs:
       - name: Build the complete candidate tree
         id: candidate
         env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          "${{ insert }}": ${{ fromJSON(steps.beepboop.outputs.gitId || '{}') }}
         run: node tools/release/release-candidate.mjs prepare --version "${VERSION}" --out-dir "${RUNNER_TEMP}/actionlint-action"
       - name: Select the candidate for packaging
         env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
@@ -316,8 +317,11 @@ jobs:
     if: ${{ !inputs.validation-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions: { contents: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - uses: *BeepboopToken
+        id: beepboop
+        with: { permission-contents: write }
       - uses: *Checkout
         with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
       - uses: *Download
@@ -329,7 +333,7 @@ jobs:
           name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/actionlint-action/assets
       - name: Create the draft without publishing a version tag
-        env: { GH_TOKEN: "${{ github.token }}", SOURCE: "${{ needs.prepare.outputs.source }}" }
+        env: { GH_TOKEN: "${{ steps.beepboop.outputs.token }}", SOURCE: "${{ needs.prepare.outputs.source }}" }
         run: |
           if gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             echo '::error::A release or draft already exists. Inspect it before preparing another candidate.'
