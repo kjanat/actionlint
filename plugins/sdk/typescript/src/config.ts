@@ -1,4 +1,4 @@
-import type { JSONValue } from './index.ts';
+import type { JSONValue } from '#index';
 
 /**
  * Require an object-shaped plugin config before reading named options.

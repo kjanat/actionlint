@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import type { ImageReference } from './images.ts';
-import type { DocumentDiagnostic, Severity } from './index.ts';
+import type { ImageReference } from '#images';
+import type { DocumentDiagnostic, Severity } from '#index';
 
 /** Stable SHA-256 key for associating an image reference with cached external evidence. */
 export function imageKey(reference: string): string {

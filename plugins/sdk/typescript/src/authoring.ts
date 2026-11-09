@@ -16,8 +16,8 @@ import type {
 	PluginProvider,
 	ProcessProvider,
 	RuleDescriptor,
-} from './index.ts';
-import { isRuleCategory } from './index.ts';
+} from '#index';
+import { isRuleCategory } from '#index';
 
 /**
  * Compile an authored TypeScript definition into its distributable JSON manifest.
