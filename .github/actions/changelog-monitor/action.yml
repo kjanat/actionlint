@@ -1,8 +1,8 @@
 name: GitHub Changelog monitor
-description: Open a labelled issue for every unreported GitHub Actions entry in the GitHub Changelog feed
+description: Collect unreported GitHub Actions changelog entries for a separate issue-publishing job
 inputs:
   token:
-    description: Token used to read and open issues
+    description: Token used to read existing issues
     required: true
     default: ${{ github.token }}
   lookback-days:
@@ -14,19 +14,16 @@ inputs:
     required: false
     default: "10"
 outputs:
-  issues-created:
-    description: Number of issues opened by this invocation
-    value: ${{ steps.monitor.outputs.issues-created }}
-  issue-urls:
-    description: Newline-separated URLs of the issues opened by this invocation
-    value: ${{ steps.monitor.outputs.issue-urls }}
+  drafts:
+    description: JSON array of issue titles and bodies
+    value: ${{ steps.monitor.outputs.drafts }}
 runs:
   using: composite
   steps:
     - name: Install the changelog package
       shell: bash
       run: npm install --prefix "${RUNNER_TEMP}/actionlint-changelog" --no-save --package-lock=false --ignore-scripts @kjlint/changelog-rss@latest
-    - name: Open issues for new Actions changelog entries
+    - name: Collect new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       env: { LOOKBACK_DAYS: "${{ inputs.lookback-days }}", MAX_ISSUES: "${{ inputs.max-issues }}" }
@@ -35,5 +32,22 @@ runs:
         retries: 3
         script: |
           const load = require('node:module').createRequire(`${process.env.RUNNER_TEMP}/actionlint-changelog/package.json`)
-          const { default: run } = load('@kjlint/changelog-rss/action')
-          await run({ github, context, core })
+          const { parseFeed, FEED_URL } = load('@kjlint/changelog-rss/feed')
+          const { toEntry, reportedGuids, selectEntries, issueTitle, issueBody, LABEL } = load('@kjlint/changelog-rss/action')
+          const count = name => {
+            const value = process.env[name] || ''
+            if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) {
+              throw new Error(`${name} must be a positive integer`)
+            }
+            return Number(value)
+          }
+          const since = new Date(Date.now() - count('LOOKBACK_DAYS') * 86400000)
+          const response = await fetch(FEED_URL, { headers: { accept: 'application/rss+xml, application/xml' } })
+          if (!response.ok) throw new Error(`Changelog feed returned HTTP ${response.status}`)
+          const entries = parseFeed(await response.text()).items.map(toEntry)
+          if (entries.length === 0) throw new Error('Changelog feed contains no entries')
+          const issues = await github.paginate(github.rest.issues.listForRepo, {
+            ...context.repo, state: 'all', labels: process.env.CHANGELOG_LABEL || LABEL, per_page: 100,
+          })
+          const selected = selectEntries(entries, { reported: reportedGuids(issues), since, limit: count('MAX_ISSUES') })
+          core.setOutput('drafts', selected.map(entry => ({ title: issueTitle(entry), body: issueBody(entry) })))

@@ -19,21 +19,71 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
+
+env:
+  CHANGELOG_LABEL: github-changelog
 
 jobs:
   monitor:
     if: github.repository_owner == 'kjanat' && github.ref_name == 'master'
     runs-on: ubuntu-latest
+    permissions: { contents: read, issues: read }
+    outputs:
+      drafts: ${{ steps.monitor.outputs.drafts }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Collect new Actions changelog entries
+        id: monitor
+        uses: $/.github/actions/changelog-monitor
+        with:
+          token: ${{ github.token }}
+          lookback-days: ${{ inputs.lookback-days || '30' }}
+          max-issues: ${{ inputs.max-issues || '10' }}
+  publish:
+    needs: monitor
+    if: needs.monitor.outputs.drafts != '' && needs.monitor.outputs.drafts != '[]'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
     steps:
       - uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
         id: beepboop
         with: { permission-contents: read, permission-issues: write }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - name: Report new Actions changelog entries
-        uses: $/.github/actions/changelog-monitor
+      - name: Open issues for the collected changelog entries
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          DRAFTS: ${{ needs.monitor.outputs.drafts }}
+          MAX_ISSUES: ${{ inputs.max-issues || '10' }}
         with:
-          token: ${{ steps.beepboop.outputs.token }}
-          lookback-days: ${{ inputs.lookback-days || '30' }}
-          max-issues: ${{ inputs.max-issues || '10' }}
+          github-token: ${{ steps.beepboop.outputs.token }}
+          retries: 3
+          script: |
+            const drafts = JSON.parse(process.env.DRAFTS)
+            const limit = Number(process.env.MAX_ISSUES)
+            if (!Array.isArray(drafts) || !Number.isSafeInteger(limit) || limit <= 0 || drafts.length > limit) {
+              throw new Error('Invalid changelog issue list')
+            }
+            for (const draft of drafts) {
+              if (draft === null || typeof draft !== 'object' || typeof draft.title !== 'string' ||
+                  typeof draft.body !== 'string' || draft.title.length === 0 || draft.title.length > 256 ||
+                  draft.body.length > 65536) {
+                throw new Error('Invalid changelog issue title or body')
+              }
+            }
+            const label = process.env.CHANGELOG_LABEL
+            try {
+              await github.rest.issues.getLabel({ ...context.repo, name: label })
+            } catch (error) {
+              if (error?.status !== 404) throw error
+              await github.rest.issues.createLabel({ ...context.repo, name: label, color: '2088FF',
+                description: 'GitHub Actions changelog entries' })
+            }
+            const urls = []
+            for (const draft of drafts) {
+              const { data } = await github.rest.issues.create({ ...context.repo,
+                title: draft.title, body: draft.body, labels: [label] })
+              urls.push(data.html_url)
+            }
+            core.setOutput('issues-created', urls.length)
+            core.setOutput('issue-urls', urls.join('\n'))
+            await core.summary.addHeading('GitHub Changelog monitor', 3).addList(urls).write()
