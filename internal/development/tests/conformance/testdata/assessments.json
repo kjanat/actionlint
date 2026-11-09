@@ -443,19 +443,19 @@
   },
   {
     "cases": {
-      "runner/src/Test/TestData/node16action.yml": "46f16736c690039255438b4792ebd65d982da12743dc35c8682ab8e6af1b51a9",
+      "runner/src/Test/TestData/node16action.yml": "b86db1b9adf7063051ed545b179583d12af03ff8fbc16f0870faa96209a9b01c",
       "runner/src/Test/TestData/node20action.yml": "01817c26d6ec933cc8a899c44b3c7906a1933232e37315f1b147f2e28b4459a2",
-      "runner/src/Test/TestData/nodeaction.yml": "05f59c3dbfb53997a4b2f3a23b92dd18edf16872457b26818accedf519249448",
-      "runner/src/Test/TestData/nodeaction_cleanup.yml": "3128b0d767e0bcabb2fb3821590fff77fd9d26ff2c2fee4528d57cba28dba929",
-      "runner/src/Test/TestData/nodeaction_cleanup_default.yml": "3fffaf7393d0e7b2341e486ddf9fc2e021ca763efc7b0a7b8c4f1aa67ee143ad",
-      "runner/src/Test/TestData/nodeaction_init.yml": "37382ae78d239c8c9f57b1fee28f0ad9e1c7c6ea48b985bf8a3d008587ef12d1",
-      "runner/src/Test/TestData/nodeaction_init_default.yml": "5cf599cb4960d1901674ee15732aba7c56d459ce8576c8d2ec5557a55b12f8d0"
+      "runner/src/Test/TestData/nodeaction.yml": "572831f9710dc754f8a1df680e09da734e760dcca69331a75ed650a4f62be99e",
+      "runner/src/Test/TestData/nodeaction_cleanup.yml": "3e9bdb90766c52baa5f86d21ee2a350f64ecdca42398b9fe72327c1d995b9211",
+      "runner/src/Test/TestData/nodeaction_cleanup_default.yml": "95e48bd89ab47e548a4b8913a38b2c1bb39fcc376051fbf0b7bf454f23457a61",
+      "runner/src/Test/TestData/nodeaction_init.yml": "89913d852258ad9253cadf04398c3408a21c68c0359129d0f3f4909aa966c7f2",
+      "runner/src/Test/TestData/nodeaction_init_default.yml": "16a65b143ac8976e4afbcf7dd6ffb48d5119cfde6fb84b08975f5fce86e5043a"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Extra lifecycle checks: these historical fixtures remain parser-valid, while actionlint reports their deprecated or retired action runtimes.",
+        "rationale": "The runner accepts these older runtime declarations and executes their JavaScript with Node 24. Actionlint reports the declared versions as deprecated.",
         "evidence": [
           "fixture:runner/src/Test/TestData/node16action.yml",
           "fixture:runner/src/Test/TestData/node20action.yml",
@@ -464,7 +464,8 @@
           "fixture:runner/src/Test/TestData/nodeaction_cleanup_default.yml",
           "fixture:runner/src/Test/TestData/nodeaction_init.yml",
           "fixture:runner/src/Test/TestData/nodeaction_init_default.yml",
-          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml"
+          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml",
+          "https://github.com/actions/runner/blob/77e8fff894e18527cddd3684b015475c3ca01532/src/Runner.Worker/Handlers/HandlerFactory.cs#L53-L61"
         ]
       }
     ]
@@ -801,15 +802,16 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-action/javascript.json": "b389133147d5f4a38459fbbde63b1ce12442cc754a2b22722bc4fd1664dd7f79"
+      "schemastore/src/test/github-action/javascript.json": "93613bfa3687478f1a1dd3c78b7083b381dd2555912b992542b15b8e4ce11f9e"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this JavaScript action fixture omits description and uses node12; actionlint requires a description and reports the retired runtime.",
+        "rationale": "This JavaScript action fixture omits description and declares node12. Actionlint requires a description and reports the declared runtime as deprecated. Current runners execute the action with Node 24.",
         "evidence": [
-          "fixture:schemastore/src/test/github-action/javascript.json"
+          "fixture:schemastore/src/test/github-action/javascript.json",
+          "https://github.com/actions/runner/blob/77e8fff894e18527cddd3684b015475c3ca01532/src/Runner.Worker/Handlers/HandlerFactory.cs#L53-L61"
         ]
       }
     ]
