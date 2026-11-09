@@ -5,8 +5,38 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
+	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 )
+
+func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
+	for _, category := range rule.Categories() {
+		for _, tc := range []struct {
+			settings string
+			want     repoconfig.Level
+		}{
+			{"{}", "on"},
+			{"{preset: all}", "on"},
+			{"{" + category + ": {example: warn}}", "warn"},
+			{"{" + category + ": {example: off}}", "off"},
+		} {
+			t.Run(category+"/"+tc.settings, func(t *testing.T) {
+				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.settings + "}"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				descriptor := repoconfig.Rule{Name: "example", Category: category, Maturity: "stable", Group: category}
+				want := tc.want
+				if category == "conventions" && tc.settings == "{}" {
+					want = "off"
+				}
+				if got := checking.ConfigurationRules().SettingFor(cfg, descriptor, repoconfig.Presets{Strict: true}, false).Level(); got != want {
+					t.Fatalf("level=%s, want %s", got, want)
+				}
+			})
+		}
+	}
+}
 
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.

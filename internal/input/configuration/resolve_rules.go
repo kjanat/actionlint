@@ -59,7 +59,7 @@ func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool)
 		rules = cfg.Lint.Rules
 	}
 	level = presetLevel(rules.Preset, d, level)
-	if p.Strict && !d.Experimental() {
+	if p.Strict && !d.Experimental() && d.Category != "conventions" {
 		level = "on"
 		if d.DefaultLevel != "" {
 			level = "error"

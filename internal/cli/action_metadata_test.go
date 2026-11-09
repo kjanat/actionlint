@@ -37,7 +37,7 @@ func TestActionMetadataModeRejectsUnknownValue(t *testing.T) {
 	}
 }
 
-func TestExplicitOfflineAndOffDoNotFailForUncachedMetadata(t *testing.T) {
+func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 	cache := t.TempDir()
 	for _, name := range []string{"LOCALAPPDATA", "XDG_CACHE_HOME", "HOME"} {
 		t.Setenv(name, cache)
@@ -56,6 +56,7 @@ func TestExplicitOfflineAndOffDoNotFailForUncachedMetadata(t *testing.T) {
 		mode, ref string
 		reason    availability.Reason
 	}{
+		{"online", "v1", availability.ResolverNotConfiguredReason},
 		{"offline", "v1", availability.OfflineReason},
 		{"offline", strings.Repeat("a", 40), availability.CacheMissReason},
 		{"off", "v1", availability.LookupDisabledReason},
@@ -76,8 +77,56 @@ func TestExplicitOfflineAndOffDoNotFailForUncachedMetadata(t *testing.T) {
 			}
 			for _, finding := range result.Diagnostics {
 				if finding.Rule == "missing-action-metadata" {
-					t.Fatalf("intentional offline lookup produced a finding: %+v", finding)
+					t.Fatalf("skipped lookup produced a finding: %+v", finding)
 				}
+			}
+		})
+	}
+}
+
+func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		name, settings string
+		timeouts       int
+	}{
+		{"strict", "", 0},
+		{"configured timeout", "lint: {rules: {conventions: {job-timeout: on}}}\n", 1},
+		{"all stable rules", "lint: {rules: {preset: all}}\n", 1},
+		{"configured exclusion", "lint: {rules: {preset: all, conventions: {job-timeout: off}}}\n", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := filepath.Join(t.TempDir(), "actionlint.yaml")
+			if err := os.WriteFile(config, []byte("plugins: []\n"+tc.settings), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var out, log bytes.Buffer
+			command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"), Stdout: &out, Stderr: &log}
+			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--strict", "--config", config, "--action-metadata=online", "--output=json", "--summary=false", "-"})
+			if code != 1 {
+				t.Fatalf("status=%d stderr=%s output=%s", code, &log, &out)
+			}
+			var result resultreport.CheckResult
+			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != availability.ResolverNotConfiguredReason {
+				t.Fatalf("coverage=%v", result.ActionMetadata)
+			}
+			timeouts, pins := 0, 0
+			for _, finding := range result.Diagnostics {
+				switch finding.Rule {
+				case "missing-action-metadata":
+					t.Errorf("unconfigured resolver produced %v", finding)
+				case "job-timeout":
+					timeouts++
+				case "unpinned-reference":
+					pins++
+				default:
+					t.Errorf("unexpected finding: %v", finding)
+				}
+			}
+			if timeouts != tc.timeouts || pins != 1 {
+				t.Fatalf("timeout findings=%d, want %d; unpinned findings=%d, want 1", timeouts, tc.timeouts, pins)
 			}
 		})
 	}

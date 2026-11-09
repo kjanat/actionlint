@@ -15,9 +15,21 @@ actionlint check --action-metadata=offline .github/workflows/build.yml
   records `cache-miss`; named references record `offline` because resolving them
   requires a new observation.
 - `online` acquires GitHub.com metadata for full 40-character SHA-1 commit
-  references. Named references require an injected action-profile resolver.
+  references. Named references require a resolver selected with `--resolve-with`.
   The host cannot resolve SHA-256 objects or raw tag objects directly. It never
   substitutes a similarly named tag or branch for an unsupported selection.
+
+The metadata report distinguishes these lookup failures:
+
+| Reason                      | Meaning                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `resolver-not-configured`   | A named reference needs a resolver, but none was selected. The report records the skipped lookup without a lint finding. |
+| `unsupported-host`          | The GitHub metadata provider cannot fetch from this host.                                                                |
+| `unsupported-object-format` | The reference is a SHA-256 Git object ID, which the provider cannot resolve.                                             |
+| `invalid-resolver-result`   | The selected resolver returned an invalid or incomplete result.                                                          |
+
+When enabled, `missing-action-metadata` reports lookup failures. It does not
+report disabled lookups, offline cache misses or a missing resolver.
 
 Online mode uses `GH_TOKEN`, falling back to `GITHUB_TOKEN`, when present.
 Otherwise it makes unauthenticated requests. Credentials, HTTP response bodies
@@ -73,7 +85,7 @@ For named action metadata, a successful result must also supply
 `selected_ref` (the exact lookup key, such as `refs/tags/v4` or `HEAD`). It must
 also include the repository ID and name, resolved commit, observation time and
 evidence. Other resolver callers can use a result without these selection
-fields, but metadata acquisition reports it as `unsupported`. The host
+fields, but metadata acquisition reports it as `invalid-resolver-result`. The host
 does not guess a tag or branch route. A typed `actions.Provider` can instead
 supply the manifest and complete selection evidence directly to an in-process caller.
 

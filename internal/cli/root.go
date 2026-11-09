@@ -288,7 +288,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.configFlags(f)
 	a.toolFlags(f)
 	a.pluginFlags(f)
-	f.BoolVar(&a.inv.Check.Strict, "strict", false, "Enable all stable rules")
+	f.BoolVar(&a.inv.Check.Strict, "strict", false, "Enable stable correctness, security and suspicious rules")
 	f.BoolVar(&a.inv.Check.Experimental, "experimental", false, "Enable nursery rules")
 	annotateFlag(f, "strict", "Rule selection")
 	annotateFlag(f, "experimental", "Rule selection")

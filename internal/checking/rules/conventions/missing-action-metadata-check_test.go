@@ -61,9 +61,13 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 		{availability.LookupDisabled(), 0},
 		{availability.Offline(), 0},
 		{availability.CacheMiss(), 0},
+		{availability.ResolverNotConfigured(), 0},
 		{availability.Failed(), 1},
 		{availability.Inaccessible(), 1},
 		{availability.Unsupported(), 1},
+		{availability.UnsupportedHost(), 1},
+		{availability.UnsupportedObjectFormat(), 1},
+		{availability.InvalidResolverResult(), 1},
 	} {
 		t.Run(string(tc.reason.Reason()), func(t *testing.T) {
 			remote := actionremote.New(metadataAvailabilityProvider{tc.reason})
@@ -73,8 +77,26 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "actions/checkout@v4", Pos: &workflowlang.Pos{Line: 5, Col: 20}}}}
 			job, _ := workflowdecl.Publish(source, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("metadata-availability").Workflow().Job("test")
 			for view := range job.Steps() {
-				if got := MissingActionMetadataCheck(remote.Resolved()).Step(view); len(got) != tc.want {
+				got := MissingActionMetadataCheck(remote.Resolved()).Step(view)
+				if len(got) != tc.want {
 					t.Fatalf("findings=%+v, want %d", got, tc.want)
+				}
+				if tc.want == 1 && !strings.Contains(got[0].Message, string(tc.reason.Reason())) {
+					t.Fatalf("diagnostic omits reason: %+v", got[0])
+				}
+				switch tc.reason.Reason() {
+				case availability.UnsupportedHostReason:
+					if !strings.Contains(got[0].Message, "only supports github.com") {
+						t.Fatal(got[0].Message)
+					}
+				case availability.UnsupportedObjectFormatReason:
+					if !strings.Contains(got[0].Message, "SHA-256") || !strings.Contains(got[0].Message, "SHA-1") {
+						t.Fatal(got[0].Message)
+					}
+				case availability.InvalidResolverResultReason:
+					if !strings.Contains(got[0].Message, "--resolve-with") {
+						t.Fatal(got[0].Message)
+					}
 				}
 			}
 		})

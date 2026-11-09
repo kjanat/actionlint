@@ -245,8 +245,10 @@ suppresses all lint diagnostics. Operational errors fail the analysis independen
 Resolution order is: rule defaults, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
 lists. File overrides are merged before that resolution. `--experimental=false`
-is a hard exclusion of nursery rules. `--strict` selects all stable
-rules but respects group and individual exceptions. Legacy `policy` settings
+is a hard exclusion of nursery rules. `--strict` enables stable `correctness`,
+`security` and `suspicious` rules, with group and individual exceptions.
+It does not enable additional `conventions` rules. Use an individual setting or
+`preset: all` to select those. Legacy `policy` settings
 are migrated to explicit levels, so explicit disables now survive presets and
 `--strict`. Conflicting old and current values in one document are errors.
 Cache safety checks belong to security, with cache-operation under correctness.

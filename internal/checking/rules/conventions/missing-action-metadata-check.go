@@ -39,14 +39,23 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 	if availability.State() == actions.MetadataAvailable {
 		return nil
 	}
-	if reason := availability.Reason(); reason == factavailability.LookupDisabledReason || reason == factavailability.OfflineReason || reason == factavailability.CacheMissReason {
+	if reason := availability.Reason(); reason == factavailability.LookupDisabledReason || reason == factavailability.OfflineReason || reason == factavailability.CacheMissReason || reason == factavailability.ResolverNotConfiguredReason {
 		return nil
 	}
 	reason := string(availability.Reason())
 	if availability.State() == actions.MetadataInvalid {
 		reason = "invalid parse/schema metadata"
 	}
+	help := ""
+	switch availability.Reason() {
+	case factavailability.UnsupportedHostReason:
+		help = "; the GitHub metadata provider only supports github.com"
+	case factavailability.UnsupportedObjectFormatReason:
+		help = "; SHA-256 Git object IDs are not supported; use a full SHA-1 commit or a named reference with --resolve-with"
+	case factavailability.InvalidResolverResultReason:
+		help = "; the resolver returned an invalid or incomplete result; check the resolver selected by --resolve-with"
+	}
 	collector := reporting.Collector{Rule: "missing-action-metadata", Step: step}
-	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "could not inspect metadata for "+spec+" ("+reason+")")
+	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "could not inspect metadata for "+spec+" ("+reason+")"+help)
 	return collector.Findings
 }
