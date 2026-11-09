@@ -397,8 +397,8 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 	default:
 		if _, ok := actionmeta.Runtimes[using]; !ok {
 			rule.Errorf(pos, actionmeta.CodeRuntimeUnsupported, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are %s. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir(), actionmeta.ValidRuntimes())
-		} else if problem := actionmeta.RuntimeProblem(using); problem != "" {
-			rule.Errorf(pos, runtimeProblemCode(using), "%s. update runs.using in local action %q to a current runtime", problem, meta.Name)
+		} else if code, message := actionmeta.RuntimeProblem(using); code != "" {
+			rule.Errorf(pos, code, "%s. update runs.using in local action %q to a current runtime", message, meta.Name)
 		}
 
 		// Validate JavaScript fields even when the runtime declaration has a finding.
