@@ -158,9 +158,9 @@ run     = "{{ env.PANDOC | default(value='pandoc --standalone --from=markdown-sm
 [task_templates."matcher"]
 depends     = ["build"]
 outputs     = ["tools/matcher/testdata/{{ vars.output }}"]
-run         = "./actionlint {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml || [ \"$?\" -eq 1 ]"
+run         = "./actionlint --no-config --no-tool=shellcheck --no-tool=ruff {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml || [ \"$?\" -eq 1 ]"
 run_windows = '''
-./actionlint.exe {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml
+./actionlint.exe --no-config --no-tool=shellcheck --no-tool=ruff {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml
 if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
 exit 0
 '''
