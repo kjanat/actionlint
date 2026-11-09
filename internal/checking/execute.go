@@ -212,6 +212,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		return nil, err
 	}
 	ruleRegistrations := configurationRegistrations(request.Analyzers, request.Tools)
+	rules, err := ConfigurationRules().WithRegisteredRules(ruleRegistrations...)
+	if err != nil {
+		return nil, err
+	}
 	for _, registration := range request.Tools {
 		if registration.Build == nil {
 			return nil, fmt.Errorf("tool %q has no adapter", registration.Descriptor.Name)
@@ -232,7 +236,6 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			return nil, err
 		}
 	}
-	var err error
 	request.WorkingDir, err = filepath.Abs(request.WorkingDir)
 	if err != nil {
 		return nil, err
@@ -360,7 +363,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	session := &analysisSession{
 		remoteActions: actionremote.New(request.RemoteActions),
 		runners:       request.Runners,
-		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations,
+		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
 		captures: captures, snapshots: snapshots, reader: reader,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
@@ -527,12 +530,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			result.Rules = append(result.Rules, descriptor.Clone())
 		}
 	}
-	metadataRules, metadataErr := ConfigurationRules().WithRegisteredRules(session.ruleRegistrations...)
-	if metadataErr != nil {
-		return nil, metadataErr
-	}
 	for i := range result.Rules {
-		result.Rules[i] = metadataRules.WithDefaults(result.Rules[i])
+		result.Rules[i] = session.rules.WithDefaults(result.Rules[i])
 	}
 	result.Documents = make(documentmodel.Outlines, 0, len(result.files))
 	explicitActions := make(map[string]bool)

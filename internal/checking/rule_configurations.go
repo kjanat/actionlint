@@ -7,25 +7,20 @@ import (
 // ruleConfigurations prepares each source and action scope once for this check.
 // Execution and result processing receive these same resolved configurations.
 type ruleConfigurations struct {
-	project          *repoconfig.Config
-	root             string
-	presets          repoconfig.Presets
-	registrations    []repoconfig.RuleRegistration
-	rules            repoconfig.RuleSet
-	declarationError error
-	sources          map[string]*repoconfig.Config
-	actions          map[string]*repoconfig.Config
+	project       *repoconfig.Config
+	root          string
+	presets       repoconfig.Presets
+	registrations []repoconfig.RuleRegistration
+	rules         repoconfig.RuleSet
+	sources       map[string]*repoconfig.Config
+	actions       map[string]*repoconfig.Config
 }
 
-func newRuleConfigurations(project *repoconfig.Config, root string, presets repoconfig.Presets, registrations []repoconfig.RuleRegistration) *ruleConfigurations {
-	rules, err := ConfigurationRules().WithRegisteredRules(registrations...)
-	return &ruleConfigurations{project: project, root: root, presets: presets, registrations: registrations, rules: rules, declarationError: err, sources: map[string]*repoconfig.Config{}, actions: map[string]*repoconfig.Config{}}
+func newRuleConfigurations(project *repoconfig.Config, root string, presets repoconfig.Presets, rules repoconfig.RuleSet, registrations []repoconfig.RuleRegistration) *ruleConfigurations {
+	return &ruleConfigurations{project: project, root: root, presets: presets, registrations: registrations, rules: rules, sources: map[string]*repoconfig.Config{}, actions: map[string]*repoconfig.Config{}}
 }
 
 func (c *ruleConfigurations) resolve(config *repoconfig.Config, err error) (*repoconfig.Config, error) {
-	if c.declarationError != nil {
-		return nil, c.declarationError
-	}
 	if err != nil {
 		return nil, err
 	}
