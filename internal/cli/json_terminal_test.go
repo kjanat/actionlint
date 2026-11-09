@@ -18,6 +18,28 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
+func TestJSONHelpUsesInvocationContext(t *testing.T) {
+	for _, args := range [][]string{
+		{"actionlint", "--json", "--help"},
+		{"actionlint", "check", "--json", "--help"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var out, stderr bytes.Buffer
+			command := Command{Stdout: &out, Stderr: &stderr}
+			if status := command.MainContext(t.Context(), args); status != 0 || !json.Valid(out.Bytes()) {
+				t.Fatalf("help: exit %d, stdout %q, stderr %q", status, &out, &stderr)
+			}
+			out.Reset()
+			stderr.Reset()
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			if status := command.MainContext(ctx, args); status != 3 || out.Len() != 0 {
+				t.Fatalf("canceled help: exit %d, stdout %q, stderr %q", status, &out, &stderr)
+			}
+		})
+	}
+}
+
 func TestTerminalJSONKeepsRedirectedBytes(t *testing.T) {
 	data := []byte("{\"unicode\":\"résumé\",\"count\":2}\n")
 	var out bytes.Buffer

@@ -46,6 +46,9 @@ func (remoteConfigSnapshot) configSnapshot() {}
 // the converted graph, and returns a write candidate tied to those inputs.
 // Reads stop when ctx is canceled.
 func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, registrations ...rule.Descriptor) (*FileMigration, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	absolute, err := address.Normalize(path)
 	if err != nil {
 		return nil, err
@@ -192,6 +195,9 @@ func (m *FileMigration) CheckSources(sources map[string][]byte) error {
 // snapshot. A sibling exclusive lock serializes cooperating migrations;
 // external edits detected since preparation are never overwritten.
 func (m *FileMigration) Apply(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := m.SetContent(m.Content); err != nil {
 		return err
 	}
@@ -228,6 +234,9 @@ func (m *FileMigration) Apply(ctx context.Context) error {
 // CheckUnchanged verifies that the selected file and inherited inputs still
 // match this preview. Orchestrators use it when preparing a multi-file update.
 func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	parent, err := filepath.EvalSymlinks(filepath.Dir(m.Path))
 	if err != nil {
 		return err

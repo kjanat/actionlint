@@ -38,7 +38,7 @@ func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
 	}{
 		{"node20", actionmeta.CodeRuntimeDeprecated, "is deprecated; GitHub.com"},
 		{"NODE20", actionmeta.CodeRuntimeDeprecated, "is deprecated; GitHub.com"},
-		{"node16", actionmeta.CodeRuntimeRemoved, "is no longer bundled"},
+		{"node16", actionmeta.CodeRuntimeDeprecated, `use "node24" instead`},
 		{"node24", "", ""},
 		{"node999", "", ""},
 	} {

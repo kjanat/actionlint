@@ -30,8 +30,10 @@ func TestRuntimeProblemCodeAndMessage(t *testing.T) {
 	}{
 		{"node20", CodeRuntimeDeprecated, "is deprecated; GitHub.com"},
 		{"NODE20", CodeRuntimeDeprecated, "is deprecated; GitHub.com"},
-		{"node16", CodeRuntimeRemoved, "is no longer bundled"},
-		{"NODE16", CodeRuntimeRemoved, "is no longer bundled"},
+		{"node16", CodeRuntimeDeprecated, `use "node24" instead`},
+		{"NODE16", CodeRuntimeDeprecated, `use "node24" instead`},
+		{"node12", CodeRuntimeDeprecated, `use "node24" instead`},
+		{"NODE12", CodeRuntimeDeprecated, `use "node24" instead`},
 		{"node24", "", ""},
 		{"NODE24", "", ""},
 		{"node999", "", ""},

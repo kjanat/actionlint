@@ -106,15 +106,19 @@ func Actionlint(src []byte) ([]byte, error) {
 		return nil, errors.New("the input example caused no error")
 	}
 
-	// Replace checkout-specific paths in diagnostics with a stable example path.
-	// Read errors name the physical file, which differs from root when the
-	// checkout is reached through a symlink or a Windows short name.
-	rendered := out.Bytes()
-	for _, path := range []string{files.PhysicalPath(root), root} {
+	return normalizeCheckoutPaths(out.Bytes(), root, files.PhysicalPath(root)), nil
+}
+
+func normalizeCheckoutPaths(rendered []byte, root, physical string) []byte {
+	paths := []string{root, physical}
+	if len(paths[0]) < len(paths[1]) {
+		paths[0], paths[1] = paths[1], paths[0]
+	}
+	for _, path := range paths {
 		rendered = bytes.ReplaceAll(rendered, []byte(path), []byte("/path/to/repo"))
 		rendered = bytes.ReplaceAll(rendered, []byte(filepath.ToSlash(path)), []byte("/path/to/repo"))
 	}
-	return rendered, nil
+	return rendered
 }
 
 type state int

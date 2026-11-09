@@ -5,8 +5,8 @@ package action
 
 // Runtimes records accepted metadata values and the lifecycle of their bundled executables.
 var Runtimes = map[string]Runtime{
-	"node12": {Removed: true, Deprecated: false, DeprecationURL: "", RemovalDate: ""},
-	"node16": {Removed: true, Deprecated: false, DeprecationURL: "", RemovalDate: ""},
-	"node20": {Removed: true, Deprecated: false, DeprecationURL: "", RemovalDate: ""},
-	"node24": {Removed: false, Deprecated: false, DeprecationURL: "", RemovalDate: ""},
+	"node12": {Removed: true, Deprecated: false, ExecutionRuntime: "node24", DeprecationURL: "", RemovalDate: ""},
+	"node16": {Removed: true, Deprecated: false, ExecutionRuntime: "node24", DeprecationURL: "", RemovalDate: ""},
+	"node20": {Removed: true, Deprecated: false, ExecutionRuntime: "node24", DeprecationURL: "", RemovalDate: ""},
+	"node24": {Removed: false, Deprecated: false, ExecutionRuntime: "node24", DeprecationURL: "", RemovalDate: ""},
 }

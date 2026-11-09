@@ -10,10 +10,13 @@ import (
 
 // Runtime describes a JavaScript runtime accepted by the runner's action metadata parser.
 type Runtime struct {
-	Removed        bool
-	Deprecated     bool
-	DeprecationURL string
-	RemovalDate    string
+	Removed    bool
+	Deprecated bool
+	// ExecutionRuntime names the runtime selected by HandlerFactory.
+	// An empty value means that the runner uses runs.using.
+	ExecutionRuntime string
+	DeprecationURL   string
+	RemovalDate      string
 }
 
 // ValidRuntimes lists accepted manifest runtime names for diagnostic messages.
@@ -35,6 +38,9 @@ func RuntimeProblem(using string) (ProblemCode, string) {
 	r, ok := Runtimes[strings.ToLower(using)]
 	if !ok || !r.Removed && !r.Deprecated {
 		return "", ""
+	}
+	if r.ExecutionRuntime != "" && !strings.EqualFold(using, r.ExecutionRuntime) {
+		return CodeRuntimeDeprecated, fmt.Sprintf("runtime %q is deprecated; current GitHub Actions runners use %q instead", using, r.ExecutionRuntime)
 	}
 	if r.Removed {
 		return CodeRuntimeRemoved, fmt.Sprintf("runtime %q is no longer bundled with current GitHub Actions runners", using)

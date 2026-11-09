@@ -29,6 +29,7 @@ public static readonly string Node20RemovalDate = "September 23rd, 2026";
 }
 }
 }`),
+		runtimeSourcePaths[4]: []byte("public sealed class HandlerFactory {}"),
 	}
 }
 
@@ -69,6 +70,94 @@ func TestRuntimeLifecycle(t *testing.T) {
 	runtimes, err = collectRuntimes(sources)
 	if err != nil || !runtimes["node20"].Removed {
 		t.Fatalf("actual binary removal not recognized: %#v, %v", runtimes, err)
+	}
+}
+
+func TestRuntimeLifecycleAfterMigrationConstantsAreRemoved(t *testing.T) {
+	sources := testRuntimeSources()
+	// Runner.Common/Constants.cs no longer defines NodeMigration after the
+	// runner removes Node 20. Accepted metadata values still include node20.
+	sources[runtimeSourcePaths[3]] = []byte("namespace GitHub.Runner.Common {\npublic static class Constants {}\n}")
+	sources[runtimeSourcePaths[2]] = []byte("NODE24_VERSION=\"24.0.0\"\n")
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !runtimes["node20"].Removed || runtimes["node24"].Removed || runtimes["node24"].Deprecated {
+		t.Fatalf("incorrect lifecycle: %#v", runtimes)
+	}
+	generated, err := generateRuntimes(sources, testRevision)
+	if err != nil || !bytes.Contains(generated, []byte(`"node20": {Removed: true`)) {
+		t.Fatalf("removed runtime was lost: %s, %v", generated, err)
+	}
+}
+
+func TestRuntimeExecutionUsesBundledReplacement(t *testing.T) {
+	sources := testRuntimeSources()
+	sources[runtimeSourcePaths[3]] = []byte("namespace GitHub.Runner.Common {\npublic static class Constants {}\n}")
+	sources[runtimeSourcePaths[2]] = []byte("NODE24_VERSION=\"24.0.0\"\n")
+	sources[runtimeSourcePaths[4]] = []byte(`public sealed class HandlerFactory {
+else if (data.ExecutionType == ActionExecutionType.NodeJS) {
+    handler = HostContext.CreateService<INodeScriptActionHandler>();
+    var nodeData = data as NodeJSActionExecutionData;
+    nodeData.NodeVersion = "node24";
+    (handler as INodeScriptActionHandler).Data = nodeData;
+}
+}`)
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, runtime := range runtimes {
+		if runtime.ExecutionRuntime != "node24" {
+			t.Errorf("%s executes with %q, want node24", name, runtime.ExecutionRuntime)
+		}
+	}
+	sources[runtimeSourcePaths[2]] = []byte("NODE20_VERSION=\"20.0.0\"\n")
+	if _, err := collectRuntimes(sources); err == nil {
+		t.Fatal("accepted a replacement runtime that is not bundled")
+	}
+}
+
+func TestRuntimeExecutionRejectsUnrecognizedAssignments(t *testing.T) {
+	for _, assignment := range []string{
+		`nodeData.NodeVersion = SelectRuntime();`,
+		`if (enabled) { nodeData.NodeVersion = "node24"; }`,
+		`nodeData.NodeVersion = "node20"; nodeData.NodeVersion = "node24";`,
+	} {
+		t.Run(assignment, func(t *testing.T) {
+			sources := testRuntimeSources()
+			sources[runtimeSourcePaths[4]] = []byte("public sealed class HandlerFactory { else if (data.ExecutionType == ActionExecutionType.NodeJS) {" + assignment + "} }")
+			if _, err := collectRuntimes(sources); err == nil {
+				t.Fatal("accepted an execution runtime that could not be determined")
+			}
+		})
+	}
+}
+
+func TestRuntimeExecutionUsesDeclaredVersionWithoutReplacement(t *testing.T) {
+	sources := testRuntimeSources()
+	sources[runtimeSourcePaths[4]] = []byte(`public sealed class HandlerFactory {
+else if (data.ExecutionType == ActionExecutionType.NodeJS) {
+    handler = HostContext.CreateService<INodeScriptActionHandler>();
+    (handler as INodeScriptActionHandler).Data = data as NodeJSActionExecutionData;
+}
+}`)
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, runtime := range runtimes {
+		if runtime.ExecutionRuntime != "" {
+			t.Errorf("%s: invented runtime replacement %q", name, runtime.ExecutionRuntime)
+		}
+	}
+	if !runtimes["node12"].Removed || runtimes["node24"].Removed {
+		t.Fatalf("declared runtime availability changed: %#v", runtimes)
+	}
+	sources[runtimeSourcePaths[4]] = []byte("public sealed class DifferentFactory {}")
+	if _, err := collectRuntimes(sources); err == nil {
+		t.Fatal("accepted a source with no HandlerFactory")
 	}
 }
 
@@ -163,14 +252,14 @@ func TestRuntimeLifecycleFromRunnerSources(t *testing.T) {
 				}
 				sources[path] = data
 			}
-			actual, err := collectRuntimes(sources)
+			actual, err := collectRuntimeLifecycle(sources)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if !maps.Equal(actual, tc.want) {
 				t.Fatalf("lifecycle=%+v; want %+v", actual, tc.want)
 			}
-			generated, err := generateRuntimes(sources, tc.revision)
+			generated, err := generateRuntimeTable(actual, tc.revision)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -186,7 +275,7 @@ func TestRuntimeMigrationClassCanBeAbsent(t *testing.T) {
 	// No migration is active. Absence of a migration class supplies no
 	// deprecation evidence; it does not imply that packaged runtimes are gone.
 	sources[runtimeSourcePaths[3]] = []byte("namespace GitHub.Runner.Common {\npublic static class Constants {\n}\n}\n")
-	runtimes, err := collectRuntimes(sources)
+	runtimes, err := collectRuntimeLifecycle(sources)
 	if err != nil {
 		t.Fatal(err)
 	}

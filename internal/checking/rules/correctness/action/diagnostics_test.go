@@ -14,7 +14,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 		want         []string
 	}{
 		{"runtime and file", "name: example\ndescription: example\nruns: {using: node20, main: missing.js}\n", []string{"missing-file", "runtime-deprecated"}},
-		{"removed runtime", "name: example\ndescription: example\nruns: {using: node16}\n", []string{"missing-field", "runtime-removed"}},
+		{"replaced runtime", "name: example\ndescription: example\nruns: {using: node16}\n", []string{"missing-field", "runtime-deprecated"}},
 		{"unsupported runtime", "name: example\ndescription: example\nruns: {using: invalid}\n", []string{"runtime-unsupported"}},
 		{"composite shell", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok}]}\n", []string{"missing-shell"}},
 		{"context", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: 'echo ${{ secrets.TOKEN }}', shell: bash}]}\n", []string{"expression-context"}},

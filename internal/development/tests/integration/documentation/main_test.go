@@ -67,6 +67,28 @@ func testErr(t *testing.T, err error, want ...string) {
 	}
 }
 
+func TestNormalizeCheckoutPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		root     string
+		physical string
+	}{
+		{"physical prefix of alias", "/tmp/docs-link", "/tmp/docs"},
+		{"alias prefix of physical", "/tmp/docs", "/tmp/docs-link"},
+		{"same path", "/tmp/docs", "/tmp/docs"},
+		{"native and slash paths", filepath.FromSlash("C:/work/docs-link"), filepath.FromSlash("C:/work/docs")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, path := range []string{tc.root, tc.physical, filepath.ToSlash(tc.root), filepath.ToSlash(tc.physical)} {
+				got := string(normalizeCheckoutPaths([]byte("open "+path+"/action.yml"), tc.root, tc.physical))
+				if want := "open /path/to/repo/action.yml"; got != want {
+					t.Fatalf("got %q, want %q", got, want)
+				}
+			}
+		})
+	}
+}
+
 func TestReadDocumentationFile(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")

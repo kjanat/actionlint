@@ -15,10 +15,13 @@ The source files use GitHub's MIT license, copied into `LICENSE.txt`.
 
 The upstream paths are `src/Runner.Worker/ActionManifestManager.cs`,
 `src/Runner.Worker/ActionManifestManagerLegacy.cs`, `src/Misc/externals.sh` and
-`src/Runner.Common/Constants.cs`. Each directory contains all four files from
+`src/Runner.Common/Constants.cs`, and `src/Runner.Worker/Handlers/HandlerFactory.cs`.
+Each directory contains all five files from
 the named revision.
 
-`TestRuntimeLifecycleFromRunnerSources` checks the complete lifecycle map from
-each set and verifies that generated output identifies its source revision.
+`TestRuntimeLifecycleFromRunnerSources` checks accepted runtime names, packaged
+executables and migration constants from both revisions. It also verifies that
+generated output identifies its source revision. Separate execution tests check
+the replacement runtime selected by `HandlerFactory.cs`.
 Separate synthetic cases check future runtime discovery and reject unsupported
 migration declarations or missing source files. The tests read these files as text.
