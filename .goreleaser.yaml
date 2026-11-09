@@ -84,7 +84,6 @@ homebrew_casks:
       shells: [bash, zsh, fish, pwsh]
     url:
       template: "https://github.com/kjanat/actionlint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-      verified: github.com/kjanat/actionlint/
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
@@ -93,9 +92,13 @@ homebrew_casks:
     # Homebrew generates completions before running postflight blocks.
     hooks:
       pre:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/actionlint"]
+        install_steps: |
+          mkdir_p "etc/bash_completion.d", base: :homebrew_prefix
+          mkdir_p "share/zsh/site-functions", base: :homebrew_prefix
+          mkdir_p "share/fish/vendor_completions.d", base: :homebrew_prefix
+          mkdir_p "share/pwsh/completions", base: :homebrew_prefix
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/actionlint"]
           end
     repository:
       owner: kjanat
