@@ -90,9 +90,6 @@ func TestRuntimeLifecycleAfterMigrationConstantsAreRemoved(t *testing.T) {
 }
 
 func TestRuntimeExecutionUsesBundledReplacement(t *testing.T) {
-	// actions/runner@cf65f3ec8100ee0046d735ac5d647e00f4b8e817:
-	// src/Runner.Worker/Handlers/HandlerFactory.cs assigns NodeVersion for
-	// every JavaScript action before constructing its handler.
 	sources := testRuntimeSources()
 	sources[runtimeSourcePaths[3]] = []byte("public static class Constants {}")
 	sources[runtimeSourcePaths[2]] = []byte("NODE24_VERSION=\"24.0.0\"\n")
@@ -132,6 +129,32 @@ func TestRuntimeExecutionRejectsUnrecognizedAssignments(t *testing.T) {
 				t.Fatal("accepted an execution runtime that could not be determined")
 			}
 		})
+	}
+}
+
+func TestRuntimeExecutionUsesDeclaredVersionWithoutReplacement(t *testing.T) {
+	sources := testRuntimeSources()
+	sources[runtimeSourcePaths[4]] = []byte(`public sealed class HandlerFactory {
+else if (data.ExecutionType == ActionExecutionType.NodeJS) {
+    handler = HostContext.CreateService<INodeScriptActionHandler>();
+    (handler as INodeScriptActionHandler).Data = data as NodeJSActionExecutionData;
+}
+}`)
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, runtime := range runtimes {
+		if runtime.ExecutionRuntime != "" {
+			t.Errorf("%s: invented runtime replacement %q", name, runtime.ExecutionRuntime)
+		}
+	}
+	if !runtimes["node12"].Removed || runtimes["node24"].Removed {
+		t.Fatalf("declared runtime availability changed: %#v", runtimes)
+	}
+	sources[runtimeSourcePaths[4]] = []byte("public sealed class DifferentFactory {}")
+	if _, err := collectRuntimes(sources); err == nil {
+		t.Fatal("accepted a source with no HandlerFactory")
 	}
 }
 
