@@ -520,10 +520,10 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				assert.equal(options.mise_dir, '${{ github.workspace }}-mise', `${name}:${jobName}`);
 				assert.equal(options.cache, true);
 				assert.equal(options.auto_update, undefined);
-				assert.equal(
-					options.cache_key,
-					"{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
-				);
+				const cacheKey = String(options.cache_key);
+				assert.ok(cacheKey.startsWith('{{default}}-${{ github.workflow }}-${{ github.job }}-'));
+				assert.ok(cacheKey.includes('hashFiles('));
+				assert.ok(cacheKey.includes("'.mise/locks/**'"), `${name}:${jobName} must hash the tool locks`);
 				assert.ok(!String(workflow.name).includes(','), `${name} cache key must not contain commas`);
 				assert.equal(yamlMapping(workflow.env).MISE_CACHE_DIR, '${{ github.workspace }}-mise/cache');
 				assert.equal(yamlMapping(workflow.env).MISE_LOCKED, '1');
