@@ -21,10 +21,9 @@ func (cfg *Config) IncludesFile(path, root string) bool {
 	return cfg.Files.Match(RepositoryRelativePath(path, root))
 }
 
-// IncludesSelectedFile applies configured file filters to discovery inputs.
-// A literally named file is checked regardless of those filters.
-func (cfg *Config) IncludesSelectedFile(path, root string, explicit bool) bool {
-	return explicit || cfg.IncludesFile(path, root)
+// IncludesSelectedFile applies configured file filters unless bypassFilters is set.
+func (cfg *Config) IncludesSelectedFile(path, root string, bypassFilters bool) bool {
+	return bypassFilters || cfg.IncludesFile(path, root)
 }
 
 func RepositoryRelativePath(path, root string) string {

@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 )
 
-// Discovery controls filesystem selection; it never changes configuration policy.
+// Discovery selects workflow and action files from the filesystem.
 type Discovery struct {
 	NoIgnore bool
 	// Repositories enters nested repositories, applying their own Git rules.

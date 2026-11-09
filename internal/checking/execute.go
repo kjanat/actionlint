@@ -82,6 +82,7 @@ type analysisRequest struct {
 	Sources            []sourceUnit
 	SourceOverlays     []SourceOverlay
 	DiskSources        bool
+	NoIgnore           bool
 	Analyzers          []checkinputs.Registration
 	Tools              []tools.Registration
 	IgnorePatterns     repoconfig.IgnorePatterns
@@ -342,7 +343,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if source.Project != nil {
 			root = source.Project.RootDir()
 		}
-		if source.Config.IncludesSelectedFile(source.InputPath, root, source.ExplicitFile) {
+		if source.Config.IncludesSelectedFile(source.InputPath, root, request.NoIgnore || source.ExplicitFile) {
 			selected = append(selected, source)
 		}
 	}

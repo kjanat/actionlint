@@ -26,7 +26,7 @@ type Source struct {
 	ConfigProvenance repoconfig.Provenance
 	Project          *Project
 	InputPath        string
-	// ExplicitFile bypasses file-selection filters only for a literally named file.
+	// ExplicitFile marks a literally named file.
 	ExplicitFile bool
 }
 
@@ -296,7 +296,7 @@ func (a *Session) readFiles(paths []string, project *Project, explicit map[strin
 			root = absPath(proj.RootDir())
 		}
 		fullPath := absPath(inputPath)
-		if !cfg.IncludesSelectedFile(fullPath, root, explicit[fullPath]) {
+		if !cfg.IncludesSelectedFile(fullPath, root, a.noIgnore || explicit[fullPath]) {
 			continue
 		}
 		content, err := a.readFile(inputPath)

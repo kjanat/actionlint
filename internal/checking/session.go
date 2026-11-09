@@ -58,7 +58,7 @@ type Options struct {
 	ConfigFile        string
 	ConfigOverlays    []repoconfig.Overlay
 	SkipProjectConfig bool
-	// NoIgnore includes Git-ignored files when searching for workflows and actions.
+	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
 	Analyzers []checkinputs.Registration
 	ReadFile  func(string) ([]byte, error)
@@ -185,6 +185,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
+	request.NoIgnore = options.NoIgnore
 	request.RemoteActions = options.RemoteActions
 	request.RemoteWorkflows = options.RemoteWorkflows
 	if request.RemoteWorkflows == nil {

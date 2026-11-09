@@ -296,7 +296,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.pluginLockFlag(f)
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
-	f.BoolVar(&a.inv.Check.NoIgnore, "no-ignore", false, "Include Git-ignored files during discovery; configured file filters still apply")
+	f.BoolVar(&a.inv.Check.NoIgnore, "no-ignore", false, "Disable Git ignore rules and configured file filters")
 	annotateFlag(f, "no-ignore", "Input")
 	f.StringArrayVar(&a.inv.Check.IgnoreSelectors, "ignore", nil, "Ignore a `RULE`, diagnostic code or rule/code (repeatable)")
 	f.VarP(&a.opts.output, "output-format", "o", "Output mode: text, pretty, oneline, gcc, json, jsonl, sarif or github (repeatable)")

@@ -14,7 +14,6 @@ import (
 )
 
 // File records whether a path was literally named or found by discovery.
-// Only a literal file bypasses the input configuration's file filters.
 type File struct {
 	Path     string
 	Explicit bool
@@ -55,8 +54,8 @@ func fileIdentity(path string) string {
 }
 
 // FindFiles expands directory arguments and shell-style *, ? and [] globs.
-// Glob matches remain discovery inputs; only literally named files override
-// ignores. Each directory and physical file is visited at most once.
+// Literal file arguments bypass Git ignore rules. Set noIgnore to include ignored
+// directory and glob matches. Each directory and physical file is visited at most once.
 func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelection, error) {
 	var candidates []File
 	explicit := make(map[string]bool)

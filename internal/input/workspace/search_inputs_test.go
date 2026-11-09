@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
+	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -62,7 +63,8 @@ func TestSearchGlobsAreDiscoveryAndLiteralFilesOverrideFilters(t *testing.T) {
 	}{
 		{[]string{".github/workflows"}, false, []string{"ci.yml"}},
 		{[]string{".github/workflows/*.yml"}, false, []string{"ci.yml"}},
-		{[]string{".github/workflows"}, true, []string{"ci.yml", "ignored.yml"}},
+		{[]string{".github/workflows"}, true, []string{"ci.yml", "excluded.yml", "ignored.yml"}},
+		{[]string{".github/workflows/*.yml"}, true, []string{"ci.yml", "excluded.yml", "ignored.yml"}},
 		{[]string{".github/workflows/excluded.yml", ".github/workflows/ignored.yml"}, false, []string{"excluded.yml", "ignored.yml"}},
 		{[]string{".github/workflows", ".github/workflows/excluded.yml", ".github/workflows/excluded.yml"}, false, []string{"ci.yml", "excluded.yml"}},
 	} {
@@ -81,6 +83,28 @@ func TestSearchGlobsAreDiscoveryAndLiteralFilesOverrideFilters(t *testing.T) {
 		slices.Sort(got)
 		if !slices.Equal(got, tc.want) {
 			t.Fatalf("inputs=%v no-ignore=%v: got=%v want=%v", tc.inputs, tc.noIgnore, got, tc.want)
+		}
+	}
+}
+
+func TestNoIgnoreIncludesExcludedFilesWhenPlanningTools(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	writeToolRepository(t, root)
+	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
+	writeToolFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['**']}\n")
+	for _, noIgnore := range []bool{false, true} {
+		for _, paths := range [][]string{nil, {".github/workflows"}, {".github/workflows/*.yml"}} {
+			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, NoIgnore: noIgnore, Rules: checking.ConfigurationRules()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			needed, err := session.RequiredTools(t.Context(), paths, workspace.ToolOptions{
+				Required: func(_, _ *repoconfig.Config) ([]string, error) { return []string{"fixture-tool"}, nil },
+			})
+			if err != nil || needed["fixture-tool"] != noIgnore {
+				t.Fatalf("paths=%v no-ignore=%v: tools=%v, error=%v", paths, noIgnore, needed, err)
+			}
 		}
 	}
 }

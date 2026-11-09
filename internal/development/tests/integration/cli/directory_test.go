@@ -122,3 +122,53 @@ func TestDirectoryExclusionsAndExplicitFileOverride(t *testing.T) {
 		})
 	}
 }
+
+func TestNoIgnoreChecksGitIgnoredAndConfigExcludedFiles(t *testing.T) {
+	commandTestRepo(t)
+	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ignored", "excluded"} {
+		if err := os.WriteFile(".github/workflows/"+name+".yml", []byte(commandBadWorkflow), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(".gitignore", []byte(".github/workflows/ignored.yml\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range []string{
+		"excludes: ['.github/workflows/excluded.yml']",
+		"includes: ['**', '!.github/workflows/excluded.yml']",
+		"includes: ['.github/workflows/ci.yml']",
+		"includes: []",
+	} {
+		t.Run(scope, func(t *testing.T) {
+			if err := os.WriteFile(".github/actionlint.yaml", []byte("files: {"+scope+"}\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, paths := range [][]string{nil, {".github/workflows"}, {".github/workflows/*.yml"}} {
+				args := append([]string{"check", "--no-ignore", "--json"}, paths...)
+				got := testRunCommand("", args...)
+				var result struct {
+					FileCount   int `json:"file_count"`
+					Diagnostics []struct {
+						Path string `json:"path"`
+					} `json:"diagnostics"`
+				}
+				if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil {
+					t.Fatalf("paths=%v: %v: %+v", paths, err, got)
+				}
+				if got.Status != 1 || result.FileCount != 3 || len(result.Diagnostics) != 2 {
+					t.Fatalf("paths=%v: result=%+v, command=%+v", paths, result, got)
+				}
+				found := map[string]bool{}
+				for _, diagnostic := range result.Diagnostics {
+					found[filepath.Base(diagnostic.Path)] = true
+				}
+				if !found["ignored.yml"] || !found["excluded.yml"] {
+					t.Fatalf("paths=%v: missing findings for ignored files: %+v", paths, result)
+				}
+			}
+		})
+	}
+}
