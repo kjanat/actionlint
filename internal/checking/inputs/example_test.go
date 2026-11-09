@@ -37,6 +37,7 @@ jobs:
     steps:
       - id: install
         run: sudo apt-get install -y jq
+permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 

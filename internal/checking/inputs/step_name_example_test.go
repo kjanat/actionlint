@@ -59,6 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
+permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
