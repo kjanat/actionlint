@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,9 +21,13 @@ func testRuntimeSources() map[string][]byte {
 		runtimeSourcePaths[0]: []byte(parser.String()),
 		runtimeSourcePaths[1]: []byte(parser.String()),
 		runtimeSourcePaths[2]: []byte("NODE20_VERSION=\"20.0.0\"\nNODE24_VERSION=\"24.0.0\"\n"),
-		runtimeSourcePaths[3]: []byte(`public static class NodeMigration {
+		runtimeSourcePaths[3]: []byte(`namespace GitHub.Runner.Common {
+public static class Constants {
+public static class NodeMigration {
 public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/example/";
 public static readonly string Node20RemovalDate = "September 23rd, 2026";
+}
+}
 }`),
 	}
 }
@@ -68,7 +73,7 @@ func TestRuntimeLifecycle(t *testing.T) {
 }
 
 func TestRuntimeRefreshPreservesOutputOnFailure(t *testing.T) {
-	for _, scenario := range []string{"success", "cdn failure", "parser disagreement", "missing packaging", "missing migration", "changed migration syntax", "bad revision"} {
+	for _, scenario := range []string{"success", "cdn failure", "parser disagreement", "missing packaging", "missing constants", "changed constants class", "changed migration syntax", "bad revision"} {
 		t.Run(scenario, func(t *testing.T) {
 			sources := testRuntimeSources()
 			switch scenario {
@@ -76,8 +81,10 @@ func TestRuntimeRefreshPreservesOutputOnFailure(t *testing.T) {
 				sources[runtimeSourcePaths[1]] = nil
 			case "missing packaging":
 				sources[runtimeSourcePaths[2]] = nil
-			case "missing migration":
+			case "missing constants":
 				sources[runtimeSourcePaths[3]] = nil
+			case "changed constants class":
+				sources[runtimeSourcePaths[3]] = bytes.ReplaceAll(sources[runtimeSourcePaths[3]], []byte("class Constants"), []byte("class RenamedConstants"))
 			case "changed migration syntax":
 				sources[runtimeSourcePaths[3]] = bytes.ReplaceAll(sources[runtimeSourcePaths[3]], []byte("public static readonly"), []byte("public const"))
 			}
@@ -128,5 +135,67 @@ func TestRuntimeRefreshPreservesOutputOnFailure(t *testing.T) {
 				t.Fatal("generated table lost its evidence")
 			}
 		})
+	}
+}
+
+func TestRuntimeLifecycleFromRunnerSources(t *testing.T) {
+	// These unchanged source files bracket actions/runner #4836, which removed
+	// bundled Node 20 and the completed NodeMigration constants together.
+	for _, tc := range []struct {
+		revision string
+		want     map[string]runtimeInfo
+	}{
+		{"4fbf7ca776674610496d3d637d48393bd98b9cf2", map[string]runtimeInfo{
+			"node12": {Removed: true}, "node16": {Removed: true},
+			"node20": {Deprecated: true, URL: "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/", RemovalDate: "September 23rd, 2026"},
+			"node24": {},
+		}},
+		{"77e8fff894e18527cddd3684b015475c3ca01532", map[string]runtimeInfo{
+			"node12": {Removed: true}, "node16": {Removed: true}, "node20": {Removed: true}, "node24": {},
+		}},
+	} {
+		t.Run(tc.revision, func(t *testing.T) {
+			sources := map[string][]byte{}
+			for _, path := range runtimeSourcePaths {
+				data, err := os.ReadFile(filepath.Join("testdata", "runtimes", tc.revision, filepath.Base(path)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				sources[path] = data
+			}
+			actual, err := collectRuntimes(sources)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !maps.Equal(actual, tc.want) {
+				t.Fatalf("lifecycle=%+v; want %+v", actual, tc.want)
+			}
+			generated, err := generateRuntimes(sources, tc.revision)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(generated, []byte(tc.revision)) {
+				t.Fatalf("generated output lost the source revision: %s", generated)
+			}
+		})
+	}
+}
+
+func TestRuntimeMigrationClassCanBeAbsent(t *testing.T) {
+	sources := testRuntimeSources()
+	// No migration is active. Absence of a migration class supplies no
+	// deprecation evidence; it does not imply that packaged runtimes are gone.
+	sources[runtimeSourcePaths[3]] = []byte("namespace GitHub.Runner.Common {\npublic static class Constants {\n}\n}\n")
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, info := range runtimes {
+		if info.Deprecated || info.URL != "" || info.RemovalDate != "" {
+			t.Fatalf("invented migration evidence for %s: %+v", name, info)
+		}
+	}
+	if runtimes["node20"].Removed || runtimes["node24"].Removed {
+		t.Fatalf("class removal was mistaken for binary removal: %+v", runtimes)
 	}
 }
