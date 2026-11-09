@@ -220,7 +220,7 @@ Automated tests are as follows.
 
 ## Linting
 
-[golangci-lint] runs the Go linters, configured by [`.golangci.toml`]. Install the binary as described in [its documentation]. The version is pinned in `.tool-versions` and `.custom-gcl.yml`. `make lint` rebuilds the custom binary and enables `actionlintarch` by default. See [architecture enforcement](analyzers/README.md).
+[golangci-lint] runs the Go linters configured in [`.golangci.toml`]. Install the version pinned in `.tool-versions` as described in [its documentation]. Run `make lint` to check Go code and scan dependencies for known vulnerabilities.
 
 ```sh
 make lint
