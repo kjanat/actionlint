@@ -41,10 +41,11 @@ permissions: {}
 			if got.Status != wantStatus {
 				t.Fatalf("%v: %+v", args, got)
 			}
-			for _, rule := range []string{"unpinned-reference", "job-timeout"} {
-				if strings.Contains(got.Stdout, "["+rule+"]") != tc.strict {
-					t.Fatalf("%v: %+v", args, got)
-				}
+			if strings.Contains(got.Stdout, "[unpinned-reference]") != tc.strict {
+				t.Fatalf("%v: %+v", args, got)
+			}
+			if strings.Contains(got.Stdout, "[job-timeout]") {
+				t.Fatalf("an unselected convention was enabled: %v: %+v", args, got)
 			}
 			if strings.Contains(got.Stdout, "[case-insensitive-conditions]") != tc.strict {
 				t.Fatalf("%v: %+v", args, got)
