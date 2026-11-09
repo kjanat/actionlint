@@ -26,49 +26,39 @@ const LANGS = [
 	[/\.md$/, 'md'],
 ];
 
-const CONTRAST_GUIDANCE =
-	'Review the wording even when the technical content is correct. State the behavior or instruction directly. Describe both alternatives only when readers need the distinction to decide or act.';
-
-/** @type {Array<[string, RegExp, string]>} */
+/** @type {Array<[string, RegExp]>} */
 const TELLS = [
 	[
 		'em dash',
 		/[—–]/,
-		'For ordinary prose, consider a comma, colon, parentheses, or separate sentence. Preserve punctuation that is part of quoted material.',
 	],
-	['"X, not Y"', /,[\s]+not\s+\S/, CONTRAST_GUIDANCE],
-	['"X rather than Y"', /\brather than\b/i, CONTRAST_GUIDANCE],
-	['"X instead of Y"', /\b(?:instead of|as opposed to)\b/i, CONTRAST_GUIDANCE],
-	['"not just X but Y"', /\bnot (?:just|merely|only|because)\b[^.]{0,80}?\bbut\b/i, CONTRAST_GUIDANCE],
+	['"X, not Y"', /,[\s]+not\s+\S/],
+	['"X rather than Y"', /\brather than\b/i],
+	['"X instead of Y"', /\b(?:instead of|as opposed to)\b/i],
+	['"not just X but Y"', /\bnot (?:just|merely|only|because)\b[^.]{0,80}?\bbut\b/i],
 	[
 		'emphatic cleft',
 		/\b(?:which|that) is (?:what|why|how)\b|\bexactly (?:what|why|how|the)\b/i,
-		'Consider stating the behavior or reason directly. Keep the emphasis if it carries a meaningful distinction.',
 	],
 	[
 		'filler phrase',
 		/\b(?:in other words|it(?:'s| is) (?:worth noting|important to note)|that said|under the hood|at its core|(?:simply put|put simply)|in short|in essence|bottom line|needless to say|when it comes to|at the end of the day|think of (?:it|this) as|no more,? no less|(?:that|which) is to say|here(?:'s| is) (?:why|the thing)|the (?:whole|entire) point|the key (?:insight|takeaway))\b/i,
-		'Check whether the introductory phrase adds meaning. If the explanation reads clearly without it, omit the phrase.',
 	],
 	[
 		'inflated diction',
 		/\b(?:leverag(?:e|es|ing)|utiliz(?:e|es|ing)|seamless(?:ly)?|delv(?:e|es|ing)|myriad|plethora|robust|comprehensive(?:ly)?|crucial(?:ly)?|vital(?:ly)?|elegant(?:ly)?|powerful(?:ly)?|intuitive(?:ly)?|nuanced|holistic|granular|meticulous|facilitat(?:e|es|ing)|streamlin(?:e|es|ing)|empower(?:s|ing)?|cutting[-\s]edge|state[-\s]of[-\s]the[-\s]art|arguably|essentially|fundamentally|a wealth of)\b/i,
-		'Consider a plain, precise term. Keep the existing word if it has a specific technical meaning here.',
 	],
 	[
 		'connective glue',
 		/\b(?:moreover|furthermore|conversely|as such|it turns out|notably|importantly)\b/i,
-		'Check whether the transition helps connect the surrounding points. It can be omitted when that connection is already clear.',
 	],
 	[
 		'counterfactual justification',
 		/\bso\b[^.]{0,60}\b(?:cannot|can't|could not|never|would)\b|\bwithout\b[^.]{0,70}\bwould\b|\bwould otherwise\b|\botherwise\b[^.]{0,70}\bwould\b|\bso that\b|\b(?:which|that) (?:prevents|keeps|stops)\b/i,
-		'An explanation of a consequence or failure mode can be useful. Keep it when it documents a non-obvious constraint; otherwise state the behavior directly.',
 	],
 	[
 		'paste artifact',
 		/[“”‘’]|[\u00A0\u00AD\u200B-\u200D\uFEFF]/,
-		'Check typographic quotes and nonstandard whitespace for accidental pasted characters. Preserve intentional examples and quotations.',
 	],
 ];
 
@@ -299,23 +289,11 @@ export const keyFor = group =>
 /** @type {'RIGHT'} */
 const RIGHT = 'RIGHT';
 
-/** @param {string} reason */
-function guidanceFor(reason) {
-	if (/^\d+ lines$/.test(reason)) {
-		return 'This is a length-only flag. Check whether each line adds useful context; a necessary explanation can stay.';
-	}
-	return TELLS.find(([name]) => name === reason)?.[2] ?? 'Review the flagged wording in context.';
-}
-
 /** @param {Group} group */
 export function bodyFor(group) {
-	const guidance = [...new Set(group.reasons.map(guidanceFor))];
-	const advice = guidance.length === 1 ? guidance[0] : guidance.map(text => `- ${text}`).join('\n');
 	return `<!-- actionlint-comment-cop:${keyFor(group)} -->\n`
-		+ `Flagged for: ${group.reasons.join(', ')}.\n\n${advice}\n\n`
-		+ `<sub>Comment Cop is intentionally sensitive; its suggestions are advisory. `
-		+ `If this is a false positive, you are welcome to resolve this thread without changing the text.</sub>`
-		+ `<br><sub>Any AI agents are only allowed to resolve the comment if it is a false positive and need to justify the closure with a reply. Otherwise fix it. Comment-cop will resolve it automatically on next push.</sub>`;
+		+ `Flagged for: ${group.reasons.join(', ')}.\n\n`
+		+ '[Writing instructions](https://github.com/kjanat/actionlint/blob/master/.agents/writing.md)';
 }
 
 /** @param {unknown} error */

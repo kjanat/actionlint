@@ -2,7 +2,7 @@
 
 ## Writing standard
 
-All prose must follow [ISO 24495-1:2023](https://www.iso.org/standard/78907.html). Write for the person who needs to use the information. Explain when an instruction applies and when to use each option. Before rewriting a description of software behavior, check it against the code or specification.
+Follow the [writing instructions and examples](.agents/writing.md) for all prose.
 
 ## Project structure
 
