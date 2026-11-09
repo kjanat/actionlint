@@ -428,17 +428,18 @@ export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, h
 			Buffer.from(`x-access-token:${token}`).toString('base64')
 		}`;
 	}
-	/** @param {string[]} args */
-	const execute = args =>
+	/** @param {string[]} args @param {string} [input] */
+	const execute = (args, input) =>
 		execFileSync('git', args, {
-			encoding: 'utf8',
 			maxBuffer: 1 << 28,
+			timeout: 60_000,
+			input,
 			env: environment,
-			stdio: ['ignore', 'pipe', 'pipe'],
+			stdio: ['pipe', 'pipe', 'pipe'],
 		});
 	execute(['init', '--bare', repository]);
 	/** @param {string[]} args */
-	const read = args => execute(['--git-dir', repository, ...args]);
+	const read = args => execute(['--git-dir', repository, ...args]).toString('utf8');
 	read([
 		'fetch',
 		'--no-tags',
@@ -448,23 +449,39 @@ export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, h
 		`+${headSha}:refs/comment-cop/head`,
 	]);
 	const base = read(['merge-base', baseSha, headSha]).trim();
-	const names = read(['diff', '--name-only', '-z', '--no-renames', '--diff-filter=AM', base, headSha, '--'])
-		.split('\0').filter(scannable);
-	return names.map(filename => ({
-		filename,
-		patch: read([
-			'diff',
-			'--no-ext-diff',
-			'--no-textconv',
-			'--no-renames',
-			'-U3',
-			base,
-			headSha,
-			'--',
-			`:(literal)${filename}`,
-		]),
-		source: read(['show', `${headSha}:${filename}`]),
-	}));
+	const diff = ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--diff-filter=AM'];
+	const records = read([...diff, '--raw', '--abbrev=40', '-z', base, headSha, '--']).split('\0');
+	records.pop();
+	const patches = read([...diff, '--patch', '-U3', base, headSha, '--']).split(/^diff --git /m)
+		.slice(1).map(patch => `diff --git ${patch}`);
+	if (records.length !== patches.length * 2) throw new Error('Git diff records and patches disagree');
+	const files = [];
+	for (let index = 0; index < patches.length; index++) {
+		const filename = records[index * 2 + 1];
+		if (!scannable(filename)) continue;
+		const object = /^:\d+ \d+ [a-f0-9]{40} ([a-f0-9]{40}) [AM]$/.exec(records[index * 2])?.[1];
+		if (object === undefined) throw new Error('Invalid Git diff record');
+		files.push({ filename, patch: patches[index], object });
+	}
+	if (files.length === 0) return [];
+	const objects = execute(
+		['--git-dir', repository, 'cat-file', '--batch'],
+		`${files.map(file => file.object).join('\n')}\n`,
+	);
+	let offset = 0;
+	return files.map(({ filename, patch, object }) => {
+		const newline = objects.indexOf(10, offset);
+		const header = objects.toString('ascii', offset, newline);
+		const match = /^([a-f0-9]{40}) blob (\d+)$/.exec(header);
+		if (newline < offset || match === null || match[1] !== object) throw new Error('Invalid Git blob header');
+		const start = newline + 1;
+		const end = start + Number(match[2]);
+		if (!Number.isSafeInteger(end) || end >= objects.length || objects[end] !== 10) {
+			throw new Error('Incomplete Git blob');
+		}
+		offset = end + 1;
+		return { filename, patch, source: objects.toString('utf8', start, end) };
+	});
 }
 
 function defaultBase() {
