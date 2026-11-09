@@ -46,6 +46,7 @@ export function sourceLinkVerifier(
 	let valid: boolean | undefined;
 	const limit = 1024 * 1024;
 	const deadline = Date.now() + 10_000;
+	let retriedTimeout = false;
 	const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')));
 	Object.assign(env, {
 		GIT_CONFIG_NOSYSTEM: '1',
@@ -56,17 +57,27 @@ export function sourceLinkVerifier(
 		GIT_NO_LAZY_FETCH: '1',
 	});
 	const git = (directory: string, ...args: string[]): Buffer => {
-		const remaining = deadline - Date.now();
-		if (remaining <= 0) throw new VerificationError('10-second verification budget exhausted');
-		try {
-			return execFileSync('git', ['-c', `safe.directory=${workspace.split(sep).join('/')}`, '-C', directory, ...args], {
-				env,
-				timeout: Math.min(1500, remaining),
-				maxBuffer: limit + 1,
-				stdio: ['ignore', 'pipe', 'pipe'],
-			});
-		} catch (error) {
-			throw new VerificationError(`git ${args[0]}: ${failureCode(error)}`);
+		for (;;) {
+			const remaining = deadline - Date.now();
+			if (remaining <= 0) throw new VerificationError('10-second verification budget exhausted');
+			try {
+				return execFileSync(
+					'git',
+					['-c', `safe.directory=${workspace.split(sep).join('/')}`, '-C', directory, ...args],
+					{
+						env,
+						timeout: Math.min(1500, remaining),
+						maxBuffer: limit + 1,
+						stdio: ['ignore', 'pipe', 'pipe'],
+					},
+				);
+			} catch (error) {
+				if (!retriedTimeout && error && typeof error === 'object' && 'code' in error && error.code === 'ETIMEDOUT') {
+					retriedTimeout = true;
+					continue;
+				}
+				throw new VerificationError(`git ${args[0]}: ${failureCode(error)}`);
+			}
 		}
 	};
 	return path => {
@@ -78,11 +89,13 @@ export function sourceLinkVerifier(
 				valid = false;
 				workspace = realpathSync.native(environment.GITHUB_WORKSPACE || '.');
 				stage = 'repository root';
-				if (realpathSync.native(git(workspace, 'rev-parse', '--show-toplevel').toString().trim()) !== workspace) {
+				const repository = git(workspace, 'rev-parse', '--show-toplevel', 'HEAD').toString().trimEnd();
+				const separator = repository.lastIndexOf('\n');
+				if (separator < 0 || realpathSync.native(repository.slice(0, separator).replace(/\r$/, '')) !== workspace) {
 					throw new VerificationError('checkout root differs from workspace');
 				}
 				stage = 'commit';
-				if (git(workspace, 'rev-parse', 'HEAD').toString().trim() !== environment.GITHUB_SHA) {
+				if (repository.slice(separator + 1) !== environment.GITHUB_SHA) {
 					throw new VerificationError('HEAD differs from GITHUB_SHA');
 				}
 				stage = 'origin';
