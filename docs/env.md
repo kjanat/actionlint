@@ -15,8 +15,9 @@ Invalid configuration file contents still produce an operational error (exit 3).
 
 ## Configuration and input
 
-`ACTIONLINT_STRICT` (`--strict`) selects all stable rules, including opt-in policies,
-while preserving explicit group and rule exceptions. It does not select nursery rules.
+`ACTIONLINT_STRICT` (`--strict`) enables stable `correctness`, `security` and
+`suspicious` rules, with configured group and rule exceptions. It does not enable
+additional `conventions` rules or nursery rules.
 `ACTIONLINT_EXPERIMENTAL` (`--experimental`) enables nursery rules unless an
 individual rule or group disables them. You can also enable a nursery rule with an
 explicit rule setting, without this flag. Setting this variable to false disables
