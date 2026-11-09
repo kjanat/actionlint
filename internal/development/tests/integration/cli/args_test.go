@@ -7,11 +7,11 @@ import (
 	"testing"
 )
 
-func TestModernRepeatedIgnoreAliases(t *testing.T) {
+func TestModernRepeatedIgnoreFilters(t *testing.T) {
 	for _, args := range [][]string{
 		{"check", "--ignore-regex", "undefined variable", "--ignore", "other", "-"},
-		{"check", "--ignore", "undefined variable", "--ignore-regex", "other", "-"},
-		{"--ignore", "undefined variable", "check", "--ignore-regex", "other", "-"},
+		{"check", "--ignore-regex", "undefined variable", "--ignore-regex", "other", "-"},
+		{"--ignore-regex", "undefined variable", "check", "--ignore-regex", "other", "-"},
 	} {
 		if got := testRunCommand(commandBadWorkflow, args...); got != (commandTranscript{}) {
 			t.Fatalf("repeated patterns were lost: %q: %+v", args, got)
@@ -120,7 +120,7 @@ func TestRootAndCheckArgumentParity(t *testing.T) {
 		{"-stdin-filename", "check", "--json", "-"},
 		{"--stdin-filename", "--json", "-"},
 		{"-ignore", "--json", "-"},
-		{"--ignore", "undefined variable", "-ignore", "other", "-"},
+		{"--ignore-regex", "undefined variable", "-ignore", "other", "-"},
 		{"--unknown"},
 		{"--output"},
 		{"-oneline=maybe"},

@@ -169,7 +169,7 @@ func TestCommandMain(t *testing.T) {
 
 	// Run the command end-to-end. Note that given args should contain program name
 	workflow := filepath.Join("internal", "development", "tests", "integration", "workflow", "testdata", "examples", "main.yaml")
-	status := cmd.Main([]string{"actionlint", "--no-config", "--output-format=text", "-no-color", "-no-tool=shellcheck", "-no-tool=ruff", "-ignore", `label .+ is unknown\.`, workflow})
+	status := cmd.Main([]string{"actionlint", "--no-config", "--output-format=text", "-no-color", "-no-tool=shellcheck", "-no-tool=ruff", "--ignore", "runner-label", workflow})
 
 	if status != 1 {
 		t.Fatalf("exit status should be 1 but got %d: %s", status, &output)
@@ -188,6 +188,6 @@ func TestCommandMain(t *testing.T) {
 	}
 
 	if strings.Contains(out, "[runner-label]") {
-		t.Errorf("runner-label rule should be ignored by -ignore but it is included in output: %q", out)
+		t.Errorf("runner-label rule should be ignored by --ignore but it is included in output: %q", out)
 	}
 }

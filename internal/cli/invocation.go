@@ -47,6 +47,7 @@ type checkInvocation struct {
 	Config                repoconfig.Selection
 	StdinFilename         string
 	IgnoreRegex           []string
+	IgnoreSelectors       []string
 	// ToolFlags lists the --tool values, ID or ID=COMMAND, in command-line
 	// order. --no-tool ID and the deprecated command flags, such as
 	// --shellcheck=COMMAND, add their values here too.

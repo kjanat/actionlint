@@ -573,7 +573,21 @@ to validate the checked-in manifest. For intentional exceptions, use a short com
 [Reusable ignores](config.md#reusable-ignores) let you declare an exception once
 for matching files, jobs, steps or action references.
 
-`--ignore-regex` (alias `-ignore`) filters findings by regular expression. It
+Use `--ignore` to filter findings by exact rule name or diagnostic code. Repeat
+the flag to ignore several rules or codes. A bare code matches any rule that
+emits it. Use `rule/code` to limit the match to one rule. Rule aliases also work.
+Ignored findings do not affect the exit status or summary and their fixes are
+excluded from `actionlint fix`.
+
+```sh
+actionlint check --ignore missing-permissions --ignore SC2086 workflow.yml
+actionlint check --ignore shellcheck/SC2086 workflow.yml
+```
+
+`--ignore` and `-ignore` previously accepted message regexes. Use
+`--ignore-regex` for those patterns.
+
+`--ignore-regex` filters findings by regular expression. It
 matches the message and, when a diagnostic has a code, `CODE: message`. Repeat
 the option to add patterns. The syntax is the same as [RE2][re2].
 
@@ -719,7 +733,7 @@ Output:
 actionlint -format '
 {{range $err := .}}::error file={{escapeProperty $err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{escapeData $err.Message}}%0A```%0A{{escapeData $err.Snippet}}%0A```
 {{end}}
-' -ignore 'SC2016:'
+' --ignore SC2016
 ````
 
 Output:

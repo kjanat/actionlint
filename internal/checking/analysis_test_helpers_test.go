@@ -76,6 +76,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		tb.Fatal(err)
 	}
 	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, rules: ruleSet, ruleRegistrations: registrations}
+	session.ignoreSelectors = request.IgnoreSelectors
 	if session.workingDir == "" {
 		session.workingDir = sourceFixtureBase(tb)
 	}

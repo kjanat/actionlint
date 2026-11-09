@@ -63,15 +63,16 @@ type analysisSession struct {
 	remoteActions        *actionremote.Service
 	repositories         map[string]repository.Snapshot
 	analysisLogger
-	ctx            context.Context
-	workingDir     string
-	reader         *files.Reader
-	captures       *capture.Store
-	snapshots      *parsing.SourceSnapshots
-	gitModes       *gitModes
-	ignorePats     repoconfig.IgnorePatterns
-	onRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
-	rulePresets    repoconfig.Presets
+	ctx             context.Context
+	workingDir      string
+	reader          *files.Reader
+	captures        *capture.Store
+	snapshots       *parsing.SourceSnapshots
+	gitModes        *gitModes
+	ignorePats      repoconfig.IgnorePatterns
+	ignoreSelectors resultpolicy.IgnoreSelectors
+	onRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
+	rulePresets     repoconfig.Presets
 }
 
 // check parses action manifests and workflows with their respective parsers.
@@ -238,6 +239,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 	}
 	policy := resultpolicy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, SourceConfigurations: settings.sources, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	policy.IgnoreSelectors = s.ignoreSelectors
 	policy.UsedSuppression = func(path string, position sourcepos.Position, rule string) {
 		if index, ok := references[path]; ok {
 			s.suppressionUses.observe(index.Document, position, rule)

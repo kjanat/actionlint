@@ -85,6 +85,7 @@ type analysisRequest struct {
 	Analyzers          []checkinputs.Registration
 	Tools              []tools.Registration
 	IgnorePatterns     repoconfig.IgnorePatterns
+	IgnoreSelectors    policy.IgnoreSelectors
 	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule
 	WorkingDir         string
 	// LocalDependencyRoot supplies the explicit base for prepared sources without
@@ -367,6 +368,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		captures: captures, snapshots: snapshots, reader: reader,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
+		ignoreSelectors: request.IgnoreSelectors,
 	}
 
 	documents := &actionDocuments{byPath: map[string]documentmodel.Action{}}

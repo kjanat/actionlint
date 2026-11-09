@@ -61,10 +61,10 @@ permissions: {}
 		{"custom-template", []string{"-format", `{{range .}}{{.Kind}}:{{.Line}}:{{.Column}}\n{{end}}`, "-"}, bad},
 		{"template-over-oneline", []string{"-oneline", "-format", "{{json .}}", "-"}, bad},
 		{"bad-template", []string{"-format", "plain", "-"}, good},
-		{"bad-regexp", []string{"-ignore", "[", "-"}, good},
-		{"ignored-diagnostic", []string{"-ignore", "undefined variable", "-"}, bad},
-		{"repeat-ignore", []string{"-ignore", "undefined variable", "-ignore", "other", "-"}, bad},
-		{"ignore-with-comma", []string{"--output-format=text", "-ignore", "undefined variable,other", "-"}, bad},
+		{"bad-regexp", []string{"--ignore-regex", "[", "-"}, good},
+		{"ignored-diagnostic", []string{"--ignore-regex", "undefined variable", "-"}, bad},
+		{"repeat-ignore", []string{"--ignore-regex", "undefined variable", "--ignore-regex", "other", "-"}, bad},
+		{"ignore-with-comma", []string{"--output-format=text", "--ignore-regex", "undefined variable,other", "-"}, bad},
 		{"boolean-false", []string{"--output-format=text", "-oneline=false", "-"}, bad},
 		{"boolean-repeat", []string{"--output-format=text", "-oneline", "-oneline=false", "-"}, bad},
 		{"boolean-numeric", []string{"-oneline=1", "-"}, bad},
@@ -76,7 +76,7 @@ permissions: {}
 		{"end-of-flags", []string{"--", "good.yml"}, ""},
 		{"version", []string{"-version"}, ""},
 		{"long-version", []string{"--version"}, ""},
-		{"version-precedence", []string{"-version", "-completion", "bash", "-init-config", "-format", "bad", "-ignore", "["}, ""},
+		{"version-precedence", []string{"-version", "-completion", "bash", "-init-config", "-format", "bad", "--ignore-regex", "["}, ""},
 		{"version-positionals", []string{"-version", "does-not-exist"}, ""},
 	}
 	goldenPath := filepath.Join(repoDir, "internal", "development", "tests", "integration", "cli", "testdata", "command", "compatibility.json")

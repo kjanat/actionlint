@@ -158,7 +158,7 @@ func (a *commandApp) checkEnvironment() error {
 			a.opts.logLevel, a.set["log-level"] = value, true
 		}
 	}
-	if !a.anySet("ignore-regex", "ignore") {
+	if !a.anySet("ignore-regex") {
 		if value := os.Getenv("ACTIONLINT_IGNORE_REGEX"); value != "" {
 			patterns, err := environmentStringArray(value)
 			if err != nil {
