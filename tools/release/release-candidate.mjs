@@ -156,8 +156,9 @@ export function parseManifest(value) {
 /** @param {string} root @param {string} directory @param {string} version */
 export async function prepareCandidate(root, directory, version) {
 	versionValue(version);
-	if (git(root, 'status', '--porcelain', '--untracked-files=all')) {
-		throw new Error('Prepare requires a clean source checkout');
+	const changes = git(root, 'status', '--porcelain', '--untracked-files=all');
+	if (changes) {
+		throw new Error(`Prepare requires a clean source checkout:\n${changes}`);
 	}
 	const source = git(root, 'rev-parse', 'HEAD');
 	await prepareRelease(root, directory, version);
