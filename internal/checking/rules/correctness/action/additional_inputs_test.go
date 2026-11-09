@@ -13,7 +13,7 @@ import (
 func TestAdditionalInputsRetainDeclaredInputValidation(t *testing.T) {
 	metadata := actionmeta.ParseDefinition([]byte("name: request\ndescription: request\ninputs:\n  route: {required: true}\n  old: {deprecationMessage: use route}\noutputs:\n  result: {description: result}\nruns: {using: node24, main: index.js}\n"))
 	additional := metadata.WithAdditionalInputs()
-	if !additional.Present() || metadata.AllowsAdditionalInputs() || !additional.AllowsAdditionalInputs() || additional.SkipOutputs() {
+	if !additional.Present() || metadata.AllowsAdditionalInputs() || !additional.AllowsAdditionalInputs() || additional.OutputsComplete() {
 		t.Fatal("additional inputs changed original definition or output contract")
 	}
 	for _, test := range []struct{ name, inputs, want string }{

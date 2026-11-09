@@ -12,8 +12,8 @@ jobs:
         with:
           key: ${{ hashFiles('**/*.lock') }}
           path: ./packages
-      # OK
+      # ERROR: Dynamic output is interpolated into shell source.
       - run: echo ${{ steps.cache.outputs.cache-hit }}
-      # ERROR: Typo at output name
+      # ERROR: Undeclared JavaScript outputs are strings too; this interpolation is unsafe.
       - run: echo ${{ steps.cache.outputs.cache_hit }}
 permissions: {}

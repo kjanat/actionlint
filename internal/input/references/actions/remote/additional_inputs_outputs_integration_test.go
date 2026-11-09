@@ -17,7 +17,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func TestRequestActionAllowsAdditionalInputsAndRejectsUnknownOutputs(t *testing.T) {
+func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 	fixture, err := actionfixtures.ReadManifest("request-action.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +59,7 @@ func TestRequestActionAllowsAdditionalInputsAndRejectsUnknownOutputs(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !definition.AllowsAdditionalInputs() || definition.SkipOutputs() || !slices.Equal(definition.OutputNames(), []string{"data", "headers", "status"}) {
+			if !definition.AllowsAdditionalInputs() || definition.OutputsComplete() || !slices.Equal(definition.OutputNames(), []string{"data", "headers", "status"}) {
 				t.Fatal("selection lost additional inputs or the declared output names")
 			}
 			route, exists := definition.Input("route")
@@ -111,8 +111,8 @@ func TestRequestActionAllowsAdditionalInputsAndRejectsUnknownOutputs(t *testing.
 				}
 			}
 			findings := checker.Findings()
-			if len(findings) != 1 || findings[0].Rule != "expression-reference" || !strings.Contains(findings[0].Message, `property "this_output_does_not_exist" is not defined in steps.request.outputs`) {
-				t.Fatalf("unknown output was not checked independently of dynamic inputs: %v", findings)
+			if len(findings) != 0 {
+				t.Fatalf("undeclared JavaScript action output was rejected: %v", findings)
 			}
 		})
 	}
