@@ -165,7 +165,14 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 
 	if rule.compositeScript {
-		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
+		available := actionmeta.AllowedContexts("runs.steps.*.run")
+		c.SetContextAvailability(available)
+		// Metadata validation reports unavailable contexts. Their property types are unknown.
+		for name := range contextspec.BuiltinGlobalVariableTypes {
+			if !slices.Contains(available, name) {
+				c.SetContextType(name, exprtypes.AnyType())
+			}
+		}
 	}
 	evaluation := expreval.EvaluateSubexpressions(expr)
 	result := c.CheckResult(evaluation)
