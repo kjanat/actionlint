@@ -17,6 +17,10 @@ func TestUnavailableFactsRemainDistinctFromKnownEmpty(t *testing.T) {
 		{availability.UnavailableString(availability.Denied()), availability.DeniedReason},
 		{availability.UnavailableString(availability.Failed()), availability.FailedReason},
 		{availability.UnavailableString(availability.NotFound()), availability.NotFoundReason},
+		{availability.UnavailableString(availability.UnsupportedHost()), availability.UnsupportedHostReason},
+		{availability.UnavailableString(availability.ResolverNotConfigured()), availability.ResolverNotConfiguredReason},
+		{availability.UnavailableString(availability.UnsupportedObjectFormat()), availability.UnsupportedObjectFormatReason},
+		{availability.UnavailableString(availability.InvalidResolverResult()), availability.InvalidResolverResultReason},
 	} {
 		if _, known := test.result.Value(); known || test.result.Reason() != test.reason {
 			t.Fatalf("unavailable cause was lost: %q", test.result.Reason())

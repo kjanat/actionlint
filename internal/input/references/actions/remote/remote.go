@@ -158,10 +158,10 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Resul
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
-	manifest, available := result.Value()
-	if !available {
-		return Result{availability: actions.MissingMetadata(reasonOf(result.Reason()))}, nil
+	if missing, unavailable := result.Unavailability(); unavailable {
+		return Result{availability: actions.MissingMetadata(missing)}, nil
 	}
+	manifest := result
 	identity := manifest.Identity()
 	if identity.Commit() == "" || identity.Host() != reference.Host() || !strings.EqualFold(identity.Repository(), reference.Repository()) || identity.Directory() != reference.Directory() {
 		return Result{}, errors.New("remote action provider returned a foreign manifest identity")
@@ -206,33 +206,6 @@ func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspec
 		problems = append(problems, actions.ManifestProblem{Code: string(d.Code), Message: d.Message, Path: manifestPath, Start: d.Start, End: d.End})
 	}
 	return Result{availability: actions.InvalidMetadata(manifest, problems)}
-}
-
-func reasonOf(reason factavailability.Reason) factavailability.Unavailability {
-	switch reason {
-	case factavailability.OfflineReason:
-		return factavailability.Offline()
-	case factavailability.LookupDisabledReason:
-		return factavailability.LookupDisabled()
-	case factavailability.DeniedReason:
-		return factavailability.Denied()
-	case factavailability.FailedReason:
-		return factavailability.Failed()
-	case factavailability.NotFoundReason:
-		return factavailability.NotFound()
-	case factavailability.UnsupportedReason:
-		return factavailability.Unsupported()
-	case factavailability.CacheMissReason:
-		return factavailability.CacheMiss()
-	case factavailability.InaccessibleReason:
-		return factavailability.Inaccessible()
-	case factavailability.LimitReason:
-		return factavailability.Limit()
-	case factavailability.NotFetchedReason:
-		return factavailability.NotFetched()
-	default:
-		return factavailability.NotFetched()
-	}
 }
 
 func (s *Service) Coverage() []actions.Coverage {

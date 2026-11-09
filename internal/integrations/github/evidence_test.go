@@ -50,12 +50,54 @@ func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
 			t.Fatal(err)
 		}
 		if selectedRef == "" {
-			if result.Reason() != availability.UnsupportedReason {
+			if result.Reason() != availability.InvalidResolverResultReason {
 				t.Fatalf("guessed route: %v", result)
 			}
 		} else if !result.Available() || result.Selection().Route().Reference() != selectedRef {
 			t.Fatalf("lost route: %v", result)
 		}
+	}
+}
+
+func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		change func(*references.Result)
+	}{
+		{"version", func(r *references.Result) { r.Version = 2 }},
+		{"error", func(r *references.Result) { r.Error = "resolution failed" }},
+		{"repository ID", func(r *references.Result) { r.RepositoryID = 99 }},
+		{"repository name", func(r *references.Result) { r.Repository = "another/action" }},
+		{"commit", func(r *references.Result) { r.Commit = "short" }},
+		{"tree", func(r *references.Result) { r.Tree = sha }},
+		{"observation", func(r *references.Result) { r.ObservedAt = "" }},
+		{"fetch log", func(r *references.Result) { r.FetchLog = nil }},
+		{"selected object", func(r *references.Result) { r.SelectedObject = "" }},
+		{"selected ref", func(r *references.Result) { r.SelectedRef = "" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+			client, err := New(Options{Resolver: func() references.Resolver {
+				return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
+					result := references.Result{Version: 1, Repository: "example/action", RepositoryID: 42, Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}
+					tc.change(&result)
+					return result, nil
+				})
+			}, Transport: transport(func(r *http.Request) (*http.Response, error) {
+				requests++
+				if r.URL.Path != "/repos/example/action" {
+					t.Fatalf("invalid result fetched %s", r.URL)
+				}
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"id":42,"full_name":"example/action"}`)), Request: r}, nil
+			})})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := client.Lookup(t.Context(), ref(t, "example/action@v1"))
+			if err != nil || result.Reason() != availability.InvalidResolverResultReason || requests != 1 {
+				t.Fatalf("result=%v error=%v requests=%d", result, err, requests)
+			}
+		})
 	}
 }
 

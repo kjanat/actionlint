@@ -166,6 +166,10 @@ func (m Manifest) Selection() Selection    { return m.selection }
 func (m Manifest) Content() string         { return m.content }
 func (m Manifest) Available() bool         { return m.selection.identity.commit != "" }
 func (m Manifest) Value() (Manifest, bool) { return m, m.Available() }
+func (m Manifest) Unavailability() (availability.Unavailability, bool) {
+	return m.missing, !m.Available()
+}
+
 func (m Manifest) Reason() availability.Reason {
 	if m.Available() {
 		return ""

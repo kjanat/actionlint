@@ -37,6 +37,30 @@ func TestMetadataAvailabilityPreservesMissingAndInvalid(t *testing.T) {
 	}
 }
 
+func TestProviderUnavailabilityReachesCoverage(t *testing.T) {
+	for _, missing := range []availability.Unavailability{
+		availability.NotFetched(), availability.Offline(), availability.LookupDisabled(),
+		availability.Denied(), availability.Failed(), availability.NotFound(),
+		availability.Unsupported(), availability.CacheMiss(), availability.Inaccessible(), availability.Limit(),
+		availability.UnsupportedHost(), availability.ResolverNotConfigured(),
+		availability.UnsupportedObjectFormat(), availability.InvalidResolverResult(),
+	} {
+		t.Run(string(missing.Reason()), func(t *testing.T) {
+			service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
+				return actions.UnavailableManifest(missing), nil
+			}))
+			result, err := service.Inspect(t.Context(), "example/action@v1")
+			if err != nil || result.Availability().State() != actions.MetadataUnavailable || result.Availability().Reason() != missing.Reason() {
+				t.Fatalf("result=%v error=%v, want %s", result.Availability(), err, missing.Reason())
+			}
+			coverage := service.Coverage()
+			if len(coverage) != 1 || coverage[0].Report().Reason != missing.Reason() {
+				t.Fatalf("coverage=%v, want %s", coverage, missing.Reason())
+			}
+		})
+	}
+}
+
 func TestEmptyAvailableManifestIsInvalidMetadata(t *testing.T) {
 	service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
 		return manifest(t, "example/action", strings.Repeat("a", 40), "", reference.Ref(), ""), nil
