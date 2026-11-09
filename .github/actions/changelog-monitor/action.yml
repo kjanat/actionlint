@@ -20,9 +20,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install the changelog package
-      shell: bash
-      run: npm install --prefix "${RUNNER_TEMP}/actionlint-changelog" --no-save --package-lock=false --ignore-scripts @kjlint/changelog-rss@0.0.3
     - name: Collect new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -31,7 +28,7 @@ runs:
         github-token: ${{ inputs.token }}
         retries: 3
         script: |
-          const load = require('node:module').createRequire(`${process.env.RUNNER_TEMP}/actionlint-changelog/package.json`)
+          const load = require('node:module').createRequire(`${process.env.GITHUB_WORKSPACE}/package.json`)
           const { parseFeed, FEED_URL } = load('@kjlint/changelog-rss/feed')
           const { toEntry, reportedGuids, selectEntries, issueTitle, issueBody, LABEL } = load('@kjlint/changelog-rss/action')
           const count = name => {

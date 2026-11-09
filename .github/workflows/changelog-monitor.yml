@@ -33,6 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, cache: npm }
+      - name: Install workspace dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build the workspace changelog package
+        run: npm run build --workspace @kjlint/changelog-rss
       - name: Collect new Actions changelog entries
         id: monitor
         uses: $/.github/actions/changelog-monitor
