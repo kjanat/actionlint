@@ -54,6 +54,10 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 		help = "; SHA-256 Git object IDs are not supported; use a full SHA-1 commit or a named reference with --resolve-with"
 	case factavailability.InvalidResolverResultReason:
 		help = "; the resolver returned an invalid or incomplete result; check the resolver selected by --resolve-with"
+	case factavailability.NotFetchedReason, factavailability.OfflineReason, factavailability.LookupDisabledReason,
+		factavailability.DeniedReason, factavailability.FailedReason, factavailability.NotFoundReason,
+		factavailability.UnsupportedReason, factavailability.ResolverNotConfiguredReason, factavailability.CacheMissReason,
+		factavailability.InaccessibleReason, factavailability.LimitReason:
 	}
 	collector := reporting.Collector{Rule: "missing-action-metadata", Step: step}
 	collector.Error(reporting.ViewPosition(action.Uses().Pos()), "could not inspect metadata for "+spec+" ("+reason+")"+help)
