@@ -15,23 +15,25 @@ func TestMissingPermissionsLocations(t *testing.T) {
 		name    string
 		options map[string]any
 		want    []config.PermissionLocation
+		invalid bool
 	}{
-		{"default", map[string]any{}, config.PermissionLocations()},
-		{"workflow", map[string]any{"require-at": "workflow"}, []config.PermissionLocation{config.WorkflowPermissions}},
-		{"every job", map[string]any{"require-at": "every-job"}, []config.PermissionLocation{config.EveryJobPermissions}},
-		{"both", map[string]any{"require-at": []any{"workflow", "every-job"}}, config.PermissionLocations()},
-		{"duplicate", map[string]any{"require-at": []any{"workflow", "workflow"}}, []config.PermissionLocation{config.WorkflowPermissions}},
-		{"empty", map[string]any{"require-at": []any{}}, nil},
-		{"null", map[string]any{"require-at": nil}, nil},
-		{"boolean", map[string]any{"require-at": true}, nil},
-		{"unknown", map[string]any{"require-at": "job"}, nil},
-		{"mixed", map[string]any{"require-at": []any{"workflow", 1}}, nil},
-		{"unknown field", map[string]any{"require-at": "workflow", "scope": "job"}, nil},
+		{"default", map[string]any{}, nil, false},
+		{"workflow", map[string]any{"require-at": "workflow"}, []config.PermissionLocation{config.WorkflowPermissions}, false},
+		{"every job", map[string]any{"require-at": "every-job"}, []config.PermissionLocation{config.EveryJobPermissions}, false},
+		{"both", map[string]any{"require-at": []any{"workflow", "every-job"}}, config.PermissionLocations(), false},
+		{"duplicate", map[string]any{"require-at": []any{"workflow", "workflow"}}, []config.PermissionLocation{config.WorkflowPermissions}, false},
+		{"empty", map[string]any{"require-at": []any{}}, nil, true},
+		{"null", map[string]any{"require-at": nil}, nil, true},
+		{"boolean", map[string]any{"require-at": true}, nil, true},
+		{"unknown", map[string]any{"require-at": "job"}, nil, true},
+		{"any", map[string]any{"require-at": "any"}, nil, true},
+		{"mixed", map[string]any{"require-at": []any{"workflow", 1}}, nil, true},
+		{"unknown field", map[string]any{"require-at": "workflow", "scope": "job"}, nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var options config.MissingPermissionsOptions
 			err := binding.Decode(tc.options, &options)
-			if tc.want == nil {
+			if tc.invalid {
 				if err == nil {
 					t.Fatal("invalid options accepted")
 				}

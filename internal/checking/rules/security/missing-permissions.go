@@ -16,8 +16,8 @@ func MissingPermissionsDeclaration() rule.Declaration {
 		Name: "missing-permissions", Description: "Report missing token permission declarations",
 		Category: "security", Subcategory: "permissions", Maturity: "stable", Provider: "actionlint",
 		Recommended: true, DefaultLevel: "error",
-		Explanation:      "Require explicit token permissions. By default, a workflow-level declaration or a declaration on every job satisfies the rule. Set require-at to workflow, every-job, or a nonempty array of those locations. With both locations allowed, this rule skips workflows triggered only by workflow_call. The workflow-call rule compares permissions for calls being analysed. Selecting one location requires declarations there, including in reusable workflows. This check does not determine which token scopes an action needs.",
-		Help:             "Add permissions at an allowed location. An empty mapping declares no token permissions. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it.",
+		Explanation:      "Report jobs with no permissions declared on the job or workflow. Set require-at to workflow or every-job to require permissions there. An array requires permissions at every listed location. When require-at is omitted, workflows triggered only by workflow_call are skipped. The workflow-call rule compares the caller's permissions with those requested by the called workflow.",
+		Help:             "Add permissions on the workflow or on every job. If require-at is configured, add permissions at every location it lists. Use permissions: {} to grant none. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it.",
 		DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-permissions",
 		Options:          func() any { return &config.MissingPermissionsOptions{} },
 		Examples:         []rule.Example{{Description: "This job uses no token permissions.", Before: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", After: "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"}},
@@ -32,21 +32,24 @@ func MissingPermissionsCheck(locations []config.PermissionLocation) inputs.Decla
 }
 
 func MissingPermissions(workflow declaration.WorkflowView, locations []config.PermissionLocation) []reporting.Finding {
-	allowWorkflow := slices.Contains(locations, config.WorkflowPermissions)
-	allowJob := slices.Contains(locations, config.EveryJobPermissions)
-	if allowWorkflow && workflow.Permissions().Present() {
+	defaultLocations := len(locations) == 0
+	requireWorkflow := slices.Contains(locations, config.WorkflowPermissions)
+	requireJob := slices.Contains(locations, config.EveryJobPermissions)
+	if defaultLocations && workflow.Permissions().Present() {
 		return nil
 	}
 	findings := reporting.Collector{Rule: "missing-permissions"}
-	if !allowJob {
+	if requireWorkflow && !workflow.Permissions().Present() {
 		pos := reporting.ViewPosition(workflow.Pos())
 		if pos == nil {
 			pos = &workflowlang.Pos{Line: 1, Col: 1}
 		}
 		findings.Errorf(pos, "workflow-level \"permissions\" is required; declare the token permissions your jobs need, or use \"permissions: {}\" to grant none")
+	}
+	if !defaultLocations && !requireJob {
 		return findings.Findings
 	}
-	if allowWorkflow {
+	if defaultLocations {
 		independentlyTriggered := false
 		for event := range workflow.On() {
 			if _, reusable := event.WorkflowCallEvent(); !reusable {
@@ -60,7 +63,7 @@ func MissingPermissions(workflow declaration.WorkflowView, locations []config.Pe
 	}
 	for _, job := range workflow.Jobs() {
 		if !job.Permissions().Present() {
-			findings.Errorf(reporting.ViewPosition(job.Pos()), "job %q does not declare token permissions; add \"permissions\" %s, or use \"permissions: {}\" to grant none", job.ID().Value(), permissionLocationDescription(allowWorkflow))
+			findings.Errorf(reporting.ViewPosition(job.Pos()), "job %q does not declare token permissions; add \"permissions\" %s, or use \"permissions: {}\" to grant none", job.ID().Value(), permissionLocationDescription(defaultLocations))
 		}
 	}
 	return findings.Findings

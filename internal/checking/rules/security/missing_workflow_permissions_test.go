@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -51,7 +50,7 @@ func TestMissingPermissions(t *testing.T) {
 			}
 			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
 			var lines []int
-			for _, finding := range security.MissingPermissionsCheck(config.PermissionLocations()).Workflow(view) {
+			for _, finding := range security.MissingPermissionsCheck(nil).Workflow(view) {
 				if finding.Rule != "missing-permissions" || finding.Severity != "" || finding.Start.Column != 3 {
 					t.Fatalf("unexpected diagnostic: %+v", finding)
 				}

@@ -27,6 +27,13 @@ import (
 
 const shellcheckSchemaPath = "schemas/shellcheck/0.11.0.schema.json"
 
+func TestPermissionLocationsDoNotSuggestBothAsDefault(t *testing.T) {
+	schema := mapYAMLType(reflect.TypeFor[actionlint.PermissionLocationList](), nil)
+	if schema.Default != nil {
+		t.Fatalf("require-at has no value equivalent to omission; schema suggests %v", schema.Default)
+	}
+}
+
 func generatedSchema(t *testing.T) []byte {
 	t.Helper()
 	t.Chdir("../../../..")
@@ -608,6 +615,7 @@ func TestSchemaValidation(t *testing.T) {
 		{"permissions location array", `lint: {rules: {security: {missing-permissions: {level: error, options: {require-at: [workflow, every-job]}}}}}`, true, true},
 		{"permissions empty locations", `lint: {rules: {security: {missing-permissions: {level: error, options: {require-at: []}}}}}`, false, false},
 		{"permissions unknown location", `lint: {rules: {security: {missing-permissions: {level: error, options: {require-at: step}}}}}`, false, false},
+		{"permissions any location", `lint: {rules: {security: {missing-permissions: {level: error, options: {require-at: any}}}}}`, false, false},
 		{"rule null permissions location", `lint: {rules: {security: {missing-permissions: {level: on, options: {require-at: null}}}}}`, false, false},
 		{"rule null suppression rules", `lint: {rules: {conventions: {forbidden-suppression: {level: on, options: {rules: null}}}}}`, false, false},
 		{"rule null suppression report", `lint: {rules: {conventions: {forbidden-suppression: {level: on, options: {report: null}}}}}`, false, false},

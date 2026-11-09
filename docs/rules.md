@@ -795,9 +795,9 @@ Configure this rule with `lint.rules.correctness.missing-local-action`. Use `off
 
 ## missing-permissions
 
-Require explicit token permissions. By default, a workflow-level declaration or a declaration on every job satisfies the rule. Set require-at to workflow, every-job, or a nonempty array of those locations. With both locations allowed, this rule skips workflows triggered only by workflow_call. The workflow-call rule compares permissions for calls being analysed. Selecting one location requires declarations there, including in reusable workflows. This check does not determine which token scopes an action needs.
+Report jobs with no permissions declared on the job or workflow. Set require-at to workflow or every-job to require permissions there. An array requires permissions at every listed location. When require-at is omitted, workflows triggered only by workflow_call are skipped. The workflow-call rule compares the caller's permissions with those requested by the called workflow.
 
-Add permissions at an allowed location. An empty mapping declares no token permissions. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it.
+Add permissions on the workflow or on every job. If require-at is configured, add permissions at every location it lists. Use permissions: {} to grant none. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it.
 
 - Category: `security/permissions`
 - Provider: `actionlint`
