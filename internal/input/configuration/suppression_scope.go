@@ -53,6 +53,7 @@ func (ruleSet RuleSet) scopedConfigForFile(config *Config, path, root string, se
 			}
 		}
 		override.lintNode = selectLint(node)
+		override.lintSet = override.lintSet || override.Lint != nil
 		override.Lint = nil
 		if !tools {
 			override.Tools, override.toolsNode = nil, nil

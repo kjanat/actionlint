@@ -137,6 +137,7 @@ jobs:
       - uses: $/
       - uses: $/broken
       - uses: $/missing
+permissions: {}
 `
 	analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: dir}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}})
 	if err != nil {
@@ -195,6 +196,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: $/
+permissions: {}
 `
 			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: dir}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}})
 			if err != nil {
@@ -232,6 +234,34 @@ func requireWorkflowOutline(t *testing.T, document documentmodel.Outline) docume
 	return workflow
 }
 
+func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
+	const caller = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\npermissions: {}\n"
+	for _, tc := range []struct{ name, runs string }{
+		{"javascript", "using: node24\n  main: index.js\n"},
+		{"docker", "using: docker\n  image: docker://alpine:3\n"},
+		{"composite", "using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
+			fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  "+tc.runs)
+			setting, err := repoconfig.NewSetting("bogus", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": setting})}}
+			config := &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
+			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Content: []byte(caller), Project: workspace.Identity(root), Config: config}})
+			if err == nil || !strings.Contains(err.Error(), "rule level") {
+				t.Fatalf("invalid action configuration was accepted: %v", err)
+			}
+			if analysis == nil || len(analysis.Documents) != 2 {
+				t.Fatalf("configuration failure discarded parsed documents: %+v", analysis)
+			}
+		})
+	}
+}
+
 func TestAnalysisFailureKeepsOutline(t *testing.T) {
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
@@ -247,6 +277,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./local
+permissions: {}
 `
 	bogus := func(include string) *repoconfig.Config {
 		setting, err := repoconfig.NewSetting("bogus", nil)

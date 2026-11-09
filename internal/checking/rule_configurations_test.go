@@ -55,6 +55,30 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 	}
 }
 
+func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
+	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}
+	setting, err := repoconfig.NewSetting("error", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := &repoconfig.Config{Overrides: []repoconfig.Override{{
+		Includes: []string{"inner/**"},
+		Lint: &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
+			Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"plugin-check": setting}),
+		}},
+	}}}
+	settings := newRuleConfigurations(config, t.TempDir(), repoconfig.Presets{}, []repoconfig.RuleRegistration{registration})
+	for _, resolve := range []func(string) (*repoconfig.Config, error){settings.source, settings.action} {
+		selected, err := resolve("inner/action.yml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if level := selected.RuleSet().DiagnosticLevel(selected, "plugin-check"); level != "error" {
+			t.Fatalf("programmatic action override was ignored: level=%s", level)
+		}
+	}
+}
+
 func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
 	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
 	settings := newRuleConfigurations(nil, t.TempDir(), repoconfig.Presets{}, []repoconfig.RuleRegistration{registration})
