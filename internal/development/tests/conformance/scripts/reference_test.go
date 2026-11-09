@@ -63,7 +63,7 @@ func TestRecordedBashErrexit(t *testing.T) {
 	}
 }
 
-// The model reports suspicious command-shaped lines, not every rejected line.
+// Compare supported workflow-command mistakes with the runner's parser results.
 func TestRecordedRunnerCommands(t *testing.T) {
 	file, err := os.Open("testdata/runner-reference.jsonl")
 	if err != nil {

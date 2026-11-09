@@ -28,6 +28,8 @@ var (
 	bundledRuntimePattern       = regexp.MustCompile(`(?m)^NODE([0-9]+)_VERSION="[0-9]+\.[0-9]+\.[0-9]+"\s*$`)
 	migrationConstantPattern    = regexp.MustCompile(`public static readonly string Node([0-9]+)(DeprecationUrl|RemovalDate)\s*=\s*"([^"\r\n]+)";`)
 	migrationDeclarationPattern = regexp.MustCompile(`Node[0-9]+(?:DeprecationUrl|RemovalDate)\s*=`)
+	constantsNamespacePattern   = regexp.MustCompile(`(?m)^\s*namespace GitHub\.Runner\.Common\s*\{`)
+	constantsClassPattern       = regexp.MustCompile(`(?m)^\s*public static class Constants\s*\{`)
 )
 
 type runtimeInfo struct {
@@ -87,8 +89,11 @@ func collectRuntimes(sources map[string][]byte) (map[string]runtimeInfo, error) 
 		}
 		out[name] = info
 	}
-	if !bytes.Contains(sources[runtimeSourcePaths[3]], []byte("class NodeMigration")) {
-		return nil, errors.New("runner migration constants changed shape; review runtime lifecycle extraction")
+	// Completed migrations can remove their NodeMigration class. Validate the
+	// enclosing source without requiring an active migration.
+	constants := sources[runtimeSourcePaths[3]]
+	if !constantsNamespacePattern.Match(constants) || !constantsClassPattern.Match(constants) {
+		return nil, errors.New("runner Constants.cs has no recognized Constants class; review runtime lifecycle extraction")
 	}
 	for name, info := range out {
 		if info.RemovalDate != "" && !info.Deprecated {
