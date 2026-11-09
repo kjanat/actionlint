@@ -1,11 +1,8 @@
 # Architecture enforcement
 
-`actionlintarch` is enabled in the default golangci-lint configuration. Both
-`.tool-versions` and `.custom-gcl.yml` pin golangci-lint 2.15.0. `make lint-build`
-rebuilds the module plugin and the standalone analyzer, and clears golangci-lint's result cache so local plugin edits cannot reuse stale diagnostics. `make lint` runs the
-custom binary and the standalone checker; Zed uses the custom binary after that
-build. The analyzer is a separate Go module, so it does not add lint dependencies
-to the distributed application.
+This Go module contains the standalone `actionlintarch` analyzer and its
+golangci-lint plugin. The repository's lint command and Zed configuration use
+standard golangci-lint.
 
 ## Checks
 
@@ -17,9 +14,6 @@ to the distributed application.
 | ALA103 | Restrict construction and field mutation to each type's declared owners.             |
 | ALA104 | Reject the old engine facades and duplicated invocation fields in `execution.Scope`. |
 | ALA105 | Restrict `context.Background` and `context.TODO` to entrypoint layers.               |
-
-`contextcheck` checks context propagation. `exhaustive` requires explicit enum
-cases, including switches with a default branch.
 
 ## Dependency contract
 
@@ -72,21 +66,6 @@ Tests may read fixtures and import packages in a `testonly` layer, such as
 imports still obey the dependency contract; production packages cannot import
 test support.
 
-## Run
+## Test this module
 
-- `make test-analyzers`: run contract checks and valid/invalid fixtures under `testdata`.
-- `make lint`: build and run the default lint configuration.
-- `make lint-architecture`: run the analyzer directly, with suppression comments ignored.
-
-The Architecture workflow runs on every PR. Analyzer tests and product enforcement
-have separate jobs. After building the custom runner, CI also tests a contract-only
-change against a warm cache and verifies that a missing contract fails startup.
-To repeat that integration test locally, run
-`ACTIONLINT_CUSTOM_GCL="$PWD/custom-gcl" go test -C analyzers ./plugin -run TestContractReload -count=1`
-after `make lint-build`.
-
-Current product violations fail enforcement. Generated Go is included in the
-direct run. Build tags and platform selection follow Go's package loading rules.
-
-Require **Architecture analyzer tests** and **Architecture enforcement** in the
-repository ruleset. Policy, analyzer and workflow changes need independent review.
+From the repository root, run `mise exec -- go test -C analyzers ./...`.
