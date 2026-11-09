@@ -59,6 +59,8 @@ func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
 		}
 		normalized.Content = append([]*yaml.Node(nil), node.Content...)
 		switch node.Kind {
+		default:
+			return &normalized
 		case yaml.DocumentNode:
 			if len(normalized.Content) == 1 {
 				normalized.Content[0] = rewrite(normalized.Content[0], keys, backend)

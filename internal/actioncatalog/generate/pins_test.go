@@ -12,7 +12,7 @@ import (
 
 func TestPinnedMetadataUsesImmutableSource(t *testing.T) {
 	const sha = "0123456789012345678901234567890123456789"
-	g := newGen(io.Discard, io.Discard, io.Discard)
+	g := newTestGen(io.Discard, io.Discard, io.Discard)
 	g.rawRegistry = []byte(`[{"slug":"owner/action","path":"/sub","tags":["v1"],"pins":{"v1":"` + sha + `"}}]`)
 	g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		if req.URL.String() != "https://raw.githubusercontent.com/owner/action/"+sha+"/sub/action.yml" {
@@ -73,7 +73,7 @@ func TestRegistryPinsResolveCommits(t *testing.T) {
 
 func TestRegistryRejectsInvalidPins(t *testing.T) {
 	for _, pins := range []string{`{"v1":"main"}`, `{"v2":"0123456789012345678901234567890123456789"}`} {
-		g := newGen(io.Discard, io.Discard, io.Discard)
+		g := newTestGen(io.Discard, io.Discard, io.Discard)
 		g.rawRegistry = []byte(`[{"slug":"a/b","tags":["v1"],"pins":` + pins + `}]`)
 		if _, err := g.registry(); err == nil {
 			t.Fatalf("accepted %s", pins)
@@ -83,7 +83,7 @@ func TestRegistryRejectsInvalidPins(t *testing.T) {
 
 func TestPinnedMetadataPreservesRetirement(t *testing.T) {
 	const sha = "0123456789012345678901234567890123456789"
-	g := newGen(io.Discard, io.Discard, io.Discard)
+	g := newTestGen(io.Discard, io.Discard, io.Discard)
 	g.rawRegistry = []byte(`[{"slug":"actions/checkout","tags":["v1"],"pins":{"v1":"` + sha + `"}}]`)
 	g.client = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("name: legacy\nruns: {using: node24, main: index.js}\n"))}, nil

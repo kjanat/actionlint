@@ -95,6 +95,8 @@ func (p Policy) Apply(all []*findingmodel.Finding, metadataSources map[string][]
 			if cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled {
 				descriptor, _ := repoconfig.FindRule(kind)
 				switch descriptor.Scope {
+				case repoconfig.CallerScope:
+					levelConfig = cfg
 				case repoconfig.SourceScope:
 					levelConfig = findingConfig
 				case repoconfig.CompositeScope:

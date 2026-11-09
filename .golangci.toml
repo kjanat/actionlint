@@ -56,7 +56,7 @@ forbid = [
 checks = ["all", "-ST1003"]
 
 [linters.settings.exhaustive]
-default-signifies-exhaustive = false
+default-signifies-exhaustive = true
 
 [linters.exclusions]
 generated = "lax"

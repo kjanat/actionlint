@@ -185,6 +185,8 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *y
 		scalar = actionSchemaLiteralScalar
 	}
 	switch d.kind {
+	case actionSchemaUnion:
+		return
 	case actionSchemaString:
 		v := scalar(n)
 		if v == nil {

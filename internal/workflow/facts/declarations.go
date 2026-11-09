@@ -36,6 +36,8 @@ func Declarations(content []byte, workflow *workflowlang.Workflow, refs Referenc
 		record.Complete = workflowlang.InputResolver.Walk(values, nil, func(entry mapping.Entry[*workflowlang.String]) {
 			item := analyzer.Entry{State: analyzer.UnknownKey, Evaluated: entry.Evaluated}
 			switch entry.State {
+			case mapping.UnknownKey:
+				item.State = analyzer.UnknownKey
 			case mapping.KnownKey:
 				item.State = analyzer.KnownKey
 			case mapping.InvalidKey:

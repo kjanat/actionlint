@@ -37,12 +37,16 @@ func decodeTOML(data []byte) (*yaml.Node, error) {
 		expression := d.parser.Expression()
 		var err error
 		switch expression.Kind {
+		case unstable.Comment:
+			continue
 		case unstable.KeyValue:
 			err = d.keyValue(current, expression)
 		case unstable.Table:
 			current, err = d.table(root, expression)
 		case unstable.ArrayTable:
 			current, err = d.arrayTable(root, expression)
+		default:
+			return nil, fmt.Errorf("unexpected TOML expression kind %v", expression.Kind)
 		}
 		if err != nil {
 			return nil, err
@@ -121,6 +125,7 @@ func (d *tomlDecoder) child(table *yaml.Node, key *unstable.Node, origin tableOr
 	switch existing.Kind {
 	case yaml.MappingNode:
 		switch d.origins[existing] {
+		case tableImplicit, tableDotted, tableArray:
 		case tableInline:
 			return nil, d.keyError(key, "cannot extend inline table %q", name)
 		case tableHeader:

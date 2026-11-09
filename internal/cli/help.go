@@ -44,6 +44,7 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 	force := a.opts.color
 	if !a.anySet("color", "modern-color", "no-color") {
 		switch a.inv.Render.Color {
+		case render.ColorAuto:
 		case render.ColorAlways:
 			force = true
 		case render.ColorNever:

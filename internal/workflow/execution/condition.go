@@ -96,6 +96,8 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 		left := conditionStatusTruth(node.Left, status, cancelled)
 		right := conditionStatusTruth(node.Right, status, cancelled)
 		switch node.Kind {
+		case exprlang.LogicalOpNodeKindInvalid:
+			return conditionUnknown
 		case exprlang.LogicalOpNodeKindAnd:
 			if left == conditionFalse || right == conditionFalse {
 				return conditionFalse

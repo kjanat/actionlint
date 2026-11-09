@@ -377,6 +377,8 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 	for _, i := range event.Inputs {
 		var t exprlang.Type = exprlang.AnyType{}
 		switch i.Type {
+		case workflowlang.WorkflowCallEventInputTypeInvalid:
+			t = exprlang.AnyType{}
 		case workflowlang.WorkflowCallEventInputTypeBoolean:
 			t = exprlang.BoolType{}
 		case workflowlang.WorkflowCallEventInputTypeNumber:
@@ -495,6 +497,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 
 	var m *Metadata
 	switch n.Kind {
+	case yaml.DocumentNode, yaml.AliasNode:
 	case yaml.MappingNode:
 		// on:
 		//   workflow_call:
