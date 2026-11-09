@@ -36,6 +36,7 @@ jobs:
         run: |
           $venv = Join-Path $env:RUNNER_TEMP pypi-smoke-venv
           & python -m venv --clear $venv
+permissions: {}
 YAML
 	cp .github/actionlint.yaml config.before
 	mkdir -p "${HOME}/legacy/.github"
