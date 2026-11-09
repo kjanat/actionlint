@@ -12,7 +12,8 @@
   "license": "MIT",
   "type": "module",
   "imports": {
-    "#pkg": "./package.json"
+    "#pkg": "./package.json",
+    "#*": "./src/*.ts"
   },
   "main": "main.js",
   "scripts": {
