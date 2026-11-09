@@ -67,6 +67,46 @@ test('rejects invalid Git revisions before fetching', () => {
 		}), /full Git commit SHA/);
 });
 
+test('reads every source and patch in a large diff with Unicode and binary files', t => {
+	const directory = mkdtempSync(join(tmpdir(), 'comment-cop-batch-'));
+	t.after(() => rmSync(directory, { recursive: true, force: true }));
+	const origin = join(directory, 'origin');
+	mkdirSync(origin);
+	const git = (/** @type {string[]} */ args) =>
+		execFileSync('git', ['-C', origin, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+	git(['init', '--quiet', '--initial-branch=master', '--template=']);
+	git(['config', 'user.name', 'Test']);
+	git(['config', 'user.email', 'test@example.invalid']);
+	git(['config', 'commit.gpgsign', 'false']);
+	git(['config', 'core.hooksPath', join(directory, 'no-hooks')]);
+	git(['commit', '--quiet', '--allow-empty', '-m', 'Base']);
+	const baseSha = git(['rev-parse', 'HEAD']);
+	const expected = new Map();
+	for (let index = 0; index < 1_000; index++) {
+		const name = `file-${String(index).padStart(4, '0')}.md`;
+		const source = `That said, café 😀 ${index}.\n\ndiff --git this is prose\n`;
+		expected.set(name, source);
+	}
+	expected.set('[binary] with spaces.md', 'Binary\0content\n');
+	for (const [name, source] of expected) writeFileSync(join(origin, name), source);
+	writeFileSync(join(origin, 'unsupported.txt'), 'Not a scanned file.');
+	git(['add', '.']);
+	git(['commit', '--quiet', '-m', 'Contribution']);
+	const files = readPullRequestFiles({
+		cacheDirectory: join(directory, 'cache'),
+		repositoryUrl: origin,
+		baseSha,
+		headSha: git(['rev-parse', 'HEAD']),
+	});
+	assert.equal(files.length, expected.size);
+	for (const { filename, source, patch } of files) {
+		assert.equal(source, expected.get(filename));
+		if (filename.startsWith('file-')) {
+			assert.deepEqual(groupsFromPatch(filename, patch, source).map(group => group.start), [1]);
+		}
+	}
+});
+
 /** @typedef {Parameters<Parameters<typeof run>[0]['github']['rest']['pulls']['createReview']>[0]} ReviewParams */
 
 test('flags a long implementation comment', () => {
