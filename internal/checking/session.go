@@ -58,7 +58,7 @@ type Options struct {
 	ConfigFile        string
 	ConfigOverlays    []repoconfig.Overlay
 	SkipProjectConfig bool
-	// NoIgnore disables Git-ignore filtering during discovery, not config file filters.
+	// NoIgnore includes Git-ignored files when searching for workflows and actions.
 	NoIgnore  bool
 	Analyzers []checkinputs.Registration
 	ReadFile  func(string) ([]byte, error)
