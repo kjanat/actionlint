@@ -70,7 +70,12 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
-	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated}
+	registrations := configurationRegistrations(request.Analyzers, request.Tools)
+	ruleSet, err := ConfigurationRules().WithRegisteredRules(registrations...)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: files.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, rules: ruleSet, ruleRegistrations: registrations}
 	if session.workingDir == "" {
 		session.workingDir = sourceFixtureBase(tb)
 	}

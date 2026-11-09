@@ -54,6 +54,7 @@ type analysisSession struct {
 	runners         runner.Options
 
 	ruleRegistrations    []repoconfig.RuleRegistration
+	rules                repoconfig.RuleSet
 	tools                []tools.Registration
 	analyzers            []checkinputs.Registration
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
@@ -109,7 +110,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, err
 	}
-	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.ruleRegistrations)
+	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules, s.ruleRegistrations)
 	var cfg *repoconfig.Config
 	if action {
 		cfg, err = settings.action(sourcePath)

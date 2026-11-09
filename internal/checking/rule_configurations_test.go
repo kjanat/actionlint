@@ -30,7 +30,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, []repoconfig.RuleRegistration{registration})
+			settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, rules, []repoconfig.RuleRegistration{registration})
 			source, err := settings.source("inner/action.yml")
 			if err != nil {
 				t.Fatal(err)
@@ -67,7 +67,11 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 			Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"plugin-check": setting}),
 		}},
 	}}}
-	settings := newRuleConfigurations(config, t.TempDir(), repoconfig.Presets{}, []repoconfig.RuleRegistration{registration})
+	rules, err := ConfigurationRules().WithRegisteredRules(registration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := newRuleConfigurations(config, t.TempDir(), repoconfig.Presets{}, rules, []repoconfig.RuleRegistration{registration})
 	for _, resolve := range []func(string) (*repoconfig.Config, error){settings.source, settings.action} {
 		selected, err := resolve("inner/action.yml")
 		if err != nil {
@@ -81,8 +85,7 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 
 func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
 	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
-	settings := newRuleConfigurations(nil, t.TempDir(), repoconfig.Presets{}, []repoconfig.RuleRegistration{registration})
-	if _, err := settings.source("action.yml"); err == nil {
+	if _, err := ConfigurationRules().WithRegisteredRules(registration); err == nil {
 		t.Fatal("unknown configuration scope was accepted")
 	}
 }
@@ -116,7 +119,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, nil)
+				settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
 				config, err := settings.source("inner/action.yml")
 				if err != nil {
 					t.Fatal(err)
@@ -130,7 +133,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 }
 
 func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
-	settings := newRuleConfigurations(nil, t.TempDir(), repoconfig.Presets{}, nil)
+	settings := newRuleConfigurations(nil, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
 	config, err := settings.workflow("ci.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +153,7 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, nil)
+	settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
 	const path = "inner/action.yml"
 	action, err := settings.action(path)
 	if err != nil {
