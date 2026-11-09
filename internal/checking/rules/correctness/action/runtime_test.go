@@ -15,14 +15,17 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "main.js"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct{ using, problem string }{
-		{"node24", ""},
-		{"NODE24", ""},
-		{"node20", "deprecated"},
-		{"node16", "no longer bundled"},
-		{"node12", "no longer bundled"},
-		{"node22", "invalid runner name"},
-		{"node999", "invalid runner name"},
+	for _, tc := range []struct {
+		using, problem string
+		code           actionmeta.ProblemCode
+	}{
+		{"node24", "", ""},
+		{"NODE24", "", ""},
+		{"node20", "deprecated", actionmeta.CodeRuntimeDeprecated},
+		{"node16", "no longer bundled", actionmeta.CodeRuntimeRemoved},
+		{"node12", "no longer bundled", actionmeta.CodeRuntimeRemoved},
+		{"node22", "invalid runner name", actionmeta.CodeRuntimeUnsupported},
+		{"node999", "invalid runner name", actionmeta.CodeRuntimeUnsupported},
 	} {
 		t.Run(tc.using, func(t *testing.T) {
 			meta := &actionmeta.Metadata{Name: "example", Directory: dir, Runs: actionmeta.Runs{Using: tc.using, Main: "main.js"}}
@@ -33,8 +36,8 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatalf("valid runtime rejected: %v", errs)
 				}
-			} else if len(errs) != 1 || !strings.Contains(errs[0].Message, tc.problem) {
-				t.Fatalf("wanted %q, got %v", tc.problem, errs)
+			} else if len(errs) != 1 || errs[0].Code != string(tc.code) || !strings.Contains(errs[0].Message, tc.problem) {
+				t.Fatalf("wanted code %q and message containing %q, got %v", tc.code, tc.problem, errs)
 			}
 		})
 	}

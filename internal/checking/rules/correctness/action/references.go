@@ -100,8 +100,8 @@ func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecAction
 	if !meta.Present() {
 		return
 	}
-	if problem := actionmeta.RuntimeProblem(meta.Using()); problem != "" {
-		rule.Errorf(positionPointer(exec.Uses().Pos()), runtimeProblemCode(meta.Using()), "%s. update the version of action %q", problem, spec)
+	if code, message := actionmeta.RuntimeProblem(meta.Using()); code != "" {
+		rule.Errorf(positionPointer(exec.Uses().Pos()), code, "%s. update the version of action %q", message, spec)
 	}
 	rule.checkAction(meta, exec, strconv.Quote(spec))
 }
@@ -147,12 +147,4 @@ func (rule *validator) checkDockerAction(uri string, pos *workflowlang.Pos) {
 	if tagExists && tag == "" {
 		rule.Errorf(pos, actionmeta.CodeInvalidReference, "tag of Docker action should not be empty: %q", uri)
 	}
-}
-
-// Called after RuntimeProblem has established a lifecycle finding.
-func runtimeProblemCode(using string) actionmeta.ProblemCode {
-	if actionmeta.Runtimes[strings.ToLower(using)].Removed {
-		return actionmeta.CodeRuntimeRemoved
-	}
-	return actionmeta.CodeRuntimeDeprecated
 }
