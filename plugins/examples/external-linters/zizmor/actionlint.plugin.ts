@@ -4,8 +4,8 @@ import { configObject, stringOption } from '@kjanat-actionlint/plugin-sdk/config
 import { runCommand } from '@kjanat-actionlint/plugin-sdk/process';
 import { parseSarif } from '@kjanat-actionlint/plugin-sdk/sarif';
 
-export function parseZizmorSarif(output: string, filename: string): DocumentDiagnostic[] {
-	return parseSarif(output, filename, (uri) => uri === '<stdin>' || uri === '-');
+export function parseZizmorSarif(output: string, filename: string, source?: string): DocumentDiagnostic[] {
+	return parseSarif(output, filename, (uri) => uri === '<stdin>' || uri === '-', source);
 }
 
 export default defineDocumentProvider({
@@ -42,6 +42,6 @@ export default defineDocumentProvider({
 		if (result.stdout.trim().length === 0) {
 			throw new Error(`zizmor produced no SARIF output${result.stderr ? `: ${result.stderr.trim()}` : ''}`);
 		}
-		return parseZizmorSarif(result.stdout, request.filename);
+		return parseZizmorSarif(result.stdout, request.filename, request.source);
 	},
 });

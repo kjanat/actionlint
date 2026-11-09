@@ -37,11 +37,12 @@ test('yamllint parser handles captured 1.38.0 parsable output', async () => {
 
 test('zizmor parser maps captured SARIF findings to the supplied document', async () => {
 	const output = await readFile(join(root, 'testdata/zizmor.sarif.json'), 'utf8');
-	const findings = parseZizmorSarif(output, '.github/workflows/test.yml');
+	const source = await readFile(join(root, 'testdata/workflow.yml'), 'utf8');
+	const findings = parseZizmorSarif(output, '.github/workflows/test.yml', source);
 	assert.ok(findings.some((finding) => finding.code === 'zizmor/unpinned-uses'));
 	assert.ok(findings.every((finding) => finding.filename === '.github/workflows/test.yml'));
 	assert.throws(
-		() => parseZizmorSarif(output.replaceAll('<stdin>', 'other.yml'), 'workflow.yml'),
+		() => parseZizmorSarif(output.replaceAll('<stdin>', 'other.yml'), 'workflow.yml', source),
 		/outside the captured document/u,
 	);
 });
