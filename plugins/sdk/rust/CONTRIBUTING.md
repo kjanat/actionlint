@@ -19,6 +19,13 @@ actionlint-extension-api = { path = "../actionlint/plugins/sdk/rust" }
 
 The path points at the SDK in the adjacent checkout. Use the analyzer implementation from the [README](README.md), then build the plugin with `cargo build --target wasm32-wasip2` from its own directory.
 
+The script-engine consumer checks the SDK's public export macros from a separate crate. From the actionlint repository root, build both versions for Wasm so the compiler checks the generated export functions, which native builds skip:
+
+```sh
+cargo build --locked -j 1 --manifest-path plugins/sdk/rust/tests/script-engine-consumer/Cargo.toml --target wasm32-unknown-unknown --lib
+cargo build --locked -j 1 --manifest-path plugins/sdk/rust/tests/script-engine-consumer/Cargo.toml --target wasm32-unknown-unknown --lib --features v03
+```
+
 ## Publishing to crates.io
 
 Run [Publish Rust SDK](../../../.github/workflows/sdk-publish.yml) from `master`, supplying the version in this crate's [Cargo.toml](Cargo.toml). Dry-run is enabled by default. The workflow tests default and all features, runs clippy, and builds the packaged crate before publication.
