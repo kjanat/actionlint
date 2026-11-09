@@ -47,7 +47,8 @@ jobs:
           existing_tag="$(git tag --list "v${VERSION}")"
           test -z "${existing_tag}"
       - parallel:
-          - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+          - &SetupGo
+            uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
             with: { go-version-file: go.mod, cache: false }
           - name: Install the project Node.js and npm versions
             uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
@@ -152,6 +153,7 @@ jobs:
         with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
       - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: &Node24 { node-version: "24", package-manager-cache: false }
+      - *SetupGo
       - uses: &Download actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action" }
       - name: Materialize the normal version tag and verified binary
