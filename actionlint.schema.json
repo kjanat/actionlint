@@ -199,6 +199,12 @@
           "const": "env-var"
         },
         {
+          "description": "Report Bash status reads that cannot capture a preceding failure",
+          "markdownDescription": "Report Bash status reads that cannot capture a preceding failure",
+          "type": "string",
+          "const": "errexit-status"
+        },
+        {
           "description": "Validate properties against the configured event payloads",
           "markdownDescription": "Validate properties against the configured event payloads",
           "type": "string",
@@ -465,6 +471,12 @@
           "markdownDescription": "Validate reusable workflow references and their declared inputs and outputs",
           "type": "string",
           "const": "workflow-call"
+        },
+        {
+          "description": "Report malformed runner commands in literal script output",
+          "markdownDescription": "Report malformed runner commands in literal script output",
+          "type": "string",
+          "const": "workflow-command-syntax"
         },
         {
           "description": "Report workflow_run references to unknown repository workflows",
@@ -1093,6 +1105,8 @@
                                 "workflow-call",
                                 "expression",
                                 "deprecated-commands",
+                                "errexit-status",
+                                "workflow-command-syntax",
                                 "invalid-output-file",
                                 "if-cond",
                                 "numeric-values",
@@ -1374,6 +1388,8 @@
                                 "forbidden-suppression",
                                 "disallow-suppressions",
                                 "credentials",
+                                "errexit-status",
+                                "workflow-command-syntax",
                                 "empty-triggers",
                                 "empty-job",
                                 "empty-run",
@@ -1667,6 +1683,8 @@
                                 "workflow-call",
                                 "expression",
                                 "deprecated-commands",
+                                "errexit-status",
+                                "workflow-command-syntax",
                                 "invalid-output-file",
                                 "if-cond",
                                 "numeric-values",
@@ -1731,6 +1749,12 @@
                               "description": "Report workflows that declare no triggers",
                               "markdownDescription": "Report workflows that declare no triggers"
                             },
+                            "errexit-status": {
+                              "$ref": "#/$defs/rule-setting",
+                              "title": "errexit-status",
+                              "description": "Report Bash status reads that cannot capture a preceding failure. Nursery; disabled by default and excluded from stable presets.",
+                              "markdownDescription": "Report Bash status reads that cannot capture a preceding failure. Nursery; disabled by default and excluded from stable presets."
+                            },
                             "join-literal": {
                               "$ref": "#/$defs/rule-setting",
                               "title": "join-literal",
@@ -1779,6 +1803,12 @@
                               "title": "uncancellable-condition",
                               "description": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset.",
                               "markdownDescription": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset."
+                            },
+                            "workflow-command-syntax": {
+                              "$ref": "#/$defs/rule-setting",
+                              "title": "workflow-command-syntax",
+                              "description": "Report malformed runner commands in literal script output. Nursery; disabled by default and excluded from stable presets.",
+                              "markdownDescription": "Report malformed runner commands in literal script output. Nursery; disabled by default and excluded from stable presets."
                             }
                           },
                           "additionalProperties": {
@@ -2282,6 +2312,8 @@
                                           "workflow-call",
                                           "expression",
                                           "deprecated-commands",
+                                          "errexit-status",
+                                          "workflow-command-syntax",
                                           "invalid-output-file",
                                           "if-cond",
                                           "numeric-values",
@@ -2563,6 +2595,8 @@
                                           "forbidden-suppression",
                                           "disallow-suppressions",
                                           "credentials",
+                                          "errexit-status",
+                                          "workflow-command-syntax",
                                           "empty-triggers",
                                           "empty-job",
                                           "empty-run",
@@ -2856,6 +2890,8 @@
                                           "workflow-call",
                                           "expression",
                                           "deprecated-commands",
+                                          "errexit-status",
+                                          "workflow-command-syntax",
                                           "invalid-output-file",
                                           "if-cond",
                                           "numeric-values",
@@ -2920,6 +2956,12 @@
                                         "description": "Report workflows that declare no triggers",
                                         "markdownDescription": "Report workflows that declare no triggers"
                                       },
+                                      "errexit-status": {
+                                        "$ref": "#/$defs/rule-setting",
+                                        "title": "errexit-status",
+                                        "description": "Report Bash status reads that cannot capture a preceding failure. Nursery; disabled by default and excluded from stable presets.",
+                                        "markdownDescription": "Report Bash status reads that cannot capture a preceding failure. Nursery; disabled by default and excluded from stable presets."
+                                      },
                                       "join-literal": {
                                         "$ref": "#/$defs/rule-setting",
                                         "title": "join-literal",
@@ -2968,6 +3010,12 @@
                                         "title": "uncancellable-condition",
                                         "description": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset.",
                                         "markdownDescription": "Review jobs that can continue after cancellation. Stable; not enabled by the recommended preset."
+                                      },
+                                      "workflow-command-syntax": {
+                                        "$ref": "#/$defs/rule-setting",
+                                        "title": "workflow-command-syntax",
+                                        "description": "Report malformed runner commands in literal script output. Nursery; disabled by default and excluded from stable presets.",
+                                        "markdownDescription": "Report malformed runner commands in literal script output. Nursery; disabled by default and excluded from stable presets."
                                       }
                                     },
                                     "additionalProperties": {

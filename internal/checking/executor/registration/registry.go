@@ -22,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
 	workflowcommands "actionlint.kjanat.dev/v2/internal/checking/commands"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/runtimechecks"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
@@ -146,6 +147,8 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 		}},
 		"deprecated-commands":     {Script: workflowcommands.Checker{}},
+		"errexit-status":          {Script: runtimechecks.Errexit()},
+		"workflow-command-syntax": {Script: runtimechecks.WorkflowCommand()},
 		"invalid-output-file":     {Script: correctness.InvalidOutputFileChecker{}},
 		"if-cond":                 declarationImplementation(correctness.IfCondCheck()),
 		"uncancellable-condition": declarationImplementation(suspicious.UncancellableConditionCheck()),
