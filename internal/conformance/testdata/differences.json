@@ -426,14 +426,14 @@
       "<stdin>:10:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/bad-character.yml": [
-      "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:12:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]",
       "<stdin>:16:43: got unexpected character '\\u00a0' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]"
     ],
     "languageservices/workflow-parser/testdata/reader/basic.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:6:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/concurrency.yml": [
-      "<stdin>:9:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:9:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]",
       "<stdin>:15:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
       "<stdin>:18:3: \"steps\" section is missing in job \"build3\" [syntax-check]",
       "<stdin>:21:3: \"steps\" section is missing in job \"build4\" [syntax-check]",
@@ -501,25 +501,25 @@
       "<stdin>:210:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
       "<stdin>:220:18: input \"foo\" of workflow_call event has the default value \"bar\", but it is also required. if an input is marked as required, its default value will never be used [events]",
       "<stdin>:234:5: both \"branches\" and \"branches-ignore\" filters cannot be used for the same event \"workflow_run\". note: use '!' to negate patterns [events]",
-      "<stdin>:239:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:239:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml": [
-      "<stdin>:9:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:9:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/events-mapping.yml": [
-      "<stdin>:25:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:25:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/events-sequence.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:6:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/events-single-with-types.yml": [
-      "<stdin>:8:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:8:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/events-single.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:6:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/float-folded-style.yml": [
-      "<stdin>:7:13: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:7:13: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-python@v4\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/insert.yml": [
       "<stdin>:6:23: property \"set-matrix\" is not defined in steps [expression-reference]"
@@ -588,20 +588,25 @@
       "<stdin>:36:29: property \"number\" is not defined in github.event for the configured workflow events [event-payload]"
     ],
     "languageservices/workflow-parser/testdata/reader/misc-steps.yml": [
-      "<stdin>:7:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:7:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]",
+      "<stdin>:9:10: input \"first_name\" is not defined in action \"actions/checkout@v3\". available inputs are \"allow-unsafe-pr-checkout\", \"clean\", \"fetch-depth\", \"fetch-tags\", \"github-server-url\", \"lfs\", \"path\", \"persist-credentials\", \"ref\", \"repository\", \"set-safe-directory\", \"sparse-checkout\", \"sparse-checkout-cone-mode\", \"ssh-key\", \"ssh-known-hosts\", \"ssh-strict\", \"submodules\", \"token\" [action]",
+      "<stdin>:10:10: input \"middle_name\" is not defined in action \"actions/checkout@v3\". available inputs are \"allow-unsafe-pr-checkout\", \"clean\", \"fetch-depth\", \"fetch-tags\", \"github-server-url\", \"lfs\", \"path\", \"persist-credentials\", \"ref\", \"repository\", \"set-safe-directory\", \"sparse-checkout\", \"sparse-checkout-cone-mode\", \"ssh-key\", \"ssh-known-hosts\", \"ssh-strict\", \"submodules\", \"token\" [action]",
+      "<stdin>:11:10: input \"last_name\" is not defined in action \"actions/checkout@v3\". available inputs are \"allow-unsafe-pr-checkout\", \"clean\", \"fetch-depth\", \"fetch-tags\", \"github-server-url\", \"lfs\", \"path\", \"persist-credentials\", \"ref\", \"repository\", \"set-safe-directory\", \"sparse-checkout\", \"sparse-checkout-cone-mode\", \"ssh-key\", \"ssh-known-hosts\", \"ssh-strict\", \"submodules\", \"token\" [action]",
+      "<stdin>:12:10: input \"entrypoint\" is not defined in action \"actions/checkout@v3\". available inputs are \"allow-unsafe-pr-checkout\", \"clean\", \"fetch-depth\", \"fetch-tags\", \"github-server-url\", \"lfs\", \"path\", \"persist-credentials\", \"ref\", \"repository\", \"set-safe-directory\", \"sparse-checkout\", \"sparse-checkout-cone-mode\", \"ssh-key\", \"ssh-known-hosts\", \"ssh-strict\", \"submodules\", \"token\" [action]",
+      "<stdin>:13:10: input \"args\" is not defined in action \"actions/checkout@v3\". available inputs are \"allow-unsafe-pr-checkout\", \"clean\", \"fetch-depth\", \"fetch-tags\", \"github-server-url\", \"lfs\", \"path\", \"persist-credentials\", \"ref\", \"repository\", \"set-safe-directory\", \"sparse-checkout\", \"sparse-checkout-cone-mode\", \"ssh-key\", \"ssh-known-hosts\", \"ssh-strict\", \"submodules\", \"token\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/mvp.yml": [
-      "<stdin>:26:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:26:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/on-workflow_dispatch-unknown-keys-ignored.yml": [
       "<stdin>:3:5: expected \"inputs\" key for \"workflow_dispatch\" section but got \"unknown-key\" [syntax-check]"
     ],
     "languageservices/workflow-parser/testdata/reader/permissions.yml": [
-      "<stdin>:20:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:40:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:20:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]",
+      "<stdin>:40:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/root-env-defaults.yml": [
-      "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:12:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/round-to-infinity.yml": [
       "<stdin>:5:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
@@ -612,19 +617,19 @@
       "<stdin>:39:26: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]"
     ],
     "languageservices/workflow-parser/testdata/reader/step-id-generates-counter-per-collision.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:8:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:11:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:13:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:6:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:8:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v2\" [action]",
+      "<stdin>:11:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:13:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty-and-considers-collisions.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:7:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:10:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:11:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:6:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:7:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v2\" [action]",
+      "<stdin>:10:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:11:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v3\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty.yml": [
-      "<stdin>:6:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:6:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/step-id.yml": [
       "<stdin>:6:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
@@ -757,25 +762,25 @@
       "<stdin>:29:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]"
     ],
     "runner/src/Test/TestData/node16action.yml": [
-      ":1:1: runtime \"node16\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/node20action.yml": [
       ":1:1: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_cleanup.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_cleanup_default.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_init.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_init_default.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "schemastore/src/negative_test/github-action/composite-output-missing-value.json": [],
     "schemastore/src/negative_test/github-action/javascript-output-with-value.json": [],
@@ -785,18 +790,18 @@
     ],
     "schemastore/src/test/github-action/javascript.json": [
       ":1:1: description is required in metadata of \"Test JavaScript action\" action at \"<action>/action.yml\" [action]",
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Test JavaScript action\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Test JavaScript action\" to a current runtime [action]"
     ],
     "schemastore/src/test/github-workflow/1162.yaml": [
       "<stdin>:8:3: \"steps\" section is missing in job \"check_run\" [syntax-check]"
     ],
     "schemastore/src/test/github-workflow/1567.yaml": [
-      "<stdin>:17:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:17:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]"
     ],
     "schemastore/src/test/github-workflow/2579-1.yaml": [
       "<stdin>:8:15: label \"ubuntu-20.04-16core\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
-      "<stdin>:10:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:11:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:10:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v3\" [action]",
+      "<stdin>:11:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v3\" [action]"
     ],
     "schemastore/src/test/github-workflow/2579-2.yaml": [
       "<stdin>:5:3: \"steps\" section is missing in job \"check-bats-version\" [syntax-check]",
@@ -805,13 +810,13 @@
     "schemastore/src/test/github-workflow/918.yaml": [
       "<stdin>:5:5: \"tags\" filter is not available for create event. it is only for push event [events]",
       "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:12:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]",
       "<stdin>:21:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:22:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:22:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/919.yaml": [
       "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:12:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/concurrency.yaml": [
       "<stdin>:7:3: \"steps\" section is missing in job \"build\" [syntax-check]",
@@ -820,12 +825,12 @@
     ],
     "schemastore/src/test/github-workflow/conditions.yaml": [
       "<stdin>:8:9: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
-      "<stdin>:10:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:10:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:11:13: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
       "<stdin>:14:9: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]",
-      "<stdin>:16:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:16:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:17:13: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]",
-      "<stdin>:22:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:22:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:26:9: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
       "<stdin>:29:9: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]"
     ],
@@ -839,7 +844,7 @@
     ],
     "schemastore/src/test/github-workflow/env-from-json.yaml": [
       "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:12:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/env-with-simple-expression.yaml": [
       "<stdin>:15:14: env must be object but found string [expression]"
@@ -854,7 +859,7 @@
       "<stdin>:13:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
       "<stdin>:14:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
       "<stdin>:21:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:22:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:22:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/fail-fast.yaml": [
       "<stdin>:6:3: \"steps\" section is missing in job \"boolean\" [syntax-check]",
@@ -865,13 +870,13 @@
       "<stdin>:5:14: label \"unknown\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
     ],
     "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": [
-      "<stdin>:23:15: the runtime or service used by \"actions/cache@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:23:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/cache@v3\" [action]"
     ],
     "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": [
-      "<stdin>:91:15: the runtime or service used by \"actions/setup-python@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:91:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-python@v2\" [action]",
       "<stdin>:106:20: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
       "<stdin>:111:20: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
-      "<stdin>:115:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:115:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:129:21: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
       "<stdin>:138:16: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
       "<stdin>:139:17: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
@@ -884,38 +889,38 @@
       "<stdin>:209:15: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:213:20: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
       "<stdin>:214:15: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
-      "<stdin>:246:15: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:246:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-python@v4\" [action]",
       "<stdin>:259:21: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
       "<stdin>:264:19: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
-      "<stdin>:286:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:286:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:318:19: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:319:16: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:321:15: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:334:21: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:335:21: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
-      "<stdin>:337:15: the runtime or service used by \"actions/upload-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:337:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/upload-artifact@v2\" [action]",
       "<stdin>:385:13: label \"ubuntu-20.04\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
       "<stdin>:386:13: label \"macos-12\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
       "<stdin>:387:13: label \"macos-11\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]",
-      "<stdin>:410:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:415:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:422:15: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:410:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:415:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/download-artifact@v2\" [action]",
+      "<stdin>:422:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-python@v4\" [action]",
       "<stdin>:433:21: workflow command \"set-output\" was deprecated. use `echo \"{name}={value}\" >> \"${GITHUB_OUTPUT}\"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]",
-      "<stdin>:436:15: the runtime or service used by \"actions/cache@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:436:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/cache@v2\" [action]",
       "<stdin>:465:34: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:466:41: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:475:34: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:476:41: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
-      "<stdin>:478:15: the runtime or service used by \"codecov/codecov-action@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:523:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:551:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:478:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"codecov/codecov-action@v3\" [action]",
+      "<stdin>:523:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/download-artifact@v2\" [action]",
+      "<stdin>:551:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/download-artifact@v2\" [action]",
       "<stdin>:560:11: avoid using deprecated input \"repository_url\" in action \"pypa/gh-action-pypi-publish@release/v1\": The inputs have been normalized to use kebab-case. Use `repository-url` instead [action]",
-      "<stdin>:573:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:573:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:585:19: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:586:16: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:588:15: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
       "<stdin>:593:41: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]",
-      "<stdin>:610:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:610:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/download-artifact@v2\" [action]"
     ],
     "schemastore/src/test/github-workflow/issues-activity-types.yaml": [
       "<stdin>:31:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]"
@@ -923,25 +928,25 @@
     "schemastore/src/test/github-workflow/matrix_from_json.yaml": [
       "<stdin>:11:27: property \"job1\" is not defined in needs [expression-reference]",
       "<stdin>:13:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:14:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:14:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/matrix_include.yaml": [
       "<stdin>:25:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:26:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:26:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]",
       "<stdin>:28:29: property \"node-version\" is not defined in matrix [expression-reference]"
     ],
     "schemastore/src/test/github-workflow/matrix_include_expression.yaml": [
       "<stdin>:12:32: property \"job1\" is not defined in needs [expression-reference]",
       "<stdin>:15:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:16:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:16:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/npm-publish.yaml": [
-      "<stdin>:14:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:15:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:24:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:25:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:40:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:41:15: the runtime or service used by \"actions/setup-node@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:14:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:15:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v2\" [action]",
+      "<stdin>:24:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:25:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v2\" [action]",
+      "<stdin>:40:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
+      "<stdin>:41:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v2\" [action]"
     ],
     "schemastore/src/test/github-workflow/on-event_name-null.yaml": [
       "<stdin>:18:3: unknown Webhook event \"project\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
@@ -958,11 +963,11 @@
       "<stdin>:100:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]"
     ],
     "schemastore/src/test/github-workflow/reusable-workflow.yaml": [
-      "<stdin>:27:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:27:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]",
       "<stdin>:29:36: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]"
     ],
     "schemastore/src/test/github-workflow/runs-on-interpolated.yaml": [
-      "<stdin>:13:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:13:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]"
     ],
     "schemastore/src/test/github-workflow/runs-on.yaml": [
       "<stdin>:11:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
@@ -996,14 +1001,14 @@
     ],
     "schemastore/src/test/github-workflow/with-from-json.yaml": [
       "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:12:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/setup-node@v1\" [action]"
     ],
     "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": [
-      "<stdin>:33:15: the runtime or service used by \"actions/labeler@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
+      "<stdin>:33:15: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/labeler@v4\" [action]",
       "<stdin>:36:35: property \"config-path\" is not defined in inputs [expression-reference]"
     ],
     "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": [
-      "<stdin>:48:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
+      "<stdin>:48:15: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update the version of action \"actions/checkout@v2\" [action]"
     ],
     "yaml-test-suite/27NA/in.yaml": [
       "go-yaml load error in parser at L1.C1: found incompatible YAML document"

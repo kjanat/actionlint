@@ -141,8 +141,11 @@ func TestExpandedPopularActions(t *testing.T) {
 		}
 	}
 	for _, spec := range []string{"actions/setup-ruby@v1", "actions/setup-elixir@v1", "actions/upload-release-asset@v1"} {
-		if _, ok := OutdatedPopularActionSpecs[spec]; !ok {
-			t.Errorf("expected retired runtime classification for %q", spec)
+		if meta := PopularActions[spec]; meta == nil {
+			t.Errorf("missing metadata for action %q executed through the runner's runtime replacement", spec)
+		}
+		if _, ok := OutdatedPopularActionSpecs[spec]; ok {
+			t.Errorf("action %q is classified as retired despite its available execution runtime", spec)
 		}
 	}
 }

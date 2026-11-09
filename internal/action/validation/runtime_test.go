@@ -19,8 +19,8 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 		{"node24", ""},
 		{"NODE24", ""},
 		{"node20", "deprecated"},
-		{"node16", "no longer bundled"},
-		{"node12", "no longer bundled"},
+		{"node16", `use "node24" instead`},
+		{"node12", `use "node24" instead`},
 		{"node22", "invalid runner name"},
 		{"node999", "invalid runner name"},
 	} {

@@ -38,6 +38,9 @@ func RuntimeProblem(using string) string {
 	if !ok || !r.Removed && !r.Deprecated {
 		return ""
 	}
+	if r.ExecutionRuntime != "" && !strings.EqualFold(using, r.ExecutionRuntime) {
+		return fmt.Sprintf("runtime %q is deprecated; current GitHub Actions runners use %q instead", using, r.ExecutionRuntime)
+	}
 	if r.Removed {
 		return fmt.Sprintf("runtime %q is no longer bundled with current GitHub Actions runners", using)
 	}

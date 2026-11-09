@@ -48,7 +48,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/bad-character.yml": "1d8ab89b615d9d71589df722882a0259f10253c94fd246ef2017ae8cb09131aa"
+      "languageservices/workflow-parser/testdata/reader/bad-character.yml": "ede44f7f9609d27e97ff24183516ef2a50715484c33298b2cf5976009568da49"
     },
     "findings": [
       {
@@ -70,7 +70,7 @@
         "diagnostic_indices": [
           0
         ],
-        "rationale": "The retired actions/checkout@v3 runtime is an independent lifecycle finding.",
+        "rationale": "The deprecated actions/checkout@v3 runtime is an independent lifecycle finding.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/bad-character.yml"
         ]
@@ -471,36 +471,35 @@
     "cases": {
       "languageservices/languageservice/src/validate.yaml-anchors.test.ts/should handle anchors in steps": "509338ff634b584f7a6e606eb8134018dbcf65d20145427b7c96c6682fd2e220",
       "languageservices/workflow-parser/testdata/reader/background-steps.yml": "74501443fbaba1c7056e5e9c880cbf1f7c8b940f577a4ade8fbf73596666b5c6",
-      "languageservices/workflow-parser/testdata/reader/basic.yml": "0e933ccec50cbd61efc4b29d31781f7ae140eec428b7d1b945618d374c260130",
-      "languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml": "c0587ec23fa0ab2fe13e53efc0529c0bf9fd4ca93d4d9c74db52c78aafdd5c52",
-      "languageservices/workflow-parser/testdata/reader/events-mapping.yml": "1f1deadc3f3c0d4a5f42111dc7809899dbe32b04cd5f1314c6dc0aee3d2c7535",
-      "languageservices/workflow-parser/testdata/reader/events-sequence.yml": "27e98d932919516ff6e7e28f3f629d4b385d8e6f2bf53555713aaf61456c7453",
-      "languageservices/workflow-parser/testdata/reader/events-single-with-types.yml": "451a0970813735a1e3685b6aafa6117370d4ccc5a9ae1873d89025b90a3bf369",
-      "languageservices/workflow-parser/testdata/reader/events-single.yml": "f917281de0c2eb783adf6f84c679445d154363f1b4f9a4796433742c459058d3",
-      "languageservices/workflow-parser/testdata/reader/float-folded-style.yml": "abf71f5929f93641dab9936d08d45d8bb665e80168dacd8953559cdb6a665495",
-      "languageservices/workflow-parser/testdata/reader/misc-steps.yml": "1325a3ebb6279ce1c7e7492787cc749eef000282035ed4f5a8cbfa476d7f832d",
-      "languageservices/workflow-parser/testdata/reader/mvp.yml": "ffeede1da46717e93d268e31705aca21223e8920b136ea61724c9387f984310a",
-      "languageservices/workflow-parser/testdata/reader/permissions.yml": "6c427a5da5994af9cc251175268850ecf5101e20b659dc32d2ca9b36b698ef21",
-      "languageservices/workflow-parser/testdata/reader/root-env-defaults.yml": "7ce5f004d62a0dfc5ad1007b32a4ac1cbebdfd9e53956ec4678aac00917f2703",
-      "languageservices/workflow-parser/testdata/reader/step-id-generates-counter-per-collision.yml": "cc3f585af641584b0ffed9c65d6b49e3ef4ea9fc33500af9d761e2bdd121d654",
-      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty-and-considers-collisions.yml": "f7f7a57043d173688888c146bbeb043e2b642cfc5a522b0bcd6f2611cc4ebee7",
-      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty.yml": "91f73174181f866ddd02f872fe7e5df5d544cac671b614d5d3959368f8c37787",
+      "languageservices/workflow-parser/testdata/reader/basic.yml": "246a619c11a4f5113b38a8e2b35333f967c98063555a770560f9981a444c016e",
+      "languageservices/workflow-parser/testdata/reader/events-mapping-repo-dispatch.yml": "4cee4bfa1acd75e41ebcf81e4c653e7e54719c6eee97a46077ac7675a1541ef9",
+      "languageservices/workflow-parser/testdata/reader/events-mapping.yml": "52e772106139e7591bca48989416405682dd1c33f0f038279df6fcecbb6285f6",
+      "languageservices/workflow-parser/testdata/reader/events-sequence.yml": "f0ab46834df0d5728ed489fd1ee5161769f543f87f68a499c35b78af8f9225dc",
+      "languageservices/workflow-parser/testdata/reader/events-single-with-types.yml": "9203e5d46107c7d9c2d340f43dce0bb20258054bf755dd278e143f3494a178d6",
+      "languageservices/workflow-parser/testdata/reader/events-single.yml": "6ca8951327650efc1469a5f81d574bd6d9727f124a930ce0f16bf61053a25856",
+      "languageservices/workflow-parser/testdata/reader/float-folded-style.yml": "ddcaddcc81d05ced931d98b5c463d0245a5eef0ed8c98dd6ca7f9d09c5e2ef73",
+      "languageservices/workflow-parser/testdata/reader/mvp.yml": "02245adf3a646204cbcc843c2d7f7e98a65fe770d1288eea9f1051a02d56cc21",
+      "languageservices/workflow-parser/testdata/reader/permissions.yml": "86bf414c92c19a924bd10a56e4833d68807c3d4b85e338f73f541bca1f4cef83",
+      "languageservices/workflow-parser/testdata/reader/root-env-defaults.yml": "9c208d6bd1d27e95d82c94076afba54e30f13b9174c80943aeb0f009b3772b1e",
+      "languageservices/workflow-parser/testdata/reader/step-id-generates-counter-per-collision.yml": "9e0f892ba6f7d5faca83d60987fb62f7f675eca22c56d2b74dabc3afebb067e0",
+      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty-and-considers-collisions.yml": "c8e43ad1a1400fbd7d25c4c1c6a3646b19b1603007df58e414cd9a3fb0a22ce1",
+      "languageservices/workflow-parser/testdata/reader/step-id-generates-when-empty.yml": "bd21f12e5219114876a7f0913b677aa36f53f57ee1ae4aed0c0dda055314b6a9",
       "languageservices/workflow-parser/testdata/reader/step-id.yml": "d266f4690209ed3e4feeb00a14447cef31025f84d1f9a4d5e95aa7566830b8cb",
-      "runner/src/Test/TestData/node16action.yml": "46f16736c690039255438b4792ebd65d982da12743dc35c8682ab8e6af1b51a9",
+      "runner/src/Test/TestData/node16action.yml": "b86db1b9adf7063051ed545b179583d12af03ff8fbc16f0870faa96209a9b01c",
       "runner/src/Test/TestData/node20action.yml": "01817c26d6ec933cc8a899c44b3c7906a1933232e37315f1b147f2e28b4459a2",
-      "runner/src/Test/TestData/nodeaction.yml": "05f59c3dbfb53997a4b2f3a23b92dd18edf16872457b26818accedf519249448",
-      "runner/src/Test/TestData/nodeaction_cleanup.yml": "3128b0d767e0bcabb2fb3821590fff77fd9d26ff2c2fee4528d57cba28dba929",
-      "runner/src/Test/TestData/nodeaction_cleanup_default.yml": "3fffaf7393d0e7b2341e486ddf9fc2e021ca763efc7b0a7b8c4f1aa67ee143ad",
-      "runner/src/Test/TestData/nodeaction_init.yml": "37382ae78d239c8c9f57b1fee28f0ad9e1c7c6ea48b985bf8a3d008587ef12d1",
-      "runner/src/Test/TestData/nodeaction_init_default.yml": "5cf599cb4960d1901674ee15732aba7c56d459ce8576c8d2ec5557a55b12f8d0",
-      "schemastore/src/test/github-workflow/1567.yaml": "4ab14641ff3d05a39b5272cfa0c4e5d827a149b5d2b947018759f82056b73458",
-      "schemastore/src/test/github-workflow/919.yaml": "7f02f2dda6c563902eb34de6371db4bf72d5b3bdc7d7523c9f22cdabdf1a3c9a",
-      "schemastore/src/test/github-workflow/env-from-json.yaml": "eb7a1b361b702a408ba729a575c122172e7b58957a29d983eb49622ca43e01eb",
-      "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": "5d1c23d23652d4a7fa624c07efb70a4054998a1fd25de5388d9b60cacf95d2da",
-      "schemastore/src/test/github-workflow/npm-publish.yaml": "759533cf506c4845839f6ef9c5a8645f476a99e3077d4e3a68103ef86f0756ef",
+      "runner/src/Test/TestData/nodeaction.yml": "572831f9710dc754f8a1df680e09da734e760dcca69331a75ed650a4f62be99e",
+      "runner/src/Test/TestData/nodeaction_cleanup.yml": "3e9bdb90766c52baa5f86d21ee2a350f64ecdca42398b9fe72327c1d995b9211",
+      "runner/src/Test/TestData/nodeaction_cleanup_default.yml": "95e48bd89ab47e548a4b8913a38b2c1bb39fcc376051fbf0b7bf454f23457a61",
+      "runner/src/Test/TestData/nodeaction_init.yml": "89913d852258ad9253cadf04398c3408a21c68c0359129d0f3f4909aa966c7f2",
+      "runner/src/Test/TestData/nodeaction_init_default.yml": "16a65b143ac8976e4afbcf7dd6ffb48d5119cfde6fb84b08975f5fce86e5043a",
+      "schemastore/src/test/github-workflow/1567.yaml": "456bf9823e44d5125a9a5e4786aba2c5952ac228ab737d9cca5aa6b198182ab6",
+      "schemastore/src/test/github-workflow/919.yaml": "da6435a0a63e412113d9b5a3dd4920bd72fcfe7627f3408ed2f119296d4cdcf9",
+      "schemastore/src/test/github-workflow/env-from-json.yaml": "e476ac3c8651e9b94e0448097abdb80d0cb1af28cad243c8e9984e56c679825f",
+      "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": "0d6bd5793c8eaaaafc85aa2cfd1487627b6096e2209cb3357424590579033628",
+      "schemastore/src/test/github-workflow/npm-publish.yaml": "b5a4f278998ca7de5fa053e8f68af85e3de64fc52ba762376e6a2b898e5d4f05",
       "schemastore/src/test/github-workflow/parallel-steps.yaml": "cb69e50c8bfc12c51a10989c1f15ad6467fce04eeb294cb7f37cc41196cac086",
-      "schemastore/src/test/github-workflow/runs-on-interpolated.yaml": "113953425614c94984953b60ea88794272087b216c5398c7e493cf7121aa815b",
-      "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": "7f891cfe0210d6c2776718d7d12e8917e574a0181c693fe2b0c5a4ea7a2800e5"
+      "schemastore/src/test/github-workflow/runs-on-interpolated.yaml": "4613f0c621d2a2cd23a22efa6c9c5550e93238a7a1817530b8ccd744173c14ca",
+      "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": "5306841029919964d05e2a2eadc0a8f7c74bf5e8811f5f1b641dd9add32d2029"
     },
     "findings": [
       {
@@ -547,7 +546,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/reusable-workflow.yaml": "ac359e9c0bbc1f684dbcea50ff8e7c5eee080bcb3334495b589c1f2873807b9f"
+      "schemastore/src/test/github-workflow/reusable-workflow.yaml": "78fe2a2f94588598b95d2afae147a45e34a3e88600e91cec8d9a7454a238a0c1"
     },
     "findings": [
       {
@@ -650,13 +649,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/concurrency.yml": "805286c21355c540a52156e8a7b0afb720a091573e8cd851a82af4551101657c"
+      "languageservices/workflow-parser/testdata/reader/concurrency.yml": "97bcb204a5543ff473ac482db16358a608015b78335bbe986527bb3823f4bd72"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Extra lint checks: the reader accepts incomplete jobs and string coercion in cancel-in-progress; actionlint requires steps and a boolean expression. A retired action is also reported.",
+        "rationale": "Extra lint checks: the reader accepts incomplete jobs and string coercion in cancel-in-progress; actionlint requires steps and a boolean expression. A deprecated runtime declaration is also reported.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/concurrency.yml"
         ]
@@ -781,7 +780,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "9195162d4974d9a199e47ece1866eb3122f7be3034114baab6a93f728fb9b366"
+      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "3c021a5426194e90e9a1b583cd661a1aa5c03abc5c5f43cab76cf72582f5c46a"
     },
     "findings": [
       {
@@ -909,13 +908,13 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-action/javascript.json": "b389133147d5f4a38459fbbde63b1ce12442cc754a2b22722bc4fd1664dd7f79"
+      "schemastore/src/test/github-action/javascript.json": "93613bfa3687478f1a1dd3c78b7083b381dd2555912b992542b15b8e4ce11f9e"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Schema versus lint contract: this JavaScript action fixture omits description and uses node12; actionlint requires a description and reports the retired runtime.",
+        "rationale": "Schema versus lint contract: this JavaScript action fixture omits description and uses node12; actionlint requires a description and reports the deprecated runtime.",
         "evidence": [
           "fixture:schemastore/src/test/github-action/javascript.json"
         ]
@@ -924,7 +923,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "b0f2119a90ba8e3aff5b92ac20a72c4b27fc17b9d6b4778841d5b72a8f79164c"
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "62dba70412e7beb15d4ee0ceb7769fe966540385d9b162f18907273282082c74"
     },
     "findings": [
       {
@@ -981,8 +980,8 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/918.yaml": "0d3a8368867a04bafed17027fe3222e00620698acda2b122b12fa28ed196f7fc",
-      "schemastore/src/test/github-workflow/event-trigger.yaml": "8c88d689a047c92433f5f0eaac6f2aa324f9e571a40845383b1d5e638548f6e2"
+      "schemastore/src/test/github-workflow/918.yaml": "5592245bb400ee71ee5ce69b2f77f55e1501804ebcbf1ef06ef1260f47dbcc36",
+      "schemastore/src/test/github-workflow/event-trigger.yaml": "90d11d6968f5acfeef11b4eb5eb58cd599a3667afddd6ccb0e506cef40725c5f"
     },
     "findings": [
       {
@@ -998,10 +997,10 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "770b6c8b3d4eeeb45eb717d05f0951e71f9296578535a5885c24ee812a477053",
-      "schemastore/src/test/github-workflow/matrix_include.yaml": "c61a9fc39c31e964aff3d76a12c56c19e4ad1a6826589e3b1f14fec88b4af747",
-      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "46cc13bfb6791a20ee7198190f1fc731b9af63f098d0d158e7e4fc48001d9e1e",
-      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "a47d268395151901297d0248aefa84059991b9ba5295572d02820a7eb9b4a0a0"
+      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "0d5d831603dd79471e40ba2b11fae7681f8bd9097e04bc729ad2bb99b355fb3c",
+      "schemastore/src/test/github-workflow/matrix_include.yaml": "0b4f80012115beca91d8422e42064166688d76df3a75386dc64efb0eb87dda43",
+      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "1773ef7fdea26062104c51ff0d71da71342e959122d0969a27f4a0798abde85c",
+      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "47e301fde60ace216bc67ae0815af65fc2f7fd3fbe0afb94355eb29b321b958f"
     },
     "findings": [
       {
@@ -1019,7 +1018,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/conditions.yaml": "dbf13513fcf155d17ccbf960d98bf3388c0b6085624edc8cedead4c25d56e2ff"
+      "schemastore/src/test/github-workflow/conditions.yaml": "712698dbe4b0b7a314b2f6512eb7a1b690a7ddab0ffef4b82c12aaaba6991f86"
     },
     "findings": [
       {
@@ -1034,7 +1033,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/2579-1.yaml": "249e961b77eea4892234c966065fe3cdd2129a945b40acb18f0a68d4d60977d1"
+      "schemastore/src/test/github-workflow/2579-1.yaml": "db278039d9a88c7ba5db751b655d6d2e5c8b96c8db1a30753f1600aa45a420d7"
     },
     "findings": [
       {
@@ -1049,7 +1048,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/with-from-json.yaml": "49604d10291ecb39ed76b4727a0a93993bbb9446c3fb401337fd24d5dcdbe7d6"
+      "schemastore/src/test/github-workflow/with-from-json.yaml": "30563331534e7cf691c03bfc3261f928681dd727a95625bbf08684ca9d5012e9"
     },
     "findings": [
       {
@@ -2215,5 +2214,22 @@
         ]
       }
     ]
+  },
+  {
+    "findings": [
+      {
+        "scope": "fixture",
+        "category": "extra-lint",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/misc-steps.yml",
+          "https://github.com/actions/checkout/blob/a37ce9120846195fa4ece8f58b268e6043cb2f26/action.yml",
+          "https://github.com/actions/runner/blob/cf65f3ec8100ee0046d735ac5d647e00f4b8e817/src/Runner.Worker/Handlers/HandlerFactory.cs#L49-L55"
+        ],
+        "rationale": "The reader accepts arbitrary action inputs. Actionlint checks the checkout metadata and reports five undeclared inputs. It also reports the node16 declaration, which current runners execute with node24."
+      }
+    ],
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/misc-steps.yml": "b752545f68334891020f4fd05bbf3609ed99eb03b14b02c6580c4694f05f85dc"
+    }
   }
 ]
