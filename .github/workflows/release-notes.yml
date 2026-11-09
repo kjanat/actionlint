@@ -129,7 +129,7 @@ jobs:
           if [[ "${existing}" == 0 ]]; then
             body="${RUNNER_TEMP}/release-notes-pr.md"
             url="$(jq -r .url "${release}")"
-            printf 'Adds the published release notes for [%s](%s) to `%s`.\n' "${TAG}" "${url}" "${file}" > "${body}"
+            printf 'Adds the published release notes for [%s](%s) to %s.\n' "${TAG}" "${url}" "${file}" > "${body}"
             gh pr create --repo "${GITHUB_REPOSITORY}" --base master --head "${branch}" \
               --title "docs: add release notes for ${TAG}" --body-file "${body}"
           fi

@@ -55,19 +55,24 @@ func (p metadataAvailabilityProvider) Lookup(context.Context, actions.Reference)
 func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{uses: actions/checkout@v4}]\n"
 	for _, tc := range []struct {
-		reason availability.Unavailability
-		want   int
+		reason   availability.Unavailability
+		want     int
+		wantHelp string
 	}{
-		{availability.LookupDisabled(), 0},
-		{availability.Offline(), 0},
-		{availability.CacheMiss(), 0},
-		{availability.ResolverNotConfigured(), 0},
-		{availability.Failed(), 1},
-		{availability.Inaccessible(), 1},
-		{availability.Unsupported(), 1},
-		{availability.UnsupportedHost(), 1},
-		{availability.UnsupportedObjectFormat(), 1},
-		{availability.InvalidResolverResult(), 1},
+		{availability.LookupDisabled(), 0, ""},
+		{availability.Offline(), 0, ""},
+		{availability.CacheMiss(), 0, ""},
+		{availability.ResolverNotConfigured(), 0, ""},
+		{availability.NotFetched(), 1, ""},
+		{availability.Denied(), 1, ""},
+		{availability.Failed(), 1, ""},
+		{availability.NotFound(), 1, ""},
+		{availability.Inaccessible(), 1, ""},
+		{availability.Limit(), 1, ""},
+		{availability.Unsupported(), 1, ""},
+		{availability.UnsupportedHost(), 1, "; the GitHub metadata provider only supports github.com"},
+		{availability.UnsupportedObjectFormat(), 1, "; SHA-256 Git object IDs are not supported; use a full SHA-1 commit or a named reference with --resolve-with"},
+		{availability.InvalidResolverResult(), 1, "; the resolver returned an invalid or incomplete result; check the resolver selected by --resolve-with"},
 	} {
 		t.Run(string(tc.reason.Reason()), func(t *testing.T) {
 			remote := actionremote.New(metadataAvailabilityProvider{tc.reason})
@@ -84,18 +89,10 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 				if tc.want == 1 && !strings.Contains(got[0].Message, string(tc.reason.Reason())) {
 					t.Fatalf("diagnostic omits reason: %+v", got[0])
 				}
-				switch tc.reason.Reason() {
-				case availability.UnsupportedHostReason:
-					if !strings.Contains(got[0].Message, "only supports github.com") {
-						t.Fatal(got[0].Message)
-					}
-				case availability.UnsupportedObjectFormatReason:
-					if !strings.Contains(got[0].Message, "SHA-256") || !strings.Contains(got[0].Message, "SHA-1") {
-						t.Fatal(got[0].Message)
-					}
-				case availability.InvalidResolverResultReason:
-					if !strings.Contains(got[0].Message, "--resolve-with") {
-						t.Fatal(got[0].Message)
+				if tc.want == 1 {
+					want := "could not inspect metadata for actions/checkout@v4 (" + string(tc.reason.Reason()) + ")" + tc.wantHelp
+					if got[0].Message != want {
+						t.Fatalf("message=%q, want %q", got[0].Message, want)
 					}
 				}
 			}
