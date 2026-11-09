@@ -180,7 +180,7 @@ func ValidateLocalPath(path string) error {
 
 func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
 	if address.Remote(path) {
-		return configsource.New(ctx, nil).ReadFile(path)
+		return configsource.New(ctx, nil).ReadConfig(path)
 	}
 	if err := ValidateLocalPath(path); err != nil {
 		return nil, err
@@ -191,7 +191,7 @@ func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
 // ReadSource reads a local or remote configuration source within the file-size limit.
 func ReadSource(ctx context.Context, path string) ([]byte, error) {
 	if address.Remote(path) {
-		return configsource.New(ctx, nil).ReadFile(path)
+		return configsource.New(ctx, nil).ReadConfig(path)
 	}
 	reader := files.New(ctx, nil, nil)
 	file, err := reader.Open(path)

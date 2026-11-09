@@ -320,6 +320,8 @@ type Config struct {
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
 	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
+	// Output configures defaults for CLI reporting.
+	Output OutputConfig `yaml:"output,omitempty" jsonschema:"nullable"`
 	// Lint configures rule selection separately from repository policy.
 	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
 	// Repository supplies overrides for repository knowledge obtained by the host.
@@ -519,13 +521,22 @@ func (ruleSet RuleSet) Read(path string, readFile func(string) ([]byte, error), 
 // ReadContext preserves a supplied source reader for local and HTTPS inputs.
 // Without one, the host reader acquires local files and explicit HTTPS sources.
 func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	return ruleSet.readContext(ctx, path, readFile, true, additional...)
+}
+
+// ReadBeforePluginsContext loads inherited configuration before plugin rule descriptors are available.
+func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*Loaded, error) {
+	return ruleSet.readContext(ctx, path, readFile, false)
+}
+
+func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*Loaded, error) {
 	reader := configsource.New(ctx, readFile)
 	warningsByFile := map[string][]Warning{}
 	var bindingSources []bindingSource
 	documents := map[string]any{}
-	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, doc document.Document) (document.Document, error) {
+	loaded, err := loadConfigTree(path, reader.ReadConfig, func(origin string, doc document.Document) (document.Document, error) {
 		inputs := ruleSet.migrationInputs(doc.Value, documentInputs(doc))
-		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, doc.Value, inputs, absPath(path) != origin, func(value any) {
+		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, doc.Value, inputs, absPath(path) != origin, bindRules, func(value any) {
 			documents[origin] = captureRuleDocument(value)
 		}, additional...)
 		warningsByFile[origin] = warnings
@@ -555,7 +566,7 @@ func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile fu
 		}
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	resolved, err := ruleSet.ResolveValue(loaded.Value, loaded.Origins, additional...)
+	resolved, err := ruleSet.resolveValue(loaded.Value, loaded.Origins, bindRules, additional...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}

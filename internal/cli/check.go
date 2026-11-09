@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -51,10 +52,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		log = &commandJSONLogWriter{out: log}
 	}
 	log = &synchronizedLogWriter{out: log}
-	if (c.Verbose || c.Debug) && !r.Quiet {
-		build := commandBuild()
-		_, _ = fmt.Fprintf(log, "verbose: actionlint %s; installed: %s; build: %s, %s/%s\n", build.Version, build.InstalledFrom, build.GoVersion, build.OS, build.GOARCH)
-	}
+	writeCheckBuildIdentity(log, c, r)
 	for _, warning := range c.Deprecations {
 		_, _ = fmt.Fprintln(log, "warning: "+warning)
 	}
@@ -189,6 +187,13 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 	}
 	return status, err
+}
+
+func writeCheckBuildIdentity(log io.Writer, c checkInvocation, r renderOptions) {
+	if (c.Verbose || c.Debug) && !r.Quiet {
+		build := commandBuild()
+		_, _ = fmt.Fprintf(log, "verbose: actionlint %s; installed: %s; build: %s, %s/%s\n", build.Version, build.InstalledFrom, build.GoVersion, build.OS, build.GOARCH)
+	}
 }
 
 // checkAnalysisError carries collected findings to the existing failure report.

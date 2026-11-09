@@ -17,6 +17,7 @@ import (
 	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
 	"github.com/invopop/jsonschema"
 )
@@ -176,6 +177,12 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return mapping
 	case reflect.TypeFor[actionlint.ToolsConfig]():
 		return toolsSchema(reflectMapping)
+	case reflect.TypeFor[actionlint.OutputFormats]():
+		values := make([]any, 0, len(outputformat.Names()))
+		for _, name := range outputformat.Names() {
+			values = append(values, name)
+		}
+		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
@@ -323,7 +330,7 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
+	for _, file := range []string{"config.go", "lint.go", "reporting.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "input", "configuration", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}

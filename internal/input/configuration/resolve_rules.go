@@ -41,6 +41,9 @@ func defaultLevel(d Rule) Level {
 }
 
 func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
+	if p.Experimental == nil && cfg != nil {
+		p.Experimental = cfg.Lint.Experimental
+	}
 	level := defaultLevel(d)
 	if d.Experimental() || !d.Recommended && !selected {
 		level = "off"

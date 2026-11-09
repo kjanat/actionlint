@@ -11,6 +11,7 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 
+	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 
@@ -127,8 +128,21 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 	if err := app.applyEnvironment(); err != nil {
 		return app.reportError(err)
 	}
+	if app.inv.Operation == operationCheck {
+		ctx = configsource.WithReadCache(ctx)
+		app.ctx = ctx
+	}
+	outputConfigErr := app.applyConfiguredOutput()
 	if err := app.prepareInvocation(); err != nil {
 		return app.reportError(err)
+	}
+	if outputConfigErr != nil {
+		log := app.streams.Stderr
+		if app.inv.JSON {
+			log = &commandJSONLogWriter{out: log}
+		}
+		writeCheckBuildIdentity(log, app.inv.Check, app.inv.Render)
+		return app.reportError(outputConfigErr)
 	}
 	if app.inv.Operation == "completion" {
 		if err := ctx.Err(); err != nil {

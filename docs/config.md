@@ -135,6 +135,31 @@ overlays cannot resolve `extends`; select a configuration file instead. Explicit
 migration rewrites the selected local file and checks inherited remote bytes again
 before writing; it does not rewrite hosted configurations.
 
+## CLI reporting defaults
+
+Set `output` to choose default reporting options for checks. Command-line flags
+override environment settings, which override the configuration.
+
+```yaml
+output:
+  formats: [github, pretty]
+  log-level: info
+  summary: true
+  network-stats: false
+  quiet: false
+lint:
+  experimental: true
+```
+
+`formats` accepts `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif`, and `github`. `log-level` accepts `info`, `debug`, and `none`. Omitted settings use CLI defaults. `lint.experimental` enables nursery rules and follows the same selection rules as `--experimental`.
+
+An explicit `--config` supplies reporting defaults. Otherwise actionlint reads
+them from the repository containing the current directory, including a directory
+selected with `-C`. These defaults apply once to the entire command. When checking
+several repositories, each repository supplies its own lint settings, but its
+`output` section does not change the command's output. `--no-config` disables
+configured reporting too.
+
 ## File selection
 
 Top-level `files` controls which files are analyzed, independently of lint rule

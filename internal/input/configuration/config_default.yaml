@@ -6,6 +6,7 @@
 plugins: [shellcheck, ruff]
 lint:
   enabled: true
+  # experimental: true # Enable nursery rules.
   rules:
     preset: recommended
     # Each group accepts a level or individual rules. Named levels: {{RULE_LEVELS}}.
@@ -26,6 +27,14 @@ lint:
 #     # config also accepts an rc path, auto for discovery, or false to skip rc files.
 #     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
 #       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
+
+# Set CLI reporting defaults. Command-line flags and environment variables take precedence.
+# output:
+#   formats: [github, pretty]
+#   log-level: info
+#   summary: true
+#   network-stats: false
+#   quiet: false
 
 # Input selection uses repository-relative globs. Omitted includes selects all
 # workflows and actions; includes: [] selects none. Git ignore rules also apply.

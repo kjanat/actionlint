@@ -51,8 +51,8 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]Input, inherited bool, capture func(any), additional ...string) (any, []Warning, error) {
-	resolved, err := ruleSet.ResolveValue(value, inputs, additional...)
+func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]Input, inherited, bindRules bool, capture func(any), additional ...string) (any, []Warning, error) {
+	resolved, err := ruleSet.resolveValue(value, inputs, bindRules, additional...)
 	if err != nil {
 		return nil, nil, err
 	}
