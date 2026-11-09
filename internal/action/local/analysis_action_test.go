@@ -20,7 +20,7 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			cache := NewCache(root, nil)
+			cache := NewCache(t.Context(), root, nil)
 			cache.explicitSources = make(map[string][]byte)
 			for name, content := range map[string]string{"action.yaml": tc.diskYAML, "action.yml": tc.diskYML} {
 				if content != "" {

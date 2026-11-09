@@ -64,9 +64,9 @@ func (c *Cache) Configure(options Options) {
 }
 
 // NewCache creates a repository metadata cache. An empty root disables lookups.
-func NewCache(root string, dbg io.Writer) *Cache {
+func NewCache(ctx context.Context, root string, dbg io.Writer) *Cache {
 	return &Cache{
-		reader:  fsread.New(context.Background(), nil, nil),
+		reader:  fsread.New(ctx, nil, nil),
 		root:    root,
 		cache:   map[string]*actionmeta.Metadata{},
 		sources: map[string]metadataSource{},
@@ -244,7 +244,7 @@ type Factory struct {
 
 // GetCache returns the shared cache for a repository root, or a disabled cache for an empty root.
 // Create caches serially before starting concurrent metadata lookups.
-func (f *Factory) GetCache(root string) *Cache {
+func (f *Factory) GetCache(ctx context.Context, root string) *Cache {
 	if root == "" {
 		return newNullCache(f.dbg)
 	}
@@ -252,7 +252,7 @@ func (f *Factory) GetCache(root string) *Cache {
 	if c, ok := f.caches[r]; ok {
 		return c
 	}
-	c := NewCache(root, f.dbg)
+	c := NewCache(ctx, root, f.dbg)
 	f.caches[r] = c
 	return c
 }

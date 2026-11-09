@@ -272,7 +272,7 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		}
 	}
 	for _, source := range request.Sources {
-		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
+		ac, wc := actions.GetCache(ctx, projectRoot(source.Project)), workflows.GetCache(ctx, projectRoot(source.Project))
 		ac.Configure(actionlocal.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Sources: actionContents,
 			OnDocument: func(path string, meta *actionmeta.Metadata, parseErr error) {
@@ -289,7 +289,7 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 			path = source.Path
 		}
 		inputs.add(path)
-		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
+		ac, wc := actions.GetCache(ctx, projectRoot(source.Project)), workflows.GetCache(ctx, projectRoot(source.Project))
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source

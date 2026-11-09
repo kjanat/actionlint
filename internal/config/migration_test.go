@@ -2,6 +2,8 @@ package config
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,6 +13,33 @@ import (
 
 	"go.yaml.in/yaml/v4"
 )
+
+func TestFileMigrationCancellation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "actionlint.yaml")
+	original := []byte("policy: {require-job-timeout: true}\n")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	migration, err := PrepareMigration(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := PrepareMigration(ctx, path); !errors.Is(err, context.Canceled) {
+		t.Fatalf("prepare: %v", err)
+	}
+	if err := migration.CheckUnchanged(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("check: %v", err)
+	}
+	if err := migration.Apply(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("apply: %v", err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(content, original) {
+		t.Fatalf("cancelled migration changed the file: %q, %v", content, err)
+	}
+}
 
 func TestMigrationCanonicalSettings(t *testing.T) {
 	original := []byte(`# repository settings
@@ -114,7 +143,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.source), 0600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := PrepareMigration(path)
+			plan, err := PrepareMigration(t.Context(), path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,7 +151,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			if string(before) != tc.source {
 				t.Fatal("preparing migration wrote file")
 			}
-			if err := plan.Apply(); err != nil {
+			if err := plan.Apply(t.Context()); err != nil {
 				t.Fatal(err)
 			}
 			cfg, err := Load(path)
@@ -152,7 +181,7 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			if err := os.WriteFile(path, source, 0600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := PrepareMigration(path)
+			plan, err := PrepareMigration(t.Context(), path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,10 +192,10 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			if err := os.WriteFile(edited, []byte("config-variables: [USER_EDIT]\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			if err := plan.CheckUnchanged(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+			if err := plan.CheckUnchanged(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
 				t.Fatalf("changed preparation snapshot accepted: %v", err)
 			}
-			if err := plan.Apply(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+			if err := plan.Apply(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
 				t.Fatalf("changed snapshot accepted: %v", err)
 			}
 			data, _ := os.ReadFile(edited)
@@ -197,14 +226,14 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 	}
 
 	t.Run("unchanged target", func(t *testing.T) {
-		plan, err := PrepareMigration(selected)
+		plan, err := PrepareMigration(t.Context(), selected)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := plan.CheckUnchanged(); err != nil {
+		if err := plan.CheckUnchanged(t.Context()); err != nil {
 			t.Fatalf("unchanged symlinked inherited input rejected: %v", err)
 		}
-		if err := plan.Apply(); err != nil {
+		if err := plan.Apply(t.Context()); err != nil {
 			t.Fatalf("migration with unchanged symlinked inherited input failed: %v", err)
 		}
 	})
@@ -233,14 +262,14 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 			if err := os.Symlink(base, linkedBase); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			plan, err := PrepareMigration(selected)
+			plan, err := PrepareMigration(t.Context(), selected)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if err := tc.change(); err != nil {
 				t.Fatal(err)
 			}
-			if err := plan.CheckUnchanged(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+			if err := plan.CheckUnchanged(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
 				t.Fatalf("changed symlinked inherited input accepted: %v", err)
 			}
 		})
@@ -321,11 +350,11 @@ policy: {require-job-timeout: false}
 		if cfg.ConfigVariables == nil || len(cfg.ConfigVariables) != 0 || cfg.ConfigSecrets != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
 			t.Fatalf("inheritance changed: %+v", cfg)
 		}
-		plan, err := PrepareMigration(path)
+		plan, err := PrepareMigration(t.Context(), path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := plan.Apply(); err != nil {
+		if err := plan.Apply(t.Context()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -342,7 +371,7 @@ func TestMigrationRejectsLostInheritedTOMLReset(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareMigration(path); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {
+	if _, err := PrepareMigration(t.Context(), path); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {
 		t.Fatalf("lost inherited reset accepted: %v", err)
 	}
 	content, err := os.ReadFile(path)

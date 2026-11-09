@@ -594,9 +594,9 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 // NewCache creates a new Cache instance for the given
 // project. 'cwd' is a current working directory as an absolute file path. The 'Local' means that
 // the cache instance is project-local. It is not available across multiple projects.
-func NewCache(root, cwd string, dbg io.Writer) *Cache {
+func NewCache(ctx context.Context, root, cwd string, dbg io.Writer) *Cache {
 	return &Cache{
-		reader: fsread.New(context.Background(), nil, nil),
+		reader: fsread.New(ctx, nil, nil),
 		root:   root,
 		cache:  map[string]reusableWorkflowMetadataResult{},
 		cwd:    cwd,
@@ -625,7 +625,7 @@ func NewCacheFactory(cwd string, dbg io.Writer) *CacheFactory {
 // GetCache returns a new or existing Cache instance per project. When a instance
 // was already created for the project, this method returns the existing instance. Otherwise it creates
 // a new instance and returns it.
-func (f *CacheFactory) GetCache(root string) *Cache {
+func (f *CacheFactory) GetCache(ctx context.Context, root string) *Cache {
 	if root == "" {
 		return newNullLocalReusableWorkflowCache(f.dbg)
 	}
@@ -633,7 +633,7 @@ func (f *CacheFactory) GetCache(root string) *Cache {
 	if c, ok := f.caches[r]; ok {
 		return c
 	}
-	c := NewCache(root, f.cwd, f.dbg)
+	c := NewCache(ctx, root, f.cwd, f.dbg)
 	f.caches[r] = c
 	return c
 }

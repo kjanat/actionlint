@@ -41,7 +41,7 @@ jobs:
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
+	cache := calls.NewCache(t.Context(), root, root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, ok := cache.Lookup("./callee.yaml")

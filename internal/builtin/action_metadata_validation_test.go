@@ -14,7 +14,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(actionlocal.NewCache(root, &cacheLog))
+	rule := NewRuleAction(actionlocal.NewCache(t.Context(), root, &cacheLog))
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
 		rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}})
@@ -31,7 +31,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
-	cache := actionlocal.NewCache(root, nil)
+	cache := actionlocal.NewCache(t.Context(), root, nil)
 	rule := NewRuleAction(cache)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}

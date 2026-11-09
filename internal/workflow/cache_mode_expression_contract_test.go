@@ -46,7 +46,7 @@ jobs:
 					t.Fatal(err)
 				}
 				project := workspace.Identity(root)
-				fileCache := calls.NewCache(project.RootDir(), root, nil)
+				fileCache := calls.NewCache(t.Context(), project.RootDir(), root, nil)
 				fromFile, err := fileCache.FindMetadata("./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
@@ -55,7 +55,7 @@ jobs:
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
-				astCache := calls.NewCache(project.RootDir(), root, nil)
+				astCache := calls.NewCache(t.Context(), project.RootDir(), root, nil)
 				astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 				fromAST, _, ok := astCache.Lookup("./callee.yaml")
 				if !ok || fromAST == nil || fromFile == nil {
