@@ -2153,7 +2153,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:15: the runtime or service used by "actions/checkout@v3" action is retired on GitHub.com. update the action's version to fix this issue [action]
+test.yaml:8:15: runtime "node16" is deprecated; current GitHub Actions runners use "node24" instead. update the version of action "actions/checkout@v3" [action]
   |
 8 |       - uses: actions/checkout@v3
   |               ^~~~~~~~~~~~~~~~~~~

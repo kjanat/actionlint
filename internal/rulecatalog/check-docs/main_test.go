@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
+	"errors"
 	"io"
 	"log"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -92,7 +92,7 @@ jobs:
   test:
     uses: ./.github/workflows/not-existing-workflow.yml
 `,
-			want: `could not read reusable workflow file for "./.github/workflows/not-existing-workflow.yml": open /path/to/repo`,
+			want: `could not read reusable workflow file for "./.github/workflows/not-existing-workflow.yml": open /path/to/repo/.github/workflows/not-existing-workflow.yml: no such file or directory`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -107,10 +107,23 @@ jobs:
 	}
 }
 
-func TestMainGenerateOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
+func TestDocumentationMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.yml")
+	_, err := readDocumentationFile(path)
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing-file classification lost: %v", err)
 	}
+	cause, ok := errors.AsType[*os.PathError](err)
+	if !ok || cause.Path != path {
+		t.Fatalf("filesystem error lost: %v", err)
+	}
+	want := "open " + filepath.ToSlash(path) + ": no such file or directory"
+	if err.Error() != want {
+		t.Fatalf("got %q, want %q", err, want)
+	}
+}
+
+func TestMainGenerateOK(t *testing.T) {
 	root := t.TempDir()
 
 	in := must(os.Open(filepath.FromSlash("testdata/ok/minimal.in")))
@@ -136,9 +149,6 @@ func TestMainGenerateOK(t *testing.T) {
 }
 
 func TestMainCheckOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
 	path := filepath.FromSlash("testdata/ok/minimal.out")
 	if err := Main([]string{"exe", path}); err != nil {
 		t.Fatal(err)
@@ -146,9 +156,6 @@ func TestMainCheckOK(t *testing.T) {
 }
 
 func TestMainCheckQuietOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
 	path := filepath.FromSlash("testdata/ok/minimal.out")
 	if err := Main([]string{"exe", "-quiet", path}); err != nil {
 		t.Fatal(err)
@@ -174,11 +181,8 @@ jobs:
 }
 
 func TestMainCheckError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
 	path := filepath.FromSlash("testdata/ok/minimal.in")
-	testErr(t, Main([]string{"exe", path}), "checks document has some update")
+	testErr(t, Main([]string{"exe", path}), "diagnostic examples are out of date")
 }
 
 func TestMainFileNotFound(t *testing.T) {
@@ -201,10 +205,6 @@ func TestMainUpdateError(t *testing.T) {
 }
 
 func TestUpdateOK(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("check-checks doesn't support Windows")
-	}
-
 	dir := filepath.FromSlash("testdata/ok")
 
 	tests := []string{}
