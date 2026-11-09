@@ -27,7 +27,7 @@ func CollectionComparisonDeclaration() rule.Declaration {
 	}
 }
 
-// CollectionComparison reports equality checks that compare instances instead of contents.
+// CollectionComparison reports equality comparisons between object or array instances.
 func CollectionComparison(root exprsyntax.Node, types exprlang.InferredTypes, evaluation exprlang.EvaluationResults) []*exprlang.Error {
 	var findings []*exprlang.Error
 	exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {

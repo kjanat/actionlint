@@ -1,11 +1,9 @@
 package main
 
-// This is a script to generate a Go source that contains all activity types of all webhook events.
-// Run the following command from the root of this repository to apply manually.
-// This script is usually run via `go generate`.
-// ```
-// go run ./internal/development/generators/event-triggers input.html webhooks.gen.go
-// ```
+// Generate webhook activity types with mise exec -- run generate:events.
+// To generate from a local HTML file, run this command from the repository root:
+//
+//	go run ./internal/development/generators/event-triggers input.html webhooks.gen.go
 
 import (
 	"bytes"

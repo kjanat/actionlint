@@ -223,8 +223,7 @@ func (r *PluginRegistry) RoundTrip(req *http.Request) (*http.Response, error) {
 			r.pending[req.URL.String()] = pending[1:]
 		}
 	}
-	// The body is read after the lock is released, so it gets its own copy
-	// instead of sharing storage with r.files.
+	// Copy the response body before releasing the lock. The caller reads it later.
 	body := io.NopCloser(bytes.NewReader(bytes.Clone(data)))
 	return &http.Response{StatusCode: status, Header: http.Header{}, Body: body, Request: req}, nil
 }
@@ -452,7 +451,7 @@ func writeCatalogue(t *testing.T, files map[string][]byte, publisher PluginPubli
 
 // NewDefaultPluginRegistry serves an official plugin identity for each of
 // aliases, in order, without network or guest execution. The minimal component
-// envelopes test installation, not linting.
+// envelopes support installation tests without running a linter.
 func NewDefaultPluginRegistry(t *testing.T, aliases ...string) *PluginRegistry {
 	t.Helper()
 	return NewDefaultPluginRegistryWithArtifact(t, []byte{0, 97, 115, 109, 13, 0, 1, 0}, aliases...)

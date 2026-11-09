@@ -20,8 +20,8 @@ import (
 var errGitHubReferenceUnavailable = errors.New("runny reference unavailable")
 
 // Check access once per test process, before starting any reference containers.
-// A cached image needs no registry credentials. Otherwise Docker's credentials,
-// rather than a particular GitHub username, determine access to the private image.
+// A cached image needs no registry credentials. Pulling the private image
+// requires Docker credentials with access to it.
 var githubReferenceImage = sync.OnceValues(func() (string, error) {
 	image := os.Getenv("ACTIONLINT_REFERENCE_IMAGE")
 	if image == "" {

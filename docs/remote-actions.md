@@ -22,8 +22,8 @@ actionlint check --action-metadata=offline .github/workflows/build.yml
 Online mode uses `GH_TOKEN`, falling back to `GITHUB_TOKEN`, when present.
 Otherwise it makes unauthenticated requests. Credentials, HTTP response bodies
 and transport error details are excluded from acquisition diagnostics and cache
-records. A `404` is reported as `not-found-or-inaccessible`, rather than proof
-that a private repository or manifest does not exist.
+records. A `404` can mean that the repository or manifest does not exist or that
+the caller lacks access. Actionlint reports both cases as `not-found-or-inaccessible`.
 
 The host checks repository name/ID, reads the exact commit object, then requests
 `action.yml` at that commit and action directory. It tries `action.yaml` only
@@ -112,8 +112,7 @@ requested by active metadata-dependent checks:
 - `unavailable` gives a reason for the missing metadata and supplies no metadata
   facts.
 - `invalid` includes parse or schema diagnostics in the selected manifest. Their
-  positions identify that manifest's repository, commit and path, rather than
-  the calling workflow.
+  positions identify that manifest's repository, commit and path.
 
 Invalid manifest diagnostics are also reported at the calling `uses` position.
 This list covers only static remote action references requested by enabled

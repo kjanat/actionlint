@@ -28,9 +28,8 @@ type CapturedSources struct {
 
 // NewCapturedSources returns a capture store and the fixture that feeds it.
 // The store reads bytes passed to Capture first and the filesystem otherwise.
-// The fixture keeps a private reference to the same store for Capture, so a
-// caller cannot point Capture at a different store. The store is closed when
-// the test ends.
+// The fixture's Capture method uses that store through a private field.
+// The store is closed when the test ends.
 func NewCapturedSources(tb testing.TB, base string, overlays ...capture.Overlay) (*capture.Store, *CapturedSources) {
 	tb.Helper()
 	if !filepath.IsAbs(base) {

@@ -100,8 +100,8 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 	}
 }
 
-// tools.<name> binds to tool providers only: a registered document analyzer
-// is a rule, not a tool, so configuring it as one is an error.
+// Configuring a document analyzer under tools.<name> produces an error.
+// Only tool providers can be configured in that section.
 func TestAnalyzerNameIsNotATool(t *testing.T) {
 	for _, config := range []string{
 		"tools: {shellcheck: false, ruff: false, no-sudo: false}\n",

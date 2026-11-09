@@ -154,9 +154,8 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if !document.CanAnalyze() || len(document.SyntaxErrors) != 0 || document.ParseError != nil {
 		s.checkCompletion.markIncomplete(snapshot.Reference())
 	}
-	// The request's display spelling is an authorized entry address. Resolve it
-	// through this capture owner before sealing, so metadata aliases (including
-	// Windows drive spelling) need no post-publication filesystem fallback.
+	// Resolve the requested path before sealing the captures. This records
+	// metadata path aliases, including Windows drive spellings, for later lookups.
 	if path != "" {
 		displayAddress := path
 		if path != "<stdin>" && !filepath.IsAbs(path) {
@@ -247,9 +246,8 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
 	}
-	// Policy reports suppression findings in the declaring document, such as a
-	// local action's metadata, under its working-directory-relative path. They
-	// need that document's reference to pass report admission.
+	// Suppression findings use paths relative to the working directory. Add those
+	// paths to the source-reference lookup to identify the declaring document.
 	reported := maps.Clone(references)
 	for document, index := range references {
 		if relative, err := filepath.Rel(s.workingDir, document); err == nil {

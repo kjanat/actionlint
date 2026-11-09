@@ -13,10 +13,9 @@ import (
 )
 
 // CapturedSnapshots captures fixture sources and admits them into one
-// declaration registry. The registry, the capture store and the fixture
-// sources share that one store. The fields are private so a caller cannot
-// replace one of them and make Document capture into a store the registry
-// does not verify against.
+// declaration registry. The registry and fixture sources share the store
+// through private fields, so Document always captures into the store the
+// registry uses for verification.
 type CapturedSnapshots struct {
 	registry *parsing.SourceSnapshots
 	store    *capture.Store

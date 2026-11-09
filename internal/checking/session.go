@@ -144,9 +144,8 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 				path = filepath.Clean(path)
 			}
 			overlays[index] = SourceOverlay{Path: path, Content: bytes.Clone(overlay.Content)}
-			// Selection does not parse declarations. Keep its exact-alias view
-			// deterministic; Store preflight receives every variant and alone
-			// decides whether any selected or dependency use is admissible.
+			// For duplicate path spellings, discovery reads the lexicographically
+			// smallest content. Capture preflight validates every variant before analysis.
 			previous, exists := byAlias[path]
 			if !exists || bytes.Compare(overlays[index].Content, overlays[previous].Content) < 0 {
 				byAlias[path] = index

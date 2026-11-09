@@ -270,9 +270,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcemodel.YAML})
 		}
 	}
-	// Disk selections are backing evidence, not explicit editor overlays. Only
-	// identity-to-index metadata is retained; Store ingests the existing selection
-	// bytes once unless an explicit overlay already owns that canonical document.
+	// The capture reader reuses selected file contents from allSources.
+	// Explicit editor overlays supply their contents through overlays.
 	selectedDocuments := make(map[string]int, len(allSources))
 	captures, err := newCaptures(lifetime, overlays, func(_ context.Context, path string) ([]byte, error) {
 		if index, selected := selectedDocuments[path]; selected {

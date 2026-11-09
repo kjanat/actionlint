@@ -416,9 +416,9 @@ The built-in LSP suppression action always adds an actionlint directive.
 The Go and SDK SARIF readers normalize native suppression metadata identically:
 an `inSource` or `external` entry with no review status (including null) or an
 `accepted` status suppresses the result. `underReview` and `rejected` entries do
-not; one applied/accepted entry is sufficient. Invalid kinds/statuses fail decoding
-instead of silently hiding results. This is output normalization, not permission
-to suppress host diagnostics or change repository policy.
+not; one applied/accepted entry is sufficient. Invalid kinds/statuses fail decoding.
+These SARIF suppressions apply to the tool's results. Actionlint evaluates its own
+diagnostics and suppression settings separately.
 
 Pass the same `--plugin` arguments to `config show`, `config validate` or `doctor` when the configuration names plugin
 rules. These commands validate rule IDs against loaded descriptors without running document analysis. Pass them to
@@ -800,8 +800,8 @@ To report a finding in a file it read, the engine must declare
 `reported-sources` and have directory access for that check. The diagnostic's
 `source` is a relative slash-separated path below the request directory, without
 `..`, backslashes or colons. Its positions refer to that file, and it cannot
-include fixes. The host reads the file through the same directory access, so it
-does not display a file that the engine could not read. It rejects diagnostics
+include fixes. The host reads the file through the same directory access before
+displaying its contents. It rejects diagnostics
 that use fixes or reported sources without declaring those capabilities.
 
 The host records files read through the directory for watch mode. The engine
@@ -841,8 +841,8 @@ during allocation cleanup, discards that instance and fails the document's check
 
 ### Local tool provider manifests
 
-Any native command that checks a snippet on stdin can run as a script tool, described by a tool provider manifest
-instead of code. Pass the manifest with `--plugin`:
+Any native command that checks a snippet on stdin can run as a script tool.
+Describe the command in a tool provider manifest and pass it with `--plugin`:
 
 ```sh
 actionlint --plugin ./tools/mylint/manifest.json
@@ -943,7 +943,8 @@ PSScriptAnalyzer compatibility rules when targeting an older PowerShell language
 
 The [sample workflow](../plugins/examples/psscriptanalyzer/workflow.yml) deliberately uses an alias in both
 shells, including one after an emoji to exercise column conversion. The example has been exercised with
-PSScriptAnalyzer 1.25.0. It is a local process provider, not a published registry package.
+PSScriptAnalyzer 1.25.0. This example is not in the registry.
+Load its local provider manifest with `--plugin`.
 
 ## Remote artifacts and static metadata
 
@@ -1006,8 +1007,8 @@ Plugins can live in their own repositories. Choose the contract that fits the in
 
 Plugins use the same interfaces regardless of the host's implementation
 language. Target a supported interface version; incompatible changes require a
-new version. Plugins communicate through these interfaces rather than importing
-private host packages. The SDK currently provides local tarballs and package
+new version. Plugins communicate through these interfaces. Host implementation
+packages are private. The SDK currently provides local tarballs and package
 previews; follow its README to obtain a matching host CLI.
 
 Publish through the [registry submission workflow](https://github.com/kjanat/actionlint-registry/blob/master/docs/publishing.md).

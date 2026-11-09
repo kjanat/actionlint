@@ -38,7 +38,7 @@ import (
 // output: ShellCheck's severities such as "style" are mapped through the
 // manifest's severities table when compared, since the adapters left that
 // mapping to renderers. Message bodies reflect the current plain-text
-// presentation; codes, severity and source coordinates remain separate fields.
+// presentation; codes, severity and source coordinates are separate fields.
 
 // parityDiagnostics are a route's tool findings and its error, in a stable,
 // machine-independent form.

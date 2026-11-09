@@ -83,7 +83,7 @@ has two spellings of the same member. In local SDK comparisons, loose parsing ke
 the last member and strict parsing keeps the first. Actionlint reports such
 collisions recursively with the spelling and JSON offset of each repeated key, and avoids
 inferring a selected value. Composite action output declarations already reject
-case-colliding names. The check covers declarations, not outputs created by scripts.
+case-colliding names. This check validates output declarations.
 
 The comparison uses revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd`, the next
 engine's `FromJson` entrypoint, and changes only `StrictJsonParsing`. Anchors do not

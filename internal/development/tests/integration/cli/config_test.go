@@ -66,8 +66,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
-	// Config inspection loads both installed plugins. Give them distinct rule
-	// descriptors rather than registering no-sudo twice under different aliases.
+	// Config inspection loads both installed plugins, which need distinct rule names.
 	other, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/insecure-download.wasm")
 	if err != nil {
 		t.Fatal(err)

@@ -78,7 +78,7 @@ type Execution struct {
 	DirectoryKnown bool
 }
 
-// Script is a prepared snippet and its source map, not a workflow AST visitor.
+// Script contains a prepared snippet, its source map and its invocation settings.
 type Script struct {
 	Input      *checkinputs.ScriptInput
 	Fact       checkinputs.Script

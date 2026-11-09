@@ -12,8 +12,7 @@ type TimeoutPolicy struct {
 	Min, Max *float64
 }
 
-// JobTimeoutCheck binds the configured bounds to job declarations.
-// The check owns its bounds, so later caller edits cannot change its policy.
+// JobTimeoutCheck copies the configured bounds and checks each job against them.
 func JobTimeoutCheck(policy TimeoutPolicy) checkinputs.DeclarationCheck {
 	if policy.Min != nil {
 		policy.Min = new(*policy.Min)

@@ -138,7 +138,7 @@ func TestScalarSourceReferenceLive(t *testing.T) {
 				return result
 			}
 			recorded := normalize(fixture.Response)
-			// These two fields belong to the recorded transport envelope, not Runny's report.
+			// Exclude the recorded transport's envelope fields from the Runny comparison.
 			delete(recorded, "id")
 			delete(recorded, "protocolVersion")
 			if diff := cmp.Diff(recorded, normalize(output)); diff != "" {

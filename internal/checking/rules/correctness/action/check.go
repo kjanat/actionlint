@@ -163,8 +163,7 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 	rule.checkInvalidRunsProps(pos, r, "Composite", meta.Name, meta.Dir(), []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
 }
 
-// compositeStepErrorf reports an error at the step's own position in the action metadata file
-// instead of at the "uses" site in the workflow being linted.
+// compositeStepErrorf reports an error at the step's position in its action metadata file.
 func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, code actionmeta.ProblemCode, format string, args ...any) {
 	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, code, format, args...)
 }

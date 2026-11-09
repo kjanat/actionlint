@@ -165,11 +165,10 @@ type ScriptPosition struct {
 // ScriptDiagnostic is a transport-independent snippet finding. Diagnostics may
 // accompany an error when a backend completes only part of its analysis.
 //
-// Source names a file the engine read besides the snippet, relative to the
-// request directory, when the finding is in that file rather than the
-// snippet; its positions are then that file's. Fixes are suggested edits in
-// snippet coordinates. Hosts accept either only from engines that declare
-// the capability.
+// When a finding refers to another file read by the engine, Source gives its
+// path relative to the request directory. Positions refer to that file.
+// Fixes use snippet coordinates. Engines must declare the corresponding
+// capabilities to return reported sources or fixes.
 type ScriptDiagnostic struct {
 	Filename       string               `json:"filename"`
 	Code           string               `json:"code"`
