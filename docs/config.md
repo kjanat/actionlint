@@ -881,7 +881,7 @@ greater than maximum. Omitted options require the key only. Expression values ar
 
 The recommended `security.missing-permissions` rule reports missing token permission declarations as errors. By default, a workflow-level `permissions` declaration or a declaration on every job satisfies the rule. The default skips workflows triggered only by `workflow_call`.
 
-Set `options.require-at` to `workflow` to require a workflow-level declaration, or to `every-job` to require a declaration on each job, including reusable workflow calls. Either option also applies to workflows triggered only by `workflow_call`. A nonempty array containing both values restores the default behavior. An empty array is invalid. Set the rule to `off` to disable it.
+Set `options.require-at` to `workflow` to require `permissions` on the workflow, or to `every-job` to require it on every job. Setting `[workflow, every-job]` requires it on the workflow and on every job. These requirements also apply to workflows triggered only by `workflow_call`. Omit `require-at` for the default behavior. An empty array is invalid. Set the rule to `off` to disable it.
 
 ```yaml
 lint:

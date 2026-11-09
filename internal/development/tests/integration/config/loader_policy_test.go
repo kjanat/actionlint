@@ -101,7 +101,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 		level     repoconfig.Level
 		locations []repoconfig.PermissionLocation
 	}{
-		{"null", "error", repoconfig.PermissionLocations()},
+		{"null", "error", nil},
 		{"false", "off", nil},
 		{"true", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
 		{"{}", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
@@ -120,7 +120,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 			if got := checking.ConfigurationRules().DiagnosticLevel(resolved, "missing-permissions"); got != tc.level {
 				t.Fatalf("level %q, want %q", got, tc.level)
 			}
-			if tc.locations != nil {
+			if tc.level != "off" {
 				got, err := resolved.PermissionDeclarationLocations()
 				if err != nil {
 					t.Fatal(err)

@@ -237,7 +237,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			values = append(values, string(location))
 		}
 		location := &jsonschema.Schema{Type: "string", Enum: values}
-		return &jsonschema.Schema{AnyOf: []*jsonschema.Schema{location, {Type: "array", MinItems: new(uint64(1)), Items: location}}, Default: actionlint.PermissionLocations(), Description: "Allowed places for permissions. Use workflow, every-job, or a nonempty array. Set missing-permissions to off to disable the rule."}
+		return &jsonschema.Schema{AnyOf: []*jsonschema.Schema{location, {Type: "array", MinItems: new(uint64(1)), Items: location}}, Description: "Require permissions at every listed location. Use workflow, every-job, or a nonempty array. Omit require-at to accept permissions on the workflow or on every job. Set missing-permissions to off to disable the rule."}
 	case reflect.TypeFor[actionlint.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
