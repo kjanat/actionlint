@@ -1,4 +1,4 @@
 bun                  1.4.4
 golangci-lint        2.15.0
-goreleaser           2.18.0
+goreleaser           2.20.0
 npm:runner-run       0.28.0
