@@ -247,7 +247,7 @@ run     = [
 ]
 
 ["plugins-check-rust-sdk"]
-description = "Build and load Rust SDK consumer worlds through the Go host"
+description = "Build Rust SDK consumer bindings and load consumer worlds through the Go host"
 depends     = ["protocol:sdk"]
 sources     = [
   "internal/plugins/execution/component/**/*.go",
@@ -258,7 +258,11 @@ sources     = [
 ]
 outputs     = []
 env         = { ACTIONLINT_RUST_SDK_INTEGRATION = "1" }
-run         = "go test ./internal/plugins/execution/component -run '^TestRustSDKScriptWorlds$' -count=1 -p 1 -timeout 10m"
+run         = [
+  "cargo build --locked -j 1 --manifest-path plugins/sdk/rust/tests/script-engine-consumer/Cargo.toml --target-dir target/script-engine-consumer --target wasm32-unknown-unknown --lib",
+  "cargo build --locked -j 1 --manifest-path plugins/sdk/rust/tests/script-engine-consumer/Cargo.toml --target-dir target/script-engine-consumer --target wasm32-unknown-unknown --lib --features v03",
+  "go test ./internal/plugins/execution/component -run '^TestRustSDKScriptWorlds$' -count=1 -p 1 -timeout 10m"
+]
 
 ["plugins:wat"]
 sources = ["internal/plugins/execution/{component,module}/testdata/wat/*.wat"]

@@ -100,7 +100,25 @@ fn environments_for(
 }
 ```
 
-Script engines can generate either the `script-engine-plugin` or
+Script engines can implement the generated guest traits in `script_engine::v0_2`
+or `script_engine::v0_3`. After implementing both the script-engine and
+template-effects guest traits, export the implementation with its binding module:
+
+```rust
+#[cfg(target_arch = "wasm32")]
+actionlint_extension_api::script_engine::v0_2::export_template_script_engine_v0_2!(
+    Plugin with_types_in actionlint_extension_api::script_engine::v0_2
+);
+```
+
+For 0.3.0, use `v0_3::export_template_script_engine_v0_3!` and
+`with_types_in actionlint_extension_api::script_engine::v0_3`.
+The `with_types_in` argument is required because these types are defined in the
+SDK module. Without it, the generated macro looks for bindings in the guest's
+current module. See the [small consumer](https://github.com/kjanat/actionlint/blob/master/plugins/sdk/rust/tests/script-engine-consumer/src/lib.rs)
+for complete implementations of both interfaces.
+
+To customize a guest's world or imports, generate either the `script-engine-plugin` or
 `template-script-engine-plugin` world for 0.2.0 or 0.3.0 without vendoring WIT.
 Add the SDK as a direct dependency and use its Cargo metadata in your `build.rs`:
 
@@ -129,9 +147,10 @@ template-effects version. Use `package::ScriptPackage` with the matching
 `script_engine::v0_2` or `script_engine::v0_3` descriptor type to write
 discovery metadata and distribution files. Set `ScriptWorld` to match the
 world exported by the guest. The package identity and descriptor must match
-the guest descriptor. The SDK descriptor types and the guest bindings are
-separately generated types, so construct the package descriptor from the same
-values used by the guest.
+the guest descriptor. Bindings generated in the guest are separate Rust types
+from the SDK descriptor types, so construct the package descriptor from the same
+values used by the guest. Guests using the SDK bindings directly can use their
+descriptor for both exports and packaging.
 
 Enable `package` for a native packaging binary. Construct `package::Package`
 from the extension's own descriptor, Cargo identity, engine, languages,

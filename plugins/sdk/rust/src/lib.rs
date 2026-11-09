@@ -136,8 +136,8 @@ pub mod bindings {
     });
 }
 
-/// Descriptor types for script-engine packaging. Generate guest exports from the
-/// Cargo-provided WIT directory described in the README.
+/// Generated script-engine guest types, export macros and packaging descriptors.
+/// Export SDK bindings with `with_types_in` followed by their versioned module path.
 pub mod script_engine {
     // Public export macros defer export metadata until a guest invokes them.
     // Distinct world names prevent collisions between wit-bindgen crate-level macros.

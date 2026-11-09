@@ -1,0 +1,21 @@
+[package]
+name         = "script-engine-consumer-test"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.99"
+publish      = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+actionlint-extension-api = { path = "../.." }
+
+[features]
+v03 = []
+
+[profile.dev]
+debug       = 0
+incremental = false
