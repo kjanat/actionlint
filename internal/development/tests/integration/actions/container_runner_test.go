@@ -52,7 +52,7 @@ func TestContainerRunnerNestedComposites(t *testing.T) {
 }
 
 func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
-	// The recorded public action declares a Docker runtime, not a name-based guess.
+	// This fixture records an action that declares a Docker runtime.
 	// https://github.com/actions/hello-world-docker-action/blob/8bcd8e1af3c095561f1043123848fc8b2db0f189/action.yml
 	const sha = "8bcd8e1af3c095561f1043123848fc8b2db0f189"
 	content, err := os.ReadFile("internal/development/tests/integration/actions/testdata/container-runner/action.yml")

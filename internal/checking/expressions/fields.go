@@ -354,16 +354,9 @@ func (rule *Checker) checkIfCondition(str workflowdecl.StringView, workflowKey s
 		return
 	}
 
-	// Note:
-	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idif
-	//
-	// > When you use expressions in an if conditional, you may omit the expression syntax (${{ }})
-	// > because GitHub automatically evaluates the if conditional as an expression, unless the
-	// > expression contains any operators. If the expression contains any operators, the expression
-	// > must be contained within ${{ }} to explicitly mark it for evaluation.
-	//
-	// This document is actually wrong. I confirmed that any strings without surrounding in ${{ }}
-	// are evaluated.
+	// Conditions can omit ${{ }}, including expressions with operators.
+	// Quote a condition beginning with ! to prevent YAML from treating it as a tag.
+	// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepsif
 	//
 	// - run: echo 'run'
 	//   if: '!false'

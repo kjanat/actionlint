@@ -28,9 +28,8 @@ func generateScriptEngine() error {
 	})
 }
 
-// generateTemplateEffects generates every template-effects version the host
-// accepts. Each pairs with the script-engine version of its package, whose
-// file the world names, so that file is decoded with it.
+// generateTemplateEffects generates the host's supported template-effects
+// interfaces together with their matching script-engine dependencies.
 func generateTemplateEffects() error {
 	if err := generateContract(roleContract{
 		source: "template-effects.wit", dependency: "script-engine.wit", role: "template-effects",

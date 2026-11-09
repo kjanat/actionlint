@@ -149,9 +149,8 @@ func (s Setting) HasOptions() bool { return s.options != nil }
 
 // LoadOptions decodes the options into dst, which must point to the rule's
 // registered options type. It reports false and leaves dst unchanged when the
-// setting has no options. dst is decoded from a copy of the stored values, so
-// a DecodeConfig method in dst that keeps or edits its values cannot reach
-// the setting.
+// setting has no options. Options are copied before decoding; custom DecodeConfig
+// implementations receive that copy.
 func (s Setting) LoadOptions(dst any) (bool, error) {
 	if s.options == nil {
 		return false, nil
@@ -230,8 +229,7 @@ func (s *Setting) DecodeConfig(value any) error {
 	return nil
 }
 
-// EncodeConfig writes the level/options mapping. The options are decoded into
-// a fresh value so callers cannot mutate the stored options.
+// EncodeConfig returns a level/options mapping with a copy of the configured options.
 func (s Setting) EncodeConfig() (any, error) {
 	var wire struct {
 		Level   Level `yaml:"level"`

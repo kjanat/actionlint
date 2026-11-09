@@ -320,9 +320,8 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	}
 }
 
-// checkOnlySurroundingRuns expects content to fail syntax checks yet still
-// collect exactly the valid "echo before" and "echo after" runs around the
-// rejected value.
+// checkOnlySurroundingRuns checks that invalid syntax produces a finding and
+// that collection returns the valid "echo before" and "echo after" runs.
 func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	t.Helper()
 	document := parsing.Workflow(content)

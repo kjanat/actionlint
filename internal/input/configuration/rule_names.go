@@ -13,8 +13,8 @@ import (
 // rules registered by this invocation. Additional names never change global state.
 //
 // It also checks the rule settings in config.Lint the way parsing does, so a
-// setting built with NewSetting whose options do not decode into the rule's
-// options type is an error here instead of being ignored later. Settings in
+// setting built with NewSetting produces an error if its options cannot be
+// decoded into the rule's registered options type. Settings in
 // config.Overrides receive complete descriptor validation in ResolveRules.
 func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) error {
 	if config == nil {

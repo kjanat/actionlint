@@ -14,7 +14,7 @@ import (
 )
 
 // NewCache uses one source-capture store for metadata lookups and closes it when the test ends.
-// If a reader is supplied, lookups use it instead of the native filesystem reader.
+// Without a supplied reader, lookups use the native filesystem reader.
 func NewCache(tb testing.TB, root string, debug io.Writer, readers ...*files.Reader) *workspaceactions.Cache {
 	tb.Helper()
 	reader := files.New(tb.Context(), nil, nil)

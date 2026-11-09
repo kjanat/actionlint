@@ -94,7 +94,8 @@ func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) 
 
 // JoinComposite applies only the child's checkout and persistent environment
 // effects. Caller shell/environment assumptions never move into the parent.
-// A stale parent is preserved and reported, rather than silently overwritten.
+// If the parent changed while the child was active, it returns
+// ErrCompositeParentChanged without applying the child's changes.
 func (c *Resolver) JoinComposite(child *Resolver) error {
 	if c == nil || child == nil || c == child || child.branch == nil || child.branch.parent != c {
 		return ErrForeignCompositeScope

@@ -79,8 +79,8 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 	return combined, errors.Join(failures...)
 }
 
-// Refuse conflicting evidence instead of binding findings from independent
-// sessions to a different revision or a different plugin's rule description.
+// combineProjectResult rejects conflicting source captures and rule metadata
+// before combining results from different repositories.
 func combineProjectResult(combined, result *Result) error {
 	for path, captured := range result.CapturedSources {
 		if previous, exists := combined.CapturedSources[path]; exists &&

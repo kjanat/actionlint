@@ -30,8 +30,8 @@ Generate the source from the repository root:
 go run ./internal/development/generators/expression-contexts ./internal/model/contexts/availability.gen.go
 ```
 
-To read a local copy of the documentation instead of downloading it, supply its
-path relative to the current directory. The destination must also be a relative path:
+To read a local copy of the documentation, pass its path relative to the current
+directory. The destination must also be a relative path:
 
 ```sh
 go run ./internal/development/generators/expression-contexts path/to/contexts.md ./internal/model/contexts/availability.gen.go

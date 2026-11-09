@@ -2,8 +2,8 @@ package config
 
 import "slices"
 
-// Provenance identifies the root document and every contributing source.
-// It is carried by loaded documents and analysis sessions, not settings DTOs.
+// Provenance records the root document and the sources that contributed to its
+// configuration. Loaded documents and analysis sessions carry it.
 type Provenance struct {
 	path  string
 	files []string

@@ -5,16 +5,16 @@ signatures and their callers before editing. Search for the symbol if its file h
 
 ## Native checks
 
-For a declaration check, trace `missing-workflow-permissions` as a worked example:
+For a declaration check, trace `missing-permissions` as a worked example:
 
 | Responsibility                                          | Entry point                                                                           |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Rule metadata, examples and requested declaration views | `internal/checking/rules/security/missing-workflow-permissions.go`                    |
+| Rule metadata, examples and requested declaration views | `internal/checking/rules/security/missing-permissions.go`                             |
 | Configuration projection                                | `internal/input/configuration/registry.go`, `internal/input/configuration/catalog.go` |
 | Execution registration                                  | `internal/checking/executor/registration/registry.go`                                 |
 | Declaration adapter                                     | `internal/checking/executor/declarations/visitor.go`                                  |
 | Typed workflow, job and step inputs                     | `internal/checking/inputs/declarations.go`                                            |
-| Semantic implementation                                 | `internal/checking/rules/security/permissions-checks.go`                              |
+| Semantic implementation                                 | `MissingPermissions` in `internal/checking/rules/security/missing-permissions.go`     |
 | Semantic regression cases                               | `internal/checking/rules/security/missing_workflow_permissions_test.go`               |
 | Configured host and suppression cases                   | `internal/development/tests/integration/workflow/rule_missing_permissions_test.go`    |
 

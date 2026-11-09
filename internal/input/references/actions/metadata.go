@@ -16,8 +16,8 @@ const (
 	MetadataInvalid     MetadataState = "invalid"
 )
 
-// ManifestProblem is a source position in the selected manifest, not a finding
-// in the calling workflow. Selection identifies the bytes which were inspected.
+// ManifestProblem locates a problem in the selected manifest.
+// Selection identifies the bytes that were inspected.
 type ManifestProblem struct {
 	Code    string             `json:"code,omitempty"`
 	Message string             `json:"message"`
@@ -87,7 +87,7 @@ type Coverage struct {
 }
 
 // MetadataReport is the detached JSON/API projection of one coverage outcome.
-// Missing metadata carries a reason instead of a fabricated selected identity.
+// When metadata is unavailable, Reason explains why and selection fields are empty.
 type MetadataReport struct {
 	Reference      string              `json:"reference"`
 	State          MetadataState       `json:"state"`

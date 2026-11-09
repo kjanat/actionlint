@@ -54,7 +54,7 @@ type Input struct {
 	Coordinates source.Coordinates
 	Reference   source.Reference
 	Path        string
-	// Directory is the analysis root, not a filesystem grant.
+	// Directory names the analysis root. Filesystem access requires a separate grant.
 	Directory       string
 	Content         string
 	Kind            string
@@ -88,7 +88,7 @@ type FileSystem struct {
 	FS   fs.FS
 }
 
-// ActionInput is mapped source supplied to an action rather than a run command.
+// ActionInput supplies mapped source from an action input.
 // Site declares its language and action input. Script supplies source identity,
 // spans and optional occurrence identity; its Shell stays empty and Runtime stays nil.
 type ActionInput struct {

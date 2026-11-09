@@ -149,8 +149,8 @@ func NewManifest(selection Selection, content []byte) (Manifest, error) {
 	return NewManifestFile(selection, "action.yml", content)
 }
 
-// NewManifestFile preserves the selected metadata filename, including empty
-// files which analysis must classify as invalid rather than unavailable.
+// NewManifestFile records the selected metadata filename and contents,
+// including empty files. Analysis classifies empty metadata files as invalid.
 func NewManifestFile(selection Selection, filename string, content []byte) (Manifest, error) {
 	if selection.identity.commit == "" {
 		return Manifest{}, errors.New("action manifest has no provider selection")

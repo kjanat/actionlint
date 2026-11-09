@@ -144,9 +144,8 @@ func stripAndUnescape(s string) (string, error) {
 	return html.UnescapeString(s), nil
 }
 
-// writeStringSliceMap emits the map literal without the element type on each value.
-// `%#v` spells it out and go/format does not apply the gofmt -s simplification,
-// so the generated file would differ from the formatted one on every run.
+// writeStringSliceMap emits slice literals with implicit element types, matching
+// gofmt -s. go/format does not simplify the explicit types produced by %#v.
 func writeStringSliceMap(buf *bytes.Buffer, name string, m map[string][]string) {
 	fmt.Fprintf(buf, "var %s = map[string][]string{", name)
 	for _, k := range slices.Sorted(maps.Keys(m)) {
@@ -273,12 +272,10 @@ func WorkflowKeyAvailability(key string) ([]string, []string) {
 	fmt.Fprintln(buf, "	default: return nil, nil\n	}\n}")
 	dbg.Println("Parsed", len(keys), "table rows")
 
-	fmt.Fprintln(buf, `// SpecialFunctionNames is a map from special function name to available workflow keys.
-// Some functions are only available at specific positions. This variable is useful when you want to
-// know which functions are special and what workflow keys support them.
+	fmt.Fprintln(buf, `// SpecialFunctionNames lists the workflow keys where each restricted function is available.
 //
-// This variable was generated from https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability.
-// See the script for more details: https://github.com/kjanat/actionlint/blob/HEAD/internal/development/generators/expression-contexts/`)
+// Generated from https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability.
+// Generator: https://github.com/kjanat/actionlint/blob/master/internal/development/generators/expression-contexts/`)
 	writeStringSliceMap(buf, "SpecialFunctionNames", funcs)
 
 	for _, ks := range ctxs {

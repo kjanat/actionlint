@@ -11,7 +11,7 @@ import (
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 )
 
-// GitHub's uses syntax accepts owner/repo[/path]@ref, not repository URLs.
+// GitHub requires owner/repo[/path]@ref syntax for remote uses references.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepsuses
 func TestVendorLockIn(t *testing.T) {
 	for _, tc := range []struct {

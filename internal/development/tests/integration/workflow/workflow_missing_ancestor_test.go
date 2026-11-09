@@ -56,8 +56,7 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 						}
 					})
 				}
-				// The other spelling names the same document. Differing content
-				// through both is conflicting source evidence, not a precedence.
+				// Different contents supplied under two spellings of the same path conflict.
 				t.Run(roots[0]+"Conflict", func(t *testing.T) {
 					_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
 						{Path: filepath.Join(roots[1], ".github/workflows/build.yml"), Content: []byte("name: Old\n" + testutil.GoodWorkflow), Project: project},

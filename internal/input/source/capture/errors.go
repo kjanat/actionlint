@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	// ErrInvalidSnapshot indicates handle misuse, not a source disagreement.
+	// ErrInvalidSnapshot indicates an invalid snapshot handle.
 	ErrInvalidSnapshot = errors.New("invalid source capture snapshot")
 	ErrClosed          = errors.New("source capture store is closed")
 	ErrNotSealed       = errors.New("source capture store is not sealed")
@@ -49,10 +49,9 @@ func (e *CaptureError) Code() string {
 }
 func (e *CaptureError) Unwrap() error { return e.cause }
 
-// ReadError presents a failed read under a user-facing context. A
-// *CaptureError is shown by its cause, which already names the file,
-// instead of its code and canonical document identity. The error itself
-// stays in the chain for errors.As and Code.
+// ReadError adds the caller's context to a read failure. For *CaptureError,
+// it displays the underlying cause, which includes the filename.
+// Unwrap exposes the original error for errors.As and Code.
 type ReadError struct {
 	context string
 	err     error

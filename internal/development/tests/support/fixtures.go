@@ -68,9 +68,8 @@ func ExecutableFixture(t *testing.T, disabled ...string) (string, func(...string
 }
 
 // RequireTool skips the test unless the command of the bundled provider
-// named name is on PATH, and returns the command's path. It empties the
-// environment variables the provider reads extra options from, such as
-// SHELLCHECK_OPTS, so the host's settings cannot change the test.
+// named name is on PATH, and returns the command's path. It clears environment
+// variables such as SHELLCHECK_OPTS that add options to the provider's command.
 func RequireTool(t *testing.T, name string) string {
 	t.Helper()
 	manifests, err := pluginmanifests.Bundled()

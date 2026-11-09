@@ -313,9 +313,8 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// The relative repository root is relative to the process, so the
-			// analysis resolves it there. The session stays rooted in the
-			// repository for discovery and configuration.
+			// Resolve the relative repository path from the process working directory.
+			// Discovery and configuration then use that repository as their root.
 			cwd, err := os.Getwd()
 			if err != nil {
 				t.Fatal(err)

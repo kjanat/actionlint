@@ -39,7 +39,7 @@ type Result struct {
 // RequestCounts reports actual attempts made by an external resolver. Host is an
 // authority without credentials, paths or queries. RequestKind is http, rest,
 // graphql, git or oci. Credentials is provided, absent or unknown and describes
-// supplied credentials rather than successful authentication.
+// whether credentials were supplied, regardless of whether the server accepted them.
 type RequestCounts struct {
 	Host        string `json:"host"`
 	RequestKind string `json:"request_kind"`

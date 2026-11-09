@@ -21,10 +21,9 @@ type parallelCheck struct {
 	// 'parallel:' groups, so a 'wait'/'cancel' reference found in this set both exists and precedes
 	// the reference.
 	background map[string]struct{}
-	// inParallel holds the steps that are direct children of a 'parallel' group. Such steps are not
-	// allowed there at all (only 'run'/'uses' are), so their 'wait'/'cancel' references are not
-	// separately validated: the "not allowed inside a parallel group" error stands on its own
-	// instead of cascading into a redundant "unknown reference" error from the same step.
+	// inParallel identifies direct children of a 'parallel' group.
+	// Only run and uses steps are allowed there. Invalid wait and cancel steps
+	// receive that finding, and their references are excluded from validation.
 	inParallel map[source.Reference]struct{}
 }
 

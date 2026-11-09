@@ -67,8 +67,8 @@ type snapshotData struct {
 	info    fileInfo
 }
 
-// fileInfo is the metadata a guest sees: plain values detached from the host
-// stat result, whose Sys buffer would otherwise be shared by every holder.
+// fileInfo copies the file's name, size, mode and modification time for guest
+// code. Its Sys method returns nil.
 type fileInfo struct {
 	name                 string
 	size                 int64
