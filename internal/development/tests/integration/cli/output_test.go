@@ -2,31 +2,53 @@ package cli_test
 
 import (
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 )
 
 func TestCommandJSONErrorsAndLogs(t *testing.T) {
 	tests := []struct {
-		args   []string
-		status int
+		args     []string
+		status   int
+		buildLog bool
 	}{
-		{[]string{"--json", "--unknown"}, 2},
-		{[]string{"--unknown", "--json"}, 2},
-		{[]string{"--unknown", "--output", "json"}, 2},
-		{[]string{"--unknown", "-ojson"}, 2},
-		{[]string{"--json", "--ignore", "[", "-"}, 3},
-		{[]string{"--output=jsonl", "missing.yml"}, 3},
-		{[]string{"--json", "--debug", "--config-file=does-not-exist.yml", "-"}, 3},
+		{[]string{"--json", "--unknown"}, 2, false},
+		{[]string{"--unknown", "--json"}, 2, false},
+		{[]string{"--unknown", "--output", "json"}, 2, false},
+		{[]string{"--unknown", "-ojson"}, 2, false},
+		{[]string{"--json", "--ignore", "[", "-"}, 3, false},
+		{[]string{"--output=jsonl", "missing.yml"}, 3, false},
+		{[]string{"--json", "--debug", "--config-file=does-not-exist.yml", "-"}, 3, true},
 	}
 	for _, tc := range tests {
 		got := testRunCommand(commandGoodWorkflow, tc.args...)
-		var message struct {
-			Error    string `json:"error"`
-			ExitCode int    `json:"exit_code"`
+		decoder := json.NewDecoder(strings.NewReader(got.Stderr))
+		if tc.buildLog {
+			var record map[string]string
+			if err := decoder.Decode(&record); err != nil {
+				t.Fatalf("%q: invalid build log: %v", tc.args, err)
+			}
+			if len(record) != 1 || !strings.HasPrefix(record["log"], "verbose: actionlint ") || !strings.Contains(record["log"], "; installed: ") || !strings.Contains(record["log"], "; build: ") {
+				t.Fatalf("%q: invalid build identity: %v", tc.args, record)
+			}
 		}
-		if err := json.Unmarshal([]byte(got.Stderr), &message); err != nil {
+		var message struct {
+			Error         string `json:"error"`
+			ExitCode      int    `json:"exit_code"`
+			SchemaVersion int    `json:"schema_version"`
+			Status        string `json:"status"`
+			Completed     bool   `json:"completed"`
+		}
+		if err := decoder.Decode(&message); err != nil {
 			t.Fatalf("%q: %+v: %v", tc.args, got, err)
+		}
+		if tc.buildLog && (message.SchemaVersion != 1 || message.Status != "failure" || message.Completed) {
+			t.Fatalf("%q: invalid failure record: %+v", tc.args, message)
+		}
+		var extra json.RawMessage
+		if err := decoder.Decode(&extra); err != io.EOF {
+			t.Fatalf("%q: unexpected trailing record %q: %v", tc.args, extra, err)
 		}
 		if got.Stdout != "" || got.Status != tc.status || message.ExitCode != tc.status || message.Error == "" {
 			t.Fatalf("%q: %+v", tc.args, got)
