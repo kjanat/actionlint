@@ -5,7 +5,21 @@ runs:
   steps:
     - name: Scan added comments and Markdown
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        GH_TOKEN: ${{ github.token }}
       with:
         script: |
-          const { default: run } = await import(`${process.env.GITHUB_ACTION_PATH}/comment-cop.mjs`);
-          await run({ github, context, core });
+          const { default: run, readPullRequestFiles } = await import(`${process.env.GITHUB_ACTION_PATH}/comment-cop.mjs`);
+          const { join } = await import('node:path');
+          const cache = process.env.MISE_CACHE_DIR;
+          if (!cache) throw new Error('MISE_CACHE_DIR is required');
+          const pr = context.payload.pull_request;
+          if (!pr) throw new Error('pull_request payload is required');
+          const files = readPullRequestFiles({
+            cacheDirectory: join(cache, 'comment-cop'),
+            repositoryUrl: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}.git`,
+            baseSha: pr.base.sha,
+            headSha: pr.head.sha,
+            token: process.env.GH_TOKEN,
+          });
+          await run({ github, context, core, files });

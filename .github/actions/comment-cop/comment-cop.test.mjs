@@ -1,9 +1,71 @@
 import assert from 'node:assert/strict';
 import test, { mock } from 'node:test';
 
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import run, { bodyFor, groupsFromPatch, keyFor } from './comment-cop.mjs';
+import run, { bodyFor, groupsFromPatch, keyFor, readPullRequestFiles } from './comment-cop.mjs';
+
+test('reads a fork diff through cached Git objects without checking out PR code', t => {
+	const directory = mkdtempSync(join(tmpdir(), 'comment-cop-git-'));
+	t.after(() => rmSync(directory, { recursive: true, force: true }));
+	const origin = join(directory, 'origin');
+	const cacheDirectory = join(directory, 'mise', 'cache', 'comment-cop', '42');
+	mkdirSync(origin);
+	/** @param {string[]} args */
+	const git = args =>
+		execFileSync('git', ['-C', origin, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+	git(['init', '-b', 'master']);
+	git(['config', 'user.name', 'Test']);
+	git(['config', 'user.email', 'test@example.invalid']);
+	git(['config', 'commit.gpgsign', 'false']);
+	git(['config', 'core.hooksPath', join(directory, 'no-hooks')]);
+	writeFileSync(join(origin, 'shared.md'), 'Initial text.\n');
+	git(['add', '.']);
+	git(['commit', '-m', 'Initial revision']);
+	const ancestor = git(['rev-parse', 'HEAD']);
+	writeFileSync(join(origin, 'base-only.md'), 'Base branch update.\n');
+	git(['add', '.']);
+	git(['commit', '-m', 'Base branch update']);
+	const baseSha = git(['rev-parse', 'HEAD']);
+	git(['checkout', '-b', 'contribution', ancestor]);
+	const filename = '[special] with spaces.md';
+	const source = '```go\n// That said, example code is excluded.\n```\n\nThat said, scan this prose.\n';
+	writeFileSync(join(origin, filename), source);
+	git(['add', '.']);
+	git(['commit', '-m', 'Contribution']);
+	const headSha = git(['rev-parse', 'HEAD']);
+	const options = { cacheDirectory, repositoryUrl: origin, baseSha, headSha };
+	const first = readPullRequestFiles(options);
+	assert.deepEqual(first.map(file => file.filename), [filename]);
+	assert.equal(first[0].source, source);
+	assert.deepEqual(groupsFromPatch(filename, first[0].patch, first[0].source).map(group => group.start), [5]);
+	assert.deepEqual(readPullRequestFiles(options), first);
+	const objects = join(cacheDirectory, 'repository.git');
+	assert.equal(
+		execFileSync('git', ['--git-dir', objects, 'rev-parse', '--is-bare-repository'], { encoding: 'utf8' }).trim(),
+		'true',
+	);
+	assert.doesNotMatch(readFileSync(join(objects, 'config'), 'utf8'), /extraheader|token|\[remote/);
+	git(['rm', filename]);
+	writeFileSync(join(origin, 'replacement.md'), 'Moreover, scan the replacement.\n');
+	git(['add', '.']);
+	git(['commit', '-m', 'Replace contribution']);
+	const updated = readPullRequestFiles({ ...options, headSha: git(['rev-parse', 'HEAD']) });
+	assert.deepEqual(updated.map(file => file.filename), ['replacement.md']);
+});
+
+test('rejects invalid Git revisions before fetching', () => {
+	assert.throws(() =>
+		readPullRequestFiles({
+			cacheDirectory: 'unused',
+			repositoryUrl: 'unused',
+			baseSha: '--upload-pack=bad',
+			headSha: 'a'.repeat(40),
+		}), /full Git commit SHA/);
+});
 
 /** @typedef {Parameters<Parameters<typeof run>[0]['github']['rest']['pulls']['createReview']>[0]} ReviewParams */
 
@@ -375,15 +437,11 @@ test('combines different advice and deduplicates equivalent contrast advice', ()
 const reviewFiles = [
 	{
 		filename: 'docs/first.md',
-		status: 'modified',
-		contents_url: 'first',
 		patch:
 			'@@ -0,0 +1,5 @@\n+That said, the cache stores values.\n+Read the cached entry.\n+\n+\n+Moreover, refresh the entry.',
 	},
 	{
 		filename: 'docs/second.md',
-		status: 'modified',
-		contents_url: 'second',
 		patch: '@@ -0,0 +1,1 @@\n+Use the cache rather than fetching again.',
 	},
 ];
@@ -425,10 +483,15 @@ function reviewHarness(
 		},
 	}));
 	const args = {
+		files: files.map(file => ({ filename: file.filename, patch: file.patch, source })),
 		github: {
 			rest: { pulls: { listFiles: mock.fn(), createReview } },
-			paginate: mock.fn(async () => files),
-			request: mock.fn(async () => ({ data: source })),
+			paginate: mock.fn(async () => {
+				throw new Error('File API must not be used');
+			}),
+			request: mock.fn(async () => {
+				throw new Error('Contents API must not be used');
+			}),
 			graphql,
 		},
 		context: {
@@ -440,6 +503,8 @@ function reviewHarness(
 	return {
 		args: /** @type {Parameters<typeof run>[0]} */ (/** @type {unknown} */ (args)),
 		createReview,
+		paginate: args.github.paginate,
+		request: args.github.request,
 		warning,
 		info,
 		graphql,
@@ -488,6 +553,8 @@ test('submits comments across files and line ranges in one review', async () => 
 		],
 	});
 	assert.equal(h.warning.mock.callCount(), 0);
+	assert.equal(h.paginate.mock.callCount(), 0);
+	assert.equal(h.request.mock.callCount(), 0);
 	assert.match(h.info.mock.calls[0].arguments[0], /3 posted/);
 
 	assert.ok(params.comments);
@@ -525,8 +592,6 @@ test('resolves an existing finding caused by commented YAML data', async () => {
 	const oldGroup = { path, start: 1, end: 3, text, reasons: ['3 lines'] };
 	const files = [{
 		filename: path,
-		status: 'modified',
-		contents_url: 'config',
 		patch: `@@ -0,0 +1,3 @@\n${text.split('\n').map(line => `+${line}`).join('\n')}`,
 	}];
 	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path, text);
