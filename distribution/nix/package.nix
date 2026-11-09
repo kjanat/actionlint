@@ -3,7 +3,6 @@
   buildGoModule,
   installShellFiles,
   makeWrapper,
-  mise,
   gitMinimal,
   bash,
   pandoc,
@@ -33,7 +32,6 @@ buildGoModule {
   nativeBuildInputs = [
     installShellFiles
     makeWrapper
-    mise
     pandoc
   ];
   nativeCheckInputs = [
@@ -51,15 +49,11 @@ buildGoModule {
   '';
 
   postInstall = ''
-    export MISE_CONFIG_DIR="$TMPDIR/mise-config"
-    export MISE_DATA_DIR="$TMPDIR/mise-data"
-    export MISE_CACHE_DIR="$TMPDIR/mise-cache"
-    export MISE_STATE_DIR="$TMPDIR/mise-state"
-    export MISE_ENABLE_TOOLS=""
-    mkdir -p "$MISE_CONFIG_DIR" "$MISE_DATA_DIR" "$MISE_CACHE_DIR" "$MISE_STATE_DIR"
-    PANDOC='pandoc --standalone --from=markdown-smart ${
-      if lib.versionOlder pandoc.version "3.8" then "--no-highlight" else "--syntax-highlighting=none"
-    }' mise run man:roff
+    pandoc --standalone --from=markdown-smart \
+      --to=man --metadata=title:ACTIONLINT --lua-filter=man/inline-code-bold.lua \
+      ${
+        if lib.versionOlder pandoc.version "3.8" then "--no-highlight" else "--syntax-highlighting=none"
+      } --output=man/actionlint.1 man/actionlint.1.md
     installManPage man/actionlint.1
     installShellCompletion --cmd actionlint \
       --bash <("$out/bin/actionlint" -completion bash) \
