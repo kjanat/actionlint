@@ -3,7 +3,15 @@ on:
   push:
     branches: [master]
     paths: [docs/releases/v*.md]
+  release:
+    types: [published, edited]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release to add missing notes for.
+        type: string
+        required: false
+        default: ""
 
 permissions: { contents: read }
 defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
@@ -11,19 +19,22 @@ defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
 jobs:
   sync:
     name: Copy docs/releases to the GitHub releases
-    if: github.repository == 'kjanat/actionlint' && github.ref == 'refs/heads/master'
+    if: github.repository == 'kjanat/actionlint' && github.ref == 'refs/heads/master' && inputs.tag == ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency: { group: release-notes, cancel-in-progress: false, queue: max }
-    permissions: { contents: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - uses: &BeepboopToken kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: write }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
       - name: Update every release whose notes file changed
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.beepboop.outputs.token }}
           BEFORE: ${{ github.event.before }}
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == push && "${BEFORE}" =~ ^[0-9a-f]{40}$ && "${BEFORE}" != 0000000000000000000000000000000000000000 ]]; then
@@ -59,3 +70,66 @@ jobs:
               exit 1
             fi
           done
+  missing:
+    name: Open a PR for missing release notes
+    if: >-
+      github.repository == 'kjanat/actionlint' &&
+      ((github.event_name == 'release' && !github.event.release.draft) ||
+      (github.event_name == 'workflow_dispatch' && inputs.tag != ''))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: release-notes-${{ github.event.release.tag_name || inputs.tag }}
+      cancel-in-progress: false
+    permissions: { contents: read, id-token: write }
+    env: { TAG: "${{ github.event.release.tag_name || inputs.tag }}" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { ref: refs/heads/master, persist-credentials: false }
+      - name: Check whether the notes file is missing
+        id: notes
+        run: |
+          [[ "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          if [[ -e "docs/releases/${TAG}.md" ]]; then
+            echo 'missing=false' >> "${GITHUB_OUTPUT}"
+          else
+            echo 'missing=true' >> "${GITHUB_OUTPUT}"
+          fi
+      - uses: *BeepboopToken
+        if: steps.notes.outputs.missing == 'true'
+        id: beepboop
+        with: { permission-contents: write, permission-pull-requests: write }
+      - name: Add published notes when master has no file for this release
+        if: steps.notes.outputs.missing == 'true'
+        env:
+          GH_TOKEN: ${{ steps.beepboop.outputs.token }}
+          "${{ insert }}": ${{ fromJSON(steps.beepboop.outputs.gitId || '{}') }}
+        run: |
+          file="docs/releases/${TAG}.md"
+          release="${RUNNER_TEMP}/published-release.json"
+          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json body,isDraft,publishedAt,url >"${release}"
+          jq -e '.isDraft == false and .publishedAt != null and (.body | type == "string" and length > 0)' "${release}" > /dev/null
+          branch="docs/release-notes-${TAG}"
+          remote="$(git ls-remote origin "refs/heads/${branch}")"
+          if [[ -n "${remote}" ]]; then
+            git fetch --no-tags origin "${branch}"
+            git switch -c "${branch}" FETCH_HEAD
+          else
+            git switch -c "${branch}"
+          fi
+          mkdir -p docs/releases
+          jq -j '.body | gsub("\r\n"; "\n") | sub("\n+$"; "") + "\n"' "${release}" > "${file}"
+          git add -- "${file}"
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: add release notes for ${TAG}"
+            gh auth setup-git
+            git push origin "HEAD:refs/heads/${branch}"
+          fi
+          existing="$(gh pr list --repo "${GITHUB_REPOSITORY}" --base master --head "${branch}" --state open --json number --jq length)"
+          if [[ "${existing}" == 0 ]]; then
+            body="${RUNNER_TEMP}/release-notes-pr.md"
+            url="$(jq -r .url "${release}")"
+            printf 'Adds the published release notes for [%s](%s) to %s.\n' "${TAG}" "${url}" "${file}" > "${body}"
+            gh pr create --repo "${GITHUB_REPOSITORY}" --base master --head "${branch}" \
+              --title "docs: add release notes for ${TAG}" --body-file "${body}"
+          fi

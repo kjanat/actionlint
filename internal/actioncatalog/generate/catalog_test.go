@@ -22,11 +22,13 @@ func TestBundledCatalogRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	actions := maps.Clone(actioncatalog.PopularActions)
+	g := newGen(io.Discard, io.Discard, io.Discard, actionmeta.Runtimes)
 	for ref := range actioncatalog.OutdatedPopularActionSpecs {
-		actions[ref] = &actionmeta.Metadata{Runs: actionmeta.Runs{Using: "node12"}}
+		actions[ref] = &actionmeta.Metadata{}
+		g.retired[ref] = true
 	}
 	var output bytes.Buffer
-	if err := newGen(io.Discard, io.Discard, io.Discard).writeCatalog(&output, actions); err != nil {
+	if err := g.writeCatalog(&output, actions); err != nil {
 		t.Fatal(err)
 	}
 	got, err := actioncatalog.Decode(output.Bytes())
@@ -43,7 +45,7 @@ func TestWriteCatalog(t *testing.T) {
 		"token": {Name: "Token", Required: true}, "old": {Name: "old", Deprecated: true},
 	}, Outputs: actionmeta.Outputs{"result": {Name: "Result"}}}
 	actions := map[string]*actionmeta.Metadata{"a/b@v1": meta, "a/b@v2": meta, "a/b@v0": {Runs: actionmeta.Runs{Using: "node12"}}}
-	g := newGen(io.Discard, io.Discard, io.Discard)
+	g := newTestGen(io.Discard, io.Discard, io.Discard)
 	var out, again bytes.Buffer
 	if err := g.writeCatalog(&out, actions); err != nil {
 		t.Fatal(err)

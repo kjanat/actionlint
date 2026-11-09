@@ -4,6 +4,7 @@
 /.idea
 /.mise.local.toml
 /.playwright-mcp/
+/.review-artifacts/
 /.worktrees/
 /_*.md
 /action.mjs
@@ -32,6 +33,4 @@ docs/releases/vX.Y.Z.md
 node_modules/
 target/
 
-/custom-gcl
-/custom-gcl.exe
 /.bin/

@@ -66,6 +66,7 @@ func (a *commandApp) applyEnvironment() error {
 		return err
 	}
 	switch i.Operation {
+	case operationVersion, operationPluginInspect, operationPluginSearch, operationPluginVersions, operationConfigInit, operationCompletion:
 	case "lsp", operationCheck, operationRules, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate, operationConfigMigrate,
 		operationPluginInstall, operationPluginUpdate, operationPluginRemove, operationPluginList, operationPluginSync:
 		if !a.anySet("config", "config-file", "no-config") {

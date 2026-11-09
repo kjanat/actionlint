@@ -24,14 +24,14 @@ func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
 		t.Fatalf("direct selection: %+v, %v", selected, err)
 	}
 	foreign := []string{filepath.Join(other, "workflow.yml")}
-	if err := selected.ValidateScope(foreign); err == nil {
+	if err := selected.ValidateScope(t.Context(), foreign); err == nil {
 		t.Fatal("automatic direct plugin escaped repository scope")
 	}
 	empty, err := (PluginSelection{}).Select(t.Context(), other, input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := empty.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err == nil {
+	if err := empty.ValidateScope(t.Context(), []string{filepath.Join(root, "workflow.yml")}); err == nil {
 		t.Fatal("plugin-free session accepted foreign direct plugin")
 	}
 	input = application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "a.yml"), foreign[0]}}
@@ -42,7 +42,7 @@ func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
 	if err != nil || len(explicit.Paths) != 1 {
 		t.Fatalf("explicit direct selection: %+v, %v", explicit, err)
 	}
-	if err := explicit.ValidateScope(foreign); err != nil {
+	if err := explicit.ValidateScope(t.Context(), foreign); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -85,7 +85,7 @@ func TestPluginSelectionOverlaysDetermineLinkedActivation(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := selected.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err != nil {
+				if err := selected.ValidateScope(t.Context(), []string{filepath.Join(root, "workflow.yml")}); err != nil {
 					t.Fatalf("foreign scope ignored disabling overlay: %v", err)
 				}
 			}

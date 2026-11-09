@@ -52,6 +52,8 @@ func Complete(content string, offset int) []expr.Completion {
 				for name, input := range dispatch.Inputs {
 					var ty expr.Type = expr.StringType{}
 					switch input.Type {
+					case workflow.WorkflowDispatchEventInputTypeNone, workflow.WorkflowDispatchEventInputTypeString, workflow.WorkflowDispatchEventInputTypeChoice, workflow.WorkflowDispatchEventInputTypeEnvironment:
+						ty = expr.StringType{}
 					case workflow.WorkflowDispatchEventInputTypeBoolean:
 						ty = expr.BoolType{}
 					case workflow.WorkflowDispatchEventInputTypeNumber:
@@ -86,6 +88,8 @@ func keyAt(root *yaml.Node, content string, offset int) string {
 			return
 		}
 		switch n.Kind {
+		case yaml.AliasNode:
+			return
 		case yaml.DocumentNode, yaml.SequenceNode:
 			for _, child := range n.Content {
 				walk(child, path)

@@ -24,7 +24,7 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 					}
 				}
 				proj := workspace.Identity(root)
-				cache := calls.NewCache(proj.RootDir(), root, nil)
+				cache := calls.NewCache(t.Context(), proj.RootDir(), root, nil)
 				request := analysisRequest{WorkingDir: root}
 				var err error
 
@@ -123,7 +123,7 @@ jobs:
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := calls.NewCache(t.Context(), project.RootDir(), root, nil)
 				for range 2 {
 					for _, name := range order {
 						source := caller

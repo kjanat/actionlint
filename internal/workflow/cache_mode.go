@@ -46,6 +46,8 @@ type CacheMode struct {
 func (m *CacheMode) Capabilities() (uint8, bool) {
 	if m != nil {
 		switch m.Kind {
+		case CacheModeInvalid:
+			return 0, false
 		case CacheModeNone:
 			return 0, true
 		case CacheModeRead:

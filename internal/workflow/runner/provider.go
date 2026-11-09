@@ -77,6 +77,8 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 				}
 			}
 			switch k.Platform {
+			case Any:
+				candidate.OS = runnerapi.UnknownOS
 			case Windows:
 				candidate.OS = runnerapi.Windows
 			case MacOrLinux:

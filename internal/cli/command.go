@@ -27,6 +27,7 @@ func (cmd *Command) Main(args []string) int {
 // Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	app := newCommandApp(cmd)
+	app.root.SetContext(ctx)
 	// Root parsing must select an operation before errors can describe a check.
 	app.inv.Operation = ""
 	if len(args) > 0 {

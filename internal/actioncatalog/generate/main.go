@@ -12,6 +12,7 @@ import (
 	"go/format"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"slices"
@@ -23,12 +24,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
-// List of known outdated actions which cannot be detected from 'runs' in action.yml
+// These actions are outdated for reasons not determined by their runtime.
+// Runtime replacement cannot restore the retired artifact and cache services.
+// GitHub Enterprise Server is not affected by the artifact and cache shutdowns.
+// https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/
+// https://github.blog/changelog/2024-12-05-notice-of-upcoming-releases-and-breaking-changes-for-github-actions/
 var outdatedActions = []string{
 	"actions/labeler@v1",
 	"actions/checkout@v1",
 	"actions/upload-artifact@v1",
+	"actions/upload-artifact@v2",
+	"actions/upload-artifact@v3",
+	"actions/upload-artifact@v3-node20",
 	"actions/download-artifact@v1",
+	"actions/download-artifact@v2",
+	"actions/download-artifact@v3",
+	"actions/download-artifact@v3-node20",
+	"actions/cache@v1",
+	"actions/cache@v2",
 }
 
 type actionOutput struct {
@@ -75,11 +88,16 @@ func (r *registry) spec(tag string) string {
 //go:embed popular_actions.json
 var defaultPopularActionsJSON []byte
 
-func isOutdated(spec, runs string) bool {
+func isOutdated(spec, runs string, runtimes map[string]actionmeta.Runtime) bool {
 	if slices.Contains(outdatedActions, spec) {
 		return true
 	}
-	return actionmeta.Runtimes[strings.ToLower(runs)].Removed
+	runtime := runtimes[strings.ToLower(runs)]
+	if runtime.ExecutionRuntime != "" {
+		replacement, found := runtimes[strings.ToLower(runtime.ExecutionRuntime)]
+		return !found || replacement.Removed
+	}
+	return runtime.Removed
 }
 
 type gen struct {
@@ -89,15 +107,17 @@ type gen struct {
 	rawRegistry []byte
 	client      *http.Client
 	retired     map[string]bool
+	runtimes    map[string]actionmeta.Runtime
 }
 
-func newGen(stdout, stderr, dbgout io.Writer) *gen {
+func newGen(stdout, stderr, dbgout io.Writer, runtimes map[string]actionmeta.Runtime) *gen {
 	l := log.New(dbgout, "", log.LstdFlags)
-	return &gen{stdout, stderr, l, defaultPopularActionsJSON, &http.Client{Timeout: 30 * time.Second}, map[string]bool{}}
+	return &gen{stdout: stdout, stderr: stderr, log: l, rawRegistry: defaultPopularActionsJSON,
+		client: &http.Client{Timeout: 30 * time.Second}, retired: map[string]bool{}, runtimes: maps.Clone(runtimes)}
 }
 
 func (g *gen) outdated(spec, runtime string) bool {
-	return g.retired[spec] || isOutdated(spec, runtime)
+	return g.retired[spec] || isOutdated(spec, runtime, g.runtimes)
 }
 
 func (g *gen) get(ctx context.Context, method, url string) (*http.Response, error) {
@@ -249,7 +269,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 		if f.pin != "" {
 			action, _, _ := strings.Cut(f.spec, "@")
 			ret[action+"@"+f.pin] = f.meta
-			if isOutdated(f.spec, f.meta.Runs.Using) {
+			if g.outdated(f.spec, f.meta.Runs.Using) {
 				g.retired[action+"@"+f.pin] = true
 			}
 		}
@@ -726,5 +746,5 @@ Flags:`)
 }
 
 func main() {
-	os.Exit(newGen(os.Stdout, os.Stderr, os.Stderr).run(os.Args))
+	os.Exit(newGen(os.Stdout, os.Stderr, os.Stderr, actionmeta.Runtimes).run(os.Args))
 }

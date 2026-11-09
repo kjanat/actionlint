@@ -21,18 +21,23 @@ var runtimeSourcePaths = []string{
 	"src/Runner.Worker/ActionManifestManagerLegacy.cs",
 	"src/Misc/externals.sh",
 	"src/Runner.Common/Constants.cs",
+	"src/Runner.Worker/Handlers/HandlerFactory.cs",
 }
 
 var (
-	acceptedRuntimePattern      = regexp.MustCompile(`string\.Equals\(usingToken\.Value,\s*"(node[0-9]+)",\s*StringComparison\.OrdinalIgnoreCase\)`)
-	bundledRuntimePattern       = regexp.MustCompile(`(?m)^NODE([0-9]+)_VERSION="[0-9]+\.[0-9]+\.[0-9]+"\s*$`)
-	migrationConstantPattern    = regexp.MustCompile(`public static readonly string Node([0-9]+)(DeprecationUrl|RemovalDate)\s*=\s*"([^"\r\n]+)";`)
-	migrationDeclarationPattern = regexp.MustCompile(`Node[0-9]+(?:DeprecationUrl|RemovalDate)\s*=`)
+	acceptedRuntimePattern             = regexp.MustCompile(`string\.Equals\(usingToken\.Value,\s*"(node[0-9]+)",\s*StringComparison\.OrdinalIgnoreCase\)`)
+	bundledRuntimePattern              = regexp.MustCompile(`(?m)^NODE([0-9]+)_VERSION="[0-9]+\.[0-9]+\.[0-9]+"\s*$`)
+	migrationConstantPattern           = regexp.MustCompile(`public static readonly string Node([0-9]+)(DeprecationUrl|RemovalDate)\s*=\s*"([^"\r\n]+)";`)
+	migrationDeclarationPattern        = regexp.MustCompile(`Node[0-9]+(?:DeprecationUrl|RemovalDate)\s*=`)
+	nodeHandlerPattern                 = regexp.MustCompile(`(?s)else if\s*\(data\.ExecutionType\s*==\s*ActionExecutionType\.NodeJS\)\s*\{([^{}]*)\}`)
+	executionRuntimePattern            = regexp.MustCompile(`nodeData\.NodeVersion\s*=\s*"(node[0-9]+)";`)
+	executionRuntimeDeclarationPattern = regexp.MustCompile(`nodeData\.NodeVersion\s*=`)
 )
 
 type runtimeInfo struct {
 	Removed, Deprecated bool
 	URL, RemovalDate    string
+	ExecutionRuntime    string
 }
 
 func runtimeNames(source []byte) []string {
@@ -66,8 +71,35 @@ func collectRuntimes(sources map[string][]byte) (map[string]runtimeInfo, error) 
 			return nil, fmt.Errorf("bundled runtime %s is missing from the manifest parsers", name)
 		}
 	}
-	migrations := migrationConstantPattern.FindAllSubmatch(sources[runtimeSourcePaths[3]], -1)
-	if len(migrations) != len(migrationDeclarationPattern.FindAll(sources[runtimeSourcePaths[3]], -1)) {
+	handler := sources[runtimeSourcePaths[4]]
+	if !bytes.Contains(handler, []byte("class HandlerFactory")) {
+		return nil, errors.New("runner handler source has no HandlerFactory class")
+	}
+	if branch := nodeHandlerPattern.FindSubmatch(handler); len(branch) > 0 {
+		assignments := executionRuntimePattern.FindAllSubmatch(branch[1], -1)
+		if len(assignments) > 1 || len(assignments) != len(executionRuntimeDeclarationPattern.FindAll(branch[1], -1)) {
+			return nil, errors.New("unrecognized runner execution runtime assignment")
+		}
+		if len(assignments) == 1 {
+			selected := assignments[0]
+			runtime := string(selected[1])
+			if !bundled[runtime] {
+				return nil, fmt.Errorf("runner executes JavaScript actions with unbundled runtime %s", runtime)
+			}
+			for name, info := range out {
+				info.ExecutionRuntime = runtime
+				out[name] = info
+			}
+		}
+	} else if executionRuntimeDeclarationPattern.Match(handler) {
+		return nil, errors.New("runner runtime selection is conditional; review JavaScript execution changes")
+	}
+	constants := sources[runtimeSourcePaths[3]]
+	if !bytes.Contains(constants, []byte("class Constants")) {
+		return nil, errors.New("runner constants source has no Constants class")
+	}
+	migrations := migrationConstantPattern.FindAllSubmatch(constants, -1)
+	if len(migrations) != len(migrationDeclarationPattern.FindAll(constants, -1)) {
 		return nil, errors.New("unrecognized runtime migration declaration; review upstream source changes")
 	}
 	for _, match := range migrations {
@@ -86,9 +118,6 @@ func collectRuntimes(sources map[string][]byte) (map[string]runtimeInfo, error) 
 			info.RemovalDate = value
 		}
 		out[name] = info
-	}
-	if !bytes.Contains(sources[runtimeSourcePaths[3]], []byte("class NodeMigration")) {
-		return nil, errors.New("runner migration constants changed shape; review runtime lifecycle extraction")
 	}
 	for name, info := range out {
 		if info.RemovalDate != "" && !info.Deprecated {
@@ -112,7 +141,7 @@ func generateRuntimes(sources map[string][]byte, revision string) ([]byte, error
 	fmt.Fprintln(&out, "\npackage action\n\n// Runtimes records accepted metadata values and the lifecycle of their bundled executables.\nvar Runtimes = map[string]Runtime{")
 	for _, name := range slices.Sorted(maps.Keys(runtimes)) {
 		r := runtimes[name]
-		fmt.Fprintf(&out, "%q: {Removed: %t, Deprecated: %t, DeprecationURL: %q, RemovalDate: %q},\n", name, r.Removed, r.Deprecated, r.URL, r.RemovalDate)
+		fmt.Fprintf(&out, "%q: {Removed: %t, Deprecated: %t, ExecutionRuntime: %q, DeprecationURL: %q, RemovalDate: %q},\n", name, r.Removed, r.Deprecated, r.ExecutionRuntime, r.URL, r.RemovalDate)
 	}
 	fmt.Fprintln(&out, "}")
 	return format.Source(out.Bytes())

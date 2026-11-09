@@ -49,6 +49,7 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		r.rules.register(rule)
 	}
 	switch r.format {
+	case FormatText, FormatOneline:
 	case FormatJSON, FormatJSONL:
 		report := result.CheckResult()
 		return report.WriteJSON(out, r.format == FormatJSONL)

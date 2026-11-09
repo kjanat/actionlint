@@ -1,6 +1,7 @@
 package localapp
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -9,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 )
 
-func (s PluginSelection) selectedLock(project *PluginProject, mode pluginSelectionMode, root string) (pluginregistry.Lock, error) {
+func (s PluginSelection) selectedLock(ctx context.Context, project *PluginProject, mode pluginSelectionMode, root string) (pluginregistry.Lock, error) {
 	if mode != pluginCachePreview || project.Manifest.Declared || len(project.Lock.Lock.Plugins) == 0 {
 		return project.SelectedLock()
 	}
@@ -29,7 +30,7 @@ func (s PluginSelection) selectedLock(project *PluginProject, mode pluginSelecti
 	if err != nil {
 		return pluginregistry.Lock{}, err
 	}
-	migration, err := config.PrepareMigration(path)
+	migration, err := config.PrepareMigration(ctx, path)
 	if err != nil {
 		return pluginregistry.Lock{}, err
 	}

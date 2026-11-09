@@ -19,6 +19,24 @@ import (
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
+func TestRuntimeReplacementDoesNotRetireAction(t *testing.T) {
+	runtimes := map[string]actionmeta.Runtime{
+		"node12": {Removed: true, ExecutionRuntime: "node24"},
+		"node16": {Removed: true, ExecutionRuntime: "node24"},
+		"node20": {Removed: true, ExecutionRuntime: "node24"},
+		"node24": {},
+	}
+	g := newGen(io.Discard, io.Discard, io.Discard, runtimes)
+	for name := range runtimes {
+		if g.outdated("example/action@v1", name) {
+			t.Errorf("action using %s was retired despite its available execution runtime", name)
+		}
+	}
+	if !newTestGen(io.Discard, io.Discard, io.Discard).outdated("example/action@v1", "node12") {
+		t.Fatal("unbundled runtime without a replacement was accepted")
+	}
+}
+
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
@@ -73,7 +91,10 @@ runs:
 }
 
 func newTestGen(stdout, stderr, debug io.Writer) *gen {
-	g := newGen(stdout, stderr, debug)
+	// These fixtures describe runners that bundle Node 20 and Node 24.
+	g := newGen(stdout, stderr, debug, map[string]actionmeta.Runtime{
+		"node12": {Removed: true}, "node16": {Removed: true}, "node20": {}, "node24": {},
+	})
 	g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		body, ok := testRemoteActionYAML[req.URL.String()]
 		statusCode := http.StatusNotFound
@@ -103,7 +124,7 @@ func TestWriteGoChunksLargeCatalogues(t *testing.T) {
 			}
 			actions["example/retired@v1"] = &actionmeta.Metadata{Name: "Retired", Runs: actionmeta.Runs{Using: "node12"}}
 			var output bytes.Buffer
-			g := newGen(io.Discard, io.Discard, io.Discard)
+			g := newTestGen(io.Discard, io.Discard, io.Discard)
 			if err := g.writeGo(&output, actions); err != nil {
 				t.Fatal(err)
 			}
@@ -138,7 +159,7 @@ func TestWriteGoChunksLargeCatalogues(t *testing.T) {
 }
 
 func TestDefaultPopularActions(t *testing.T) {
-	popularActions, err := newGen(nil, nil, nil).registry()
+	popularActions, err := newTestGen(nil, nil, nil).registry()
 	if err != nil {
 		t.Fatal("could not load default popular actions:", err)
 	}
@@ -201,7 +222,7 @@ func TestReadWriteJSONL(t *testing.T) {
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
 
-			status := newGen(stdout, stderr, io.Discard).run([]string{"", "-s", f, "-f", "jsonl"})
+			status := newTestGen(stdout, stderr, io.Discard).run([]string{"", "-s", f, "-f", "jsonl"})
 			if status != 0 {
 				t.Fatalf("exit status is non-zero: %d: %s", status, stderr.Bytes())
 			}
@@ -255,7 +276,7 @@ func TestWriteGoToStdout(t *testing.T) {
 		t.Run(tc.in, func(t *testing.T) {
 			stdout := &bytes.Buffer{}
 			stderr := &bytes.Buffer{}
-			status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-s", filepath.Join("testdata", "jsonl", tc.in)})
+			status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-s", filepath.Join("testdata", "jsonl", tc.in)})
 			if status != 0 {
 				t.Fatalf("exit status is non-zero: %d: %s", status, stderr.Bytes())
 			}
@@ -286,7 +307,7 @@ func TestWriteJSONLFile(t *testing.T) {
 
 	stdout := io.Discard
 	stderr := io.Discard
-	status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-s", in, "-f", "jsonl", out})
+	status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-s", in, "-f", "jsonl", out})
 	if status != 0 {
 		t.Fatal("exit status is non-zero:", status)
 	}
@@ -310,7 +331,7 @@ func TestWriteGoFile(t *testing.T) {
 
 	stdout := io.Discard
 	stderr := io.Discard
-	status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-s", in, out})
+	status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-s", in, out})
 	if status != 0 {
 		t.Fatal("exit status is non-zero:", status)
 	}
@@ -376,7 +397,7 @@ func TestLighthouseMetadataTypoPreservesClassification(t *testing.T) {
 		outdated   bool
 	}{{"v10", "node16", true}, {"v11", "node20", false}} {
 		t.Run(tc.tag, func(t *testing.T) {
-			g := newGen(io.Discard, io.Discard, io.Discard)
+			g := newTestGen(io.Discard, io.Discard, io.Discard)
 			g.rawRegistry = fmt.Appendf(nil, `[{"slug":"treosh/lighthouse-ci-action","tags":[%q]}]`, tc.tag)
 			g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 				body := bytes.ReplaceAll(fixture, []byte("node16"), []byte(tc.using))
@@ -391,7 +412,7 @@ func TestLighthouseMetadataTypoPreservesClassification(t *testing.T) {
 			if md == nil || md.Name != "Lighthouse CI Action" || len(md.Inputs) != 1 || len(md.Outputs) != 1 || md.Runs.Using != tc.using {
 				t.Fatalf("Lighthouse metadata was lost: %+v", md)
 			}
-			if have := isOutdated(spec, md.Runs.Using); have != tc.outdated {
+			if have := g.outdated(spec, md.Runs.Using); have != tc.outdated {
 				t.Fatalf("outdated = %v, want %v", have, tc.outdated)
 			}
 		})
@@ -411,7 +432,7 @@ func TestRegistryExtractionUnknownInputFields(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			body := "name: Example\ninputs:\n  token:\n    required: true\n" + tc.input + "  optional:\n    required: true\n    default: value\noutputs:\n  result: {}\nruns:\n  using: node24\n  main: index.js\n"
-			g := newGen(io.Discard, io.Discard, io.Discard)
+			g := newTestGen(io.Discard, io.Discard, io.Discard)
 			g.rawRegistry = []byte(`[{"slug":"example/action","tags":["v1"]}]`)
 			g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
@@ -457,7 +478,7 @@ func TestLogOutput(t *testing.T) {
 	f := filepath.Join("testdata", "jsonl", "no_new_version.jsonl")
 	stdout := &bytes.Buffer{}
 	logged := &bytes.Buffer{}
-	status := newGen(stdout, io.Discard, logged).run([]string{"test", "-s", f, "-f", "jsonl"})
+	status := newTestGen(stdout, io.Discard, logged).run([]string{"test", "-s", f, "-f", "jsonl"})
 	if status != 0 {
 		t.Fatal("exit status is non-zero:", status)
 	}
@@ -473,7 +494,7 @@ func TestLogOutput(t *testing.T) {
 
 	stdout = &bytes.Buffer{}
 	logged = &bytes.Buffer{}
-	status = newGen(stdout, io.Discard, logged).run([]string{"test", "-s", f, "-f", "jsonl", "-q"})
+	status = newTestGen(stdout, io.Discard, logged).run([]string{"test", "-s", f, "-f", "jsonl", "-q"})
 	if status != 0 {
 		t.Fatal("exit status is non-zero:", status)
 	}
@@ -491,7 +512,7 @@ func TestLogOutput(t *testing.T) {
 func TestHelpOutput(t *testing.T) {
 	stdout := io.Discard
 	stderr := &bytes.Buffer{}
-	status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-help"})
+	status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-help"})
 	if status != 0 {
 		t.Fatal("exit status is non-zero:", status)
 	}
@@ -556,7 +577,7 @@ func TestCouldNotReadJSONLFile(t *testing.T) {
 			stdout := io.Discard
 			stderr := &bytes.Buffer{}
 
-			status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-s", f})
+			status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-s", f})
 			if status == 0 {
 				t.Fatal("exit status is unexpectedly zero")
 			}
@@ -575,7 +596,7 @@ func TestCouldNotCreateOutputFile(t *testing.T) {
 	stdout := io.Discard
 	stderr := &bytes.Buffer{}
 
-	status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-s", f, "-f", "jsonl", out})
+	status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-s", f, "-f", "jsonl", out})
 	if status == 0 {
 		t.Fatal("exit status is unexpectedly zero")
 	}
@@ -599,7 +620,7 @@ func TestWriteError(t *testing.T) {
 			stdout := testErrorWriter{}
 			stderr := &bytes.Buffer{}
 
-			status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-s", f, "-f", format})
+			status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-s", f, "-f", format})
 			if status == 0 {
 				t.Fatal("exit status is unexpectedly zero")
 			}
@@ -641,7 +662,7 @@ func TestInvalidCommandArgs(t *testing.T) {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 
-			status := newGen(io.Discard, stderr, io.Discard).run(tc.args)
+			status := newTestGen(io.Discard, stderr, io.Discard).run(tc.args)
 			if status == 0 {
 				t.Fatal("exit status is unexpectedly zero")
 			}
@@ -658,7 +679,7 @@ func TestDetectErrorBadRequest(t *testing.T) {
 	stdout := io.Discard
 	stderr := &bytes.Buffer{}
 	f := filepath.Join("testdata", "registry", "empty_slug.json")
-	g := newGen(stdout, stderr, io.Discard)
+	g := newTestGen(stdout, stderr, io.Discard)
 	g.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: http.StatusInternalServerError,
@@ -697,7 +718,7 @@ func TestReadActionRegistryError(t *testing.T) {
 			stdout := io.Discard
 			stderr := &bytes.Buffer{}
 			f := filepath.Join("testdata", "registry", tc.file)
-			status := newGen(stdout, stderr, io.Discard).run([]string{"test", "-d", "-r", f})
+			status := newTestGen(stdout, stderr, io.Discard).run([]string{"test", "-d", "-r", f})
 			if status != 1 {
 				t.Fatal("exit status is not 1:", status)
 			}

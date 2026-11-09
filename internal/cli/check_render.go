@@ -30,6 +30,8 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 		previous := color.NoColor
 		defer func() { color.NoColor = previous }()
 		switch r.Color {
+		case render.ColorAuto:
+			color.NoColor = previous
 		case render.ColorNever:
 			color.NoColor = true
 		case render.ColorAlways:

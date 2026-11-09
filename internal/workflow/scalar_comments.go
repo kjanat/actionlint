@@ -27,6 +27,8 @@ func (p *Parser) indexScalarComments(root *yaml.Node) {
 			return
 		}
 		switch node.Kind {
+		case yaml.ScalarNode, yaml.AliasNode:
+			return
 		case yaml.MappingNode:
 			for i := 0; i+1 < len(node.Content); i += 2 {
 				key, value := node.Content[i], node.Content[i+1]

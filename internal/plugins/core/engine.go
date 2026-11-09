@@ -516,7 +516,7 @@ func (e *Engine) call(ctx context.Context, operation string, body []byte) (*resp
 		_ = instance.Close(context.WithoutCancel(ctx))
 		return nil, e.failure(ctx, err)
 	}
-	e.release(instance)
+	e.release(ctx, instance)
 	var result response
 	if err := jsonv2.Unmarshal(raw, &result); err != nil {
 		return nil, fmt.Errorf("engine %s: %s returned invalid JSON: %w", e.name(), operation, err)
@@ -601,11 +601,11 @@ func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 	return instance, nil
 }
 
-func (e *Engine) release(instance api.Module) {
+func (e *Engine) release(ctx context.Context, instance api.Module) {
 	e.mu.Lock()
 	if e.closed {
 		e.mu.Unlock()
-		_ = instance.Close(context.Background())
+		_ = instance.Close(context.WithoutCancel(ctx))
 		return
 	}
 	e.idle = append(e.idle, instance)

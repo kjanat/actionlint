@@ -243,8 +243,9 @@ func safeTruthyScriptResult(expr Node, scalarArgument bool, safeReference func(N
 		return safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
 	case LogicalOpNodeKindOr:
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
+	default:
+		return safeScriptExpression(expr, scalarArgument, safeReference)
 	}
-	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
 func safeFalsyScriptResult(expr Node, scalarArgument bool, safeReference func(Node) bool) bool {
@@ -266,8 +267,9 @@ func safeFalsyScriptResult(expr Node, scalarArgument bool, safeReference func(No
 		return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
 	case LogicalOpNodeKindOr:
 		return safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
+	default:
+		return safeScriptExpression(expr, scalarArgument, safeReference)
 	}
-	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
 // Known step outcomes/conclusions and dependency results are fixed status enums.

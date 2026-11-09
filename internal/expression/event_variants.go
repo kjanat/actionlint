@@ -101,6 +101,8 @@ func eventGuardValue(node Node, variant EventVariant) (bool, bool) {
 		left, lk := eventGuardValue(n.Left, variant)
 		right, rk := eventGuardValue(n.Right, variant)
 		switch n.Kind {
+		case LogicalOpNodeKindInvalid:
+			return false, false
 		case LogicalOpNodeKindAnd:
 			if lk && !left || rk && !right {
 				return false, true

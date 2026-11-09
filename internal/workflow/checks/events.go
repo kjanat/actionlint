@@ -190,6 +190,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 		// ${{ }} is available in the default value
 		if !i.Default.ContainsExpression() {
 			switch i.Type {
+			case workflowlang.WorkflowCallEventInputTypeInvalid, workflowlang.WorkflowCallEventInputTypeString:
 			case workflowlang.WorkflowCallEventInputTypeNumber:
 				if _, err := strconv.ParseFloat(i.Default.Value, 64); err != nil {
 					rule.Errorf(
@@ -256,6 +257,7 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 				// TODO: Can some check be done for WorkflowDispatchEventInputTypeEnvironment?
 				// What is suitable for default value of the type? (Or is a default value never suitable?)
 				switch i.Type {
+				case workflowlang.WorkflowDispatchEventInputTypeNone, workflowlang.WorkflowDispatchEventInputTypeString, workflowlang.WorkflowDispatchEventInputTypeChoice, workflowlang.WorkflowDispatchEventInputTypeEnvironment:
 				case workflowlang.WorkflowDispatchEventInputTypeNumber:
 					if _, err := strconv.ParseFloat(i.Default.Value, 64); err != nil {
 						rule.Errorf(

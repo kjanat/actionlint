@@ -183,7 +183,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err := CheckReleaseNotes(root, tag, stdout); err != nil {
 		return err
 	}
-	nixArgs, err := r.nixCommand(nix)
+	nixArgs, err := r.nixCommand(ctx, nix)
 	if err != nil {
 		return err
 	}

@@ -34,6 +34,8 @@ func shadowType(t reflect.Type, active map[reflect.Type]bool) (reflect.Type, err
 	active[t] = true
 	defer delete(active, t)
 	switch t.Kind() {
+	default:
+		return t, nil
 	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
 		e, err := shadowType(t.Elem(), active)
 		if err != nil {
@@ -43,6 +45,8 @@ func shadowType(t reflect.Type, active map[reflect.Type]bool) (reflect.Type, err
 			return t, nil
 		}
 		switch t.Kind() {
+		default:
+			return t, nil
 		case reflect.Pointer:
 			return reflect.PointerTo(e), nil
 		case reflect.Slice:
@@ -155,8 +159,9 @@ func restore(dst, src reflect.Value) error {
 			dst.SetMapIndex(iter.Key(), v)
 		}
 		return nil
+	default:
+		return fmt.Errorf("cannot restore YAML %v as %v", src.Type(), dst.Type())
 	}
-	return fmt.Errorf("cannot restore YAML %v as %v", src.Type(), dst.Type())
 }
 
 func (n *Node) Decode(target any) error {

@@ -58,6 +58,8 @@ func (c checkInvocation) runners() (runner.Options, error) {
 		}
 	case 'n':
 		content = ""
+	default:
+		content = string(snapshot.Content)
 	}
 	options.Snapshot = runner.Snapshot{
 		Content: content, Scope: snapshot.Scope, ObtainedAt: snapshot.ObtainedAt,

@@ -59,8 +59,7 @@ func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
 	if r.Template != "" || !githubActionsColor(out) {
 		return
 	}
-	switch r.Format {
-	case "", render.FormatText, render.FormatOneline:
+	if r.Format == "" || r.Format == render.FormatText || r.Format == render.FormatOneline {
 		r.Color = render.ColorAlways
 	}
 }

@@ -1314,6 +1314,7 @@ func (sema *Checker) checkWithNarrowing(n Node, isTruthy bool) Type {
 	switch n := n.(type) {
 	case *LogicalOpNode:
 		switch n.Kind {
+		case LogicalOpNodeKindInvalid:
 		case LogicalOpNodeKindAnd:
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {

@@ -14,7 +14,7 @@ func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
 	path := writeFixture(t, root, "inner/action.yml", source)
 	for _, spec := range []string{"./inner", "$/inner", "./INNER", "$/INNER"} {
 		t.Run(spec, func(t *testing.T) {
-			base := NewCache(root, nil)
+			base := NewCache(t.Context(), root, nil)
 			var inputs []string
 			base.reader = fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 			for attempt := range 2 {

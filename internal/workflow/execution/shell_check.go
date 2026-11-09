@@ -35,6 +35,8 @@ func CheckShell(shell ShellValue, platform runnerlang.Platform) []diagnostic.Dia
 
 	onPlatform := ""
 	switch platform {
+	case runnerlang.Any:
+		onPlatform = ""
 	case runnerlang.Windows:
 		for _, p := range getAvailableShellNames(runnerlang.Any) {
 			if name == p {

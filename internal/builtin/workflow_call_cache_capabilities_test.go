@@ -16,7 +16,7 @@ import (
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*findingmodel.Finding {
 	t.Helper()
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
+	cache := calls.NewCache(t.Context(), root, root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)

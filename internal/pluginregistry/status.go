@@ -240,6 +240,8 @@ func checkStatus(ctx context.Context, pin Pin, snapshot StatusSnapshot, options 
 			return errors.New("registry release status disagrees with pinned artifact digest")
 		}
 		switch status.Status {
+		case ReleaseActive:
+			continue
 		case ReleaseRevoked:
 			return fmt.Errorf("%w: %s", errReleaseUnavailable, statusMessage(pin, status))
 		case ReleaseWithdrawn:

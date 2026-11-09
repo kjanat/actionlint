@@ -111,13 +111,10 @@ func (a *commandApp) prepareInvocation() error {
 	jsonRequested := i.JSON
 	i.JSON = a.jsonOutput()
 	if !i.Legacy {
-		switch i.Operation {
-		case operationCompletion:
+		if i.Operation == operationCompletion {
 			i.Shell = i.Check.Paths[0]
-		case operationRules:
-			if len(i.Check.Paths) > 0 {
-				i.Rule = i.Check.Paths[0]
-			}
+		} else if i.Operation == operationRules && len(i.Check.Paths) > 0 {
+			i.Rule = i.Check.Paths[0]
 		}
 	}
 	if i.Operation != "check" && i.Render.OutputFile != "" {

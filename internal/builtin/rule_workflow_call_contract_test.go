@@ -43,7 +43,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
-			c := calls.NewCache("", "", nil)
+			c := calls.NewCache(t.Context(), "", "", nil)
 			r := builtin.NewRuleWorkflowCall("", c)
 			j := &workflowlang.Job{
 				WorkflowCall: &workflowlang.WorkflowCall{
@@ -88,7 +88,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 		},
 	}
 
-	c := calls.NewCache("", "", nil)
+	c := calls.NewCache(t.Context(), "", "", nil)
 	r := builtin.NewRuleWorkflowCall("", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
@@ -131,7 +131,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	}
 
 	cwd := filepath.Join("path", "to", "project")
-	c := calls.NewCache(cwd, cwd, nil)
+	c := calls.NewCache(t.Context(), cwd, cwd, nil)
 	r := builtin.NewRuleWorkflowCall("test-workflow.yaml", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {

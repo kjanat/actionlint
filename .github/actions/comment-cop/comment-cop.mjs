@@ -3,7 +3,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { yamlExampleLines } from './yaml-examples.mjs';
 
@@ -12,7 +13,8 @@ import { yamlExampleLines } from './yaml-examples.mjs';
 /** @typedef {{start: number, end: number, lang: Lang, topLevel: boolean, doc: boolean, lines: string[]}} PendingGroup */
 /** @typedef {{id: string, isResolved: boolean, path: string, comments: {nodes: Array<{body: string, viewerDidAuthor: boolean}>}}} ReviewThread */
 /** @typedef {{repository: {pullRequest: {reviewThreads: {pageInfo: {hasNextPage: boolean, endCursor: string | null}, nodes: ReviewThread[]}}}}} ReviewThreadsResponse */
-/** @typedef {Pick<import('@actions/github-script').AsyncFunctionArguments, 'github' | 'context' | 'core'>} RunArguments */
+/** @typedef {{filename: string, patch: string, source: string}} ChangedFile */
+/** @typedef {Pick<import('@actions/github-script').AsyncFunctionArguments, 'github' | 'context' | 'core'> & {files: ChangedFile[]}} RunArguments */
 /** @typedef {{character: '`' | '~', length: number} | null} Fence */
 
 /** @type {Array<[RegExp, Lang]>} */
@@ -24,49 +26,39 @@ const LANGS = [
 	[/\.md$/, 'md'],
 ];
 
-const CONTRAST_GUIDANCE =
-	'Check whether the comparison explains a real constraint. If it does, keep it; otherwise describe the chosen behavior directly.';
-
-/** @type {Array<[string, RegExp, string]>} */
+/** @type {Array<[string, RegExp]>} */
 const TELLS = [
 	[
 		'em dash',
 		/[—–]/,
-		'For ordinary prose, consider a comma, colon, parentheses, or separate sentence. Preserve punctuation that is part of quoted material.',
 	],
-	['"X, not Y"', /,[\s]+not\s+\S/, CONTRAST_GUIDANCE],
-	['"X rather than Y"', /\brather than\b/i, CONTRAST_GUIDANCE],
-	['"X instead of Y"', /\b(?:instead of|as opposed to)\b/i, CONTRAST_GUIDANCE],
-	['"not just X but Y"', /\bnot (?:just|merely|only|because)\b[^.]{0,80}?\bbut\b/i, CONTRAST_GUIDANCE],
+	['"X, not Y"', /,[\s]+not\s+\S/],
+	['"X rather than Y"', /\brather than\b/i],
+	['"X instead of Y"', /\b(?:instead of|as opposed to)\b/i],
+	['"not just X but Y"', /\bnot (?:just|merely|only|because)\b[^.]{0,80}?\bbut\b/i],
 	[
 		'emphatic cleft',
 		/\b(?:which|that) is (?:what|why|how)\b|\bexactly (?:what|why|how|the)\b/i,
-		'Consider stating the behavior or reason directly. Keep the emphasis if it carries a meaningful distinction.',
 	],
 	[
 		'filler phrase',
 		/\b(?:in other words|it(?:'s| is) (?:worth noting|important to note)|that said|under the hood|at its core|(?:simply put|put simply)|in short|in essence|bottom line|needless to say|when it comes to|at the end of the day|think of (?:it|this) as|no more,? no less|(?:that|which) is to say|here(?:'s| is) (?:why|the thing)|the (?:whole|entire) point|the key (?:insight|takeaway))\b/i,
-		'Check whether the introductory phrase adds meaning. If the explanation reads clearly without it, omit the phrase.',
 	],
 	[
 		'inflated diction',
 		/\b(?:leverag(?:e|es|ing)|utiliz(?:e|es|ing)|seamless(?:ly)?|delv(?:e|es|ing)|myriad|plethora|robust|comprehensive(?:ly)?|crucial(?:ly)?|vital(?:ly)?|elegant(?:ly)?|powerful(?:ly)?|intuitive(?:ly)?|nuanced|holistic|granular|meticulous|facilitat(?:e|es|ing)|streamlin(?:e|es|ing)|empower(?:s|ing)?|cutting[-\s]edge|state[-\s]of[-\s]the[-\s]art|arguably|essentially|fundamentally|a wealth of)\b/i,
-		'Consider a plain, precise term. Keep the existing word if it has a specific technical meaning here.',
 	],
 	[
 		'connective glue',
 		/\b(?:moreover|furthermore|conversely|as such|it turns out|notably|importantly)\b/i,
-		'Check whether the transition helps connect the surrounding points. It can be omitted when that connection is already clear.',
 	],
 	[
 		'counterfactual justification',
 		/\bso\b[^.]{0,60}\b(?:cannot|can't|could not|never|would)\b|\bwithout\b[^.]{0,70}\bwould\b|\bwould otherwise\b|\botherwise\b[^.]{0,70}\bwould\b|\bso that\b|\b(?:which|that) (?:prevents|keeps|stops)\b/i,
-		'An explanation of a consequence or failure mode can be useful. Keep it when it documents a non-obvious constraint; otherwise state the behavior directly.',
 	],
 	[
 		'paste artifact',
 		/[“”‘’]|[\u00A0\u00AD\u200B-\u200D\uFEFF]/,
-		'Check typographic quotes and nonstandard whitespace for accidental pasted characters. Preserve intentional examples and quotations.',
 	],
 ];
 
@@ -297,23 +289,11 @@ export const keyFor = group =>
 /** @type {'RIGHT'} */
 const RIGHT = 'RIGHT';
 
-/** @param {string} reason */
-function guidanceFor(reason) {
-	if (/^\d+ lines$/.test(reason)) {
-		return 'This is a length-only flag. Check whether each line adds useful context; a necessary explanation can stay.';
-	}
-	return TELLS.find(([name]) => name === reason)?.[2] ?? 'Review the flagged wording in context.';
-}
-
 /** @param {Group} group */
 export function bodyFor(group) {
-	const guidance = [...new Set(group.reasons.map(guidanceFor))];
-	const advice = guidance.length === 1 ? guidance[0] : guidance.map(text => `- ${text}`).join('\n');
 	return `<!-- actionlint-comment-cop:${keyFor(group)} -->\n`
-		+ `Flagged for: ${group.reasons.join(', ')}.\n\n${advice}\n\n`
-		+ `<sub>Comment Cop is intentionally sensitive; its suggestions are advisory. `
-		+ `If this is a false positive, you are welcome to resolve this thread without changing the text.</sub>`
-		+ `<br><sub>Any AI agents are only allowed to resolve the comment if it is a false positive and need to justify the closure with a reply. Otherwise fix it. Comment-cop will resolve it automatically on next push.</sub>`;
+		+ `Flagged for: ${group.reasons.join(', ')}.\n\n`
+		+ '[Writing instructions](https://github.com/kjanat/actionlint/blob/master/.agents/writing.md)';
 }
 
 /** @param {unknown} error */
@@ -328,7 +308,7 @@ function requiredString(value, name) {
 }
 
 /** @param {RunArguments} args */
-export default async function run({ github, context, core }) {
+export default async function run({ github, context, core, files }) {
 	const pullRequest = context.payload.pull_request;
 	if (pullRequest === undefined) throw new Error('pull_request payload is required');
 
@@ -336,39 +316,10 @@ export default async function run({ github, context, core }) {
 	const repo = context.repo.repo;
 	const pullNumber = pullRequest.number;
 	const headSha = requiredString(pullRequest.head.sha, 'pull request head SHA');
-	const files = await github.paginate(github.rest.pulls.listFiles, {
-		owner,
-		repo,
-		pull_number: pullNumber,
-		per_page: 100,
-	});
-
 	/** @type {Group[]} */
 	const groups = [];
-	const unscannedPaths = new Set();
 	for (const file of files) {
-		if (file.status === 'removed' || !scannable(file.filename)) continue;
-		if (file.patch === undefined) {
-			unscannedPaths.add(file.filename);
-			core.warning(`No patch available for ${file.filename}; skipping comment scan.`);
-			continue;
-		}
-
-		let source;
-		if (/\.(?:go|ya?ml)$/.test(file.filename) || langFor(file.filename) === 'md') {
-			try {
-				const contentsUrl = requiredString(file.contents_url, `contents URL for ${file.filename}`);
-				const response = await github.request(contentsUrl, {
-					headers: { accept: 'application/vnd.github.raw+json' },
-				});
-				source = requiredString(response.data, `contents of ${file.filename}`);
-			} catch (error) {
-				unscannedPaths.add(file.filename);
-				core.warning(`Could not read ${file.filename}; skipping comment scan: ${errorMessage(error)}`);
-				continue;
-			}
-		}
-		groups.push(...groupsFromPatch(file.filename, file.patch, source));
+		groups.push(...groupsFromPatch(file.filename, file.patch, file.source));
 	}
 
 	const presentKeys = new Set(groups.map(keyFor));
@@ -399,7 +350,7 @@ export default async function run({ github, context, core }) {
 			if (match === null) continue;
 			const key = match[1];
 			seenKeys.add(key);
-			if (!thread.isResolved && !presentKeys.has(key) && !unscannedPaths.has(thread.path)) {
+			if (!thread.isResolved && !presentKeys.has(key)) {
 				staleThreadIds.push(thread.id);
 			}
 		}
@@ -453,6 +404,68 @@ export default async function run({ github, context, core }) {
 }
 
 const git = (/** @type {string[]} */ args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
+
+/**
+ * Fetch both revisions together, then read PR files from Git objects without checking them out.
+ * @param {{cacheDirectory: string, repositoryUrl: string, baseSha: string, headSha: string, token?: string}} options
+ * @returns {ChangedFile[]}
+ */
+export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, headSha, token }) {
+	for (const sha of [baseSha, headSha]) {
+		if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Expected a full Git commit SHA');
+	}
+	mkdirSync(cacheDirectory, { recursive: true });
+	const repository = join(cacheDirectory, 'repository.git');
+	/** @type {NodeJS.ProcessEnv} */
+	const environment = { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_NO_REPLACE_OBJECTS: '1' };
+	if (token) {
+		const url = new URL(repositoryUrl);
+		if (url.protocol !== 'https:') throw new Error('Git authentication requires HTTPS');
+		const index = Number(environment.GIT_CONFIG_COUNT ?? 0);
+		environment.GIT_CONFIG_COUNT = String(index + 1);
+		environment[`GIT_CONFIG_KEY_${index}`] = `http.${url.origin}/.extraheader`;
+		environment[`GIT_CONFIG_VALUE_${index}`] = `AUTHORIZATION: basic ${
+			Buffer.from(`x-access-token:${token}`).toString('base64')
+		}`;
+	}
+	/** @param {string[]} args */
+	const execute = args =>
+		execFileSync('git', args, {
+			encoding: 'utf8',
+			maxBuffer: 1 << 28,
+			env: environment,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
+	execute(['init', '--bare', repository]);
+	/** @param {string[]} args */
+	const read = args => execute(['--git-dir', repository, ...args]);
+	read([
+		'fetch',
+		'--no-tags',
+		'--no-recurse-submodules',
+		repositoryUrl,
+		`+${baseSha}:refs/comment-cop/base`,
+		`+${headSha}:refs/comment-cop/head`,
+	]);
+	const base = read(['merge-base', baseSha, headSha]).trim();
+	const names = read(['diff', '--name-only', '-z', '--no-renames', '--diff-filter=AM', base, headSha, '--'])
+		.split('\0').filter(scannable);
+	return names.map(filename => ({
+		filename,
+		patch: read([
+			'diff',
+			'--no-ext-diff',
+			'--no-textconv',
+			'--no-renames',
+			'-U3',
+			base,
+			headSha,
+			'--',
+			`:(literal)${filename}`,
+		]),
+		source: read(['show', `${headSha}:${filename}`]),
+	}));
+}
 
 function defaultBase() {
 	for (const ref of ['origin/master', 'master']) {
