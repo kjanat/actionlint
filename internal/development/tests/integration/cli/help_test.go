@@ -38,7 +38,6 @@ func TestRootHelpOverview(t *testing.T) {
 		"— Check workflows, actions and embedded scripts",
 		"actionlint [flags] [files...]\n  actionlint [flags] -\n  actionlint <command>",
 		"\nRule selection:\n", "\nFlags:\n",
-		"Enable all stable rules, respecting configured exceptions",
 		"Enable nursery rules, respecting configured exceptions",
 		"Run actionlint <command> --help for command options.",
 		"Docs: https://actionlint.kjanat.dev",
@@ -46,6 +45,9 @@ func TestRootHelpOverview(t *testing.T) {
 		if !strings.Contains(root.Stderr, text) {
 			t.Errorf("root help missing %q: %s", text, root.Stderr)
 		}
+	}
+	if !strings.Contains(strings.Join(strings.Fields(root.Stderr), " "), "Enable stable correctness, security and suspicious rules, respecting configured exceptions") {
+		t.Errorf("root help does not describe strict rule selection: %s", root.Stderr)
 	}
 	check := testRunCommand("", "check", "--help")
 	metadata := testRunCommand("", "--help", "--json")

@@ -63,31 +63,42 @@ policy:
 	}
 }
 
-func TestMigrationPolicyNullRemainsReset(t *testing.T) {
-	result, err := checking.ConfigurationRules().MigrateDocument("config.yaml", []byte("policy: {require-job-timeout: null}\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Contains(result.Content, []byte("level: null")) {
-		t.Fatalf("migration erased the explicit null: %s", result.Content)
-	}
-	cfg, err := checking.ConfigurationRules().Parse(result.Content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.RequiresJobTimeout().Enabled() || checking.ConfigurationRules().DiagnosticLevel(cfg, "require-job-timeout") != "off" {
-		t.Fatal("null did not restore the ordinary disabled default")
-	}
-	strict, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{Strict: true}, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strict.RequiresJobTimeout().Enabled() || checking.ConfigurationRules().DiagnosticLevel(strict, "require-job-timeout") != "on" {
-		t.Fatal("null became an explicit disable instead of inheriting the strict preset")
-	}
-	second, err := checking.ConfigurationRules().MigrateDocument("config.yaml", result.Content)
-	if err != nil || second.Changed || !bytes.Equal(result.Content, second.Content) {
-		t.Fatalf("null migration not idempotent: %v", err)
+func TestMigrationNullUsesSelectedPreset(t *testing.T) {
+	for _, tc := range []struct {
+		rule        string
+		strictLevel repoconfig.Level
+		enabled     func(*repoconfig.Config) bool
+	}{
+		{"require-job-timeout", "off", func(cfg *repoconfig.Config) bool { return cfg.RequiresJobTimeout().Enabled() }},
+		{"require-commit-hash", "on", (*repoconfig.Config).RequiresCommitHash},
+	} {
+		t.Run(tc.rule, func(t *testing.T) {
+			result, err := checking.ConfigurationRules().MigrateDocument("config.yaml", []byte("policy: {"+tc.rule+": null}\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(result.Content, []byte("level: null")) {
+				t.Fatalf("migration erased the explicit null: %s", result.Content)
+			}
+			cfg, err := checking.ConfigurationRules().Parse(result.Content)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.enabled(cfg) || checking.ConfigurationRules().DiagnosticLevel(cfg, tc.rule) != "off" {
+				t.Fatal("null did not restore the ordinary disabled default")
+			}
+			strict, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{Strict: true}, cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.enabled(strict) != (tc.strictLevel == "on") || checking.ConfigurationRules().DiagnosticLevel(strict, tc.rule) != tc.strictLevel {
+				t.Fatalf("null did not inherit strict level %q", tc.strictLevel)
+			}
+			second, err := checking.ConfigurationRules().MigrateDocument("config.yaml", result.Content)
+			if err != nil || second.Changed || !bytes.Equal(result.Content, second.Content) {
+				t.Fatalf("null migration not idempotent: %v", err)
+			}
+		})
 	}
 }
 
