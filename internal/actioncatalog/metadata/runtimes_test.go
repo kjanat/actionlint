@@ -26,6 +26,7 @@ public static readonly string Node20DeprecationUrl = "https://github.blog/change
 public static readonly string Node20RemovalDate = "September 23rd, 2026";
 }
 }`),
+		runtimeSourcePaths[4]: []byte("public sealed class HandlerFactory {}"),
 	}
 }
 
@@ -85,6 +86,52 @@ func TestRuntimeLifecycleAfterMigrationConstantsAreRemoved(t *testing.T) {
 	generated, err := generateRuntimes(sources, testRevision)
 	if err != nil || !bytes.Contains(generated, []byte(`"node20": {Removed: true`)) {
 		t.Fatalf("removed runtime was lost: %s, %v", generated, err)
+	}
+}
+
+func TestRuntimeExecutionUsesBundledReplacement(t *testing.T) {
+	// actions/runner@cf65f3ec8100ee0046d735ac5d647e00f4b8e817:
+	// src/Runner.Worker/Handlers/HandlerFactory.cs assigns NodeVersion for
+	// every JavaScript action before constructing its handler.
+	sources := testRuntimeSources()
+	sources[runtimeSourcePaths[3]] = []byte("public static class Constants {}")
+	sources[runtimeSourcePaths[2]] = []byte("NODE24_VERSION=\"24.0.0\"\n")
+	sources[runtimeSourcePaths[4]] = []byte(`public sealed class HandlerFactory {
+else if (data.ExecutionType == ActionExecutionType.NodeJS) {
+    handler = HostContext.CreateService<INodeScriptActionHandler>();
+    var nodeData = data as NodeJSActionExecutionData;
+    nodeData.NodeVersion = "node24";
+    (handler as INodeScriptActionHandler).Data = nodeData;
+}
+}`)
+	runtimes, err := collectRuntimes(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, runtime := range runtimes {
+		if runtime.ExecutionRuntime != "node24" {
+			t.Errorf("%s executes with %q, want node24", name, runtime.ExecutionRuntime)
+		}
+	}
+	sources[runtimeSourcePaths[2]] = []byte("NODE20_VERSION=\"20.0.0\"\n")
+	if _, err := collectRuntimes(sources); err == nil {
+		t.Fatal("accepted a replacement runtime that is not bundled")
+	}
+}
+
+func TestRuntimeExecutionRejectsUnrecognizedAssignments(t *testing.T) {
+	for _, assignment := range []string{
+		`nodeData.NodeVersion = SelectRuntime();`,
+		`if (enabled) { nodeData.NodeVersion = "node24"; }`,
+		`nodeData.NodeVersion = "node20"; nodeData.NodeVersion = "node24";`,
+	} {
+		t.Run(assignment, func(t *testing.T) {
+			sources := testRuntimeSources()
+			sources[runtimeSourcePaths[4]] = []byte("public sealed class HandlerFactory { else if (data.ExecutionType == ActionExecutionType.NodeJS) {" + assignment + "} }")
+			if _, err := collectRuntimes(sources); err == nil {
+				t.Fatal("accepted an execution runtime that could not be determined")
+			}
+		})
 	}
 }
 

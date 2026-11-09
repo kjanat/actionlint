@@ -11,10 +11,12 @@ import (
 // Runtime describes a JavaScript runtime accepted by the runner's action metadata parser.
 // Removed means the runner no longer bundles its executable; the metadata value remains accepted.
 type Runtime struct {
-	Removed        bool
-	Deprecated     bool
-	DeprecationURL string
-	RemovalDate    string
+	Removed    bool
+	Deprecated bool
+	// ExecutionRuntime is the binary the runner uses. Empty means the declared runtime.
+	ExecutionRuntime string
+	DeprecationURL   string
+	RemovalDate      string
 }
 
 // ValidRuntimes lists accepted manifest runtime names for diagnostic messages.
