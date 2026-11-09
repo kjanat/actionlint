@@ -3,8 +3,9 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { closeSync, fstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 
 import { yamlExampleLines } from './yaml-examples.mjs';
 
@@ -405,12 +406,56 @@ export default async function run({ github, context, core, files }) {
 
 const git = (/** @type {string[]} */ args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
 
+/** @param {number} descriptor */
+function* readPatches(descriptor) {
+	const decoder = new StringDecoder('utf8');
+	const buffer = Buffer.alloc(64 * 1_024);
+	const separator = '\ndiff --git ';
+	/** @type {string[]} */
+	let parts = [];
+	let pending = '';
+	let position = 0;
+	for (;;) {
+		const count = readSync(descriptor, buffer, 0, buffer.length, position);
+		position += count;
+		pending += count === 0 ? decoder.end() : decoder.write(buffer.subarray(0, count));
+		let boundary = pending.indexOf(separator);
+		while (boundary !== -1) {
+			parts.push(pending.slice(0, boundary + 1));
+			yield parts.join('');
+			parts = [];
+			pending = pending.slice(boundary + 1);
+			boundary = pending.indexOf(separator);
+		}
+		if (count === 0) break;
+		if (pending.length > separator.length) {
+			parts.push(pending.slice(0, -separator.length));
+			pending = pending.slice(-separator.length);
+		}
+	}
+	parts.push(pending);
+	const patch = parts.join('');
+	if (patch !== '') yield patch;
+}
+
+/** @param {number} descriptor @param {number} size @param {number} position */
+function readBytes(descriptor, size, position) {
+	const buffer = Buffer.alloc(size);
+	let offset = 0;
+	while (offset < size) {
+		const count = readSync(descriptor, buffer, offset, size - offset, position + offset);
+		if (count === 0) throw new Error('Incomplete Git blob');
+		offset += count;
+	}
+	return buffer;
+}
+
 /**
  * Fetch both revisions together, then read PR files from Git objects without checking them out.
- * @param {{cacheDirectory: string, repositoryUrl: string, baseSha: string, headSha: string, token?: string}} options
+ * @param {{cacheDirectory: string, repositoryUrl: string, baseSha: string, headSha: string, token?: string, maxBuffer?: number}} options
  * @returns {ChangedFile[]}
  */
-export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, headSha, token }) {
+export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, headSha, token, maxBuffer = 1 << 28 }) {
 	for (const sha of [baseSha, headSha]) {
 		if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Expected a full Git commit SHA');
 	}
@@ -428,14 +473,14 @@ export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, h
 			Buffer.from(`x-access-token:${token}`).toString('base64')
 		}`;
 	}
-	/** @param {string[]} args @param {string} [input] */
-	const execute = (args, input) =>
+	/** @param {string[]} args @param {string} [input] @param {number | 'pipe'} [output] */
+	const execute = (args, input, output = 'pipe') =>
 		execFileSync('git', args, {
-			maxBuffer: 1 << 28,
+			maxBuffer,
 			timeout: 60_000,
 			input,
 			env: environment,
-			stdio: ['pipe', 'pipe', 'pipe'],
+			stdio: ['pipe', output, 'pipe'],
 		});
 	execute(['init', '--bare', repository]);
 	/** @param {string[]} args */
@@ -452,36 +497,78 @@ export function readPullRequestFiles({ cacheDirectory, repositoryUrl, baseSha, h
 	const diff = ['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--diff-filter=AM'];
 	const records = read([...diff, '--raw', '--abbrev=40', '-z', base, headSha, '--']).split('\0');
 	records.pop();
-	const patches = read([...diff, '--patch', '-U3', base, headSha, '--']).split(/^diff --git /m)
-		.slice(1).map(patch => `diff --git ${patch}`);
-	if (records.length !== patches.length * 2) throw new Error('Git diff records and patches disagree');
+	/** @type {Array<{filename: string, patch: string, object: string}>} */
 	const files = [];
-	for (let index = 0; index < patches.length; index++) {
-		const filename = records[index * 2 + 1];
+	for (let index = 0; index < records.length; index += 2) {
+		const filename = records[index + 1];
 		if (!scannable(filename)) continue;
-		const object = /^:\d+ \d+ [a-f0-9]{40} ([a-f0-9]{40}) [AM]$/.exec(records[index * 2])?.[1];
+		const object = /^:\d+ \d+ [a-f0-9]{40} ([a-f0-9]{40}) [AM]$/.exec(records[index])?.[1];
 		if (object === undefined) throw new Error('Invalid Git diff record');
-		files.push({ filename, patch: patches[index], object });
+		files.push({ filename, patch: '', object });
 	}
 	if (files.length === 0) return [];
-	const objects = execute(
-		['--git-dir', repository, 'cat-file', '--batch'],
-		`${files.map(file => file.object).join('\n')}\n`,
-	);
-	let offset = 0;
-	return files.map(({ filename, patch, object }) => {
-		const newline = objects.indexOf(10, offset);
-		const header = objects.toString('ascii', offset, newline);
-		const match = /^([a-f0-9]{40}) blob (\d+)$/.exec(header);
-		if (newline < offset || match === null || match[1] !== object) throw new Error('Invalid Git blob header');
-		const start = newline + 1;
-		const end = start + Number(match[2]);
-		if (!Number.isSafeInteger(end) || end >= objects.length || objects[end] !== 10) {
-			throw new Error('Incomplete Git blob');
+	const temporary = mkdtempSync(join(cacheDirectory, 'read-'));
+	/**
+	 * @template T
+	 * @param {string[]} args
+	 * @param {string | undefined} input
+	 * @param {(descriptor: number) => T} consume
+	 */
+	const capture = (args, input, consume) => {
+		const descriptor = openSync(join(temporary, 'output'), 'w+');
+		try {
+			execute(['--git-dir', repository, '--literal-pathspecs', ...args], input, descriptor);
+			return consume(descriptor);
+		} finally {
+			closeSync(descriptor);
 		}
-		offset = end + 1;
-		return { filename, patch, source: objects.toString('utf8', start, end) };
-	});
+	};
+	try {
+		for (let start = 0; start < files.length;) {
+			let end = start;
+			let argumentBytes = 0;
+			while (end < files.length) {
+				const bytes = Buffer.byteLength(files[end].filename) * 2 + 3;
+				if (end > start && argumentBytes + bytes > 16 * 1_024) break;
+				argumentBytes += bytes;
+				end++;
+			}
+			const batch = files.slice(start, end);
+			capture(
+				[...diff, '--patch', '-U3', base, headSha, '--', ...batch.map(file => file.filename)],
+				undefined,
+				descriptor => {
+					let index = 0;
+					for (const patch of readPatches(descriptor)) {
+						if (index === batch.length) throw new Error('Git diff records and patches disagree');
+						batch[index++].patch = patch;
+					}
+					if (index !== batch.length) throw new Error('Git diff records and patches disagree');
+				},
+			);
+			start = end;
+		}
+		return capture(['cat-file', '--batch'], `${files.map(file => file.object).join('\n')}\n`, descriptor => {
+			const length = fstatSync(descriptor).size;
+			let offset = 0;
+			return files.map(({ filename, patch, object }) => {
+				const header = readBytes(descriptor, Math.min(96, length - offset), offset);
+				const newline = header.indexOf(10);
+				const match = /^([a-f0-9]{40}) blob (\d+)$/.exec(header.toString('ascii', 0, newline));
+				if (newline < 0 || match === null || match[1] !== object) throw new Error('Invalid Git blob header');
+				const size = Number(match[2]);
+				const start = offset + newline + 1;
+				const end = start + size;
+				if (!Number.isSafeInteger(end) || end >= length || readBytes(descriptor, 1, end)[0] !== 10) {
+					throw new Error('Incomplete Git blob');
+				}
+				offset = end + 1;
+				return { filename, patch, source: readBytes(descriptor, size, start).toString('utf8') };
+			});
+		});
+	} finally {
+		rmSync(temporary, { recursive: true, force: true });
+	}
 }
 
 function defaultBase() {
