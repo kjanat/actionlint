@@ -281,6 +281,24 @@
               }
             },
             {
+              "id": "errexit-status",
+              "name": "ErrexitStatus",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report Bash status reads that cannot capture a preceding failure",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#errexit-status"
+              },
+              "fullDescription": {
+                "text": "With Bash errexit enabled, a failing simple command exits before a following $? read. The read can capture success, but cannot capture the preceding failure.\n\nThe check uses registered interpreter options and follows literal set changes, groups, subshells and known branches. This warning is opt-in because a success-only read can be intentional.\n\nThe check excludes reads within condition tests, AND/OR lists and pipelines, and reads of compound-command results. It skips trap bodies, function bodies and command substitutions. Unknown option values suspend analysis until a known set change. Operations that may replace builtins or install traps stop further analysis in that scope.\n\nThe rule is experimental because function calls, command substitution inheritance and dynamic option effects are not modeled. Bash behavior is specified at https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html; runner defaults are in actions/runner ScriptHandlerHelpers.cs."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#errexit-status",
+              "help": {
+                "text": "Capture the failure status in an if condition or an || handler when the script must continue after failure."
+              }
+            },
+            {
               "id": "event-payload",
               "name": "EventPayload",
               "defaultConfiguration": {
@@ -908,6 +926,24 @@
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call",
               "help": {
                 "text": "Correct the reference and supply required inputs and secrets. For permission or cache conflicts, adjust the caller's grant or reduce the called workflow's requirements."
+              }
+            },
+            {
+              "id": "workflow-command-syntax",
+              "name": "WorkflowCommandSyntax",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Report malformed runner commands in literal script output",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-command-syntax"
+              },
+              "fullDescription": {
+                "text": "The runner prints malformed or unknown :: commands as ordinary text instead of creating annotations or applying command effects.\n\nThis opt-in warning checks literal echo and printf output in Bash or POSIX shells, print calls in Python, and Write-Host, Write-Output or echo calls in PowerShell. It joins writes into stdout lines, including stop and resume tokens split across writes. Command processing is evaluated separately for each possible execution path. Comments and unused strings do not produce findings.\n\nRegistered interpreter settings and literal set changes determine errexit. Known failures and exit commands end execution. The check handles the errexit exceptions for conditions, negation and AND/OR lists. Unsupported commands, dynamic output, loops and complex control flow stop analysis of that path. A pending partial line is checked only at a known end of output. Python and PowerShell scripts are skipped entirely when a statement cannot be parsed by the limited literal-output model.\n\nThe rule is experimental because language coverage is partial and command-shaped text may be an intentional example. The syntax and case-insensitive extension list follow actions/runner revision 1ba885c2065fd9be317808ab3fd406f392635cf7, ActionCommand.cs and ActionCommandManager.cs. Extension-specific properties are not validated."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-command-syntax",
+              "help": {
+                "text": "Use ::name::message or ::name key=value::message with a runner command name. Use stop-commands when intentionally printing command examples."
               }
             }
           ]

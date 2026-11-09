@@ -305,7 +305,8 @@ environment defaults; explicit flags, including `false`, take precedence.
 counts on stderr by default. When findings exist, the summary also counts them per
 source file and per rule/diagnostic code, sorted by count. `--summary=false` disables the summary.
 `--quiet` suppresses logs and summaries while preserving requested results
-and errors. In JSON modes, check failures on stderr use the same result contract, with
+and errors. In JSON modes, stderr contains newline-delimited records for logs,
+summaries and errors. Check failures use the same result contract, with
 `completed: false`, `error`, and `exit_code`. Metadata commands keep their own
 error records. Log
 records have `log`, and the summary has `summary.files` and `summary.findings`.

@@ -48,12 +48,10 @@ func WorkflowKeyAvailability(key string) ([]string, []string) {
 	}
 }
 
-// SpecialFunctionNames is a map from special function name to available workflow keys.
-// Some functions are only available at specific positions. This variable is useful when you want to
-// know which functions are special and what workflow keys support them.
+// SpecialFunctionNames lists the workflow keys where each restricted function is available.
 //
-// This variable was generated from https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability.
-// See the script for more details: https://github.com/kjanat/actionlint/blob/HEAD/internal/development/generators/expression-contexts/
+// Generated from https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability.
+// Generator: https://github.com/kjanat/actionlint/blob/master/internal/development/generators/expression-contexts/
 var SpecialFunctionNames = map[string][]string{"always": {"jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if"}, "cancelled": {"jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if"}, "failure": {"jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if"}, "hashfiles": {"jobs.<job_id>.steps.continue-on-error", "jobs.<job_id>.steps.env", "jobs.<job_id>.steps.if", "jobs.<job_id>.steps.name", "jobs.<job_id>.steps.run", "jobs.<job_id>.steps.timeout-minutes", "jobs.<job_id>.steps.with", "jobs.<job_id>.steps.working-directory", "jobs.<job_id>.snapshot.if"}, "success": {"jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if"}}
 
 // AllContexts is a map from context name to workflow key which allows the context.
