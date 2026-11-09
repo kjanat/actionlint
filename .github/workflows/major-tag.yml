@@ -9,8 +9,9 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
   actions: read
+  id-token: write
 
 concurrency:
   group: actionlint-release
@@ -23,12 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: write }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { fetch-depth: 0 }
+        with: { fetch-depth: 0, token: "${{ steps.beepboop.outputs.token }}" }
       - name: Validate and move major tag
-        env: { TAG: "${{ inputs.tag }}", GH_TOKEN: "${{ github.token }}" }
+        env: { TAG: "${{ inputs.tag }}", GH_TOKEN: "${{ steps.beepboop.outputs.token }}" }
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
           [[ "${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           git fetch --force --tags origin
           sha="$(git rev-parse "refs/tags/${TAG}^{commit}")"

@@ -172,8 +172,12 @@ jobs:
     if: needs.verify.outputs.is-latest == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions: { contents: read, issues: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - &BeepboopIssues
+        uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: read, permission-issues: write }
       - uses: *Checkout
         with: { persist-credentials: false }
       - uses: *SetupNode
@@ -196,7 +200,7 @@ jobs:
         env:
           VERSION: ${{ needs.verify.outputs.version }}
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ steps.beepboop.outputs.token }}
         run: node tools/release/release-assets.mjs publish-winget "${RUNNER_TEMP}/winget" "${VERSION}"
   winget-failure:
     name: Report a failed WinGet job
@@ -204,8 +208,9 @@ jobs:
     if: always() && needs.verify.result == 'success' && (needs.winget.result == 'failure' || needs.winget.result == 'cancelled')
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions: { contents: read, issues: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - *BeepboopIssues
       - uses: *Checkout
         with: { persist-credentials: false }
       - uses: *SetupNode
@@ -213,7 +218,7 @@ jobs:
       - name: Ensure a failure issue exists
         env:
           VERSION: ${{ needs.verify.outputs.version }}
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ steps.beepboop.outputs.token }}
         run: node tools/release/release-assets.mjs report-winget-failure "${VERSION}"
   docker:
     name: Publish tested container bytes
@@ -329,10 +334,13 @@ jobs:
       contains(fromJSON('["success", "skipped"]'), needs.pypi.result)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions: { contents: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: write }
       - uses: *Checkout
-        with: { fetch-depth: 0 }
+        with: { fetch-depth: 0, token: "${{ steps.beepboop.outputs.token }}" }
       - name: Update eligible floating tags
         env:
           VERSION: ${{ needs.verify.outputs.version }}
