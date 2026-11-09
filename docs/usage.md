@@ -427,8 +427,8 @@ External resolvers can add a `network` request report to their response:
 }
 ```
 
-This is an additional field in the existing resolution response, not a complete
-response on its own. Set `all_requests_reported` only when every remote attempt is included,
+Add this field to the resolver's response alongside its resolution results.
+Set `all_requests_reported` only when every remote attempt is included,
 including failures. Supported kinds are `http`, `rest`, `graphql`, `git` and `oci`.
 The host is an authority without userinfo, a path or a query. Old resolvers work
 without this field, but their calls are counted under `unreported_resolver_calls`. In-process providers can
