@@ -114,6 +114,10 @@
             "failed",
             "not-found",
             "unsupported",
+            "unsupported-host",
+            "resolver-not-configured",
+            "unsupported-object-format",
+            "invalid-resolver-result",
             "cache-miss",
             "not-found-or-inaccessible",
             "limit-exceeded"
