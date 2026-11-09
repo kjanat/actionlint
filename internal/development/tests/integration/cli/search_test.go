@@ -53,7 +53,11 @@ func TestSearchDirectoriesAndGlobsAcrossRepositories(t *testing.T) {
 		}
 	}
 	got := testRunCommandDefaults("", "-C", parent, ".", "--no-ignore", "-o", "pretty", "-o", "github")
-	if got.Status != 1 || !strings.Contains(got.Stderr, "Checked 4 files") || !strings.Contains(got.Stdout, "::error file=") || !strings.Contains(got.Stdout, "error[expression-reference]") || strings.Contains(got.Stdout, "excluded.yml") {
+	if got.Status != 1 || !strings.Contains(got.Stderr, "Checked 6 files") ||
+		!strings.Contains(got.Stdout, "::error file=") || !strings.Contains(got.Stdout, "error[expression-reference]") ||
+		!strings.Contains(got.Stdout, filepath.Join("first", ".github", "workflows", "excluded.yml")) ||
+		!strings.Contains(got.Stdout, filepath.Join("second", ".github", "workflows", "excluded.yml")) ||
+		strings.Count(got.Stdout, "error[syntax-check]") != 2 {
 		t.Fatalf("directory, no-ignore and repeated output: %+v", got)
 	}
 }
