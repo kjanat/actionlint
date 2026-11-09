@@ -29,8 +29,6 @@ jobs:
     runs-on: ${{ (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit']) && matrix.os || 'ubuntu-slim' }}
     env: {
       MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck",
-      TEMP: "${{ runner.temp }}",
-      TMP: "${{ runner.temp }}",
       CI_UNIT: "${{ needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit'] }}",
     }
     steps:
@@ -47,6 +45,7 @@ jobs:
       - name: Install Node.js, npm, Bun and ShellCheck
         if: env.CI_UNIT == 'true'
         uses: &SetupMise jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        env: &MiseTemp { TEMP: "${{ runner.temp }}", TMP: "${{ runner.temp }}" }
         with: &TestTools
           version: 2026.11.4
           mise_dir: "${{ github.workspace }}-mise"
@@ -419,13 +418,13 @@ jobs:
       matrix: { os: [ubuntu-latest, macos-latest, windows-latest] }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck,npm:runner-run", TEMP: "${{ runner.temp }}", TMP: "${{ runner.temp }}" }
+    env: { MISE_ENABLE_TOOLS: "node,npm,bun,shellcheck,npm:runner-run" }
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
       # Parallel setup steps race while the runner rewrites event.json on Windows.
       - *GoGomod
-      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *TestTools }
+      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *TestTools, env: *MiseTemp }
       - name: Install JavaScript Action build dependencies
         # Packaging also runs when JavaScript-only tests are not selected.
         run: bun install --frozen-lockfile --ignore-scripts

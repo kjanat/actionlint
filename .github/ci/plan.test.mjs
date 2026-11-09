@@ -508,9 +508,11 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				assert.equal(options.add_shims_to_path, false);
 				assert.equal(options.monorepo, false, `${name}:${jobName} installs its selected root tools`);
 				if (name === 'ci.yml' && ['unit-tests', 'action'].includes(jobName)) {
-					const environment = yamlMapping(job.env);
+					const environment = yamlMapping(step.env);
 					assert.equal(environment.TEMP, '${{ runner.temp }}');
 					assert.equal(environment.TMP, '${{ runner.temp }}');
+					assert.equal(yamlMapping(job.env).TEMP, undefined);
+					assert.equal(yamlMapping(job.env).TMP, undefined);
 				}
 				if (options.install === false) {
 					assert.equal(options.env, false);
@@ -518,7 +520,9 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				} else {
 					const selected = yamlMapping(yamlMapping(job).env).MISE_ENABLE_TOOLS;
 					assert.ok(typeof selected === 'string' && selected, `${name}:${jobName} must select tools`);
-					if (step.env) assert.equal(yamlMapping(step.env).MISE_ENABLE_TOOLS, selected);
+					if (step.env && 'MISE_ENABLE_TOOLS' in yamlMapping(step.env)) {
+						assert.equal(yamlMapping(step.env).MISE_ENABLE_TOOLS, selected);
+					}
 					if (name === 'ci.yml' && jobName in expected) assert.equal(selected, expected[jobName], jobName);
 					const key = `${name}:${jobName}`;
 					if (key in otherJobs) assert.equal(selected, otherJobs[key], key);
