@@ -226,14 +226,7 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 			if err = decodeValue(value, &policy); err != nil {
 				break
 			}
-			policies := value
-			if isNull(value) {
-				policies = mapping()
-				for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "missing-permissions"} {
-					setField(policies, name, value)
-				}
-			}
-			for name, selected := range members(policies) {
+			for name, selected := range members(migratedPolicySettings(value)) {
 				if err != nil {
 					break
 				}
@@ -275,6 +268,17 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 		setField(next, "lint", lint)
 	}
 	return next, true, nil
+}
+
+func migratedPolicySettings(value any) any {
+	if value == nil || !isNull(value) {
+		return value
+	}
+	policies := mapping()
+	for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "missing-permissions"} {
+		setField(policies, name, value)
+	}
+	return policies
 }
 
 // mergeMigration combines distinct fields but refuses to choose between two

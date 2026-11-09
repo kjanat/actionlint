@@ -152,7 +152,9 @@ func markOverlay(base, overlay any, name string, inputs map[string]Input, locati
 	mark = func(base any, basePresent bool, value any, path string) {
 		previous, hasSource := inputs[path]
 		selected := supplied[path]
-		selected.Name = name
+		if _, declared := supplied[path]; declared || supplied == nil {
+			selected.Name = name
+		}
 		if isMapping(value) {
 			if basePresent && base == nil && hasSource {
 				reset := previous

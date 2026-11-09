@@ -115,9 +115,9 @@ paths:
 	for pointer, want := range map[string]repoconfig.Origin{
 		"/repository/runners":                                     {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
 		"/repository/variables":                                   {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
-		"/repository/default-workflow-permissions":                {Source: "config", State: "value", Line: 4, Column: 29},
+		"/repository/default-workflow-permissions":                {File: path, Source: "config", State: "value", Line: 4, Column: 29},
 		"/lint/rules/security/cache-write-untrusted/level":        {Source: "input", Input: "policy", State: "null", Line: 1, Column: 24},
-		"/lint/rules/conventions/job-timeout/options/min-minutes": {Source: "config", State: "value", Line: 8, Column: 38},
+		"/lint/rules/conventions/job-timeout/options/min-minutes": {File: path, Source: "config", State: "value", Line: 8, Column: 38},
 	} {
 		if got := inspection.Origins[pointer]; got != want {
 			t.Errorf("%s: got %+v, want %+v", pointer, got, want)

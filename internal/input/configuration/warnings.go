@@ -1,6 +1,7 @@
 package config
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -54,5 +55,8 @@ func configWarnings(root any, inputs map[string]Input) []Warning {
 		}
 	}
 	check(root, "", "", append(append(Keys(), legacyKeys...), "$schema"))
+	slices.SortStableFunc(warnings, func(a, b Warning) int {
+		return cmp.Or(cmp.Compare(a.File, b.File), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column), cmp.Compare(a.Message, b.Message))
+	})
 	return warnings
 }

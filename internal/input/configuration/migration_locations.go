@@ -26,13 +26,17 @@ func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]Input) map[s
 		for _, pair := range [][2]string{{"self-hosted-runner/labels", "runners"}, {"config-variables", "variables"}, {"config-secrets", "secrets"}, {"assume-default-permissions", "default-workflow-permissions"}} {
 			move(prefix+"/"+pair[0], at("repository")+"/"+pair[1])
 		}
-		for name, selected := range members(field(value, "policy")) {
+		policy := field(value, "policy")
+		for name, selected := range members(migratedPolicySettings(policy)) {
 			id := ruleSet.ResolveAlias(migratedPermissionsName(name))
 			declaration, found := ruleSet.FindRule(id)
 			if !found {
 				continue
 			}
 			from := document.Path(at("policy"), name)
+			if isNull(policy) {
+				from = at("policy")
+			}
 			to := document.Path(document.Path(at("lint")+"/rules", declaration.Category), id)
 			move(from, to)
 			move(from, to+"/level")

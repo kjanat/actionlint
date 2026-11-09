@@ -36,7 +36,7 @@ tools:
         per-file-ignores:
           '*.py': [F401]
       custom: [{rules: [F841]}]
-      numeric: {1: [{rules: [F821]}]}
+      numeric: {'1': [{rules: [F821]}]}
 `), 0o600); err != nil {
 					t.Fatal(err)
 				}
@@ -127,13 +127,10 @@ func mutateConfigurationReport(t *testing.T, report configreport.Report, value s
 	configurationList(t, configurationMap(t, lint["per-file-ignores"])["*.py"])[0] = value
 	entry := configurationMap(t, configurationList(t, native["custom"])[0])
 	configurationList(t, entry["rules"])[0] = value
-	numeric, ok := native["numeric"].(map[any]any)
-	if !ok {
-		t.Fatalf("non-string configuration keys decoded as %T", native["numeric"])
-	}
-	numericEntry := configurationMap(t, configurationList(t, numeric[1])[0])
+	numeric := configurationMap(t, native["numeric"])
+	numericEntry := configurationMap(t, configurationList(t, numeric["1"])[0])
 	configurationList(t, numericEntry["rules"])[0] = value
-	numeric[2] = value
+	numeric["2"] = value
 	native["added"] = value
 }
 
