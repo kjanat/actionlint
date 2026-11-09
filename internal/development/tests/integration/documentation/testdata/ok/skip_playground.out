@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ${{ unknown }}
+permissions: {}
 ```
 
 Output:
@@ -37,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ${{ unknown }}
+permissions: {}
 ```
 
 Output:

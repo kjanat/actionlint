@@ -51,7 +51,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{
-		Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
+		Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\npermissions: {}\n"),
 	}, sources)
 	if err != nil {
 		t.Fatal(err)

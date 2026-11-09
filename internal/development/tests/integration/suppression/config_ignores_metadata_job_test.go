@@ -45,6 +45,7 @@ jobs:
     steps:
       - id: outer
         uses: ./inner
+permissions: {}
 `
 		for _, tc := range []struct {
 			ignores string

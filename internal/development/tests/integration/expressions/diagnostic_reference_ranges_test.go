@@ -22,7 +22,7 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 			"${{ " + expression + " }}",
 			">-\n      ${{ " + strings.ReplaceAll(expression, "[", "\n      [") + " }}",
 		} {
-			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
 				t.Fatal(err)
@@ -49,7 +49,7 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
 	for _, call := range []string{`format('{0}{1}', 1, 2, 3)`, `startWith('a', 'b')`, `startsWith('a')`} {
 		for _, suffix := range []string{"", "[0]", ".x", "[0].x"} {
-			src := "on: push\nenv:\n  VALUE: ${{ " + call + suffix + " }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			src := "on: push\nenv:\n  VALUE: ${{ " + call + suffix + " }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
 				t.Fatal(err)
@@ -140,7 +140,7 @@ func TestDeprecatedCommandMappedOccurrences(t *testing.T) {
 		`'é ''quote'' ::set-output name=x::1 ::set-output name=y::2'`,
 		"echo ::set-output name=x::1\n          ::set-output name=y::2",
 	} {
-		src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + scalar + "\n"
+		src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + scalar + "\n" + "\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 		if err != nil {
 			t.Fatal(err)

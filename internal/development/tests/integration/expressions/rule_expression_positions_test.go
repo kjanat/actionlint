@@ -22,9 +22,9 @@ func TestWorkflowExpressionScalarPositions(t *testing.T) {
 	} {
 		for _, field := range []string{"env", "run"} {
 			t.Run(field+"/"+scalar, func(t *testing.T) {
-				src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+				src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 				if field == "run" {
-					src = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + strings.ReplaceAll(scalar, "\n", "\n    ") + "\n"
+					src = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + strings.ReplaceAll(scalar, "\n", "\n    ") + "\n" + "\npermissions: {}\n"
 				}
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 				if err != nil {
@@ -61,7 +61,7 @@ func TestWorkflowConditionScalarPositions(t *testing.T) {
 		`"github.actor == 'é' &&\n missing"`,
 	} {
 		t.Run(scalar, func(t *testing.T) {
-			src := "on: push\njobs:\n  test:\n    if: " + scalar + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			src := "on: push\njobs:\n  test:\n    if: " + scalar + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
 				t.Fatal(err)
@@ -86,7 +86,7 @@ func TestWorkflowExpressionEOFPosition(t *testing.T) {
 		"    if: >\n      github.actor &&\n",
 		"    if: \"github.actor &&\"\n",
 	} {
-		src := "on: push\njobs:\n  test:\n" + field + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+		src := "on: push\njobs:\n  test:\n" + field + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 		if err != nil {
 			t.Fatal(err)
@@ -120,6 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 	if err != nil {
@@ -157,7 +158,7 @@ func TestWorkflowExpressionDottedReferenceRanges(t *testing.T) {
 		`${{ github . missing }}`,
 	} {
 		t.Run(scalar, func(t *testing.T) {
-			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
 				t.Fatal(err)

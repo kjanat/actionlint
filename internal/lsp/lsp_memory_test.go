@@ -24,7 +24,7 @@ func TestEditorMemorySourcesReadClosedDependencies(t *testing.T) {
 			return []byte("name: Local\ndescription: Fixture\ninputs:\n  valid:\n    description: Input\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo hi\n"), nil
 		}
 		return nil, &fs.PathError{Op: "read", Path: path, Err: fs.ErrNotExist}
-	}}, map[string]Document{workflow: {URI: FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n        with:\n          invalid: value\n"}})
+	}}, map[string]Document{workflow: {URI: FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n        with:\n          invalid: value\npermissions: {}\n"}})
 	if err != nil {
 		t.Fatal(err)
 	}

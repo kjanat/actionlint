@@ -46,7 +46,7 @@ runs:
 	} {
 		t.Run(paths.first, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" +
-				"      - uses: $/" + paths.first + "\n      - uses: $/" + paths.second + "\n"
+				"      - uses: $/" + paths.first + "\n      - uses: $/" + paths.second + "\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
@@ -117,6 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: $/python-action
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
 			if err != nil {

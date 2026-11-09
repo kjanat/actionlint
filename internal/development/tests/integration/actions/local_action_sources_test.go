@@ -149,7 +149,7 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 			if ignored {
 				comment = " # actionlint:ignore missing-local-action"
 			}
-			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated" + comment + "\n")
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated" + comment + "\n" + "\npermissions: {}\n")
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: ".github/workflows/test.yml", Content: content, Config: config, Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)

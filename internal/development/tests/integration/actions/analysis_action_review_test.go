@@ -32,7 +32,7 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 					t.Skipf("symlinks unavailable: %v", err)
 				}
 				project := workspace.Identity(root)
-				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: alias}, []workspace.Source{
 					{Path: "ci.yml", Content: []byte(workflow), Project: project},
 					{Path: "inner/action.yml", Content: []byte(manifest), Project: project},
@@ -70,7 +70,7 @@ func TestExplicitActionSnapshotAndDeduplication(t *testing.T) {
 						fixturefiles.Write(t, root, "inner/action.yml", testutil.CompositeAction)
 					}
 					manifest := "name: inner\ndescription: inner\nruns:\n  using: node24\n"
-					workflow := "on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./inner\n        with: {unknown: value}\n"
+					workflow := "on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./inner\n        with: {unknown: value}\n" + "\npermissions: {}\n"
 					project := workspace.Identity(root)
 					sources := []workspace.Source{
 						{Path: "ci.yml", Content: []byte(workflow), Project: project},
@@ -123,7 +123,7 @@ func TestRelativeProjectExplicitActionSnapshot(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: cwd}, []workspace.Source{
 					{Path: filepath.Join(projectRoot, "ci.yml"), Content: []byte(workflow), Project: project},
 					{Path: filepath.Join(projectRoot, "inner/action.yml"), Content: []byte(testutil.CompositeAction), Project: project},
@@ -158,7 +158,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 					t.Fatal(err)
 				}
 				project := workspace.Identity(root)
-				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 				sources := []workspace.Source{
 					{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 					{Path: "inner/action.yml", Content: []byte(tc.manifest), Project: project, Config: cfg},

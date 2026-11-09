@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: . ./lib.sh
+permissions: {}
 `)}},
 	)
 	if err != nil {

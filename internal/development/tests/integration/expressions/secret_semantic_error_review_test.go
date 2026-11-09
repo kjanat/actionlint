@@ -24,7 +24,7 @@ func TestSecretInterpolationIndependentSemanticFindings(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + tc.expression + " }}\"\n"
+				source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ " + tc.expression + " }}\"\n" + "\npermissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
 				if err != nil {
 					t.Fatal(err)

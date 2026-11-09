@@ -14,6 +14,7 @@ jobs:
       # This line is not included
       - run: echo ${{ unknown }}
 # This line is not included
+permissions: {}
 ```
 
 Output:
@@ -25,6 +26,6 @@ test.yaml:9:23: unknown-variable: undefined variable "unknown". available variab
   |                       ^~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNokyjEOhSAQRdGeVbzit2yA3XwMCVEzQ5x5sSDs3YxWtzhXpWDQetq1WkmAN/MocFEsh7NSnPn8h71k3oZ9F5DjLGhbV/zmBOUQvQVrPQEAAP//SLkdHQ==)
+[Playground](https://kjanat.github.io/actionlint/#eNokyr0NwzAMROFeU1yRVgtwmzggYOeHFHwkUgjaPWBcveJ7boKR3NvTN0oDQhlV4ExjL88tLbK/72V/YujgdQG9ToE+dsdtTqS9zL+GtdrQ83OQhxsFc/0GAE0uIzU=)
 
 This is minimal test case.

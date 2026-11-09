@@ -152,6 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `)}})
 		if err != nil {
 			t.Fatal(err)

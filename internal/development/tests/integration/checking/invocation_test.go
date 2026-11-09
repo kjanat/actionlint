@@ -59,7 +59,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	for path, content := range map[string]string{
 		".git/HEAD":                        "ref: refs/heads/main\n",
 		".github/actions/greet/action.yml": "name: greet\ndescription: greet\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n",
-		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/greet\n      - run: echo hi\n",
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/greet\n      - run: echo hi\npermissions: {}\n",
 	} {
 		full := filepath.Join(root, filepath.FromSlash(path))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -122,7 +122,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 	root := t.TempDir()
 	for path, content := range map[string]string{
 		".git/HEAD":                "ref: refs/heads/main\n",
-		".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\n",
+		".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\npermissions: {}\n",
 		"outer/action.yml":         "name: outer\ndescription: outer\nruns:\n  using: composite\n  steps:\n    - id: call-inner\n      uses: ./inner\n",
 		"inner/action.yml":         "name: inner\ndescription: inner\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n",
 	} {

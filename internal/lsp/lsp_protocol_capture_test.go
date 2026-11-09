@@ -133,7 +133,7 @@ func TestEditorCaseAliasPublishesCapturedUTF16WithOriginalURI(t *testing.T) {
 	}
 	path := filepath.Join(aliasRoot, "workflow.yml")
 	uri := strings.Replace(FileURI(path), path[:2], path[:1]+"%3A", 1)
-	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo 😀::set-output name=result::value'}]}}\n"
+	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo 😀::set-output name=result::value'}]}}\npermissions: {}\n"
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	analysis, err := analyzeDocuments(t.Context(), options, map[string]Document{path: {Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 {

@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `},
 		{"matrix passed between jobs", `name: build
 on: push
@@ -44,6 +45,7 @@ jobs:
       matrix: ${{ fromJSON(needs.job1.outputs.matrix) }}
     steps:
       - run: echo "Matrix - Project ${{ matrix.project }}, Config ${{ matrix.config }}"
+permissions: {}
 `},
 		{"environment conversions", `name: print
 on: push
@@ -57,6 +59,7 @@ jobs:
       - continue-on-error: ${{ fromJSON(env.continue) }}
         timeout-minutes: ${{ fromJSON(env.time) }}
         run: echo ...
+permissions: {}
 `},
 		{"event selection", `on: [push, pull_request]
 jobs:
@@ -65,6 +68,7 @@ jobs:
     steps:
       - if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
         run: echo ok
+permissions: {}
 `},
 		{"status conditions", `on: push
 jobs:
@@ -84,6 +88,7 @@ jobs:
         run: echo cancelled
       - if: ${{ !cancelled() }}
         run: echo active
+permissions: {}
 `},
 		{"multiline case", `on: push
 env:
@@ -99,6 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 `},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -126,7 +132,7 @@ jobs:
     name: ${{ matrix.` + member + ` }}
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 			findings := testutil.WorkflowDiagnostics(t, workflow, "")
 			if member != "missing" {
 				if len(findings) != 0 {

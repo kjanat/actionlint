@@ -101,6 +101,7 @@ func TestRuffPythonScripts(t *testing.T) {
 			if tc.shell != "" {
 				src += "        shell: " + tc.shell + "\n"
 			}
+			src += "permissions: {}\n"
 			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
@@ -128,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - shell: python
-        run: ` + script + "\n"
+        run: ` + script + "\n" + "\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 		if err != nil {
 			t.Fatal(err)
@@ -160,6 +161,7 @@ jobs:
     steps:
       - shell: python
         run: print('ok')
+permissions: {}
 `
 	start := time.Now()
 	_, err = checking.Analyze(ctx, checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
@@ -197,6 +199,7 @@ jobs:
     steps:
       - run: print(missing)
         shell: python
+permissions: {}
 `)}},
 			)
 			if (err != nil) != tc.wantError {
@@ -215,12 +218,13 @@ jobs:
     steps:
       - shell: python
         run: print(missing) # actionlint:ignore ruff -- intentional undefined-name fixture
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}
-	src = strings.Split(src, " # actionlint:")[0] + "\n"
+	src = strings.Replace(src, " # actionlint:ignore ruff -- intentional undefined-name fixture", "", 1)
 	cfg, err := checking.ConfigurationRules().Parse([]byte("overrides: [{includes: [ci.yml], lint: {rules: {external: {ruff: warn}}}}]"))
 	if err != nil {
 		t.Fatal(err)
@@ -243,6 +247,7 @@ jobs:
         run: value = ${{ github.run_number }}.0
       - shell: python
         run: print(missing)
+permissions: {}
 `
 			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
 			result, err := checking.Analyze(t.Context(), checking.Options{
@@ -274,7 +279,7 @@ jobs:
           print(` + quote + "${{\n\n            github.sha\n          }}" + quote + `)
       - shell: python3.12 {0}
         run: print(missing)
-`
+` + "\npermissions: {}\n"
 			source = strings.ReplaceAll(source, "\n", ending)
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				WorkingDir: t.TempDir(),
@@ -318,6 +323,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if (err != nil) != tc.failed {
@@ -352,6 +358,7 @@ jobs:
     steps:
       - shell: python
         run: print('ok')
+permissions: {}
 `
 			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err != nil {
@@ -373,6 +380,7 @@ jobs:
     steps:
       - shell: python
         run: 'if:'
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
@@ -400,6 +408,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, language := range []string{"ipynb", "pyi"} {
 		options := &processconfig.Options{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
@@ -431,6 +440,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: $/python-action
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: workspace.Identity(root)}})
 	if err != nil {

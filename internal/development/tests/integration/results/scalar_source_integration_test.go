@@ -31,7 +31,7 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
 			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
 		}}}),
-	}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")}},
+	}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 func TestPhysicalYAMLLineRendering(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n", "\r", "\u0085", "\u2028", "\u2029"} {
 		t.Run(fmt.Sprintf("%q", ending), func(t *testing.T) {
-			src := strings.ReplaceAll("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"first\n        ${{ unknown }}\"\n", "\n", ending)
+			src := strings.ReplaceAll("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"first\n        ${{ unknown }}\"\npermissions: {}\n", "\n", ending)
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
 				t.Fatal(err)

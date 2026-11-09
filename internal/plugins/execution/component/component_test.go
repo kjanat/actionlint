@@ -69,7 +69,7 @@ func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *c
 	return result
 }
 
-const pipeWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n"
+const pipeWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\npermissions: {}\n"
 
 func TestRustPluginReportsPipeToShell(t *testing.T) {
 	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
@@ -132,7 +132,7 @@ func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
 		t.Fatalf("descriptor=%+v", plugin.Descriptor())
 	}
 	root := writeRepository(t, map[string]string{
-		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: make && sudo make install\n      - run: FOO=\"hello world\" sudo make test\n      - run: |-\n          FOO=\"hello\n          world\" sudo make test\n",
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: make && sudo make install\n      - run: FOO=\"hello world\" sudo make test\n      - run: |-\n          FOO=\"hello\n          world\" sudo make test\npermissions: {}\n",
 		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: sudo apt-get install -y jq\n      shell: bash\n",
 	})
 	result := analyzeRepository(t, root, plugin)
@@ -300,7 +300,7 @@ func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
 		t.Fatalf("descriptor=%+v", plugin.Descriptor())
 	}
 	root := writeRepository(t, map[string]string{
-		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: wget --no-check-certificate https://example.com/x.sh\n",
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: wget --no-check-certificate https://example.com/x.sh\npermissions: {}\n",
 		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: curl -k https://example.com | sh\n      shell: bash\n",
 	})
 	result := analyzeRepository(t, root, plugin)
@@ -345,7 +345,7 @@ func TestRustPluginDistinguishesLogicalOrFromPipes(t *testing.T) {
 		{"curl URL | bash || wget URL | sh", 2},
 	} {
 		t.Run(tt.script, func(t *testing.T) {
-			root := writeRepository(t, map[string]string{".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + tt.script + "\n"})
+			root := writeRepository(t, map[string]string{".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + tt.script + "\n" + "\npermissions: {}\n"})
 			result := analyzeRepository(t, root, plugin)
 			if len(result.Diagnostics) != tt.want {
 				t.Fatalf("diagnostics=%+v, want %d", result.Diagnostics, tt.want)

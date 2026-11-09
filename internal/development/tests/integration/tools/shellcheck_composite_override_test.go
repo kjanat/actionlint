@@ -27,7 +27,7 @@ func TestShellcheckCompositeOverrideEnablesCallerDisabledTool(t *testing.T) {
 			fixturefiles.Write(t, root, ".git/HEAD", "ref: refs/heads/master\n")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.base+"overrides:\n  - includes: ['local/**']\n    "+tc.override+"\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $2\n")
-			workflow := fixturefiles.Write(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n      - shell: bash\n        run: echo $1\n")
+			workflow := fixturefiles.Write(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n      - shell: bash\n        run: echo $1\npermissions: {}\n")
 			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)

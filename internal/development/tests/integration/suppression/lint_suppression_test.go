@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
 ` + tc.body + `    steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 		if got := testutil.WorkflowDiagnostics(t, source, tc.config); len(got) != 0 {
 			t.Fatal(got)
 		}

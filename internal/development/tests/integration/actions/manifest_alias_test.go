@@ -24,7 +24,7 @@ func TestManifestAliasesStandaloneAndNested(t *testing.T) {
 				source := workspace.Source{Path: "outer/action.yml", Content: []byte(outer), Project: workspace.Identity(root)}
 				if entry == "workflow" {
 					source.Path = "ci.yml"
-					source.Content = []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\n")
+					source.Content = []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\npermissions: {}\n")
 				}
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{source})
 				if err != nil {
@@ -49,7 +49,7 @@ func TestManifestAliasesStandaloneAndNested(t *testing.T) {
 }
 
 func TestWorkflowAliasesRemainSupported(t *testing.T) {
-	source := "on: push\njobs:\n  first:\n    runs-on: ubuntu-latest\n    env: &env {VALUE: example}\n    steps: [{run: echo ok}]\n  second:\n    runs-on: ubuntu-latest\n    env: *env\n    steps: [{run: echo ok}]\n"
+	source := "on: push\njobs:\n  first:\n    runs-on: ubuntu-latest\n    env: &env {VALUE: example}\n    steps: [{run: echo ok}]\n  second:\n    runs-on: ubuntu-latest\n    env: *env\n    steps: [{run: echo ok}]\npermissions: {}\n"
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("workflow aliases rejected: error=%v diagnostics=%+v", err, result.Diagnostics)

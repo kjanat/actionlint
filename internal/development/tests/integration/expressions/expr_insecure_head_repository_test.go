@@ -22,7 +22,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\n" + "\npermissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 				if err != nil {
 					t.Fatal(err)
@@ -51,7 +51,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
@@ -74,6 +74,7 @@ jobs:
           DESCRIPTION: ${{ github.event.workflow_run.head_repository.description }}
           HOMEPAGE: ${{ github.event.workflow_run.head_repository.homepage }}
         run: printf '%s\n' "$DESCRIPTION" "$HOMEPAGE"
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 	if err != nil || len(result.Diagnostics) != 0 {
@@ -111,7 +112,7 @@ jobs:
       - env:
           PROFILE: ${{ github.event.workflow_run.` + path + ` }}
         run: printf '%s\n' "$PROFILE"
-`
+` + "\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe condition and environment binding for %s rejected: %v, %+v", path, err, result)
@@ -166,7 +167,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-` + script.step
+` + script.step + "\npermissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(workflow, "\n", ending))}})
 				if err != nil {
 					t.Fatal(err)

@@ -9,6 +9,7 @@ jobs:
   error:
     # This error message contains an abosolute file path
     uses: ./.github/workflows/not-existing-workflow.yml
+permissions: {}
 ```
 
 Output:
@@ -20,4 +21,4 @@ test.yaml:5:11: could not read reusable workflow file for "./.github/workflows/n
   |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNo0yLENgCAQBdCeKW4BoGccEgQU+eY+BN3eWNi9PPQg12QxOyKDEUmq0A8ik4lBnHe5jjKjX9Bja1j0HcOmu3LUnu3f7jnbGwAA//8Mtxun)
+[Playground](https://kjanat.github.io/actionlint/#eNo0yEEOAiEMBdA9p+gFBvY9ziR1qEJL+iFojHc3Lty9PDemsVDT3U9wIpIIjx+IFgRMueRLZ11n2R6PW/ONYj4PeSqm2nX8O796S0OiK6BuYHp/vgMA+b0hvw==)

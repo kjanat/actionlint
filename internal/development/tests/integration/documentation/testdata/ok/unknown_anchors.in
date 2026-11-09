@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ${{ unknown }}
+permissions: {}
 ```
 
 <a id="output-header"></a>

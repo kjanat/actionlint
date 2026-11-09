@@ -94,7 +94,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")})
+			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
 			if err == nil || len(guest.inputs) != 0 {
 				var messages []string
 				if result != nil {
@@ -136,7 +136,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")})
+			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -229,6 +229,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo $VALUE # shellcheck disable=SC2034
+permissions: {}
 `
 			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 			if (err != nil) != tc.partial {
@@ -345,7 +346,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			if err != nil || needed["shellcheck"] != tc.native {
 				t.Fatalf("native fallback plan: %v, %v; want %t", needed, err, tc.native)
 			}
-			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
 			_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 			if tc.native {
 				if !errors.Is(err, exec.ErrNotFound) {
@@ -388,7 +389,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			if err != nil || needed["shellcheck"] {
 				t.Fatalf("disabled managed plugin requested fallback: %v, %v", needed, err)
 			}
-			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
 			if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}); err != nil {
 				t.Fatal(err)
 			}
@@ -409,7 +410,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	}
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	for name, content := range map[string]string{
-		workflow: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/nested\n",
+		workflow: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/nested\npermissions: {}\n",
 		filepath.Join(root, "nested", "action.yml"): "name: Nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n",
 	} {
 		if err := os.WriteFile(name, []byte(content), 0o600); err != nil {

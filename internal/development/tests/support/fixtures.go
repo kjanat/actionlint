@@ -215,7 +215,7 @@ jobs:
         shell: python
         working-directory: scripts
     steps:
-      `+strings.ReplaceAll(steps, "\n", "\n      ")+"\n")
+      `+strings.ReplaceAll(steps, "\n", "\n      ")+"\npermissions: {}\n")
 	options.WorkingDir = root
 	result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 	if err != nil {

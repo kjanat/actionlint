@@ -7,3 +7,4 @@ jobs:
         run: echo $unquoted
       - shell: python
         run: print(undefined_name)
+permissions: {}

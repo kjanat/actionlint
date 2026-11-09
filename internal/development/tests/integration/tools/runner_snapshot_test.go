@@ -65,7 +65,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 				Scope: "repo", Freshness: freshness, Complete: true,
 				Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"group":"build","os":"windows","default_shell":"pwsh"}]}`,
 			}}}
-			content := "on: push\n" + tc.workflowDefaults + "jobs:\n  test:\n    runs-on: " + selection + "\n" + tc.jobSettings + "    steps:\n      - run: echo ok\n" + tc.stepShell
+			content := "on: push\n" + tc.workflowDefaults + "jobs:\n  test:\n    runs-on: " + selection + "\n" + tc.jobSettings + "    steps:\n      - run: echo ok\n" + tc.stepShell + "\npermissions: {}\n"
 			findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), options, []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: []byte(content)}}))
 			if err != nil {
 				t.Fatal(err)

@@ -166,20 +166,28 @@ test('real WebAssembly server publishes versioned diagnostics and clears them af
 	expect(capabilities.positionEncoding).toBe('utf-16');
 	expect(capabilities.codeActionProvider).toBe(true);
 	expect(capabilities.completionProvider).toBeTruthy();
-	const missingRunner = await check(page, 'on: push\njobs:\n  test:\n    steps:\n      - run: echo hi\n');
+	const missingRunner = await check(
+		page,
+		'on: push\njobs:\n  test:\n    steps:\n      - run: echo hi\n\npermissions: {}\n',
+	);
 	expect(missingRunner.some(d => d.code === 'syntax-check' && String(d.message).includes('runs-on'))).toBe(true);
 	const events = await check(
 		page,
-		'on: foo\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n',
+		'on: foo\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n\npermissions: {}\n',
 	);
 	const event = events.find(d => d.code === 'events');
 	expect(event?.range).toEqual({ start: { line: 0, character: 4 }, end: { line: 0, character: 7 } });
 	expect(event?.severity).toBe(1);
-	expect(await check(page, 'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n'))
+	expect(
+		await check(
+			page,
+			'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n\npermissions: {}\n',
+		),
+	)
 		.toEqual([]);
 	const information = await check(
 		page,
-		'on: push # ignore[expression]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n',
+		'on: push # ignore[expression]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n\npermissions: {}\n',
 	);
 	expect(information.find(d => d.code === 'unused-suppression')?.severity).toBe(3);
 });
@@ -192,7 +200,7 @@ test('closed action metadata is read through the virtual workspace host', async 
 	});
 	const diagnostics = await check(
 		page,
-		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n        with:\n          invalid: value\n',
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n        with:\n          invalid: value\n\npermissions: {}\n',
 	);
 	expect(diagnostics.some(d => String(d.message).includes('invalid') && String(d.message).includes('input'))).toBe(
 		true,
@@ -207,7 +215,8 @@ test('JavaScript action entry files are checked through the virtual workspace ho
 		[`${root}/local/action.yml`]: 'name: Local\ndescription: Fixture\nruns: {using: node24, main: index.js}\n',
 		[entry]: 'export {};\n',
 	});
-	const workflow = 'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n';
+	const workflow =
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n\npermissions: {}\n';
 	expect(await check(page, workflow)).toEqual([]);
 	expect(await page.evaluate(() => window.browserSession?.reads)).toContain(entry);
 	await page.evaluate(uri => {
@@ -255,7 +264,7 @@ test('new edits cancel outstanding host reads and cannot publish old findings', 
 		session.opened = true;
 		await session.client.open(
 			session.uri,
-			'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./slow\n',
+			'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./slow\n\npermissions: {}\n',
 			++session.version,
 		);
 	});
@@ -263,7 +272,12 @@ test('new edits cancel outstanding host reads and cannot publish old findings', 
 	await page.evaluate(() => {
 		if (window.browserSession) window.browserSession.holdReads = false;
 	});
-	expect(await check(page, 'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n'))
+	expect(
+		await check(
+			page,
+			'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n\npermissions: {}\n',
+		),
+	)
 		.toEqual([]);
 	await expect.poll(() => page.evaluate(() => window.browserSession?.cancelledReads)).toBeGreaterThan(0);
 	expect(await page.evaluate(() => window.browserSession?.publications.some(params => params.version === 1))).toBe(
@@ -275,7 +289,7 @@ test('virtual workspace URIs survive diagnostics, completion and versioned quick
 	await start(page, 'vscode-vfs://github/owner/repository');
 	const diagnostics = await check(
 		page,
-		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: https://github.com/actions/checkout@v7\n',
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: https://github.com/actions/checkout@v7\n\npermissions: {}\n',
 	);
 	expect(diagnostics.some(d => d.code === 'vendor-lock-in')).toBe(true);
 	const result = await page.evaluate(async diagnostics => {
@@ -297,7 +311,7 @@ test('virtual workspace URIs survive diagnostics, completion and versioned quick
 	const completions = await page.evaluate(async () => {
 		const session = window.browserSession;
 		if (!session) throw new Error('No session');
-		const source = 'on: push\nrun-name: ${{ github. }}\njobs: {}\n';
+		const source = 'on: push\nrun-name: ${{ github. }}\njobs: {}\n\npermissions: {}\n';
 		await session.client.change(session.uri, source, ++session.version);
 		return session.client.complete({ textDocument: { uri: session.uri }, position: { line: 1, character: 21 } });
 	});

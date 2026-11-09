@@ -43,6 +43,7 @@ jobs:
       - run: echo ok
         env:
           RESULT: ${{ steps.installed.outputs.%s }}
+permissions: {}
 `, tc.ref, inputs, output)
 					findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}", options)
 					if mutation == "valid" {
@@ -91,6 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7%s
       - uses: $/nesting/%s
+permissions: {}
 `, checkoutInputs, spelling)
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{
 					Path: ".github/workflows/caller.yml", Content: []byte(source), Project: workspace.Identity(root), Config: config,

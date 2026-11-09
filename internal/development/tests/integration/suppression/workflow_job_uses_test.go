@@ -19,7 +19,7 @@ func TestReusableWorkflowJobUsesSuppressions(t *testing.T) {
 			{"inline uses line", "ignores: [{rule: workflow-call, uses: different}]", " # actionlint:ignore workflow-call -- reviewed invalid reference", 0},
 		} {
 			t.Run(uses+"/"+tc.name, func(t *testing.T) {
-				source := "on: push\njobs:\n  caller:\n    uses: " + uses + tc.directive + "\n"
+				source := "on: push\njobs:\n  caller:\n    uses: " + uses + tc.directive + "\n" + "\npermissions: {}\n"
 				findings := testutil.WorkflowDiagnostics(t, source, tc.config)
 				if len(findings) != tc.want {
 					t.Fatalf("job uses suppression: got %v; want %d findings", findings, tc.want)

@@ -211,6 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
+permissions: {}
 `))
 	testErr(t, err, "missing from PATH: shellcheck", "runner lint-docs")
 }

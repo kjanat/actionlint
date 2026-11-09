@@ -281,7 +281,7 @@ try {
 	assert.equal(shell.outputs.get('problem-count'), '18', shell.log);
 	await writeFile(
 		join(workspace, 'shell-fix.yaml'),
-		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n',
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n\npermissions: {}\n',
 	);
 	const fixable = await run(
 		{
@@ -343,7 +343,7 @@ try {
 	await installManagedShell(shellEnvironment);
 	await writeFile(
 		join(workspace, 'managed-shell.yaml'),
-		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n',
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n\npermissions: {}\n',
 	);
 	const managedShell = await run(
 		{ files: 'managed-shell.yaml', 'fail-on-error': 'false' },
@@ -418,7 +418,7 @@ try {
 	await run({ 'config-file': join(shared, 'missing.yaml') }, 3);
 	await writeFile(
 		join(workspace, '.github/workflows/custom-runner.yml'),
-		'name: Custom runner\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04-custom\n    steps:\n      - run: echo hello\n',
+		'name: Custom runner\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04-custom\n    steps:\n      - run: echo hello\n\npermissions: {}\n',
 	);
 	const customRunner = { files: '', 'disable-tools': 'shellcheck,ruff' };
 	await run({ ...customRunner, config: JSON.stringify({ 'self-hosted-runner': { labels: ['ubuntu-24.04-custom'] } }) });
@@ -446,7 +446,7 @@ try {
 	await mkdir(pluginCache, { recursive: true });
 	await writeFile(
 		join(workspace, 'plugin.yml'),
-		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n',
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n\npermissions: {}\n',
 	);
 	const realCache = process.env.ACTIONLINT_TEST_GITHUB_CACHE === '1';
 	const pluginInputs = {
@@ -505,7 +505,7 @@ try {
 	assert.equal(installRuff.status, 0, `${installRuff.error ?? ''}\n${installRuff.stdout}\n${installRuff.stderr}`);
 	await writeFile(
 		join(workspace, 'default-plugins.yml'),
-		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n      - shell: python\n        run: print(unknown_name)\n',
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n      - shell: python\n        run: print(unknown_name)\n\npermissions: {}\n',
 	);
 	const defaultInputs = {
 		files: 'default-plugins.yml',

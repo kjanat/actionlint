@@ -50,6 +50,7 @@ jobs:
 			if tc.step != "" {
 				source += "        shell: " + tc.step + "\n"
 			}
+			source += "permissions: {}\n"
 			request := checking.Options{}
 			var requestSources []workspace.Source
 			var err error

@@ -47,6 +47,7 @@ jobs:
         run: print(second_missing)
 `
 				}
+				source += "permissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 				if err != nil {
 					t.Fatal(err)
@@ -128,7 +129,7 @@ jobs:
           ` + strings.ReplaceAll(script, "\n", "\n          ") + `
       - shell: python
         run: print(missing)
-`
+` + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 			if err != nil {
 				t.Fatal(err)
@@ -150,6 +151,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
 		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})

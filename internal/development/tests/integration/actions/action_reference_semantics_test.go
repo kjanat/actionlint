@@ -20,7 +20,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: ` + spec + "\n"
+      - uses: ` + spec + "\n" + "\npermissions: {}\n"
 			check := func(errs []diagmodel.Diagnostic) {
 				if invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "do not support an '@ref' suffix") {

@@ -70,7 +70,7 @@ jobs:
             case ` + pattern + `: pass
       - shell: python
         run: print(missing)
-`
+` + "\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
@@ -91,6 +91,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
@@ -117,7 +118,7 @@ jobs:
     steps:
       - shell: python
         run: |
-          ` + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
+          ` + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n" + "\npermissions: {}\n"
 					source = strings.ReplaceAll(source, "\n", ending)
 					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 					if err != nil {
@@ -148,6 +149,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
@@ -168,6 +170,7 @@ jobs:
           if lhs ${{ '==' }} rhs: pass
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
@@ -202,6 +205,7 @@ jobs:
       - run: |
           match 1:
             case 1: pass
+permissions: {}
 `
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 		if err != nil {
@@ -236,6 +240,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err == nil || !strings.Contains(err.Error(), "output redirection") {

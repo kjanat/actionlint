@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
-        if: ${{ ` + tc.expression + " }}\n"
+        if: ${{ ` + tc.expression + " }}\n" + "\npermissions: {}\n"
 			findings := testutil.WorkflowDiagnostics(t, source, "")
 			if len(findings) != 1 || !strings.Contains(findings[0].Message, want) {
 				t.Fatalf("want %q, got %v", want, findings)

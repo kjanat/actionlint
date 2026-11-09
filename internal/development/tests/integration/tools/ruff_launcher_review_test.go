@@ -32,6 +32,7 @@ jobs:
     steps:
       - shell: python
         run: print(1)
+permissions: {}
 `
 	for _, tc := range []struct {
 		name, executable string

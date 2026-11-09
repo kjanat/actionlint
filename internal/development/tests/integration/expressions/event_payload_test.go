@@ -20,7 +20,7 @@ func TestWorkflowEventPayloadChecks(t *testing.T) {
 		{"typed number", "pull_request", "github.event.pull_request.number", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			content := "on: " + tc.trigger + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ " + tc.value + " }}\n    steps:\n      - run: echo ok\n"
+			content := "on: " + tc.trigger + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ " + tc.value + " }}\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(content)}})
 			if err != nil {
 				t.Fatal(err)

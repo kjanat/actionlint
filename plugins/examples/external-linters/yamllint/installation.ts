@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo example${'  '}
+permissions: {}
 `;
 
 /** Prepare one YAML style violation for the registry's installed-plugin checks. */

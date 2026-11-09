@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ./generated
+permissions: {}
 `
 
 func TestReusableIgnoreAnalysisIntegration(t *testing.T) {
@@ -34,6 +35,7 @@ jobs:
     steps:
       - id: check
         run: echo '${{ invalid }}'
+permissions: {}
 `
 	if findings := testutil.WorkflowDiagnostics(t, source, "ignores: [{rule: expression-reference, job: build, step: check}]"); len(findings) != 0 {
 		t.Fatal(findings)

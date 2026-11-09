@@ -135,7 +135,7 @@ func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	manifest := strings.Replace(testutil.CompositeAction, "echo ok", "./bad.sh", 1)
 	fixturefiles.Write(t, root, "action.yml", manifest)
-	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\n"
+	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\npermissions: {}\n"
 	for _, source := range []workspace.Source{{Path: "action.yml", Content: []byte(manifest)}, {Path: "ci.yml", Content: []byte(workflow)}} {
 		source.Project = workspace.Identity(root)
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{source})
@@ -158,7 +158,7 @@ func TestStandaloneActionNestedAndReferenced(t *testing.T) {
 	inner := strings.Replace(testutil.CompositeAction, "echo ok", "echo '::set-output name=x::1'", 1)
 	fixturefiles.Write(t, root, "outer/action.yml", outer)
 	fixturefiles.Write(t, root, "inner/action.yml", inner)
-	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\n"
+	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\npermissions: {}\n"
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{
 		{Path: "outer/action.yml", Content: []byte(outer), Project: workspace.Identity(root)},
 		{Path: "ci.yml", Content: []byte(workflow), Project: workspace.Identity(root)},
@@ -241,7 +241,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			}
 			project := workspace.Identity(root)
 			manifest := strings.Replace(testutil.CompositeAction, "echo ok", "echo $UNQUOTED", 1)
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				WorkingDir: root,
 

@@ -48,7 +48,7 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	documents := map[string]Document{
 		path: {
 			URI: FileURI(path), Version: 1,
-			Text: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo first\n",
+			Text: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo first\npermissions: {}\n",
 		},
 	}
 	result, err := session.analyze(t.Context(), documents)

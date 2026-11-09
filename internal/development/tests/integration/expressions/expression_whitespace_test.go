@@ -49,7 +49,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: ` + tc.value + "\n")
+      - uses: ` + tc.value + "\n" + "\npermissions: {}\n")
 			workflow, syntaxErrors := workflowparser.Parse(source)
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
@@ -91,7 +91,7 @@ jobs:
     env: "` + value + `"
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
@@ -115,7 +115,7 @@ jobs:
     ` + field + `
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 	sources := []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, sources))
