@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -7,6 +8,7 @@ import { readTarGz, readZip, writeZip, type ZipEntry } from '#archive';
 export const distribution = 'actionlint-kjanat';
 export const importName = 'actionlint_kjanat';
 export const repositoryUrl = 'https://github.com/kjanat/actionlint';
+const packageReadme = readFileSync(new URL('../PACKAGE_README.md', import.meta.url), 'utf8');
 
 const posix = { format: 'tar.gz', binary: 'actionlint' } as const;
 const windows = { format: 'zip', binary: 'actionlint.exe' } as const;
@@ -108,22 +110,10 @@ export function metadata(version: string): string {
 		`Project-URL: Documentation, ${repositoryUrl}/tree/${tag}/docs`,
 		`Project-URL: Repository, ${repositoryUrl}`,
 		`Project-URL: Issues, ${repositoryUrl}/issues`,
+		'Project-URL: Funding, https://github.com/sponsors/kjanat',
 		'Description-Content-Type: text/markdown',
 		'',
-		`# ${distribution}`,
-		'',
-		'[actionlint](https://actionlint.kjanat.dev) checks GitHub Actions workflow files for syntax errors, type errors in',
-		'expressions, unsafe script injection and many other mistakes. This package installs the prebuilt binary of the',
-		`[kjanat/actionlint](${repositoryUrl}) fork as the \`actionlint\` command.`,
-		'',
-		'```sh',
-		`pip install ${distribution}`,
-		'actionlint',
-		'```',
-		'',
-		`Each wheel carries the binary from the [${tag} release](${repositoryUrl}/releases/tag/${tag}) for its platform.`,
-		'ShellCheck and Ruff are optional. Install them on `PATH` to check shell and Python scripts in `run:` steps.',
-		'',
+		packageReadme.replaceAll('{{version}}', version),
 	].join('\n');
 }
 

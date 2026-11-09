@@ -164,11 +164,14 @@ test('a wheel carries the launcher, the archived binary and licence, and its met
 		'Project-URL: Documentation, https://github.com/kjanat/actionlint/tree/v1.2.3/docs',
 		'Project-URL: Repository, https://github.com/kjanat/actionlint',
 		'Project-URL: Issues, https://github.com/kjanat/actionlint/issues',
+		'Project-URL: Funding, https://github.com/sponsors/kjanat',
 		'Description-Content-Type: text/markdown',
 	]);
-	assert.match(description, /^# actionlint-kjanat\n/);
-	assert.match(description, /\npip install actionlint-kjanat\n/);
+	assert.match(description, /^# actionlint\n/);
+	assert.match(description, /\npython -m pip install actionlint-kjanat\n/);
 	assert.match(description, /\(https:\/\/github\.com\/kjanat\/actionlint\/releases\/tag\/v1\.2\.3\)/);
+	assert.match(description, /\(https:\/\/github\.com\/sponsors\/kjanat\)/);
+	assert.doesNotMatch(description, /\{\{version\}\}/);
 });
 
 test('RECORD lists the hash and size of every other file in the wheel', async () => {

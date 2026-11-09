@@ -5,6 +5,10 @@ This package builds the wheels published to PyPI as
 contains the release binary for one platform and installs the `actionlint`
 console script. Installation does not compile source code.
 
+Edit [`PACKAGE_README.md`](PACKAGE_README.md) to change the description shown on
+PyPI. The wheel builder replaces `{{version}}` in its links with the release
+version. Funding also appears in the package's project links.
+
 ```text
 distribution/pypi/
   python/actionlint_kjanat/__init__.py  the launcher in every wheel
