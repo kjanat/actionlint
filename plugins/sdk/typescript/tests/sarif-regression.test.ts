@@ -65,7 +65,7 @@ test('UTF-16 coordinates convert using the captured lines', () => {
 	expect(() => decode([{ ...run, results: [split] }], '😀')).toThrow('surrogate pair');
 });
 
-test('captured Poutine SARIF retains its line-only range', async () => {
+test('captured Poutine SARIF reports its line-only range', async () => {
 	const base = new URL('../../../examples/external-linters/testdata/', import.meta.url);
 	const output = await readFile(new URL('poutine-1.1.6.sarif.json', base), 'utf8');
 	const source = await readFile(new URL('poutine-workflow.yml', base), 'utf8');

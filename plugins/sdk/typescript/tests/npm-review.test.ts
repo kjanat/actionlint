@@ -15,7 +15,7 @@ function run(command: string, args: string[], cwd: string): string {
 	return result.stdout;
 }
 
-test('npm pack and install retain the provider and existing publication rules', async () => {
+test('npm pack and install include the provider and respect existing publication rules', async () => {
 	const temporary = await mkdtemp(join(tmpdir(), 'sdk-npm-review-'));
 	try {
 		for (const variant of ['gitignore', 'npmignore', 'files']) {
