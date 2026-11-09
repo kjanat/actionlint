@@ -212,11 +212,13 @@ jobs:
           retention-days: 7
   package-previews:
     needs: release-snapshot
+    if: ${{ !cancelled() && needs['release-snapshot'].result == 'success' }}
     uses: $/.github/workflows/package-previews.yml
     permissions: { contents: read }
   docker-previews:
     needs: release-snapshot
     if: >-
+      !cancelled() && needs['release-snapshot'].result == 'success' &&
       github.repository == 'kjanat/actionlint' &&
       (github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository)
@@ -578,6 +580,7 @@ jobs:
   action-slim:
     name: GitHub Action (ubuntu-slim)
     needs: action
+    if: ${{ !cancelled() && needs.action.result == 'success' }}
     runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:

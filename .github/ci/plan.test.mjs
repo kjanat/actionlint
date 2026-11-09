@@ -676,6 +676,38 @@ test('workflow lint with all ShellCheck checks runs before the matrix with both 
 	);
 });
 
+test('artifact consumers require a successful producer and stop on cancellation', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	/** @type {Array<[string, boolean, boolean]>} */
+	const cases = [
+		['success', false, true],
+		['failure', false, false],
+		['skipped', false, false],
+		['cancelled', false, false],
+		['success', true, false],
+	];
+	for (const name of ['action-slim', 'package-previews', 'docker-previews']) {
+		const job = yamlMapping(jobs[name]);
+		assert.ok(typeof job.needs === 'string');
+		assert.ok(typeof job.if === 'string', `${name} needs an explicit status condition`);
+		const expression = job.if.replace(/^\$\{\{\s*|\s*\}\}$/g, '');
+		for (const [result, cancelledRun, expected] of cases) {
+			const enabled = runInNewContext(expression, {
+				cancelled: () => cancelledRun,
+				success: () => false,
+				needs: { [job.needs]: { result } },
+				github: {
+					repository: 'kjanat/actionlint',
+					event_name: 'pull_request',
+					event: { pull_request: { head: { repo: { full_name: 'kjanat/actionlint' } } } },
+				},
+			}, { timeout: 100 });
+			assert.equal(enabled, expected, `${name}: producer=${result}, cancelled=${cancelledRun}`);
+		}
+	}
+});
+
 test('preview consumers share the successful CI snapshot and cannot trigger separate builds', () => {
 	const read = (/** @type {string} */ name) =>
 		yamlMapping(YAML.parse(readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), 'utf8')));
@@ -723,6 +755,8 @@ test('preview consumers share the successful CI snapshot and cannot trigger sepa
 	) {
 		// This condition uses only operators shared by JavaScript and GitHub expressions.
 		const enabled = runInNewContext(docker.if, {
+			cancelled: () => false,
+			needs: { 'release-snapshot': { result: 'success' } },
 			github: {
 				repository,
 				event_name: eventName,
