@@ -323,25 +323,49 @@ test('documentation workflows install their tools through Runner and mise', () =
 	assert.match(upkeep, /mise install --locked\s*\n/);
 });
 
-test('autofix installs Node.js tools and locked actionlint releases before generation', () => {
-	const workflow = readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8');
-	const steps = workflow.split(/\n {6}- /);
-	const bootstraps = steps.filter(step => /uses: jdx\/mise-action@/.test(step));
-	assert.equal(bootstraps.length, 1, 'README generation requires one explicit mise bootstrap');
+test('autofix installs the formatter and the tools required by selected generators', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8')));
+	const job = yamlMapping(yamlMapping(workflow.jobs).autofix);
+	assert.ok(Array.isArray(job.steps));
+	const steps = job.steps.map(yamlMapping);
+	const bootstraps = steps.filter(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@'));
+	assert.equal(bootstraps.length, 1);
 	const [bootstrap] = bootstraps;
 	assert.ok(bootstrap);
-	assert.doesNotMatch(bootstrap, /\n\s+if:/);
-	assert.match(
-		bootstrap,
-		/install: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \|\| steps\.inputs\.outputs\.readme == 'true' \}\}/,
+	assert.equal(bootstrap.if, undefined);
+	const options = yamlMapping(bootstrap.with);
+	assert.equal(options.install, true);
+	assert.equal(options.cache, true);
+	assert.equal(options.env, true);
+	assert.equal(options.add_shims_to_path, false);
+	assert.equal(options.working_directory, undefined);
+	const selection = yamlMapping(bootstrap.env).MISE_ENABLE_TOOLS;
+	assert.ok(typeof selection === 'string');
+	assert.match(selection, /^\$\{\{.*\}\}$/);
+	const selectedTools = (/** @type {boolean} */ tables, /** @type {boolean} */ readme) =>
+		String(runInNewContext(selection.slice(3, -2), {
+			steps: { inputs: { outputs: { tables: String(tables), readme: String(readme) } } },
+		})).split(',');
+	assert.deepEqual(selectedTools(false, false), ['kprint', 'bun']);
+	const allTools = ['kprint', 'node', 'npm', 'bun', 'github:kjanat/actionlint', 'github:rhysd/actionlint'];
+	for (const [tables, readme] of [[true, false], [false, true], [true, true]]) {
+		assert.deepEqual(selectedTools(tables, readme), allTools);
+	}
+	assert.equal(
+		steps.some(step =>
+			typeof step.uses === 'string' && /^(?:kjanat\/install-dprint|actions\/setup-node)@/.test(step.uses)
+		),
+		false,
 	);
-	assert.match(bootstrap, /env: true/);
-	assert.match(bootstrap, /add_shims_to_path: false/);
-	assert.doesNotMatch(bootstrap, /working_directory:/);
-	assert.match(bootstrap, /MISE_ENABLE_TOOLS: "node,npm,bun,github:kjanat\/actionlint,github:rhysd\/actionlint"/);
-	assert.doesNotMatch(workflow, /uses: actions\/setup-node@/);
-	const readme = steps.findIndex(step => /id: readme\n/.test(step));
-	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');
+	const dependencies = steps.find(step => typeof step.run === 'string' && step.run.startsWith('bun install '));
+	assert.ok(dependencies);
+	assert.equal(dependencies.if, "steps.inputs.outputs.tables == 'true'");
+	const formatter = steps.find(step => step.id === 'format');
+	assert.ok(formatter && typeof formatter.run === 'string');
+	assert.match(formatter.run, /\bkprint fmt\b/);
+	for (const id of ['readme', 'tables', 'format']) {
+		assert.ok(steps.findIndex(step => step.id === id) > steps.indexOf(bootstrap), `${id} must follow mise setup`);
+	}
 });
 
 /** @param {unknown} value @returns {Generator<Record<string, unknown>>} */
@@ -466,7 +490,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 	};
 	/** @type {Record<string, string>} */
 	const otherJobs = {
-		'autofix.yml:autofix': 'node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint',
+		'autofix.yml:autofix': 'kprint,node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint',
 		'ci-changes.yml:changes': 'bun',
 		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
 		'npm-release.yml:build': 'bun',
@@ -521,7 +545,10 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				} else {
 					const selected = yamlMapping(yamlMapping(job).env).MISE_ENABLE_TOOLS;
 					assert.ok(typeof selected === 'string' && selected, `${name}:${jobName} must select tools`);
-					if (step.env && 'MISE_ENABLE_TOOLS' in yamlMapping(step.env)) {
+					if (
+						!(name === 'autofix.yml' && jobName === 'autofix') && step.env
+						&& 'MISE_ENABLE_TOOLS' in yamlMapping(step.env)
+					) {
 						assert.equal(yamlMapping(step.env).MISE_ENABLE_TOOLS, selected);
 					}
 					if (name === 'ci.yml' && jobName in expected) assert.equal(selected, expected[jobName], jobName);
