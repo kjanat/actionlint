@@ -51,6 +51,10 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		log = &commandJSONLogWriter{out: log}
 	}
 	log = &synchronizedLogWriter{out: log}
+	if (c.Verbose || c.Debug) && !r.Quiet {
+		build := commandBuild()
+		_, _ = fmt.Fprintf(log, "verbose: actionlint %s; installed: %s; build: %s, %s/%s\n", build.Version, build.InstalledFrom, build.GoVersion, build.OS, build.GOARCH)
+	}
 	for _, warning := range c.Deprecations {
 		_, _ = fmt.Fprintln(log, "warning: "+warning)
 	}

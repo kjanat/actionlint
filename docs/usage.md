@@ -223,7 +223,7 @@ related locations and fix descriptions. Native diagnostic codes appear beside
 the rule name. General rule descriptions are available through `actionlint rules RULE`.
 Messages and paths
 wrap; long source lines show a window around the diagnostic. Tabs use four-column
-stops. Width defaults to 100 columns; `--diagnostic-width` accepts 40–400 and
+stops. Width defaults to 100 columns; `--diagnostic-width` accepts 40 to 400 and
 requires `pretty`. Use `--color=always` to force ANSI colours or `--color=never`
 to disable them. Automatic colour respects `NO_COLOR`.
 
@@ -323,6 +323,10 @@ Check the exit status before interpreting empty stdout as success.
 `--help --json` describes commands, flags, choices, defaults and exit codes.
 `version --json` exposes build metadata. `-version` and `--version` print three lines of text.
 
+With `--verbose` or `--debug`, actionlint writes its version, installation source,
+Go version and platform to stderr once before checking files. `--quiet` hides
+this message. With `--json`, the message uses the JSON log format.
+
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use
 `--json-pretty=false` to disable this. Pipes and files require an explicit
@@ -415,8 +419,8 @@ response on its own. Set `all_requests_reported` only when every remote attempt 
 including failures. Supported kinds are `http`, `rest`, `graphql`, `git` and `oci`.
 The host is an authority without userinfo, a path or a query. Old resolvers work
 without this field, but their calls are counted under `unreported_resolver_calls`. In-process providers can
-use the shared HTTP transport instead. Arbitrary subprocesses and WebAssembly
-guests do not become observable merely because they run under actionlint.
+use the shared HTTP transport. Actionlint cannot observe network requests made
+directly by subprocesses or WebAssembly guests.
 
 ### Configuration inspection
 
@@ -1331,7 +1335,7 @@ workflow references using their respective commitish semantics, and proposes
 reviewable commit pins. Provider errors fail analysis instead of implying absence.
 The default local analysis makes no resolution requests. The provider emits
 network receipts on success and lookup failure, so `--network-stats` includes
-its actual REST attempts. Its Git object lookups use REST rather than Git fetches.
+its actual REST attempts, including Git object lookups made through REST.
 
 The language server provides expression property completions, including
 `github.event` payload fields selected by the workflow's triggers and activity
