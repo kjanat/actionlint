@@ -59,6 +59,7 @@ jobs:
       - run: echo ok
         env:
           VALUE: ${{ steps.checkout.outputs.%s }}
+permissions: {}
 `, tc.ref, tc.input, tc.output)
 		findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}", checking.Options{RemoteActions: pinnedMetadataFixture{manifest}})
 		inputError, outputError := false, false

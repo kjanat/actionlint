@@ -27,7 +27,7 @@ func (c *identityCapture) CheckDocument(_ context.Context, input checkinputs.Inp
 
 func TestFactsShareOwningStepIdentity(t *testing.T) {
 	capture := &identityCapture{}
-	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\n")
+	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\npermissions: {}\n")
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.Source{{Path: "workflow.yml", Content: content}})
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 
 func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
 	capture := &identityCapture{}
-	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\n")
+	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\npermissions: {}\n")
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.Source{{Path: "workflow.yml", Content: content}})
 	if err != nil {
 		t.Fatal(err)
@@ -86,6 +86,9 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 			}
 			steps := "- id: one\n  env: {ONE: x}\n  shell: bash\n  run: &command echo hello\n- id: two\n  env: {TWO: y}\n  shell: bash\n  run: *command\n"
 			content := []byte(prefix + indent + strings.ReplaceAll(strings.TrimSuffix(steps, "\n"), "\n", "\n"+indent) + "\n")
+			if kind == "workflow" {
+				content = append(content, "permissions: {}\n"...)
+			}
 			capture := &identityCapture{}
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.Source{{Path: path, Content: content}})
 			if err != nil {

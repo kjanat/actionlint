@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
+permissions: {}
 `
 
 type scriptAnalyzer struct{ failure error }

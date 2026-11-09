@@ -14,6 +14,7 @@ jobs:
       # This line is not included
       - run: echo ${{ unknown }}
 # This line is not included
+permissions: {}
 ```
 
 Output:

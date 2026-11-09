@@ -29,7 +29,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 	}
 	workflow := filepath.Join(root, "workflow.yml")
 	documents := map[string]Document{
-		workflow: {URI: FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./local\n"},
+		workflow: {URI: FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./local\npermissions: {}\n"},
 	}
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	result, err := analyzeDocuments(t.Context(), options, documents)
@@ -69,7 +69,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 	unsaved := "\ufeffname: unsaved\ndescription: captured\n# 😀 open dependency\nruns:\n  using: composite\n  steps:\n    - run: echo \"😀::set-output name=result::unsaved\"\n      shell: bash\n"
 	workflow := filepath.Join(root, "workflow.yml")
 	documents := map[string]Document{
-		workflow:                             {URI: FileURI(workflow), Version: 3, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\n"},
+		workflow:                             {URI: FileURI(workflow), Version: 3, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\npermissions: {}\n"},
 		filepath.Join("local", "action.yml"): {URI: FileURI(actionPath), Version: 9, Text: unsaved},
 	}
 	var actionReads atomic.Int32
@@ -103,7 +103,7 @@ func TestEditorConflictingAliasesWithholdOnlyConflictedSource(t *testing.T) {
 	alias := filepath.Dir(actionPath) + string(filepath.Separator) + "." + string(filepath.Separator) + filepath.Base(actionPath)
 	workflow := filepath.Join(root, "workflow.yml")
 	good := filepath.Join(root, "good.yml")
-	goodText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo ::set-output name=result::good'}]}}\n"
+	goodText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo ::set-output name=result::good'}]}}\npermissions: {}\n"
 	first := "name: first\ndescription: first\nruns: {using: composite, steps: [{shell: bash, run: echo first}]}\n"
 	second := strings.ReplaceAll(first, "first", "second")
 	for _, reverse := range []bool{false, true} {
@@ -112,7 +112,7 @@ func TestEditorConflictingAliasesWithholdOnlyConflictedSource(t *testing.T) {
 			a, b = b, a
 		}
 		documents := map[string]Document{
-			workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\n"},
+			workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\npermissions: {}\n"},
 			good:     {Text: goodText}, actionPath: {Text: a}, alias: {Text: b},
 		}
 		result, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true}, documents)

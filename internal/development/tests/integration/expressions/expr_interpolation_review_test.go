@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
-`},
+` + "\npermissions: {}\n"},
 		{"job env", `on: push
 jobs:
   test:
@@ -31,7 +31,7 @@ jobs:
       VALUE: ` + value + `
     steps:
       - run: echo ok
-`},
+` + "\npermissions: {}\n"},
 		{"step env", `on: push
 jobs:
   test:
@@ -40,7 +40,7 @@ jobs:
       - env:
           VALUE: ` + value + `
         run: echo ok
-`},
+` + "\npermissions: {}\n"},
 		{"step name", `on: push
 jobs:
   test:
@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: ` + value + `
         run: echo ok
-`},
+` + "\npermissions: {}\n"},
 		{"action input", `on: push
 jobs:
   test:
@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          path: ` + value + "\n"},
+          path: ` + value + "\n" + "\npermissions: {}\n"},
 		{"matrix string", `on: push
 jobs:
   test:
@@ -67,7 +67,7 @@ jobs:
           - ` + value + `
     steps:
       - run: echo ok
-`},
+` + "\npermissions: {}\n"},
 	} {
 		for _, levels := range []struct {
 			expression, ternary string

@@ -60,7 +60,7 @@ func configuredEngineSelections() registry.Selections {
 func configuredEngineFixture(t *testing.T) (string, []string, *config.Loaded) {
 	t.Helper()
 	root := t.TempDir()
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n"
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
 	cfgSource := "tools:\n  ruff:\n    backend:\n      wasm: {path: first.wasm}\noverrides:\n  - includes: ['**/night.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: second.wasm}\n"
 	files := map[string]string{"actionlint.yaml": cfgSource}
 	var paths []string
@@ -186,7 +186,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range paths {
-		if err := os.WriteFile(path, []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $missing\n"), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $missing\npermissions: {}\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -225,7 +225,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				}
 				files := map[string]string{
 					filepath.Join(root, "actionlint.yaml"): cfgSource,
-					paths[0]:                               fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: %s\n        shell: %s\n      - uses: ./inner\n", tool.script, tool.shell),
+					paths[0]:                               fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: %s\n        shell: %s\n      - uses: ./inner\npermissions: {}\n", tool.script, tool.shell),
 					manifest:                               fmt.Sprintf("name: Inner\ndescription: Inner\nruns:\n  using: composite\n  steps:\n    - run: %s\n      shell: %s\n", tool.script, tool.shell),
 				}
 				for path, content := range files {

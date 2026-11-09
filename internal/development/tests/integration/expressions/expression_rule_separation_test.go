@@ -22,6 +22,7 @@ jobs:
       SYNTAX: ${{ github.[ }}
     steps:
       - run: echo "${{ github.event.issue.title }}"
+permissions: {}
 `
 
 func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
@@ -71,7 +72,7 @@ func TestPayloadSuppressionDoesNotSuppressInjection(t *testing.T) {
 }
 
 func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
-	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ format('{0}', 'used', 'unused') }}%s\n    steps: []\n"
+	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ format('{0}', 'used', 'unused') }}%s\n    steps: []\npermissions: {}\n"
 	for _, tc := range []struct{ level, comment, severity string }{
 		{"warn", "", "warning"},
 		{"error", "", "error"},

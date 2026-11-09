@@ -17,7 +17,7 @@ func ExampleFiles() {
 	}
 	defer os.RemoveAll(directory)
 	path := filepath.Join(directory, "workflow.yml")
-	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n")
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\npermissions: {}\n")
 	if err := os.WriteFile(path, content, 0600); err != nil {
 		panic(err)
 	}

@@ -79,6 +79,7 @@ jobs:
       - uses: 'actions/checkout@v4'
   reuse:
     uses: owner/repo/.github/workflows/ci.yml@main
+permissions: {}
 `
 	check := func(a checkinputs.Checker) []results.Diagnostic {
 		t.Helper()

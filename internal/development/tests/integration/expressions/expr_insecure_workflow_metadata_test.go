@@ -90,7 +90,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-`, "\n", ending) + step
+`, "\n", ending) + step + "permissions: {}" + ending
 	requestSources = []workspace.Source{{Path: "consumer.yaml", InputPath: "consumer.yaml", Content: []byte(source), Project: nil}}
 	findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 	if err != nil {

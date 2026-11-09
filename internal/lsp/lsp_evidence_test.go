@@ -58,7 +58,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if directory != "" {
 			key = "workflow.yml"
 		}
-		analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+		analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		if err != nil || len(analysis.Diagnostics) != 1 {
 			t.Fatalf("working directory %q lost findings: %+v %v", directory, analysis, err)
 		}
@@ -110,7 +110,7 @@ func TestEditorCaseVariantBuffersConflictOnWindows(t *testing.T) {
 		t.Fatalf("fixture aliases are not the same host file: %v", err)
 	}
 	caller := filepath.Join(root, "workflow.yml")
-	callerText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+	callerText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"
 	first, second := "name: first\ndescription: first\nruns: {using: composite, steps: []}\n", "name: second\ndescription: second\nruns: {using: composite, steps: []}\n"
 	for _, reverse := range []bool{false, true} {
 		a, b := first, second
@@ -186,7 +186,7 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 	if err != nil || filepath.Join(root, relative) == path {
 		t.Fatalf("fixture did not exercise the Windows display/capture mismatch: %q %v", relative, err)
 	}
-	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo 😀::set-output name=result::value'}]}}\n"
+	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo 😀::set-output name=result::value'}]}}\npermissions: {}\n"
 	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]Document{path: {URI: FileURI(path), Version: 4, Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 || analysis.Diagnostics[0].Path != path || analysis.Sources[path].Text != text {
 		t.Fatalf("case alias lost its captured identity: %+v %v", analysis, err)
@@ -194,7 +194,7 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != analysis.Sources[path].Revision.Digest() {
 		t.Fatal("published alias was not bound to its captured revision")
 	}
-	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
 		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
 	}

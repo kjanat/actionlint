@@ -12,7 +12,7 @@ func TestCachePolicyInlineSuppression(t *testing.T) {
 	const header = "on: pull_request_target\n"
 	const body = `jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "permissions: {}\n"
 	for _, tc := range []struct {
 		name, declaration string
 		kinds             []string
@@ -95,6 +95,7 @@ jobs:
       - uses: actions/cache/save@v5
         with: {path: .cache, key: test}
       - run: echo '${{ secrets.MISSING }}'
+permissions: {}
 `
 	errs := testutil.WorkflowDiagnostics(t, source, "config-secrets: []")
 	var got []string
@@ -113,7 +114,7 @@ func TestCachePolicySuppressionLayouts(t *testing.T) {
 	const header = "on: pull_request_target\n"
 	const body = `jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "permissions: {}\n"
 	const ignore = "# actionlint:ignore cache-write-untrusted -- reviewed"
 	const next = "# actionlint:ignore-next-line cache-write-untrusted -- reviewed"
 	for _, tc := range []struct {
@@ -132,16 +133,17 @@ cache-mode: write
 cache-mode: write
 ` + body, nil},
 		{"orphan directive", header + "cache-mode: write\n" + body + "# actionlint:ignore expression -- detached\n", []string{"cache-write-untrusted"}},
-		{"flow mapping", header + "jobs: {test: {cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}} " + ignore + "\n", nil},
+		{"flow mapping", header + "jobs: {test: {cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}} " + ignore + "\npermissions: {}\n", nil},
 		{"multiline flow mapping", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
-  cache-mode: write}} ` + ignore + "\n", nil},
+  cache-mode: write}} ` + ignore + "\npermissions: {}\n", nil},
 		{"flow sequence", `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
     cache-mode: read
     steps: [{uses: actions/cache/save@v5, with: {path: .cache, key: test}}] # actionlint:ignore cache-operation -- reviewed
+permissions: {}
 `, nil},
 		{"multiline flow sequence", `on: push
 jobs:
@@ -150,15 +152,16 @@ jobs:
     cache-mode: read
     steps: [
       {uses: actions/cache/save@v5, with: {path: .cache, key: test}}] # actionlint:ignore cache-operation -- reviewed
+permissions: {}
 `, nil},
-		{"flow comments repeated on nested collections", header + "jobs: {test: {\n  cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]} " + ignore + "\n} " + ignore + "\n", []string{"unused-suppression"}},
+		{"flow comments repeated on nested collections", header + "jobs: {test: {\n  cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]} " + ignore + "\n} " + ignore + "\npermissions: {}\n", []string{"unused-suppression"}},
 		{"flow comment before same comment in later document", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
-  cache-mode: write}} ` + ignore + "\n---\n{cache-mode: write} " + ignore + "\n", []string{"syntax-check"}},
+  cache-mode: write}} ` + ignore + "\npermissions: {}\n---\n{cache-mode: write} " + ignore + "\n", []string{"syntax-check"}},
 		{"flow comment before matching ordinary footer", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
-  cache-mode: write}} ` + ignore + "\n# } " + ignore + "\n", nil},
-		{"closing line does not target earlier line", header + "jobs: {test: {cache-mode: write,\n  runs-on: ubuntu-latest, steps: [{run: echo ok}]}} " + ignore + "\n", []string{"cache-write-untrusted", "unused-suppression"}},
+  cache-mode: write}} ` + ignore + "\npermissions: {}\n# } " + ignore + "\n", nil},
+		{"closing line does not target earlier line", header + "jobs: {test: {cache-mode: write,\n  runs-on: ubuntu-latest, steps: [{run: echo ok}]}} " + ignore + "\npermissions: {}\n", []string{"cache-write-untrusted", "unused-suppression"}},
 		{"anchor head", header + "env:\n  " + next + `
   MODE: &mode write
 cache-mode: *mode
@@ -177,6 +180,7 @@ cache-mode: write
  # actionlint:ignore-next-line expression -- detached
  # context
  {cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}, second: *job}
+permissions: {}
 `, []string{"cache-write-untrusted"}},
 		{"document markers", "---\n" + next + `
 cache-mode: write
@@ -196,6 +200,7 @@ cache-mode: write
    runs-on: ubuntu-latest
    steps:
     - run: echo ok
+permissions: {}
 `, nil},
 		{"UTF8 before directive", header + "env: {NOTE: café, MODE: &mode write} " + ignore + `
 cache-mode: *mode
@@ -243,7 +248,7 @@ cache-mode: write
 				}
 				errs := testutil.WorkflowDiagnostics(t, "on: pull_request_target\n"+declaration+`jobs:
   test:
-`+testutil.WorkflowSteps, "")
+`+testutil.WorkflowSteps+"\npermissions: {}\n", "")
 				if !tc.invalid {
 					if len(errs) != 0 {
 						t.Fatal(errs)
@@ -266,7 +271,7 @@ func TestCachePolicyUnsupportedSuppressionPlacements(t *testing.T) {
 	const header = "on: pull_request_target\n"
 	const body = `jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "permissions: {}\n"
 	const directive = "# actionlint:ignore unknown-rule -- reviewed"
 	for _, tc := range []struct {
 		name, source string
@@ -275,24 +280,27 @@ func TestCachePolicyUnsupportedSuppressionPlacements(t *testing.T) {
 	}{
 		{"flow opening", header + "jobs: { " + directive + `
  test: {cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
+permissions: {}
 `, 2, "cache-write-untrusted"},
 		{"tagged anchored flow opening", header + "jobs: {first: &job !<tag:yaml.org,2002:map> { " + directive + `
  cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}, second: *job}
+permissions: {}
 `, 2, "cache-write-untrusted"},
 		{"multiline anchored flow opening", header + `jobs:
  first: &job
   { ` + directive + `
     cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}
  second: *job
+permissions: {}
 `, 4, "cache-write-untrusted"},
-		{"flow anchor comment", header + "jobs: {first: &job " + directive + "\n  {cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}, second: *job}\n", 2, "cache-write-untrusted"},
+		{"flow anchor comment", header + "jobs: {first: &job " + directive + "\n  {cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]}, second: *job}\npermissions: {}\n", 2, "cache-write-untrusted"},
 		{"flow closing", header + `jobs: {test: {
  runs-on: ubuntu-latest, steps: [{run: echo ok}],
- cache-mode: write}} ` + directive + "\n", 4, "cache-write-untrusted"},
-		{"UTF8 before sequence opening", "on: push\njobs: {test: {name: café, runs-on: ubuntu-latest, cache-mode: read, steps: [ " + directive + "\n {uses: actions/cache/save@v5, with: {path: .cache, key: test}}]}}\n", 2, "cache-operation"},
+ cache-mode: write}} ` + directive + "\npermissions: {}\n", 4, "cache-write-untrusted"},
+		{"UTF8 before sequence opening", "on: push\njobs: {test: {name: café, runs-on: ubuntu-latest, cache-mode: read, steps: [ " + directive + "\n {uses: actions/cache/save@v5, with: {path: .cache, key: test}}]}}\n" + "\npermissions: {}\n", 2, "cache-operation"},
 		{"flow sequence closing", `on: push
 jobs: {test: {runs-on: ubuntu-latest, cache-mode: read, steps: [
- {uses: actions/cache/save@v5, with: {path: .cache, key: test}}]}} ` + directive + "\n", 3, "cache-operation"},
+ {uses: actions/cache/save@v5, with: {path: .cache, key: test}}]}} ` + directive + "\n" + "\npermissions: {}\n", 3, "cache-operation"},
 		{"mapping key", header + "cache-mode: " + directive + "\n  write\n" + body, 2, "cache-write-untrusted"},
 		{"mapping value", header + "cache-mode:\n  write " + directive + "\n" + body, 3, "cache-write-untrusted"},
 		{"anchor head", header + `env:

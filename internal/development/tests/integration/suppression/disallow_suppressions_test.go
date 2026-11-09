@@ -20,7 +20,7 @@ func TestDisallowSuppressionsInteractions(t *testing.T) {
 	const body = `
 jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "permissions: {}\n"
 	for _, tc := range []struct {
 		name, declaration, config string
 		kinds                     []string

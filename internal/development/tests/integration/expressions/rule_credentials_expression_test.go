@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
 ` + fmt.Sprintf(scope.field, expression) + `    steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 				errs := lintCredentialsExpressionTest(t, source)
 				if tc.kind == "" {
 					if len(errs) != 0 {
@@ -120,7 +120,7 @@ jobs:
         password: ` + tc.value + `
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 			errs := lintCredentialsExpressionTest(t, source)
 			if tc.kind == "" {
 				if len(errs) != 0 {
@@ -147,7 +147,7 @@ jobs:
         password: ${{ secrets.PASSWORD }}
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 			findings := lintCredentialsExpressionTest(t, source)
 			if len(findings) != 1 || findings[0].Rule != "expression" || findings[0].Start.Line != 8 || !strings.Contains(findings[0].Message, "credentials.username") {
 				t.Fatalf("empty username escaped its field schema: %v", findings)
@@ -178,7 +178,7 @@ jobs:
     container: ` + tc.value + `
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 			errs := lintCredentialsExpressionTest(t, source)
 			if !tc.missing {
 				if len(errs) != 0 {

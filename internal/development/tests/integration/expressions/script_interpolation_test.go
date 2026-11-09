@@ -35,6 +35,7 @@ func TestScriptInterpolationWorkflowProofs(t *testing.T) {
 			if tc.env != "" {
 				content += "        env:\n          " + tc.env + "\n"
 			}
+			content += "permissions: {}\n"
 			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
@@ -107,7 +108,7 @@ func TestTemplateStringNeedsShellWordProof(t *testing.T) {
 				if tc.env != "" {
 					source += "env: {" + tc.env + "}\n        "
 				}
-				return source + "run: " + command + "\n"
+				return source + "run: " + command + "\npermissions: {}\n"
 			}
 			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
@@ -155,7 +156,7 @@ func TestMutableInheritedEnvIsNotScriptWordProof(t *testing.T) {
 		{name: "step env overrides inherited value", workflowEnv: "env: {WORD: echo}", stepEnv: "env: {WORD: echo}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := "on: push\n" + tc.workflowEnv + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + tc.jobEnv + "\n    steps:\n      - run: echo 'WORD=fi' >> \"$GITHUB_ENV\"\n      - " + tc.stepEnv + "\n        run: if true; then ${{ env.WORD }}; fi\n"
+			source := "on: push\n" + tc.workflowEnv + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + tc.jobEnv + "\n    steps:\n      - run: echo 'WORD=fi' >> \"$GITHUB_ENV\"\n      - " + tc.stepEnv + "\n        run: if true; then ${{ env.WORD }}; fi\n" + "\npermissions: {}\n"
 			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
@@ -205,7 +206,7 @@ func TestLogicalScriptWordProofs(t *testing.T) {
 				{name: "data argument", run: "printf '%s\\n' \"${{ " + tc.expression + " }}\"", want: tc.argumentFinding},
 			} {
 				t.Run(check.name, func(t *testing.T) {
-					source := "on: {workflow_dispatch: {inputs: {command: {type: string}, value: {type: string}, flag: {type: boolean}}}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + check.run + "\n"
+					source := "on: {workflow_dispatch: {inputs: {command: {type: string}, value: {type: string}, flag: {type: boolean}}}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + check.run + "\n" + "\npermissions: {}\n"
 					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)

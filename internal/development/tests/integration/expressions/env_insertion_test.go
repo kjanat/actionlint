@@ -42,7 +42,7 @@ func TestEnvironmentMappingInsertions(t *testing.T) {
 			{"invalid literal array", "[]", "mapping node is expected"},
 		} {
 			t.Run(scope.name+"/"+tc.name, func(t *testing.T) {
-				source := "on: push\n" + fmt.Sprintf(scope.source, tc.value)
+				source := "on: push\n" + fmt.Sprintf(scope.source, tc.value) + "permissions: {}\n"
 				errs := lintCredentialsExpressionTest(t, source)
 				if tc.want == "" {
 					if len(errs) != 0 {
@@ -65,6 +65,7 @@ jobs:
       - run: echo ok
         env:
           %s: %s
+permissions: {}
 `
 	for _, tc := range []struct{ name, key, value, want string }{
 		{"compact", "${{insert}}", "${{ fromJSON(vars.GIT) }}", ""},
@@ -98,6 +99,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `
 	errs := lintCredentialsExpressionTest(t, source)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `context "env" is not allowed`) || errs[0].Start.Line != 3 || errs[0].Start.Column != 31 {
@@ -116,6 +118,7 @@ jobs:
       - run: echo ok
         env:
           ${{ insert }}: *shared
+permissions: {}
 `
 	if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
 		t.Fatalf("valid mapping alias rejected: %v", errs)
@@ -127,6 +130,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
+permissions: {}
 `))
 	for _, err := range errs {
 		if strings.Contains(err.Message, "recursive alias") {

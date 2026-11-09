@@ -23,7 +23,7 @@ func TestEditorUnusedSuppressionQuickFix(t *testing.T) {
 	path := filepath.Join(root, "workflow.yml")
 	uri := FileURI(path)
 	const line = "      - run: echo 😀 # ignore[expression-reference, script-interpolation]"
-	const text = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n" + line + "\n"
+	const text = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n" + line + "\n" + "\npermissions: {}\n"
 	publication, logs := firstEditorPublication(t, func(ctx context.Context, documents map[string]Document) (Analysis, error) {
 		return analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true}, documents)
 	}, uri, text, func(send func(string, int, any), read func() editorPublication) {
@@ -76,7 +76,7 @@ func TestEditorSuppressionQuickFix(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	uri := FileURI(path)
-	const text = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo '::set-output name=result::value'\n        shell: bash\n"
+	const text = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo '::set-output name=result::value'\n        shell: bash\npermissions: {}\n"
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	publication, logs := firstEditorPublication(t, func(ctx context.Context, documents map[string]Document) (Analysis, error) {
 		return analyzeDocuments(ctx, options, documents)
@@ -155,7 +155,7 @@ func TestEditorSuppressionRespectsPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: \"echo '::set-output name=x::y'\"}]}}\n"
+	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: \"echo '::set-output name=x::y'\"}]}}\npermissions: {}\n"
 	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []repoconfig.Overlay{overlay}}, map[string]Document{path: {URI: FileURI(path), Version: 1, Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 {
 		t.Fatalf("fixture analysis: %+v, %v", analysis.Diagnostics, err)

@@ -605,21 +605,21 @@
               }
             },
             {
-              "id": "missing-workflow-permissions",
-              "name": "MissingWorkflowPermissions",
+              "id": "missing-permissions",
+              "name": "MissingPermissions",
               "defaultConfiguration": {
                 "level": "error"
               },
               "properties": {
-                "description": "Report jobs that inherit repository token permissions",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-workflow-permissions"
+                "description": "Report missing token permission declarations",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-permissions"
               },
               "fullDescription": {
-                "text": "Report each job without explicit workflow-level or job-level token permissions when the workflow has a trigger other than workflow_call. Mirrors CodeQL's actions/missing-workflow-permissions check. Workflows triggered only by workflow_call inherit the caller's token ceiling; callers must declare permissions. This check does not infer the token scopes required by arbitrary actions. Warning when enabled; error with --strict."
+                "text": "Require explicit token permissions. By default, a workflow-level declaration or a declaration on every job satisfies the rule. Set require-at to workflow, every-job, or a nonempty array of those locations. With both locations allowed, this rule skips workflows triggered only by workflow_call. The workflow-call rule compares permissions for calls being analysed. Selecting one location requires declarations there, including in reusable workflows. This check does not determine which token scopes an action needs."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-workflow-permissions",
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-permissions",
               "help": {
-                "text": "Declare least-privilege permissions at workflow or job scope. An empty mapping, read-all, write-all or a scope mapping counts as an explicit declaration; this check does not certify that the declared permissions are minimal. See [CodeQL's query](https://github.com/github/codeql/blob/main/actions/ql/src/Security/CWE-275/MissingActionsPermissions.ql)."
+                "text": "Add permissions at an allowed location. An empty mapping declares no token permissions. See [CodeQL's explanation of missing workflow permissions](https://codeql.github.com/codeql-query-help/actions/actions-missing-workflow-permissions/). Set the rule to off to disable it."
               }
             },
             {
@@ -903,7 +903,7 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call"
               },
               "fullDescription": {
-                "text": "Check reusable workflow references and report missing or undeclared inputs and secrets. For local calls with available metadata, check the caller's permission and cache limits against the called workflow. The expression-reference rule checks references to workflow outputs."
+                "text": "Check reusable workflow references and report missing or undeclared inputs and secrets using available local or remote metadata. Compare the caller's known token permissions with the called workflow's declared job permissions. Cache limits are checked for local calls. The expression-reference rule checks references to workflow outputs."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call",
               "help": {

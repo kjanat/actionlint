@@ -46,7 +46,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 
 func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	command := testutil.RequireTool(t, "shellcheck")
-	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\n"
+	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\npermissions: {}\n"
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)

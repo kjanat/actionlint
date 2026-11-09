@@ -44,6 +44,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 				for _, job := range tc.jobs {
 					fmt.Fprintf(&source, "  %c:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n", job, uses)
 				}
+				source.WriteString("permissions: {}\n")
 				path := fixturefiles.Write(t, root, ".github/workflows/ci.yml", source.String())
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})}, []workspace.Source{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
 				if err != nil {

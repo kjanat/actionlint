@@ -28,7 +28,7 @@ jobs:
       - env:
           VALUE: ${{ ` + expression + ` }}
         run: printf '%s\n' "$VALUE"
-`
+` + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 			if err != nil {
 				t.Fatal(err)

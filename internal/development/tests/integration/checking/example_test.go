@@ -16,6 +16,7 @@ jobs:
     needs: deploy
     steps:
       - run: echo hello
+permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: source}})
 	if err != nil {

@@ -19,6 +19,7 @@ jobs:
     uses: org/repo/.github/workflows/check.yml@main
     with:
       data: '${{ invalid }}'
+permissions: {}
 `
 	findings := testutil.WorkflowDiagnostics(t, source, "ignores: [{rule: expression-reference, uses: org/repo/.github/workflows/check.yml@main}]")
 	if len(findings) != 0 {
@@ -41,6 +42,7 @@ jobs:
   b:
     runs-on: ubuntu-latest
     steps: *shared
+permissions: {}
 `
 	for _, tc := range []struct {
 		ignores string

@@ -53,7 +53,6 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 	for _, tc := range []struct{ legacy, canonical string }{
 		{"require-commit-hash", "unpinned-reference"},
 		{"require-job-timeout", "job-timeout"},
-		{"require-permissions", "explicit-permissions"},
 		{"require-action-metadata", "missing-action-metadata"},
 	} {
 		for _, selector := range []string{tc.legacy, tc.canonical} {
@@ -80,6 +79,30 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
+	for _, selector := range []string{"require-permissions", "explicit-permissions", "missing-workflow-permissions"} {
+		t.Run(selector, func(t *testing.T) {
+			source := []byte("run: echo ok # ignore[" + selector + "]\n")
+			findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(
+				policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source},
+				[]*findingmodel.Finding{{Rule: "missing-permissions", Start: sourcepos.Position{Line: 1}}},
+				map[string][]byte{}, nil,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			invalid, reported := false, false
+			for _, finding := range findings {
+				invalid = invalid || finding.Rule == "inline-suppression"
+				reported = reported || finding.Rule == "missing-permissions"
+			}
+			if !invalid || !reported {
+				t.Fatalf("retired selector %q suppressed the finding or was accepted: %+v", selector, findings)
+			}
+		})
 	}
 }
 

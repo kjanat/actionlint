@@ -29,7 +29,7 @@ func TestContainerRunnerNestedComposites(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: docker://alpine:3"+tc.comment+"\n")
-			source := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: $/outer\n" + tc.guard + "      - uses: $/outer\n" + tc.guard
+			source := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: $/outer\n" + tc.guard + "      - uses: $/outer\n" + tc.guard + "\npermissions: {}\n"
 			workflow := fixturefiles.Write(t, root, ".github/workflows/docker.yml", source)
 			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 			if err != nil {
@@ -77,7 +77,7 @@ func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
 	}
 	for _, label := range []string{"ubuntu-latest", "windows-latest", "ubuntu-slim"} {
 		t.Run(label, func(t *testing.T) {
-			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: %s\n    steps:\n      - uses: actions/hello-world-docker-action@%s\n", label, sha)
+			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: %s\n    steps:\n      - uses: actions/hello-world-docker-action@%s\npermissions: {}\n", label, sha)
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}", checking.Options{RemoteActions: pinnedMetadataFixture{manifest}})
 			count := 0
 			for _, finding := range findings {

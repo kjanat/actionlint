@@ -70,7 +70,7 @@ test.beforeEach(async ({ context }) => {
 });
 
 function workflow(steps: string): string {
-	return `on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n${steps}\n`;
+	return `on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n${steps}\npermissions: {}\n`;
 }
 
 async function open(page: Page, source: string): Promise<void> {

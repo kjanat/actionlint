@@ -24,7 +24,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 			if nested {
 				matrix = "${{ insert }}:\n          " + strings.ReplaceAll(matrix, "\n        ", "\n          ")
 			}
-			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n        " + matrix + "\n    steps: [{run: echo ok}]\n"
+			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n        " + matrix + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 			errs := lintMatrixWithKnownRunnerLabels(t, source)
 			counts := map[string]int{}
 			for _, err := range errs {
@@ -215,7 +215,7 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 				for range depth {
 					matrix = "{'${{ insert }}': " + matrix + "}"
 				}
-				source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
+				source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 				if errs := lintMatrixWithKnownRunnerLabels(t, source); len(errs) != 0 {
 					t.Fatalf("resolved axis rejected: %v", errs)
 				}
@@ -299,7 +299,7 @@ func TestMatrixSourceKeyExpressions(t *testing.T) {
 					for range depth {
 						matrix = "{'${{ insert }}': " + matrix + "}"
 					}
-					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
+					source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 					errs := lintCredentialsExpressionTest(t, source)
 					if tc.want == "" {
 						if len(errs) != 0 {
@@ -347,7 +347,7 @@ func TestResolvedEmptyMappingKeys(t *testing.T) {
 
 func TestMatrixReservedKeyProvenance(t *testing.T) {
 	for _, section := range []string{"include", "exclude"} {
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '" + section + "', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n"
+		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '" + section + "', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 		findings := lintCredentialsExpressionTest(t, source)
 		if len(findings) != 1 || !strings.Contains(findings[0].Message, `undefined variable "missing"`) {
 			t.Fatalf("%s: %v", section, findings)
@@ -356,7 +356,7 @@ func TestMatrixReservedKeyProvenance(t *testing.T) {
 }
 
 func TestDynamicMatrixKeyDoesNotInventClosedShape(t *testing.T) {
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ vars.AXIS }}': [one]\n    steps:\n      - env:\n          VALUE: ${{ matrix.runtime_axis }}\n        run: printf '%s' \"$VALUE\"\n"
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ vars.AXIS }}': [one]\n    steps:\n      - env:\n          VALUE: ${{ matrix.runtime_axis }}\n        run: printf '%s' \"$VALUE\"\npermissions: {}\n"
 	findings := lintCredentialsExpressionTest(t, source)
 	if len(findings) != 0 {
 		t.Fatal(findings)

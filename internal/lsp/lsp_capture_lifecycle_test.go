@@ -44,8 +44,8 @@ func TestEditorRealConflictingBuffersPreserveCallerAndOtherEntry(t *testing.T) {
 	}
 	editorSymlink(t, path, alias)
 	caller, good := filepath.Join(root, "workflow.yml"), filepath.Join(root, "good.yml")
-	callerText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\n"
-	goodText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo ::set-output name=result::good'}]}}\n"
+	callerText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./local}]}}\npermissions: {}\n"
+	goodText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo ::set-output name=result::good'}]}}\npermissions: {}\n"
 	first := "name: first\ndescription: first\nruns: {using: composite, steps: []}\n"
 	second := "name: second\ndescription: second\nruns: {using: composite, steps: []}\n"
 	var previous string
@@ -101,7 +101,7 @@ func TestEditorMissingOnDiskEntryAndExcludedDependencyUseBuffers(t *testing.T) {
 			reads.Add(1)
 		}
 		return os.ReadFile(path)
-	}}, map[string]Document{workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./virtual}]}}\n"}, dependency: {Text: text}})
+	}}, map[string]Document{workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./virtual}]}}\npermissions: {}\n"}, dependency: {Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 || analysis.Diagnostics[0].Path != dependency || analysis.Sources[dependency].Text != text || reads.Load() != 0 {
 		t.Fatalf("virtual buffers fell back to disk: analysis=%+v error=%v reads=%d", analysis, err, reads.Load())
 	}
@@ -125,7 +125,7 @@ func TestEditorSymlinkDependencyAndClosingBufferUseCurrentCapture(t *testing.T) 
 	editorSymlink(t, filepath.Dir(path), filepath.Dir(alias))
 	workflow := filepath.Join(root, "workflow.yml")
 	buffer := "name: buffer\ndescription: buffer\nruns: {using: composite, steps: [{shell: bash, run: echo fixed}]}\n"
-	documents := map[string]Document{workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./alias}]}}\n"}, path: {Version: 8, Text: buffer}}
+	documents := map[string]Document{workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./alias}]}}\npermissions: {}\n"}, path: {Version: 8, Text: buffer}}
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	first, err := analyzeDocuments(t.Context(), options, documents)
 	if err != nil || len(first.Diagnostics) != 0 || first.Sources[alias].Text != buffer || first.Sources[path].Text != buffer {
@@ -153,7 +153,7 @@ func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow := filepath.Join(root, "workflow.yml")
-	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]Document{workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./invalid}]}}\n"}})
+	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]Document{workflow: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v6}, {uses: ./invalid}]}}\npermissions: {}\n"}})
 	if _, exists := analysis.Sources[path]; exists {
 		t.Fatal("invalid UTF-8 supplied editor source text")
 	}
@@ -190,7 +190,7 @@ func TestCancelledEditorAnalysisPublishesNoCapturedText(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		done <- result{analysis, err}
 	}()
 	select {

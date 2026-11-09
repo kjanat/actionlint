@@ -81,7 +81,7 @@ func TestConditionNormalization(t *testing.T) {
 				errs := testutil.WorkflowDiagnostics(t, `on: push
 jobs:
   test:
-`+body, "")
+`+body+"\npermissions: {}\n", "")
 				if tc.want == "" {
 					if len(errs) != 0 {
 						t.Fatal(errs)
@@ -108,6 +108,7 @@ jobs:
         name: ${{ 'nope' }}
         env: {Y: "${{ 'nope' }}"}
         if: ${{ env.X }}
+permissions: {}
 `
 	if errs := testutil.WorkflowDiagnostics(t, source, ""); len(errs) != 0 {
 		t.Fatal(errs)
@@ -160,7 +161,7 @@ jobs:
 	} {
 		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {" + tc.check + ": on}}}"} {
 			t.Run(tc.check+"/"+tc.expression+"/"+config, func(t *testing.T) {
-				errs := testutil.WorkflowDiagnostics(t, header+"${{ "+tc.expression+" }}\n", config)
+				errs := testutil.WorkflowDiagnostics(t, header+"${{ "+tc.expression+" }}\npermissions: {}\n", config)
 				if tc.warn && strings.Contains(config, ": on") {
 					want := map[string]string{
 						"string-conditions":           "bare string condition",

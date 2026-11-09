@@ -201,7 +201,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	}
 	r.SetOffline(true)
 	for range 2 {
-		result, err := analyzeDocuments(t.Context(), session.options, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\n"}})
+		result, err := analyzeDocuments(t.Context(), session.options, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo make install}]\npermissions: {}\n"}})
 		if err != nil {
 			t.Fatal(err)
 		}

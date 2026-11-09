@@ -43,7 +43,7 @@ jobs:
     steps:
       - shell: python
         run: |
-          ` + strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", "\n          ") + "\n"
+          ` + strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", "\n          ") + "\n" + "\npermissions: {}\n"
 				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
 				if err != nil {
 					t.Fatal(err)
@@ -110,6 +110,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, WorkingDir: working}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 			if err != nil {
@@ -131,6 +132,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
+permissions: {}
 `
 	for _, flags := range [][]string{{"--no-cache"}, {"--isolated"}, {"--ignore-noqa"}, {"--no-fix"}, {"--target-version", "py314"}, {"--target-version=py314"}, {"--stdin-filename", "actionlint.py"}, {"--stdin-filename=actionlint.py"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
@@ -155,6 +157,7 @@ jobs:
     steps:
       - shell: python
         run: import os; print(missing)
+permissions: {}
 `
 	for _, flags := range [][]string{{"--select", "F"}, {"--ignore", "F401"}, {"--select=F", "--ignore=F401"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {

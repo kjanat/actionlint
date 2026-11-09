@@ -29,7 +29,7 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 					}
 					source += `jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "permissions: {}\n"
 					errs := testutil.WorkflowDiagnostics(t, strings.ReplaceAll(source, "\n", ending), tc.config)
 					if len(errs) != len(tc.kinds) {
 						t.Fatalf("want %v on line 3; got %v", tc.kinds, errs)
@@ -68,7 +68,7 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 			t.Run(tc.name+"/"+ending, func(t *testing.T) {
 				source := "on: push\n" + tc.value + `jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "\npermissions: {}\n"
 				errs := testutil.WorkflowDiagnostics(t, strings.ReplaceAll(source, "\n", ending), "")
 				want := map[string]int{"inline-suppression": tc.line}
 				if tc.unusedLine != 0 {
@@ -90,7 +90,7 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 	source := "on: push\nname: !!str " + allowed + "\n  title " + allowed + `
 jobs:
   test:
-` + testutil.WorkflowSteps
+` + testutil.WorkflowSteps + "\npermissions: {}\n"
 	errs := testutil.WorkflowDiagnostics(t, source, "policy: {disallow-suppressions: true}")
 	if len(errs) != 4 {
 		t.Fatalf("want unused and prohibited diagnostics on lines 2 and 3, got %v", errs)
@@ -110,6 +110,7 @@ jobs:
     steps:
       - run: | # actionlint:ignore script-injection -- reviewed input
           echo '${{ github.event.issue.title }}'
+permissions: {}
 `
 	if got := testutil.WorkflowDiagnostics(t, source, ""); len(got) != 0 {
 		t.Fatal(got)

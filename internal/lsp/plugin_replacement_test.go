@@ -28,7 +28,7 @@ func (b *countedPluginBackend) Check(context.Context, checkinputs.ScriptRequest)
 
 func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 	const path = "../plugins/execution/component/testdata/plugins/no-sudo.wasm"
-	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n"
+	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n"
 	for _, tc := range []struct {
 		name, command, config, rule string
 		managed                     bool
@@ -120,7 +120,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if err != nil || needed[engine] {
 					t.Fatalf("plugin replacement requested native tool: %v %v", needed, err)
 				}
-				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        shell: " + shell + "\n      - uses: example/execute@v1\n        with:\n          code: input_value\n"
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        shell: " + shell + "\n      - uses: example/execute@v1\n        with:\n          code: input_value\n" + "\npermissions: {}\n"
 				if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(workflow)}); err != nil {
 					t.Fatal(err)
 				}
@@ -152,7 +152,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				for name, content := range map[string]string{
 					".git/HEAD":               "ref: refs/heads/master\n",
 					".github/actionlint.yaml": "overrides:\n  - includes: [nested/**]\n    tools:\n      shellcheck:\n        backend:\n          wasm: {path: nested.wasm}\n",
-					"workflow.yml":            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo default\n      - uses: ./nested\n",
+					"workflow.yml":            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo default\n      - uses: ./nested\npermissions: {}\n",
 					"nested/action.yml":       "name: nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - run: echo nested_run\n      shell: bash\n    - uses: example/execute@v1\n      with:\n        code: echo nested_input\n",
 				} {
 					path := filepath.Join(root, filepath.FromSlash(name))

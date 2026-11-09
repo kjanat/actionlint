@@ -26,7 +26,7 @@ jobs:
       V: ${{ vars[format('X_{0}', matrix.env)] }}
     steps:
       - run: echo indexes
-`
+` + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "indexes.yaml", Content: []byte(source)}})
 			if err != nil {
 				t.Fatal(err)

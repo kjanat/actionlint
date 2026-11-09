@@ -81,7 +81,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})
 				shell = "bash"
 			}
-			requestSources = []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}
+			requestSources = []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n" + "\npermissions: {}\n")}}
 			result, err := checking.Analyze(t.Context(), request, requestSources)
 			if err != nil {
 				t.Fatal(err)

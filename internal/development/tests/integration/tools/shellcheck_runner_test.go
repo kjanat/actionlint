@@ -27,7 +27,7 @@ func TestEmbeddedShellcheckRunner(t *testing.T) {
 	}}})}
 	var requestSources []workspace.Source
 	var err error
-	requestSources = []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: []byte("on: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $value ${{ github.ref }}\n"), Project: nil}}
+	requestSources = []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: []byte("on: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $value ${{ github.ref }}\npermissions: {}\n"), Project: nil}}
 	_, err = testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +48,7 @@ func TestEmbeddedShellcheckFailure(t *testing.T) {
 			}}})}
 			var requestSources []workspace.Source
 			var err error
-			requestSources = []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: []byte("on: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"), Project: nil}}
+			requestSources = []workspace.Source{{Path: "test.yml", InputPath: "test.yml", Content: []byte("on: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\npermissions: {}\n"), Project: nil}}
 			_, err = testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err == nil {
 				t.Fatal("broken embedded checker must fail analysis")

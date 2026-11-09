@@ -52,6 +52,7 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 						source.WriteString(job)
 						source.WriteString(":\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n")
 					}
+					source.WriteString("permissions: {}\n")
 					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
 					if err != nil {
 						t.Fatal(err)

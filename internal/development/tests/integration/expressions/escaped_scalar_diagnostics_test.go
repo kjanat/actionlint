@@ -18,7 +18,7 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 					scalar := `"echo ${{ github.ref` + escape + `"`
-					src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + scalar + "\n"
+					src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + scalar + "\n" + "\npermissions: {}\n"
 					if metadata {
 						src = "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: " + scalar + "\n"
 					}

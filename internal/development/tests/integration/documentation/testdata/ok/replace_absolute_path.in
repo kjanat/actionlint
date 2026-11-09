@@ -9,6 +9,7 @@ jobs:
   error:
     # This error message contains an abosolute file path
     uses: ./.github/workflows/not-existing-workflow.yml
+permissions: {}
 ```
 
 Output:

@@ -132,7 +132,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow := func(script string) string {
-		return "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + script + "\n        shell: python\n"
+		return "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + script + "\n        shell: python\n" + "\npermissions: {}\n"
 	}
 	first, err := json.Marshal(workflow("print(first)"))
 	if err != nil {
@@ -198,7 +198,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 	for _, script := range []string{firstScript, firstScript + " # changed"} {
 		document := filepath.Join(session.options.WorkingDir, "ci.yml")
 		result, err := analyzeDocuments(t.Context(), session.options, map[string]Document{
-			document: {Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + script + "\n        shell: " + shell + "\n"},
+			document: {Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + script + "\n        shell: " + shell + "\n" + "\npermissions: {}\n"},
 		})
 		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != rule {
 			t.Fatalf("plugin snapshot: %+v, %v", result.Diagnostics, err)
@@ -383,7 +383,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, value := range []string{"first", "second"} {
-		workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/python@v1\n        with:\n          source: print('" + value + "')\n"
+		workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/python@v1\n        with:\n          source: print('" + value + "')\n" + "\npermissions: {}\n"
 		_, err := checking.Check(t.Context(), session.options, inputmodel.Request{Kind: inputmodel.Stdin, Name: filepath.Join(root, ".github/workflows/ci.yml"), Reader: bytes.NewBufferString(workflow)})
 		if err != nil {
 			t.Fatal(err)

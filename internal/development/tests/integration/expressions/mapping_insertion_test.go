@@ -35,7 +35,7 @@ jobs:
       - uses: example/action@v1
         with:
           path: source
-          ${{ insert }}: ` + tc.value + "\n"
+          ${{ insert }}: ` + tc.value + "\n" + "\npermissions: {}\n"
 			errs := lintCredentialsExpressionTest(t, source)
 			if tc.want == "" {
 				if len(errs) != 0 {
@@ -83,7 +83,7 @@ jobs:
     strategy:
       matrix: {` + tc.matrix + `}
     steps: [{run: echo ok}]
-`
+` + "\npermissions: {}\n"
 			errs := lintCredentialsExpressionTest(t, source)
 			if tc.want != "" {
 				if len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want) {
@@ -125,7 +125,7 @@ func TestCaseMappingSelection(t *testing.T) {
 		{`case(true, false, unknownFunction())`, "undefined function"},
 	} {
 		t.Run(tc.expr, func(t *testing.T) {
-			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          VALUE: ${{ toJSON(%s) }}\n", tc.expr)
+			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          VALUE: ${{ toJSON(%s) }}\npermissions: {}\n", tc.expr)
 			errs := lintCredentialsExpressionTest(t, source)
 			if tc.want == "" {
 				if len(errs) != 0 {
@@ -149,6 +149,7 @@ jobs:
         base: [one]
         ${{ insert }}: ${{ fromJSON('{"os":["not-a-runner"]}') }}
     steps: [{run: echo ok}]
+permissions: {}
 `, `label "not-a-runner" is unknown`},
 		{"inserted duplicate axis", `on: push
 jobs:
@@ -158,6 +159,7 @@ jobs:
       matrix:
         ${{ insert }}: ${{ fromJSON('{"item":["one","one"]}') }}
     steps: [{run: echo ok}]
+permissions: {}
 `, "duplicate value"},
 		{"inserted script input", `on: issues
 jobs:
@@ -168,6 +170,7 @@ jobs:
         with:
           ${{ insert }}:
             script: "${{ github.event.issue.title }}"
+permissions: {}
 `, "potentially untrusted"},
 		{"unknown axis types", `on: push
 jobs:
@@ -181,6 +184,7 @@ jobs:
       - env:
           VALUE: ${{ matrix.extra }}
         run: printf '%s' "$VALUE"
+permissions: {}
 `, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -199,8 +203,8 @@ jobs:
 func TestUnsupportedStructuralTemplatesRemainRejected(t *testing.T) {
 	for _, source := range []string{
 		"on: push\njobs: ${{ fromJSON('{}') }}\n",
-		"on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: ${{ fromJSON('[{\"run\":\"echo ok\"}]') }}\n",
-		"on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          ${{ each value in vars.VALUES }}: text\n",
+		"on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: ${{ fromJSON('[{\"run\":\"echo ok\"}]') }}\npermissions: {}\n",
+		"on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          ${{ each value in vars.VALUES }}: text\npermissions: {}\n",
 	} {
 		if errs := lintCredentialsExpressionTest(t, source); len(errs) == 0 {
 			t.Fatalf("unsupported structural template accepted: %s", source)
@@ -264,11 +268,11 @@ func insertionSectionWorkflow(section, mapping string) string {
 	steps := "    steps: [{uses: 'example/action@v1', with: " + mapping + "}]\n"
 	switch section {
 	case "env":
-		return prefix + "env: " + mapping + "\n" + job + "    steps: [{run: echo ok}]\n"
+		return prefix + "env: " + mapping + "\n" + job + "    steps: [{run: echo ok}]\npermissions: {}\n"
 	case "matrix":
-		return prefix + job + "    strategy:\n      matrix: " + mapping + "\n    steps: [{run: echo ok}]\n"
+		return prefix + job + "    strategy:\n      matrix: " + mapping + "\n    steps: [{run: echo ok}]\npermissions: {}\n"
 	default:
-		return prefix + job + steps
+		return prefix + job + steps + "permissions: {}\n"
 	}
 }
 

@@ -29,7 +29,7 @@ func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
 	defer engine.Close(t.Context())
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: ruffEchoBackend{engine}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n")}},
+		checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: ruffEchoBackend{engine}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n")}},
 	)
 	if err != nil {
 		t.Fatal(err)

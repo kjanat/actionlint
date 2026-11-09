@@ -9,3 +9,4 @@ jobs:
       - run: echo ${{ matrix.msg }}
         with:
           arg: foo
+permissions: {}

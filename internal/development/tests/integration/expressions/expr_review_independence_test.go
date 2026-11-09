@@ -40,6 +40,7 @@ jobs:
           REF: ${{ github.event.workflow_run.referenced_workflows[0].ref }}
           PATH_VALUE: ${{ github.event.workflow_run.referenced_workflows[0].path }}
         run: printf '%s\n' "$REF" "$PATH_VALUE"
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 	if err != nil || len(result.Diagnostics) != 0 {
@@ -73,7 +74,7 @@ jobs:
       - env:
           ACTOR_NAME: ${{ github.event.workflow_run.` + actor + `.name }}
         run: printf '%s\n' "$ACTOR_NAME"
-`
+` + "\npermissions: {}\n"
 		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe actor environment binding rejected: %v, %+v", err, result)
@@ -101,6 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ github.event.issue.title }}"
+permissions: {}
 `
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
@@ -130,6 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ github[format('to{0}', 'ken')] }}"
+permissions: {}
 `
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 	if err != nil {
@@ -147,7 +150,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\n" + "\npermissions: {}\n"
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
@@ -199,14 +202,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
-`
+` + "\npermissions: {}\n"
 				if strings.Contains(expression, "issue.title") {
 					workflow = `on: issues
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ ` + expression + " }}\"\n"
+      - run: echo "${{ ` + expression + " }}\"\n" + "\npermissions: {}\n"
 				}
 				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 				if err != nil {
