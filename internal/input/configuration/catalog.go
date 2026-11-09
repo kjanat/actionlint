@@ -11,10 +11,8 @@ type Rule struct {
 	Group           string
 	SupportsActions bool
 	Scope           rulescope.ConfigurationScope
-	// DefaultLevel is the recommended severity; omission means on.
-	DefaultLevel Level
-	Options      func() any
-	Configure    func(*Config, Setting)
+	Options         func() any
+	Configure       func(*Config, Setting)
 }
 
 func boolRuleOption(field func(*Policy) **bool) func(*Config, Setting) {

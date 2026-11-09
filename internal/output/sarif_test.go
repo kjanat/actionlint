@@ -153,6 +153,34 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 
 func testVersion() string { return "test" }
 
+func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
+	for _, tc := range []struct {
+		declared, want string
+		enabled        bool
+	}{
+		{"info", "note", true}, {"warn", "warning", false}, {"error", "error", true}, {"", "error", false},
+	} {
+		t.Run(tc.declared, func(t *testing.T) {
+			var output bytes.Buffer
+			rule := Rule{Name: "example", DefaultLevel: tc.declared, DefaultEnabled: &tc.enabled}
+			if err := WriteSARIF(&output, "test", []*Rule{&rule}, []results.Diagnostic{{Rule: "example", Severity: "warning"}}); err != nil {
+				t.Fatal(err)
+			}
+			var document sarifDocument
+			if err := json.Unmarshal(output.Bytes(), &document); err != nil {
+				t.Fatal(err)
+			}
+			got := document.Runs[0].Tool.Driver.Rules[0].DefaultConfiguration
+			if got.Level != tc.want || got.Enabled == nil || *got.Enabled != tc.enabled {
+				t.Fatalf("default configuration = %+v", got)
+			}
+			if got := document.Runs[0].Results[0].Level; got != "warning" {
+				t.Fatalf("result level = %q, want warning", got)
+			}
+		})
+	}
+}
+
 func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 	metadata := Rule{Name: "custom-rule", Description: "summary", Explanation: "explanation", Help: "repair instructions", DocumentationURL: "https://example.com/custom-rule", Examples: []rule.Example{{Description: "original example"}}}
 	renderer, err := New(FormatSARIF, "", false, testVersion, []Rule{metadata})

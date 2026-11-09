@@ -527,6 +527,13 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			result.Rules = append(result.Rules, descriptor.Clone())
 		}
 	}
+	metadataRules, metadataErr := ConfigurationRules().WithRegisteredRules(session.ruleRegistrations...)
+	if metadataErr != nil {
+		return nil, metadataErr
+	}
+	for i := range result.Rules {
+		result.Rules[i] = metadataRules.WithDefaults(result.Rules[i])
+	}
 	result.Documents = make(documentmodel.Outlines, 0, len(result.files))
 	explicitActions := make(map[string]bool)
 	for _, file := range result.files {

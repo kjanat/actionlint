@@ -48,3 +48,50 @@ func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
 		})
 	}
 }
+
+func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
+	declarations := []rule.Declaration{
+		{Name: "information", Category: "correctness", Maturity: "stable", Recommended: true, DefaultLevel: "info"},
+		{Name: "optional", Category: "suspicious", Maturity: "stable", DefaultLevel: "warn"},
+		{Name: "nursery", Category: "suspicious", Maturity: "nursery", Recommended: true, DefaultLevel: "warn"},
+		{Name: "ordinary", Category: "correctness", Maturity: "stable", Recommended: true},
+	}
+	rules, err := NewRuleSet(declarations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := rules
+	plugin := rule.Descriptor{Name: "plugin", Category: "security", Maturity: "stable", DefaultLevel: "warn"}
+	rules, err = rules.WithRegisteredRules(RuleRegistration{Descriptor: plugin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := rules.Parse([]byte("lint: {rules: {correctness: error, suspicious: {optional: error, nursery: error}, security: {plugin: error}}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := base.ResolveRegisteredRules(Presets{}, cfg, RuleRegistration{Descriptor: plugin})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, level string
+		enabled     bool
+	}{
+		{"information", "info", true}, {"optional", "warn", false}, {"nursery", "warn", false}, {"ordinary", "", true}, {"plugin", "warn", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			entry, ok := rules.FindRule(tc.name)
+			if !ok {
+				t.Fatal("rule missing")
+			}
+			got := rules.WithDefaults(entry.Descriptor)
+			if got.DefaultLevel != tc.level || got.DefaultEnabled == nil || *got.DefaultEnabled != tc.enabled {
+				t.Fatalf("default metadata = %q, %v; want %q, %t", got.DefaultLevel, got.DefaultEnabled, tc.level, tc.enabled)
+			}
+			if level := rules.DiagnosticLevel(resolved, tc.name); level != "error" {
+				t.Fatalf("invocation level = %q, want error", level)
+			}
+		})
+	}
+}
