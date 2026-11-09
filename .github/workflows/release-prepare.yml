@@ -19,6 +19,7 @@ env: {
   MISE_CACHE_DIR: "${{ github.workspace }}-mise/cache",
   MISE_LOCKED: "1",
   MISE_TASK_RUN_AUTO_INSTALL: "false",
+  OSV_SCANNER_IMAGE: "ghcr.io/google/osv-scanner:v2.7.0@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0",
 }
 
 jobs:
@@ -106,6 +107,8 @@ jobs:
       - name: Select the candidate for packaging
         env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
         run: git checkout --detach "${CANDIDATE}"
+      - name: Check candidate Go packages for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest -scan=package ./cmd/actionlint
       - run: mise run man:roff
       - name: Install syft for SBOM generation
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
@@ -237,6 +240,7 @@ jobs:
           file: distribution/docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           target: ${{ matrix.target }}
+          no-cache-filters: runtime-common
           build-args: ACTIONLINT_VER=${{ inputs.version }}
           outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.tar
           sbom: true
@@ -250,7 +254,7 @@ jobs:
         run: |
           [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]
           printf '%s\n' "${DIGEST}" > "${RUNNER_TEMP}/${CONTAINER_ASSET}_${VERSION}.digest"
-      - name: Test both platforms from the stored OCI archive
+      - name: Test and scan both platforms from the stored OCI archive
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends skopeo
@@ -270,6 +274,11 @@ jobs:
                 "${image}" internal/development/tests/integration/workflow/testdata/err/one_error.yaml || status=$?
               test "${status}" = 1
             fi
+            scan_archive="${RUNNER_TEMP}/scan-${CONTAINER_TARGET}-${arch}.tar"
+            docker save --output "${scan_archive}" "${image}"
+            docker run --rm --mount "type=bind,source=${RUNNER_TEMP},target=/audit,readonly" \
+              "${OSV_SCANNER_IMAGE}" scan image --archive "/audit/scan-${CONTAINER_TARGET}-${arch}.tar"
+            rm -- "${scan_archive}"
           done
       - uses: *Upload
         with:

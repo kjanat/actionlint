@@ -84,6 +84,10 @@ on Linux, macOS and Windows, checks Nix, and tests both CLI and compatibility Ac
 Linux amd64 and arm64 before uploading the draft assets. Container tests load the stored OCI archives;
 the manifest includes both archives and their image digests.
 
+Preparation checks the candidate's Go packages with govulncheck and scans both architectures of each
+container image with OSV Scanner. A reported vulnerability stops preparation before a draft is created.
+Container builds update the installed Alpine packages without reusing the cached runtime stage.
+
 Publication copies those archives with digest preservation; it never rebuilds the images. The CLI
 image uses version tags. The compatibility image wraps the same ordinary binary with
 the shipped nine positional inputs and uses the GHCR tags `action-X.Y.Z`, `action-vX.Y`, `action-vX`,
