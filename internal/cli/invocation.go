@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -177,14 +178,13 @@ func (a *commandApp) prepareInvocation() error {
 		return commandargs.UsageError{Cause: errors.New("--diagnostic-width must be between 40 and 400")}
 	}
 	for _, mode := range o.output {
-		switch mode {
-		case "text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github":
+		if outputformat.Valid(mode) {
 			i.Render.Oneline = false
 			format := render.Format(mode)
 			if !slices.Contains(i.Render.Formats, format) {
 				i.Render.Formats = append(i.Render.Formats, format)
 			}
-		default:
+		} else {
 			return commandargs.UsageError{Cause: fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, gcc, json, jsonl, sarif or github", mode)}
 		}
 	}

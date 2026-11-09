@@ -16,6 +16,8 @@ type LintConfig struct {
 	source any
 	// Enabled controls lint diagnostics only, leaving other features independent.
 	Enabled *bool `yaml:"enabled,omitempty" jsonschema:"nullable,default=true"`
+	// Experimental enables nursery rules unless an explicit invocation overrides it.
+	Experimental *bool `yaml:"experimental,omitempty" jsonschema:"nullable"`
 	// Rules selects diagnostic groups, individual levels and options.
 	Rules LintRulesConfig `yaml:"rules" jsonschema:"nullable"`
 	// MessageIgnores maps repository-relative globs to diagnostic message regular

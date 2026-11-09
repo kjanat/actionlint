@@ -203,6 +203,15 @@ actionlint version --json
 the same analysis in multiple formats, in order. For example,
 `actionlint --output github --output pretty` emits annotations followed by terminal
 diagnostics. Repeated identical formats are emitted once.
+
+Set `output.formats`, `output.log-level`, `output.summary`, `output.network-stats`
+and `output.quiet` in the configuration file to use them as defaults for checks.
+An explicit `--config` selects those defaults. Otherwise actionlint uses the
+configuration in the repository containing the current directory, including
+the directory selected with `-C`. That choice applies to the entire command,
+even when it scans several repositories. Each scanned repository still supplies
+its own lint rules. CLI flags override environment settings, which override
+configured defaults. `--no-config` disables both reporting and lint configuration.
 `gcc` emits one uncoloured `file:line:column: severity: message [code]` line per
 finding, using its native diagnostic code or rule name. Information is emitted
 as `note`; multiline messages are flattened without source excerpts.
@@ -300,6 +309,9 @@ overrides; `--experimental=false` clears only nursery selections. The `join-lite
 `--strict=false` removes the strict preset; configure policies separately to disable them.
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
+Set `lint.experimental: true` to enable nursery rules in a repository's
+configuration. `ACTIONLINT_EXPERIMENTAL` and explicit `--experimental` flags
+override that setting, including `false`.
 
 `--log-level=none|info|debug` controls logging. Checks print file and finding
 counts on stderr by default. When findings exist, the summary also counts them per

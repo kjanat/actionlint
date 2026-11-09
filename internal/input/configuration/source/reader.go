@@ -59,6 +59,26 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 	if _, err := address.Normalize(name); err != nil {
 		return nil, err
 	}
+	return r.readFile(name)
+}
+
+// ReadConfig shares configuration bytes within a command that uses WithReadCache.
+// ReadFile always reads current contents, including workflows changed by fixes.
+func (r *Reader) ReadConfig(name string) ([]byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return nil, err
+	}
+	key, err := address.Normalize(name)
+	if err != nil {
+		return nil, err
+	}
+	if cache, ok := r.ctx.Value(readCacheKey{}).(*readCache); ok {
+		return cache.read(r.ctx, key, func() ([]byte, error) { return r.ReadFile(name) })
+	}
+	return r.ReadFile(name)
+}
+
+func (r *Reader) readFile(name string) ([]byte, error) {
 	var content []byte
 	var err error
 	switch {

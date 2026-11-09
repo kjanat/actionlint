@@ -760,6 +760,19 @@
                 }
               ]
             },
+            "experimental": {
+              "title": "experimental",
+              "description": "Enables nursery rules unless an explicit invocation overrides it.",
+              "markdownDescription": "Enables nursery rules unless an explicit invocation overrides it.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "message-ignores": {
               "title": "message-ignores",
               "description": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
@@ -1904,6 +1917,105 @@
         }
       ]
     },
+    "output": {
+      "title": "output",
+      "description": "Configures defaults for CLI reporting.",
+      "markdownDescription": "Configures defaults for CLI reporting.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "formats": {
+              "title": "formats",
+              "description": "Selects diagnostic representations in order. Omission uses the CLI default.",
+              "markdownDescription": "Selects diagnostic representations in order. Omission uses the CLI default.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "pretty",
+                      "oneline",
+                      "gcc",
+                      "json",
+                      "jsonl",
+                      "sarif",
+                      "github"
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "log-level": {
+              "title": "log-level",
+              "description": "Selects info, debug, or none for CLI logging.",
+              "markdownDescription": "Selects info, debug, or none for CLI logging.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "info",
+                    "debug",
+                    "none"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "network-stats": {
+              "title": "network-stats",
+              "description": "Controls the network statistics report.",
+              "markdownDescription": "Controls the network statistics report.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "quiet": {
+              "title": "quiet",
+              "description": "Suppresses progress logs and summaries.",
+              "markdownDescription": "Suppresses progress logs and summaries.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "summary": {
+              "title": "summary",
+              "description": "Controls the final summary.",
+              "markdownDescription": "Controls the final summary.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "overrides": {
       "title": "overrides",
       "description": "Applies per-file lint settings in declaration order. Later matching settings win; mappings merge and arrays replace. Paths are repository-relative.",
@@ -1960,6 +2072,19 @@
                         "oneOf": [
                           {
                             "default": true,
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "experimental": {
+                        "title": "experimental",
+                        "description": "Enables nursery rules unless an explicit invocation overrides it.",
+                        "markdownDescription": "Enables nursery rules unless an explicit invocation overrides it.",
+                        "oneOf": [
+                          {
                             "type": "boolean"
                           },
                           {
