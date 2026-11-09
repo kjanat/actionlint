@@ -44,7 +44,8 @@ type sarifRule struct {
 }
 
 type sarifLevel struct {
-	Level string `json:"level"`
+	Level   string `json:"level"`
+	Enabled *bool  `json:"enabled,omitempty"`
 }
 
 type sarifRuleProperties struct {
@@ -176,8 +177,15 @@ func sarifRules(rules []*Rule) []sarifRule {
 		if rule.Help != "" {
 			help = &sarifText{rule.Help}
 		}
+		level := "error"
+		switch rule.DefaultLevel {
+		case "warn":
+			level = "warning"
+		case "info":
+			level = "note"
+		}
 		result = append(result, sarifRule{
-			ID: rule.Name, Name: toPascalCase(rule.Name), DefaultConfiguration: sarifLevel{"error"},
+			ID: rule.Name, Name: toPascalCase(rule.Name), DefaultConfiguration: sarifLevel{Level: level, Enabled: rule.DefaultEnabled},
 			Properties:      sarifRuleProperties{Description: rule.Description, QueryURI: rule.DocumentationURL},
 			FullDescription: sarifText{description}, HelpURI: rule.DocumentationURL, Help: help,
 		})

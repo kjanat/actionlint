@@ -66,11 +66,23 @@ func NewRuleSet(declarations []rulemeta.Declaration) (RuleSet, error) {
 		result.entries[i] = Rule{
 			Descriptor: descriptors[i], Group: declaration.Category,
 			SupportsActions: declaration.SupportsActions, Scope: declaration.Scope,
-			DefaultLevel: Level(declaration.DefaultLevel), Options: declaration.Options,
+			Options:   declaration.Options,
 			Configure: projectors[declaration.Name],
 		}
 	}
 	return result, nil
+}
+
+// WithDefaults returns metadata annotated with the host's default rule selection.
+func (ruleSet RuleSet) WithDefaults(descriptor rulemeta.Descriptor) rulemeta.Descriptor {
+	entry, ok := ruleSet.FindRule(descriptor.Name)
+	if !ok {
+		return descriptor
+	}
+	descriptor.DefaultLevel = entry.DefaultLevel
+	enabled := ruleSet.SettingFor(nil, entry, Presets{}, ruleSet.registered[entry.Name]).Level() != "off"
+	descriptor.DefaultEnabled = &enabled
+	return descriptor
 }
 
 // Rules returns configuration rules with caller-owned metadata slices.

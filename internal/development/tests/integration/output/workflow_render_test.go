@@ -21,6 +21,74 @@ import (
 
 var updateSARIF = flag.Bool("update-sarif", false, "Update the expected SARIF output")
 
+func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
+	root, _ := testutil.ExecutableFixture(t)
+	file := filepath.Join("testdata", "format", "test.yaml")
+	content, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixturefiles.Write(t, root, file, string(content))
+	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: warn}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: workspace.Identity(root), Config: cfg}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	renderer, err := render.New(render.FormatSARIF, "", false, func() string { return "test" }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Runs []struct {
+			Tool struct {
+				Driver struct {
+					Rules []struct {
+						ID      string `json:"id"`
+						Default struct {
+							Level   string `json:"level"`
+							Enabled bool   `json:"enabled"`
+						} `json:"defaultConfiguration"`
+					} `json:"rules"`
+				} `json:"driver"`
+			} `json:"tool"`
+			Results []struct {
+				RuleID string `json:"ruleId"`
+				Level  string `json:"level"`
+			} `json:"results"`
+		} `json:"runs"`
+	}
+	if err := json.Unmarshal([]byte(output.String()), &doc); err != nil {
+		t.Fatal(err)
+	}
+	var foundRule, foundResult bool
+	for _, r := range doc.Runs[0].Tool.Driver.Rules {
+		if r.ID == "expression-reference" {
+			foundRule = true
+			if r.Default.Level != "error" || !r.Default.Enabled {
+				t.Fatalf("rule default = %+v", r.Default)
+			}
+		}
+	}
+	for _, result := range doc.Runs[0].Results {
+		if result.RuleID == "expression-reference" {
+			foundResult = true
+			if result.Level != "warning" {
+				t.Fatalf("result level = %q, want warning", result.Level)
+			}
+		}
+	}
+	if !foundRule || !foundResult {
+		t.Fatalf("rule found = %t, result found = %t", foundRule, foundResult)
+	}
+}
+
 func TestWorkflowDiagnosticTemplates(t *testing.T) {
 	tests := []struct {
 		file   string

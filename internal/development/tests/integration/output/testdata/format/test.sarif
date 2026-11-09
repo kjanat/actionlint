@@ -14,7 +14,8 @@
               "id": "action",
               "name": "Action",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate action references, inputs, outputs, and local metadata",
@@ -32,7 +33,8 @@
               "id": "cache-call-unrestricted",
               "name": "CacheCallUnrestricted",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
@@ -50,7 +52,8 @@
               "id": "cache-operation",
               "name": "CacheOperation",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report cache actions blocked by explicit cache access limits",
@@ -68,7 +71,8 @@
               "id": "cache-write-untrusted",
               "name": "CacheWriteUntrusted",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report cache write access granted on low-trust triggers",
@@ -86,7 +90,8 @@
               "id": "case-insensitive-conditions",
               "name": "CaseInsensitiveConditions",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": false
               },
               "properties": {
                 "description": "Flag case-insensitive identity comparisons",
@@ -104,7 +109,8 @@
               "id": "coercion",
               "name": "Coercion",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "warning",
+                "enabled": false
               },
               "properties": {
                 "description": "Warn about surprising string and comparison coercions",
@@ -122,7 +128,8 @@
               "id": "collection-comparison",
               "name": "CollectionComparison",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Detect equality checks between object or array instances",
@@ -140,7 +147,8 @@
               "id": "container-runner",
               "name": "ContainerRunner",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report Docker container requirements for selected runners",
@@ -158,7 +166,8 @@
               "id": "context-availability",
               "name": "ContextAvailability",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate contexts and functions available at a workflow field",
@@ -176,7 +185,8 @@
               "id": "credentials",
               "name": "Credentials",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Detect hardcoded passwords in job and service containers",
@@ -194,7 +204,8 @@
               "id": "deprecated-commands",
               "name": "DeprecatedCommands",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
@@ -212,7 +223,8 @@
               "id": "empty-job",
               "name": "EmptyJob",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report jobs without steps",
@@ -230,7 +242,8 @@
               "id": "empty-run",
               "name": "EmptyRun",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report steps with an empty run script",
@@ -248,7 +261,8 @@
               "id": "empty-triggers",
               "name": "EmptyTriggers",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report workflows that declare no triggers",
@@ -266,7 +280,8 @@
               "id": "env-var",
               "name": "EnvVar",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate environment variable declarations",
@@ -284,7 +299,8 @@
               "id": "errexit-status",
               "name": "ErrexitStatus",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "warning",
+                "enabled": false
               },
               "properties": {
                 "description": "Report Bash status reads that cannot capture a preceding failure",
@@ -302,7 +318,8 @@
               "id": "event-payload",
               "name": "EventPayload",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate properties against the configured event payloads",
@@ -320,7 +337,8 @@
               "id": "events",
               "name": "Events",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate workflow triggers and their options",
@@ -338,7 +356,8 @@
               "id": "executable-bit",
               "name": "ExecutableBit",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report directly invoked repository scripts not marked executable in Git",
@@ -356,7 +375,8 @@
               "id": "expression",
               "name": "Expression",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate expression values assigned to workflow fields",
@@ -374,7 +394,8 @@
               "id": "expression-call",
               "name": "ExpressionCall",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate function invocation and constant arguments",
@@ -392,7 +413,8 @@
               "id": "expression-reference",
               "name": "ExpressionReference",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Resolve expression variables, properties and functions",
@@ -410,7 +432,8 @@
               "id": "expression-syntax",
               "name": "ExpressionSyntax",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Parse expression tokens and grammar",
@@ -428,7 +451,8 @@
               "id": "expression-type",
               "name": "ExpressionType",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate expression operand and argument types",
@@ -446,7 +470,8 @@
               "id": "forbidden-suppression",
               "name": "ForbiddenSuppression",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": false
               },
               "properties": {
                 "description": "Report suppressions forbidden by policy",
@@ -464,7 +489,8 @@
               "id": "glob",
               "name": "Glob",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate branch, tag, and path filter patterns",
@@ -482,7 +508,8 @@
               "id": "id",
               "name": "Id",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report invalid job or step IDs and duplicate step IDs",
@@ -500,7 +527,8 @@
               "id": "if-cond",
               "name": "IfCond",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report conditions that always evaluate to true or false",
@@ -518,7 +546,8 @@
               "id": "inline-suppression",
               "name": "InlineSuppression",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate inline suppression directives",
@@ -536,7 +565,8 @@
               "id": "invalid-output-file",
               "name": "InvalidOutputFile",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Check literal writes to GITHUB_OUTPUT",
@@ -554,7 +584,8 @@
               "id": "job-needs",
               "name": "JobNeeds",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report undefined job dependencies and dependency cycles",
@@ -572,7 +603,8 @@
               "id": "join-literal",
               "name": "JoinLiteral",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "note",
+                "enabled": false
               },
               "properties": {
                 "description": "Report redundant join calls on string literals",
@@ -590,7 +622,8 @@
               "id": "matrix",
               "name": "Matrix",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate matrix definitions, combinations, and filters",
@@ -608,7 +641,8 @@
               "id": "missing-local-action",
               "name": "MissingLocalAction",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report local action references that cannot be resolved",
@@ -626,7 +660,8 @@
               "id": "missing-permissions",
               "name": "MissingPermissions",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report missing token permission declarations",
@@ -644,7 +679,8 @@
               "id": "mixed-type-comparisons",
               "name": "MixedTypeComparisons",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": false
               },
               "properties": {
                 "description": "Flag condition comparisons that implicitly convert scalar types",
@@ -662,7 +698,8 @@
               "id": "mixed-type-matrix-filters",
               "name": "MixedTypeMatrixFilters",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": false
               },
               "properties": {
                 "description": "Flag matrix filters that compare different or unknown scalar types",
@@ -680,7 +717,8 @@
               "id": "numeric-values",
               "name": "NumericValues",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report numeric values GitHub truncates or that cannot take effect",
@@ -698,7 +736,8 @@
               "id": "parallel-steps",
               "name": "ParallelSteps",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate background-step references and restrictions within parallel groups",
@@ -716,7 +755,8 @@
               "id": "permissions",
               "name": "Permissions",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate token permission scopes and access levels",
@@ -734,7 +774,8 @@
               "id": "runner-label",
               "name": "RunnerLabel",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report unknown or incompatible runner labels",
@@ -752,7 +793,8 @@
               "id": "script-injection",
               "name": "ScriptInjection",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Detect untrusted values and secrets interpolated into scripts",
@@ -770,7 +812,8 @@
               "id": "script-interpolation",
               "name": "ScriptInterpolation",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Detect template values that may change script syntax",
@@ -788,7 +831,8 @@
               "id": "shell-name",
               "name": "ShellName",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate script shells for the selected runner",
@@ -806,7 +850,8 @@
               "id": "string-conditions",
               "name": "StringConditions",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": false
               },
               "properties": {
                 "description": "Flag string conditions whose truthiness may be misleading",
@@ -824,7 +869,8 @@
               "id": "syntax-check",
               "name": "SyntaxCheck",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate GitHub Actions workflow syntax",
@@ -842,7 +888,8 @@
               "id": "uncancellable-condition",
               "name": "UncancellableCondition",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": false
               },
               "properties": {
                 "description": "Review jobs that can continue after cancellation",
@@ -860,7 +907,8 @@
               "id": "unsound-ternary",
               "name": "UnsoundTernary",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report a \u0026\u0026 b || c expressions where b is always falsy",
@@ -878,7 +926,8 @@
               "id": "unused-suppression",
               "name": "UnusedSuppression",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "note",
+                "enabled": true
               },
               "properties": {
                 "description": "Report unused inline suppression selectors",
@@ -896,7 +945,8 @@
               "id": "vendor-lock-in",
               "name": "VendorLockIn",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Report repository URL references unsupported by GitHub",
@@ -914,7 +964,8 @@
               "id": "workflow-call",
               "name": "WorkflowCall",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "error",
+                "enabled": true
               },
               "properties": {
                 "description": "Validate reusable workflow references and their declared inputs and outputs",
@@ -932,7 +983,8 @@
               "id": "workflow-command-syntax",
               "name": "WorkflowCommandSyntax",
               "defaultConfiguration": {
-                "level": "error"
+                "level": "warning",
+                "enabled": false
               },
               "properties": {
                 "description": "Report malformed runner commands in literal script output",

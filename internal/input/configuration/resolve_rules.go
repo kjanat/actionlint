@@ -35,7 +35,7 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 
 func defaultLevel(d Rule) Level {
 	if d.DefaultLevel != "" {
-		return d.DefaultLevel
+		return Level(d.DefaultLevel)
 	}
 	return "on"
 }
@@ -252,6 +252,9 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 		}
 		if !rule.ValidMaturity(descriptor.Maturity) {
 			return nil, fmt.Errorf("rule %q has invalid maturity %q", descriptor.Name, descriptor.Maturity)
+		}
+		if descriptor.DefaultLevel != "" && !Level(descriptor.DefaultLevel).Valid() {
+			return nil, fmt.Errorf("rule %q declares invalid default level %q", descriptor.Name, descriptor.DefaultLevel)
 		}
 		if len(descriptor.OptionsSchema) > 0 {
 			if _, err := configschema.Compile(descriptor.OptionsSchema); err != nil {

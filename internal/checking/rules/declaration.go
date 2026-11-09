@@ -32,8 +32,6 @@ type Declaration struct {
 	Descriptor
 	SupportsActions bool
 	Scope           ConfigurationScope
-	// An empty DefaultLevel selects the ordinary enabled severity.
-	DefaultLevel string
 	// Options constructs a fresh value for option decoding and schema generation.
 	// Nil means the rule accepts no options.
 	Options func() any
@@ -41,6 +39,10 @@ type Declaration struct {
 
 // Descriptor describes a check independently of its execution backend.
 type Descriptor struct {
+	// DefaultLevel is the severity used when enabled; empty selects the ordinary severity.
+	DefaultLevel string `json:"default_level,omitempty"`
+	// DefaultEnabled records the host's default selection when known.
+	DefaultEnabled   *bool           `json:"default_enabled,omitempty"`
 	Name             string          `json:"name"`
 	Aliases          []Alias         `json:"aliases,omitempty"`
 	Description      string          `json:"description"`
@@ -66,6 +68,9 @@ type Example struct {
 
 // Clone isolates mutable descriptor payloads from consumers.
 func (d Descriptor) Clone() Descriptor {
+	if d.DefaultEnabled != nil {
+		d.DefaultEnabled = new(*d.DefaultEnabled)
+	}
 	d.OptionsSchema = slices.Clone(d.OptionsSchema)
 	d.Examples = slices.Clone(d.Examples)
 	d.Aliases = slices.Clone(d.Aliases)
