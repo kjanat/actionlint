@@ -59,6 +59,8 @@ var builtins = []rule.Declaration{
 	correctness.WorkflowCallDeclaration(),
 	correctness.ExpressionDeclaration(),
 	correctness.DeprecatedCommandsDeclaration(),
+	suspicious.ErrexitStatusDeclaration(),
+	suspicious.WorkflowCommandSyntaxDeclaration(),
 	correctness.InvalidOutputFileDeclaration(),
 	correctness.IfCondCheck().Declaration,
 	correctness.NumericValuesCheck().Declaration,

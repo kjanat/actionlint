@@ -1,0 +1,50 @@
+---
+name: Check API Changes
+description: Check if the API has changed after running the code generation task
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+      with: { working_directory: client }
+    - uses: $/.github/actions/setup-bun
+    - shell: bash
+      run: task generate:api
+    - name: Check for changes
+      shell: bash
+      run: |
+        # The guard is `git diff --exit-code` and stays that way; what changes
+        # here is only whether it can say what it caught.
+        #
+        # The runner's shell is `bash -e -o pipefail`, and an assignment from a
+        # command substitution carries that command's status, so
+        # `CHANGED="$(git diff --exit-code)"` aborted the step on the spot and
+        # `EXIT_CODE=$?` was never reached. The job failed correctly and printed
+        # nothing -- no ::error::, no summary -- which is why #123 had to be
+        # diagnosed from a bare red status instead of from its own diff.
+        # `|| EXIT_CODE=$?` is what makes the non-zero survive into the report.
+        #
+        # GITHUB_STEP_SUMMARY is capped at 1 MiB and silently drops the whole
+        # step's summary when it is exceeded, hence the cap on the patch below.
+        EXIT_CODE=0
+        CHANGED="$(git diff --stat-graph-width=40 --exit-code)" || EXIT_CODE=$?
+        # `|| true` because head(1) closing the pipe early hands git a SIGPIPE,
+        # and pipefail would turn the truncation itself into an aborted step.
+        CAP=200000
+        PATCH="$(git diff --patch --text | head -c "$((CAP + 1))")" || true
+        # Read one byte past the cap so a cut is detectable, and say so. head -c
+        # slices mid-hunk, and the fence below closes either way, so an unmarked
+        # truncation reads as a patch that simply ended -- which is the same
+        # "guard cannot say what it caught" failure this step exists to fix.
+        if ((${#PATCH} > CAP)); then
+          PATCH="${PATCH:0:CAP}"$'\n'"[... truncated at ${CAP} bytes; run \`task generate:api\` locally for the full diff ...]"
+        fi
+
+        if [[ "${EXIT_CODE}" -ne 0 ]]; then
+          {
+            echo '::error::API generation resulted in changes. Please run "task generate:api" and commit the changes.'
+            printf '## Changed\n\n~~~text\n%s\n~~~\n\n<details open><summary><h2>Diff</h2></summary>\n\n~~~patch\n%s\n~~~\n\n</details>\n' \
+              "${CHANGED}" "${PATCH}" \
+            | tee -a "${GITHUB_STEP_SUMMARY}"
+          }
+         	exit "${EXIT_CODE}"
+        else echo "::notice::API is up to date"; exit 0; fi

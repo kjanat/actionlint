@@ -1,0 +1,35 @@
+
+CASE assignment
+EXIT 7
+
+CASE guarded
+CAPTURED:7
+EXIT 0
+
+CASE disabled
+CAPTURED:1
+EXIT 0
+
+CASE and
+CAPTURED:1
+EXIT 0
+
+CASE compound
+CAPTURED:0
+EXIT 0
+
+CASE trap
+TRAPPED:1
+EXIT 1
+
+CASE ignored_group
+CAPTURED:1
+EXIT 0
+
+CASE subshell
+INNER:1
+EXIT 1
+
+CASE substitution
+INNER:1
+EXIT 0

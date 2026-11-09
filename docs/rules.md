@@ -394,6 +394,51 @@ jobs:
       - run: echo ok
 ```
 
+## errexit-status
+
+With Bash errexit enabled, a failing simple command exits before a following $? read. The read can capture success, but cannot capture the preceding failure.
+
+The check uses registered interpreter options and follows literal set changes, groups, subshells and known branches. This warning is opt-in because a success-only read can be intentional.
+
+The check excludes reads within condition tests, AND/OR lists and pipelines, and reads of compound-command results. It skips trap bodies, function bodies and command substitutions. Unknown option values suspend analysis until a known set change. Operations that may replace builtins or install traps stop further analysis in that scope.
+
+The rule is experimental because function calls, command substitution inheritance and dynamic option effects are not modeled. Bash behavior is specified at https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html; runner defaults are in actions/runner ScriptHandlerHelpers.cs.
+
+Capture the failure status in an if condition or an || handler when the script must continue after failure.
+
+- Category: `suspicious/scripts`
+- Provider: `actionlint`
+- Maturity: `nursery`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.suspicious.errexit-status`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+
+Capture failure explicitly when the script must continue.
+
+```yaml
+on: push
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: |
+          CHANGED="$(git diff --exit-code)"; EXIT_CODE=$?
+```
+
+```yaml
+on: push
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: |
+          CHANGED="$(git diff --exit-code)" || EXIT_CODE=$?
+```
+
 ## event-payload
 
 Validate properties against the configured event payloads.
@@ -1254,6 +1299,49 @@ Correct the reference and supply required inputs and secrets. For permission or 
 - Enabled by default: `true`
 
 Configure this rule with `lint.rules.correctness.workflow-call`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+
+## workflow-command-syntax
+
+The runner prints malformed or unknown :: commands as ordinary text instead of creating annotations or applying command effects.
+
+This opt-in warning checks literal echo and printf output in Bash or POSIX shells, print calls in Python, and Write-Host, Write-Output or echo calls in PowerShell. It joins writes into stdout lines, including stop and resume tokens split across writes. Command processing is evaluated separately for each possible execution path. Comments and unused strings do not produce findings.
+
+Registered interpreter settings and literal set changes determine errexit. Known failures and exit commands end execution. The check handles the errexit exceptions for conditions, negation and AND/OR lists. Unsupported commands, dynamic output, loops and complex control flow stop analysis of that path. A pending partial line is checked only at a known end of output. Python and PowerShell scripts are skipped entirely when a statement cannot be parsed by the limited literal-output model.
+
+The rule is experimental because language coverage is partial and command-shaped text may be an intentional example. The syntax and case-insensitive extension list follow actions/runner revision 1ba885c2065fd9be317808ab3fd406f392635cf7, ActionCommand.cs and ActionCommandManager.cs. Extension-specific properties are not validated.
+
+Use ::name::message or ::name key=value::message with a runner command name. Use stop-commands when intentionally printing command examples.
+
+- Category: `suspicious/scripts`
+- Provider: `actionlint`
+- Maturity: `nursery`
+- Enabled by default: `false`
+
+Configure this rule with `lint.rules.suspicious.workflow-command-syntax`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+
+Close the annotation name with two colons.
+
+```yaml
+on: push
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: echo "::notice:Up to date"
+```
+
+```yaml
+on: push
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: echo "::notice::Up to date"
+```
 
 ## workflow-run-names
 
