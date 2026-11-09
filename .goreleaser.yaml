@@ -93,6 +93,10 @@ homebrew_casks:
     hooks:
       pre:
         install_steps: |
+          mkdir_p "etc/bash_completion.d", base: :homebrew_prefix
+          mkdir_p "share/zsh/site-functions", base: :homebrew_prefix
+          mkdir_p "share/fish/vendor_completions.d", base: :homebrew_prefix
+          mkdir_p "share/pwsh/completions", base: :homebrew_prefix
           on_macos do
             run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/actionlint"]
           end
