@@ -19,6 +19,7 @@
         actionlint = pkgs.callPackage ./nix/package.nix {
           src = self;
           inherit version;
+          buildGoModule = pkgs.buildGo127Module;
         };
         default = actionlint;
       });
@@ -33,7 +34,7 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [
-            go
+            go_1_27
             git
             bash
             zsh
