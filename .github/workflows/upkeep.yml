@@ -116,8 +116,8 @@ jobs:
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
         id: versions
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
           fork="$(awk '/^\*\*This fork / { print $3; exit }' README.md)"
           upstream="$(awk '/^\*\*Upstream actionlint / { print $3; exit }' README.md)"
           test -n "${fork}" && test -n "${upstream}"
@@ -167,8 +167,8 @@ jobs:
       - name: Check the latest stable Go toolchain
         id: version
         env: { GH_TOKEN: "${{ github.token }}" }
+        shell: bash -euo pipefail {0}
         run: |
-          set -euo pipefail
           version="$(curl --fail --silent --show-error --location 'https://go.dev/VERSION?m=text' | sed -n '1p')"
           if [[ ! "${version}" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error title=Invalid Go version::go.dev returned '${version}'"
