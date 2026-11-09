@@ -18,10 +18,10 @@ import type {
 } from '@kjanat-actionlint/language-server';
 import { basicSetup } from 'codemirror';
 
-import { documentURI, type PlaygroundClient, startPlaygroundClient } from './client';
-import { editorRange, workspaceChanges } from './editor-lsp';
-import { shellcheckAssets } from './shellcheck';
-import { querySource, readSource, sharedSource, shareURL } from './source';
+import { documentURI, type PlaygroundClient, startPlaygroundClient } from '#client';
+import { editorRange, workspaceChanges } from '#editor-lsp';
+import { shellcheckAssets } from '#shellcheck';
+import { querySource, readSource, sharedSource, shareURL } from '#source';
 
 const editorTheme = new Compartment();
 

@@ -11,7 +11,7 @@ import {
 	readSource,
 	sharedSource,
 	shareURL,
-} from './source';
+} from '#source';
 
 describe('source', () => {
 	function encode(bytes: Uint8Array): string {

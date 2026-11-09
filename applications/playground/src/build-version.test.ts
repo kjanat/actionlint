@@ -6,7 +6,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { buildVersion, renderBuildVersion } from './build-version.ts';
+import { buildVersion, renderBuildVersion } from '#build-version';
 
 await test('playground keeps source identity separate from the published release after promotion', async () => {
 	const directory = await mkdtemp(join(tmpdir(), 'actionlint-playground-version-'));

@@ -1,7 +1,7 @@
 import type { BrowserClientOptions, BrowserLanguageClient } from '@kjanat-actionlint/language-server';
 import workerURL from '@kjanat-actionlint/language-server/worker?worker&url';
 
-import { loadShellcheck } from './shellcheck';
+import { loadShellcheck } from '#shellcheck';
 
 export const workspaceURI = 'file:///workspace';
 export const documentURI = `${workspaceURI}/.github/workflows/playground.yml`;

@@ -3,7 +3,7 @@ import { describe, it } from 'vitest';
 
 import { Text } from '@codemirror/state';
 
-import { editorRange, workspaceChanges } from './editor-lsp';
+import { editorRange, workspaceChanges } from '#editor-lsp';
 
 describe('LSP source coordinates', () => {
 	it('uses UTF-16 positions across astral characters and lines', () => {

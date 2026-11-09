@@ -5,7 +5,7 @@ import { diagnosticCount } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 import type { BrowserClientOptions, PublishDiagnosticsParams } from '@kjanat-actionlint/language-server';
 
-import type { PlaygroundClient } from './client';
+import type { PlaygroundClient } from '#client';
 
 const callbacks = vi.hoisted((): {
 	options: Pick<BrowserClientOptions, 'onDiagnostics' | 'onError'> | undefined;
@@ -23,7 +23,7 @@ const callbacks = vi.hoisted((): {
 		actions: vi.fn<PlaygroundClient['codeActions']>().mockResolvedValue([]),
 	};
 });
-vi.mock('./client', () => ({
+vi.mock('#client', () => ({
 	documentURI: 'file:///workspace/.github/workflows/playground.yml',
 	startPlaygroundClient: (options: Pick<BrowserClientOptions, 'onDiagnostics' | 'onError'>) => {
 		callbacks.options = options;
@@ -40,7 +40,7 @@ vi.mock('./client', () => ({
 		});
 	},
 }));
-vi.mock('./shellcheck', () => ({
+vi.mock('#shellcheck', () => ({
 	shellcheckAssets: { license: 'https://example.test/LICENSE' },
 }));
 
@@ -84,7 +84,7 @@ beforeAll(async () => {
 		configurable: true,
 		value: () => new DOMRect(0, 0, 10, 20),
 	});
-	await import('./index');
+	await import('#index');
 	await vi.waitFor(() => {
 		assert.equal(callbacks.open.mock.calls.length, 1);
 	});

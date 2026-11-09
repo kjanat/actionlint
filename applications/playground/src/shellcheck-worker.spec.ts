@@ -18,9 +18,10 @@ class FakeWorker {
 	}
 }
 
-import pkg from '../package.json';
-import { loadShellcheck, shellcheckAssets } from './shellcheck';
-import { shellcheckOutput, shellcheckRequest } from './shellcheck-request';
+import pkg from '#pkg';
+
+import { loadShellcheck, shellcheckAssets } from '#shellcheck';
+import { shellcheckOutput, shellcheckRequest } from '#shellcheck-request';
 
 const originalURL = URL;
 const createObjectURL = vi.fn(() => 'blob:test-worker');
