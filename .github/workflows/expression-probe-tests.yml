@@ -24,7 +24,7 @@ jobs:
           version: 2026.11.4
           mise_dir: "${{ github.workspace }}-mise"
           cache: true
-          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.github/workflows/*.yml', '.mise/locks/**') }}"
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           cache_save_post: true
           monorepo: false
           add_shims_to_path: false

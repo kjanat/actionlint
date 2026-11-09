@@ -498,7 +498,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				assert.equal(options.auto_update, undefined);
 				assert.equal(
 					options.cache_key,
-					"{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.github/workflows/*.yml', '.mise/locks/**') }}",
+					"{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
 				);
 				assert.ok(!String(workflow.name).includes(','), `${name} cache key must not contain commas`);
 				assert.equal(yamlMapping(workflow.env).MISE_CACHE_DIR, '${{ github.workspace }}-mise/cache');
@@ -507,6 +507,11 @@ test('mise setup is pinned, cached, and used once per job', () => {
 				assert.equal(options.install_args, undefined, `${name}:${jobName} must use the locked tool selection`);
 				assert.equal(options.add_shims_to_path, false);
 				assert.equal(options.monorepo, false, `${name}:${jobName} installs its selected root tools`);
+				if (name === 'ci.yml' && ['unit-tests', 'action'].includes(jobName)) {
+					const environment = yamlMapping(job.env);
+					assert.equal(environment.TEMP, '${{ runner.temp }}');
+					assert.equal(environment.TMP, '${{ runner.temp }}');
+				}
 				if (options.install === false) {
 					assert.equal(options.env, false);
 					assert.equal(options.working_directory, '${{ runner.temp }}');
