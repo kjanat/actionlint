@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
@@ -26,7 +27,7 @@ func References(value any) ([]pluginref.Reference, bool, error) {
 	}
 	var declarations config.PluginDeclarations
 	if err := declarations.DecodeConfig(raw); err != nil {
-		return nil, true, err
+		return nil, true, binding.At("plugins", err)
 	}
 	return []pluginref.Reference(declarations), true, nil
 }
