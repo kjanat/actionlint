@@ -670,25 +670,25 @@
       "<stdin>:29:13: duplicate value \"foo bar\" is found in matrix \"vector-1\". the same value is at line:13,col:13 [matrix]"
     ],
     "runner/src/Test/TestData/node16action.yml": [
-      ":1:1: runtime \"node16\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/node20action.yml": [
       ":1:1: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_cleanup.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_cleanup_default.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_init.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction_init_default.yml": [
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "schemastore/src/negative_test/github-action/composite-output-missing-value.json": [],
     "schemastore/src/negative_test/github-action/javascript-output-with-value.json": [],
@@ -700,7 +700,7 @@
     ],
     "schemastore/src/test/github-action/javascript.json": [
       ":1:1: description is required in metadata of \"Test JavaScript action\" action at \"<action>/action.yml\" [action]",
-      ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Test JavaScript action\" to a current runtime [action]"
+      ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Test JavaScript action\" to a current runtime [action]"
     ],
     "schemastore/src/test/github-workflow/1162.yaml": [
       "<stdin>:8:3: job \"check_run\" has no steps, so it does nothing [empty-job]"
