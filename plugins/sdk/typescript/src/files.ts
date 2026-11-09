@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { DocumentRequest } from './index.ts';
+import type { DocumentRequest } from '#index';
 
 /**
  * Write a captured document to the conventional path expected by file-based tools.

@@ -5,11 +5,11 @@ import { dirname, extname, join, resolve } from 'node:path';
 
 import { arg, cli, command, flag } from '@kjanat/dreamcli';
 
-import { compileProvider } from './authoring.ts';
-import type { JSONValue } from './index.ts';
-import { isJSONValue } from './index.ts';
-import type { AuthoringOptions } from './testing.ts';
-import { testManifest, validateManifest } from './testing.ts';
+import { compileProvider } from '#authoring';
+import type { JSONValue } from '#index';
+import { isJSONValue } from '#index';
+import type { AuthoringOptions } from '#testing';
+import { testManifest, validateManifest } from '#testing';
 
 export const initCommand = command('init')
 	.description('Create a typed manifest, jq transform and fixtures while preserving existing project settings')
@@ -145,6 +145,12 @@ async function pack(manifestPath: string, options: AuthoringOptions): Promise<st
 		packageData.files = withPublishedFiles(packageData.files, bundleFile);
 		packageChanged = true;
 	}
+	if (packageData.files === undefined) {
+		const npmIgnore = await optionalText(join(root, '.npmignore'));
+		const gitIgnore = npmIgnore === undefined ? await optionalText(join(root, '.gitignore')) : undefined;
+		const published = ['actionlint-provider.json', ...(bundleFile === undefined ? [] : [bundleFile])];
+		await writeFile(join(root, '.npmignore'), publishedIgnore(npmIgnore ?? gitIgnore, published));
+	}
 	// Validate with actionlint before writing to the author's package.
 	if (bundleFile !== undefined && isRecord(program) && typeof program.inline === 'string') {
 		await writeFile(join(root, bundleFile), program.inline);
@@ -167,6 +173,7 @@ async function scaffold(directory: string, sdkSpecifier: string | undefined): Pr
 	await mkdir(root, { recursive: true });
 	const packageBefore = await optionalText(join(root, 'package.json'));
 	const ignoreBefore = await optionalText(join(root, '.gitignore'));
+	const npmIgnoreBefore = await optionalText(join(root, '.npmignore'));
 	const readmeBefore = await optionalText(join(root, 'README.md'));
 	const packageData = packageBefore === undefined
 		? {
@@ -257,10 +264,14 @@ Users need the wrapped scanner on PATH. Repository-selected native processes req
 `,
 		],
 	]);
+	if (packageContents.files === undefined) {
+		files.set('.npmignore', publishedIgnore(npmIgnoreBefore ?? ignoreBefore, ['actionlint-provider.json']));
+	}
 	if (readmeBefore !== undefined) files.delete('README.md');
 	const existing = new Set([
 		...(packageBefore === undefined ? [] : ['package.json']),
 		...(ignoreBefore === undefined ? [] : ['.gitignore']),
+		...(npmIgnoreBefore === undefined ? [] : ['.npmignore']),
 	]);
 	for (const [name] of files) {
 		if (existing.has(name)) continue;
@@ -325,6 +336,13 @@ async function optionalText(path: string): Promise<string | undefined> {
 		if (!isNotFound(error)) throw error;
 		return undefined;
 	}
+}
+
+function publishedIgnore(existing: string | undefined, files: string[]): string {
+	const before = existing ?? '';
+	const additions = files.map((file) => `!/${file}\n`).join('');
+	if (before.endsWith(additions)) return before;
+	return before + (before !== '' && !before.endsWith('\n') ? '\n' : '') + additions;
 }
 
 function pluginIgnore(existing: string | undefined): string {

@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
 
-import type { DocumentCheck, ScriptCheck, ScriptOutput } from './index.ts';
-import { executeDocumentCheck, executeScriptCheck } from './index.ts';
+import type { DocumentCheck, ScriptCheck, ScriptOutput } from '#index';
+import { executeDocumentCheck, executeScriptCheck } from '#index';
 
 /**
  * Read one JSON script request from stdin and write one validated SDK response to stdout.

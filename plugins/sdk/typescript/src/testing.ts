@@ -1,7 +1,7 @@
-import { compileProvider } from './authoring.ts';
-import type { Diagnostic, JSONValue, ScriptRequest } from './index.ts';
-import { isDiagnostic, isJSONValue } from './index.ts';
-import { array, record, runCommand, text } from './process.ts';
+import { compileProvider } from '#authoring';
+import type { Diagnostic, JSONValue, ScriptRequest } from '#index';
+import { isDiagnostic, isJSONValue } from '#index';
+import { array, record, runCommand, text } from '#process';
 
 /** Select the actionlint executable that validates this plugin. */
 export interface AuthoringOptions {

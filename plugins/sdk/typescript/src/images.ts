@@ -1,8 +1,8 @@
 import { isAlias, isMap, isScalar, isSeq, LineCounter, type Node, parseDocument } from 'yaml';
 
-import { unicodeColumn } from './index.ts';
+import { unicodeColumn } from '#index';
 
-export { diagnosticAtImage, imageKey } from './image-report.ts';
+export { diagnosticAtImage, imageKey } from '#image-report';
 
 export interface ImageReference {
 	value: string;
@@ -40,7 +40,9 @@ export function imageReferences(source: string, kind: 'workflow' | 'action'): Im
 			throw new Error(`${label} uses a dynamic image reference; image target is unresolved`);
 		}
 		if (!raw.startsWith(prefix)) throw new Error(`${label} does not use the expected ${prefix} prefix`);
-		const value = raw.slice(prefix.length).replace(/\n$/u, '');
+		const value = node.type === 'BLOCK_LITERAL' || node.type === 'BLOCK_FOLDED'
+			? raw.slice(prefix.length).replace(/\n$/u, '')
+			: raw.slice(prefix.length);
 		if (!validImageReference(value)) throw new Error(`${label} is not a supported static OCI image reference`);
 		const range = node.range;
 		if (range === undefined || range === null) throw new Error(`${label} has no YAML source range`);
@@ -61,6 +63,7 @@ export function imageReferences(source: string, kind: 'workflow' | 'action'): Im
 		if (image !== null && isScalar(image) && typeof image.value === 'string' && image.value.startsWith('docker://')) {
 			add(image, 'runs.image', 'docker://');
 		}
+		addDockerSteps(mapValue(runs, 'steps'), 'runs.steps', add);
 	}
 	if (kind === 'workflow') {
 		const jobs = mapValue(root, 'jobs');
@@ -73,15 +76,23 @@ export function imageReferences(source: string, kind: 'workflow' | 'action'): Im
 			) {
 				add(mapValue(service, 'image'), `jobs.${jobName}.services.${serviceName}.image`);
 			}
-			for (const [index, step] of sequenceEntries(mapValue(job, 'steps'), `jobs.${jobName}.steps`).entries()) {
-				const uses = mapValue(step, 'uses');
-				if (uses !== null && isScalar(uses) && typeof uses.value === 'string' && uses.value.startsWith('docker://')) {
-					add(uses, `jobs.${jobName}.steps[${index}].uses`, 'docker://');
-				}
-			}
+			addDockerSteps(mapValue(job, 'steps'), `jobs.${jobName}.steps`, add);
 		}
 	}
 	return result;
+}
+
+function addDockerSteps(
+	node: Node | null,
+	label: string,
+	add: (node: Node | null, label: string, prefix?: string) => void,
+): void {
+	for (const [index, step] of sequenceEntries(node, label).entries()) {
+		const uses = mapValue(step, 'uses');
+		if (uses !== null && isScalar(uses) && typeof uses.value === 'string' && uses.value.startsWith('docker://')) {
+			add(uses, `${label}[${index}].uses`, 'docker://');
+		}
+	}
 }
 
 function mapEntries(node: Node | null, label: string): { key: string; value: Node | null }[] {
