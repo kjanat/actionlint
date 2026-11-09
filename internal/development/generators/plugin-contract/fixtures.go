@@ -9,8 +9,9 @@ import (
 	"strings"
 )
 
-// Each fixture changes one nested type without changing the interface identity.
-// Dummy functions trap, so successful rejection cannot depend on describe's data.
+// Fixtures include a compatible contract and variants with a changed signature
+// or nested type. All fixtures use the same interface identity. Dummy functions
+// trap, so successful rejection cannot depend on describe's data.
 func generateFixtures(ctx context.Context) error {
 	data, err := os.ReadFile(contractPath)
 	if err != nil {

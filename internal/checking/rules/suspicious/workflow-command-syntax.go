@@ -7,7 +7,7 @@ func WorkflowCommandSyntaxDeclaration() rule.Declaration {
 	return rule.Declaration{
 		Name: "workflow-command-syntax", Description: "Report malformed runner commands in literal script output",
 		Category: "suspicious", Subcategory: "scripts", Maturity: "nursery", Provider: "actionlint", Recommended: false, DefaultLevel: "warn",
-		Explanation: "The runner prints malformed or unknown :: commands as ordinary text instead of creating annotations or applying command effects.\n\n" +
+		Explanation: "The runner prints malformed or unknown :: commands as ordinary text. They do not create annotations or apply command effects.\n\n" +
 			"This opt-in warning checks literal echo and printf output in Bash or POSIX shells, print calls in Python, and Write-Host, Write-Output or echo calls in PowerShell. " +
 			"It joins writes into stdout lines, including stop and resume tokens split across writes. Command processing is evaluated separately for each possible execution path. " +
 			"Comments and unused strings do not produce findings.\n\n" +
