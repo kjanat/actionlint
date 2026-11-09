@@ -15,15 +15,18 @@ env:
   MISE_CACHE_DIR: "${{ github.workspace }}-mise/cache"
   MISE_LOCKED: "1"
   MISE_TASK_RUN_AUTO_INSTALL: "false"
-  hasToken: "${{ secrets.UPKEEP_TOKEN != null }}"
 
 jobs:
   generate:
     name: Regenerate the Go tables
     if: github.event_name != 'workflow_run' && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
-    permissions: { contents: write, pull-requests: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - &Beepboop
+        uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: write, permission-pull-requests: write }
       - &Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
@@ -40,13 +43,11 @@ jobs:
       - name: Refresh upstream action and workflow metadata
         run: mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
-      - &warnToken
-        name: Warn when the pull request will carry no CI
-        if: ${{ !fromJSON(env.hasToken) }}
-        run: echo '::warning title=No UPKEEP_TOKEN::GITHUB_TOKEN opens the pull request, and GitHub runs no workflows on it. Store a fine-grained token with contents and pull-requests write as the UPKEEP_TOKEN secret.'
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          token: &BeepboopToken ${{ steps.beepboop.outputs.token }}
+          committer: &BeepboopCommitter "${{ steps.beepboop.outputs.bot-login }} <${{ steps.beepboop.outputs.bot-email }}>"
+          author: *BeepboopCommitter
           branch: ci/go-generate
           delete-branch: true
           add-paths: |
@@ -67,9 +68,10 @@ jobs:
     name: Refresh the README demo section
     if: github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-    permissions: { contents: write, pull-requests: write }
+    permissions: { contents: read, id-token: write }
     env: { MISE_ENABLE_TOOLS: "shellcheck" }
     steps:
+      - *Beepboop
       - *Checkout
       - *SetupNode
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
@@ -99,10 +101,11 @@ jobs:
           upstream="$(awk '/^\*\*Upstream actionlint / { print $3; exit }' README.md)"
           test -n "${fork}" && test -n "${upstream}"
           { echo "fork=${fork}"; echo "upstream=${upstream}"; } >> "${GITHUB_OUTPUT}"
-      - *warnToken
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          token: *BeepboopToken
+          committer: *BeepboopCommitter
+          author: *BeepboopCommitter
           branch: ci/readme-demo
           delete-branch: true
           add-paths: |
@@ -124,8 +127,9 @@ jobs:
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
     env: { MISE_ENABLE_TOOLS: "bun,npm:runner-run" }
-    permissions: { contents: write, pull-requests: write }
+    permissions: { contents: read, id-token: write }
     steps:
+      - *Beepboop
       - *Checkout
       - *SetupGo
       - *SetupNode
@@ -154,10 +158,11 @@ jobs:
           fi
           node tools/toolchain/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
-      - *warnToken
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.UPKEEP_TOKEN || github.token }}
+          token: *BeepboopToken
+          committer: *BeepboopCommitter
+          author: *BeepboopCommitter
           branch: ci/go-toolchain-version
           delete-branch: true
           add-paths: |
