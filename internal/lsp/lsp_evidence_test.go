@@ -33,21 +33,15 @@ func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.Inp
 }
 
 func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testing.T) {
+	t.Chdir(t.TempDir())
 	current, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The working directory must be expressible relative to the process
-	// directory; t.TempDir can sit on another Windows volume than the checkout.
-	root, err := os.MkdirTemp(current, "editor-paths-")
-	if err != nil {
+	root := filepath.Join(current, "workspace")
+	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(root); err != nil {
-			t.Error(err)
-		}
-	})
 	relative, err := filepath.Rel(current, root)
 	if err != nil {
 		t.Fatal(err)
