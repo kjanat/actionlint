@@ -15,12 +15,15 @@ import (
 
 func TestRepositoryActionMetadata(t *testing.T) {
 	options := checking.Options{RemoteActions: testutil.FixtureActions(t)}
-	for _, tc := range []struct{ ref, inputs, output string }{
-		{"kjanat/actions-shells@master", "doctor: true", "cli"},
-		{"kjanat/install-dprint@master", "warmup: false", "plugin-cache-key"},
-		{"kjanat/actionlint-registry/publish@master", "sha256: digest, candidate-receipt: receipt.json, actionlint: actionlint, fixture: workflow.yml", "submission-id"},
-		{"kjanat/beepboop/actions/credentials@master", "aliases: '[]'", "values"},
-		{"kjanat/svg-converter-action@master", "svg-path: drawing.svg", "files-created"},
+	for _, tc := range []struct {
+		ref, inputs, output string
+		closedOutputs       bool
+	}{
+		{"kjanat/actions-shells@master", "doctor: true", "cli", false},
+		{"kjanat/install-dprint@master", "warmup: false", "plugin-cache-key", false},
+		{"kjanat/actionlint-registry/publish@master", "sha256: digest, candidate-receipt: receipt.json, actionlint: actionlint, fixture: workflow.yml", "submission-id", true},
+		{"kjanat/beepboop/actions/credentials@master", "aliases: '[]'", "values", true},
+		{"kjanat/svg-converter-action@master", "svg-path: drawing.svg", "files-created", false},
 	} {
 		t.Run(tc.ref, func(t *testing.T) {
 			for _, mutation := range []string{"valid", "input", "output"} {
@@ -46,7 +49,7 @@ jobs:
 permissions: {}
 `, tc.ref, inputs, output)
 					findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}", options)
-					if mutation == "valid" {
+					if mutation == "valid" || mutation == "output" && !tc.closedOutputs {
 						if len(findings) != 0 {
 							t.Fatalf("valid action invocation rejected: %v", findings)
 						}
