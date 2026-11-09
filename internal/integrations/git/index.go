@@ -3,8 +3,6 @@ package git
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -23,12 +21,12 @@ func ReadIndex(ctx context.Context, root string) (result Index, err error) {
 	if err != nil {
 		return result, err
 	}
-	output, err := Command(ctx, git, root, "ls-files", "--stage", "-z").Output()
+	output, err := Query(ctx, git, root, nil, "ls-files", "--stage", "-z")
 	if err != nil {
 		err = fmt.Errorf("read Git index: %w", err)
 		return result, err
 	}
-	result.Modes, err = ParseIndexModes(string(output))
+	result.Modes, err = ParseIndexModes(string(output.Stdout))
 	if err != nil {
 		return result, err
 	}
@@ -37,16 +35,16 @@ func ReadIndex(ctx context.Context, root string) (result Index, err error) {
 	// handled too, without writing a tree or parsing Git's debug format.
 	additions := make(map[string]struct{})
 	for _, visibility := range []string{"--ita-visible-in-index", "--ita-invisible-in-index"} {
-		output, err := Command(ctx, git, root, "diff", "--cached", "--name-status", "-z",
+		output, err := Query(ctx, git, root, nil, "diff", "--cached", "--name-status", "-z",
 			"--diff-filter=AD", "--no-renames", "--no-ext-diff", "--no-textconv", "--no-color",
-			"--ignore-submodules=all", visibility, "--").Output()
+			"--ignore-submodules=all", visibility, "--")
 		if err != nil {
 			err = fmt.Errorf("read Git index additions: %w", err)
 			return result, err
 		}
-		records := strings.Split(string(output), "\x00")
+		records := strings.Split(string(output.Stdout), "\x00")
 		if len(records)%2 != 1 || records[len(records)-1] != "" {
-			err = fmt.Errorf("unexpected Git index changes %q", output)
+			err = fmt.Errorf("unexpected Git index changes %q", output.Stdout)
 			return result, err
 		}
 		for i := 0; i+1 < len(records); i += 2 {
@@ -68,14 +66,14 @@ func ReadIndex(ctx context.Context, root string) (result Index, err error) {
 	for name := range additions {
 		delete(result.Modes, name)
 	}
-	index, err := Command(ctx, git, root, "rev-parse", "--git-path", "index").Output()
+	index, err := Query(ctx, git, root, nil, "rev-parse", "--git-path", "index")
 	if err != nil {
 		err = fmt.Errorf("locate Git index: %w", err)
 		return result, err
 	}
-	location := strings.TrimSuffix(strings.TrimSuffix(string(index), "\n"), "\r")
+	location := strings.TrimSuffix(strings.TrimSuffix(string(index.Stdout), "\n"), "\r")
 	if location == "" || strings.ContainsAny(location, "\x00\r\n") {
-		err = fmt.Errorf("unexpected Git index location %q", index)
+		err = fmt.Errorf("unexpected Git index location %q", index.Stdout)
 		return result, err
 	}
 	if !filepath.IsAbs(location) {
@@ -83,22 +81,6 @@ func ReadIndex(ctx context.Context, root string) (result Index, err error) {
 	}
 	result.Path, err = filepath.Abs(location)
 	return result, err
-}
-
-func Command(ctx context.Context, git, root string, args ...string) *exec.Cmd {
-	// Index inspection must not invoke repository-configured fsmonitor commands.
-	command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
-	// Clear repository overrides inherited from Git commands or hooks so the
-	// query uses the workflow's project.
-	for _, entry := range os.Environ() {
-		name, _, _ := strings.Cut(entry, "=")
-		switch strings.ToUpper(name) {
-		case "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR":
-			continue
-		}
-		command.Env = append(command.Env, entry)
-	}
-	return command
 }
 
 func ParseIndexModes(output string) (map[string]string, error) {

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 	"golang.org/x/sys/execabs"
 	"golang.org/x/text/unicode/norm"
 )
@@ -92,16 +93,11 @@ func newGitFilter(ctx context.Context, root string, reader *inputfiles.Reader) (
 		return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
 	}
 	run := func(optional bool, args ...string) ([]byte, error) {
-		// Repository-configured fsmonitor commands must not run during discovery.
-		command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
-		command.Env = gitEnvironment()
-		var stderr strings.Builder
-		command.Stderr = &stderr
-		output, err := command.Output()
+		output, err := gitclient.Query(ctx, git, root, gitEnvironment(), args...)
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
 		}
-		message := strings.TrimSpace(stderr.String())
+		message := strings.TrimSpace(string(output.Stderr))
 		var exit *exec.ExitError
 		// git config exits 1 without output when a key is unset.
 		if optional && message == "" && errors.As(err, &exit) && exit.ExitCode() == 1 {
@@ -114,7 +110,7 @@ func newGitFilter(ctx context.Context, root string, reader *inputfiles.Reader) (
 		if message != "" {
 			return nil, fmt.Errorf("git %s: %s", args[0], message)
 		}
-		return output, nil
+		return output.Stdout, nil
 	}
 	path := func(optional bool, args ...string) (string, error) {
 		output, err := run(optional, args...)
