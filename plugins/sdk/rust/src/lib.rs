@@ -139,13 +139,29 @@ pub mod bindings {
 /// Descriptor types for script-engine packaging. Generate guest exports from the
 /// Cargo-provided WIT directory described in the README.
 pub mod script_engine {
+    // Public export macros defer export metadata until a guest invokes them.
+    // Distinct world names prevent collisions between wit-bindgen crate-level macros.
     /// Types from the 0.2.0 template-aware script engine world.
     pub mod v0_2 {
-        wit_bindgen::generate!({ path: "wit", world: "template-script-engine-plugin", pub_export_macro: false });
+        wit_bindgen::generate!({
+            path: "wit",
+            inline: "package kjanat:actionlint-sdk; world template-script-engine-v0-2 { include kjanat:actionlint/template-script-engine-plugin@0.2.0; }",
+            world: "template-script-engine-v0-2",
+            generate_all,
+            pub_export_macro: true,
+            export_macro_name: "export_template_script_engine_v0_2",
+        });
     }
     /// Types from the 0.3.0 template-aware script engine world.
     pub mod v0_3 {
-        wit_bindgen::generate!({ path: "wit/deps/actionlint-0.3.0", world: "template-script-engine-plugin", pub_export_macro: false });
+        wit_bindgen::generate!({
+            path: "wit/deps/actionlint-0.3.0",
+            inline: "package kjanat:actionlint-sdk; world template-script-engine-v0-3 { include kjanat:actionlint/template-script-engine-plugin@0.3.0; }",
+            world: "template-script-engine-v0-3",
+            generate_all,
+            pub_export_macro: true,
+            export_macro_name: "export_template_script_engine_v0_3",
+        });
     }
 }
 
