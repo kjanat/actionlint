@@ -22,7 +22,7 @@ runs:
   steps:
     - name: Install the changelog package
       shell: bash
-      run: npm install --prefix "${RUNNER_TEMP}/actionlint-changelog" --no-save --package-lock=false --ignore-scripts @kjlint/changelog-rss@latest
+      run: npm install --prefix "${RUNNER_TEMP}/actionlint-changelog" --no-save --package-lock=false --ignore-scripts @kjlint/changelog-rss@0.0.3
     - name: Collect new Actions changelog entries
       id: monitor
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -49,5 +49,16 @@ runs:
           const issues = await github.paginate(github.rest.issues.listForRepo, {
             ...context.repo, state: 'all', labels: process.env.CHANGELOG_LABEL || LABEL, per_page: 100,
           })
-          const selected = selectEntries(entries, { reported: reportedGuids(issues), since, limit: count('MAX_ISSUES') })
-          core.setOutput('drafts', selected.map(entry => ({ title: issueTitle(entry), body: issueBody(entry) })))
+          const limit = count('MAX_ISSUES')
+          const selected = selectEntries(entries, { reported: reportedGuids(issues), since, limit: entries.length })
+          const drafts = []
+          for (const entry of selected) {
+            const draft = { title: issueTitle(entry), body: issueBody(entry) }
+            if (draft.title.length > 256 || draft.body.length > 65536) {
+              core.warning(`Skipping ${entry.link}: the issue title or body exceeds GitHub's length limit`)
+              continue
+            }
+            drafts.push(draft)
+            if (drafts.length === limit) break
+          }
+          core.setOutput('drafts', drafts)

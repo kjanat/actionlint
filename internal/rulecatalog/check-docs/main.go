@@ -94,11 +94,19 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, path := range []string{physical, root} {
+	return normalizeCheckoutPaths(rendered, root, physical), nil
+}
+
+func normalizeCheckoutPaths(rendered []byte, root, physical string) []byte {
+	paths := []string{root, physical}
+	if len(paths[0]) < len(paths[1]) {
+		paths[0], paths[1] = paths[1], paths[0]
+	}
+	for _, path := range paths {
 		rendered = bytes.ReplaceAll(rendered, []byte(path), []byte("/path/to/repo"))
 		rendered = bytes.ReplaceAll(rendered, []byte(filepath.ToSlash(path)), []byte("/path/to/repo"))
 	}
-	return rendered, nil
+	return rendered
 }
 
 type state int

@@ -107,6 +107,29 @@ jobs:
 	}
 }
 
+func TestNormalizeCheckoutPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		root     string
+		physical string
+	}{
+		{"physical prefix of alias", "/tmp/docs-link", "/tmp/docs"},
+		{"alias prefix of physical", "/tmp/docs", "/tmp/docs-link"},
+		{"same path", "/tmp/docs", "/tmp/docs"},
+		{"native and slash paths", filepath.FromSlash("C:/work/docs-link"), filepath.FromSlash("C:/work/docs")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			paths := []string{tc.root, tc.physical, filepath.ToSlash(tc.root), filepath.ToSlash(tc.physical)}
+			for _, path := range paths {
+				got := string(normalizeCheckoutPaths([]byte("open "+path+"/action.yml"), tc.root, tc.physical))
+				if want := "open /path/to/repo/action.yml"; got != want {
+					t.Fatalf("got %q, want %q", got, want)
+				}
+			}
+		})
+	}
+}
+
 func TestDocumentationMissingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing.yml")
 	_, err := readDocumentationFile(path)
