@@ -210,6 +210,43 @@ test('source links canonicalize workspace paths and validate repository names', 
 		const modifiedVerified = verifyModified(join('sub', 'ci.yml'));
 		assert.equal(modifiedVerified, false, 'Modified content must not link to the committed blob');
 		assert.match(failures[0] || '', /committed blob: file content differs from the committed blob/);
+		const executeGit = childProcess.execFileSync;
+		let rootAttempts = 0;
+		const transientTimeout = t.mock.method(
+			childProcess,
+			'execFileSync',
+			(command: string, args: readonly string[], options: ExecFileSyncOptions) => {
+				if (args.includes('--show-toplevel') && ++rootAttempts === 1) {
+					throw Object.assign(new Error('timed out'), { code: 'ETIMEDOUT', signal: 'SIGTERM' });
+				}
+				return executeGit(command, args, options);
+			},
+		);
+		syncBuiltinESMExports();
+		try {
+			failures.length = 0;
+			assert.equal(sourceLinkVerifier(environment, message => failures.push(message))(join('sub', 'ci.yml')), false);
+			assert.match(failures[0] || '', /committed blob: file content differs from the committed blob/);
+			assert.equal(rootAttempts, 3);
+		} finally {
+			transientTimeout.mock.restore();
+			syncBuiltinESMExports();
+		}
+		let timeoutAttempts = 0;
+		const repeatedTimeout = t.mock.method(childProcess, 'execFileSync', () => {
+			timeoutAttempts++;
+			throw Object.assign(new Error('timed out'), { code: 'ETIMEDOUT', signal: 'SIGTERM' });
+		});
+		syncBuiltinESMExports();
+		try {
+			failures.length = 0;
+			assert.equal(sourceLinkVerifier(environment, message => failures.push(message))(join('sub', 'ci.yml')), false);
+			assert.match(failures[0] || '', /repository root: git rev-parse: ETIMEDOUT, SIGTERM/);
+			assert.equal(timeoutAttempts, 2);
+		} finally {
+			repeatedTimeout.mock.restore();
+			syncBuiltinESMExports();
+		}
 		failures.length = 0;
 		summary(result, environment, new Map(), message => failures.push(message));
 		assert.match(failures[0] || '', /file content differs from the committed blob/);
