@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
+permissions: {}
 YAML
 
 "$@" check .github/workflows/clean.yml --no-config --shellcheck= --pyflakes= --json >clean.json
@@ -23,6 +24,7 @@ jq -e '.schema_version == 1 and .diagnostics == []' clean.json
 cat >broken.yml <<'YAML'
 on: push
 jobs: []
+permissions: {}
 YAML
 status=0
 "$@" check broken.yml --no-config --shellcheck= --pyflakes= --json >broken.json || status=$?
