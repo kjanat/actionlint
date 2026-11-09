@@ -4,6 +4,10 @@ inputs:
   version:
     description: Release version, MAJOR.MINOR.PATCH
     required: true
+  build-number:
+    description: Wheel build number when repackaging an existing release
+    required: false
+    default: ""
   assets-dir:
     description: Directory holding actionlint_<version>_checksums.txt and the release archives; empty skips the build
     required: false
@@ -26,15 +30,19 @@ runs:
         VERSION: ${{ inputs.version }}
         ASSETS_DIR: ${{ inputs.assets-dir }}
         OUT_DIR: ${{ inputs.out-dir }}
+        BUILD_NUMBER: ${{ inputs.build-number }}
       run: |
         bun install --frozen-lockfile --ignore-scripts
-        node distribution/pypi/src/cli.ts build --version "${VERSION}" --assets "${ASSETS_DIR}" --out "${OUT_DIR}"
+        args=(--version "${VERSION}" --assets "${ASSETS_DIR}" --out "${OUT_DIR}")
+        if [[ -n "${BUILD_NUMBER}" ]]; then args+=(--build "${BUILD_NUMBER}"); fi
+        node distribution/pypi/src/cli.ts build "${args[@]}"
     - name: Install the ${{ inputs.smoke }} wheel and run actionlint -version
       shell: pwsh
       env:
         VERSION: ${{ inputs.version }}
         OUT_DIR: ${{ inputs.out-dir }}
         SMOKE: ${{ inputs.smoke }}
+        BUILD_NUMBER: ${{ inputs.build-number }}
       run: |
         $venv = Join-Path $env:RUNNER_TEMP pypi-smoke-venv
         $python = $IsWindows ? 'python' : 'python3'
@@ -42,7 +50,8 @@ runs:
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         $bin = Join-Path $venv ($IsWindows ? 'Scripts' : 'bin')
         $exe = $IsWindows ? '.exe' : ''
-        $wheel = Join-Path $env:OUT_DIR "actionlint_kjanat-$env:VERSION-py3-none-$env:SMOKE.whl"
+        $build = $env:BUILD_NUMBER ? "-$env:BUILD_NUMBER" : ''
+        $wheel = Join-Path $env:OUT_DIR "actionlint_kjanat-$env:VERSION$build-py3-none-$env:SMOKE.whl"
         & (Join-Path $bin "python$exe") -m pip install --no-index --no-deps $wheel
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         $version = @(& (Join-Path $bin "actionlint$exe") -version)
@@ -52,3 +61,5 @@ runs:
           Write-Output "::error::actionlint -version from $wheel reported '$($version[0])', expected it to end with $env:VERSION"
           exit 1
         }
+        & (Join-Path $bin "actionlint-kjanat$exe") -version
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

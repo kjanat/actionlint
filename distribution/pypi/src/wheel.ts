@@ -130,6 +130,7 @@ export function wheel(
 	platform: string,
 	target: Target,
 	files: { binary: Buffer; license: Buffer; launcher: Buffer },
+	buildNumber?: string,
 ): Wheel {
 	const info = `${importName}-${version}.dist-info`;
 	const text = (data: string) => Buffer.from(data, 'utf8');
@@ -139,19 +140,26 @@ export function wheel(
 		{ path: `${info}/METADATA`, data: text(metadata(version)), mode: 0o644 },
 		{
 			path: `${info}/WHEEL`,
-			data: text(`Wheel-Version: 1.0\nGenerator: actionlint-pypi\nRoot-Is-Purelib: false\nTag: py3-none-${platform}\n`),
+			data: text(
+				`Wheel-Version: 1.0\nGenerator: actionlint-pypi\nRoot-Is-Purelib: false\nTag: py3-none-${platform}\n${
+					buildNumber === undefined ? '' : `Build: ${buildNumber}\n`
+				}`,
+			),
 			mode: 0o644,
 		},
 		{
 			path: `${info}/entry_points.txt`,
-			data: text(`[console_scripts]\nactionlint = ${importName}:main\n`),
+			data: text(`[console_scripts]\nactionlint = ${importName}:main\n${distribution} = ${importName}:main\n`),
 			mode: 0o644,
 		},
 		{ path: `${info}/licenses/LICENSE.txt`, data: files.license, mode: 0o644 },
 	];
 	const recordPath = `${info}/RECORD`;
 	entries.push({ path: recordPath, data: text(record(entries, recordPath)), mode: 0o644 });
-	return { name: `${importName}-${version}-py3-none-${platform}.whl`, data: writeZip(entries) };
+	return {
+		name: `${importName}-${version}${buildNumber === undefined ? '' : `-${buildNumber}`}-py3-none-${platform}.whl`,
+		data: writeZip(entries),
+	};
 }
 
 function pick(files: Map<string, Buffer>, archive: string, name: string): Buffer {
@@ -160,9 +168,16 @@ function pick(files: Map<string, Buffer>, archive: string, name: string): Buffer
 	return file;
 }
 
-export async function buildWheels(version: string, assets: string): Promise<Wheel[]> {
+export async function buildWheels(
+	version: string,
+	assets: string,
+	options: { buildNumber?: string } = {},
+): Promise<Wheel[]> {
 	if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
 		throw new Error(`Expected a stable MAJOR.MINOR.PATCH version, got ${version}`);
+	}
+	if (options.buildNumber !== undefined && !/^[1-9]\d*$/.test(options.buildNumber)) {
+		throw new Error('Wheel build number must be a positive integer');
 	}
 	const checksums = parseChecksums(await readFile(join(assets, `actionlint_${version}_checksums.txt`), 'utf8'));
 	const launcher = await readFile(new URL(`../python/${importName}/__init__.py`, import.meta.url));
@@ -183,7 +198,7 @@ export async function buildWheels(version: string, assets: string): Promise<Whee
 		const platforms = target.platforms.kind === 'macos'
 			? [macosPlatform(contents.binary, `${archive}/${target.binary}`, target.platforms.arch)]
 			: target.platforms.tags;
-		for (const platform of platforms) wheels.push(wheel(version, platform, target, contents));
+		for (const platform of platforms) wheels.push(wheel(version, platform, target, contents, options.buildNumber));
 	}
 	return wheels;
 }

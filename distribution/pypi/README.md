@@ -35,6 +35,11 @@ becomes the wheel version. The builder requires Node 24 or later. Run
 `bun install --frozen-lockfile` from the repository root before building. Use
 `node distribution/pypi/src/cli.ts build --help` to list the flags.
 
+Use `--build 1` when correcting the packaging of an already published version.
+This adds the wheel build number to the filename and `WHEEL` metadata. It does
+not change the release version or the bundled executable. To publish those wheels,
+pass `-f wheel-build=1` when dispatching `pypi-release.yml`.
+
 To build the wheels of a published release by hand:
 
 ```sh
@@ -71,7 +76,7 @@ from GitHub releases. Releases publish wheels without a source
 distribution. On a platform without a matching wheel, pip reports that no
 matching distribution exists.
 
-A wheel holds the `actionlint_kjanat` package with the launcher and `bin/actionlint` (`bin/actionlint.exe` on Windows), and a `.dist-info` directory with `METADATA`, `WHEEL`, `entry_points.txt`, `licenses/LICENSE.txt` and `RECORD`. The console script `actionlint` calls `actionlint_kjanat:main`. On POSIX systems `main` replaces the Python process with the binary through `os.execv`. On Windows it runs the binary as a child process and exits with its exit code.
+A wheel holds the `actionlint_kjanat` package with the launcher and `bin/actionlint` (`bin/actionlint.exe` on Windows), and a `.dist-info` directory with `METADATA`, `WHEEL`, `entry_points.txt`, `licenses/LICENSE.txt` and `RECORD`. Both console scripts, `actionlint` and `actionlint-kjanat`, call `actionlint_kjanat:main`. On POSIX systems `main` replaces the Python process with the binary through `os.execv`. On Windows it runs the binary as a child process and exits with its exit code.
 
 ## Release automation
 
