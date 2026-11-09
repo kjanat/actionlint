@@ -511,8 +511,9 @@ test('mise setup is pinned, cached, and used once per job', () => {
 					const environment = yamlMapping(step.env);
 					assert.equal(environment.TEMP, '${{ runner.temp }}');
 					assert.equal(environment.TMP, '${{ runner.temp }}');
-					assert.equal(yamlMapping(job.env).TEMP, undefined);
-					assert.equal(yamlMapping(job.env).TMP, undefined);
+					const jobEnvironment = yamlMapping(yamlMapping(job).env);
+					assert.equal(jobEnvironment.TEMP, undefined);
+					assert.equal(jobEnvironment.TMP, undefined);
 				}
 				if (options.install === false) {
 					assert.equal(options.env, false);
