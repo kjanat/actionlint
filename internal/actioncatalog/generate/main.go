@@ -24,12 +24,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
-// List of known outdated actions which cannot be detected from 'runs' in action.yml
+// These actions are outdated for reasons not determined by their runtime.
+// Runtime replacement cannot restore the retired artifact and cache services.
+// GitHub Enterprise Server is not affected by the artifact and cache shutdowns.
+// https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/
+// https://github.blog/changelog/2024-12-05-notice-of-upcoming-releases-and-breaking-changes-for-github-actions/
 var outdatedActions = []string{
 	"actions/labeler@v1",
 	"actions/checkout@v1",
 	"actions/upload-artifact@v1",
+	"actions/upload-artifact@v2",
+	"actions/upload-artifact@v3",
+	"actions/upload-artifact@v3-node20",
 	"actions/download-artifact@v1",
+	"actions/download-artifact@v2",
+	"actions/download-artifact@v3",
+	"actions/download-artifact@v3-node20",
+	"actions/cache@v1",
+	"actions/cache@v2",
 }
 
 type actionOutput struct {
@@ -82,7 +94,7 @@ func isOutdated(spec, runs string, runtimes map[string]actionmeta.Runtime) bool 
 	}
 	runtime := runtimes[strings.ToLower(runs)]
 	if runtime.ExecutionRuntime != "" {
-		replacement, found := runtimes[runtime.ExecutionRuntime]
+		replacement, found := runtimes[strings.ToLower(runtime.ExecutionRuntime)]
 		return !found || replacement.Removed
 	}
 	return runtime.Removed

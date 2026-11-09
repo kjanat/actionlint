@@ -923,7 +923,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "62dba70412e7beb15d4ee0ceb7769fe966540385d9b162f18907273282082c74"
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "d040b6fa8103b89d5f271141332583c937cf8c6ad672a72b58f89f0cf92d1ca8"
     },
     "findings": [
       {
@@ -931,7 +931,9 @@
         "scope": "fixture",
         "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, deprecated-commands, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
-          "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml"
+          "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml",
+          "https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/",
+          "https://github.blog/changelog/2024-12-05-notice-of-upcoming-releases-and-breaking-changes-for-github-actions/"
         ]
       },
       {

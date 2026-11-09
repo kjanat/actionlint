@@ -101,6 +101,30 @@ func TestPopularActionsCurrentMajors(t *testing.T) {
 	}
 }
 
+func TestRetiredActionServices(t *testing.T) {
+	for _, spec := range []string{
+		"actions/upload-artifact@v1", "actions/upload-artifact@3446296876d12d4e3a0f3145a3c87e67bf0a16b5",
+		"actions/upload-artifact@v2", "actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2",
+		"actions/upload-artifact@v3", "actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5",
+		"actions/upload-artifact@v3-node20", "actions/upload-artifact@c24449f33cd45d4826c6702db7e49f7cdb9b551d",
+		"actions/download-artifact@v1", "actions/download-artifact@18f0f591fbc635562c815484d73b6e8e3980482e",
+		"actions/download-artifact@v2", "actions/download-artifact@cbed621e49e4c01b044d60f6c80ea4ed6328b281",
+		"actions/download-artifact@v3", "actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a",
+		"actions/download-artifact@v3-node20", "actions/download-artifact@246d7188e736d3686f6d19628d253ede9697bd55",
+		"actions/cache@v1", "actions/cache@f5ce41475b483ad7581884324a6eca9f48f8dcc7",
+		"actions/cache@v2", "actions/cache@8492260343ad570701412c2f464a5877dc76bace",
+	} {
+		if meta, retired := Lookup(spec); meta != nil || !retired {
+			t.Errorf("%s: metadata=%v, retired=%t", spec, meta, retired)
+		}
+	}
+	for _, spec := range []string{"actions/upload-artifact@v4", "actions/download-artifact@v4", "actions/cache@v3", "actions/upload-artifact@v7", "actions/download-artifact@v8", "actions/cache@v6"} {
+		if meta, retired := Lookup(spec); meta == nil || retired {
+			t.Errorf("%s: metadata=%v, retired=%t", spec, meta, retired)
+		}
+	}
+}
+
 func TestExpandedPopularActions(t *testing.T) {
 	for _, spec := range []string{
 		"oven-sh/setup-bun@v2",
