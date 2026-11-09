@@ -8,7 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
-func (p *Parser) workflowExpressionSources(root *syntax.Node) map[workflowlang.Pos]*workflowlang.ScriptSource {
+// ExpressionSources maps expressions and conditions in a document to their
+// physical scalar positions, including composite action metadata.
+func (p *Parser) ExpressionSources(root *syntax.Node) map[workflowlang.Pos]*workflowlang.ScriptSource {
 	sources := make(map[workflowlang.Pos]*workflowlang.ScriptSource)
 	seen := make(map[*syntax.Node]bool)
 	var visit func(*syntax.Node, bool)

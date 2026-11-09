@@ -14,7 +14,6 @@ import (
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -26,11 +25,12 @@ import (
 type ruleExpression struct {
 	*workflowexpr.Checker
 	reporting.Logger
-	config            *repoconfig.Config
-	host              repository.Snapshot
-	frames            []expressionInvocation
-	findings          workflowvisit.Findings
-	invocationActions func(string) (actionmeta.Definition, error)
+	config   *repoconfig.Config
+	host     repository.Snapshot
+	frames   []expressionInvocation
+	findings workflowvisit.Findings
+	ctx      context.Context
+	remote   *actionremote.ResolvedActions
 }
 
 type expressionInvocation struct {
@@ -43,7 +43,10 @@ func (r *ruleExpression) EnterInvocation(scope checkcalls.Invocation) error {
 		return invocation.ErrForeignContext
 	}
 	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
-	r.Checker = workflowexpr.New(workflowexpr.Dependencies{Action: r.invocationActions}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
+	r.Checker = workflowexpr.New(workflowexpr.Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
+	if body, available := scope.Source.ActionView(); available {
+		r.BeginComposite(body)
+	}
 	return nil
 }
 
@@ -52,6 +55,11 @@ func (r *ruleExpression) LeaveInvocation(context invocation.Context) error {
 		return invocation.ErrForeignContext
 	}
 	frame := r.frames[len(r.frames)-1]
+	if body, available := frame.scope.Source.ActionView(); available {
+		mark := r.Checker.FindingCount()
+		r.CheckCompositeOutputs(body)
+		r.findings.Report(r.FindingsSince(mark)...)
+	}
 	r.Checker = frame.parent
 	r.frames = r.frames[:len(r.frames)-1]
 	return nil
@@ -71,8 +79,11 @@ func (r *ruleExpression) VisitStep(step workflowdecl.StepView) error {
 
 func (r *ruleExpression) VisitInvocationStep(step workflowdecl.StepView) error {
 	mark := r.Checker.FindingCount()
-	r.CheckCompositeScript(step)
-	return r.collect(mark, nil)
+	return r.collect(mark, r.CheckCompositeStep(step))
+}
+
+func (r *ruleExpression) VisitExpandedAction(step workflowdecl.StepView) error {
+	return r.VisitInvocationStep(step)
 }
 
 func (r *ruleExpression) VisitOpaqueAction(step workflowdecl.StepView) error {
@@ -105,8 +116,7 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 
 // New connects expression checking to the supplied dependency lookups and runner facts.
 func New(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
-	r := &ruleExpression{Tag: "expression"}
-	r.invocationActions = lookup.New(ctx, nil, remote).Lookup
+	r := &ruleExpression{Tag: "expression", ctx: ctx, remote: remote}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
 		Runners:  runners,
 		Action:   lookup.New(ctx, actionsCache, remote).Lookup,

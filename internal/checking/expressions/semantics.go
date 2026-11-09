@@ -96,7 +96,7 @@ func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
 }
 
 func (rule *Checker) exprFinding(err *exprlang.Error, lineBase, colBase int, severity string) {
-	if rule.compositeScript && err.Rule != "script-injection" && err.Rule != "script-interpolation" {
+	if rule.compositeScript && !compositeFinding(err.Rule, err.Code) {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
 	kind := err.Rule

@@ -98,6 +98,19 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 		return callFrame.visitOpaqueAction(call, declaration, actionView, parents)
 	}
 	opened = true
+	// Check the call in its declaring invocation before entering the child.
+	// Opaque calls receive the same visit through visitOpaqueAction.
+	if analysis.scriptScope != nil && analysis.scriptScope.Composite {
+		for _, parent := range parents {
+			if participant, ok := parent.(checkcalls.ExpandedActionParticipant); ok {
+				if err := invocationOutput(participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), call.Reference(), func() error {
+					return selection.VisitWithOrigin(participant, canonicalStepOrigin(call, analysis.jobID), selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return participant.VisitExpandedAction(call) })
+				}); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	target, ok := outcome.Target()
 	if !ok {
 		return errors.New("expanded action has no source reference")
@@ -192,7 +205,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	for _, participant := range parents {
 		compositeCheckoutPaths(participant, actions)
 		if err := invocationOutput(participant, snapshot, meta.Path(), snapshot.Reference(), func() error {
-			return participant.EnterInvocation(checkcalls.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Source: snapshot, Config: scriptConfig, Path: meta.Path()})
+			return participant.EnterInvocation(checkcalls.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Source: snapshot, Config: scriptConfig, Path: meta.Path(), Actions: actions.Prepared()})
 		}); err != nil {
 			return err
 		}
@@ -219,13 +232,20 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 			}
 			continue
 		}
-		for _, rule := range entered {
-			compositeCheckoutPaths(rule, actions)
-			if err := invocationOutput(rule, snapshot, meta.Path(), step.Reference(), func() error {
-				return selection.VisitWithOrigin(rule, canonicalStepOrigin(declaration, analysis.jobID), selection.HasConfiguredIgnores(scriptConfig), func() error { return rule.VisitInvocationStep(step) })
-			}); err != nil {
-				return err
-			}
+		if err := child.visitInvocationStep(step, entered); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.StepView, participants []checkcalls.InvocationParticipant) error {
+	for _, participant := range participants {
+		compositeCheckoutPaths(participant, analysis.actions)
+		if err := invocationOutput(participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), step.Reference(), func() error {
+			return selection.VisitWithOrigin(participant, canonicalStepOrigin(step, analysis.jobID), selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return participant.VisitInvocationStep(step) })
+		}); err != nil {
+			return err
 		}
 	}
 	return nil

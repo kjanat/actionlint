@@ -18,6 +18,7 @@ type Invocation struct {
 	Config     *repoconfig.Config
 	Path       string
 	Source     parsing.SourceSnapshot
+	Actions    workspaceactions.MetadataLookup
 }
 
 // InvocationParticipant observes resolved action execution without producing child rules.
@@ -27,6 +28,13 @@ type InvocationParticipant interface {
 	VisitInvocationStep(workflowdecl.StepView) error
 	VisitOpaqueAction(workflowdecl.StepView) error
 	LeaveInvocation(invocation.Context) error
+}
+
+// ExpandedActionParticipant checks the call site of an expanded child before
+// entering that child's invocation. Opaque call sites use VisitOpaqueAction.
+type ExpandedActionParticipant interface {
+	InvocationParticipant
+	VisitExpandedAction(workflowdecl.StepView) error
 }
 
 // CheckoutParticipant adapts its own script paths to the checkout placement

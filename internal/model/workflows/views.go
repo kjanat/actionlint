@@ -282,6 +282,23 @@ func (v ActionBodyView) Steps() iter.Seq[StepView] {
 	return job.Steps()
 }
 
+// ExpressionSources maps decoded action scalars to their captured YAML positions.
+func (v ActionBodyView) ExpressionSources() iter.Seq2[workflowlang.Pos, ScriptSourceView] {
+	return v.workflow.ExpressionSources()
+}
+
+// OutputValues exposes composite output expressions evaluated after all steps.
+func (v ActionBodyView) OutputValues() iter.Seq[StringView] {
+	return func(yield func(StringView) bool) {
+		job, _ := v.workflow.Job("")
+		for _, output := range job.Outputs() {
+			if !yield(output.Value()) {
+				return
+			}
+		}
+	}
+}
+
 // ScalarLine is one decoded line's byte interval. It has no storage aliases.
 type ScalarLine struct{ Start, End int }
 
