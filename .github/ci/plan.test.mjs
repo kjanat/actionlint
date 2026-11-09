@@ -48,7 +48,7 @@ test('mise follows workspace dependencies and isolates the standalone reference 
 	const selected = (/** @type {string} */ file) => {
 		const head = repo.commit(file, `Change ${file}`);
 		const projects = affectedProjects(base, head, repo.cwd);
-		// Give each comparison a fresh base so previous scenarios cannot affect it.
+		// Start the next scenario from the workspace-manifest commit.
 		repo.git(['checkout', '--quiet', '--detach', base]);
 		return { projects, jobs: selectJobs('ci', names, projects) };
 	};

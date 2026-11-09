@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
 // Read a YAML workflow from stdin and write its playground URL to stdout.
-//
-// Usage:
-//   pbpaste | node ./applications/playground/tooling/yaml-to-playground-url.mjs
-//   node ./applications/playground/tooling/yaml-to-playground-url.mjs < test.yaml
+// pbpaste | node ./applications/playground/tooling/yaml-to-playground-url.mjs
+// node ./applications/playground/tooling/yaml-to-playground-url.mjs < test.yaml
 
 import { Buffer } from 'node:buffer';
 import console from 'node:console';
