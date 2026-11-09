@@ -21,8 +21,8 @@ mapping; rolling documentation needs a captured revision before rule acceptance.
 
 Existing rule names come from the [index of rule declarations](../../internal/checking/rule_index.go).
 The table proposes connections between existing rules and published security
-requirements. Check exactly what each rule detects before using these connections
-to select rules or build a standards profile.
+requirements. Before selecting rules or building a standards profile, compare each
+rule's documented behavior with the requirement.
 
 | Proposed category                            | Existing starting point                                                                                                      | Required coverage work                                                                                                                                                |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
