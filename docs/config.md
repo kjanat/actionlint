@@ -172,8 +172,8 @@ Omitted or `null` `includes` selects every file; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
 order. A negative-only include list selects nothing during discovery. Directories
 and glob matches respect these filters. A literally named file is checked even
-when excluded. With `--no-ignore`, Git ignore rules are disabled and the
-configuration filters still apply.
+when excluded. Use `--no-ignore` to scan directories or glob matches without
+applying Git ignore rules or these configuration filters.
 Referenced actions, reusable workflows, and shell sources can still be
 read as dependencies of included workflows. File selection does not restrict
 dependency reads.

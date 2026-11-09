@@ -32,9 +32,11 @@ aliases check each physical file once. An empty selection reports an error.
 
 Directories and glob matches respect configured file filters and Git ignore rules.
 A literally named file overrides both, even outside the conventional locations.
-`--no-ignore` includes Git-ignored files during discovery; configured file filters
-still apply. Quote globs to let actionlint expand `*`, `?` and `[]` consistently
-across shells. A leading `~/` expands to the home directory.
+Use `--no-ignore` to scan Git-ignored workflows and actions or files excluded by
+your actionlint configuration.
+
+Quote globs to let actionlint expand `*`, `?` and `[]` consistently across shells.
+A leading `~/` expands to the home directory.
 
 ```sh
 actionlint .

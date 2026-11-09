@@ -81,7 +81,7 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 		if project != nil {
 			root = project.RootDir()
 		}
-		if !config.IncludesSelectedFile(path, root, explicit[path]) {
+		if !config.IncludesSelectedFile(path, root, a.noIgnore || explicit[path]) {
 			continue
 		}
 		projectConfig := config
