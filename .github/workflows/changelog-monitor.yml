@@ -19,17 +19,21 @@ concurrency:
 
 permissions:
   contents: read
-  issues: write
+  id-token: write
 
 jobs:
   monitor:
     if: github.repository_owner == 'kjanat' && github.ref_name == 'master'
     runs-on: ubuntu-latest
     steps:
+      - uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        id: beepboop
+        with: { permission-contents: read, permission-issues: write }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
       - name: Report new Actions changelog entries
         uses: $/.github/actions/changelog-monitor
         with:
+          token: ${{ steps.beepboop.outputs.token }}
           lookback-days: ${{ inputs.lookback-days || '30' }}
           max-issues: ${{ inputs.max-issues || '10' }}
