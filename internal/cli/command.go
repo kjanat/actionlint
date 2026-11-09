@@ -33,6 +33,7 @@ func (cmd *Command) Main(args []string) int {
 func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
 	ctx, accounting := networkaccounting.TrackRequests(ctx)
 	app := newCommandApp(ctx, cmd)
+	app.root.SetContext(ctx)
 	defer func() {
 		if app.opts.networkStats {
 			entry := struct {

@@ -100,7 +100,7 @@ deny  = [
 ]
 
 [linters.settings.exhaustive]
-default-signifies-exhaustive = false
+default-signifies-exhaustive = true
 
 [linters.settings.recvcheck]
 exclusions = ["*.DecodeConfig"]

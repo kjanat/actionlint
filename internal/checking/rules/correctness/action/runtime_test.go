@@ -22,8 +22,8 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 		{"node24", "", ""},
 		{"NODE24", "", ""},
 		{"node20", "deprecated", actionmeta.CodeRuntimeDeprecated},
-		{"node16", "no longer bundled", actionmeta.CodeRuntimeRemoved},
-		{"node12", "no longer bundled", actionmeta.CodeRuntimeRemoved},
+		{"node16", `use "node24" instead`, actionmeta.CodeRuntimeDeprecated},
+		{"node12", `use "node24" instead`, actionmeta.CodeRuntimeDeprecated},
 		{"node22", "invalid runner name", actionmeta.CodeRuntimeUnsupported},
 		{"node999", "invalid runner name", actionmeta.CodeRuntimeUnsupported},
 	} {
