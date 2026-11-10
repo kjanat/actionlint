@@ -231,7 +231,9 @@ actionlint check --output-format=pretty --diagnostic-width=80 --color=auto
 
 `pretty` includes captured source, range indicators, diagnostic-specific advice,
 related locations and fix descriptions. Native diagnostic codes appear beside
-the rule name. General rule descriptions are available through `actionlint rules RULE`.
+the rule name. The `config` line shows where to configure the rule, for example
+`lint.rules.suspicious.case-insensitive-conditions`. Use `actionlint rules RULE`
+for the rule's explanation and options.
 Messages and paths
 wrap; long source lines show a window around the diagnostic. Tabs use four-column
 stops. Width defaults to 100 columns; `--diagnostic-width` accepts 40 to 400 and

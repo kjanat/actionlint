@@ -10,7 +10,7 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func (f Finding) printPretty(out io.Writer, width int, hyperlinks bool) error {
+func (f Finding) printPretty(out io.Writer, width int, hyperlinks bool, configPath string) error {
 	var b strings.Builder
 	d := f.Diagnostic
 	severity := d.Severity
@@ -47,7 +47,7 @@ func (f Finding) printPretty(out io.Writer, width int, hyperlinks bool) error {
 		}
 	}
 	for _, item := range []struct{ label, text string }{
-		{"note", d.Explanation}, {"help", d.Help}, {"docs", d.DocumentationURL},
+		{"note", d.Explanation}, {"help", d.Help}, {"config", configPath}, {"docs", d.DocumentationURL},
 	} {
 		if item.text != "" {
 			writeWrapped(&b, "  = ", item.label+": "+item.text, width, nil, hyperlinks)
