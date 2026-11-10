@@ -61,6 +61,7 @@ type callScope struct {
 	prepared     *host.ComponentInstance
 	invocations  *host.ComponentInstance
 	environments *host.ComponentInstance
+	repository   *host.ComponentInstance
 }
 
 func (c *callScope) invoke(ctx context.Context, iface, name string, args ...wacogo.Val) (value wacogo.Val, err error) {
@@ -98,6 +99,12 @@ func (c *callScope) execute(ctx context.Context, iface, name string, args ...wac
 	fn := exported.ExportedFunc(name)
 	if fn == nil {
 		return nil, fmt.Errorf("plugin does not export %s", name)
+	}
+	if iface == ReferenceResolverInterface && name == "resolve" {
+		if objects, _ := ctx.Value(repositoryCallKey{}).(*repositoryObjects); objects != nil {
+			objects.active = true
+			defer func() { objects.active = false }()
+		}
 	}
 	results, err := fn.Call(ctx, args...)
 	if err != nil {
@@ -138,6 +145,18 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 	c.stdin = input
 	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, c.host.Core())}, c.world.Imports()...)
 	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
+	if p.repositoryFactory != nil {
+		implementation, _ := ctx.Value(repositoryCallKey{}).(*repositoryObjects)
+		if implementation == nil {
+			implementation = &repositoryObjects{}
+		}
+		instance, err := p.repositoryFactory.NewInstance(ctx, implementation, nil)
+		if err != nil {
+			return err
+		}
+		c.repository = instance
+		imports = append(imports, wacogo.WithInstanceImport(RepositoryObjectsInterface, instance.Core()))
+	}
 	if p.environmentFactory != nil {
 		instance, err := p.environmentFactory.NewInstance(ctx, scriptEnvironments{}, nil)
 		if err != nil {

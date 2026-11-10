@@ -9,6 +9,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
@@ -37,6 +38,7 @@ type Plugin struct {
 	runnerDescriptor   *runner.Descriptor
 	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
 	toolIntegration    *checkinputs.ToolIntegration
+	referenceResolver  bool
 	// scriptInterface is the negotiated script-engine version.
 	scriptInterface string
 	// templateInterface is the negotiated template-effects version, empty
@@ -56,6 +58,7 @@ type Plugin struct {
 	shellInputFactory  *shellinputbind.Factory
 	invocationFactory  *invocationbind.Factory
 	environmentFactory *environmentbind.Factory
+	repositoryFactory  *repositorybind.Factory
 
 	gate   *semaphore.Weighted
 	memory *memoryBudget
@@ -77,6 +80,10 @@ func (p *Plugin) Close(ctx context.Context) error {
 	}
 	defer p.gate.Release(1)
 	var errs []error
+	if p.repositoryFactory != nil {
+		errs = append(errs, p.repositoryFactory.Close(ctx))
+		p.repositoryFactory = nil
+	}
 	if p.environmentFactory != nil {
 		errs = append(errs, p.environmentFactory.Close(ctx))
 		p.environmentFactory = nil

@@ -78,6 +78,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	if c.ResolverCommand != "" {
 		options.Resolver = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
+		options.SuggestCommitPins = true
 	}
 	options.RemoteActions, err = c.actionMetadata()
 	if err != nil {

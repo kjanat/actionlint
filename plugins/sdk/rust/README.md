@@ -1,6 +1,6 @@
 # actionlint-extension-api
 
-Rust analyzer bindings and native packaging for actionlint components.
+Rust bindings and native packaging for actionlint components.
 Implement `actionlint_extension_api::Guest`, then export the implementation with
 `actionlint_extension_api::export_plugin!(Plugin)` on `wasm32`.
 
@@ -45,6 +45,13 @@ actionlint_extension_api::export_plugin!(Plugin);
 
 See [`pipe-to-shell.rs`](https://github.com/kjanat/actionlint/blob/master/plugins/examples/pipe-to-shell/src/lib.rs)
 for an analyzer that reports findings.
+
+Enable `reference-resolver` to implement the `reference-resolver-plugin` world.
+The `reference_resolver` module contains its generated `Guest`, `Request` and
+`Resolution` types, plus imports for reading repository references and objects.
+Actionlint performs the requested lookups and handles credentials and network
+accounting. The [Commitish component](https://github.com/kjanat/commitish/tree/master/crates/actionlint-plugin-commitish)
+uses this interface with the shared Commitish selection library.
 
 Build extensions for `wasm32-wasip2`. The default analyzer API imports host logging.
 Enable `source-annotations` to import source comments through the optional

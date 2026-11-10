@@ -53,7 +53,9 @@ type Options struct {
 	Runners    runner.Options
 	Tools      []tools.Registration
 	Resolver   references.Resolver
-	WorkingDir string
+	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.
+	SuggestCommitPins bool
+	WorkingDir        string
 	// ConfigFile resolves relative to WorkingDir unless it is absolute or remote.
 	ConfigFile        string
 	ConfigOverlays    []repoconfig.Overlay
@@ -116,6 +118,13 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		if factory, ok := options.Resolver.(references.SessionFactory); ok {
 			options.Resolver = factory.NewSession()
 		}
+		if provider, ok := options.RemoteActions.(interface {
+			WithResolver(references.Resolver) actions.Provider
+		}); ok {
+			options.RemoteActions = provider.WithResolver(options.Resolver)
+		}
+	}
+	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
 		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
 			Checker: security.NewResolvedReferenceCheck(),

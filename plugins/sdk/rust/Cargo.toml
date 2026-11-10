@@ -23,6 +23,7 @@ sha2 = "0.11"
 
 [features]
 package             = ["dep:serde", "dep:serde_json", "dep:sha2", "dep:wasm-encoder", "dep:wasmparser"]
+reference-resolver  = []
 script-environments = []
 shell-script-inputs = []
 source-annotations  = []

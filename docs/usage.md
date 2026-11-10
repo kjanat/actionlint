@@ -1351,22 +1351,18 @@ without a name resolves manually edited declarations or migrates older lock-only
 See [plugin installation](plugins.md#install-from-the-registry)
 for version selection, overrides and offline behavior.
 
-`--plugin PATH` accepts document-analyzer components, runner providers or the Ruff core WebAssembly
-engine. The host masks workflow expressions before calling Ruff and maps its
-diagnostics back to YAML positions. A `.json` path loads a
+`--plugin PATH` loads a WebAssembly plugin. A `.json` path loads a
 [local tool provider manifest](plugins.md#local-tool-provider-manifests) that runs a native command.
 
-Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
-provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The
-commitish provider is the `actionlint-plugin-commitish` crate in the
-[commitish workspace](https://github.com/kjanat/commitish). Build it there with
-`cargo build --locked --release -p actionlint-plugin-commitish`. Its executable accepts `--token-env NAME` only when
-you explicitly choose a credential variable. It resolves action and reusable
-workflow references using their respective commitish semantics, and proposes
-reviewable commit pins. Provider errors fail analysis instead of implying absence.
-The default local analysis makes no resolution requests. The provider emits
-network receipts on success and lookup failure, so `--network-stats` includes
-its actual REST attempts, including Git object lookups made through REST.
+Online metadata lookup uses the bundled Commitish WebAssembly plugin to resolve
+branches, tags and commit references. Actionlint performs the plugin's requested
+lookups and includes them in `--network-stats`. Use `--action-metadata=offline`
+for cached metadata or `--action-metadata=off` to skip it.
+
+Load a replacement resolver component with `--plugin`. To use a native resolver,
+select it with `--resolve-with EXECUTABLE`; repeat `--resolver-arg VALUE` for
+literal arguments. This option also enables commit-pin suggestions. See
+[remote metadata and reference resolution](remote-actions.md).
 
 The language server provides expression property completions, including
 `github.event` payload fields selected by the workflow's triggers and activity

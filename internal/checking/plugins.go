@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
@@ -107,6 +108,29 @@ func ConfigureManagedPlugins(l *pluginexec.Loaded, options Options) (Options, er
 }
 
 func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options) (Options, error) {
+	resolvers := l.ReferenceResolvers()
+	if len(resolvers) > 1 || len(resolvers) != 0 && options.Resolver != nil {
+		return options, &pluginexec.LoadError{Err: errors.New("select one reference resolver")}
+	}
+	if len(resolvers) == 0 && options.Resolver == nil {
+		if provider, ok := options.RemoteActions.(interface{ ResolverEnabled() bool }); ok && provider.ResolverEnabled() {
+			resolver, err := l.LoadDefaultResolver(ctx)
+			if err != nil {
+				return options, &pluginexec.LoadError{Err: err}
+			}
+			options.Resolver = resolver
+		}
+	} else if len(resolvers) == 1 {
+		options.Resolver = resolvers[0]
+	}
+	if provider, ok := options.RemoteActions.(interface{ ResolverEnabled() bool }); ok && !provider.ResolverEnabled() {
+		options.Resolver = nil
+	}
+	if options.Resolver != nil {
+		if access, ok := options.RemoteActions.(repository.Access); ok {
+			options.Resolver = repository.Bind(options.Resolver, access)
+		}
+	}
 	seen := map[string]bool{}
 	for _, engine := range l.ScriptEngines {
 		metadata := engine.Descriptor

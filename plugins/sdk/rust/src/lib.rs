@@ -1,5 +1,21 @@
 #![doc = include_str!("../README.md")]
 
+/// Reference selection with repository objects fetched by actionlint.
+#[cfg(feature = "reference-resolver")]
+pub mod reference_resolver {
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "reference-resolver-plugin",
+        generate_all,
+        pub_export_macro: true,
+    });
+
+    pub use self::exports::kjanat::actionlint_resolver::reference_resolver::{
+        Content, Guest, Kind, Request, Resolution, SelectedBy,
+    };
+    pub use self::kjanat::actionlint_resolver::repository_objects;
+}
+
 /// Generated types, guest traits and host imports from the WIT interface definitions.
 pub mod bindings {
     #[cfg(not(any(

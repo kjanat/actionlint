@@ -28,8 +28,9 @@ type extensionRoleSet struct {
 	analyzer bool
 	runner   bool
 	// script is the exported script-engine interface, empty without the role.
-	script          string
-	toolIntegration bool
+	script            string
+	toolIntegration   bool
+	referenceResolver bool
 	// templateEffects is the exported template-effects interface, empty
 	// without the role.
 	templateEffects string
@@ -54,7 +55,7 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	supported := []struct {
 		name string
 		role *bool
-	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ToolIntegrationInterface, &roles.toolIntegration}}
+	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ToolIntegrationInterface, &roles.toolIntegration}, {ReferenceResolverInterface, &roles.referenceResolver}}
 	scriptPrefix, _, _ := strings.Cut(ScriptEngineInterface, "@")
 	templatePrefix, _, _ := strings.Cut(TemplateEffectsInterface, "@")
 	for _, export := range exports {
@@ -84,8 +85,8 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 			*candidate.role = true
 		}
 	}
-	if !roles.analyzer && !roles.runner && roles.script == "" {
-		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(scriptEngineInterfaces, " or "))
+	if !roles.analyzer && !roles.runner && roles.script == "" && !roles.referenceResolver {
+		return roles, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(scriptEngineInterfaces, " or "), ReferenceResolverInterface)
 	}
 	if roles.toolIntegration && !roles.analyzer {
 		return roles, errors.New("tool integration requires analyzer interface")
@@ -119,6 +120,7 @@ type importRequirements struct {
 	sourceFiles       bool
 	shellScriptInputs bool
 	environments      bool
+	repositoryObjects bool
 }
 
 // validateImports checks grants and records optional host features in one pass.
@@ -128,6 +130,13 @@ func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
 	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
 	for _, imported := range imports {
 		canonical := wasmparser.CanonicalizeImportName(imported.Name)
+		if canonical == wasmparser.CanonicalizeImportName(RepositoryObjectsInterface) {
+			required.repositoryObjects = true
+			continue
+		}
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint-resolver/repository-objects@") {
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, RepositoryObjectsInterface)
+		}
 		if canonical == wasmparser.CanonicalizeImportName(ScriptEnvironmentsInterface) {
 			required.environments = true
 			continue

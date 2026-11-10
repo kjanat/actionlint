@@ -18,10 +18,12 @@ const InterfaceName = "kjanat:actionlint-script/environments@0.3.0"
 // a variable written by an earlier command is absent.
 type Environments interface {
 	// Environment of the active snippet-engine check. Returns an error during
-	// describe, negotiation, document analysis, or checks without these facts.
+	// describe, negotiation or document analysis. An empty list means that the
+	// active snippet has no supplied environment facts.
 	Current(ctx context.Context) (ResultListEnvironmentString, error)
 	// Only script occurrences supplied in this analyze call are accepted.
 	// Other IDs return an error, even if they appear in the invocation graph.
+	// An empty list means that environment facts were not supplied.
 	ForScript(ctx context.Context, occurrence string) (ResultListEnvironmentString, error)
 }
 
@@ -122,6 +124,7 @@ type Environment struct {
 	// Bash is case-sensitive even when Windows merges keys without case.
 	LookupComparison NameComparison
 	Names            []VariableName
-	// Unresolved declaration keys, not the runner's ambient environment.
+	// Additional names may come from the runner, earlier GITHUB_ENV writes
+	// or unresolved declaration keys.
 	UnknownNames bool
 }

@@ -769,9 +769,9 @@ Configure this rule with `lint.rules.correctness.matrix`. Use `off` to disable i
 
 ## missing-action-metadata
 
-Report remote action metadata that could not be inspected. Disabled downloads, offline cache misses and named references without a configured resolver are recorded in coverage without a lint finding.
+Report remote action metadata that could not be inspected. Disabled downloads and offline cache misses are recorded in coverage without a lint finding.
 
-Check access to the referenced repository and its action.yml or action.yaml. Named references need a resolver selected with --resolve-with; full SHA-1 references can be fetched directly.
+Check access to the referenced repository and its action.yml or action.yaml.
 
 - Category: `conventions/dependencies`
 - Provider: `actionlint`

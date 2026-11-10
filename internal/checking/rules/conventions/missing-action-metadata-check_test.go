@@ -71,8 +71,8 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 		{availability.Limit(), 1, ""},
 		{availability.Unsupported(), 1, ""},
 		{availability.UnsupportedHost(), 1, "; the GitHub metadata provider only supports github.com"},
-		{availability.UnsupportedObjectFormat(), 1, "; SHA-256 Git object IDs are not supported; use a full SHA-1 commit or a named reference with --resolve-with"},
-		{availability.InvalidResolverResult(), 1, "; the resolver returned an invalid or incomplete result; check the resolver selected by --resolve-with"},
+		{availability.UnsupportedObjectFormat(), 1, "; metadata lookup supports SHA-1 commit IDs; use a branch or tag name instead"},
+		{availability.InvalidResolverResult(), 1, "; the reference resolver returned an invalid or incomplete selection"},
 	} {
 		t.Run(string(tc.reason.Reason()), func(t *testing.T) {
 			remote := actionremote.New(metadataAvailabilityProvider{tc.reason})

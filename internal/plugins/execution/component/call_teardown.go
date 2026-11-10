@@ -24,6 +24,8 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	c.prepared = nil
 	environments := c.environments
 	c.environments = nil
+	repository := c.repository
+	c.repository = nil
 	guestFailed := false
 	defer func() {
 		if guestFailed {
@@ -62,6 +64,9 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	}
 	if environments != nil {
 		defer c.closeResource(cleanup, "script environments", environments, result)
+	}
+	if repository != nil {
+		defer c.closeResource(cleanup, "repository objects", repository, result)
 	}
 	if guest != nil {
 		guestFailed = c.closeResource(cleanup, "component", guest, result)

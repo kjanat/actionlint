@@ -50,6 +50,13 @@ func run() error {
 	if err := generateTemplateEffects(); err != nil {
 		return err
 	}
+	if err := generateContract(roleContract{
+		source: "deps/actionlint-resolver/resolver.wit", role: "reference-resolver",
+		interfaceName: "ReferenceResolverInterface", digestName: "referenceResolverWITSHA256",
+		functionName: "expectedReferenceResolverInterface", prefix: "reference_resolver", output: "reference_resolver.gen.go",
+	}); err != nil {
+		return err
+	}
 	if *bindings {
 		if err := generateBindings(ctx); err != nil {
 			return err
@@ -161,6 +168,8 @@ func (g *generator) value(value wit.Type) (string, error) {
 		return "wp.ValTypeDesc{IsPrimitive:true, Primitive:wp.PrimBool}", nil
 	case wit.U32:
 		return "wp.ValTypeDesc{IsPrimitive:true, Primitive:wp.PrimU32}", nil
+	case wit.U64:
+		return "wp.ValTypeDesc{IsPrimitive:true, Primitive:wp.PrimU64}", nil
 	case wit.String:
 		return "wp.ValTypeDesc{IsPrimitive:true, Primitive:wp.PrimString}", nil
 	case *wit.TypeDef:
@@ -191,6 +200,8 @@ func (g *generator) defined(kind wit.TypeDefKind) (string, error) {
 		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindPrimitive, Primitive:wp.PrimBool}", nil
 	case wit.U32:
 		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindPrimitive, Primitive:wp.PrimU32}", nil
+	case wit.U64:
+		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindPrimitive, Primitive:wp.PrimU64}", nil
 	case *wit.Record:
 		var fields []string
 		for _, field := range kind.Fields {

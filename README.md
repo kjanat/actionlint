@@ -131,7 +131,7 @@ The [browser playground](https://kjanat.github.io/actionlint) runs the language 
 
 Remote action metadata gives the checker declared inputs, outputs, and runtimes. Remote reusable-workflow metadata adds input, secret, output, and permission checks across calls.
 
-For references pinned to full commit hashes, actionlint can fetch that metadata directly. Named references need a configured resolver. Use cached metadata when you want to avoid acquisition requests:
+The bundled Commitish WebAssembly plugin resolves branches, tags and commit IDs. Actionlint fetches the metadata at the selected commit. Use cached metadata to work offline:
 
 ```sh
 actionlint check --action-metadata=offline

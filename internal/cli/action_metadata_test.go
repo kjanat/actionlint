@@ -56,7 +56,6 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 		mode, ref string
 		reason    availability.Reason
 	}{
-		{"online", "v1", availability.ResolverNotConfiguredReason},
 		{"offline", "v1", availability.OfflineReason},
 		{"offline", strings.Repeat("a", 40), availability.CacheMissReason},
 		{"off", "v1", availability.LookupDisabledReason},
@@ -85,6 +84,13 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 }
 
 func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing.T) {
+	t.Setenv("GH_TOKEN", "")
+	t.Setenv("GITHUB_TOKEN", "")
+	sha := strings.Repeat("a", 40)
+	var requests []string
+	original := http.DefaultTransport
+	http.DefaultTransport = actionMetadataFixture(t, sha, "", &requests)
+	t.Cleanup(func() { http.DefaultTransport = original })
 	for _, tc := range []struct {
 		name, settings string
 		timeouts       int
@@ -95,6 +101,10 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 		{"configured exclusion", "lint: {rules: {preset: all, conventions: {job-timeout: off}}}\n", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			cache := t.TempDir()
+			for _, name := range []string{"LOCALAPPDATA", "XDG_CACHE_HOME", "HOME"} {
+				t.Setenv(name, cache)
+			}
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if err := os.WriteFile(config, []byte("plugins: []\n"+tc.settings), 0o600); err != nil {
 				t.Fatal(err)
@@ -109,14 +119,14 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
-			if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != availability.ResolverNotConfiguredReason {
+			if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].State != "available" || result.ActionMetadata[0].Commit != sha {
 				t.Fatalf("coverage=%v", result.ActionMetadata)
 			}
 			timeouts, pins := 0, 0
 			for _, finding := range result.Diagnostics {
 				switch finding.Rule {
 				case "missing-action-metadata":
-					t.Errorf("unconfigured resolver produced %v", finding)
+					t.Errorf("available metadata produced %v", finding)
 				case "job-timeout":
 					timeouts++
 				case "unpinned-reference":

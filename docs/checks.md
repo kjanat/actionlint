@@ -2077,10 +2077,10 @@ Remote reference syntax is checked without metadata. Input names, required input
 and declared outputs are checked when actionlint acquires the action manifest.
 Metadata-dependent checks use the same request-scoped service and selected content.
 
-There is no bundled popular-action list. Online acquisition supports full commit
-hashes directly; named references need a resolver. When metadata is unavailable,
-metadata-dependent checks skip that action. Local action validation uses the local
-manifest. See [remote action metadata](remote-actions.md).
+Online lookups use the bundled Commitish WebAssembly plugin to resolve branches,
+tags and commit IDs. When metadata is unavailable, actionlint skips checks that
+need the manifest. Local action validation uses the local manifest. See
+[remote action metadata](remote-actions.md).
 
 <a id="detect-outdated-popular-actions"></a>
 

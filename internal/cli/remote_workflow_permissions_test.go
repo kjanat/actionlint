@@ -24,10 +24,14 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 	t.Setenv("GH_TOKEN", "fixture-secret")
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
-	requests, downloads := 0, 0
+	var requests []string
+	downloads := 0
 	original := http.DefaultTransport
 	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
-		requests++
+		if r.URL.Scheme != "https" || r.URL.Host != "api.github.com" {
+			t.Fatalf("unexpected HTTP authority %s", r.URL)
+		}
+		requests = append(requests, r.URL.RequestURI())
 		if r.Header.Get("Authorization") != "Bearer fixture-secret" {
 			t.Fatal("GitHub credential was not forwarded")
 		}
@@ -36,7 +40,12 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		case "/rate_limit":
 			body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
 		case "/repos/example/workflows":
-			body = `{"id":42,"full_name":"example/workflows"}`
+			body = `{"id":42,"full_name":"example/workflows","default_branch":"main"}`
+		case "/repos/example/workflows/contents":
+			if r.URL.Query().Get("ref") != "main" {
+				t.Fatalf("wrong contents guard: %s", r.URL)
+			}
+			body = `[]`
 		case "/repos/example/workflows/git/commits/" + sha:
 			body = `{"sha":"` + sha + `"}`
 		case "/repos/example/workflows/contents/.github/workflows/build.yml":
@@ -55,7 +64,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 	// its caller grants. https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
 	source := "on: push\npermissions: {}\njobs:\n  allowed:\n    permissions: {contents: write}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  denied:\n    permissions: {contents: read}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  inherited:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n"
 	for _, mode := range []string{"online", "offline", "off"} {
-		before := requests
+		before := len(requests)
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}
 		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--action-metadata=" + mode, "-"})
@@ -75,9 +84,11 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 				t.Fatalf("%s: unexpected finding %+v", mode, finding)
 			}
 		}
-		if mode != "online" && requests != before {
-			t.Fatalf("%s made %d network requests", mode, requests-before)
+		want := map[string]int{}
+		if mode == "online" {
+			want = map[string]int{"/rate_limit": 1, "/repos/example/workflows": 4, "/repos/example/workflows/contents?ref=main": 1, "/repos/example/workflows/git/commits/" + sha: 2, "/repos/example/workflows/contents/.github/workflows/build.yml?ref=" + sha: 1}
 		}
+		assertMetadataRequests(t, requests[before:], want)
 		var statistics struct {
 			Network accounting.Statistics `json:"network"`
 		}
@@ -87,12 +98,12 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		var counted uint64
 		for _, group := range statistics.Network.Requests {
 			counted += group.Attempts
-			if group.Host != "api.github.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.REST || (group.Purpose != "workflow-metadata" && group.Purpose != "quota-preflight") {
+			if group.Attempts != 0 && (group.Host != "api.github.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.REST || (group.Purpose != "workflow-metadata" && group.Purpose != "quota-preflight" && group.Purpose != "resolver")) {
 				t.Fatalf("wrong workflow request accounting: %+v", group)
 			}
 		}
-		if counted != uint64(requests-before) {
-			t.Fatalf("counted %d requests, made %d", counted, requests-before)
+		if counted != uint64(len(requests)-before) {
+			t.Fatalf("counted %d requests, made %d", counted, len(requests)-before)
 		}
 		if strings.Contains(out.String()+log.String(), "fixture-secret") {
 			t.Fatal("credential leaked")
@@ -120,7 +131,12 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 		case "/rate_limit":
 			body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
 		case "/repos/kjanat/actionlint":
-			body = `{"id":42,"full_name":"kjanat/actionlint"}`
+			body = `{"id":42,"full_name":"kjanat/actionlint","default_branch":"main"}`
+		case "/repos/kjanat/actionlint/contents":
+			if r.URL.Query().Get("ref") != "main" {
+				t.Fatalf("wrong contents guard: %s", r.URL)
+			}
+			body = `[]`
 		case "/repos/kjanat/actionlint/git/commits/" + revision:
 			body = `{"sha":"` + revision + `"}`
 		case "/repos/kjanat/actionlint/contents/.github/workflows/nix.yml":
@@ -188,7 +204,12 @@ jobs:
 				case "/rate_limit":
 					body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
 				case "/repos/example/workflows":
-					body = `{"id":42,"full_name":"example/workflows"}`
+					body = `{"id":42,"full_name":"example/workflows","default_branch":"main"}`
+				case "/repos/example/workflows/contents":
+					if r.URL.Query().Get("ref") != "main" {
+						t.Fatalf("wrong contents guard: %s", r.URL)
+					}
+					body = `[]`
 				case "/repos/example/workflows/git/commits/" + sha:
 					body = `{"sha":"` + sha + `"}`
 				case "/repos/example/workflows/contents/.github/workflows/build.yml":

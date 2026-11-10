@@ -5,9 +5,10 @@
 Production providers own their dependencies, builds and releases. The Commitish
 resolver lives in the `actionlint-plugin-commitish` crate in the commitish workspace.
 The Ruff and ShellCheck providers have separate projects. Actionlint owns the
-host interfaces and their compatibility tests. Commitish uses the native JSON
-resolver protocol; the script engines and component analyzers use their respective
-WASM interfaces. Repository separation does not change those protocols.
+host interfaces and their compatibility tests. Commitish uses the WebAssembly
+`reference-resolver` interface. Actionlint fetches the repository references and
+objects requested by that component. Script engines and component analyzers use
+their own WebAssembly interfaces.
 
 The root Cargo workspace contains the Rust SDK, plugin examples and test fixtures.
 Component fixtures live under `internal/plugins/execution/component/testdata/sources`;
@@ -32,9 +33,12 @@ belong to `distribution/docker`. Comment Cop's helper belongs to its GitHub acti
 
 ## Consequences
 
-Host builds do not compile or resolve the production Commitish provider. Independent
-providers can release without changing the host. Cross-project compatibility must
-be checked through their public interfaces rather than a shared Cargo workspace.
+Actionlint embeds a prebuilt Commitish component. Its
+[`source.json`](../../internal/plugins/bundled/commitish/source.json) records the
+source revision, build commands and component digest. Updating the bundled
+resolver requires rebuilding that component and running actionlint's resolver
+tests. Other providers can release independently. Test them against actionlint
+through their plugin interfaces.
 
 Examples build from the repository using Cargo and their own language toolchains.
 There is no custom manifest exporter or second implementation of Cargo inheritance.

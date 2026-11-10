@@ -145,7 +145,7 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	object := commit
 	route := actions.ObjectRoute()
 	observed := time.Now().UTC().Format(time.RFC3339Nano)
-	if !fullSHA1(ref.Ref()) {
+	if g.resolver != nil {
 		resolved, resolveErr := g.resolver().Resolve(ctx, references.Request{Version: 1, Repository: ref.Repository(), Ref: ref.Ref(), Kind: kind, ExpectedRepositoryID: repo.ID})
 		if resolveErr != nil {
 			return unavailableError(resolveErr)
@@ -157,9 +157,13 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 			if !fullSHA1(resolved.SelectedObject) {
 				return unavailableFile(availability.InvalidResolverResult()), nil
 			}
-			route, err = actions.RefRoute(resolved.SelectedRef)
-			if err != nil {
-				return unavailableFile(availability.InvalidResolverResult()), nil
+			if resolved.SelectedRef == "" && strings.EqualFold(ref.Ref(), resolved.SelectedObject) {
+				route = actions.ObjectRoute()
+			} else {
+				route, err = actions.RefRoute(resolved.SelectedRef)
+				if err != nil {
+					return unavailableFile(availability.InvalidResolverResult()), nil
+				}
 			}
 		}
 		commit, object, observed = resolved.Commit, resolved.SelectedObject, resolved.ObservedAt

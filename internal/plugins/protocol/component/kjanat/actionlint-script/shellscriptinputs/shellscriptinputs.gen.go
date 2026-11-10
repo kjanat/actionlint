@@ -2,8 +2,8 @@
 
 // Shell text, dialect and source mapping supplied to a checker for one occurrence.
 // Normative profile: shell-preparation-0.3.0.md in the protocol JSON directory.
-// The host owns this transformation; guests must not repeat it or infer its
-// results from the host version, package name, or diagnostic messages.
+// The host supplies source mapping and interpreter facts. A guest interprets
+// its own directives and chooses its diagnostic exclusions.
 package shellscriptinputs
 
 import (
@@ -16,12 +16,12 @@ const InterfaceName = "kjanat:actionlint-script/shell-script-inputs@0.3.0"
 
 // Shell text, dialect and source mapping supplied to a checker for one occurrence.
 // Normative profile: shell-preparation-0.3.0.md in the protocol JSON directory.
-// The host owns this transformation; guests must not repeat it or infer its
-// results from the host version, package name, or diagnostic messages.
+// The host supplies source mapping and interpreter facts. A guest interprets
+// its own directives and chooses its diagnostic exclusions.
 type ShellScriptInputs interface {
 	// Only run occurrences with supplied text in this analyze call are accepted.
 	// Every other ID returns an error, including known unselected occurrences,
-	// action inputs, calls and the entry. None means an unsupported profile.
+	// action inputs, calls and the entry. None means an invalid interpreter invocation.
 	// Line numbers and positions are one-based Unicode character coordinates.
 	ForScript(ctx context.Context, occurrence string, dialect OptionString) (ResultOptionInputString, error)
 }
@@ -76,14 +76,15 @@ type Input struct {
 	Text string
 	// Original script text with substitutions masked, before inserted lines.
 	MaskedText string
-	// Engine dialect override; none leaves selection to source directives.
+	// Inferred interpreter dialect, or the override requested by the caller.
 	Dialect    OptionString
 	Shell      string
 	ShellSetup string
 	// One entry per physical input line; script indices refer to the raw
 	// input script and comment positions to its declaring document.
 	Lines []Line
-	// ShellCheck diagnostic numbers excluded by the preparation profile.
+	// Additional diagnostic numbers supplied by a custom preparation builder.
+	// The default host builder supplies an empty list.
 	Excluded []uint32
 }
 

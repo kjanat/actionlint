@@ -222,7 +222,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.configFlags(lsp.Flags())
 	a.toolFlags(lsp.Flags())
 	a.runnerFlags(lsp.Flags())
-	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or URI")
+	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly plugin from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
 	a.pluginLockFlag(lsp.Flags())
 	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init)
@@ -278,7 +278,7 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) pluginFlags(f *pflag.FlagSet) {
-	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI`, or a local tool provider manifest (.json) (repeatable)")
+	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly plugin from a path or `URI`, or a local tool provider manifest (.json) (repeatable)")
 	annotateFlag(f, "plugin", "Rule selection")
 }
 
