@@ -67,11 +67,22 @@ Change `matrix.platform` to `matrix.os`, check again, and both runner names pass
 
 actionlint also checks expression contexts, action inputs, job outputs, matrix filtering, YAML anchors, and composite-action scripts. It can report errors at the expression that failed, including inside multiline YAML values.
 
+## GitHub Actions features GitHub doesn't even know about
+
+Build an action's inputs with `${{ insert }}`:
+
+```yaml
+with:
+  ${{ insert }}: ${{ fromJSON('{"fetch-depth": 0, "persist-credentials": false}') }}
+```
+
+actionlint checks the inserted input names and values, even when you build them from matrix expressions. You can insert environment variables into `env:` the same way.
+
 ## Use the weird parts of GitHub Actions
 
-`${{ insert }}` can supply action inputs from an expression. `fromJSON()` has a loose parsing mode that accepts comments, unquoted keys, single-quoted strings, trailing commas, and even trailing text. Function names ignore case, so `fromjsOn()` works too.
+Comments inside JSON? Unquoted keys? Trailing text after the closing brace? Mixed-case function names? GitHub accepts them. actionlint understands them.
 
-The [actions-rs CI workflow](https://github.com/kjanat/actions-rs/blob/master/.github/workflows/ci.yml) takes that further. Its matrix passes through `fromJSON()`, `toJSON()`, and `fromJSON()` again:
+The [actions-rs CI workflow](https://github.com/kjanat/actions-rs/blob/master/.github/workflows/ci.yml) puts all of that through `fromJSON()`, `toJSON()`, and `fromJSON()` again:
 
 ```yaml
 runs-on: ${{ matrix.os }}
@@ -102,11 +113,11 @@ strategy:
     }}
 ```
 
-actionlint accepts this matrix and reports the loose JSON as information. The same workflow reuses YAML-anchored actions inside `parallel:` steps and runs Rust scripts through `actions-shell cargo-script {0}`, with Cargo dependencies declared inside `run:`.
+actionlint resolves the matrix and reports the loose JSON as information. That workflow also runs YAML-anchored actions in `parallel:` and Rust scripts through `actions-shell cargo-script {0}`, with Cargo dependencies declared inside `run:`.
 
-It also contains `if: 1` and `if: ${{ format('{0}', false) }}`. Both conditions are truthy, so actionlint flags both. The second produces the non-empty string `"false"`. actionlint also warns about a workspace path inserted into a TOML string inside the Rust script. An apostrophe in the path can break that declaration. See the [complete test fixture](internal/development/tests/integration/workflow/testdata/repositories/actions-rs.yml).
+actionlint still catches its mistakes. `if: ${{ format('{0}', false) }}` produces the string `"false"`, so the job runs. And `${{ github.workspace }}` inside a TOML string can break the Rust script's dependency declaration if the path contains an apostrophe.
 
-This job excerpt comes from the [kp2bw Windows workflow fixture](internal/development/tests/integration/workflow/testdata/repositories/kp2bw-windows-bw-cmd.yml). The outer function's capitalization demonstrates that function names ignore case:
+The [kp2bw Windows workflow](internal/development/tests/integration/workflow/testdata/repositories/kp2bw-windows-bw-cmd.yml) builds action inputs for npm, Bun, Bitwarden, and Vaultwarden in one expression. Yes, `fromjsOn()` works too:
 
 ```yaml
 strategy:
@@ -121,9 +132,7 @@ steps:
       ${{ insert }}: ${{ fromjsOn(format('{{install_args:''{0}'' /* npm ships inside nodejs */,}} that is all, folks', join(fromJSON(format('[''nodejs'',''uv'',''python'',{0},] // bun, if you insist', toJSON(matrix.tools))), ' '))) }}
 ```
 
-actionlint resolves four matrix rows. The inserted `install_args` value is `nodejs uv python bun` for the two Bun rows and `nodejs uv python ` for the two npm rows, including that trailing space. The [regression test](internal/development/tests/integration/workflow/repository_corpus_test.go) checks those exact values, so the dynamic mapping keeps its known property names and types.
-
-The loose JSON gets an informational diagnostic. It does not stop matrix inference or turn the action's inputs into unknown values.
+actionlint checks all four combinations. It computes `install_args` for each one, including the extra `bun` for Bun, and checks the resulting action inputs.
 
 The [shellcheck-rs wiki fixture](internal/development/tests/integration/workflow/testdata/repositories/shellcheck-wiki.yml) also uses `${{ insert }}` in `env:`, expression-valued `with:` mappings, and YAML aliases for action references. The [expression behavior guide](docs/expression-behavior.md) explains the runner comparisons behind these checks, including why `'017' == 17` and `fromJSON('017') == 15` can both be true.
 
