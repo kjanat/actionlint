@@ -24,7 +24,7 @@ jobs:
     permissions: { contents: read, id-token: write }
     steps:
       - &Beepboop
-        uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
         id: beepboop
         with: { permission-contents: write, permission-pull-requests: write }
       - &Checkout
@@ -43,7 +43,7 @@ jobs:
       - name: Refresh upstream action and workflow metadata
         run: mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
         with:
           token: &BeepboopToken ${{ steps.beepboop.outputs.token }}
           committer: &BeepboopCommitter "${{ steps.beepboop.outputs.bot-login }} <${{ steps.beepboop.outputs.bot-email }}>"
@@ -87,7 +87,7 @@ jobs:
           MISE_ENABLE_TOOLS: node
       - run: node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
         with:
           token: *BeepboopToken
           committer: *BeepboopCommitter
@@ -142,7 +142,7 @@ jobs:
           fi
           node tools/toolchain/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
         with:
           token: *BeepboopToken
           committer: *BeepboopCommitter

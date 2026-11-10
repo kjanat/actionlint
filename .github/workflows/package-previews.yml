@@ -66,7 +66,7 @@ jobs:
           @kjanat-actionlint/plugin-yamllint:pack
           @kjanat-actionlint/plugin-zizmor:pack
       - name: Check installed yamllint example
-        uses: kjanat/actionlint-registry/check@0088741b3bbd0eab844207e63d70b2373c0455e6 # master
+        uses: kjanat/actionlint-registry/check@2455f1a388ccef7b125dd575817dd92ef593d1d7 # master
         with:
           artifact: plugins/examples/external-linters/yamllint/actionlint-provider.json
           fixture: plugins/examples/external-linters/yamllint/installation.ts
@@ -75,7 +75,7 @@ jobs:
           allow-config-processes: true
           report: ${{ runner.temp }}/yamllint-candidate.json
       - name: Check installed zizmor example
-        uses: kjanat/actionlint-registry/check@0088741b3bbd0eab844207e63d70b2373c0455e6 # master
+        uses: kjanat/actionlint-registry/check@2455f1a388ccef7b125dd575817dd92ef593d1d7 # master
         with:
           artifact: plugins/examples/external-linters/zizmor/actionlint-provider.json
           fixture: plugins/examples/external-linters/zizmor/installation.ts
