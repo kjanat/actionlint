@@ -175,14 +175,15 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 			if tc.wantPath != "" {
 				want = "  = config: " + tc.wantPath + "\n"
 			}
-			var got string
+			var got strings.Builder
 			for line := range strings.SplitSeq(out.String(), "\n") {
 				if strings.HasPrefix(line, "  = config:") {
-					got += line + "\n"
+					got.WriteString(line)
+					got.WriteByte('\n')
 				}
 			}
-			if got != want {
-				t.Fatalf("configuration line=%q, want %q; output:\n%s", got, want, &out)
+			if got.String() != want {
+				t.Fatalf("configuration line=%q, want %q; output:\n%s", got.String(), want, &out)
 			}
 			if !reflect.DeepEqual(result.Findings[0].Diagnostic, diagnostic) {
 				t.Fatal("rendering changed diagnostic metadata")
