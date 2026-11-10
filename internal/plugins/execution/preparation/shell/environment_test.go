@@ -33,6 +33,29 @@ func TestEnvironmentPreparationPreservesNamesAndSourceMapping(t *testing.T) {
 	}
 }
 
+func TestEnvironmentPreparationPreservesDeclaredNamesWithUnknownRuntime(t *testing.T) {
+	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux},
+		scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true},
+		scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"DECLARED"}},
+	)
+	startup, known := EnvironmentStartup("", environments)
+	if startup != "export DECLARED" || known {
+		t.Errorf("partial environment: startup=%q, known=%t", startup, known)
+	}
+	prepared, err := BuildShellScriptInput(checkinputs.Script{
+		Text: `echo "$DECLARED" "$INHERITED"`, Shell: "bash", Environment: environments,
+	}, nil)
+	if err != nil || prepared == nil {
+		t.Fatalf("prepare: %+v, %v", prepared, err)
+	}
+	if prepared.ShellSetup != "set -e -o pipefail; export DECLARED" {
+		t.Errorf("declared name was not exported: %q", prepared.ShellSetup)
+	}
+	if len(prepared.Lines) != 2 || prepared.Lines[0].Kind != checkinputs.ShellScriptGeneratedLine || prepared.Lines[1].Kind != checkinputs.ShellScriptSourceLine || prepared.Lines[1].Line != 1 {
+		t.Errorf("environment prelude changed source coordinates: %+v", prepared.Lines)
+	}
+}
+
 func TestEnvironmentPreparationUsesAllOperatingSystemAlternatives(t *testing.T) {
 	layers := []scriptmodel.EnvironmentLayer{
 		{Scope: scriptmodel.EnvironmentWorkflow, Names: []string{"foo"}},

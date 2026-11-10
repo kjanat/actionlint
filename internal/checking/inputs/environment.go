@@ -5,9 +5,9 @@ import (
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
-// ScriptEnvironment describes one possible script environment without its
-// values. UnknownNames concerns unresolved YAML declarations; the host does not
-// enumerate variables inherited from a runner or written to GITHUB_ENV.
+// ScriptEnvironment supplies variable names and lookup rules without values.
+// UnknownNames includes inherited runner variables, earlier GITHUB_ENV writes
+// and unresolved YAML keys.
 type ScriptEnvironment struct {
 	OperatingSystem  runnerapi.OS               `json:"operating_system"`
 	MergeComparison  scriptmodel.NameComparison `json:"merge_comparison"`

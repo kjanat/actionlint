@@ -173,7 +173,8 @@ type Environment struct {
 	LookupComparison NameComparison        `json:"lookup-comparison"`
 	Names            cm.List[VariableName] `json:"names"`
 
-	// Unresolved declaration keys, not the runner's ambient environment.
+	// Additional names may come from the runner, earlier GITHUB_ENV writes
+	// or unresolved declaration keys.
 	UnknownNames bool `json:"unknown-names"`
 }
 

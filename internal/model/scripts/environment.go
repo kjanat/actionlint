@@ -29,8 +29,8 @@ const (
 	EnvironmentRuntime  EnvironmentScope = "runtime"
 )
 
-// EnvironmentLayer contains names in declaration order. UnknownNames describes
-// unresolved declarations, not arbitrary variables inherited by the runner.
+// EnvironmentLayer lists known exported names in insertion order.
+// UnknownNames is true when the layer can introduce additional names.
 // Layers are supplied from the outermost scope to the innermost scope.
 type EnvironmentLayer struct {
 	Scope        EnvironmentScope
@@ -65,9 +65,7 @@ type EnvironmentVariableName struct {
 	CaseKnown bool
 }
 
-// EnvironmentNames separates runner key merging from script name lookup for
-// one operating-system alternative. It does not claim the runner has no other
-// ambient environment variables.
+// EnvironmentNames records merged names and lookup rules for one operating system.
 type EnvironmentNames struct {
 	operatingSystem runnerapi.OS
 	merge, lookup   NameComparison
@@ -81,8 +79,8 @@ func (e EnvironmentNames) LookupComparison() NameComparison { return e.lookup }
 func (e EnvironmentNames) UnknownNames() bool               { return e.unknownNames }
 func (e EnvironmentNames) Names() []EnvironmentVariableName { return slices.Clone(e.names) }
 
-// EnvironmentNamePresence concerns declared names only. Undeclared does not
-// prove that a self-hosted runner or an earlier command supplied no such name.
+// EnvironmentNamePresence describes lookup in the supplied layers.
+// Unknown layers prevent a missing name from being classified as undeclared.
 type EnvironmentNamePresence string
 
 const (

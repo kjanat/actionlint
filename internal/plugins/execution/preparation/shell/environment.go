@@ -6,23 +6,23 @@ import (
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
-// EnvironmentStartup declares imported names without assigning them values.
-// Only names available in every OS alternative are imported. Unresolved keys
-// prevent unassigned-variable checks from deciding that a name is absent.
+// EnvironmentStartup imports names with known spelling in every alternative.
+// Its boolean reports whether the alternatives specify every name and its
+// shell lookup behavior.
 func EnvironmentStartup(startup string, alternatives []scriptmodel.EnvironmentNames) (string, bool) {
-	uncertain := len(alternatives) == 0
+	if len(alternatives) == 0 {
+		return startup, false
+	}
+	uncertain := false
 	for _, environment := range alternatives {
 		uncertain = uncertain || environment.UnknownNames() || environment.LookupComparison() == scriptmodel.NameUnknown
 		for _, name := range environment.Names() {
 			uncertain = uncertain || !name.CaseKnown
 		}
 	}
-	if uncertain {
-		return startup, false
-	}
 	var names []string
 	for _, variable := range alternatives[0].Names() {
-		if !shellVariableName(variable.Name) {
+		if !variable.CaseKnown || !shellVariableName(variable.Name) {
 			continue
 		}
 		available := true
@@ -39,7 +39,7 @@ func EnvironmentStartup(startup string, alternatives []scriptmodel.EnvironmentNa
 		}
 		startup += "export " + strings.Join(names, " ")
 	}
-	return startup, true
+	return startup, !uncertain
 }
 
 func shellVariableName(name string) bool {

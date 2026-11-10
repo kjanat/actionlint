@@ -28,7 +28,7 @@ func TestScriptEnvironmentResponseLimit(t *testing.T) {
 
 func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(
-		scriptmodel.EnvironmentAlternatives("bash", nil, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"lowercase", "UPPERCASE", "miXedCase"}}),
+		scriptmodel.EnvironmentAlternatives("bash", nil, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"lowercase", "UPPERCASE", "miXedCase"}}),
 	)))
 	engine := wacogo.NewEngine(ctx)
 	t.Cleanup(func() {
@@ -60,7 +60,7 @@ func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 		t.Fatalf("environment ABI result = %+v, %v", result, err)
 	}
 	for _, environment := range value.Value {
-		if environment.LookupComparison != bind.NameComparisonSensitive || len(environment.Names) != 3 || environment.Names[2].Name != "miXedCase" {
+		if environment.LookupComparison != bind.NameComparisonSensitive || !environment.UnknownNames || len(environment.Names) != 3 || environment.Names[2].Name != "miXedCase" {
 			t.Fatalf("environment facts changed across the component interface: %+v", environment)
 		}
 	}
@@ -99,7 +99,7 @@ func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(environments)))
 	result, err := (scriptEnvironments{}).Current(ctx)
 	value, ok := result.(bind.ResultListEnvironmentStringOk)
-	if err != nil || !ok || len(value.Value) != 1 || value.Value[0].LookupComparison != bind.NameComparisonInsensitive {
+	if err != nil || !ok || len(value.Value) != 1 || value.Value[0].LookupComparison != bind.NameComparisonInsensitive || value.Value[0].UnknownNames {
 		t.Fatalf("snippet environment = %+v, %v", result, err)
 	}
 	if result, err := (scriptEnvironments{}).ForScript(ctx, "some-script"); err != nil {
