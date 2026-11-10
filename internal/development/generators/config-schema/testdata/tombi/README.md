@@ -16,6 +16,8 @@ Fixture names identify the configuration area:
 - `tools-*` covers plugins, tool settings, paths, generic and installed providers, backend selection, process and wasm settings, and overrides. Installed-provider shorthand binding is tracked in [issue #371](https://github.com/kjanat/actionlint/issues/371).
 - `repository-*` covers repository facts, files, output, ignores, local actions, overrides, extends, and legacy fields.
 
+`tools-file-shorthand.toml` and `tools-file-override-shorthand.toml` reproduce issue #371. Add them to `cases.json` as accepted configurations when fixing that bug.
+
 The three expected outcomes can differ. Deprecated aliases produce Tombi warnings, and the decoder accepts legacy fields for migration. Structural validation allows unknown provider and rule names that later registration checks can reject. Initial decoding also defers installed provider settings to their schemas and engines.
 
 The model checks glob syntax, case-insensitive duplicates, normalized local-action aliases, and cross-field timeout limits. The schema does not express those checks. The corresponding fixtures record the model and schema outcomes separately.
