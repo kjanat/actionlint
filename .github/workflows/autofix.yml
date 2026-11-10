@@ -40,7 +40,7 @@ permissions: { contents: read }
 jobs:
   autofix:
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "kprint,node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint" }
+    env: { MISE_ENABLE_TOOLS: "kprint,node,npm,bun" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
@@ -78,7 +78,7 @@ jobs:
           add_shims_to_path: false
           cache_save_post: true
         env:
-          MISE_ENABLE_TOOLS: ${{ (steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true') && 'kprint,node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint' || 'kprint,bun' }}
+          MISE_ENABLE_TOOLS: ${{ (steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true') && 'kprint,node,npm,bun' || 'kprint,bun' }}
       - name: Regenerate the configuration schema
         id: schema
         run: bash tools/ci/autofix-step.bash mise run generate:config-schema

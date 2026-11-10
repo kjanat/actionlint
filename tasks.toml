@@ -42,7 +42,7 @@ run         = "modernize -fix ./..."
 run = "node .github/actions/comment-cop/comment-cop.mjs {{ env.COMMENT_COP_BASE | default(value=\"\") }}"
 
 ["generate:readme-demo"]
-description = "Update the README comparison using released actionlint binaries"
+description = "Build actionlint and update the README example"
 run         = "node tools/docs/readme-demo.mjs --fix README.md"
 
 ["test"]

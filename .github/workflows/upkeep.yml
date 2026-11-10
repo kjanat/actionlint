@@ -69,11 +69,11 @@ jobs:
     if: github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
-    env: { MISE_ENABLE_TOOLS: "shellcheck" }
+    env: { MISE_ENABLE_TOOLS: "node" }
     steps:
       - *Beepboop
       - *Checkout
-      - *SetupNode
+      - *SetupGo
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: 2026.11.4
@@ -83,24 +83,10 @@ jobs:
           cache_save_post: true
           monorepo: false
           add_shims_to_path: false
-          minimum_release_age: 0s
         env:
-          MISE_ENABLE_TOOLS: shellcheck
-          MISE_DISABLE_TOOLS: "rshellcheck,github:kjanat/shellcheck-rs"
-      - name: Refresh the actionlint release locks
-        run: mise lock --bump github:kjanat/actionlint github:rhysd/actionlint;
-          mise install --locked
-        env: { GITHUB_TOKEN: "${{ github.token }}", MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint" }
+          MISE_ENABLE_TOOLS: node
       - run: node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
-      - name: Read the versions the section now describes
-        id: versions
-        shell: bash -euo pipefail {0}
-        run: |
-          fork="$(awk '/^\*\*This fork / { print $3; exit }' README.md)"
-          upstream="$(awk '/^\*\*Upstream actionlint / { print $3; exit }' README.md)"
-          test -n "${fork}" && test -n "${upstream}"
-          { echo "fork=${fork}"; echo "upstream=${upstream}"; } >> "${GITHUB_OUTPUT}"
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: *BeepboopToken
@@ -108,13 +94,11 @@ jobs:
           author: *BeepboopCommitter
           branch: ci/readme-demo
           delete-branch: true
-          add-paths: |
-            README.md
-            mise.lock
-          commit-message: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
-          title: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
+          add-paths: README.md
+          commit-message: "Refresh the README example"
+          title: "Refresh the README example"
           body: |
-            `node tools/docs/readme-demo.mjs --fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
+            `node tools/docs/readme-demo.mjs --fix` rebuilt actionlint and refreshed the diagnostics for the README example.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |

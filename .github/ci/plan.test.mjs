@@ -314,13 +314,9 @@ test('documentation workflows install their tools through Runner and mise', () =
 	assert.doesNotMatch(pages, /uses: kjanat\/runner@/);
 	assert.match(pages, /MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run"/);
 	const upkeep = read('.github/workflows/upkeep.yml');
-	assert.match(upkeep, /MISE_ENABLE_TOOLS: "shellcheck"/);
-	assert.match(upkeep, /mise lock --bump github:kjanat\/actionlint github:rhysd\/actionlint/);
-	assert.match(
-		upkeep,
-		/MISE_DISABLE_TOOLS: "rshellcheck,github:kjanat\/shellcheck-rs"/,
-	);
-	assert.match(upkeep, /mise install --locked\s*\n/);
+	assert.match(upkeep, /MISE_ENABLE_TOOLS: "node"/);
+	assert.doesNotMatch(upkeep, /github:(?:kjanat|rhysd)\/actionlint/);
+	assert.doesNotMatch(upkeep, /mise lock --bump/);
 });
 
 test('autofix installs the formatter and the tools required by selected generators', () => {
@@ -347,7 +343,7 @@ test('autofix installs the formatter and the tools required by selected generato
 			steps: { inputs: { outputs: { tables: String(tables), readme: String(readme) } } },
 		})).split(',');
 	assert.deepEqual(selectedTools(false, false), ['kprint', 'bun']);
-	const allTools = ['kprint', 'node', 'npm', 'bun', 'github:kjanat/actionlint', 'github:rhysd/actionlint'];
+	const allTools = ['kprint', 'node', 'npm', 'bun'];
 	for (const [tables, readme] of [[true, false], [false, true], [true, true]]) {
 		assert.deepEqual(selectedTools(tables, readme), allTools);
 	}
@@ -490,7 +486,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 	};
 	/** @type {Record<string, string>} */
 	const otherJobs = {
-		'autofix.yml:autofix': 'kprint,node,npm,bun,github:kjanat/actionlint,github:rhysd/actionlint',
+		'autofix.yml:autofix': 'kprint,node,npm,bun',
 		'ci-changes.yml:changes': 'bun',
 		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
 		'npm-release.yml:build': 'bun',
@@ -500,7 +496,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 		'changelog-release.yml:publish': 'bun,npm:runner-run',
 		'pages.yml:build': 'go,node,npm,bun,pandoc,npm:runner-run',
 		'release-prepare.yml:prepare': 'node,npm,bun,shellcheck,pandoc,npm:runner-run',
-		'upkeep.yml:readme': 'shellcheck',
+		'upkeep.yml:readme': 'node',
 	};
 	const directory = new URL('../workflows/', import.meta.url);
 	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {

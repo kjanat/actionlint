@@ -6,6 +6,9 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 	tables=false
 	readme=false
 	while IFS= read -r -d '' path; do
+		if [[ "${path}" == internal/* || "${path}" == cmd/actionlint/* ]]; then
+			readme=true
+		fi
 		case "${path}" in
 			.github/workflows/autofix.yml | tools/ci/autofix-inputs.bash | go.mod | go.sum)
 				tables=true
@@ -14,7 +17,7 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 			internal/model/actions/* | internal/input/references/actions/* | internal/model/contexts/* | internal/development/generators/* | tools/generate/webhook-payloads/* | package.json | bun.lock | internal/checking/executor/expressions/check.go | internal/checking/rule_index.go | internal/checking/rule_registry.go | internal/checking/rules/* | docs/rules.md)
 				tables=true
 				;;
-			.mise.toml | README.md | docs/screenshots/* | tools/docs/*)
+			.mise.toml | mise.lock | README.md | tools/docs/*)
 				readme=true
 				;;
 			*) ;;
