@@ -1,7 +1,6 @@
 package component
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,10 +15,6 @@ import (
 	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
-	"github.com/kjanat/wacogo"
-	"github.com/kjanat/wazero"
-	"github.com/kjanat/wazero/api"
-	"github.com/kjanat/wazero/experimental"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -54,14 +49,7 @@ func loadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, limits
 	if kind != pluginartifact.Component {
 		return nil, errors.New("plugin requires a WebAssembly component")
 	}
-	config := wazero.NewRuntimeConfig().
-		WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExtendedConst).
-		WithCloseOnContextDone(true).
-		WithMemoryLimitPages(limits.MemoryPages)
-	engine := wacogo.NewEngine(ctx,
-		wacogo.WithRuntimeConfig(config),
-		wacogo.WithLiftLimits(wacogo.LiftLimits{MaxBytes: maxLiftBytes, MaxValues: maxLiftValues}),
-	)
+	engine := sharedComponentCompilation.newEngine(ctx, limits)
 	p := &Plugin{
 		path: path, digest: artifact.Info.SHA256,
 		limits: limits, log: options.Log, engine: engine, reservedRules: options.ReservedRules,
@@ -75,7 +63,7 @@ func loadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, limits
 }
 
 func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
-	component, err := p.engine.LoadComponent(ctx, bytes.NewReader(data))
+	component, err := sharedComponentCompilation.load(ctx, p.engine, data)
 	if err != nil {
 		return err
 	}
