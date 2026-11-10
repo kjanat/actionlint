@@ -1,273 +1,270 @@
 # actionlint
 
-[![CI Status][ci-badge]][ci]
-[![Latest release][release-badge]][releases]
-[![NPM Version][npm-badge]][npm-package]
-[![pkg.pr.new][preview-badge]][previews]
-[![Docker image version][docker-badge]][dockerhub]
-[![Sponsor this project][sponsor-badge]][sponsor]
+**Catch the broken workflow before the runner does.**
 
-[actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
+actionlint checks GitHub Actions workflows, action manifests, and the scripts inside them. Find the misspelled matrix property, the missing action input, the unsafe interpolation, and the shell bug before the next push.
 
-This is an actively maintained fork of [rhysd/actionlint][upstream]. It adds cache safety checks enabled by default, opt-in [policy checks][config], composite action step validation, shell completion and a GitHub Action. Releases include attested binaries and Docker images on [GHCR][ghcr] and [Docker Hub][dockerhub]. Report problems through [this fork's issue tracker][issue-form].
+[![Watch actionlint check workflows, scripts, and action metadata](docs/assets/actionlint-v2.gif)](docs/assets/actionlint-v2.mp4?raw=true)
 
-## Fork provenance and versioning
+[Try the playground](https://kjanat.github.io/actionlint) · [Install](#get-actionlint) · [Browse the rules](docs/rules.md) · [Watch the video](docs/assets/actionlint-v2.mp4?raw=true)
 
-This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12), at [`rhysd/actionlint@914e7df`]. Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases. Upstream may not have a matching tag.
+v2 brings Cargo-style diagnostics, WebAssembly plugins, ShellCheck and Ruff, action discovery, a language server, source fixes, and structured reports into the same checker.
 
-The [changelog] lists fork releases separately from upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration]. The [CLI compatibility] policy covers existing integrations. New or corrected checks can report problems in workflows that previously passed CI. Other programs connect through the [integration interfaces].
-
-## Features
-
-- Report unexpected or missing keys according to GitHub's [workflow syntax][syntax-doc].
-- Check types in `${{ }}` expressions, including references to nonexistent properties.
-- Check action inputs at `with:` and outputs at `steps.{id}.outputs`.
-- Check inputs, outputs and secrets passed to reusable workflows.
-- Run [shellcheck] on shell scripts in `run:` steps.
-- Run [Ruff](docs/config.md#ruff) on Python `run:` scripts without a Python interpreter.
-- Report [script injection][script-injection-doc] through untrusted values and hard-coded credentials.
-- Check [glob syntax][filter-pattern-doc], `needs:` dependencies, runner labels and cron syntax.
-
-See the [full list of checks][checks].
-
-<picture>
-  <source
-    media="(prefers-color-scheme: dark)"
-    srcset="docs/screenshots/actionlint-dark.gif"
-  >
-  <source
-    media="(prefers-color-scheme: light)"
-    srcset="docs/screenshots/actionlint-light.gif"
-  >
-  <img
-    alt="A terminal running actionlint on a workflow file, reporting each problem with the offending line underlined"
-    src="docs/screenshots/actionlint-light.gif"
-  >
-</picture>
-
-<details><summary><h3>Example of a broken workflow</h3></summary>
-
-The animation and the comparison below use the same files. [`tools/docs/readme-demo.mjs`] generates this section by running both linters on those files.
-
-<!-- BEGIN generated demo -->
-
-`docs/screenshots/demo-workflow.yaml`:
-
-```yaml
-name: Release
-on:
-  push:
-    branches: [main]
-jobs:
-  build:
-    strategy:
-      matrix:
-        node: ["20", "22"]
-    runs-on: ubuntu-26.04
-    timeout-minutes: ${{ matrix.node }}
-    steps:
-      - uses: actions/checkout@v7
-      - run: npm run mock-api
-        id: mock
-        background: true
-      - run: npm test
-      - wait: api
-```
-
-`docs/screenshots/actionlint.yaml`:
-
-```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@1/actionlint.schema.json
----
-policy:
-  require-commit-hash: true
-```
-
-**Upstream actionlint 1.7.12 reports 3: `runner-label`, `syntax-check` ×2**
-
-```console
-demo-workflow.yaml:10:14: label "ubuntu-26.04" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
-   |
-10 |     runs-on: ubuntu-26.04
-   |              ^~~~~~~~~~~~
-demo-workflow.yaml:16:9: unexpected key "background" for step to run shell command. expected one of "continue-on-error", "env", "id", "if", "name", "run", "shell", "timeout-minutes", "working-directory" [syntax-check]
-   |
-16 |         background: true
-   |         ^~~~~~~~~~~
-demo-workflow.yaml:18:9: step must run script with "run" section or run action with "uses" section [syntax-check]
-   |
-18 |       - wait: api
-   |         ^~~~~
-```
-
-**This fork 1.17.0 reports 3: `expression`, `require-commit-hash`, `parallel-steps`**
-
-```console
-demo-workflow.yaml:11:22: type of expression at "float number value" must be number but found type string [expression]
-   |
-11 |     timeout-minutes: ${{ matrix.node }}
-   |                      ^~~
-demo-workflow.yaml:13:15: the ref "v7" of action "actions/checkout@v7" is not a commit SHA. actions must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because "require-commit-hash" is enabled in the "policy" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details [require-commit-hash]
-   |
-13 |       - uses: actions/checkout@v7
-   |               ^~~~~~~~~~~~~~~~~~~
-demo-workflow.yaml:18:15: "api" is not the ID of a preceding background step. "wait" and "cancel" steps can only refer to an earlier step that has "background: true" [parallel-steps]
-   |
-18 |       - wait: api
-   |               ^~~
-```
-
-<!-- END generated demo -->
-
-</details>
-
-## Quick start
-
-Install with [npm], [Homebrew], [AUR],
-[Scoop], [WinGet], or [mise], or download [a release archive][releases].
-See [installation][install] for all options. To run it through npm:
-
-```sh
-npx @kjanat/actionlint
-```
-
-With a Go toolchain, install it from source:
-
-```sh
-go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
-```
-
-<sub><em><code>actionlint.kjanat.dev/v2</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/v2/@latest</code></sub>
-
-Run `actionlint check` in your repository to find and check workflows and action manifests. Running `actionlint` without arguments also checks the current Git repository. Outside a repository, it displays help and exits 0. `actionlint check` exits 3 when it finds no files to analyze.
+## One command checks workflows, actions, and scripts
 
 ```sh
 actionlint check
 ```
 
-Try actionlint in your browser with [the online playground][playground], which runs it through WebAssembly.
+Run it in a Git repository. actionlint discovers workflows and `action.yml` or `action.yaml` manifests, including local actions that no workflow references. It follows local action and reusable-workflow dependencies and checks scripts inside composite actions.
 
-See [usage][usage] for command options and examples.
+| What you wrote                                    | What actionlint checks                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `${{ matrix.platform }}`                          | Whether `platform` exists and its value has the expected type.                 |
+| `needs: [build]`                                  | Whether the job exists and the dependency graph contains a cycle.              |
+| `uses: ./actions/deploy`                          | The action's metadata, required inputs, declared outputs, and composite steps. |
+| A reusable-workflow call                          | Inputs, secrets, outputs, and declared permission constraints.                 |
+| `run: ...`                                        | ShellCheck findings in shell scripts and Ruff findings in Python scripts.      |
+| `${{ github.event.issue.title }}` inside a script | Whether untrusted text is inserted into executable script text.                |
+| A cache write on an untrusted event               | Whether the workflow's event guards and cache permissions allow unsafe access. |
+| `runs-on`, trigger filters, or a schedule         | Runner compatibility, glob syntax, cron expressions, and IANA timezones.       |
 
-## GitHub Action
+Findings include source locations, highlighted ranges, explanations, and related locations where available. The [check examples](docs/checks.md) show what each check catches.
 
-This example runs the `v1` actionlint GitHub Action with GitHub annotations:
+## See the mistake before you push it
+
+This workflow defines `matrix.os`, then asks for `matrix.platform`. Save it as `.github/workflows/ci.yml` and run `actionlint check --output-format=pretty .github/workflows/ci.yml`. The Cargo-style report shows the rule name, source location, and failing expression:
+
+<!-- BEGIN generated demo -->
 
 ```yaml
-name: Lint workflows
-on: [push, pull_request]
-permissions: { contents: read }
+name: CI
+on: push
+permissions: {}
 jobs:
-  lint:
-    runs-on: ubuntu-latest
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v7
-        with: { persist-credentials: false }
-      - uses: kjanat/actionlint@v1
+      - run: echo "Testing"
 ```
 
-For v1, use the `config-file` input to select a configuration file.
+```console
+error[expression-reference] unknown-property
+  property "platform" is not defined in matrix
+  --> .github/workflows/ci.yml:9:18
+  |
+9 |     runs-on: ${{ matrix.platform }}
+  |                  ^^^^^^^^^^^^^^^
+```
 
-### v2 configuration
+<!-- END generated demo -->
 
-Put project settings for the v2 Action in [`.github/actionlint.yaml`](docs/config.md).
-Use the `config` input to override settings for one run. You can omit the `with:` block when using the defaults.
+Change `matrix.platform` to `matrix.os`, check again, and both runner names pass. Other findings can include explanations, related locations, documentation links, and available fixes in the same report.
 
-The v2 actionlint GitHub Action runs on Linux, macOS and Windows without Docker.
-Use a published release commit SHA or `vX.Y.Z` tag to select an exact release. The `v1` and `v1.X` tags move to newer releases.
+actionlint also checks expression contexts, action inputs, job outputs, matrix filtering, YAML anchors, and composite-action scripts. It can report errors at the expression that failed, including inside multiline YAML values.
 
-See the [Action guide](docs/action.md) for configuration, saved reports,
-optional PR reviews, tool prerequisites, migration and the input/output reference.
+## Use the weird parts of GitHub Actions
 
-## pre-commit
+`${{ insert }}` can supply action inputs from an expression. `fromJSON()` has a loose parsing mode that accepts comments, unquoted keys, single-quoted strings, trailing commas, and even trailing text. Function names ignore case, so `fromjsOn()` works too.
 
-For v2, hooks move to [kjanat/actionlint-pre-commit](https://github.com/kjanat/actionlint-pre-commit).
-The first v2 hook release is pending. Once published, use its exact tag in
-`.pre-commit-config.yaml`:
+This job excerpt comes from the [kp2bw Windows workflow fixture](internal/development/tests/integration/workflow/testdata/repositories/kp2bw-windows-bw-cmd.yml), with the outer function's capitalization changed to make that last point explicit:
 
 ```yaml
-repos:
-  - repo: https://github.com/kjanat/actionlint-pre-commit
-    rev: <published-v2-tag>
-    hooks: [id: actionlint]
+strategy:
+  matrix:
+    pm: [npm, bun]
+    cli: [bw, vw]
+    include:
+      - ${{ fromJSON('[/* npm ships inside nodejs */ {pm:''bun'', tools:''bun''},] that is all, folks') }}
+steps:
+  - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195
+    with:
+      ${{ insert }}: ${{ fromjsOn(format('{{install_args:''{0}'' /* npm ships inside nodejs */,}} that is all, folks', join(fromJSON(format('[''nodejs'',''uv'',''python'',{0},] // bun, if you insist', toJSON(matrix.tools))), ' '))) }}
 ```
 
-The default hook installs actionlint from the matching Python wheel in an isolated environment.
-The project's plugin declarations select exact versions of the ShellCheck and Ruff Wasm plugins.
-See [v2 migration](docs/migration-v2.md) for existing hook configurations.
+actionlint resolves four matrix rows. The inserted `install_args` value is `nodejs uv python bun` for the two Bun rows and `nodejs uv python ` for the two npm rows, including that trailing space. The [regression test](internal/development/tests/integration/workflow/repository_corpus_test.go) checks those exact values, so the dynamic mapping keeps its known property names and types.
 
-## Documents
+The loose JSON gets an informational diagnostic. It does not stop matrix inference or turn the action's inputs into unknown values.
 
-- [AI usage and policy] and [CLI compatibility]: How this fork uses AI and supports existing workflows and CI integrations.
-- [Checks]: Checks with examples, expected diagnostics and playground links.
-- [Installation][install]: Install with npm, Homebrew, AUR, Scoop, WinGet, aqua, mise, the community pip/uv wrapper, release archives, the download script, Docker, or Go. Includes upstream-only package names.
-- [Usage]: Run actionlint locally, in GitHub Actions, in the playground or in Docker. Includes integrations with reviewdog, Problem Matchers, super-linter, pre-commit and VS Code.
-- [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
-- [Integration interfaces][api]: Use the CLI, language server and plugin SDKs from other programs.
-- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation results and intentional differences.
-- [Expression behavior]: Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
-- [References][refs]: Links to resources.
-- [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
+The [shellcheck-rs wiki fixture](internal/development/tests/integration/workflow/testdata/repositories/shellcheck-wiki.yml) also uses `${{ insert }}` in `env:`, expression-valued `with:` mappings, and YAML aliases for action references. The [expression behavior guide](docs/expression-behavior.md) explains the runner comparisons behind these checks, including why `'017' == 17` and `fromJSON('017') == 15` can both be true.
 
-## Bug reporting
+## ShellCheck and Ruff belong in the same report
 
-To report a bug or false positive, [file an issue][issue-form] with a minimal example. You can also request features or suggest checks.
+For a project without configuration, initialize it once:
 
-See the [contribution guide] for more details.
+```sh
+actionlint config init --toml
+actionlint check
+```
+
+Initialization installs the default ShellCheck and Ruff WebAssembly plugins and saves their exact versions in `.github/actionlint.toml`. Commit that file. Local checks, the language server, and CI read the same configuration.
+
+The [Rust port of ShellCheck](https://github.com/kjanat/shellcheck-rs) makes its WebAssembly plugin possible. ShellCheck runs inside actionlint and in the browser playground. You do not need native ShellCheck or Ruff executables for these backends. Their findings point back to the original workflow or action file, with GitHub expressions handled by the host before script analysis.
+
+Use Ruff settings to select Python rules and target versions. Use ShellCheck settings and inline directives to control shell diagnostics. Native ShellCheck and Ruff executables are also supported. See [script-linter configuration](docs/config.md#ruff).
+
+## Preview the fix, then apply it
+
+```sh
+actionlint fix
+actionlint fix --apply
+```
+
+The first command previews available safe edits as JSON. The second applies them and checks the updated files. actionlint rejects conflicting edits and stale source revisions before writing. Add `--include-suggested` when you want to review edits that need a judgment call.
+
+## Get diagnostics and fixes while you edit
+
+Connect your editor to actionlint's language server over standard input and output:
+
+```sh
+actionlint lsp
+```
+
+The server checks unsaved buffers, updates diagnostics as you edit, and offers versioned quick fixes and suppression actions. Related locations help trace a finding into the local action or reusable workflow that caused it. Expression completion suggests context properties and event fields. See [editor support](docs/lsp.md) for supported features and editor setup.
+
+The [browser playground](https://kjanat.github.io/actionlint) runs the language server in a WebAssembly worker. Paste a workflow, edit it, follow diagnostics to their source, and apply available quick fixes in the browser. It includes ShellCheck for embedded shell scripts and uses the language server for expression completion.
+
+## Check the actions your workflow calls
+
+Remote action metadata gives the checker declared inputs, outputs, and runtimes. Remote reusable-workflow metadata adds input, secret, output, and permission checks across calls.
+
+For references pinned to full commit hashes, actionlint can fetch that metadata directly. Named references need a configured resolver. Use cached metadata when you want to avoid acquisition requests:
+
+```sh
+actionlint check --action-metadata=offline
+```
+
+Metadata reports distinguish unavailable data from invalid declarations. An optional resolver can also propose immutable commit pins for review. Read [remote dependency checks](docs/remote-actions.md) for resolution, caching, and authentication.
+
+## Configure rules in TOML, with editor completion
+
+Use TOML for configuration. Add rule settings to the generated `.github/actionlint.toml`, keeping its pinned plugin declarations:
+
+```toml
+#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
+
+[lint.rules]
+preset                            = "recommended"
+security                          = "error"
+suspicious.mixed-type-comparisons = "error"
+conventions.job-timeout           = { level = "error", options = { max-minutes = 30 } }
+
+[[overrides]]
+includes                                   = [".github/workflows/legacy.yml"]
+lint.rules.correctness.deprecated-commands = "off"
+```
+
+We recommend [Tombi](https://github.com/tombi-toml/tombi) for your editor's TOML language server. The schema directive connects the file to actionlint's settings for [validation](https://tombi-toml.github.io/tombi/docs/json-schema/) and [completion](https://tombi-toml.github.io/tombi/docs/language-server/completion/). You can complete dotted keys, rule levels, and rule options as you write.
+
+The example sets the security category to `error`, configures two individual rules, and disables one check only for `legacy.yml`. Rule levels are `off`, `on`, `info`, `warn`, and `error`. `--strict` also respects rules you disable.
+
+The rule catalogue covers correctness, suspicious behavior, security, and conventions. It includes checks for empty triggers and steps, string conditions, mixed-type comparisons, missing permissions, unpinned references, runtime lifecycle, and job timeouts. Each rule describes its purpose, options, and examples.
+
+```sh
+actionlint rules
+actionlint rules matrix
+actionlint check --strict
+```
+
+YAML, JSON, and JSONC configurations are also supported. Use `extends` to share local or HTTPS configuration files. Declare self-hosted runners, known variables and secrets, and repository permission defaults separately from lint rules.
+
+Inspect the effective settings and their sources:
+
+```sh
+actionlint config show --origin
+actionlint config validate
+actionlint doctor
+```
+
+For an existing configuration, preview and apply its migration:
+
+```sh
+actionlint config migrate
+actionlint config migrate --write
+```
+
+Review and commit the changes. See [configuration](docs/config.md), the [rule reference](docs/rules.md), and the [migration guide](docs/config-migration.md).
+
+## Add your own checks
+
+WebAssembly plugins can analyze documents, check embedded languages, or provide runner inventory. A plugin can return diagnostics and source edits with its own rule metadata and configuration schema.
+
+```sh
+actionlint plugin search shellcheck
+actionlint plugin list
+actionlint plugin sync
+actionlint plugin update
+```
+
+Search finds available plugins. Sync restores the exact configured versions. Update resolves newer releases explicitly. Normal checking restores missing pinned artifacts without upgrading the project.
+
+You can load local artifacts, install registry releases, or pin directly hosted artifacts by SHA-256. actionlint verifies downloaded bytes and applies execution limits. Use `actionlint plugin inspect` to read artifact metadata without executing the plugin.
+
+The [plugin guide](docs/plugins.md) includes SDKs, Rust, C, and TinyGo examples, process-provider manifests, and custom script-linter integrations.
+
+## Send results where you work
+
+The Cargo-style terminal report shows source excerpts, range indicators, related locations, and available fixes. Select another format for CI or your own tools:
+
+```sh
+actionlint check --json
+actionlint check --output-format=jsonl
+actionlint check --output-format=github
+actionlint check --output-format=sarif --output-file=actionlint.sarif
+```
+
+You can emit multiple formats from one analysis, use custom templates, or read typed JSON with its published schema and TypeScript definitions. JSON includes diagnostic ranges, rule metadata, source references, related locations, and structured workflow and action documents.
+
+The v2 GitHub Action runs the native binary through a Node launcher. It supports annotations, job summaries, verified plugin caching, report files, optional SARIF output, and optional pull-request reviews. It can also install a selected binary version without running checks.
+
+Use [the Action guide](docs/action.md) for setup and available release versions. The [integration guide](docs/usage.md#tools-integration) covers pre-commit, native Git hooks, reviewdog, and editors. See [result formats](docs/results.md) before building a report consumer.
+
+## Get actionlint
+
+The [installation guide](docs/install.md) covers Windows, macOS, Linux, npm, PyPI, Docker, and other package managers.
+
+Try the current preview:
+
+```sh
+npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@343
+```
+
+Or build from source with Go 1.27 or newer:
+
+```sh
+go install ./cmd/actionlint
+```
+
+Add Go's installation directory to `PATH` and keep `git` available for repository discovery. Then check a repository, selected files, or a directory:
+
+```sh
+actionlint check
+actionlint check .github/workflows/ci.yml .github/actions/build/action.yml
+actionlint check .github/
+```
+
+Discovery respects Git ignore rules and configured file filters. Use `--no-ignore` to include excluded files. Findings produce a nonzero exit status. See [usage](docs/usage.md) for globs, stdin, output options, and shell completion.
+
+The [v2 migration notes](docs/releases/v2.0.0.md) cover plugin dependencies, pre-commit, and result-format changes.
+
+## Build and contribute
+
+Read the [contributing guide](CONTRIBUTING.md), then use the project tools through mise:
+
+```sh
+mise exec -- runner install
+mise exec -- go build ./cmd/actionlint
+mise exec -- run test
+mise exec -- run fmt
+```
+
+The [repository layout](repository-layout.md) explains where the checker, CLI, plugins, and applications live. Open [an issue](https://github.com/kjanat/actionlint/issues) with a workflow that reproduces a bug or describes a check you need.
 
 ## License
 
-actionlint's code is distributed under [the MIT license].
-Its [branding artwork](docs/assets/brand/README.md) is separately licensed under [CC BY 4.0](docs/assets/brand/LICENSE.md).
+actionlint uses the [MIT license](LICENSE.txt). The [identity artwork](docs/assets/brand/LICENSE.md) is by Kaj Kowalski and licensed under CC BY 4.0.
 
-[AI usage and policy]: CONTRIBUTING.md#ai-usage-and-policy
-[AUR]: docs/install.md#arch-linux
-[CLI compatibility]: CONTRIBUTING.md#cli-compatibility
-[Expression behavior]: docs/expression-behavior.md
-[integration interfaces]: docs/api.md
-[Homebrew]: docs/install.md#homebrew
-[Schema audit]: docs/schema-audit.md
-[Scoop]: docs/install.md#scoop
-[WinGet]: docs/install.md#winget
-[Semantic Versioning for the supported CLI and configuration]: CONTRIBUTING.md#release-versioning
-[`tools/docs/readme-demo.mjs`]: tools/docs/readme-demo.mjs
-[changelog]: CHANGELOG.md#upstream-history
-[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
-[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
-[config]: docs/config.md
-[contribution guide]: ./CONTRIBUTING.md
-[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
-[dockerhub]: https://hub.docker.com/r/kjanat/actionlint
-[filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
-[ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
-[github-changelog]: https://actionlint.kjanat.dev/github-changelog/
-[issue-form]: https://github.com/kjanat/actionlint/issues/new
-[mise]: docs/install.md#mise
-[npm]: docs/install.md#npm
-[npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
-[npm-package]: https://npm.im/@kjanat/actionlint
-[playground]: https://kjanat.github.io/actionlint/
-[preview-badge]: https://pkg.pr.new/badge/kjanat/actionlint
-[previews]: https://pkg.pr.new/~/kjanat/actionlint
-[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
-[releases]: https://github.com/kjanat/actionlint/releases
-[repo]: https://github.com/kjanat/actionlint
-[script-injection-doc]: https://docs.github.com/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
-[shellcheck]: https://github.com/koalaman/shellcheck
-[sponsor-badge]: https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white
-[sponsor]: https://github.com/sponsors/kjanat
-[syntax-doc]: https://docs.github.com/actions/reference/workflow-syntax-for-github-actions
-[the MIT license]: ./LICENSE.txt
-[upstream]: https://github.com/rhysd/actionlint
-
-<!-- documentation in this checkout -->
-
-[api]: docs/api.md
-[checks]: docs/checks.md
-[install]: docs/install.md
-[refs]: docs/reference.md
-[usage]: docs/usage.md
-
-<!-- specific commit refs -->
-
-[`rhysd/actionlint@914e7df`]: https://github.com/rhysd/actionlint/commit/914e7df21a07ef503a81201c76d2b11c789d3fca
+[Support development](https://github.com/sponsors/kjanat).
