@@ -107,10 +107,13 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 		}
 	}
 	values = nil
+	names := make([]any, 0, len(choices))
 	for _, name := range slices.Sorted(maps.Keys(choices)) {
 		values = append(values, choices[name])
+		names = append(names, name)
 	}
 	knownNames["anyOf"] = values
+	definitions["known-rule-name-values"] = object{"enum": names}
 	seen := make(map[string]string, len(manifests))
 	for _, manifest := range manifests {
 		category, name := manifest.Rule.Category, manifest.Rule.Name
@@ -129,7 +132,7 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 				}
 			}
 		}
-		setting := object{"$ref": "#/$defs/rule-setting", "title": name, "description": manifest.Rule.Description, "markdownDescription": manifest.Rule.Description}
+		setting := object{"allOf": []any{object{"$ref": "#/$defs/rule-setting"}}, "title": name, "description": manifest.Rule.Description, "markdownDescription": manifest.Rule.Description}
 		if len(manifest.Rule.OptionsSchema) != 0 {
 			options, err := decodeObject(manifest.Rule.OptionsSchema, "options_schema")
 			if err != nil {
@@ -143,8 +146,10 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 			if _, hasID := options["$id"]; !hasID {
 				options["$id"] = "urn:actionlint:plugin-rule-options:" + base64.RawURLEncoding.EncodeToString([]byte(name))
 			}
-			setting["$ref"] = "#/$defs/plugin-setting"
-			setting["properties"] = object{"options": object{"anyOf": []any{object{"type": "null"}, object{"$ref": "#/$defs/" + definition}}}}
+			setting["allOf"] = []any{
+				object{"$ref": "#/$defs/plugin-setting"},
+				object{"additionalProperties": true, "properties": object{"options": object{"anyOf": []any{object{"type": "null"}, object{"$ref": "#/$defs/" + definition}}}}},
+			}
 		}
 		for _, categorySchema := range categories[category] {
 			properties, _ := categorySchema["properties"].(object)

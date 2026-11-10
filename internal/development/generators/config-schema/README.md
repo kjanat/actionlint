@@ -18,8 +18,10 @@ commit URL uses the schema from that same release or revision.
 
 The root schema defines shared levels, group levels, presets, rule settings,
 plugin settings and backends under `$defs`. Rule properties reference these
-definitions and carry their own descriptions. Rule-specific option schemas add
-constraints beside the reference. `actionlint config schema` uses the same
+definitions and carry their own descriptions. Rule-specific option schemas use
+`allOf` to apply their constraints alongside the shared settings. Tombi validates
+these constraints without discarding them when resolving a `$ref`.
+`actionlint config schema` uses the same
 definitions for installed plugin rules, including rejection of unknown setting keys.
 
 Rule selectors reference `rule-name`. Its `known-rule-name` branch supplies
@@ -32,6 +34,13 @@ Each rule declaration owns its current name and aliases. An alias's `deprecated`
 flag produces a `const` schema branch with `deprecated: true` and a description
 naming its replacement. Rule-setting keys carry the same annotation. The open
 string branch does not mark unrelated plugin names as deprecated.
+
+Tombi reads `x-tombi-toml-version` to select TOML 1.1, which the configuration
+parser supports. Completion labels identify rule names, tool names, variables,
+environments and file patterns. `deprecationMessage` tells Tombi which rule name
+replaces a deprecated alias. Root keys follow the schema's order when Tombi formats
+the file. Arrays are not sorted because settings such as `extends` depend on
+their order. See [Tombi's schema extensions](https://tombi-toml.github.io/tombi/docs/json-schema/).
 
 `internal/input/configuration/rules.Levels()` and `Presets()` supply the accepted value sets
 to validation and generation. `Categories()` uses the category list from the

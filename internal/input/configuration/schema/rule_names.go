@@ -19,6 +19,7 @@ func RuleNameChoices(descriptors []rule.Descriptor) []map[string]any {
 			if alias.Deprecated {
 				choice["deprecated"] = true
 				choice["description"] = fmt.Sprintf("Deprecated alias. Use %s instead.", descriptor.Name)
+				choice["deprecationMessage"] = choice["description"]
 			}
 			choices = append(choices, choice)
 		}

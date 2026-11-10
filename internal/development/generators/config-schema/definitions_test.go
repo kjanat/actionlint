@@ -62,7 +62,10 @@ func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {
 			}
 			if ref, ok := node["$ref"].(string); ok {
 				refs[ref]++
-				if ref == "#/$defs/rule-setting" || ref == "#/$defs/plugin-setting" {
+			}
+			if branches, ok := node["allOf"].([]any); ok && len(branches) > 0 {
+				first, _ := branches[0].(map[string]any)
+				if ref := first["$ref"]; ref == "#/$defs/rule-setting" || ref == "#/$defs/plugin-setting" {
 					if description, ok := node["description"].(string); ok && description != "" {
 						describedRules++
 					}

@@ -16,6 +16,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	genfile "actionlint.kjanat.dev/v2/internal/development/generators/files"
 	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 
@@ -42,6 +43,53 @@ func generatedSchema(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+func TestTombiMetadata(t *testing.T) {
+	data := generatedSchema(t)
+	var schema struct {
+		Version string            `json:"x-tombi-toml-version"`
+		Order   map[string]string `json:"x-tombi-table-keys-order"`
+	}
+	if err := json.Unmarshal(data, &schema); err != nil {
+		t.Fatal(err)
+	}
+	if schema.Version != "v1.1.0" || schema.Order["properties"] != "schema" {
+		t.Fatalf("unexpected Tombi metadata: %+v", schema)
+	}
+	// A multiline inline table with a trailing comma requires TOML 1.1.
+	if _, err := document.Parse("actionlint.toml", []byte("lint = {\n  rules = { preset = 'recommended' },\n}\n")); err != nil {
+		t.Fatalf("the parser rejects the TOML version advertised to Tombi: %v", err)
+	}
+	for _, label := range []string{"rule_name", "tool_name", "variable_name", "environment_name", "file_pattern"} {
+		if !strings.Contains(string(data), `"x-tombi-additional-key-label": "`+label+`"`) {
+			t.Errorf("missing completion label %q", label)
+		}
+	}
+	if strings.Contains(string(data), "x-tombi-array-values-order") {
+		t.Fatal("configuration arrays must not be reordered by the schema")
+	}
+	var root any
+	if err := json.Unmarshal(data, &root); err != nil {
+		t.Fatal(err)
+	}
+	var visit func(any)
+	visit = func(value any) {
+		switch value := value.(type) {
+		case map[string]any:
+			if value["deprecated"] == true && value["deprecationMessage"] != value["description"] {
+				t.Errorf("deprecated schema entry has no replacement message: %v", value)
+			}
+			for _, child := range value {
+				visit(child)
+			}
+		case []any:
+			for _, child := range value {
+				visit(child)
+			}
+		}
+	}
+	visit(root)
 }
 
 func TestRuleLevelSuggestions(t *testing.T) {

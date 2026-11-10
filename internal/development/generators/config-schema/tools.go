@@ -26,7 +26,7 @@ func toolsSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema
 	if err != nil {
 		panic(err)
 	}
-	tools := &jsonschema.Schema{Type: "object", Properties: jsonschema.NewProperties(), AdditionalProperties: unknownToolSchema()}
+	tools := &jsonschema.Schema{Type: "object", Properties: jsonschema.NewProperties(), AdditionalProperties: unknownToolSchema(), Extras: map[string]any{"x-tombi-additional-key-label": "tool_name"}}
 	for _, manifest := range manifests {
 		tool, err := toolSchema(manifest, reflectMapping)
 		if err != nil {
