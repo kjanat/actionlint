@@ -1,6 +1,7 @@
 package composites
 
 import (
+	"slices"
 	"testing"
 
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
@@ -53,8 +54,15 @@ runs:
 			t.Fatalf("environment facts require neither directory resolution nor the execution input: %+v", fact)
 		}
 		for _, environment := range fact.Environment {
+			if !environment.UnknownNames() {
+				t.Error("inherited runner variables were treated as fully enumerated")
+			}
 			for _, name := range []string{"lowercase", "UPPERCASE", "miXedCase"} {
-				if environment.Lookup(name) != scriptmodel.EnvironmentDeclared {
+				want := scriptmodel.EnvironmentDeclared
+				if environment.OperatingSystem() == runnerapi.Windows && environment.LookupComparison() == scriptmodel.NameSensitive {
+					want = scriptmodel.EnvironmentUncertain
+				}
+				if environment.Lookup(name) != want {
 					t.Errorf("script %q on %s lost %q", unit.Run.Run().Value(), environment.OperatingSystem(), name)
 				}
 			}
@@ -67,12 +75,12 @@ runs:
 				}
 			case "echo sibling":
 				for _, name := range []string{"caller_name", "child_name"} {
-					if environment.Lookup(name) != scriptmodel.EnvironmentUndeclared {
+					if environment.Lookup(name) != scriptmodel.EnvironmentUncertain || slices.ContainsFunc(environment.Names(), func(variable scriptmodel.EnvironmentVariableName) bool { return variable.Name == name }) {
 						t.Errorf("composite scope leaked %q to sibling", name)
 					}
 				}
 			case "echo bash":
-				if environment.OperatingSystem() != runnerapi.Windows || environment.Lookup("LOWERCASE") != scriptmodel.EnvironmentUndeclared {
+				if environment.OperatingSystem() != runnerapi.Windows || environment.LookupComparison() != scriptmodel.NameSensitive || environment.Lookup("LOWERCASE") != scriptmodel.EnvironmentUncertain {
 					t.Errorf("Windows runner merging must not make Bash lookup insensitive: %+v", environment)
 				}
 			case "Write-Output $env:LOWERCASE":

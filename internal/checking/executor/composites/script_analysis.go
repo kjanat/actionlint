@@ -132,7 +132,11 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepVie
 }
 
 func (analysis *compositeAnalyzer) scriptEnvironment(step workflowdecl.StepView, shell string) []scriptmodel.EnvironmentNames {
-	layers := append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentStep, step.Env().Mapping()))
+	// ProcessInvoker overlays step variables on the inherited process environment.
+	// https://github.com/actions/runner/blob/main/src/Runner.Sdk/ProcessInvoker.cs
+	layers := []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true}}
+	layers = append(layers, analysis.environmentLayers...)
+	layers = append(layers, scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentStep, step.Env().Mapping()))
 	if target := analysis.runners.Target(); target == "" || target == "github" {
 		composite := analysis.scriptScope != nil && analysis.scriptScope.Composite
 		// ScriptHandler exports runtime contexts after the step environment.

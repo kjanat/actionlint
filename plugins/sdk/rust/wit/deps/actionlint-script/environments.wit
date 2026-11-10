@@ -22,7 +22,8 @@ interface environments {
         /// Bash is case-sensitive even when Windows merges keys without case.
         lookup-comparison: name-comparison,
         names: list<variable-name>,
-        /// Unresolved declaration keys, not the runner's ambient environment.
+        /// Additional names may come from the runner, earlier GITHUB_ENV writes
+        /// or unresolved declaration keys.
         unknown-names: bool,
     }
     /// Only script occurrences supplied in this analyze call are accepted.
