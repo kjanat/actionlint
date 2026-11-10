@@ -255,21 +255,46 @@ console.log(
 	'Quoted YAML key/value prefixes verified; dotted YAML property paths are unsupported syntax. Use nested mappings or TOML dotted keys.',
 );
 
-const emptyKey = document('lint:\n  rules:\n    "": on\n');
-const emptyKeyResult = await service.doComplete(emptyKey, { line: 2, character: 5 }, false);
-console.log(
-	`YAML LS empty quoted key limitation: ${
-		emptyKeyResult?.items.length ?? 0
-	} suggestions; entering a key prefix restores completion.`,
-);
-
-const emptyValue = document('lint:\n  rules:\n    security: ""\n');
-const valueResult = await service.doComplete(emptyValue, { line: 2, character: 15 }, false);
-const on = valueResult?.items.find((item) => item.label.replaceAll('"', '') === 'on');
-assert.ok(on?.textEdit && 'range' in on.textEdit, 'Missing quoted diagnostic-level suggestion');
-const appliedValue = document(TextDocument.applyEdits(emptyValue, [on.textEdit]));
-console.log(
-	`YAML LS empty quoted level edit: ${JSON.stringify(appliedValue.getText())}; diagnostics: ${
-		JSON.stringify(await service.doValidation(appliedValue, false))
-	}`,
-);
+for (const quote of ['"', "'"]) {
+	for (
+		const [text, expected, label] of [
+			[
+				`lint:\n  rules:\n    ${quote}|${quote}: on\n`,
+				`lint:\n  rules:\n    ${quote}security${quote}: on\n`,
+				'security',
+			],
+			[
+				`lint:\n  rules:\n    ${quote}s|${quote}: on\n`,
+				`lint:\n  rules:\n    ${quote}security${quote}: on\n`,
+				'security',
+			],
+			[
+				`lint:\n  rules:\n    security: ${quote}|${quote}\n`,
+				`lint:\n  rules:\n    security: ${quote}on${quote}\n`,
+				'on',
+			],
+			[
+				`lint:\n  rules:\n    security: ${quote}o|${quote}\n`,
+				`lint:\n  rules:\n    security: ${quote}on${quote}\n`,
+				'on',
+			],
+			[`lint:\n  rules:\n    security: ${quote}o|\n`, `lint:\n  rules:\n    security: ${quote}on${quote}\n`, 'on'],
+			[`lint: {rules: {${quote}|${quote}: on}}\n`, `lint: {rules: {${quote}security${quote}: on}}\n`, 'security'],
+			[`lint: {rules: {security: ${quote}|${quote}}}\n`, `lint: {rules: {security: ${quote}on${quote}}}\n`, 'on'],
+		]
+	) {
+		const offset = text.indexOf('|');
+		const doc = document(text.replace('|', ''));
+		const completion = await service.doComplete(doc, doc.positionAt(offset), false);
+		const item = completion?.items.find(candidate => candidate.label.replaceAll('"', '') === label);
+		assert.ok(item?.textEdit && 'range' in item.textEdit, `${text}: missing ${label}`);
+		const applied = TextDocument.applyEdits(doc, [item.textEdit]);
+		assert.equal(applied, expected, `${text}: completion must preserve existing quotes`);
+		assert.deepEqual(
+			await service.doValidation(document(applied), false),
+			[],
+			`${text}: completion produces invalid YAML`,
+		);
+		console.log(`Quoted completion ${JSON.stringify(text)} produces ${JSON.stringify(applied)}`);
+	}
+}
