@@ -70,7 +70,42 @@ actionlint also checks expression contexts, action inputs, job outputs, matrix f
 
 `${{ insert }}` can supply action inputs from an expression. `fromJSON()` has a loose parsing mode that accepts comments, unquoted keys, single-quoted strings, trailing commas, and even trailing text. Function names ignore case, so `fromjsOn()` works too.
 
-This job excerpt comes from the [kp2bw Windows workflow fixture](internal/development/tests/integration/workflow/testdata/repositories/kp2bw-windows-bw-cmd.yml), with the outer function's capitalization changed to make that last point explicit:
+The [actions-rs CI workflow](https://github.com/kjanat/actions-rs/blob/master/.github/workflows/ci.yml) takes that further. Its matrix passes through `fromJSON()`, `toJSON()`, and `fromJSON()` again:
+
+```yaml
+runs-on: ${{ matrix.os }}
+strategy:
+  matrix: |-
+    ${{
+      FrOmJsOn(
+        tOjSoN(
+          fRoMjSoN(
+            '{
+              // load-bearing newline
+              os:
+              [
+                ''ubuntu-latest'',
+                "windows-latest"
+                ,''macos-latest'',
+              ],
+              octal: [010], hex: ["0xFF"]
+              /*,array_hole: [,]*/ , empty_string: [""]
+              ,null_value: [null],undefined_value: ["undefined"],
+              not_a_number: ["NaN"], positive_infinity: ["Infinity"]
+              ,constructor: ["new Date()"],
+            }
+            this trailing sentence is apparently fine'
+          )
+        )
+      )
+    }}
+```
+
+actionlint accepts this matrix and reports the loose JSON as information. The same workflow reuses YAML-anchored actions inside `parallel:` steps and runs Rust scripts through `actions-shell cargo-script {0}`, with Cargo dependencies declared inside `run:`.
+
+It also contains `if: 1` and `if: ${{ format('{0}', false) }}`. Both conditions are truthy, so actionlint flags both. The second produces the non-empty string `"false"`. actionlint also warns about a workspace path inserted into a TOML string inside the Rust script. An apostrophe in the path can break that declaration. See the [complete test fixture](internal/development/tests/integration/workflow/testdata/repositories/actions-rs.yml).
+
+This job excerpt comes from the [kp2bw Windows workflow fixture](internal/development/tests/integration/workflow/testdata/repositories/kp2bw-windows-bw-cmd.yml). The outer function's capitalization demonstrates that function names ignore case:
 
 ```yaml
 strategy:
