@@ -26,8 +26,8 @@ go                         = "1.27.3"
 node                       = "26"
 shellcheck                 = "0.11.0"
 rshellcheck                = {
-  version        = "1.0.0",
   version_prefix = "rshellcheck-v",
+  prefix         = "1",
   matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
 }
 grype                      = "0.121.1"
