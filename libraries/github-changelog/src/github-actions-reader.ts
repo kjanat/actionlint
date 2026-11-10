@@ -1,6 +1,6 @@
-import type { Feed, FeedItem } from './github-actions-feed.ts';
-import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
-import { readRawPages, updateFeedMetadata } from './reader-pages.ts';
+import type { Feed, FeedItem } from '#feed';
+import { FEED_URL, feedPageUrl, parseFeed } from '#feed';
+import { readRawPages, updateFeedMetadata } from '#reader-pages';
 
 interface CachedFeed {
 	complete?: boolean;
@@ -862,7 +862,7 @@ window.addEventListener('resize', schedulePaneHeightSync, {
 	passive: true,
 });
 
-let xmlViewer: ReturnType<typeof import('./xml-viewer.ts').createXmlViewer> | undefined;
+let xmlViewer: ReturnType<typeof import('#xml-viewer').createXmlViewer> | undefined;
 let xmlLoading: Promise<void> | undefined;
 
 async function showRawXml(): Promise<void> {
@@ -872,7 +872,7 @@ async function showRawXml(): Promise<void> {
 	}
 	if (xmlLoading) return xmlLoading;
 	el.raw.textContent = 'Loading XML viewer…';
-	xmlLoading = import('./xml-viewer.ts').then(({ createXmlViewer }) => {
+	xmlLoading = import('#xml-viewer').then(({ createXmlViewer }) => {
 		xmlViewer = createXmlViewer(el.raw, () => loadHistoricalPage());
 		xmlViewer.update(state.rawXml, state.cacheComplete);
 	}).catch(() => {
