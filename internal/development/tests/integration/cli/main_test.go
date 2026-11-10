@@ -8,6 +8,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	testutil.BlockExternalHTTP()
 	if testutil.RuffDiscoveryRequested() {
 		os.Exit(testutil.RuffDiscoveryHelper())
 	}
