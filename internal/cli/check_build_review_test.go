@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,7 +16,13 @@ func TestCheckVerboseReportsBuildIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	build := commandBuild()
-	identity := fmt.Sprintf("verbose: actionlint %s; installed: %s; build: %s, %s/%s", build.Version, build.InstalledFrom, build.GoVersion, build.OS, build.GOARCH)
+	identity := []string{
+		"verbose: actionlint version: " + build.Version,
+		"verbose: installed: " + build.InstalledFrom,
+		"verbose: Go version: " + build.GoVersion,
+		"verbose: operating system: " + build.OS,
+		"verbose: architecture: " + build.GOARCH,
+	}
 	for _, tc := range []struct {
 		name  string
 		flags []string
@@ -38,13 +43,9 @@ func TestCheckVerboseReportsBuildIdentity(t *testing.T) {
 			if status := command.MainContext(t.Context(), args); status != 0 {
 				t.Fatalf("status=%d stdout=%s stderr=%s", status, &out, &stderr)
 			}
-			if strings.Contains(out.String(), identity) {
-				t.Fatalf("identity leaked to stdout: %s", &out)
-			}
-			if got := strings.Count(stderr.String(), identity); (tc.want && got != 1) || (!tc.want && got != 0) {
-				t.Fatalf("identity count %d, stderr=%s", got, &stderr)
-			}
+			lines := strings.Split(stderr.String(), "\n")
 			if tc.json {
+				lines = nil
 				decoder := json.NewDecoder(&stderr)
 				for {
 					var record map[string]json.RawMessage
@@ -55,9 +56,30 @@ func TestCheckVerboseReportsBuildIdentity(t *testing.T) {
 					if err != nil {
 						t.Fatalf("invalid JSON log: %v", err)
 					}
+					if value, ok := record["log"]; ok {
+						var line string
+						if err := json.Unmarshal(value, &line); err != nil {
+							t.Fatal(err)
+						}
+						lines = append(lines, line)
+					}
 				}
 				if !json.Valid(out.Bytes()) {
 					t.Fatalf("invalid JSON output: %s", &out)
+				}
+			}
+			for _, field := range identity {
+				if strings.Contains(out.String(), field) {
+					t.Fatalf("build field leaked to stdout: %s", &out)
+				}
+				count := 0
+				for _, line := range lines {
+					if line == field {
+						count++
+					}
+				}
+				if (tc.want && count != 1) || (!tc.want && count != 0) {
+					t.Fatalf("build field %q appeared on %d lines, stderr=%s", field, count, &stderr)
 				}
 			}
 		})
