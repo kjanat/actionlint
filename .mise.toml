@@ -71,15 +71,16 @@ wasi-sdk                   = {
 }
 
 [tool_alias]
-wit-bindgen = "github:bytecodealliance/wit-bindgen"
-wasi-sdk    = "github:WebAssembly/wasi-sdk"
-pandoc      = "github:jgm/pandoc"
-kprint      = "npm:@kprint/kprint"
-typescript  = "github:microsoft/TypeScript"
-biome       = "github:biomejs/biome"
-markscribe  = "github:charmbracelet/markscribe"
-shellcheck  = "github:koalaman/shellcheck"
-rshellcheck = "github:kjanat/shellcheck-rs"
+golangci-lint = "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
+wit-bindgen   = "github:bytecodealliance/wit-bindgen"
+wasi-sdk      = "github:WebAssembly/wasi-sdk"
+pandoc        = "github:jgm/pandoc"
+kprint        = "npm:@kprint/kprint"
+typescript    = "github:microsoft/TypeScript"
+biome         = "github:biomejs/biome"
+markscribe    = "github:charmbracelet/markscribe"
+shellcheck    = "github:koalaman/shellcheck"
+rshellcheck   = "github:kjanat/shellcheck-rs"
 
 [settings]
 lockfile_platforms                  = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64", "windows-arm64"]
