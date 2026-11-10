@@ -338,11 +338,9 @@ Check the exit status before interpreting empty stdout as success.
 | `3`         | Could not initialize or complete, including invalid config, regex or template |
 
 `--help --json` describes commands, flags, choices, defaults and exit codes.
-`version --json` exposes build metadata. `-version` and `--version` print three lines of text.
+`version --json` exposes build metadata.
 
-With `--verbose` or `--debug`, actionlint writes its version, installation source,
-Go version and platform to stderr once before checking files. `--quiet` hides
-this message. With `--json`, the message uses the JSON log format.
+Use `--verbose` or `--debug` to include version and build information in the log.
 
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use

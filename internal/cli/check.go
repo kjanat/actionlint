@@ -199,7 +199,13 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 func writeCheckBuildIdentity(log io.Writer, c checkInvocation, r renderOptions) {
 	if (c.Verbose || c.Debug) && !r.Quiet {
 		build := commandBuild()
-		_, _ = fmt.Fprintf(log, "verbose: actionlint %s; installed: %s; build: %s, %s/%s\n", build.Version, build.InstalledFrom, build.GoVersion, build.OS, build.GOARCH)
+		_, _ = fmt.Fprintf(log,
+			"verbose: actionlint version: %s\n"+
+				"verbose: installed: %s\n"+
+				"verbose: Go version: %s\n"+
+				"verbose: operating system: %s\n"+
+				"verbose: architecture: %s\n",
+			build.Version, build.InstalledFrom, build.GoVersion, build.OS, build.GOARCH)
 	}
 }
 
