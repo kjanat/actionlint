@@ -7,9 +7,10 @@ import { test } from 'bun:test';
 import { imageReferences } from '@kjanat-actionlint/plugin-sdk/images';
 import { parseSarif } from '@kjanat-actionlint/plugin-sdk/sarif';
 
-import { parseGrantJSON } from '../grant/actionlint.plugin.ts';
+import grant, { parseGrantJSON } from '../grant/actionlint.plugin.ts';
+import grype from '../grype/actionlint.plugin.ts';
 import { parsePoutineSarif } from '../poutine/actionlint.plugin.ts';
-import { validateSyftSBOM } from '../syft/actionlint.plugin.ts';
+import syft, { validateSyftSBOM } from '../syft/actionlint.plugin.ts';
 import { parseYamllint } from '../yamllint/actionlint.plugin.ts';
 import { parseZizmorSarif } from '../zizmor/actionlint.plugin.ts';
 
@@ -109,6 +110,20 @@ test('Syft 1.55.0 emits a structured SBOM artifact', async () => {
 	assert.doesNotThrow(() => validateSyftSBOM(output));
 	assert.throws(() => validateSyftSBOM('{"artifacts":[]}'), /complete Syft JSON SBOM/u);
 });
+
+for (const provider of [syft, grype, grant]) {
+	test(`${provider.name} rejects aliased Docker steps instead of reporting success`, async () => {
+		await assert.rejects(
+			() =>
+				provider.check({
+					filename: 'workflow.yml',
+					kind: 'workflow',
+					source: 'env:\n  IMAGE: &image docker://alpine:3\njobs:\n  scan:\n    steps:\n      - uses: *image\n',
+				}),
+			/jobs\.scan\.steps\[0\]\.uses uses a YAML alias/u,
+		);
+	});
+}
 
 test('Grant 0.6.8 JSON maps denied package findings to the captured image scalar', async () => {
 	const output = await readFile(join(root, 'testdata/grant.json'), 'utf8');

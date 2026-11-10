@@ -36,10 +36,10 @@ export function imageReferences(source: string, kind: 'workflow' | 'action'): Im
 			throw new Error(`${label} must be a static image reference string`);
 		}
 		const raw = node.value;
+		if (!raw.startsWith(prefix)) return;
 		if (raw.includes('${{') || raw.includes('$(')) {
 			throw new Error(`${label} uses a dynamic image reference; image target is unresolved`);
 		}
-		if (!raw.startsWith(prefix)) throw new Error(`${label} does not use the expected ${prefix} prefix`);
 		const value = node.type === 'BLOCK_LITERAL' || node.type === 'BLOCK_FOLDED'
 			? raw.slice(prefix.length).replace(/\n$/u, '')
 			: raw.slice(prefix.length);
@@ -59,10 +59,7 @@ export function imageReferences(source: string, kind: 'workflow' | 'action'): Im
 	const root = document.contents;
 	if (kind === 'action') {
 		const runs = mapValue(root, 'runs');
-		const image = mapValue(runs, 'image');
-		if (image !== null && isScalar(image) && typeof image.value === 'string' && image.value.startsWith('docker://')) {
-			add(image, 'runs.image', 'docker://');
-		}
+		add(mapValue(runs, 'image'), 'runs.image', 'docker://');
 		addDockerSteps(mapValue(runs, 'steps'), 'runs.steps', add);
 	}
 	if (kind === 'workflow') {
@@ -88,10 +85,7 @@ function addDockerSteps(
 	add: (node: Node | null, label: string, prefix?: string) => void,
 ): void {
 	for (const [index, step] of sequenceEntries(node, label).entries()) {
-		const uses = mapValue(step, 'uses');
-		if (uses !== null && isScalar(uses) && typeof uses.value === 'string' && uses.value.startsWith('docker://')) {
-			add(uses, `${label}[${index}].uses`, 'docker://');
-		}
+		add(mapValue(step, 'uses'), `${label}[${index}].uses`, 'docker://');
 	}
 }
 
