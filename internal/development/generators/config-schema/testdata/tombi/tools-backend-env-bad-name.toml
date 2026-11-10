@@ -1,0 +1,2 @@
+[tools.ruff.backend.process.env]
+"A=B" = 'x'

@@ -1,0 +1,5 @@
+[lint]
+[lint.rules]
+[lint.rules.policy]
+disallow-suppressions = 'off'
+require-job-timeout = 'on'

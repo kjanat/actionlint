@@ -9,67 +9,97 @@
           "title": "process",
           "description": "Configures native executable invocation.",
           "markdownDescription": "Configures native executable invocation.",
-          "type": "object",
-          "properties": {
-            "args": {
-              "title": "args",
-              "description": "Literal arguments prepended to actionlint's analysis arguments.",
-              "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "title": "args",
+                  "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                  "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/nul-free-string"
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "env": {
-              "title": "env",
-              "description": "Overrides named variables in the child process only.",
-              "markdownDescription": "Overrides named variables in the child process only.",
-              "oneOf": [
-                {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
+                "env": {
+                  "title": "env",
+                  "description": "Overrides named variables in the child process only.",
+                  "markdownDescription": "Overrides named variables in the child process only.",
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": {
+                        "$ref": "#/$defs/nul-free-string"
+                      },
+                      "propertyNames": {
+                        "minLength": 1,
+                        "not": {
+                          "pattern": "[=\\x00]"
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
-                {
-                  "type": "null"
+                "executable": {
+                  "title": "executable",
+                  "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                  "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                  "type": "string",
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/nul-free-string"
+                    }
+                  ]
                 }
-              ]
+              },
+              "additionalProperties": false
             },
-            "executable": {
-              "title": "executable",
-              "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-              "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-              "type": "string"
+            {
+              "type": "null"
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "wasm": {
           "title": "wasm",
           "description": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
           "markdownDescription": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
-          "type": "object",
-          "required": [
-            "path"
-          ],
-          "properties": {
-            "path": {
-              "title": "path",
-              "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-              "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-              "type": "string",
-              "minLength": 1
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "title": "path",
+                  "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                  "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                  "type": "string",
+                  "minLength": 1,
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/nul-free-string"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
             }
-          },
-          "additionalProperties": false
+          ]
         }
       },
       "additionalProperties": false,
@@ -77,12 +107,32 @@
         {
           "required": [
             "process"
-          ]
+          ],
+          "properties": {
+            "process": {
+              "title": "process",
+              "description": "Configures native executable invocation.",
+              "markdownDescription": "Configures native executable invocation.",
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
         },
         {
           "required": [
             "wasm"
-          ]
+          ],
+          "properties": {
+            "wasm": {
+              "title": "wasm",
+              "description": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
+              "markdownDescription": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
         }
       ]
     },
@@ -580,10 +630,23 @@
         }
       ]
     },
+    "local-action-directory": {
+      "type": "string",
+      "pattern": "^(\\./|\\$/)",
+      "not": {
+        "pattern": "[\\\\:\\x00\\r\\n]|\\$\\{\\{"
+      }
+    },
     "non-blank-string": {
       "type": "string",
       "minLength": 1,
       "pattern": "[^\t\n\u000b\f\r    -     　]"
+    },
+    "nul-free-string": {
+      "type": "string",
+      "not": {
+        "pattern": "[\\x00]"
+      }
     },
     "plugin-setting": {
       "oneOf": [
@@ -665,12 +728,18 @@
           "additionalProperties": true
         }
       ]
+    },
+    "single-line-path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "[\\x00\\r\\n]"
+      }
     }
   },
   "title": "actionlint configuration",
   "description": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Create a configuration with `actionlint config init`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Create a configuration with `actionlint config init`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
-  "type": "object",
   "properties": {
     "extends": {
       "title": "extends",
@@ -768,12 +837,17 @@
                 "markdownDescription": "Optional explanation for this exception."
               },
               "rule": {
-                "$ref": "#/$defs/rule-name",
                 "title": "rule",
                 "description": "Built-in or registered plugin diagnostic rule to suppress. Registration is validated when loading configuration.",
                 "markdownDescription": "Built-in or registered plugin diagnostic rule to suppress. Registration is validated when loading configuration.",
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/rule-name"
+                  }
+                ],
                 "not": {
                   "enum": [
+                    "forbidden-suppression",
                     "disallow-suppressions"
                   ]
                 }
@@ -2278,8 +2352,12 @@
         {
           "type": "object",
           "additionalProperties": {
-            "type": "string"
-          }
+            "$ref": "#/$defs/local-action-directory"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/local-action-directory"
+          },
+          "x-tombi-additional-key-label": "action_directory"
         },
         {
           "type": "null"
@@ -2424,6 +2502,12 @@
                 "minItems": 1,
                 "items": {
                   "type": "string"
+                },
+                "contains": {
+                  "type": "string",
+                  "not": {
+                    "pattern": "^!"
+                  }
                 }
               },
               "lint": {
@@ -3883,8 +3967,12 @@
                   {
                     "type": "object",
                     "additionalProperties": {
-                      "type": "string"
-                    }
+                      "$ref": "#/$defs/local-action-directory"
+                    },
+                    "propertyNames": {
+                      "$ref": "#/$defs/local-action-directory"
+                    },
+                    "x-tombi-additional-key-label": "action_directory"
                   },
                   {
                     "type": "null"
@@ -3933,8 +4021,9 @@
                                   "oneOf": [
                                     {
                                       "type": "array",
+                                      "uniqueItems": true,
                                       "items": {
-                                        "type": "string"
+                                        "$ref": "#/$defs/non-blank-string"
                                       }
                                     },
                                     {
@@ -3959,6 +4048,9 @@
                                           }
                                         ]
                                       },
+                                      "propertyNames": {
+                                        "$ref": "#/$defs/non-blank-string"
+                                      },
                                       "x-tombi-additional-key-label": "variable_name"
                                     },
                                     {
@@ -3968,7 +4060,11 @@
                                 }
                               },
                               "additionalProperties": false
-                            }
+                            },
+                            "propertyNames": {
+                              "$ref": "#/$defs/non-blank-string"
+                            },
+                            "x-tombi-additional-key-label": "environment_name"
                           },
                           {
                             "type": "null"
@@ -3983,8 +4079,9 @@
                         "oneOf": [
                           {
                             "type": "array",
+                            "uniqueItems": true,
                             "items": {
-                              "type": "string"
+                              "$ref": "#/$defs/non-blank-string"
                             }
                           },
                           {
@@ -3999,8 +4096,9 @@
                         "oneOf": [
                           {
                             "type": "array",
+                            "uniqueItems": true,
                             "items": {
-                              "type": "string"
+                              "$ref": "#/$defs/non-blank-string"
                             }
                           },
                           {
@@ -4024,6 +4122,9 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "propertyNames": {
+                              "$ref": "#/$defs/non-blank-string"
                             },
                             "x-tombi-additional-key-label": "variable_name"
                           },
@@ -4064,14 +4165,16 @@
                             "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
                             "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
                             "if": {
-                              "type": "object"
+                              "type": "object",
+                              "additionalProperties": true
                             },
                             "then": {
                               "allOf": [
                                 {
                                   "title": "config",
                                   "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
-                                  "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
+                                  "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                                  "additionalProperties": true
                                 },
                                 {
                                   "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
@@ -4131,9 +4234,11 @@
                                           ]
                                         }
                                       },
+                                      "additionalProperties": true,
                                       "oneOf": [
                                         {
-                                          "type": "object"
+                                          "type": "object",
+                                          "additionalProperties": true
                                         },
                                         {
                                           "type": "null"
@@ -4158,13 +4263,15 @@
                                         }
                                       ]
                                     }
-                                  }
+                                  },
+                                  "additionalProperties": true
                                 }
                               ]
                             },
                             "anyOf": [
                               {
                                 "type": "object",
+                                "additionalProperties": true,
                                 "defaultSnippets": [
                                   {
                                     "bodyText": "{}",
@@ -4288,14 +4395,16 @@
                             "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
                             "minLength": 1,
                             "if": {
-                              "type": "object"
+                              "type": "object",
+                              "additionalProperties": true
                             },
                             "then": {
                               "allOf": [
                                 {
                                   "title": "config",
                                   "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                                  "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                                  "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                                  "additionalProperties": true
                                 },
                                 {
                                   "$ref": "schemas/shellcheck/0.11.0.schema.json"
@@ -4314,6 +4423,7 @@
                               },
                               {
                                 "type": "object",
+                                "additionalProperties": true,
                                 "defaultSnippets": [
                                   {
                                     "bodyText": "{}",
@@ -4378,7 +4488,7 @@
                               "markdownDescription": "Select the execution backend.",
                               "oneOf": [
                                 {
-                                  "type": "object"
+                                  "$ref": "#/$defs/backend"
                                 },
                                 {
                                   "type": "null"
@@ -4391,11 +4501,11 @@
                               "markdownDescription": "The tool's own settings, or a configuration file path for tools that read one.",
                               "oneOf": [
                                 {
-                                  "type": "string",
-                                  "minLength": 1
+                                  "$ref": "#/$defs/single-line-path"
                                 },
                                 {
-                                  "type": "object"
+                                  "type": "object",
+                                  "additionalProperties": true
                                 },
                                 {
                                   "type": "null"
@@ -4443,6 +4553,7 @@
       "oneOf": [
         {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "oneOf": [
               {
@@ -4456,7 +4567,10 @@
                   "oci://ghcr.io/owner/provider@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 ],
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "not": {
+                  "pattern": "@$"
+                }
               },
               {
                 "type": "object",
@@ -4562,8 +4676,9 @@
                         "oneOf": [
                           {
                             "type": "array",
+                            "uniqueItems": true,
                             "items": {
-                              "type": "string"
+                              "$ref": "#/$defs/non-blank-string"
                             }
                           },
                           {
@@ -4588,6 +4703,9 @@
                                 }
                               ]
                             },
+                            "propertyNames": {
+                              "$ref": "#/$defs/non-blank-string"
+                            },
                             "x-tombi-additional-key-label": "variable_name"
                           },
                           {
@@ -4597,7 +4715,11 @@
                       }
                     },
                     "additionalProperties": false
-                  }
+                  },
+                  "propertyNames": {
+                    "$ref": "#/$defs/non-blank-string"
+                  },
+                  "x-tombi-additional-key-label": "environment_name"
                 },
                 {
                   "type": "null"
@@ -4612,8 +4734,9 @@
               "oneOf": [
                 {
                   "type": "array",
+                  "uniqueItems": true,
                   "items": {
-                    "type": "string"
+                    "$ref": "#/$defs/non-blank-string"
                   }
                 },
                 {
@@ -4628,8 +4751,9 @@
               "oneOf": [
                 {
                   "type": "array",
+                  "uniqueItems": true,
                   "items": {
-                    "type": "string"
+                    "$ref": "#/$defs/non-blank-string"
                   }
                 },
                 {
@@ -4653,6 +4777,9 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "propertyNames": {
+                    "$ref": "#/$defs/non-blank-string"
                   },
                   "x-tombi-additional-key-label": "variable_name"
                 },
@@ -4693,14 +4820,16 @@
                   "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
                   "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
                   "if": {
-                    "type": "object"
+                    "type": "object",
+                    "additionalProperties": true
                   },
                   "then": {
                     "allOf": [
                       {
                         "title": "config",
                         "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
-                        "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
+                        "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                        "additionalProperties": true
                       },
                       {
                         "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
@@ -4760,9 +4889,11 @@
                                 ]
                               }
                             },
+                            "additionalProperties": true,
                             "oneOf": [
                               {
-                                "type": "object"
+                                "type": "object",
+                                "additionalProperties": true
                               },
                               {
                                 "type": "null"
@@ -4787,13 +4918,15 @@
                               }
                             ]
                           }
-                        }
+                        },
+                        "additionalProperties": true
                       }
                     ]
                   },
                   "anyOf": [
                     {
                       "type": "object",
+                      "additionalProperties": true,
                       "defaultSnippets": [
                         {
                           "bodyText": "{}",
@@ -4917,14 +5050,16 @@
                   "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
                   "minLength": 1,
                   "if": {
-                    "type": "object"
+                    "type": "object",
+                    "additionalProperties": true
                   },
                   "then": {
                     "allOf": [
                       {
                         "title": "config",
                         "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                        "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                        "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                        "additionalProperties": true
                       },
                       {
                         "$ref": "schemas/shellcheck/0.11.0.schema.json"
@@ -4943,6 +5078,7 @@
                     },
                     {
                       "type": "object",
+                      "additionalProperties": true,
                       "defaultSnippets": [
                         {
                           "bodyText": "{}",
@@ -5007,7 +5143,7 @@
                     "markdownDescription": "Select the execution backend.",
                     "oneOf": [
                       {
-                        "type": "object"
+                        "$ref": "#/$defs/backend"
                       },
                       {
                         "type": "null"
@@ -5020,11 +5156,11 @@
                     "markdownDescription": "The tool's own settings, or a configuration file path for tools that read one.",
                     "oneOf": [
                       {
-                        "type": "string",
-                        "minLength": 1
+                        "$ref": "#/$defs/single-line-path"
                       },
                       {
-                        "type": "object"
+                        "type": "object",
+                        "additionalProperties": true
                       },
                       {
                         "type": "null"
@@ -5064,6 +5200,15 @@
     }
   },
   "additionalProperties": false,
+  "anyOf": [
+    {
+      "type": "object",
+      "additionalProperties": true
+    },
+    {
+      "type": "null"
+    }
+  ],
   "x-tombi-toml-version": "v1.1.0",
   "x-tombi-table-keys-order": {
     "properties": "schema"

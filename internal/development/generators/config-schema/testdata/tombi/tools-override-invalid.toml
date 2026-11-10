@@ -1,0 +1,4 @@
+[[overrides]]
+includes = ['*.yml']
+[overrides.tools.ruff.config]
+target-version = ''

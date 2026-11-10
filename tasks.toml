@@ -49,6 +49,13 @@ run         = "node tools/docs/readme-demo.mjs --fix README.md"
 extends     = "go-test"
 description = "Run Go tests"
 
+["test:config-schema"]
+description = "Test configuration decoding, JSON Schema and Tombi"
+run         = [
+  "tombi --version",
+  "go test ./internal/development/generators/config-schema -run '^Test(ConfigurationConsumerMatrix|EffectiveConfigInheritance|EffectiveRuleOverrides|EffectiveJSONRoots)$' -count=1"
+]
+
 ["conformance"]
 run = [
   "go run ./internal/development/tests/conformance/fetch",

@@ -1,0 +1,2 @@
+[tools.ruff.backend.process]
+args = [1]

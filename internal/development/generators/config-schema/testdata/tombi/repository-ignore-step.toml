@@ -1,0 +1,4 @@
+#:tombi toml-version = "v1.1.0"
+[[ignores]]
+rule="example"
+step="x"

@@ -9,11 +9,13 @@ package schema
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"path"
 	"slices"
 	"strings"
@@ -53,8 +55,12 @@ func Document(read ReadFunc, manifests []pluginmanifests.Manifest) ([]byte, erro
 	if len(mappings) == 0 {
 		return nil, fmt.Errorf("%s describes no tools mapping", RootFile)
 	}
+	settings, err := addToolSettings(root, mappings[0], manifests)
+	if err != nil {
+		return nil, err
+	}
 	for _, tools := range mappings {
-		if err := addTools(tools, manifests); err != nil {
+		if err := addTools(tools, manifests, settings); err != nil {
 			return nil, err
 		}
 	}
@@ -373,7 +379,7 @@ func toolsMapping(value any) (object, bool) {
 
 // addTools adds an entry for each manifest to the tools mapping, built from
 // the mapping's schema for unknown names.
-func addTools(tools object, manifests []pluginmanifests.Manifest) error {
+func addTools(tools object, manifests []pluginmanifests.Manifest, settings map[string]object) error {
 	entries, _ := tools["properties"].(object)
 	unknown, _ := tools["additionalProperties"].(object)
 	for _, manifest := range manifests {
@@ -381,7 +387,7 @@ func addTools(tools object, manifests []pluginmanifests.Manifest) error {
 		if _, bundled := entries[name]; bundled {
 			continue
 		}
-		entry, err := toolEntry(unknown, manifest)
+		entry, err := toolEntry(unknown, manifest, settings[name])
 		if err != nil {
 			return fmt.Errorf("tool provider %s: %w", name, err)
 		}
@@ -393,7 +399,7 @@ func addTools(tools object, manifests []pluginmanifests.Manifest) error {
 // toolEntry returns the tools.<name> schema of manifest: a copy of the
 // schema for unknown names whose config property validates the manifest's
 // settings.
-func toolEntry(unknown object, manifest pluginmanifests.Manifest) (object, error) {
+func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings object) (object, error) {
 	copied, err := deepCopy(unknown)
 	if err != nil {
 		return nil, err
@@ -411,13 +417,9 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest) (object, error
 		if !ok {
 			return nil, errors.New("the schema for unknown tools has no config property")
 		}
-		settings, err := settingsSchema(manifest)
-		if err != nil {
-			return nil, err
-		}
 		values := []any{settings, object{"type": "null"}}
 		if manifest.ReadsConfigFiles() {
-			values = append([]any{object{"type": "string", "minLength": json.Number("1")}}, values...)
+			values = append([]any{object{"$ref": "#/$defs/single-line-path"}}, values...)
 		}
 		delete(config, "oneOf")
 		config["anyOf"] = values
@@ -426,17 +428,38 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest) (object, error
 	return nil, errors.New("the schema for unknown tools has no mapping alternative")
 }
 
-// settingsSchema returns the schema of inline tools.<name>.config settings:
-// a mapping valid against the manifest's config_schema and its process
-// transport's config_schema. Without either, any mapping is valid.
-func settingsSchema(manifest pluginmanifests.Manifest) (object, error) {
+// addToolSettings places each provider schema in a single resource shared by
+// the root tools mapping and every override.
+func addToolSettings(root, tools object, manifests []pluginmanifests.Manifest) (map[string]object, error) {
+	definitions, _ := root["$defs"].(object)
+	if definitions == nil {
+		definitions = object{}
+		root["$defs"] = definitions
+	}
+	result := make(map[string]object, len(manifests))
+	entries, _ := tools["properties"].(object)
+	for _, manifest := range manifests {
+		if _, bundled := entries[manifest.Rule.Name]; bundled {
+			continue
+		}
+		settings, err := settingsSchema(definitions, manifest)
+		if err != nil {
+			return nil, fmt.Errorf("tool provider %s: %w", manifest.Rule.Name, err)
+		}
+		result[manifest.Rule.Name] = settings
+	}
+	return result, nil
+}
+
+// settingsSchema combines a provider's common and process settings schemas.
+func settingsSchema(definitions object, manifest pluginmanifests.Manifest) (object, error) {
 	documents := []json.RawMessage{manifest.ConfigSchema}
 	if manifest.Process != nil {
 		documents = append(documents, manifest.Process.ConfigSchema)
 	}
-	settings := object{"type": "object"}
+	settings := object{"type": "object", "additionalProperties": true}
 	var all []any
-	for _, document := range documents {
+	for i, document := range documents {
 		if len(document) == 0 {
 			continue
 		}
@@ -444,8 +467,30 @@ func settingsSchema(manifest pluginmanifests.Manifest) (object, error) {
 		if err != nil {
 			return nil, err
 		}
-		embedded(schema)
-		all = append(all, schema)
+		name := fmt.Sprintf("plugin-tool-config-%s-%d", base64.RawURLEncoding.EncodeToString([]byte(manifest.Rule.Name)), i)
+		if _, exists := definitions[name]; exists {
+			return nil, fmt.Errorf("duplicate configuration schema definition %q", name)
+		}
+		var id string
+		if value, exists := schema["$id"]; exists {
+			var valid bool
+			id, valid = value.(string)
+			if !valid {
+				return nil, errors.New("configuration schema $id must be a string")
+			}
+		}
+		parsed, err := url.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("configuration schema $id: %w", err)
+		}
+		if !parsed.IsAbs() {
+			// A distinct host also separates IDs that start with / or ../.
+			digest := sha256.Sum256([]byte(name))
+			base := &url.URL{Scheme: "https", Host: fmt.Sprintf("%x.%x.schema.actionlint.invalid", digest[:16], digest[16:]), Path: "/schema.json"}
+			schema["$id"] = base.ResolveReference(parsed).String()
+		}
+		definitions[name] = schema
+		all = append(all, object{"$ref": "#/$defs/" + name})
 	}
 	if len(all) != 0 {
 		settings["allOf"] = all

@@ -248,7 +248,7 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['lint']) }}
     name: Lint
     runs-on: ubuntu-latest
-    env: { MISE_ENABLE_TOOLS: "bun,shellcheck,npm:runner-run" }
+    env: { MISE_ENABLE_TOOLS: "bun,shellcheck,tombi,npm:runner-run" }
     steps:
       - *ActCheckNocred
       - *Go
@@ -262,7 +262,7 @@ jobs:
           monorepo: false,
           add_shims_to_path: false,
         }
-        env: { MISE_ENABLE_TOOLS: "bun,shellcheck,npm:runner-run" }
+        env: { MISE_ENABLE_TOOLS: "bun,shellcheck,tombi,npm:runner-run" }
       - name: Install golangci-lint
         run: version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)";
           go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
@@ -270,6 +270,8 @@ jobs:
       - name: Build actionlint
         run: run mise:build
         env: &SkipGoGen { SKIP_GO_GENERATE: "true" }
+      - name: Check configuration with JSON Schema and Tombi
+        run: run test:config-schema
       - name: Install Ruff for workflow validation
         run: uv tool install ruff==0.17.0
       - name: Validate workflows with all ShellCheck checks

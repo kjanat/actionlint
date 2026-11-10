@@ -1,0 +1,2 @@
+[local-actions]
+"./dist" = "./${{ inputs.name }}"

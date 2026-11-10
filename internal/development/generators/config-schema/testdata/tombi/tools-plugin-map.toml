@@ -1,0 +1,1 @@
+plugins = [{ name = 'example', version = 'v1', registry = 'https://example.com/' }]

@@ -28,6 +28,7 @@
   "config_schema": {
     "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
     "type": "object",
+    "additionalProperties": true,
     "properties": {
       "target-version": {
         "title": "target-version",
@@ -42,8 +43,9 @@
         "title": "lint",
         "description": "Ruff's lint options, such as select, ignore and extend-select.",
         "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
+        "additionalProperties": true,
         "oneOf": [
-          { "type": "object" },
+          { "type": "object", "additionalProperties": true },
           { "type": "null" }
         ],
         "properties": {

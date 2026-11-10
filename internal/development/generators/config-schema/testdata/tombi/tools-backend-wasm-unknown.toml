@@ -1,0 +1,3 @@
+[tools.ruff.backend.wasm]
+path = 'a'
+extra = 1

@@ -480,7 +480,7 @@ test('mise setup is pinned, cached, and used once per job', () => {
 		wasm: 'go,node,npm,bun,pandoc,npm:runner-run',
 		javascript: 'go,node,npm,bun,npm:runner-run',
 		'release-snapshot': 'node,npm,bun,pandoc,npm:runner-run',
-		lint: 'bun,shellcheck,npm:runner-run',
+		lint: 'bun,shellcheck,tombi,npm:runner-run',
 		plugins: 'bun,tinygo,wasi-sdk,kprint,wasm-tools,wit-bindgen',
 		action: 'node,npm,bun,shellcheck,npm:runner-run',
 	};
@@ -661,7 +661,11 @@ test('workflow lint with all ShellCheck checks runs before the matrix with both 
 	const setup = steps.slice(0, validation).flatMap(step =>
 		Array.isArray(step.parallel) ? step.parallel.map(item => yamlMapping(item)) : [step]
 	);
-	assert.equal(yamlMapping(lint.env).MISE_ENABLE_TOOLS, 'bun,shellcheck,npm:runner-run');
+	const lintTools = yamlMapping(lint.env).MISE_ENABLE_TOOLS;
+	assert.ok(typeof lintTools === 'string');
+	assert.ok(lintTools.split(',').includes('shellcheck'));
+	assert.ok(lintTools.split(',').includes('tombi'));
+	assert.ok(setup.some(step => step.run === 'run test:config-schema'));
 	assert.ok(setup.some(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@')));
 	const action = yamlMapping(jobs.action);
 	assert.ok(Array.isArray(action.steps));

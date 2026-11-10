@@ -89,8 +89,8 @@ func propertySchema(document map[string]any, path []string) (map[string]any, err
 func unknownToolSchema() *jsonschema.Schema {
 	properties := jsonschema.NewProperties()
 	properties.Set("enabled", &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, {Type: "null"}}, Description: "Enable this tool. Omission or null keeps it enabled."})
-	properties.Set("backend", &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "object"}, {Type: "null"}}, Description: "Select the execution backend."})
-	properties.Set("config", &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1))}, {Type: "object"}, {Type: "null"}}, Description: "The tool's own settings, or a configuration file path for tools that read one."})
+	properties.Set("backend", &jsonschema.Schema{OneOf: []*jsonschema.Schema{definitionRef("backend"), {Type: "null"}}, Description: "Select the execution backend."})
+	properties.Set("config", &jsonschema.Schema{OneOf: []*jsonschema.Schema{definitionRef("single-line-path"), {Type: "object", AdditionalProperties: jsonschema.TrueSchema}, {Type: "null"}}, Description: "The tool's own settings, or a configuration file path for tools that read one."})
 	return &jsonschema.Schema{
 		Description: "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
 		OneOf: []*jsonschema.Schema{
@@ -108,7 +108,7 @@ func unknownToolSchema() *jsonschema.Schema {
 // is accepted.
 func settingsSchema(name string, document map[string]any) (*jsonschema.Schema, error) {
 	if document == nil {
-		return &jsonschema.Schema{Type: "object"}, nil
+		return &jsonschema.Schema{Type: "object", AdditionalProperties: jsonschema.TrueSchema}, nil
 	}
 	published, err := publishedSchema(name, document)
 	if err != nil {
@@ -152,7 +152,7 @@ func publishedSchema(name string, document map[string]any) (string, error) {
 func configSchema(manifest pluginmanifests.Manifest, settings *jsonschema.Schema) *jsonschema.Schema {
 	markdown := "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
 	alternatives := []*jsonschema.Schema{
-		{Type: "object", Extras: map[string]any{"defaultSnippets": []any{map[string]string{"label": "Inline settings", "bodyText": "{}"}}}},
+		{Type: "object", AdditionalProperties: jsonschema.TrueSchema, Extras: map[string]any{"defaultSnippets": []any{map[string]string{"label": "Inline settings", "bodyText": "{}"}}}},
 		{Type: "null"},
 	}
 	var path *jsonschema.Schema
@@ -169,10 +169,10 @@ func configSchema(manifest pluginmanifests.Manifest, settings *jsonschema.Schema
 		Description: description,
 		Extras:      map[string]any{"markdownDescription": markdown},
 		AnyOf:       alternatives,
-		If:          &jsonschema.Schema{Type: "object"},
+		If:          &jsonschema.Schema{Type: "object", AdditionalProperties: jsonschema.TrueSchema},
 		Then: &jsonschema.Schema{AllOf: []*jsonschema.Schema{
-			// Keep the selecting property's hover ahead of the referenced title.
-			{Title: "config", Description: description, Extras: map[string]any{"markdownDescription": markdown}},
+			// This entry supplies hover text before the referenced schema's title.
+			{Title: "config", Description: description, AdditionalProperties: jsonschema.TrueSchema, Extras: map[string]any{"markdownDescription": markdown}},
 			settings,
 		}},
 	}
