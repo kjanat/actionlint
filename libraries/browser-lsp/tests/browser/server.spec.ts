@@ -4,7 +4,7 @@ import { extname, resolve, sep } from 'node:path';
 
 import { expect, type Page, test } from '@playwright/test';
 
-import type { BrowserLanguageClient, createBrowserLanguageClient, PublishDiagnosticsParams } from '../../src/index.ts';
+import type { BrowserLanguageClient, createBrowserLanguageClient, PublishDiagnosticsParams } from '#index';
 
 interface BrowserSession {
 	client: BrowserLanguageClient;
