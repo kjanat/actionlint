@@ -64,6 +64,84 @@ test('whole fix groups produce line suggestions using Unicode columns', () => {
 	);
 });
 
+test('suggestions preserve a YAML BOM without counting it in edit columns', () => {
+	const prefix = 'https://github.com/';
+	const workflow =
+		'{on: push, jobs: {check: {runs-on: ubuntu-latest, steps: [{uses: https://github.com/actions/checkout@v7}]}}}';
+	const start = workflow.indexOf(prefix) + 1;
+	const fix: Fix = {
+		description: 'Use a GitHub action reference',
+		edits: [{
+			path: 'ci.yml',
+			start: { line: 1, column: start },
+			end: { line: 1, column: start + prefix.length },
+			replacement: '',
+		}],
+	};
+	for (const bom of ['', '\uFEFF']) {
+		for (const newline of ['\n', '\r\n']) {
+			assert.deepEqual(suggestion(fix, 'ci.yml', bom + workflow + newline), {
+				start: 1,
+				end: 1,
+				replacement: bom + workflow.replace(prefix, ''),
+			});
+		}
+	}
+	const unicode: Fix = {
+		description: 'Replace a Unicode character',
+		edits: [{ path: 'ci.yml', start: { line: 1, column: 1 }, end: { line: 1, column: 2 }, replacement: 'ready' }],
+	};
+	assert.deepEqual(suggestion(unicode, 'ci.yml', '\uFEFF🦕 value\n'), {
+		start: 1,
+		end: 1,
+		replacement: '\uFEFFready value',
+	});
+	const insert: Fix = {
+		description: 'Insert at the start of the document',
+		edits: [{ path: 'ci.yml', start: { line: 1, column: 1 }, end: { line: 1, column: 1 }, replacement: '# header\n' }],
+	};
+	assert.deepEqual(suggestion(insert, 'ci.yml', '\uFEFFname: CI\n'), {
+		start: 1,
+		end: 1,
+		replacement: '\uFEFF# header\nname: CI',
+	});
+	assert.equal(
+		suggestion(
+			{
+				...unicode,
+				edits: [{ path: 'ci.yml', start: { line: 1, column: 3 }, end: { line: 1, column: 3 }, replacement: '' }],
+			},
+			'ci.yml',
+			'\uFEFFx\n',
+		),
+		undefined,
+	);
+});
+
+test('a YAML BOM does not shift suggestions on later lines or across lines', () => {
+	const fix = diagnostic.fixes?.[0];
+	assert.ok(fix);
+	assert.deepEqual(suggestion(fix, 'ci.yml', `\uFEFF${source}`), {
+		start: 3,
+		end: 3,
+		replacement: '  echo "$x"',
+	});
+	const multiline: Fix = {
+		description: 'Update both lines',
+		edits: [
+			{ path: 'ci.yml', start: { line: 1, column: 3 }, end: { line: 1, column: 5 }, replacement: 'new' },
+			{ path: 'ci.yml', start: { line: 2, column: 3 }, end: { line: 2, column: 5 }, replacement: 'end' },
+		],
+	};
+	for (const newline of ['\n', '\r\n']) {
+		assert.deepEqual(suggestion(multiline, 'ci.yml', `\uFEFF🦕 $x${newline}  $y${newline}`), {
+			start: 1,
+			end: 2,
+			replacement: '\uFEFF🦕 new\n  end',
+		});
+	}
+});
+
 test('reviews use new-side changed lines and stable markers', () => {
 	const hunks = diffHunks(patch);
 	const comment = reviewComment(diagnostic, 'ci.yml', source, hunks, sha);

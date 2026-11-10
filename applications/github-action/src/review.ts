@@ -107,7 +107,8 @@ export function suggestion(
 	source: string,
 ): { start: number; end: number; replacement: string } | undefined {
 	if (fix.edits.length === 0 || fix.edits.some((edit) => edit.path !== path)) return undefined;
-	const lines = source.replaceAll('\r\n', '\n').split('\n');
+	const bom = source.startsWith('\uFEFF') ? '\uFEFF' : '';
+	const lines = source.slice(bom.length).replaceAll('\r\n', '\n').split('\n');
 	const edits: { start: number; end: number; replacement: string }[] = [];
 	let firstLine = Number.MAX_SAFE_INTEGER;
 	let lastLine = 0;
@@ -138,6 +139,7 @@ export function suggestion(
 		if (edit.end > end) return undefined;
 		replacement = replacement.slice(0, edit.start - start) + edit.replacement + replacement.slice(edit.end - start);
 	}
+	if (firstLine === 1) replacement = bom + replacement;
 	if (replacement.length > 10_000) return undefined;
 	return { start: firstLine, end: lastLine, replacement };
 }
