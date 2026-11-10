@@ -3,7 +3,8 @@
 [![CI Status][ci-badge]][ci]
 [![Latest release][release-badge]][releases]
 [![NPM Version][npm-badge]][npm-package]
-[![Docker image version][docker-badge]][dockerhub]
+[![Docker latest][docker-badge]][docker-latest]
+[![Docker nightly][docker-nightly-badge]][docker-nightly]
 [![API Document][apidoc-badge]][apidoc]
 [![Sponsor this project][sponsor-badge]][sponsor]
 
@@ -236,7 +237,10 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
 [config]: docs/config.md
 [contribution guide]: ./CONTRIBUTING.md
-[docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
+[docker-badge]: https://img.shields.io/badge/Docker-latest-black?logo=docker&logoColor=white&labelColor=2496ED
+[docker-latest]: https://hub.docker.com/r/kjanat/actionlint/tags?name=latest
+[docker-nightly-badge]: https://img.shields.io/badge/Docker-nightly-black?logo=docker&logoColor=white&labelColor=2496ED
+[docker-nightly]: https://hub.docker.com/r/kjanat/actionlint/tags?name=nightly
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
 [filter-pattern-doc]: https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [ghcr]: https://github.com/kjanat/actionlint/pkgs/container/actionlint
