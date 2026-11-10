@@ -58,6 +58,7 @@ error[expression-reference] unknown-property
   |
 9 |     runs-on: ${{ matrix.platform }}
   |                  ^^^^^^^^^^^^^^^
+  = config: lint.rules.correctness.expression-reference
 ```
 
 <!-- END generated demo -->

@@ -68,7 +68,7 @@ func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
 	var out strings.Builder
 	f := FindingOf(results.Diagnostic{Message: message}, nil)
-	if err := f.printPretty(&out, 40, true); err != nil {
+	if err := f.printPretty(&out, 40, true, ""); err != nil {
 		t.Fatal(err)
 	}
 	osc := regexp.MustCompile(`\x1b\]8;;[^\x1b\a]*\x1b\\`)
@@ -138,6 +138,59 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 	}
 }
 
+func TestPrettyRuleConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		rules    []Rule
+		result   []Rule
+		finding  string
+		wantPath string
+	}{
+		{
+			name: "built-in rule", rules: []Rule{{Name: "case-insensitive-conditions", Category: "suspicious"}},
+			finding: "case-insensitive-conditions", wantPath: "lint.rules.suspicious.case-insensitive-conditions",
+		},
+		{
+			name: "plugin rule from analysis", result: []Rule{{Name: "custom-check", Category: "security", Provider: "custom-plugin"}},
+			finding: "custom-check", wantPath: "lint.rules.security.custom-check",
+		},
+		{
+			name: "registered rule without category", rules: []Rule{{Name: "example"}}, finding: "example",
+		},
+		{name: "unknown rule", finding: "unregistered"},
+		{name: "diagnostic without rule"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			renderer, err := New(FormatPretty, "", false, testVersion, tc.rules)
+			if err != nil {
+				t.Fatal(err)
+			}
+			diagnostic := results.Diagnostic{Rule: tc.finding, Code: "specific-code", Message: "message"}
+			result := Result{Rules: tc.result, Findings: []Finding{FindingOf(diagnostic, nil)}}
+			var out strings.Builder
+			if err := renderer.Render(&out, result); err != nil {
+				t.Fatal(err)
+			}
+			want := ""
+			if tc.wantPath != "" {
+				want = "  = config: " + tc.wantPath + "\n"
+			}
+			var got string
+			for line := range strings.SplitSeq(out.String(), "\n") {
+				if strings.HasPrefix(line, "  = config:") {
+					got += line + "\n"
+				}
+			}
+			if got != want {
+				t.Fatalf("configuration line=%q, want %q; output:\n%s", got, want, &out)
+			}
+			if !reflect.DeepEqual(result.Findings[0].Diagnostic, diagnostic) {
+				t.Fatal("rendering changed diagnostic metadata")
+			}
+		})
+	}
+}
+
 func TestPrettyWidthAndCoordinates(t *testing.T) {
 	for _, tc := range []struct {
 		line          string
@@ -161,7 +214,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 		Rule: "long-rule", Message: strings.Repeat("界", 100) + "\nnext paragraph",
 		Path: strings.Repeat("path/", 30), Help: "escape\x1b[31m must not execute",
 	}, nil)
-	if err := f.printPretty(&out, 40, false); err != nil {
+	if err := f.printPretty(&out, 40, false, "lint.rules.suspicious."+strings.Repeat("long-rule", 10)); err != nil {
 		t.Fatal(err)
 	}
 	for line := range strings.SplitSeq(out.String(), "\n") {
@@ -180,7 +233,7 @@ func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	t.Cleanup(func() { color.NoColor = previous })
 	var out strings.Builder
 	f := FindingOf(results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: sourcepos.Position{Line: 8, Column: 4}}, nil)
-	if err := f.printPretty(&out, 80, false); err != nil {
+	if err := f.printPretty(&out, 80, false, ""); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "\x1b[") {

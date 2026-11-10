@@ -80,9 +80,12 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 	fields := make([]*TemplateFields, 0, len(result.Findings))
 	for _, finding := range result.Findings {
 		if r.format == FormatPretty {
-			// Catalog descriptions explain a rule, not this occurrence. Keep
-			// diagnostic-specific advice, without repeating catalog defaults.
+			configPath := ""
+			// Omit repeated rule descriptions from individual findings.
 			if rule := r.rules.lookup(finding.Diagnostic.Rule); rule != nil {
+				if rule.Category != "" {
+					configPath = "lint.rules." + rule.Category + "." + rule.Name
+				}
 				if finding.Diagnostic.Help == rule.Help {
 					finding.Diagnostic.Help = ""
 				}
@@ -93,7 +96,7 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 					finding.Diagnostic.DocumentationURL = ""
 				}
 			}
-			if err := finding.printPretty(out, r.width, r.hyperlinks); err != nil {
+			if err := finding.printPretty(out, r.width, r.hyperlinks, configPath); err != nil {
 				return err
 			}
 			continue
