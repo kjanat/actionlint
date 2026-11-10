@@ -502,7 +502,7 @@ provenance = "github-attestations"
 [[tools.rshellcheck]]
 version = "1.0.0"
 backend = "github:kjanat/shellcheck-rs"
-specifiers = ["1.0.0"]
+specifiers = ["prefix:1"]
 
 [tools.rshellcheck.options]
 matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
@@ -589,6 +589,15 @@ provenance = "github-attestations"
 version = "1.99.1"
 backend = "core:rust"
 specifiers = ["latest"]
+
+[tools.rust.options]
+components = "clippy,rustfmt"
+targets = "wasm32-unknown-unknown,wasm32-wasip2"
+
+[[tools.rust]]
+version = "1.99.0"
+backend = "core:rust"
+specifiers = ["1.99.0"]
 
 [tools.rust.options]
 components = "clippy,rustfmt"
