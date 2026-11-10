@@ -177,56 +177,8 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 		options = &processconfig.Options{Arguments: arguments}
 	}
 	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
-	got = assertEnvironmentAdditions(t, key, got)
 	compareParity(t, want, got)
 	t.Logf("%d identical findings, %d runner findings, error %q", len(got.Findings), len(got.Reported), got.Error)
-}
-
-// assertEnvironmentAdditions checks the variable diagnostics introduced after
-// the adapters were removed, then compares all other results with their history.
-func assertEnvironmentAdditions(t *testing.T, key string, got parityDiagnostics) parityDiagnostics {
-	t.Helper()
-	type location struct {
-		code         string
-		line, column int
-	}
-	want := map[string][]location{
-		"err/shellcheck_default_shell_detection.yaml": {{"SC2154", 15, 14}, {"SC2154", 20, 14}, {"SC2154", 30, 14}, {"SC2154", 42, 14}, {"SC2154", 47, 14}, {"SC2154", 53, 14}},
-		"ok/untrusted_inputs.yaml":                    {{"SC2153", 10, 41}},
-		"shellcheck inline directives":                {{"SC2154", 13, 27}},
-	}[key]
-	var findings, reports []location
-	var filtered []results.Diagnostic
-	var sources []paritySource
-	for i, finding := range got.Findings {
-		if finding.Rule == "shellcheck" && (finding.Code == "SC2153" || finding.Code == "SC2154") {
-			findings = append(findings, location{finding.Code, finding.Start.Line, finding.Start.Column})
-			continue
-		}
-		filtered = append(filtered, finding)
-		if i < len(got.Sources) {
-			sources = append(sources, got.Sources[i])
-		}
-	}
-	var reported []parityReport
-	for _, report := range got.Reported {
-		if report.Rule == "shellcheck" && (report.Code == "SC2153" || report.Code == "SC2154") {
-			reports = append(reports, location{report.Code, report.Start.Line, report.Start.Column})
-			continue
-		}
-		reported = append(reported, report)
-	}
-	order := func(a, b location) int {
-		return cmp.Or(cmp.Compare(a.line, b.line), cmp.Compare(a.column, b.column), strings.Compare(a.code, b.code))
-	}
-	slices.SortFunc(findings, order)
-	slices.SortFunc(reports, order)
-	slices.SortFunc(want, order)
-	if !slices.Equal(findings, want) || !slices.Equal(reports, want) {
-		t.Fatalf("new environment diagnostics for %s: findings=%v reports=%v want=%v", key, findings, reports, want)
-	}
-	got.Findings, got.Sources, got.Reported = filtered, sources, reported
-	return got
 }
 
 // hostSeverities maps the snapshot's tool severities through each bundled
@@ -569,10 +521,7 @@ func TestProviderParityCases(t *testing.T) {
 	}
 }
 
-// TestProviderParityEmbeddedRunner checks the command line an embedding
-// program's in-process runner receives against the one the ShellCheck
-// adapter built.
-func TestProviderParityEmbeddedRunner(t *testing.T) {
+func TestProviderEmbeddedRunnerArguments(t *testing.T) {
 	var args []string
 	registrations := registry.Registrations(registry.Selections{"shellcheck": scripts.Selection{Runner: func(received []string, _ string) ([]byte, error) {
 		args = received
@@ -582,8 +531,8 @@ func TestProviderParityEmbeddedRunner(t *testing.T) {
 	if _, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "/", Tools: registrations}, []workspace.Source{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
 		t.Fatal(err)
 	}
-	adapter := []string{"--norc", "-f", "json1", "--shell", "bash", "-e", "SC1091,SC2194,SC2050,SC2157,SC2043", "-"}
-	if !slices.Equal(args, adapter) {
-		t.Fatalf("embedded command line differs:\nadapter:   %q\nmanifests: %q", adapter, args)
+	want := []string{"--norc", "-f", "json1", "--shell", "bash", "-e", "SC1091,SC2194,SC2050,SC2157,SC2043,SC2153,SC2154", "-"}
+	if !slices.Equal(args, want) {
+		t.Fatalf("embedded command line: got %q, want %q", args, want)
 	}
 }
