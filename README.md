@@ -1,5 +1,8 @@
 # actionlint
 
+[![Docker latest][docker-badge]][docker-latest]
+[![Docker nightly][docker-nightly-badge]][docker-nightly]
+
 **Catch the broken workflow before the runner does.**
 
 actionlint checks GitHub Actions workflows, action manifests, and the scripts inside them. Find the misspelled matrix property, the missing action input, the unsafe interpolation, and the shell bug before the next push.
@@ -313,3 +316,8 @@ The [repository layout](repository-layout.md) explains where the checker, CLI, p
 actionlint uses the [MIT license](LICENSE.txt). The [identity artwork](docs/assets/brand/LICENSE.md) is by Kaj Kowalski and licensed under CC BY 4.0.
 
 [Support development](https://github.com/sponsors/kjanat).
+
+[docker-badge]: https://img.shields.io/badge/Docker-latest-black?logo=docker&logoColor=white&labelColor=2496ED
+[docker-latest]: https://hub.docker.com/r/kjanat/actionlint/tags?name=latest
+[docker-nightly-badge]: https://img.shields.io/badge/Docker-nightly-black?logo=docker&logoColor=white&labelColor=2496ED
+[docker-nightly]: https://hub.docker.com/r/kjanat/actionlint/tags?name=nightly
