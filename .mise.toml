@@ -39,7 +39,7 @@ wit-bindgen                = "0.63.0"
 uv                         = "0.13.7"
 yamllint                   = { version = "1.38.0", depends = ["uv"] }
 zizmor                     = "1.31.1"
-tombi                      = "1.10.0"
+tombi                      = "1.11.1"
 markscribe                 = "0.8.1"
 pandoc                     = {
   version                               = "3.13",
