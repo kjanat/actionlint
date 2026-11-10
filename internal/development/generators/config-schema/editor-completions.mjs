@@ -61,6 +61,14 @@ let serial = 0;
 /** @param {string} text */
 const document = (text) => TextDocument.create(`file:///review/schema-completion-${serial++}.yaml`, 'yaml', 1, text);
 
+/** @param {string} text */
+function parseCursorFixture(text) {
+	const offset = text.indexOf('|');
+	assert.ok(offset >= 0 && offset === text.lastIndexOf('|'), `Expected one cursor marker: ${JSON.stringify(text)}`);
+	const doc = document(text.slice(0, offset) + text.slice(offset + 1));
+	return { doc, position: doc.positionAt(offset) };
+}
+
 /** @type {unknown} */
 const schema = JSON.parse(schemaSource(schemaURI));
 const definitions = schemaObject(schemaObject(schema).$defs);
@@ -202,9 +210,8 @@ for (
 		['tools:\n  ruff:\n    select: ["|F"]\n', 'F821'],
 	]
 ) {
-	const offset = text.indexOf('|');
-	const doc = document(text.replace('|', ''));
-	const result = await service.doComplete(doc, doc.positionAt(offset), false);
+	const { doc, position } = parseCursorFixture(text);
+	const result = await service.doComplete(doc, position, false);
 	const item = result?.items.find((candidate) => candidate.label.replaceAll('"', '') === expected);
 	assert.ok(item?.textEdit && 'range' in item.textEdit, `${text}: missing ${expected}: ${JSON.stringify(result)}`);
 	const completed = document(TextDocument.applyEdits(doc, [item.textEdit]));
@@ -283,9 +290,8 @@ for (const quote of ['"', "'"]) {
 			[`lint: {rules: {security: ${quote}|${quote}}}\n`, `lint: {rules: {security: ${quote}on${quote}}}\n`, 'on'],
 		]
 	) {
-		const offset = text.indexOf('|');
-		const doc = document(text.replace('|', ''));
-		const completion = await service.doComplete(doc, doc.positionAt(offset), false);
+		const { doc, position } = parseCursorFixture(text);
+		const completion = await service.doComplete(doc, position, false);
 		const item = completion?.items.find(candidate => candidate.label.replaceAll('"', '') === label);
 		assert.ok(item?.textEdit && 'range' in item.textEdit, `${text}: missing ${label}`);
 		const applied = TextDocument.applyEdits(doc, [item.textEdit]);
