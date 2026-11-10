@@ -1,0 +1,7 @@
+#:tombi toml-version = "v1.1.0"
+[output]
+formats=["json", "sarif"]
+log-level="debug"
+summary=false
+network-stats=true
+quiet=false

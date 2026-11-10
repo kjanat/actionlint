@@ -48,7 +48,9 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 	switch t {
 	case reflect.TypeFor[map[string]*string]():
-		return &jsonschema.Schema{Type: "object", AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}, Extras: map[string]any{"x-tombi-additional-key-label": "variable_name"}}
+		return &jsonschema.Schema{Type: "object", PropertyNames: definitionRef("non-blank-string"), AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}, Extras: map[string]any{"x-tombi-additional-key-label": "variable_name"}}
+	case reflect.TypeFor[actionlint.LocalActionSources]():
+		return &jsonschema.Schema{Type: "object", PropertyNames: definitionRef("local-action-directory"), AdditionalProperties: definitionRef("local-action-directory"), Extras: map[string]any{"x-tombi-additional-key-label": "action_directory"}}
 	case reflect.TypeFor[actionlint.PluginDeclarations]():
 		mapping := reflectMapping(struct {
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
@@ -62,9 +64,10 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		source, _ := direct.Properties.Get("source")
 		source.Pattern = `^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$`
 		return &jsonschema.Schema{
-			Type: "array",
+			Type:        "array",
+			UniqueItems: true,
 			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, HTTPS artifact URL pinned with #sha256=<64 hex digits>, or OCI reference pinned with @sha256:<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.2.0", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64), "oci://ghcr.io/owner/provider@sha256:" + strings.Repeat("a", 64)}},
+				{Type: "string", MinLength: new(uint64(1)), Not: &jsonschema.Schema{Pattern: `@$`}, Description: "Plugin alias, repository with optional release tag, HTTPS artifact URL pinned with #sha256=<64 hex digits>, or OCI reference pinned with @sha256:<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.2.0", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64), "oci://ghcr.io/owner/provider@sha256:" + strings.Repeat("a", 64)}},
 				mapping,
 				direct,
 			}},
@@ -79,9 +82,14 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Reason string `yaml:"reason,omitempty" jsonschema:"minLength=1,description=Optional explanation for this exception."`
 		}{})
 		rule, _ := mapping.Properties.Get("rule")
-		rule.Ref = "#/$defs/rule-name"
+		rule.AllOf = []*jsonschema.Schema{definitionRef("rule-name")}
 		rule.Type, rule.MinLength = "", nil
-		rule.Not = &jsonschema.Schema{Enum: []any{"disallow-suppressions"}}
+		entry, _ := checking.ConfigurationRules().FindRule("forbidden-suppression")
+		blocked := []any{entry.Name}
+		for _, alias := range entry.Aliases {
+			blocked = append(blocked, alias.Name)
+		}
+		rule.Not = &jsonschema.Schema{Enum: blocked}
 		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
 			property, _ := mapping.Properties.Get(name)
 			property.Ref = "#/$defs/non-blank-string"
@@ -206,8 +214,24 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
 		}{})
 		mapping.Version, mapping.ID = "", ""
+		for _, name := range []string{"runners", "secrets"} {
+			property, _ := mapping.Properties.Get(name)
+			visitSchemaType(property, "array", func(array *jsonschema.Schema) {
+				array.Items = definitionRef("non-blank-string")
+				array.UniqueItems = true
+			})
+		}
 		environments, _ := mapping.Properties.Get("environments")
 		environments.Extras = map[string]any{"x-tombi-additional-key-label": "environment_name"}
+		visitSchemaType(environments, "object", func(environments *jsonschema.Schema) {
+			environments.PropertyNames = definitionRef("non-blank-string")
+			environments.Extras = map[string]any{"x-tombi-additional-key-label": "environment_name"}
+			secrets, _ := environments.AdditionalProperties.Properties.Get("secrets")
+			visitSchemaType(secrets, "array", func(array *jsonschema.Schema) {
+				array.Items = definitionRef("non-blank-string")
+				array.UniqueItems = true
+			})
+		})
 		return mapping
 	case reflect.TypeFor[actionlint.JobTimeoutPolicy]():
 		// The runtime type stores private state and accepts either a boolean or
@@ -262,9 +286,19 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 }
 
+func visitSchemaType(schema *jsonschema.Schema, kind string, visit func(*jsonschema.Schema)) {
+	if schema.Type == kind {
+		visit(schema)
+	}
+	for _, alternatives := range [][]*jsonschema.Schema{schema.OneOf, schema.AnyOf, schema.AllOf} {
+		for _, alternative := range alternatives {
+			visitSchemaType(alternative, kind, visit)
+		}
+	}
+}
+
 func backendSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema {
-	// Backend stores its transport privately. Update this wire schema when
-	// Backend.UnmarshalYAML changes its accepted fields.
+	// This schema describes the process and wasm fields read by Backend.DecodeConfig.
 	mapping := reflectMapping(struct {
 		Process *struct {
 			Executable string            `yaml:"executable,omitempty" jsonschema:"description=A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory."`
@@ -277,10 +311,33 @@ func backendSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Sche
 	}{})
 	wasm, _ := mapping.Properties.Get("wasm")
 	path, _ := wasm.Properties.Get("path")
+	path.AllOf = []*jsonschema.Schema{definitionRef("nul-free-string")}
 	path.Description = "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory."
+	process, _ := mapping.Properties.Get("process")
+	executable, _ := process.Properties.Get("executable")
+	executable.AllOf = []*jsonschema.Schema{definitionRef("nul-free-string")}
+	args, _ := process.Properties.Get("args")
+	for _, alternative := range args.OneOf {
+		if alternative.Type == "array" {
+			alternative.Items = definitionRef("nul-free-string")
+		}
+	}
+	env, _ := process.Properties.Get("env")
+	for _, alternative := range env.OneOf {
+		if alternative.Type == "object" {
+			alternative.PropertyNames = &jsonschema.Schema{MinLength: new(uint64(1)), Not: &jsonschema.Schema{Pattern: `[=\x00]`}}
+			alternative.AdditionalProperties = definitionRef("nul-free-string")
+		}
+	}
+	for _, name := range []string{"process", "wasm"} {
+		transport, _ := mapping.Properties.Get(name)
+		mapping.Properties.Set(name, &jsonschema.Schema{OneOf: []*jsonschema.Schema{transport, {Type: "null"}}})
+		selected := jsonschema.NewProperties()
+		selected.Set(name, &jsonschema.Schema{Type: "object", Description: transport.Description, AdditionalProperties: jsonschema.TrueSchema})
+		mapping.OneOf = append(mapping.OneOf, &jsonschema.Schema{Required: []string{name}, Properties: selected, AdditionalProperties: jsonschema.TrueSchema})
+	}
 	mapping.Version = ""
 	mapping.ID = ""
-	mapping.OneOf = []*jsonschema.Schema{{Required: []string{"process"}}, {Required: []string{"wasm"}}}
 	return mapping
 }
 
@@ -379,6 +436,13 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
+	s.Type = ""
+	s.AnyOf = []*jsonschema.Schema{{Type: "object", AdditionalProperties: jsonschema.TrueSchema}, {Type: "null"}}
+	overrides, _ := s.Properties.Get("overrides")
+	visitSchemaType(overrides, "array", func(array *jsonschema.Schema) {
+		includes, _ := array.Items.Properties.Get("includes")
+		includes.Contains = &jsonschema.Schema{Type: "string", Not: &jsonschema.Schema{Pattern: "^!"}}
+	})
 	s.Definitions, err = sharedDefinitions(func(value any) *jsonschema.Schema {
 		schema := r.Reflect(value)
 		schema.Version, schema.ID = "", ""

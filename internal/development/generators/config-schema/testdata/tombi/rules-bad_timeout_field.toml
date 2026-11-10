@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.conventions]
+[lint.rules.conventions.job-timeout]
+level = 'on'
+
+[lint.rules.conventions.job-timeout.options]
+maximum = 10.0

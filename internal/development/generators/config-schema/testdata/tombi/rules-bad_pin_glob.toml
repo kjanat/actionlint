@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.security]
+[lint.rules.security.unpinned-reference]
+level = 'on'
+
+[lint.rules.security.unpinned-reference.options]
+exclude = ['[']

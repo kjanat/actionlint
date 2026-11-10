@@ -1,0 +1,33 @@
+lint:
+  experimental: true
+  rules:
+    preset: none
+    correctness: {action: warn}
+    suspicious: {errexit-status: default}
+    security:
+      unpinned-reference: {level: warn, options: {exclude: ["root/*"]}}
+      missing-permissions: {level: on, options: {require-at: workflow}}
+    conventions:
+      job-timeout: {level: on, options: {min-minutes: 5, max-minutes: 60}}
+      forbidden-suppression: {level: on, options: {report: suppression}}
+overrides:
+  - includes: ["inner/**"]
+    lint:
+      experimental: false
+      rules:
+        correctness: {action: off}
+        security:
+          unpinned-reference: {level: error, options: {exclude: ["inner/*"]}}
+          missing-permissions: {level: warn, options: {require-at: every-job}}
+        conventions:
+          job-timeout: {level: warn, options: {max-minutes: 30}}
+          forbidden-suppression: {level: warn, options: {report: all}}
+  - includes: ["inner/re-enable/**"]
+    lint: {experimental: true}
+  - includes: ["inner/special/**"]
+    lint:
+      experimental: true
+      rules:
+        correctness: {action: error}
+        suspicious: {errexit-status: off}
+        conventions: {job-timeout: {level: default, options: {min-minutes: 10}}}

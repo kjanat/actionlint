@@ -1,0 +1,2 @@
+[tools.ruff.backend.process]
+executable = "a\u0000b"

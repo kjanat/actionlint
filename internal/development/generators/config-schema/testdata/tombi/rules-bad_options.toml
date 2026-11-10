@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.correctness]
+[lint.rules.correctness.action]
+level = 'on'
+
+[lint.rules.correctness.action.options]
+foo = true

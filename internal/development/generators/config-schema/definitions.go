@@ -69,6 +69,9 @@ func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.
 		knownValues = append(knownValues, choice.Const)
 	}
 	return jsonschema.Definitions{
+		"nul-free-string":        {Type: "string", Not: &jsonschema.Schema{Pattern: `[\x00]`}},
+		"single-line-path":       {Type: "string", MinLength: new(uint64(1)), Not: &jsonschema.Schema{Pattern: `[\x00\r\n]`}},
+		"local-action-directory": {Type: "string", Pattern: `^(\./|\$/)`, Not: &jsonschema.Schema{Pattern: `[\\:\x00\r\n]|\$\{\{`}},
 		"known-rule-name":        {AnyOf: names},
 		"known-rule-name-values": {Enum: knownValues},
 		"rule-name": {

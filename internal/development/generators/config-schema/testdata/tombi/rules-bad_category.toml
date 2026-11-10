@@ -1,0 +1,4 @@
+[lint]
+[lint.rules]
+[lint.rules.correctness]
+unpinned-reference = 'on'

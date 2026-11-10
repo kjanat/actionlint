@@ -1,0 +1,2 @@
+[tools.ruff.config]
+line-length = 100

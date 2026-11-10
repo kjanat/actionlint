@@ -1,0 +1,18 @@
+[[overrides]]
+includes = ['**']
+
+[overrides.lint]
+[overrides.lint.rules]
+[overrides.lint.rules.conventions]
+[overrides.lint.rules.conventions.job-timeout]
+level = 'warn'
+
+[overrides.lint.rules.conventions.job-timeout.options]
+max-minutes = 30.0
+
+[overrides.lint.rules.security]
+[overrides.lint.rules.security.unpinned-reference]
+level = 'on'
+
+[overrides.lint.rules.security.unpinned-reference.options]
+exclude = ['org/*']

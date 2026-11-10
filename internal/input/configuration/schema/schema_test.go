@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -84,6 +85,62 @@ func TestDocumentAddsInstalledProviders(t *testing.T) {
 	}
 	if err := compile(t, installed(true)).Validate([]byte(`{"tools":{"oci-tool":{"config":"oci-tool.toml"}}}`)); err != nil {
 		t.Fatalf("configuration file path rejected: %v", err)
+	}
+}
+
+func TestDocumentScopesProviderSchemasOnce(t *testing.T) {
+	manifest := installed(true)
+	manifest.ConfigSchema = json.RawMessage(`{"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
+	manifest.Process.ConfigSchema = json.RawMessage(`{"$id":"https://example.invalid/process-settings","type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
+	schema := compile(t, manifest)
+	for _, input := range []string{
+		`{"tools":{"oci-tool":{"config":{"value":3,"extra":true}}},"overrides":[{"includes":["a.yml"],"tools":{"oci-tool":{"config":{"value":4}}}},{"includes":["b.yml"],"tools":{"oci-tool":{"config":{"value":5}}}}]}`,
+		`{"tools":{"oci-tool":{"config":"settings.toml"}}}`,
+	} {
+		if err := schema.Validate([]byte(input)); err != nil {
+			t.Errorf("%s rejected: %v", input, err)
+		}
+	}
+	for _, input := range []string{
+		`{"tools":{"oci-tool":{"config":{"value":1}}}}`,
+		`{"overrides":[{"includes":["a.yml"],"tools":{"oci-tool":{"config":{"value":6}}}}]}`,
+		`{"tools":{"oci-tool":{"config":"bad\npath"}}}`,
+	} {
+		if err := schema.Validate([]byte(input)); err == nil {
+			t.Errorf("%s accepted", input)
+		}
+	}
+}
+
+func TestDocumentPreservesUnevaluatedProperties(t *testing.T) {
+	manifest := installed(false)
+	manifest.Process = nil
+	manifest.ConfigSchema = json.RawMessage(`{"type":"object","allOf":[{"type":"object","properties":{"known":{"type":"integer"}}}],"unevaluatedProperties":false}`)
+	schema := compile(t, manifest)
+	if err := schema.Validate([]byte(`{"tools":{"oci-tool":{"config":{"known":1}}}}`)); err != nil {
+		t.Fatalf("known property rejected: %v", err)
+	}
+	if err := schema.Validate([]byte(`{"tools":{"oci-tool":{"config":{"unknown":1}}}}`)); err == nil {
+		t.Fatal("unevaluated property accepted")
+	}
+}
+
+func TestDocumentScopesRelativeProviderSchemas(t *testing.T) {
+	for _, id := range []string{"", "settings.json", "../settings.json", "/settings.json"} {
+		t.Run(id, func(t *testing.T) {
+			manifest := installed(false)
+			manifest.ConfigSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
+			manifest.Process.ConfigSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
+			schema := compile(t, manifest)
+			if err := schema.Validate([]byte(`{"tools":{"oci-tool":{"config":{"value":3}}}}`)); err != nil {
+				t.Fatalf("valid value rejected: %v", err)
+			}
+			for _, value := range []int{1, 6} {
+				if err := schema.Validate(fmt.Appendf(nil, `{"tools":{"oci-tool":{"config":{"value":%d}}}}`, value)); err == nil {
+					t.Errorf("invalid value %d accepted", value)
+				}
+			}
+		})
 	}
 }
 

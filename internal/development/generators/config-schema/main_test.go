@@ -136,7 +136,10 @@ func TestPluginRuleSelectors(t *testing.T) {
 	disabled, _ := lint.Properties.Get("disable")
 	policy := mapYAMLType(reflect.TypeFor[actionlint.SuppressionsPolicy](), nil)
 	prohibited, _ := policy.OneOf[1].Properties.Get("rules")
-	for _, selector := range []*jsonschema.Schema{rule, disabled.Items, prohibited.Items} {
+	if len(rule.AllOf) != 1 {
+		t.Fatal("ignore selectors must reference rule names and apply their suppression constraints")
+	}
+	for _, selector := range []*jsonschema.Schema{rule.AllOf[0], disabled.Items, prohibited.Items} {
 		if selector.Ref != "#/$defs/rule-name" || len(selector.Examples) != 0 || len(selector.Enum) != 0 {
 			t.Fatalf("rule selectors must reference shared names without copied catalogues: %+v", selector)
 		}

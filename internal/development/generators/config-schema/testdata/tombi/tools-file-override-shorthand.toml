@@ -1,0 +1,4 @@
+[[overrides]]
+includes = ['*.yml']
+[overrides.tools.file-tool]
+limit = 5

@@ -1,0 +1,6 @@
+[lint]
+[lint.rules]
+conventions = 'warn'
+correctness = 'on'
+security = false
+suspicious = 'all'

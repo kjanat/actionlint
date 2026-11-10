@@ -1,0 +1,3 @@
+[lint.rules.conventions.local-tool]
+level = 'error'
+options = { limit = 0 }
