@@ -5,9 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 )
 
 func TestMain(m *testing.M) {
+	testutil.BlockExternalHTTP()
 	dir, err := isolateGitConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

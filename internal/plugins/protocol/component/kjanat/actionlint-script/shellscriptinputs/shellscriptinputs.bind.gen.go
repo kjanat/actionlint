@@ -2,8 +2,8 @@
 
 // Shell text, dialect and source mapping supplied to a checker for one occurrence.
 // Normative profile: shell-preparation-0.3.0.md in the protocol JSON directory.
-// The host owns this transformation; guests must not repeat it or infer its
-// results from the host version, package name, or diagnostic messages.
+// The host supplies source mapping and interpreter facts. A guest interprets
+// its own directives and chooses its diagnostic exclusions.
 package shellscriptinputs
 
 import (

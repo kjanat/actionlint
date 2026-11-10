@@ -51,9 +51,9 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 	case factavailability.UnsupportedHostReason:
 		help = "; the GitHub metadata provider only supports github.com"
 	case factavailability.UnsupportedObjectFormatReason:
-		help = "; SHA-256 Git object IDs are not supported; use a full SHA-1 commit or a named reference with --resolve-with"
+		help = "; metadata lookup supports SHA-1 commit IDs; use a branch or tag name instead"
 	case factavailability.InvalidResolverResultReason:
-		help = "; the resolver returned an invalid or incomplete result; check the resolver selected by --resolve-with"
+		help = "; the reference resolver returned an invalid or incomplete selection"
 	case factavailability.NotFetchedReason, factavailability.OfflineReason, factavailability.LookupDisabledReason,
 		factavailability.DeniedReason, factavailability.FailedReason, factavailability.NotFoundReason,
 		factavailability.UnsupportedReason, factavailability.ResolverNotConfiguredReason, factavailability.CacheMissReason,

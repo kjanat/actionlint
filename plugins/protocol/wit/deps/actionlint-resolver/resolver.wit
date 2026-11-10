@@ -1,0 +1,55 @@
+package kjanat:actionlint-resolver@0.1.0;
+
+/// Actionlint fetches the exact repository facts requested by the resolver.
+/// Credentials and network access belong to actionlint, not the component.
+interface repository-objects {
+    record repository {
+        host: string,
+        id: u64,
+        name: string,
+        observed-at: string,
+    }
+
+    variant object {
+        commit,
+        tree,
+        peeled-tag(string),
+        peeled-tree-tag(string),
+    }
+
+    /// Start one lookup and check the repository's identity.
+    open: func(repository: string, expected-id: option<u64>) -> result<repository, string>;
+    /// Read this exact reference. None means the host verified its absence.
+    get-ref: func(name: string) -> result<option<string>, string>;
+    /// Read a full object ID. A peeled tag includes a verified tag chain.
+    get-object: func(id: string) -> result<option<object>, string>;
+    /// Recheck repository identity and every observed reference before publishing a result.
+    finish: func() -> result<_, string>;
+}
+
+interface reference-resolver {
+    enum kind { action, workflow }
+    record request {
+        repository: string,
+        reference: string,
+        kind: kind,
+        expected-repository-id: option<u64>,
+    }
+    variant selected-by {
+        object-id,
+        reference(string),
+    }
+    variant content {
+        commit(string),
+        tree(string),
+    }
+    record resolution {
+        repository-id: u64,
+        repository: string,
+        observed-at: string,
+        selected-object: string,
+        selection: selected-by,
+        content: content,
+    }
+    resolve: func(request: request) -> result<resolution, string>;
+}

@@ -36,6 +36,11 @@ func validatePluginInterfaces(data []byte, roles extensionRoleSet) error {
 			return fmt.Errorf("incompatible analyzer contract: %w", err)
 		}
 	}
+	if roles.referenceResolver {
+		if err := expectedReferenceResolverInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+			return fmt.Errorf("incompatible reference resolver interface: %w", err)
+		}
+	}
 	if roles.toolIntegration {
 		if err := expectedToolIntegrationInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible tool integration contract: %w", err)

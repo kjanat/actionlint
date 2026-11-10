@@ -88,7 +88,7 @@ func generateContract(spec roleContract) error {
 		return err
 	}
 	for _, iface := range resolved.Interfaces {
-		if !iface.Match("kjanat:actionlint/" + role) {
+		if iface.Name == nil || *iface.Name != role {
 			continue
 		}
 		g := generator{types: make(map[*wit.TypeDef]string)}

@@ -5,6 +5,13 @@ Plugins can be distributed as WebAssembly components, supported core Wasm script
 The [TypeScript SDK](../plugins/sdk/typescript/README.md) supports manifest authoring,
 jq tests and packaging. See [contribution routes](#contribute-a-rule) to choose an interface.
 
+Commitish is the reference resolver bundled with actionlint. Resolver plugins
+export `kjanat:actionlint-resolver/reference-resolver@0.1.0` and request exact
+repository references and objects through the `repository-objects` import.
+Actionlint performs those requests and records their network usage. Loading a
+resolver plugin replaces Commitish for that analysis. See
+[reference resolution](remote-actions.md#reference-resolution).
+
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.2.0` interface, defined in
 [`plugins/protocol/wit/analyzer.wit`](../plugins/protocol/wit/analyzer.wit). A plugin first describes the checks it provides and the data it needs.
 For each analysis call, it receives one document and the requested data, then returns diagnostics. Components may instead implement the independent

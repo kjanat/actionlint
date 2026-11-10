@@ -16,6 +16,7 @@ func TestMain(m *testing.M) {
 	if os.Getenv("ACTIONLINT_TEST_RUFF_DISCOVERY") == "1" {
 		os.Exit(testutil.RuffDiscoveryHelper())
 	}
+	testutil.BlockExternalHTTP()
 	if err := os.Chdir("../.."); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

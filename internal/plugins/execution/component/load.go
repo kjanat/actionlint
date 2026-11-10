@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
@@ -86,10 +87,20 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
+	if required.repositoryObjects && !roles.referenceResolver {
+		return errors.New("repository objects require the reference-resolver role")
+	}
 	if err := validatePluginInterfaces(data, roles); err != nil {
 		return err
 	}
 	p.component = component
+	p.referenceResolver = roles.referenceResolver
+	if required.repositoryObjects {
+		p.repositoryFactory, err = repositorybind.NewFactory(ctx, p.engine)
+		if err != nil {
+			return err
+		}
+	}
 	if required.environments {
 		p.environmentFactory, err = environmentbind.NewFactory(ctx, p.engine)
 		if err != nil {

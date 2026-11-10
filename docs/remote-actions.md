@@ -14,19 +14,18 @@ actionlint check --action-metadata=offline .github/workflows/build.yml
   HTTP requests and runs no resolver process. A missing full-SHA cache entry
   records `cache-miss`; named references record `offline` because resolving them
   requires a new observation.
-- `online` acquires GitHub.com metadata for full 40-character SHA-1 commit
-  references. Named references require a resolver selected with `--resolve-with`.
-  The host cannot resolve SHA-256 objects or raw tag objects directly. It never
-  substitutes a similarly named tag or branch for an unsupported selection.
+- `online` uses the bundled Commitish WebAssembly plugin to resolve branches,
+  tags and commit references, then downloads metadata at the selected commit.
+  Annotated tags are followed to their commit. Actionlint performs the requests
+  and records them in `--network-stats`.
 
 The metadata report distinguishes these lookup failures:
 
-| Reason                      | Meaning                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `resolver-not-configured`   | A named reference needs a resolver, but none was selected. The report records the skipped lookup without a lint finding. |
-| `unsupported-host`          | The GitHub metadata provider cannot fetch from this host.                                                                |
-| `unsupported-object-format` | The reference is a SHA-256 Git object ID, which the provider cannot resolve.                                             |
-| `invalid-resolver-result`   | The selected resolver returned an invalid or incomplete result.                                                          |
+| Reason                      | Meaning                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `unsupported-host`          | The GitHub metadata provider cannot fetch from this host.                    |
+| `unsupported-object-format` | The reference is a SHA-256 Git object ID, which the provider cannot resolve. |
+| `invalid-resolver-result`   | The selected resolver returned an invalid or incomplete result.              |
 
 When enabled, `missing-action-metadata` reports lookup failures. It does not
 report disabled lookups, offline cache misses or a missing resolver.
@@ -70,24 +69,28 @@ repository ID, are corrupt, or fail their digest check, the metadata is
 unavailable. Offline operation cannot recheck who currently owns a repository
 name. Coverage includes the recorded identity and observation time.
 
-## Resolver boundary
+## Reference resolution
 
-`--resolve-with EXECUTABLE` starts a native program and exchanges version-1
-JSON requests and responses through stdin and stdout. This protocol is separate
-from the WebAssembly component plugin interfaces. Action metadata sends
-`kind: "action"`; reusable workflows keep `kind: "workflow"`.
-Keep those request kinds separate. The provider must select references according
-to the action or workflow behavior it implements. Generic Git revision parsing
-or a shortcut through the GitHub API does not establish equivalent selection.
+Commitish runs inside actionlint as a WebAssembly component. It asks actionlint
+for exact references and Git objects. Actionlint fetches them, verifies the
+repository identity and rechecks the observed references before accepting the
+result. Credentials and HTTP responses stay in actionlint.
 
-For named action metadata, a successful result must also supply
-`selected_object` (the original full SHA-1 object before any tag peeling) and
-`selected_ref` (the exact lookup key, such as `refs/tags/v4` or `HEAD`). It must
-also include the repository ID and name, resolved commit, observation time and
-evidence. Other resolver callers can use a result without these selection
-fields, but metadata acquisition reports it as `invalid-resolver-result`. The host
-does not guess a tag or branch route. A typed `actions.Provider` can instead
-supply the manifest and complete selection evidence directly to an in-process caller.
+The Commitish library selects the reference using the action or reusable-workflow
+rules. The result identifies the selected tag or commit object separately from
+the commit whose files will be read. If a tag and branch share a name, the
+selection follows those rules rather than GitHub's general commits endpoint.
+
+To replace the bundled resolver, load a component implementing
+`kjanat:actionlint-resolver/reference-resolver@0.1.0` with `--plugin` or a config
+plugin declaration. Actionlint accepts one resolver per analysis. The plugin
+requests repository data through `repository-objects@0.1.0`; actionlint limits
+those requests to the repository being resolved.
+
+`--resolve-with EXECUTABLE` selects a native resolver instead. It exchanges
+version-1 JSON through stdin and stdout. `--resolver-arg VALUE` passes a literal
+argument. Both routes distinguish action and workflow requests. Native resolvers
+must supply their network counts for inclusion in `--network-stats`.
 
 ## Reusable workflows
 
@@ -101,10 +104,9 @@ permissions. By default, it also checks independently triggered workflows, but s
 workflows triggered only by `workflow_call`. Its `require-at` option can instead
 require declarations at the workflow level or on every job, including reusable calls.
 
-Full SHA-1 references work without a resolver. Named references require
-`--resolve-with` and use the resolver's workflow selection, separately from
-action selection. Offline mode accepts full SHA-1 references already cached
-online. Off mode downloads nothing.
+The bundled resolver handles named workflow references as well as commit IDs.
+Offline mode accepts full SHA-1 references already cached online. Off mode
+downloads nothing.
 
 These checks inspect the directly referenced workflow. They do not follow remote
 workflow call chains. Unavailable metadata supplies no input, output or permission

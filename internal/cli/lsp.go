@@ -46,5 +46,5 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return 0, lsp.LanguageServer(ctx, streams.Stdin, streams.Stdout, checking.Options{RemoteActions: metadata, AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}, plugins)
+	return 0, lsp.LanguageServer(ctx, streams.Stdin, streams.Stdout, checking.Options{RemoteActions: metadata, AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, SuggestCommitPins: c.ResolverCommand != "", WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}, plugins)
 }
