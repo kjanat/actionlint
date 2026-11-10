@@ -25,12 +25,21 @@ func TestCommandJSONErrorsAndLogs(t *testing.T) {
 		got := testRunCommand(commandGoodWorkflow, tc.args...)
 		decoder := json.NewDecoder(strings.NewReader(got.Stderr))
 		if tc.buildLog {
-			var record map[string]string
-			if err := decoder.Decode(&record); err != nil {
-				t.Fatalf("%q: invalid build log: %v", tc.args, err)
-			}
-			if len(record) != 1 || !strings.HasPrefix(record["log"], "verbose: actionlint ") || !strings.Contains(record["log"], "; installed: ") || !strings.Contains(record["log"], "; build: ") {
-				t.Fatalf("%q: invalid build identity: %v", tc.args, record)
+			for _, prefix := range []string{
+				"verbose: actionlint version: ",
+				"verbose: installed: ",
+				"verbose: Go version: ",
+				"verbose: operating system: ",
+				"verbose: architecture: ",
+			} {
+				var record map[string]string
+				if err := decoder.Decode(&record); err != nil {
+					t.Fatalf("%q: invalid build log: %v", tc.args, err)
+				}
+				value, ok := strings.CutPrefix(record["log"], prefix)
+				if len(record) != 1 || !ok || value == "" || strings.ContainsAny(value, "\r\n") {
+					t.Fatalf("%q: invalid build field %q: %v", tc.args, prefix, record)
+				}
 			}
 		}
 		var message struct {
