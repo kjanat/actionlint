@@ -1,7 +1,7 @@
 import type { AsyncFunctionArguments } from '@actions/github-script';
 
-import type { FeedItem } from './github-actions-feed.ts';
-import { blocks, decodeEntities, FEED_URL, parseFeed } from './github-actions-feed.ts';
+import type { FeedItem } from '#feed';
+import { blocks, decodeEntities, FEED_URL, parseFeed } from '#feed';
 
 export type RunArguments = Pick<AsyncFunctionArguments, 'github' | 'context' | 'core'>;
 

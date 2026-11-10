@@ -15,8 +15,8 @@ import { drawSelection, EditorView, keymap, lineNumbers } from '@codemirror/view
 import { tags } from '@lezer/highlight';
 import { default as formatXml } from 'xml-formatter';
 
-import { parseFeed } from './github-actions-feed.ts';
-import { readRawPages } from './reader-pages.ts';
+import { parseFeed } from '#feed';
+import { readRawPages } from '#reader-pages';
 
 export function createXmlViewer(container: HTMLElement, loadOlder: () => Promise<boolean>) {
 	const toolbar = document.createElement('div');

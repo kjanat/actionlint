@@ -41,7 +41,11 @@
       "default": "./dist/index.js"
     },
     "#pkg": "./package.json",
-    "#/*": "./src/*.ts"
+    "#*": {
+      "source": "./src/*.ts",
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
   },
   "exports": {
     ".": {
