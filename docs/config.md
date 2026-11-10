@@ -5,8 +5,12 @@ Configuration is optional. Put `actionlint.yaml`, `actionlint.yml`, `actionlint.
 actionlint reads the first of those names that exists. The CLI and GitHub Action use the same
 settings.
 
-Create a config with `actionlint config init`. Choose its format with `--json`,
-`--jsonc`, `--toml`, `--yaml` or `--yml`. YAML is the default.
+We recommend TOML with [Tombi](https://github.com/tombi-toml/tombi) for editor
+completion and validation. Create `.github/actionlint.toml` with
+`actionlint config init --toml`.
+
+YAML, JSON and JSONC are also supported. Choose the format with `--json`,
+`--jsonc`, `--toml`, `--yaml` or `--yml`. Without a format flag, `config init` writes YAML.
 Both `.json` and `.jsonc` accept comments and trailing commas. `--json` generates
 ordinary JSON, while `--jsonc` includes commented rule examples.
 
@@ -81,6 +85,10 @@ ENVIRONMENT_STAGE = "production"
 ```
 
 Errors and warnings name the line and column in the file as written.
+
+Tombi reads the schema directive for completion and validation. The schema selects
+TOML 1.1 and labels keys such as rule names and environment names in completion
+suggestions. Deprecated rule names produce a message naming their replacement.
 
 The [v2 schema](https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json) provides editor completion and validation.
 The YAML language service completes quoted property names after a prefix is

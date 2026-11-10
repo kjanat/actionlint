@@ -48,7 +48,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 	switch t {
 	case reflect.TypeFor[map[string]*string]():
-		return &jsonschema.Schema{Type: "object", AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}}
+		return &jsonschema.Schema{Type: "object", AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}, Extras: map[string]any{"x-tombi-additional-key-label": "variable_name"}}
 	case reflect.TypeFor[actionlint.PluginDeclarations]():
 		mapping := reflectMapping(struct {
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
@@ -128,17 +128,16 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				Level  actionlint.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
 			}{})
 			group.Version, group.ID = "", ""
+			group.Extras = map[string]any{"x-tombi-additional-key-label": "rule_name"}
 			for _, rule := range checking.ConfigurationRules().Rules() {
 				if rule.Category != category {
 					continue
 				}
-				setting := definitionRef("rule-setting")
+				setting := &jsonschema.Schema{AllOf: []*jsonschema.Schema{definitionRef("rule-setting")}}
 				if options := ruleOptions(rule.Name); options != nil {
 					optionsSchema := reflectMapping(options)
 					optionsSchema.Version, optionsSchema.ID = "", ""
-					setting = definitionRef("plugin-setting")
-					setting.Properties = jsonschema.NewProperties()
-					setting.Properties.Set("options", &jsonschema.Schema{Description: "Options specific to this rule; null resets to defaults.", AnyOf: []*jsonschema.Schema{{Type: "null"}, {AllOf: []*jsonschema.Schema{{Type: "object"}, optionsSchema}}}})
+					setting = settingWithOptions(&jsonschema.Schema{Description: "Options specific to this rule; null resets to defaults.", AnyOf: []*jsonschema.Schema{{Type: "null"}, {AllOf: []*jsonschema.Schema{{Type: "object", AdditionalProperties: jsonschema.TrueSchema}, optionsSchema}}}})
 				}
 				description := rule.Description
 				if rule.Experimental() {
@@ -188,7 +187,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
 	case reflect.TypeFor[map[string]actionlint.IgnorePatterns]():
 		return &jsonschema.Schema{
-			Type: "object",
+			Type:   "object",
+			Extras: map[string]any{"x-tombi-additional-key-label": "file_pattern"},
 			AdditionalProperties: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
 				{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
 				{Type: "null"},
@@ -206,6 +206,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
 		}{})
 		mapping.Version, mapping.ID = "", ""
+		environments, _ := mapping.Properties.Get("environments")
+		environments.Extras = map[string]any{"x-tombi-additional-key-label": "environment_name"}
 		return mapping
 	case reflect.TypeFor[actionlint.JobTimeoutPolicy]():
 		// The runtime type stores private state and accepts either a boolean or
@@ -304,6 +306,9 @@ func documentFields(s *jsonschema.Schema) {
 		if _, exists := s.Extras["markdownDescription"]; !exists {
 			s.Extras["markdownDescription"] = s.Description
 		}
+		if s.Deprecated {
+			s.Extras["deprecationMessage"] = s.Description
+		}
 	}
 	if s.Properties != nil {
 		for name, property := range s.Properties.FromOldest() {
@@ -393,6 +398,10 @@ func generate() ([]byte, error) {
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"
+	s.Extras = map[string]any{
+		"x-tombi-toml-version":     "v1.1.0",
+		"x-tombi-table-keys-order": map[string]string{"properties": "schema"},
+	}
 	s.Comments = "Generated from internal/input/configuration/config.go by go generate -run generate-config-schema. DO NOT EDIT."
 	return encodeSchema(s)
 }
