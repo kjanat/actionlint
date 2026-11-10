@@ -143,20 +143,40 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 				}
 				ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 				defer cancel()
-				cmd := exec.CommandContext(ctx, tombi, "lint", "--offline", "--error-on-warnings", "--stdin-filename=actionlint.toml", "-")
+				diagnosticsPath := filepath.Join(t.TempDir(), "diagnostics.json")
+				cmd := exec.CommandContext(ctx, tombi, "lint", "--offline", "--error-on-warnings", "--diagnostics-format=json", "--diagnostics-file="+diagnosticsPath, "--stdin-filename=actionlint.toml", "-")
 				cmd.Stdin = strings.NewReader("#:schema " + c.url + "\n" + string(b))
 				out, err := cmd.CombinedOutput()
 				if ctx.Err() != nil {
 					t.Fatalf("tombi did not complete: %v", ctx.Err())
 				}
-				if err != nil {
-					var exitErr *exec.ExitError
-					if !errors.As(err, &exitErr) || (!strings.Contains(string(out), "Error:") && !strings.Contains(string(out), "Warning:")) {
-						t.Fatalf("tombi failed without a validation diagnostic: %v\n%s", err, out)
+				diagnosticsJSON, readErr := os.ReadFile(diagnosticsPath)
+				if readErr != nil {
+					t.Fatalf("read tombi diagnostics: %v\n%s", readErr, out)
+				}
+				var diagnostics []struct {
+					Level string `json:"level"`
+					Code  string `json:"code"`
+				}
+				if decodeErr := json.Unmarshal(diagnosticsJSON, &diagnostics); decodeErr != nil {
+					t.Fatalf("decode tombi diagnostics: %v\n%s", decodeErr, diagnosticsJSON)
+				}
+				for _, diagnostic := range diagnostics {
+					if (diagnostic.Level != "error" && diagnostic.Level != "warning") || diagnostic.Code == "" {
+						t.Fatalf("unexpected tombi diagnostic: %+v", diagnostic)
 					}
 				}
+				if err != nil {
+					var exitErr *exec.ExitError
+					if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 || len(diagnostics) == 0 {
+						t.Fatalf("tombi failed without a validation diagnostic: %v\n%s\n%s", err, out, diagnosticsJSON)
+					}
+				}
+				if err == nil && len(diagnostics) != 0 {
+					t.Fatalf("tombi exited successfully despite --error-on-warnings: %s", diagnosticsJSON)
+				}
 				if (err == nil) != tc.Tombi {
-					t.Errorf("tombi acceptance: want %t, error %v\n%s\n%s", tc.Tombi, err, out, tc.Reason)
+					t.Errorf("tombi acceptance: want %t, error %v\n%s\n%s\n%s", tc.Tombi, err, out, diagnosticsJSON, tc.Reason)
 				}
 			})
 		})
