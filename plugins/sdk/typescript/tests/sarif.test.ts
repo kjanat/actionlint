@@ -1,6 +1,25 @@
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 import { expect, test } from 'bun:test';
 
-import { parseSarif } from '#sarif';
+import { exactStagedUri, parseSarif } from '#sarif';
+
+test('SARIF accepts only the staged document after decoding its URI once', () => {
+	for (const name of ['a%20b', 'a%b', 'a%2Fb']) {
+		const directory = resolve(tmpdir(), name);
+		const allowed = exactStagedUri(directory, 'captured.yml');
+		expect(allowed(pathToFileURL(resolve(directory, 'captured.yml')).href)).toBe(true);
+		expect(allowed(pathToFileURL(resolve(directory, 'other.yml')).href)).toBe(false);
+		expect(allowed(pathToFileURL(resolve(directory, '..', 'captured.yml')).href)).toBe(false);
+	}
+	const allowed = exactStagedUri(tmpdir(), 'a%20b/captured file.yml');
+	expect(allowed('a%2520b/captured%20file.yml')).toBe(true);
+	expect(allowed('a%20b/captured%20file.yml')).toBe(false);
+	expect(allowed('../captured%20file.yml')).toBe(false);
+	expect(allowed('a%2/captured%20file.yml')).toBe(false);
+});
 
 function log(suppressions: unknown, kind?: string, region: Record<string, number> = { startLine: 1 }): string {
 	return JSON.stringify({

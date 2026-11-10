@@ -252,8 +252,8 @@ export function exactStagedUri(directory: string, relativeFile: string): (uri: s
 	return (uri) => {
 		if (uri.startsWith('<') && uri.endsWith('>')) return false;
 		try {
-			const candidate = uri.startsWith('file:') ? fileURLToPath(uri) : uri;
-			return resolve(directory, decodeURIComponent(candidate)) === expected;
+			const candidate = uri.startsWith('file:') ? fileURLToPath(uri) : decodeURIComponent(uri);
+			return resolve(directory, candidate) === expected;
 		} catch {
 			return false;
 		}
