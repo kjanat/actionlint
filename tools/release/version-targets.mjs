@@ -5,6 +5,9 @@ export const targets = [
 		rules: [
 			{ description: 'Nix package version', pattern: /^ {6}version = "(\d+\.\d+\.\d+)";\r?$/dgm, count: 1 },
 		],
+		unrelated: [
+			'nixpkgs merge that adds Go 1.27.4',
+		],
 	},
 	{
 		path: 'distribution/install/download-actionlint.bash',
