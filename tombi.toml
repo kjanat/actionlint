@@ -8,7 +8,7 @@ toml-version = "v1.0.0"
 
 [files]
 include              = ["**/*.toml", "**/.*.toml", ".github/**/*.toml"]
-exclude              = ["**/fixtures", "**/.cache/**/*.toml"]
+exclude              = ["**/fixtures", "**/testdata", "**/.cache/**/*.toml"]
 respect-ignore-files = true
 
 [format]

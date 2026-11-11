@@ -280,7 +280,7 @@ Running `mise run fuzz` without `FUZZ_FUNC` lists the available targets. Inputs 
 [`Dockerfile`] selects its base images with the `GOLANG_VER` and `ALPINE_VER` build arguments. Both default to explicit version tags and both can be overridden:
 
 ```sh
-docker build -f distribution/docker/Dockerfile --build-arg GOLANG_VER=1.27.3 --build-arg ALPINE_VER=3.24 -t actionlint .
+docker build -f distribution/docker/Dockerfile --build-arg GOLANG_VER=1.27.4 --build-arg ALPINE_VER=3.24 -t actionlint .
 ```
 
 To move the defaults to newer base images:
