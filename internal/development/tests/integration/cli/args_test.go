@@ -144,7 +144,7 @@ func TestCommandLiteralFilenames(t *testing.T) {
 	for _, args := range [][]string{
 		{"first.yml", "--", "--json", "-completions", "--help"},
 		{"--", "--json", "--help", "-completions", "__complete"},
-		{"version", "completion"},
+		{"./version", "completion"},
 	} {
 		got := testRunCommand("", args...)
 		if got != (commandTranscript{}) {

@@ -82,11 +82,10 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 			app.help(app.root, nil)
 			return app.status
 		}
-		// Force the check command even when the repository has a file named check.
 		forced = "check"
 	}
 	legacyOperation := app.opts.version || app.opts.initConfig || app.opts.completion != "" || app.opts.helpLegacy
-	modern := forced != "" || (!legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0]) && !commandFileExists(rest[0]))
+	modern := forced != "" || (!legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0]))
 	if modern {
 		if forced != "" {
 			if !isCommandName(forced) {

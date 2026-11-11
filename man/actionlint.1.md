@@ -50,8 +50,7 @@ directory from the previous one. Input, output and configuration paths use that 
 
 The root and **check** accept options before or after filenames.
 **--** forces subsequent arguments to be filenames.
-An existing regular file named like a command takes precedence on the root.
-The hidden `--command NAME` escape explicitly selects a command in that case.
+A command name selects the command. Pass `./NAME` to check a file named like a command.
 
 **actionlint --help** shows common options and commands. Run
 **actionlint check --help** for all checking options, which the root invocation
@@ -199,7 +198,7 @@ when stderr is not a terminal or when `-` supplies workflow stdin. Confirmation
 never consumes workflow input. Piping `yes` also works in an interactive terminal.
 
 **--command** *NAME*
-: Select a command explicitly when a file has the same name.
+: Select a command by name.
 
 **--color**[=*MODE*]
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.

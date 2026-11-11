@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -46,7 +45,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		}
 		if arg.positional {
 			name := arg.tokens[0]
-			if !hasInput && isCommandName(name) && !commandFileExists(name) {
+			if !hasInput && isCommandName(name) {
 				rest = append([]string{name}, args[scanner.index:]...)
 				break
 			}
@@ -92,19 +91,6 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		return rest, forced, false, nil
 	}
 	return rest, forced, terminated, nil
-}
-
-func commandFileExists(name string) bool {
-	if name == "pre-commit" {
-		return false
-	}
-	for _, candidate := range append(commandNames(), "__complete", "__completeNoDesc") {
-		if name == candidate {
-			info, err := os.Stat(candidate)
-			return err == nil && info.Mode().IsRegular()
-		}
-	}
-	return false
 }
 
 func isCommandName(name string) bool {

@@ -117,14 +117,15 @@ actionlint version
 paths, it uses repository discovery. Use `--stdin-filename=action.yml` to check action
 metadata from stdin.
 
-An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,
-`version` or `help` takes precedence over the corresponding root command. Use `--`
-to force filenames or `--command NAME` to force a command despite a matching file.
+A first argument named `check`, `config`, `rules`, `doctor`, `completion`,
+`version` or `help` selects that command. To check a file with one of those names,
+pass it as `./version`, after `--`, or to `check`.
 Root options still belong before filenames:
 
 ```sh
 actionlint -- --workflow.yml
-actionlint --command check workflow.yml --json
+actionlint ./version
+actionlint check version --json
 ```
 
 Normal help and completion recommend the modern names. `--help-legacy` lists the
