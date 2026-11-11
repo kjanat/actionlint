@@ -3,9 +3,6 @@
 [files]
 excludes = ["**/testdata/**"]
 
-[local-actions]
-"./.published-action-test" = "./applications/github-action/tests/testdata/published-action"
-
 [[ignores]]
 rule   = "missing-local-action"
 file   = ".github/workflows/ci.yml"
@@ -23,6 +20,9 @@ rule   = "missing-local-action"
 file   = ".github/workflows/release-prepare.yml"
 uses   = "./.actionlint-action-candidate"
 reason = "Release bundle extracted from the candidate tag."
+
+[local-actions]
+"./.published-action-test" = "./applications/github-action/tests/testdata/published-action"
 
 [[plugins]]
 name    = "github.com/kjanat/actionlint-plugin-shellcheck"

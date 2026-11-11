@@ -182,33 +182,33 @@ url_api = "https://api.github.com/repos/rhysd/actionlint/releases/assets/3849249
 provenance = "github-attestations"
 
 [[tools.go]]
-version = "1.27.3"
+version = "1.27.4"
 backend = "core:go"
-specifiers = ["1.27.3"]
+specifiers = ["1.27.4"]
 
 [tools.go."platforms.linux-arm64"]
-checksum = "sha256:a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49"
-url = "https://dl.google.com/go/go1.27.3.linux-arm64.tar.gz"
+checksum = "sha256:3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92"
+url = "https://dl.google.com/go/go1.27.4.linux-arm64.tar.gz"
 
 [tools.go."platforms.linux-x64"]
-checksum = "sha256:65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40"
-url = "https://dl.google.com/go/go1.27.3.linux-amd64.tar.gz"
+checksum = "sha256:7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840"
+url = "https://dl.google.com/go/go1.27.4.linux-amd64.tar.gz"
 
 [tools.go."platforms.macos-arm64"]
-checksum = "sha256:dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2"
-url = "https://dl.google.com/go/go1.27.3.darwin-arm64.tar.gz"
+checksum = "sha256:91a44a2b8a716600ad94a4f143e156116620db8828086a6e3602291be9bd0bb4"
+url = "https://dl.google.com/go/go1.27.4.darwin-arm64.tar.gz"
 
 [tools.go."platforms.macos-x64"]
-checksum = "sha256:b6f8e931e4ab497fcde6da8ae4499a58f9d258e55c8a80824a516eae5950a750"
-url = "https://dl.google.com/go/go1.27.3.darwin-amd64.tar.gz"
+checksum = "sha256:2b799377704ef12db39bd254995d5c348c9cc8d86562ca817724390e56c38f43"
+url = "https://dl.google.com/go/go1.27.4.darwin-amd64.tar.gz"
 
 [tools.go."platforms.windows-arm64"]
-checksum = "sha256:c507872ff21f8a7cd3c1c217b059c6f7271a4a9d8e692810ef9dd3e1f601197c"
-url = "https://dl.google.com/go/go1.27.3.windows-arm64.zip"
+checksum = "sha256:9e7a72565792b8ab370b37ac9ac109799237abacb39ff2f541c438b963c0cc64"
+url = "https://dl.google.com/go/go1.27.4.windows-arm64.zip"
 
 [tools.go."platforms.windows-x64"]
-checksum = "sha256:f26081f438319757f8a1b46d7d0b2c5ec7583d4038e485e0aa725cfde7885fff"
-url = "https://dl.google.com/go/go1.27.3.windows-amd64.zip"
+checksum = "sha256:178ab98950ac69ab25069307dc6ade79f3816e414cce95b4da166a115cde1e7e"
+url = "https://dl.google.com/go/go1.27.4.windows-amd64.zip"
 
 [[tools.golangci-lint]]
 version = "2.15.0"
@@ -464,48 +464,48 @@ url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/679545200"
 provenance = "github-attestations"
 
 [[tools.rshellcheck]]
-version = "1.0.0"
+version = "1.1.0"
 backend = "github:kjanat/shellcheck-rs"
-specifiers = ["prefix:1"]
+specifiers = ["1.1.0"]
 
 [tools.rshellcheck.options]
 matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
 version_prefix = "rshellcheck-v"
 
 [tools.rshellcheck."platforms.linux-arm64"]
-checksum = "sha256:7cc44c1ad4b67e61a3489f3a45f4100feef66b31a5b35926acb3325d4fcf693b"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.0.0/rshellcheck-1.0.0-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/644066814"
+checksum = "sha256:36222dc511111aaa940125956c8f0709b009d931f33bfc83a5a4d8afc64463cc"
+url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417696"
 provenance = "github-attestations"
 
 [tools.rshellcheck."platforms.linux-x64"]
-checksum = "sha256:c1c305d318e174f0e322c9bf93a40bede355bc102eedfcde0792a670e01ef986"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.0.0/rshellcheck-1.0.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/644067084"
+checksum = "sha256:85ad9ed980019ecb04dca048f9c1c9cf30536f0c49d53acfd60e12c7304f2c80"
+url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417879"
 provenance = "github-attestations"
 
 [tools.rshellcheck."platforms.macos-arm64"]
-checksum = "sha256:c6030ee2c47b3318aaf59c9a788ad38cb6be873b2cea8114f50ec77ad0391cc2"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.0.0/rshellcheck-1.0.0-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/644066796"
+checksum = "sha256:5d2ac2b632da3fbadb1c9dbf45493f08eb1a039fd48d59bffe05b7a99c246154"
+url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417668"
 provenance = "github-attestations"
 
 [tools.rshellcheck."platforms.macos-x64"]
-checksum = "sha256:5a58444326faba435191f424e2aed1a7cc0038a3530e29bcc4e1560bcad2cde0"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.0.0/rshellcheck-1.0.0-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/644067063"
+checksum = "sha256:a225646c275bf4274648fc6f8c19a75b678e733836695ee4255978596e41f16a"
+url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417856"
 provenance = "github-attestations"
 
 [tools.rshellcheck."platforms.windows-arm64"]
-checksum = "sha256:c47e2069de4465309efa771fb4ba0e6482745960738330655f69937872098cd5"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.0.0/rshellcheck-1.0.0-aarch64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/644066819"
+checksum = "sha256:e4ecdc2ae27dff47c774d2828e94f03e06c0af97bb55a109a9353076f2306fd9"
+url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-aarch64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417695"
 provenance = "github-attestations"
 
 [tools.rshellcheck."platforms.windows-x64"]
-checksum = "sha256:406d9095c51a3b98791fd98a0df1572a01545cd7500a35d81e04367d1b773ae9"
-url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.0.0/rshellcheck-1.0.0-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/644067061"
+checksum = "sha256:696f5c67b0e805929711c54e625857209855304f9241f1c22ef20780da8fd45b"
+url = "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v1.1.0/rshellcheck-1.1.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/kjanat/shellcheck-rs/releases/assets/735417866"
 provenance = "github-attestations"
 
 [[tools.ruff]]
