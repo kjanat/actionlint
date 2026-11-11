@@ -12,8 +12,7 @@ import {
 	unreleasedEntries,
 	validateChangelog,
 } from '#release/version-changelog.mjs';
-import { checkReferences, parseVersion, planVersionUpdates, writeUpdates } from '#release/version-references.mjs';
-import { targets } from '#release/version-targets.mjs';
+import { compareVersions, parseVersion, readVersion, writeUpdates } from '#release/version-file.mjs';
 
 /** @typedef {import('#release/nix-command.mjs').ExecuteCommand} ExecuteCommand */
 /** @typedef {{root: string, version?: string, check: boolean, commit: boolean, push: boolean, nixProgram?: string, nixArguments: string[]}} VersionOptions */
@@ -95,18 +94,22 @@ export async function prepareVersion(options, environment = {}) {
 	const execute = environment.execute ?? commandExecutor(root, signal);
 	const report = environment.report ?? console.log;
 	const changelog = await readFile(join(root, 'CHANGELOG.md'), 'utf8');
+	const current = await readVersion(root);
 	if (options.check) {
-		const version = await checkReferences(root, targets, report);
+		report(`VERSION: ${current}`);
 		unreleasedEntries(changelog);
 		validateChangelog(changelog);
-		await releaseNotes(root, `v${version}`);
-		report(`docs/releases/v${version}.md describes v${version}`);
-		return { version, committed: false, pushed: false };
+		await releaseNotes(root, `v${current}`);
+		report(`docs/releases/v${current}.md describes v${current}`);
+		return { version: current, committed: false, pushed: false };
 	}
 	if (!options.version) throw new Error('Specify one stable release version, such as 2.0.0');
 	const version = options.version;
 	const tag = `v${version}`;
 	await checkRepository(root, tag, options.commit, options.push, execute);
+	if (compareVersions(current, version) > 0) {
+		throw new Error(`VERSION declares ${current}, which is newer than ${version}`);
+	}
 	changelogReleaseNotes(changelog, tag);
 	await releaseNotes(root, tag);
 	const date = new Intl.DateTimeFormat('en-CA', {
@@ -115,8 +118,10 @@ export async function prepareVersion(options, environment = {}) {
 		month: '2-digit',
 		day: '2-digit',
 	}).format(environment.now ?? new Date());
-	const updates = await planVersionUpdates(root, targets, version);
-	updates.push({ path: 'CHANGELOG.md', original: changelog, content: prepareChangelog(changelog, tag, date) });
+	const updates = [
+		{ path: 'VERSION', original: await readFile(join(root, 'VERSION'), 'utf8'), content: `${version}\n` },
+		{ path: 'CHANGELOG.md', original: changelog, content: prepareChangelog(changelog, tag, date) },
+	];
 	const nix = await findNix({
 		program: options.nixProgram,
 		args: options.nixArguments,
@@ -124,8 +129,7 @@ export async function prepareVersion(options, environment = {}) {
 	}, execute);
 	signal.throwIfAborted();
 	await writeUpdates(root, updates);
-	await checkReferences(root, targets);
-	for (const update of updates) report(`${update.path}: verified for ${tag}`);
+	for (const update of updates) report(`${update.path}: prepared for ${tag}`);
 	try {
 		await execute(nix.program, [...nix.args, 'flake', 'check', '--no-update-lock-file', '--print-build-logs'], {
 			live: true,
@@ -194,7 +198,7 @@ export async function main(args, signal) {
 	if (values.help) {
 		console.log(`Usage: node tools/release/prepare-version.mjs [options] [VERSION]
 
-  --check                 Check version references and release notes without edits
+  --check                 Check VERSION, the changelog and release notes without edits
   --commit                Create the source commit after Nix verification
   --push                  Commit, push master and dispatch draft preparation
   --root PATH             Repository root (default: current directory)

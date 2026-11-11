@@ -201,8 +201,8 @@ To install `actionlint` executable with one command, [the download script](../di
 
 The examples pin the script to a commit. The separate version argument selects the binary release; `latest` resolves
 the newest release. Update the script pin when adopting script changes, independently of the binary version.
-It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` to resolve the
-newest release, or omit the argument to use the default version recorded in the script:
+It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` or omit the argument
+to download the newest release:
 
 ```sh
 bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest

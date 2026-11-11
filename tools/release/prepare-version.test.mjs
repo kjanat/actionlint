@@ -3,25 +3,19 @@ import test from 'node:test';
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { findNix, wslDistributions } from '#release/nix-command.mjs';
 import { checkRepository, commandExecutor, prepareVersion } from '#release/prepare-version.mjs';
-import { checkReferences } from '#release/version-references.mjs';
-import { targets } from '#release/version-targets.mjs';
+import { readVersion } from '#release/version-file.mjs';
 
 /** @param {import('node:test').TestContext} t */
 async function fixture(t) {
 	const root = await mkdtemp(join(tmpdir(), 'actionlint-prepare-version-'));
 	t.after(() => rm(root, { recursive: true, force: true }));
-	for (const target of targets) {
-		const path = join(root, target.path);
-		await mkdir(dirname(path), { recursive: true });
-		await writeFile(path, await readFile(new URL(`../../${target.path}`, import.meta.url)));
-	}
+	await writeFile(join(root, 'VERSION'), '1.2.0\n');
 	await mkdir(join(root, 'docs/releases'), { recursive: true });
-	const current = await checkReferences(root, targets);
-	for (const version of [current, '9.9.9']) {
+	for (const version of ['1.2.0', '9.9.9']) {
 		await writeFile(join(root, `docs/releases/v${version}.md`), 'Release notes.\n');
 	}
 	await writeFile(
@@ -88,7 +82,8 @@ test('check mode reads declarations and notes without running Git, Nix or public
 		report: line => lines.push(line),
 	});
 	assert.deepEqual(runner.calls, []);
-	assert.ok(lines.includes(`docs/releases/v${result.version}.md describes v${result.version}`));
+	assert.equal(result.version, '1.2.0');
+	assert.deepEqual(lines, ['VERSION: 1.2.0', 'docs/releases/v1.2.0.md describes v1.2.0']);
 	assert.equal(await readFile(join(root, 'CHANGELOG.md'), 'utf8'), before);
 	await assert.rejects(prepareVersion(options(root, { check: true }), runner), /--check does not accept/);
 });
@@ -111,7 +106,7 @@ test('commit-only preparation does not push, and a failed dispatch reports the a
 test('missing release notes and unavailable Nix stop preparation before any version edits', async t => {
 	for (const failure of ['notes', 'nix']) {
 		const root = await fixture(t);
-		const before = await checkReferences(root, targets);
+		const before = await readVersion(root);
 		const changelog = await readFile(join(root, 'CHANGELOG.md'), 'utf8');
 		const runner = commands(root);
 		if (failure === 'notes') await rm(join(root, 'docs/releases/v9.9.9.md'));
@@ -124,7 +119,7 @@ test('missing release notes and unavailable Nix stop preparation before any vers
 			prepareVersion(options(root), { execute, platform: 'linux', report: () => {} }),
 			failure === 'notes' ? /is missing/ : /requires Nix/,
 		);
-		assert.equal(await checkReferences(root, targets), before);
+		assert.equal(await readVersion(root), before);
 		assert.equal(await readFile(join(root, 'CHANGELOG.md'), 'utf8'), changelog);
 	}
 });
@@ -134,7 +129,7 @@ test('dirty local preparation edits only its declared files and does not commit'
 	await writeFile(join(root, 'unrelated.txt'), 'User work');
 	const runner = commands(root, { dirty: true, branch: 'work' });
 	await prepareVersion(options(root), { ...runner, report: () => {}, now: new Date('2026-08-20T22:30:00Z') });
-	assert.equal(await checkReferences(root, targets), '9.9.9');
+	assert.equal(await readVersion(root), '9.9.9');
 	assert.equal(await readFile(join(root, 'unrelated.txt'), 'utf8'), 'User work');
 	assert.match(await readFile(join(root, 'CHANGELOG.md'), 'utf8'), /v9\.9\.9\) - 2026-08-21/);
 	assert.ok(!runner.calls.some(call => call[1] === 'commit' || call[1] === 'push' || call[0] === 'gh'));
@@ -147,7 +142,7 @@ test('Nix failure stops before staging or committing and leaves reviewable edits
 		prepareVersion(options(root, { commit: true }), { ...runner, report: () => {} }),
 		/Nix verification failed/,
 	);
-	assert.equal(await checkReferences(root, targets), '9.9.9');
+	assert.equal(await readVersion(root), '9.9.9');
 	assert.ok(!runner.calls.some(call => ['add', 'commit', 'push'].includes(call[1]) || call[0] === 'gh'));
 });
 
@@ -225,7 +220,7 @@ test('version preparation commits and pushes to a local bare repository, then di
 	const head = await git('rev-parse', 'HEAD');
 	assert.notEqual(head, before);
 	assert.equal(await git('status', '--porcelain'), '');
-	assert.match(await git('show', 'HEAD:flake.nix'), /version = "9\.9\.9"/);
+	assert.equal(await git('show', 'HEAD:VERSION'), '9.9.9');
 	assert.equal((await git('ls-remote', 'origin', 'refs/heads/master')).split('\t')[0], head);
 	assert.equal(await git('tag', '--list'), '');
 	assert.deepEqual(dispatches, [[
@@ -243,6 +238,24 @@ test('version preparation commits and pushes to a local bare repository, then di
 	await assert.rejects(checkRepository(join(root, 'nested'), 'v9.9.10', false, false, execute), /repository root/);
 	await git('switch', '-c', 'work');
 	await assert.rejects(checkRepository(root, 'v9.9.10', true, true, execute), /requires master/);
+});
+
+test('a version older than VERSION and a malformed VERSION stop preparation before any edits', async t => {
+	const root = await fixture(t);
+	const runner = commands(root);
+	const changelog = await readFile(join(root, 'CHANGELOG.md'), 'utf8');
+	await assert.rejects(
+		prepareVersion(options(root, { version: '1.1.9' }), { ...runner, report: () => {} }),
+		/VERSION declares 1\.2\.0, which is newer than 1\.1\.9/,
+	);
+	assert.equal(await readFile(join(root, 'VERSION'), 'utf8'), '1.2.0\n');
+	assert.equal(await readFile(join(root, 'CHANGELOG.md'), 'utf8'), changelog);
+	await writeFile(join(root, 'VERSION'), 'v1.2\n');
+	await assert.rejects(
+		prepareVersion(options(root, { check: true, version: undefined }), runner),
+		/three dot-separated/,
+	);
+	assert.ok(!runner.calls.some(call => call[0] === 'nix' || call[0] === 'gh'));
 });
 
 test('WSL distribution names support UTF-8, UTF-16, BOMs and non-ASCII characters', () => {
