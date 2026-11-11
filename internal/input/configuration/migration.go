@@ -20,7 +20,7 @@ var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "c
 // merging. Plugin-rule binding is deferred until providers are installed.
 // Callers must validate the resulting configuration before analysis.
 func (ruleSet RuleSet) NormalizeForMerge(node any) (any, error) {
-	canonical, _, err := ruleSet.migrateNode(normalizeToolSwitch(node))
+	canonical, _, err := ruleSet.migrateNode(ruleSet.normalizeToolSwitch(node))
 	return canonical, err
 }
 

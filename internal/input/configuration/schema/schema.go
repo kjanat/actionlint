@@ -40,9 +40,8 @@ type object = map[string]any
 // tools.<rule.name> entry for each manifest. The entry validates
 // tools.<name>.config with the manifest's config_schema and
 // process.config_schema, and accepts a configuration file path only when the
-// manifest reads configuration files. A manifest whose rule name the
-// generated schema already describes is skipped: configuration validates
-// that name against the bundled provider's manifest.
+// manifest reads configuration files. Installed providers replace bundled
+// entries with the same rule name.
 func Document(read ReadFunc, manifests []pluginmanifests.Manifest) ([]byte, error) {
 	root, err := readObject(read, RootFile)
 	if err != nil {
@@ -55,7 +54,7 @@ func Document(read ReadFunc, manifests []pluginmanifests.Manifest) ([]byte, erro
 	if len(mappings) == 0 {
 		return nil, fmt.Errorf("%s describes no tools mapping", RootFile)
 	}
-	settings, err := addToolSettings(root, mappings[0], manifests)
+	settings, err := addToolSettings(root, manifests)
 	if err != nil {
 		return nil, err
 	}
@@ -384,9 +383,6 @@ func addTools(tools object, manifests []pluginmanifests.Manifest, settings map[s
 	unknown, _ := tools["additionalProperties"].(object)
 	for _, manifest := range manifests {
 		name := manifest.Rule.Name
-		if _, bundled := entries[name]; bundled {
-			continue
-		}
 		entry, err := toolEntry(unknown, manifest, settings[name])
 		if err != nil {
 			return fmt.Errorf("tool provider %s: %w", name, err)
@@ -423,6 +419,19 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings objec
 		}
 		delete(config, "oneOf")
 		config["anyOf"] = values
+		for _, key := range slices.Sorted(maps.Keys(manifest.ConfigShorthands)) {
+			var ref strings.Builder
+			ref.WriteString("#/$defs/" + toolSettingsDefinition(manifest.Rule.Name, 0))
+			for _, property := range manifest.ConfigShorthands[key].Path {
+				ref.WriteString("/properties/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(property))
+			}
+			properties[key] = object{"$ref": ref.String()}
+			conditions, _ := mapping["allOf"].([]any)
+			mapping["allOf"] = append(conditions, object{
+				"if":   object{"required": []any{key}},
+				"then": object{"properties": object{"config": object{"type": []any{"object", "null"}}}},
+			})
+		}
 		return copied, nil
 	}
 	return nil, errors.New("the schema for unknown tools has no mapping alternative")
@@ -430,18 +439,14 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings objec
 
 // addToolSettings places each provider schema in a single resource shared by
 // the root tools mapping and every override.
-func addToolSettings(root, tools object, manifests []pluginmanifests.Manifest) (map[string]object, error) {
+func addToolSettings(root object, manifests []pluginmanifests.Manifest) (map[string]object, error) {
 	definitions, _ := root["$defs"].(object)
 	if definitions == nil {
 		definitions = object{}
 		root["$defs"] = definitions
 	}
 	result := make(map[string]object, len(manifests))
-	entries, _ := tools["properties"].(object)
 	for _, manifest := range manifests {
-		if _, bundled := entries[manifest.Rule.Name]; bundled {
-			continue
-		}
 		settings, err := settingsSchema(definitions, manifest)
 		if err != nil {
 			return nil, fmt.Errorf("tool provider %s: %w", manifest.Rule.Name, err)
@@ -467,7 +472,7 @@ func settingsSchema(definitions object, manifest pluginmanifests.Manifest) (obje
 		if err != nil {
 			return nil, err
 		}
-		name := fmt.Sprintf("plugin-tool-config-%s-%d", base64.RawURLEncoding.EncodeToString([]byte(manifest.Rule.Name)), i)
+		name := toolSettingsDefinition(manifest.Rule.Name, i)
 		if _, exists := definitions[name]; exists {
 			return nil, fmt.Errorf("duplicate configuration schema definition %q", name)
 		}
@@ -496,6 +501,10 @@ func settingsSchema(definitions object, manifest pluginmanifests.Manifest) (obje
 		settings["allOf"] = all
 	}
 	return settings, nil
+}
+
+func toolSettingsDefinition(name string, index int) string {
+	return fmt.Sprintf("plugin-tool-config-%s-%d", base64.RawURLEncoding.EncodeToString([]byte(name)), index)
 }
 
 // deepCopy returns a copy of value that shares no storage with it.

@@ -41,12 +41,16 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	for _, registration := range options.Tools {
 		names = append(names, registration.Descriptor.Name)
 	}
-	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, RuleNames: names, Rules: ConfigurationRules()})
+	rules, err := ConfigurationRules().WithRegisteredRules(registrations...)
+	if err != nil {
+		return nil, err
+	}
+	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, RuleNames: names, Rules: rules})
 	if err != nil {
 		return ToolRequirements{}, err
 	}
 	providers := toolNames(options.Tools)
-	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Registrations: registrations, Required: func(cfg, project *repoconfig.Config) ([]string, error) {
+	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Required: func(cfg, project *repoconfig.Config) ([]string, error) {
 		if err := repoconfig.ValidateToolNames(project, providers...); err != nil {
 			return nil, err
 		}

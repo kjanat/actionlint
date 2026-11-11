@@ -444,7 +444,7 @@ func (ruleSet RuleSet) ResolveValue(root any, inputs map[string]Input, additiona
 
 func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules bool, additional ...string) (Resolved, error) {
 	inputs = ruleSet.migrationInputs(root, inputs)
-	root = normalizeToolSwitch(root)
+	root = ruleSet.normalizeToolSwitch(root)
 	legacyWarnings := configWarnings(root, inputs)
 	var err error
 	root, _, err = ruleSet.migrateNode(root)
@@ -454,7 +454,7 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 
 	var c Config
 	if root != nil {
-		if err := ruleSet.DecodeValue(root, &c); err != nil {
+		if err := ruleSet.decodeValue(root, &c, bindRules); err != nil {
 			return Resolved{}, decodeError{cause: sourceError(err, inputs)}
 		}
 		if plugins := field(root, "plugins"); plugins != nil && isNull(plugins) {
@@ -544,7 +544,7 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 			return doc, err
 		}
 		var settings Config
-		if err := ruleSet.DecodeValue(normalized, &settings); err != nil {
+		if err := ruleSet.decodeValue(normalized, &settings, bindRules); err != nil {
 			return doc, err
 		}
 		bindingSources = append(bindingSources, ruleBindingSources(origin, &settings, inputs)...)

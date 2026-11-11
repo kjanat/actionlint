@@ -112,6 +112,24 @@ func TestDocumentScopesProviderSchemasOnce(t *testing.T) {
 	}
 }
 
+func TestDocumentShorthandReferences(t *testing.T) {
+	manifest := installed(false)
+	manifest.ConfigSchema = json.RawMessage(`{"$defs":{"mode":{"enum":["quiet","loud"]}},"type":"object","properties":{"nested":{"type":"object","properties":{"a/b~c":{"$ref":"#/$defs/mode"}},"additionalProperties":false}},"additionalProperties":false}`)
+	manifest.ConfigShorthands = map[string]configschema.Shorthand{"mode": {Path: []string{"nested", "a/b~c"}, Precedence: configschema.PrecedenceConfig}}
+	schema := compile(t, manifest)
+	for _, tc := range []struct {
+		value string
+		valid bool
+	}{
+		{`{"tools":{"oci-tool":{"mode":"quiet"}}}`, true},
+		{`{"overrides":[{"includes":["**"],"tools":{"oci-tool":{"mode":"invalid"}}}]}`, false},
+	} {
+		if err := schema.Validate([]byte(tc.value)); (err == nil) != tc.valid {
+			t.Errorf("%s: %v", tc.value, err)
+		}
+	}
+}
+
 func TestDocumentPreservesUnevaluatedProperties(t *testing.T) {
 	manifest := installed(false)
 	manifest.Process = nil
@@ -144,9 +162,6 @@ func TestDocumentScopesRelativeProviderSchemas(t *testing.T) {
 	}
 }
 
-// Configuration validates a bundled tool's settings against the bundled
-// manifest, so an installed provider with that rule name keeps the bundled
-// entry.
 func TestDocumentAddsPluginRuleSettingsToSemanticCategory(t *testing.T) {
 	manifest := installed(false)
 	manifest.Rule.Name = "custom-check"
@@ -179,12 +194,16 @@ func TestDocumentRejectsUnsupportedRuleCategory(t *testing.T) {
 	}
 }
 
-func TestDocumentKeepsBundledEntries(t *testing.T) {
+func TestDocumentUsesInstalledReplacementSettings(t *testing.T) {
 	manifest := installed(false)
 	manifest.Rule.Name = "shellcheck"
 	manifest.Rule.Category = "correctness"
-	if err := compile(t, manifest).Validate([]byte(`{"tools":{"shellcheck":{"config":{"shell":"bash"}}}}`)); err != nil {
-		t.Fatalf("bundled ShellCheck entry replaced: %v", err)
+	schema := compile(t, manifest)
+	if err := schema.Validate([]byte(`{"tools":{"shellcheck":{"config":{"level":"low"}}}}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := schema.Validate([]byte(`{"tools":{"shellcheck":{"config":{"shell":"bash"}}}}`)); err == nil {
+		t.Fatal("accepted settings from replaced provider")
 	}
 }
 

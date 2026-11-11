@@ -4,6 +4,8 @@ package tools
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -37,6 +39,7 @@ type Context struct {
 // Registration owns a tool's selection and construction policy. The host only
 // consumes capabilities; adding a provider does not change its control flow.
 type Registration struct {
+	ToolSettings          *configschema.Settings
 	InvocationDefinitions []commands.Definition
 	// ToolIntegration identifies a negotiated document provider for this tool.
 	ToolIntegration   *checkinputs.ToolIntegration

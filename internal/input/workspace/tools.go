@@ -11,9 +11,8 @@ import (
 
 // ToolOptions asks providers which tools are possible for a resolved configuration.
 type ToolOptions struct {
-	Presets       repoconfig.Presets
-	Registrations []repoconfig.RuleRegistration
-	Required      func(*repoconfig.Config, *repoconfig.Config) ([]string, error)
+	Presets  repoconfig.Presets
+	Required func(*repoconfig.Config, *repoconfig.Config) ([]string, error)
 }
 type ExternalToolRequirements map[string]bool
 
@@ -22,10 +21,6 @@ type ExternalToolRequirements map[string]bool
 // Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
 func (a *Session) RequiredTools(ctx context.Context, paths []string, options ToolOptions) (ExternalToolRequirements, error) {
 	needed := ExternalToolRequirements{}
-	rules, err := a.rules.WithRegisteredRules(options.Registrations...)
-	if err != nil {
-		return nil, err
-	}
 	explicit := make(map[string]bool)
 	if len(paths) == 0 {
 		paths = []string{a.WorkingDir()}
@@ -85,11 +80,11 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 			continue
 		}
 		projectConfig := config
-		config, err = rules.ForDocument(config, path, root)
+		config, err = a.rules.ForDocument(config, path, root)
 		if err != nil {
 			return needed, err
 		}
-		config, err = a.rules.ResolveRegisteredRules(options.Presets, config, options.Registrations...)
+		config, err = a.rules.ResolveRules(options.Presets, config)
 		if err != nil {
 			return needed, err
 		}

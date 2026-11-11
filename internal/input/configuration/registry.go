@@ -16,6 +16,7 @@ type RuleSet struct {
 	names           rulemeta.Names
 	registered      map[string]bool
 	optionOverrides map[string]json.RawMessage
+	providers       map[string]toolProvider
 }
 
 // Names returns the read-only index of current names and declared aliases.

@@ -87,7 +87,8 @@ func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]Input) map[s
 			if isBool(selected) {
 				move(base, base+"/enabled")
 			}
-			for key, shorthand := range toolProviders()[name].shorthands {
+			provider, _ := ruleSet.toolProvider(name)
+			for key, shorthand := range provider.shorthands {
 				target := base + "/config"
 				for _, part := range shorthand.Path {
 					target = document.Path(target, part)

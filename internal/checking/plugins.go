@@ -217,6 +217,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 		if err != nil {
 			return options, &pluginexec.LoadError{Err: err}
 		}
+		registration.ToolSettings = new(local.Files.Manifest.Settings())
 		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Descriptor.Name == name })
 		options.Tools = append(options.Tools, registration)
 	}

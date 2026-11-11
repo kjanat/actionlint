@@ -28,12 +28,16 @@ func configurationRegistrations(checkers []checkinputs.Registration, providers [
 		registrations = append(registrations, repoconfig.RuleRegistration{Descriptor: descriptor.Clone(), Scope: descriptor.Scope, SupportsActions: descriptor.SupportsActions, Options: slices.Clone(checker.Options)})
 	}
 	for _, provider := range providers {
-		if _, builtin := FindRule(provider.Descriptor.Name); builtin && provider.ToolIntegration == nil {
+		_, builtin := FindRule(provider.Descriptor.Name)
+		if builtin && provider.ToolIntegration == nil && provider.ToolSettings == nil {
 			continue
 		}
-		registration := repoconfig.RuleRegistration{Descriptor: provider.Descriptor.Clone(), Scope: provider.Scope, SupportsActions: provider.SupportsActions}
+		registration := repoconfig.RuleRegistration{Descriptor: provider.Descriptor.Clone(), Scope: provider.Scope, SupportsActions: provider.SupportsActions, ToolSettings: provider.ToolSettings}
 		if provider.ToolIntegration != nil && provider.ToolIntegration.Tool == provider.Descriptor.Name {
 			registration.ReplacesTool = provider.ToolIntegration.Tool
+		}
+		if builtin && provider.ToolSettings != nil {
+			registration.ReplacesTool = provider.Descriptor.Name
 		}
 		registrations = append(registrations, registration)
 	}

@@ -53,7 +53,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	}
 	for _, provider := range plugins.Providers {
 		manifest := provider.Files.Manifest
-		registration := config.RuleRegistration{Descriptor: manifest.Rule, Scope: rule.SourceConfiguration, SupportsActions: true}
+		registration := config.RuleRegistration{Descriptor: manifest.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ToolSettings: new(manifest.Settings())}
 		if manifest.Scope == pluginmanifests.ScopeComposite {
 			registration.Scope = rule.CompositeConfiguration
 		}
