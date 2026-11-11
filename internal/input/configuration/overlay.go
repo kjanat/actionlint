@@ -91,7 +91,7 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 		return Overlay{}, fmt.Errorf("input %s: %w", input, sourceError(err, inputs))
 	}
 	var config Config
-	if err := ruleSet.DecodeValue(node, &config); err != nil {
+	if err := ruleSet.decodeValue(node, &config, bindRules); err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, sourceError(err, inputs))
 	}
 	if len(config.Extends) > 0 {
@@ -112,7 +112,7 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 		setField(node, "lint", normalized)
 	}
 
-	return Overlay{name: input, node: normalizeToolSwitch(node), rules: rules, inputs: inputs}, nil
+	return Overlay{name: input, node: ruleSet.normalizeToolSwitch(node), rules: rules, inputs: inputs}, nil
 }
 
 // ResolveBeforePlugins merges already parsed overlays for dependency selection.

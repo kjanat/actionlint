@@ -50,7 +50,8 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 	// Loading knows only the combined rule names, so a tool entry must at least
 	// name a registered rule. The composition layer, which knows which
 	// registrations are tool providers, binds entries with ValidateToolNames.
-	if err := ValidateToolNames(config, additional...); err != nil {
+	providers := slices.Concat(additional, slices.Sorted(maps.Keys(ruleSet.providers)))
+	if err := ValidateToolNames(config, providers...); err != nil {
 		return err
 	}
 	lints := []*LintConfig{&config.Lint}

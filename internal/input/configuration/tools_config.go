@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
@@ -149,9 +150,7 @@ func (s *ToolSettings) EncodeConfig() (any, error) {
 	}
 }
 
-// DecodeConfig decodes each entry with its provider's shorthands and
-// configuration schema. Entry names are bound to registered providers later,
-// by ValidateRuleNames, as lint.rules.plugins names are.
+// DecodeConfig reads tool settings after RuleSet has expanded shorthands and validated provider settings.
 func (tools *ToolsConfig) DecodeConfig(value any) error {
 	if value == nil {
 		*tools = nil
@@ -163,7 +162,7 @@ func (tools *ToolsConfig) DecodeConfig(value any) error {
 	}
 	next := make(ToolsConfig, len(entries))
 	for _, name := range slices.Sorted(maps.Keys(entries)) {
-		tool, err := decodeToolConfig(name, entries[name])
+		tool, err := decodeToolConfig(name, entries[name], toolProvider{}, false)
 		if err != nil {
 			return binding.At(name, err)
 		}
@@ -173,7 +172,7 @@ func (tools *ToolsConfig) DecodeConfig(value any) error {
 	return nil
 }
 
-func decodeToolConfig(name string, value any) (ToolConfig, error) {
+func decodeToolConfig(name string, value any, known toolProvider, registered bool) (ToolConfig, error) {
 	if value == nil {
 		return ToolConfig{}, nil
 	}
@@ -184,7 +183,6 @@ func decodeToolConfig(name string, value any) (ToolConfig, error) {
 	if !ok {
 		return ToolConfig{}, fmt.Errorf("tools.%s must be a boolean or a mapping", name)
 	}
-	known, bundled := toolProviders()[name]
 	normalized, err := foldToolShorthands(name, object, known.shorthands)
 	if err != nil {
 		return ToolConfig{}, err
@@ -202,7 +200,7 @@ func decodeToolConfig(name string, value any) (ToolConfig, error) {
 		case "backend":
 			err = binding.Decode(value, &tool.Backend)
 		case "config":
-			tool.Config, err = decodeToolSettings(name, value, known, bundled)
+			tool.Config, err = decodeToolSettings(name, value, known, registered)
 		default:
 			return ToolConfig{}, binding.At(key, fmt.Errorf("unknown key %q in tools.%s", key, name))
 		}
@@ -213,16 +211,14 @@ func decodeToolConfig(name string, value any) (ToolConfig, error) {
 	return tool, nil
 }
 
-// decodeToolSettings decodes tools.<name>.config. A bundled provider's schema
-// validates inline settings, and a path is accepted only for providers that
-// read configuration files. Other providers validate their settings when the
-// engine loads.
-func decodeToolSettings(name string, value any, known toolProvider, bundled bool) (*ToolSettings, error) {
+// decodeToolSettings validates inline settings against the provider schema.
+// Registered providers accept paths only when they read configuration files.
+func decodeToolSettings(name string, value any, known toolProvider, registered bool) (*ToolSettings, error) {
 	switch selected := value.(type) {
 	case nil:
 		return nil, nil
 	case string:
-		if bundled && !known.configFiles {
+		if registered && !known.configFiles {
 			return nil, fmt.Errorf("tools.%s.config must be a mapping; this tool reads no configuration files", name)
 		}
 		return ToolConfigPath(selected)
@@ -305,7 +301,7 @@ func shorthandMapping(path []string, value any) any {
 	return map[string]any{path[0]: shorthandMapping(path[1:], value)}
 }
 
-func normalizeToolSwitch(value any) any {
+func (ruleSet RuleSet) normalizeToolSwitch(value any) any {
 	if !isMapping(value) {
 		return value
 	}
@@ -313,26 +309,82 @@ func normalizeToolSwitch(value any) any {
 	if tools := field(value, "tools"); isMapping(tools) {
 		entries := cloneMapping(tools)
 		for name, entry := range members(tools) {
-			setField(entries, name, normalizeToolEntry(name, entry))
+			setField(entries, name, ruleSet.normalizeToolEntry(name, entry))
 		}
 		setField(next, "tools", entries)
+	}
+	if overrides := field(value, "overrides"); isList(overrides) {
+		children := slices.Clone(elements(overrides))
+		for i, child := range children {
+			children[i] = ruleSet.normalizeToolSwitch(child)
+		}
+		setField(next, "overrides", children)
 	}
 	return next
 }
 
-func normalizeToolEntry(name string, value any) any {
+func (ruleSet RuleSet) normalizeToolEntry(name string, value any) any {
 	if isBool(value) {
 		return map[string]any{"enabled": value}
 	}
 	if !isMapping(value) {
 		return value
 	}
-	if folded, err := foldToolShorthands(name, value, toolProviders()[name].shorthands); err == nil {
+	provider, _ := ruleSet.toolProvider(name)
+	if folded, err := foldToolShorthands(name, value, provider.shorthands); err == nil {
 		value = folded
 	}
 	next := cloneMapping(value)
 	if backend := field(value, "backend"); backend != nil {
 		setField(next, "backend", normalizeBackendSelection(backend))
+	}
+	return next
+}
+
+func (ruleSet RuleSet) validateToolSettings(value any) error {
+	for _, name := range slices.Sorted(maps.Keys(members(field(value, "tools")))) {
+		provider, known := ruleSet.toolProvider(name)
+		if _, err := decodeToolConfig(name, rawValue(field(field(value, "tools"), name)), provider, known); err != nil {
+			return binding.At("tools", binding.At(name, err))
+		}
+	}
+	for i, override := range elements(field(value, "overrides")) {
+		if err := ruleSet.validateToolSettings(override); err != nil {
+			return binding.At("overrides", binding.At(strconv.Itoa(i), err))
+		}
+	}
+	return nil
+}
+
+// Plugin discovery reads enabled, backend and config before provider schemas are
+// available. The original document supplies shorthand keys when plugins load.
+func toolFieldsBeforePlugins(value any) any {
+	if !isMapping(value) {
+		return value
+	}
+	next := cloneMapping(value)
+	if tools := field(value, "tools"); isMapping(tools) {
+		entries := cloneMapping(tools)
+		for name, entry := range members(tools) {
+			if !isMapping(entry) {
+				continue
+			}
+			fields := mapping()
+			for _, key := range []string{"enabled", "backend", "config"} {
+				if child, exists := members(entry)[key]; exists {
+					setField(fields, key, child)
+				}
+			}
+			setField(entries, name, fields)
+		}
+		setField(next, "tools", entries)
+	}
+	if overrides := field(value, "overrides"); isList(overrides) {
+		children := slices.Clone(elements(overrides))
+		for i, child := range children {
+			children[i] = toolFieldsBeforePlugins(child)
+		}
+		setField(next, "overrides", children)
 	}
 	return next
 }

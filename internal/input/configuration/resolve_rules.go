@@ -161,6 +161,7 @@ func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...ru
 // RuleRegistration identifies a rule and, for a selected tool integration, the
 // bundled tool whose descriptor it replaces. Ordinary analyzers leave ReplacesTool empty.
 type RuleRegistration struct {
+	ToolSettings    *configschema.Settings
 	Descriptor      rule.Descriptor
 	Scope           rule.ConfigurationScope
 	SupportsActions bool
@@ -224,9 +225,19 @@ func (ruleSet RuleSet) WithRegisteredRules(registrations ...RuleRegistration) (R
 }
 
 func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*registeredRules, error) {
+	providers := maps.Clone(ruleSet.providers)
+	if providers == nil {
+		providers = map[string]toolProvider{}
+	}
 	descriptors := ruleSet.Rules()
-	seen := map[string]bool{}
-	optionOverrides := map[string]json.RawMessage{}
+	seen := maps.Clone(ruleSet.registered)
+	if seen == nil {
+		seen = map[string]bool{}
+	}
+	optionOverrides := maps.Clone(ruleSet.optionOverrides)
+	if optionOverrides == nil {
+		optionOverrides = map[string]json.RawMessage{}
+	}
 	for i := range descriptors {
 		descriptors[i].Group = descriptors[i].Category
 	}
@@ -247,6 +258,14 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 			return nil, fmt.Errorf("duplicate registered rule %q", descriptor.Name)
 		}
 		seen[descriptor.Name] = true
+		if registration.ToolSettings != nil {
+			provider, err := compileToolProvider(*registration.ToolSettings)
+			if err != nil {
+				return nil, fmt.Errorf("tool %q: %w", descriptor.Name, err)
+			}
+			provider.scope = registration.Scope
+			providers[descriptor.Name] = provider
+		}
 		if len(registration.Options) != 0 {
 			optionOverrides[descriptor.Name] = slices.Clone(registration.Options)
 		}
@@ -297,7 +316,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 	if err != nil {
 		return nil, err
 	}
-	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides}, seen: seen, options: optionOverrides}, nil
+	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides, providers: providers}, seen: seen, options: optionOverrides}, nil
 }
 
 func (ruleSet RuleSet) bindSettings(config *Config, descriptors []Rule, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {

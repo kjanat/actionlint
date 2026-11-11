@@ -64,7 +64,10 @@ func loadToolProvider(name string) (toolProvider, error) {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return toolProvider{}, err
 	}
-	tool := toolProvider{shorthands: manifest.ConfigShorthands}
+	tool, err := compileToolProvider(configschema.Settings{Schema: manifest.ConfigSchema, Shorthands: manifest.ConfigShorthands, ReadsFiles: manifest.Process != nil && manifest.Process.ConfigFiles != nil && len(manifest.Process.ConfigFiles.Names) > 0})
+	if err != nil {
+		return toolProvider{}, err
+	}
 	switch manifest.Scope {
 	case "composite":
 		tool.scope = rulescope.CompositeConfiguration
@@ -73,15 +76,33 @@ func loadToolProvider(name string) (toolProvider, error) {
 	default:
 		return toolProvider{}, fmt.Errorf("unknown scope %q", manifest.Scope)
 	}
-	if len(manifest.ConfigSchema) != 0 {
-		schema, err := configschema.Compile(manifest.ConfigSchema)
+	return tool, nil
+}
+
+func compileToolProvider(settings configschema.Settings) (toolProvider, error) {
+	settings = settings.Clone()
+	for name, shorthand := range settings.Shorthands {
+		if len(shorthand.Path) == 0 {
+			return toolProvider{}, fmt.Errorf("shorthand %q has no property path", name)
+		}
+	}
+	tool := toolProvider{shorthands: settings.Shorthands, configFiles: settings.ReadsFiles}
+	if len(settings.Schema) != 0 {
+		schema, err := configschema.Compile(settings.Schema)
 		if err != nil {
 			return toolProvider{}, fmt.Errorf("config_schema: %w", err)
 		}
 		tool.schema = schema
 	}
-	tool.configFiles = manifest.Process != nil && manifest.Process.ConfigFiles != nil && len(manifest.Process.ConfigFiles.Names) > 0
 	return tool, nil
+}
+
+func (ruleSet RuleSet) toolProvider(name string) (toolProvider, bool) {
+	if provider, ok := ruleSet.providers[name]; ok {
+		return provider, true
+	}
+	provider, ok := toolProviders()[name]
+	return provider, ok
 }
 
 // toolProviderNames lists the bundled tool providers' rule names in order.

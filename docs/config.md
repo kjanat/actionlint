@@ -418,7 +418,7 @@ Each `tools` key is the rule name of a tool provider: the bundled `ruff` and
 `shellcheck`, or a tool provider a plugin registers. Other names, including those of
 plugin document analyzers, are rejected. Every
 entry accepts `enabled`, `backend` and `config`, and `true` or `false` as a shorthand
-for `enabled`. A bundled provider's schema validates inline `config` settings; a
+for `enabled`. Each provider's schema validates inline `config` settings; a
 string `config` selects a configuration file and is accepted only by tools that
 read one, such as ShellCheck.
 
@@ -428,6 +428,12 @@ schema with a `tools.<name>` entry for each tool provider manifest that `--plugi
 or the configuration's `plugins` installs, validated by the manifest's
 `config_schema`. Save it and point the editor directive at the copy. It reads the
 manifests without running a plugin or downloading an executable.
+
+Providers can declare shorthand keys beside `config`. These keys follow the
+provider's `config_shorthands` definitions, including which value takes precedence
+when both forms are present. They work in root settings, inherited configuration
+and file overrides. `actionlint config schema` includes the installed providers'
+shorthand keys for editor completion and validation.
 
 Engine configuration and execution are separate. `tools.<name>.config` configures
 checks; `tools.<name>.backend` selects how the engine runs. `process` invokes a native

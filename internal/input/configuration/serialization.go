@@ -18,6 +18,17 @@ func (ruleSet RuleSet) Unmarshal(source []byte, dst *Config) error {
 
 // DecodeValue replaces dst only after the complete configuration has decoded.
 func (ruleSet RuleSet) DecodeValue(value any, dst *Config) error {
+	return ruleSet.decodeValue(value, dst, true)
+}
+
+func (ruleSet RuleSet) decodeValue(value any, dst *Config, bindProviders bool) error {
+	if bindProviders {
+		if err := ruleSet.validateToolSettings(value); err != nil {
+			return err
+		}
+	} else {
+		value = toolFieldsBeforePlugins(value)
+	}
 	normalized, err := ruleSet.NormalizeForMerge(value)
 	if err != nil {
 		return err

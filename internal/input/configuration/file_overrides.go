@@ -201,7 +201,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 			}
 		}
 		if override.toolsSet || override.Tools != nil {
-			tools, err = mergeToolsOverride(tools, override)
+			tools, err = ruleSet.mergeToolsOverride(tools, override)
 			if err != nil {
 				return nil, err
 			}
@@ -237,7 +237,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	return &next, nil
 }
 
-func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error) {
+func (ruleSet RuleSet) mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error) {
 	encoded, err := binding.Encode(map[string]any{"tools": base})
 	if err != nil {
 		return nil, err
@@ -251,7 +251,10 @@ func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error
 			return nil, err
 		}
 	}
-	merged := configtree.Merge(normalizeToolSwitch(encoded), normalizeToolSwitch(map[string]any{"tools": value}))
+	merged := configtree.Merge(ruleSet.normalizeToolSwitch(encoded), ruleSet.normalizeToolSwitch(map[string]any{"tools": value}))
+	if err := ruleSet.validateToolSettings(merged); err != nil {
+		return nil, err
+	}
 	var decoded struct {
 		Tools ToolsConfig `yaml:"tools"`
 	}

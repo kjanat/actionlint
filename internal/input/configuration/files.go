@@ -77,7 +77,7 @@ func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs ma
 		}
 		setField(value, "lint", ruleSet.expandLintShorthands(lint))
 	}
-	return normalizeToolSwitch(value), resolved.Warnings, nil
+	return ruleSet.normalizeToolSwitch(value), resolved.Warnings, nil
 }
 
 func normalizeSourcePaths(value any, directory string, inherited bool) {
