@@ -53,9 +53,9 @@ func TestModernCommandDispatch(t *testing.T) {
 		if err := os.WriteFile(name, []byte(commandGoodWorkflow), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		for _, args := range [][]string{{name}, {"--", name}} {
+		for _, args := range [][]string{{"./" + name}, {"--", name}} {
 			if got := testRunCommand("", args...); got != (commandTranscript{}) {
-				t.Fatalf("command stole filename %q: %+v", name, got)
+				t.Fatalf("explicit filename %q was not checked: %+v", args, got)
 			}
 		}
 	}

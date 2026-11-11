@@ -335,7 +335,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 		_ = f.MarkHidden(name)
 	}
 	if !modern {
-		f.StringVar(&a.opts.command, "command", "", "Select a command even when a file has the same name")
+		f.StringVar(&a.opts.command, "command", "", "Select a command by name")
 		_ = f.MarkHidden("command")
 		f.BoolVarP(&a.opts.version, "version", "V", false, "Show version and build information")
 		annotateFlag(f, "version", "Information")

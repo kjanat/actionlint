@@ -234,8 +234,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
 `+deprecatedFlagHelp()+`  -stdin-filename PATH
 
 Options may appear before or after filenames. -- ends option parsing.
-Existing files named check, config, rules, doctor, completion or version win
-over commands. Use --command NAME to select a command despite such a file.`, option))
+A command name selects the command. Pass ./NAME to check a file with that name.`, option))
 	writeHelpDestinations(out, heading, a.helpHyperlinks())
 }
 

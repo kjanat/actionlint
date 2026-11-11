@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"bytes"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -70,5 +73,26 @@ func TestSubcommandLegacyFlagBoundaries(t *testing.T) {
 				t.Fatalf("got %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestCommandNameSelectsTheCommandBesideAFileWithThatName(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.WriteFile("version", []byte("on: push\njobs: {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) (int, string, string) {
+		var stdout, stderr bytes.Buffer
+		cmd := Command{Stdout: &stdout, Stderr: &stderr}
+		status := cmd.Main(append([]string{"actionlint", "--no-config", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, args...))
+		return status, stdout.String(), stderr.String()
+	}
+	if status, stdout, stderr := run("version"); status != 0 || !strings.Contains(stdout, "Build: ") || stderr != "" {
+		t.Fatalf("version: status=%d stdout=%q stderr=%q", status, stdout, stderr)
+	}
+	for _, args := range [][]string{{"./version"}, {"--", "version"}, {"check", "version"}} {
+		if status, stdout, stderr := run(args...); status != 1 || !strings.Contains(stdout+stderr, "version") {
+			t.Fatalf("%v: status=%d stdout=%q stderr=%q", args, status, stdout, stderr)
+		}
 	}
 }

@@ -52,9 +52,9 @@ func TestChangeDirectory(t *testing.T) {
 	if err := os.WriteFile("project/nested/check", []byte(commandBadWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got = testRunCommand("", "-C", "project/nested", "check", "--no-config")
+	got = testRunCommand("", "-C", "project/nested", "./check", "--no-config")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "check:6:") {
-		t.Fatalf("command/file routing ignored -C: %+v", got)
+		t.Fatalf("explicit filename ignored -C: %+v", got)
 	}
 	got = testRunCommand("", "-C")
 	if got.Status != 2 || !strings.Contains(got.Stderr, "needs an argument") {
