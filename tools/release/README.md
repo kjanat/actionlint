@@ -1,18 +1,17 @@
 # Prepare release versions
 
-Run `node tools/release/prepare-version.mjs VERSION` to update the repository's release-version references and changelog before preparing a release draft.
+Run `node tools/release/prepare-version.mjs VERSION` to write the release version to [`VERSION`](../../VERSION) and update the changelog before preparing a release draft.
 
-The complete set of version-bearing files and fields is declared in [`version-targets.mjs`](version-targets.mjs).
-The Playground derives its version and links from Git during the Vite build, so its HTML is not a bump target.
-The Nix package version in `flake.nix` is a bump target.
-Each declaration names a file, a regular expression capturing the version, and the exact number of
-occurrences expected in that file.
+`VERSION` holds the release version as one `MAJOR.MINOR.PATCH` line. `flake.nix` reads the Nix package version from it.
+The manual filter [`man/release-version.lua`](../../man/release-version.lua) reads it for the manual footer and
+rewrites links to `/blob/HEAD/docs/` so they point at the release tag.
+The Playground derives its version and links from Git during the Vite build.
+Version numbers in documentation examples are fixed examples. A release leaves them unchanged.
 
-Before changing files, the command validates the version, repository state, reference declarations,
-[`CHANGELOG.md`](../../CHANGELOG.md) sections and release-notes file. It rejects missing or extra references,
-overlapping matches, undeclared version numbers and downgrades.
+Before changing files, the command validates the version, repository state,
+[`CHANGELOG.md`](../../CHANGELOG.md) sections and release-notes file. It rejects a version older than the one in `VERSION`.
 
-It then updates the references and changelog and runs Nix with the committed dependency lock.
+It then updates `VERSION` and the changelog and runs Nix with the committed dependency lock.
 `--commit` creates a source commit after Nix succeeds. `--push` also pushes `master` and dispatches
 draft preparation. Tag creation and release publication belong to the later promotion command.
 
@@ -30,7 +29,7 @@ draft preparation. Tag creation and release publication belong to the later prom
 node tools/release/prepare-version.mjs [OPTIONS] VERSION
 ```
 
-Report every declared version reference without modifying anything, and fail if the references disagree on the release version.
+Report the version in `VERSION` without modifying anything, and fail if the changelog or the release-notes file for that version is invalid.
 
 ```sh
 node tools/release/prepare-version.mjs --check
@@ -38,19 +37,19 @@ node tools/release/prepare-version.mjs --check
 
 The same check is available as `mise run release:version -- --check`.
 
-Update all references to 1.2.3. This modifies the files and leaves the changes in the working tree.
+Set the version to 1.2.3. This modifies `VERSION` and `CHANGELOG.md` and leaves the changes in the working tree.
 
 ```sh
 node tools/release/prepare-version.mjs 1.2.3
 ```
 
-Update all references and commit the source changes. This creates no release tag.
+Set the version and commit the source changes. This creates no release tag.
 
 ```sh
 node tools/release/prepare-version.mjs --commit 1.2.3
 ```
 
-Update all references, commit and push `master`, then dispatch
+Set the version, commit and push `master`, then dispatch
 [release preparation](../../.github/workflows/release-prepare.yml) for that source commit.
 This builds the release candidate and tests it before creating a draft. It does not publish a release
 or push a version tag.
@@ -129,18 +128,4 @@ Print the release notes published by the release workflow:
 node tools/release/release-candidate.mjs notes --version v1.2.3
 ```
 
-The release tag must not exist locally or on origin. Preparation requires changelog entries and the version's release-notes file. It uses the existing version section when present; otherwise it moves the Unreleased entries into a section dated in Europe/Amsterdam. Automatic commits require a clean working tree and index. Pushing also requires the master branch. The version check requires the release-notes file for the currently declared version.
-
-## Adding a version reference
-
-When a new file or a new line starts referring to a release version, add it to `targets` in
-[`version-targets.mjs`](version-targets.mjs). Until it is declared, `--check` and `node --test tools/release/version-references.test.mjs tools/release/prepare-version.test.mjs`
-fail with the file and line of the undeclared reference.
-
-Version numbers which are not actionlint release versions, such as an upstream specification version, are listed in the `unrelated` field of the target instead.
-The script requires each of those literals to still be present, so a stale declaration is reported
-rather than silently ignored.
-
-A rule whose pattern also accepts `nightly` lets a reference point at the development image.
-`--check` reports such a reference as `nightly (development)` and leaves it out of the release
-version decision; a bump leaves it unchanged.
+The release tag must not exist locally or on origin. Preparation requires changelog entries and the version's release-notes file. It uses the existing version section when present; otherwise it moves the Unreleased entries into a section dated in Europe/Amsterdam. Automatic commits require a clean working tree and index. Pushing also requires the master branch. The version check requires the release-notes file for the version in `VERSION`.

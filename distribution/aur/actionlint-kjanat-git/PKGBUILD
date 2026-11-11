@@ -62,7 +62,7 @@ build() {
 		-ldflags "-linkmode=external -X ${_module}/internal/integrations/buildinfo.ReleaseVersion=${pkgver} -X ${_module}/internal/integrations/buildinfo.InstallOrigin=https://aur.archlinux.org/packages/${pkgname}" \
 		./cmd/actionlint
 	pandoc --standalone --from=markdown-smart --syntax-highlighting=none \
-		--to=man --metadata=title:ACTIONLINT --lua-filter=man/inline-code-bold.lua \
+		--to=man --metadata=title:ACTIONLINT --lua-filter=man/release-version.lua --lua-filter=man/inline-code-bold.lua \
 		--output=man/actionlint.1 man/actionlint.1.md
 }
 

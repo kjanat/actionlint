@@ -34,7 +34,7 @@
         assert (goFor pkgs).version == goVersion;
         pkgs.${"buildGo${goMajor}${goMinor}Module"};
       ruffFor = pkgs: pkgs.callPackage ./distribution/nix/ruff.nix { };
-      version = "2.0.0";
+      version = nixpkgs.lib.trim (builtins.readFile ./VERSION);
     in
     {
       packages = forAllSystems (pkgs: rec {

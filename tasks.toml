@@ -439,5 +439,5 @@ alias   = ["internal/plugins/execution/component/testdata/plugins/insecure-downl
 vars    = { fixture = "insecure-download" }
 
 ["release:version"]
-description = "Prepare release version references, or check them with --check"
+description = "Prepare VERSION and the changelog for a release, or check them with --check"
 run         = "node tools/release/prepare-version.mjs"

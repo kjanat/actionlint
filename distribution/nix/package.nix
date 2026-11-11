@@ -50,7 +50,7 @@ buildGoModule {
 
   postInstall = ''
     pandoc --standalone --from=markdown-smart \
-      --to=man --metadata=title:ACTIONLINT --lua-filter=man/inline-code-bold.lua \
+      --to=man --metadata=title:ACTIONLINT --lua-filter=man/release-version.lua --lua-filter=man/inline-code-bold.lua \
       ${
         if lib.versionOlder pandoc.version "3.8" then "--no-highlight" else "--syntax-highlighting=none"
       } --output=man/actionlint.1 man/actionlint.1.md
