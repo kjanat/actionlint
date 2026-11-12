@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -133,11 +132,10 @@ func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, c
 
 // Main gives file-based suites a stable repository root and isolated Git settings.
 func Main(m *testing.M) {
-	_, sourcePath, _, found := runtime.Caller(0)
-	if !found {
-		panic("cannot locate the test support source")
+	root, err := os.Getwd()
+	if err != nil {
+		panic(err)
 	}
-	root := filepath.Dir(sourcePath)
 	for {
 		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
 			break

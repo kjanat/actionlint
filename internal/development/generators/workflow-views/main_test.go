@@ -73,11 +73,10 @@ func TestInterfaceImplementationsRejectUnsupportedShapes(t *testing.T) {
 }
 
 func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
+	generateDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
-	generateDir := filepath.Dir(file)
 	temporary := t.TempDir()
 	executable := filepath.Join(temporary, "generate")
 	if runtime.GOOS == "windows" {
@@ -158,11 +157,10 @@ func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
 }
 
 func TestGeneratedFilesAreCurrent(t *testing.T) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
+	generateDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
 	}
-	generateDir := filepath.Dir(file)
 	root := filepath.Clean(filepath.Join(generateDir, "..", "..", "..", ".."))
 	temporary := t.TempDir()
 	target := filepath.Join(temporary, "internal", "model", "workflows")
