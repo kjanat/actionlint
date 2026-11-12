@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -229,6 +230,9 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 	for _, mode := range []string{"caller-disabled", "failed-optional", "built"} {
 		for _, failure := range []string{"missing", "conflicting"} {
 			t.Run(mode+"/"+failure, func(t *testing.T) {
+				if _, err := exec.LookPath("shellcheck"); err != nil && mode != "failed-optional" {
+					t.Skip("ShellCheck required")
+				}
 				root := t.TempDir()
 				enabled := mode != "caller-disabled"
 				files := map[string]string{
