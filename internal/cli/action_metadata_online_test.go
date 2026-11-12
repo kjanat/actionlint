@@ -79,19 +79,16 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 			}
 		}
 		want := map[string]int{}
-		switch mode {
-		case "default":
+		if mode == "default" {
 			want = map[string]int{"/rate_limit": 1, "/repos/example/action": 4, "/repos/example/action/contents?ref=main": 1, "/repos/example/action/git/commits/" + sha: 2, "/repos/example/action/contents/action.yml?ref=" + sha: 1}
-		case "online":
-			want = map[string]int{"/rate_limit": 1, "/repos/example/action": 3, "/repos/example/action/contents?ref=main": 1, "/repos/example/action/git/commits/" + sha: 1}
 		}
 		assertMetadataRequests(t, requests[before:], want)
 		if attempts != uint64(len(requests)-before) {
 			t.Fatalf("%s attempts=%d, actual requests=%d", mode, attempts, len(requests)-before)
 		}
-		wantCalls := uint64(1)
-		if mode == "offline" {
-			wantCalls = 0
+		wantCalls := uint64(0)
+		if mode == "default" {
+			wantCalls = 1
 		}
 		if resolverCalls != wantCalls || unreported != 0 {
 			t.Fatalf("%s resolver calls=%d, unreported=%d", mode, resolverCalls, unreported)
