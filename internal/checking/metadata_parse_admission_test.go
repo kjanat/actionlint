@@ -173,7 +173,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			parse := producer.Errs()[0]
 			retained := &findingmodel.Finding{Message: "entry observation"}
 			displayPath := filepath.Join("broken", "action.yml")
-			composed := composites.Result{Sources: map[string][]byte{displayPath: []byte("different consumer bytes")}, SourceDocuments: map[string]workspaceactions.SourceDocument{displayPath: document}}
+			composed := composites.Result{Sources: map[string][]byte{displayPath: []byte("different consumer bytes")}, SourceDocuments: map[string]composites.SourceDocument{displayPath: document}}
 			if missing {
 				composed.Sources[displayPath] = metadata.Bytes()
 				delete(composed.SourceDocuments, displayPath)

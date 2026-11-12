@@ -158,7 +158,15 @@ func NewManifestFile(selection Selection, filename string, content []byte) (Mani
 	}
 	return Manifest{selection: selection, content: string(content), filename: filename}, nil
 }
-func (m Manifest) Filename() string        { return m.filename }
+func (m Manifest) Filename() string { return m.filename }
+func (m Manifest) URL() string {
+	if !m.Available() {
+		return ""
+	}
+	i := m.Identity()
+	u := url.URL{Scheme: "https", Host: i.Host(), Path: path.Join(i.Repository(), "blob", i.Commit(), i.Directory(), m.Filename())}
+	return u.String()
+}
 func (m Manifest) Identity() Identity      { return m.selection.identity }
 func (m Manifest) Selection() Selection    { return m.selection }
 func (m Manifest) Content() string         { return m.content }

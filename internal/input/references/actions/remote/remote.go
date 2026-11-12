@@ -76,12 +76,14 @@ func (f lookupError) err() error {
 
 // Result keeps validated call-site facts beside their complete availability.
 type Result struct {
+	manifest     actions.Manifest
 	definition   actionmeta.Definition
 	availability actions.MetadataAvailability
 }
 
 func (r Result) Definition() actionmeta.Definition          { return r.definition }
 func (r Result) Availability() actions.MetadataAvailability { return r.availability }
+func (r Result) Manifest() (actions.Manifest, bool)         { return r.manifest.Value() }
 
 // Lookup validates references even when metadata fetching is disabled. An absent
 // definition leaves only metadata-dependent checks unavailable.
@@ -198,7 +200,7 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Resul
 
 func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspection) Result {
 	if definition, valid := inspection.Definition(); valid {
-		return Result{definition: allowReviewedAdditionalInputs(manifest, definition), availability: actions.AvailableMetadata(manifest)}
+		return Result{manifest: manifest, definition: allowReviewedAdditionalInputs(manifest, definition), availability: actions.AvailableMetadata(manifest)}
 	}
 	var problems []actions.ManifestProblem
 	manifestPath := manifest.Filename()
@@ -208,7 +210,7 @@ func inspected(manifest actions.Manifest, inspection actionmeta.DefinitionInspec
 	for _, d := range inspection.Problems() {
 		problems = append(problems, actions.ManifestProblem{Code: string(d.Code), Message: d.Message, Path: manifestPath, Start: d.Start, End: d.End})
 	}
-	return Result{availability: actions.InvalidMetadata(manifest, problems)}
+	return Result{manifest: manifest, availability: actions.InvalidMetadata(manifest, problems)}
 }
 
 func (s *Service) Coverage() []actions.Coverage {

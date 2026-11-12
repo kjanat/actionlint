@@ -361,6 +361,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	requires := selection.RequiredFacts(registrations)
 	options := composites.Options{
 		SourceSnapshots: s.snapshots,
+		Captures:        s.captures,
+		RemoteActions:   s.remoteActions,
 		PrepareSource: func(snapshot parsing.SourceSnapshot) error {
 			_, dependencies := snapshot.Declarations()
 			var lookups errgroup.Group

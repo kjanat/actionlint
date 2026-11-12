@@ -86,7 +86,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 			return err
 		}
 	}
-	meta, sourceDocument, outcome, err := analysis.resolveAction(actionView)
+	meta, address, outcome, err := analysis.resolveAction(actionView)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	if !ok {
 		return errors.New("expanded action source snapshot is unavailable")
 	}
-	return callFrame.visitMetadataScripts(meta, snapshot, sourceDocument.Address(), callContext, parents)
+	return callFrame.visitMetadataScripts(meta, snapshot, address, callContext, parents)
 }
 
 func (analysis *compositeAnalyzer) visitOpaqueAction(call workflowdecl.StepView, declaration workflowdecl.StepView, actionView workflowdecl.ExecActionView, parents []checkcalls.InvocationParticipant) error {
@@ -170,9 +170,12 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		return err
 	}
 	defer func() { err = errors.Join(err, analysis.actions.JoinComposite(actions)) }()
+	if document, remote := analysis.remoteDocuments[address]; remote {
+		actions.SetRepositorySource(analysis.repositorySource(document.identity))
+	}
 
 	scriptConfig := analysis.scriptConfig
-	if analysis.configForFile != nil {
+	if analysis.configForFile != nil && !source.RemoteAddress(address) {
 		var err error
 		scriptConfig, err = analysis.configForFile(address)
 		if err != nil {

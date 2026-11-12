@@ -14,7 +14,9 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -27,6 +29,8 @@ import (
 type Options struct {
 	Budget          *invocation.Budget
 	SourceSnapshots *parsing.SourceSnapshots
+	Captures        *capture.Store
+	RemoteActions   *remote.Service
 	// PrepareSource acquires dependencies before any checks observe this source.
 	PrepareSource func(parsing.SourceSnapshot) error
 	Runners       *runnerlang.Knowledge
@@ -63,9 +67,15 @@ type Result struct {
 	Invocations      invocation.Graph
 	ResolveExecution bool
 	Sources          map[string][]byte
-	SourceDocuments  map[string]workspaceactions.SourceDocument
+	SourceDocuments  map[string]SourceDocument
 	// Configs is keyed by logical manifest path.
 	Configs map[string]*repoconfig.Config
+}
+
+type SourceDocument interface {
+	Capture() capture.Snapshot
+	Content() []byte
+	Provenance() parsing.Provenance
 }
 
 // Workflow runs one workflow composition with the caller's collaborators.
@@ -146,6 +156,9 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 			scriptInputsForConfig: options.ScriptInputsForConfig,
 			scriptCatalogues:      map[*repoconfig.Config][]checkinputs.ScriptInput{},
 			sourceSnapshots:       options.SourceSnapshots,
+			captures:              options.Captures,
+			remoteActions:         options.RemoteActions,
+			remoteDocuments:       map[string]remoteDocument{},
 			prepareSource:         options.PrepareSource,
 		},
 	}
@@ -193,7 +206,15 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 		findings = append(findings, r.Errs()...)
 	}
 	findings = append(findings, c.metadataFindings...)
-	return Result{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), SourceDocuments: options.Actions.SourceDocuments(), Configs: configs}, err
+	sources := options.Actions.Sources()
+	documents := map[string]SourceDocument{}
+	for path, document := range options.Actions.SourceDocuments() {
+		documents[path] = document
+	}
+	for path, document := range c.remoteDocuments {
+		documents[path], sources[path] = document, document.Content()
+	}
+	return Result{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents, Configs: configs}, err
 }
 
 func scriptInputCatalogue(additional []checkinputs.ScriptInput) ([]checkinputs.ScriptInput, error) {

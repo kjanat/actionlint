@@ -232,7 +232,7 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			}
 			composed := composites.Result{
 				Sources:         map[string][]byte{metadataPath: metadata.Bytes()},
-				SourceDocuments: map[string]workspaceactions.SourceDocument{metadataPath: document},
+				SourceDocuments: map[string]composites.SourceDocument{metadataPath: document},
 			}
 			target := metadata.Revision()
 			rejected := map[string]bool{}

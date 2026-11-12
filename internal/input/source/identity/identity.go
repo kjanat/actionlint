@@ -13,7 +13,7 @@ import (
 func Digest(content []byte) string { sum := sha256.Sum256(content); return hex.EncodeToString(sum[:]) }
 
 func Document(path string) string {
-	if path == "<stdin>" {
+	if path == "<stdin>" || source.RemoteAddress(path) {
 		return path
 	}
 	if absolute, err := filepath.Abs(path); err == nil {
