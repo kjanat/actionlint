@@ -108,6 +108,12 @@ func ConfigureManagedPlugins(l *pluginexec.Loaded, options Options) (Options, er
 }
 
 func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options) (Options, error) {
+	if options.ConfigConnections.Transport == nil {
+		options.ConfigConnections.Transport = l.Acquisition.Connections.Transport
+	}
+	if options.ConfigConnections.Resolver == nil {
+		options.ConfigConnections.Resolver = l.Acquisition.Connections.Resolver
+	}
 	resolvers := l.ReferenceResolvers()
 	if len(resolvers) > 1 || len(resolvers) != 0 && options.Resolver != nil {
 		return options, &pluginexec.LoadError{Err: errors.New("select one reference resolver")}
