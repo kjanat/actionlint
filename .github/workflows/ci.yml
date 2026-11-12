@@ -192,8 +192,8 @@ jobs:
             env: { MISE_ENABLE_TOOLS: "node,npm,bun,pandoc,npm:runner-run" }
       - name: Build JavaScript Action release files outside the checkout
         run: bun install --frozen-lockfile --ignore-scripts;
-          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
-          node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
+          version="$(cat VERSION)";
+          node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${version}"
       - run: run man:roff
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: release --snapshot --clean }
