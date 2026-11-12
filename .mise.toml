@@ -156,16 +156,6 @@ sources = ["man/*.{md,lua,css}", "VERSION"]
 outputs = ["man/actionlint.1{{ vars.suffix }}"]
 run     = "{{ env.PANDOC | default(value='pandoc --standalone --from=markdown-smart --syntax-highlighting=none') }} --lua-filter=man/release-version.lua {{ vars.flags }} --output=man/actionlint.1{{ vars.suffix }} man/actionlint.1.md"
 
-[task_templates."matcher"]
-depends     = ["build"]
-outputs     = ["tools/matcher/testdata/{{ vars.output }}"]
-run         = "./actionlint --no-config --no-tool=shellcheck --no-tool=ruff {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml || [ \"$?\" -eq 1 ]"
-run_windows = '''
-./actionlint.exe --no-config --no-tool=shellcheck --no-tool=ruff {{ vars.flags }} --yes --output-file tools/matcher/testdata/{{ vars.output }} ./internal/development/tests/integration/workflow/testdata/err/one_error.yaml
-if ($LASTEXITCODE -gt 1) { exit $LASTEXITCODE }
-exit 0
-'''
-
 [task_templates."rust-plugin"]
 depends = ["protocol:sdk"]
 vars    = {

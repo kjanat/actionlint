@@ -221,30 +221,6 @@ depends = ["man:roff", "man:html"]
 ["bench"]
 run = "go test -run '^$' -bench Lint -benchmem ./internal/checking"
 
-["matcher"]
-alias   = [".github/actionlint-matcher.json"]
-sources = ["tools/matcher/main.mjs", "tools/matcher/object.mjs"]
-outputs = [".github/actionlint-matcher.json"]
-run     = "node ./tools/matcher/main.mjs .github/actionlint-matcher.json"
-
-["matcher:escape"]
-extends = "matcher"
-alias   = ["tools/matcher/testdata/escape.txt"]
-vars    = { flags = "--output-format text -color", output = "escape.txt" }
-
-["matcher:no-escape"]
-extends = "matcher"
-alias   = ["tools/matcher/testdata/no_escape.txt"]
-vars    = { flags = "--output-format text -no-color", output = "no_escape.txt" }
-
-["matcher:json"]
-extends = "matcher"
-alias   = ["tools/matcher/testdata/want.json"]
-vars    = { flags = "-format '{% raw %}{{json .}}{% endraw %}'", output = "want.json" }
-
-["matcher:fixtures"]
-depends = ["matcher:escape", "matcher:no-escape", "matcher:json"]
-
 ["plugins-check-native"]
 depends = ["protocol:sdk"]
 run     = [
@@ -310,7 +286,7 @@ run = "bun run --filter '*' --if-present lint"
 ["test:js"]
 run = [
   "node internal/development/generators/config-schema/editor-completions.mjs",
-  "run -p //.github/ci:test //.github/actions/comment-cop:test //tools/matcher:test //tools/release:test //tools/toolchain:test //tools/generate/webhook-payloads:test //distribution/docker:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-npm:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test"
+  "run -p //.github/ci:test //.github/actions/comment-cop:test //tools/release:test //tools/toolchain:test //tools/generate/webhook-payloads:test //distribution/docker:test typecheck @kjanat/actionlint-winget:typecheck @kjanat/actionlint-winget:test @kjanat/actionlint:test @kjanat/actionlint-npm:test @kjanat/actionlint-pypi:test @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test"
 ]
 
 ["test:workspaces"]
