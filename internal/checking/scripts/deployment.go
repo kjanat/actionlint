@@ -35,7 +35,7 @@ func NewDeployment(snapshots *parsing.SourceSnapshots, snapshot parsing.SourceSn
 		return Deployment{}, fmt.Errorf("%w: action deployment path disagrees with source", ErrInvalidBatch)
 	}
 	d := Deployment{reference: ref, address: address, sourcePath: displayPath}
-	if !mapped {
+	if !mapped && !source.RemoteAddress(address) {
 		d.actionPath = filepath.Dir(displayPath)
 	}
 	return d, nil
