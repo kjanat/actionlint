@@ -9,6 +9,11 @@ repository   = "https://github.com/kjanat/actionlint"
 license      = "MIT"
 include      = ["LICENSE.txt", "README.md", "build.rs", "schemas/**", "src/**", "wit/**"]
 
+[features]
+package            = ["dep:serde", "dep:serde_json", "dep:sha2", "dep:wasm-encoder", "dep:wasmparser"]
+source-annotations = []
+tool-integration   = ["source-annotations"]
+
 [dependencies]
 serde        = { version = "1", features = ["derive"], optional = true }
 serde_json   = { version = "1", optional = true }
@@ -19,8 +24,3 @@ wit-bindgen  = "0.63"
 
 [build-dependencies]
 sha2 = "0.10"
-
-[features]
-package            = ["dep:serde", "dep:serde_json", "dep:sha2", "dep:wasm-encoder", "dep:wasmparser"]
-source-annotations = []
-tool-integration   = ["source-annotations"]
