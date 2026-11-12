@@ -122,6 +122,7 @@ func TestOnlineRepairsInvalidMetadataCache(t *testing.T) {
 		"unparseable":      `{"version":2,"content":`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
 			client, err := New(Options{CacheDir: t.TempDir(), Transport: hosts})
 			if err != nil {

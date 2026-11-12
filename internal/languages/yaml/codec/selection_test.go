@@ -290,28 +290,29 @@ func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name string
+		want string
 		call func(Cursor) error
 	}{
-		{"nil target", func(cursor Cursor) error {
+		{"nil target", "YAML target must be a non-nil pointer", func(cursor Cursor) error {
 			return cursor.Select(nil, func(*Selected, Cursor) error { return nil })
 		}},
-		{"nil visitor", func(cursor Cursor) error {
+		{"nil visitor", "YAML Select requires a visitor", func(cursor Cursor) error {
 			var target struct {
 				Value Selected `yaml:"value"`
 			}
 			return cursor.Select(&target, nil)
 		}},
-		{"hook field", func(cursor Cursor) error {
+		{"hook field", "YAML hooks require an explicit schema traversal", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value selectionHookField `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
-		{"node field", func(cursor Cursor) error {
+		{"node field", "YAML node fields require an explicit schema traversal", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value *syntax.Node `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
-		{"nested marker", func(cursor Cursor) error {
+		{"nested marker", "YAML selections require a Select struct field", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value []Selected `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
@@ -328,8 +329,8 @@ func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(session.Close)
-			if err := tc.call(cursor); err == nil {
-				t.Fatal("Select succeeded for invalid call")
+			if err := tc.call(cursor); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Select error = %v, want %q", err, tc.want)
 			}
 		})
 	}
