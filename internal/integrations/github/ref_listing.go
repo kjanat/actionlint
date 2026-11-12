@@ -88,6 +88,9 @@ func (g *GitHub) fetchRefListing(ctx context.Context, name string) (*refListing,
 		return nil, nil, fmt.Errorf("%w: %w", errEnvironment, err)
 	}
 	listing.repository, listing.observedAt = name, observedAt
+	if g.token == "" {
+		g.listings.observeVisibility(name, new(false))
+	}
 	return listing, nil, nil
 }
 
@@ -239,6 +242,7 @@ func parseRefAdvertisement(body []byte) (*refListing, error) {
 type refListings struct {
 	mu      sync.Mutex
 	entries map[string]*refListingEntry
+	private map[string]bool
 }
 
 type refListingEntry struct {
@@ -250,7 +254,7 @@ type refListingEntry struct {
 }
 
 func newRefListings() *refListings {
-	return &refListings{entries: make(map[string]*refListingEntry)}
+	return &refListings{entries: make(map[string]*refListingEntry), private: make(map[string]bool)}
 }
 
 func (l *refListings) get(ctx context.Context, g *GitHub, name string) (*refListing, *availability.Unavailability, error) {

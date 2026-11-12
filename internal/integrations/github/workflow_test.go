@@ -124,7 +124,7 @@ func TestWorkflowMetadataRejectsForeignRepositoryOrCommit(t *testing.T) {
 				t.Fatal(err)
 			}
 			file, err := client.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yml@"+sha)
-			if err != nil || file.Available() || file.Reason() != tc.want || (hosts.count("api.github.com") != 0) != tc.api || (hosts.count("cdn.jsdelivr.net") != 0) != tc.api {
+			if err != nil || file.Available() || file.Reason() != tc.want || (hosts.count("api.github.com") != 0) != tc.api || hosts.count("cdn.jsdelivr.net") != 0 {
 				t.Fatalf("unverified content accepted: %+v %v requests=%v", file, err, hosts.recorded())
 			}
 		})

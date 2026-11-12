@@ -677,7 +677,7 @@ func TestPreflightOnlyOnFallback(t *testing.T) {
 				t.Fatalf("manifest=%v,%v", manifest, err)
 			}
 			probes := slices.Index(hosts.recorded(), "api.github.com/rate_limit")
-			if rawStatus == http.StatusOK && (probes != -1 || len(hosts.recorded()) != 1) || rawStatus != http.StatusOK && (probes != 2 || hosts.count("cdn.jsdelivr.net") != 1) {
+			if rawStatus == http.StatusOK && (probes != -1 || len(hosts.recorded()) != 1) || rawStatus != http.StatusOK && (probes != 1 || hosts.count("cdn.jsdelivr.net") != 0) {
 				t.Fatalf("requests=%v", hosts.recorded())
 			}
 		})
@@ -762,7 +762,7 @@ func TestCredentialsForGitRawAndJSDelivr(t *testing.T) {
 		t.Fatalf("unexpected authority %s", r.URL)
 		return nil, nil
 	}}
-	client := newListingClient(t, Options{Token: token, CacheDir: cache, Transport: hosts}, &listingResolver{})
+	client := newListingClient(t, Options{Token: token, CacheDir: cache, Transport: hosts, Mirrors: references.AllowUnknownMirrors}, &listingResolver{})
 	manifest, err := client.Lookup(t.Context(), ref(t, "example/action@v1"))
 	if err != nil || !manifest.Available() || anonymousRetries != 1 {
 		t.Fatalf("manifest=%v,%v retries=%d requests=%v", manifest, err, anonymousRetries, hosts.recorded())

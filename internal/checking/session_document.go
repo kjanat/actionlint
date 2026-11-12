@@ -25,6 +25,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
@@ -63,7 +64,7 @@ type analysisSession struct {
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
 	workflowNames        *workflownames.Index
-	remoteActions        *actionremote.Service
+	remoteActions        map[references.MirrorAccess]*actionremote.Service
 	repositories         map[string]repository.Snapshot
 	analysisLogger
 	ctx             context.Context
@@ -321,7 +322,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	context.Runners = runners
 	context.Debug = s.debugWriter()
 	context.Repository = host
-	context.RemoteActions = s.remoteActions.Resolved()
+	remoteActions := s.remoteActions[cfg.MetadataMirrorAccess()]
+	context.RemoteActions = remoteActions.Resolved()
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
@@ -368,7 +370,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 					continue
 				}
 				lookups.Go(func() error {
-					_, err := s.remoteActions.Inspect(s.ctx, dependency.Uses)
+					_, err := remoteActions.Inspect(s.ctx, dependency.Uses)
 					return err
 				})
 			}

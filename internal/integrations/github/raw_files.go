@@ -73,7 +73,7 @@ func (g *GitHub) fetchRawFile(ctx context.Context, ref actions.Reference, commit
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: kind + "-metadata", Priority: accounting.Enrichment, RequestKind: accounting.HTTP})
 	raw, err := g.fetchRawHostFile(ctx, ref, commit, filenames)
 	priorNotFound, _ := ctx.Value(rawNotFoundKey{}).(bool)
-	if !errors.Is(err, errEnvironment) || raw.notFound || priorNotFound || !fullSHA1(commit) {
+	if !errors.Is(err, errEnvironment) || raw.notFound || priorNotFound || !fullSHA1(commit) || !g.mirrorAllowed(ref.Repository()) {
 		return raw.filename, raw.content, raw.missing, err
 	}
 	filename, content, found, cdnErr := g.fetchJSDelivrFile(ctx, ref, commit, filenames)
@@ -98,10 +98,12 @@ func (g *GitHub) fetchRawHostFile(ctx context.Context, ref actions.Reference, co
 	var result rawFileLookup
 	for _, filename := range filenames {
 		address := rawFileURL(ref, commit, filename)
-		content, found, missing, err := g.rawRequest(ctx, address, g.token != "")
+		authenticated := g.token != ""
+		content, found, missing, err := g.rawRequest(ctx, address, authenticated)
 		if err == nil && missing == nil && !found {
 			result.notFound = true
 			if g.token != "" {
+				authenticated = false
 				content, found, missing, err = g.rawRequest(ctx, address, false)
 			}
 		}
@@ -110,6 +112,9 @@ func (g *GitHub) fetchRawHostFile(ctx context.Context, ref actions.Reference, co
 			return result, err
 		}
 		if found {
+			if !authenticated {
+				g.listings.observeVisibility(ref.Repository(), new(false))
+			}
 			result.filename, result.content = filename, content
 			return result, nil
 		}

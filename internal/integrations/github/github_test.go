@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
@@ -144,7 +145,7 @@ func TestTransportFailuresNeverLeakCredentials(t *testing.T) {
 			response.Header.Set("Location", "https://foreign.test/?token=secret-token")
 			return response, nil
 		}}
-		client, err := New(Options{Mode: Online, Token: "secret-token", Transport: hosts})
+		client, err := New(Options{Mode: Online, Token: "secret-token", Transport: hosts, Mirrors: references.AllowUnknownMirrors})
 		if err != nil {
 			t.Fatal(err)
 		}

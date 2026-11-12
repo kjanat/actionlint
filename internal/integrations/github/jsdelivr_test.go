@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
@@ -141,7 +142,7 @@ func TestTagObjectNotFoundPreventsCDNFallbackAtItsCommit(t *testing.T) {
 func TestJSDelivrFileIsCachedWithoutRepositoryID(t *testing.T) {
 	cache := t.TempDir()
 	hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusOK, jsDelivrYAML, actionSource))
-	client, err := New(Options{CacheDir: cache, Transport: hosts})
+	client, err := New(Options{Mirrors: references.AllowUnknownMirrors, CacheDir: cache, Transport: hosts})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +163,7 @@ func TestJSDelivrFileIsCachedWithoutRepositoryID(t *testing.T) {
 	if _, present := record["repository_id"]; present {
 		t.Fatalf("jsDelivr acquisition recorded a repository ID: %s", stored)
 	}
-	warm, err := New(Options{CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
+	warm, err := New(Options{Mirrors: references.AllowUnknownMirrors, CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("warm cache used the network: %s", r.URL)
 		return nil, nil
 	})})
@@ -182,7 +183,7 @@ func TestJSDelivrNotFoundTriesSecondFilenameThenAPI(t *testing.T) {
 			}
 			return respond(r, http.StatusNotFound, rawText, "Couldn't find the requested file."), nil
 		})
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -194,7 +195,7 @@ func TestJSDelivrNotFoundTriesSecondFilenameThenAPI(t *testing.T) {
 	})
 	t.Run("neither", func(t *testing.T) {
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusNotFound, rawText, "Couldn't find the requested file."))
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -214,7 +215,7 @@ func TestJSDelivrEnvironmentFailuresFallBackToAPI(t *testing.T) {
 	for _, f := range failures {
 		t.Run(f.name, func(t *testing.T) {
 			hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), f.respond)
-			client, err := New(Options{Transport: hosts})
+			client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -233,7 +234,7 @@ func TestJSDelivrTimeoutFallsBackToAPI(t *testing.T) {
 			<-r.Context().Done()
 			return nil, r.Context().Err()
 		})
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -282,7 +283,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 			response.Header.Set("Location", "https://foreign.test/action.yml")
 			return response, nil
 		})
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -301,7 +302,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 			}
 			return respond(r, http.StatusOK, jsDelivrYAML, actionSource), nil
 		})
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -311,7 +312,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 	})
 	t.Run("escaping", func(t *testing.T) {
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusOK, jsDelivrYAML, actionSource))
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -334,7 +335,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 				<-r.Context().Done()
 				return nil, r.Context().Err()
 			})
-			client, err := New(Options{Transport: hosts})
+			client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -362,7 +363,7 @@ func TestRequestAccountingLabelsJSDelivr(t *testing.T) {
 		t.Fatalf("unexpected request %s", r.URL)
 		return nil, nil
 	}}
-	client, err := New(Options{Token: "fixture-token", Transport: hosts})
+	client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Token: "fixture-token", Transport: hosts})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +445,7 @@ func TestWorkflowFileUsesJSDelivrAfterRawFailure(t *testing.T) {
 	})
 	t.Run("missing", func(t *testing.T) {
 		hosts := workflowHosts(t, reply(http.StatusNotFound, rawText, "Couldn't find the requested file."))
-		client, err := New(Options{Transport: hosts})
+		client, err := New(Options{Transport: hosts, Mirrors: references.AllowUnknownMirrors})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -33,6 +33,7 @@ type refObservation struct {
 	found bool
 }
 type repositoryResponse struct {
+	Private       *bool  `json:"private"`
 	ID            uint64 `json:"id"`
 	Name          string `json:"full_name"`
 	DefaultBranch string `json:"default_branch"`
@@ -60,6 +61,7 @@ func (g *GitHub) Open(ctx context.Context, request references.Request) (reposito
 		return nil, errors.New("GitHub repository identity or default branch is invalid")
 	}
 	s.identity = repository.Identity{Host: "github.com", ID: id, Name: repo.Name, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	g.listings.observeVisibility(repo.Name, repo.Private)
 	s.defaultBranch = repo.DefaultBranch
 	// A 404 from a Git endpoint is ambiguous unless contents are readable.
 	if err := s.guard(ctx); err != nil {
@@ -315,6 +317,7 @@ func (s *resolverRepository) Finish(ctx context.Context) (json.RawMessage, error
 	if id, _ := s.identity.ID.Value(); repo.ID != id || !strings.EqualFold(repo.Name, s.identity.Name) || repo.DefaultBranch != s.defaultBranch {
 		return nil, errors.New("GitHub repository identity or default branch changed during resolution")
 	}
+	s.g.listings.observeVisibility(repo.Name, repo.Private)
 	log, err := json.Marshal(struct {
 		Host         string   `json:"host"`
 		Observations []string `json:"observations"`

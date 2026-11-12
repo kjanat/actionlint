@@ -51,14 +51,15 @@ Online mode acquires each manifest in this order:
    `https://raw.githubusercontent.com/OWNER/REPO/COMMIT/DIRECTORY/`. It tries
    `action.yaml` only after `action.yml` returns `404`. A full SHA-1 reference
    skips step 2 unless both manifest requests return `404`.
-4. If the raw file host cannot answer, actionlint requests the same files at
-   the same commit from the jsDelivr CDN at
+4. If the raw file host cannot answer and the repository is known to be public,
+   actionlint requests the same files at the same commit from the jsDelivr CDN at
    `https://cdn.jsdelivr.net/gh/OWNER/REPO@COMMIT/DIRECTORY/`. It tries
    `action.yaml` only after `action.yml` returns `404`. jsDelivr does not serve
    private repositories. When it returns `404` for both filenames, actionlint
    continues with step 5. Actionlint caches a manifest from jsDelivr in the
    same way as one from the raw file host.
-5. If the Git host cannot answer, or jsDelivr does not return the manifest,
+5. If the Git host cannot answer, the mirror settings prohibit jsDelivr,
+   or jsDelivr does not return the manifest,
    actionlint uses the GitHub REST API instead. A host cannot answer after a
    connection failure, a timeout, a `5xx`, `401`, `403` or `429` response, an
    oversized reference list, or a response with an unexpected content type,
@@ -109,6 +110,33 @@ action, that a runner executed these bytes, or that the commit is reachable from
 a particular branch. The REST API fallback uses GitHub's [commit object
 endpoint](https://docs.github.com/en/rest/git/commits#get-a-commit-object) and
 [repository contents endpoint](https://docs.github.com/en/rest/repos/contents#get-repository-content).
+
+## Metadata mirrors
+
+By default, actionlint uses jsDelivr only for repositories it has established are
+public during this analysis. It learns this from a successful unauthenticated
+Git or raw-file request, or the `private: false` field in a GitHub REST response.
+It uses responses from requests it already needs, without an extra visibility lookup.
+Authenticated Git and raw-file responses do not establish public visibility.
+
+These are the defaults:
+
+```toml
+[network.metadata-mirrors]
+services                   = ["jsdelivr"]
+allow-unknown-repositories = false
+```
+
+When visibility is unknown or private, a raw-file failure sends the lookup to
+GitHub REST. To use jsDelivr during that failure even when visibility is unknown,
+set `allow-unknown-repositories = true`. This sends the owner, repository name,
+commit hash and file path to jsDelivr. A private repository whose visibility has
+not been established can be included. GitHub tokens are never sent to jsDelivr,
+and known private repositories are always excluded.
+
+To disable third-party metadata mirrors, set `services = []`. These settings
+apply to remote actions and reusable workflows. They support `extends` with the
+same project overrides as other configuration settings.
 
 ## Cache and offline evidence
 

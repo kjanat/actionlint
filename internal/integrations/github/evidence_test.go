@@ -297,7 +297,7 @@ func TestCacheRecordRepositoryIDIsOptional(t *testing.T) {
 	}
 	request := ref(t, "example/action@"+sha)
 	path := filepath.Join(online.bucket(request, sha), cacheFilename)
-	if manifest, err := online.Lookup(t.Context(), request); err != nil || !manifest.Available() || manifest.Identity().RepositoryID() != knownRepositoryID(t, 42) || hosts.count("api.github.com") != 4 || hosts.count("cdn.jsdelivr.net") != 1 || len(hosts.recorded()) != 6 {
+	if manifest, err := online.Lookup(t.Context(), request); err != nil || !manifest.Available() || manifest.Identity().RepositoryID() != knownRepositoryID(t, 42) || hosts.count("api.github.com") != 4 || hosts.count("cdn.jsdelivr.net") != 0 || len(hosts.recorded()) != 5 {
 		t.Fatalf("online=%v,%v requests=%v", manifest, err, hosts.recorded())
 	}
 	stored, err := os.ReadFile(path)
@@ -359,10 +359,10 @@ func TestRESTFallbackValidatesRepositoryCommitAndManifest(t *testing.T) {
 		want                           availability.Reason
 		requests                       []string
 	}{
-		{name: "yaml", spec: "example/action@" + sha, repository: `{"id":42,"full_name":"example/action"}`, commit: `{"sha":"` + sha + `"}`, yaml: true, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "cdn.jsdelivr.net/gh/example/action@" + sha + "/action.yml", "api.github.com/repos/example/action", "api.github.com/repos/example/action/git/commits/" + sha, "api.github.com/repos/example/action/contents/action.yml?ref=" + sha, "api.github.com/repos/example/action/contents/action.yaml?ref=" + sha, "api.github.com/repos/example/action"}},
-		{name: "zero ID", spec: "example/action@" + sha, repository: `{"id":0,"full_name":"example/action"}`, want: availability.FailedReason, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "cdn.jsdelivr.net/gh/example/action@" + sha + "/action.yml", "api.github.com/repos/example/action"}},
-		{name: "renamed", spec: "example/action@" + sha, repository: `{"id":42,"full_name":"other/action"}`, want: availability.FailedReason, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "cdn.jsdelivr.net/gh/example/action@" + sha + "/action.yml", "api.github.com/repos/example/action"}},
-		{name: "commit response", spec: "example/action@" + sha, repository: `{"id":42,"full_name":"example/action"}`, commit: `not json`, want: availability.FailedReason, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "cdn.jsdelivr.net/gh/example/action@" + sha + "/action.yml", "api.github.com/repos/example/action", "api.github.com/repos/example/action/git/commits/" + sha}},
+		{name: "yaml", spec: "example/action@" + sha, repository: `{"id":42,"full_name":"example/action"}`, commit: `{"sha":"` + sha + `"}`, yaml: true, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "api.github.com/repos/example/action", "api.github.com/repos/example/action/git/commits/" + sha, "api.github.com/repos/example/action/contents/action.yml?ref=" + sha, "api.github.com/repos/example/action/contents/action.yaml?ref=" + sha, "api.github.com/repos/example/action"}},
+		{name: "zero ID", spec: "example/action@" + sha, repository: `{"id":0,"full_name":"example/action"}`, want: availability.FailedReason, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "api.github.com/repos/example/action"}},
+		{name: "renamed", spec: "example/action@" + sha, repository: `{"id":42,"full_name":"other/action"}`, want: availability.FailedReason, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "api.github.com/repos/example/action"}},
+		{name: "commit response", spec: "example/action@" + sha, repository: `{"id":42,"full_name":"example/action"}`, commit: `not json`, want: availability.FailedReason, requests: []string{"raw.githubusercontent.com/example/action/" + sha + "/action.yml", "api.github.com/repos/example/action", "api.github.com/repos/example/action/git/commits/" + sha}},
 		{name: "cached", spec: "example/action@v1", repository: `{"id":42,"full_name":"example/action"}`, cached: true, requests: []string{"github.com/example/action.git/info/refs?service=git-upload-pack", "api.github.com/repos/example/action"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

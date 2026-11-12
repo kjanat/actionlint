@@ -42,6 +42,7 @@ type Options struct {
 	Token     string
 	Resolver  func() references.Resolver
 	Transport http.RoundTripper
+	Mirrors   references.MirrorAccess
 }
 
 type GitHub struct {
@@ -51,6 +52,7 @@ type GitHub struct {
 	client          *http.Client
 	listings        *refListings
 	requests        *semaphore.Weighted
+	mirrors         references.MirrorAccess
 }
 
 const (
@@ -61,6 +63,9 @@ const (
 )
 
 func New(options Options) (*GitHub, error) {
+	if options.Mirrors > references.NoMirrors {
+		return nil, errors.New("invalid metadata mirror access")
+	}
 	if options.Mode == "" {
 		options.Mode = Online
 	}
@@ -73,7 +78,7 @@ func New(options Options) (*GitHub, error) {
 	return &GitHub{mode: options.Mode, cacheDir: options.CacheDir, token: options.Token, resolver: options.Resolver, client: &http.Client{
 		Transport: accounting.TrackHTTPRequests(options.Transport), Timeout: 15 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}, listings: newRefListings(), requests: semaphore.NewWeighted(concurrentTransfers)}, nil
+	}, listings: newRefListings(), requests: semaphore.NewWeighted(concurrentTransfers), mirrors: options.Mirrors}, nil
 }
 
 func fullSHA1(value string) bool {
@@ -387,11 +392,13 @@ func (g *GitHub) repository(ctx context.Context, ref actions.Reference) (reposit
 		return repositoryid.ID{}, "", missing, err
 	}
 	var repo struct {
-		ID   uint64 `json:"id"`
-		Name string `json:"full_name"`
+		ID      uint64 `json:"id"`
+		Name    string `json:"full_name"`
+		Private *bool  `json:"private"`
 	}
 	if json.Unmarshal(content, &repo) == nil && strings.EqualFold(repo.Name, ref.Repository()) {
 		if id, err := repositoryid.Known(repo.ID); err == nil {
+			g.listings.observeVisibility(repo.Name, repo.Private)
 			return id, repo.Name, nil, nil
 		}
 	}

@@ -53,7 +53,7 @@ func TestMetadataProtectsReservedPipelineFetches(t *testing.T) {
 			}
 			wantAvailable, wantCalls := true, 1
 			if rawStatus != http.StatusOK {
-				wantAvailable, wantCalls = false, 4
+				wantAvailable, wantCalls = false, 3
 			}
 			if manifest.Available() != wantAvailable || len(hosts.recorded()) != wantCalls {
 				t.Fatalf("manifest=%+v calls=%v", manifest, hosts.recorded())
@@ -96,7 +96,7 @@ func TestMetadataStopsBeforeAnExhaustedBatch(t *testing.T) {
 			t.Fatalf("%+v %v", result, err)
 		}
 	}
-	if hosts.count("api.github.com") != 1 || hosts.count("raw.githubusercontent.com") != 3 || hosts.count("cdn.jsdelivr.net") != 3 {
+	if hosts.count("api.github.com") != 1 || hosts.count("raw.githubusercontent.com") != 3 || hosts.count("cdn.jsdelivr.net") != 0 {
 		t.Fatalf("quota probe repeated: %v", hosts.recorded())
 	}
 }
