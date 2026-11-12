@@ -8,6 +8,7 @@ import (
 )
 
 func TestReusableWorkflowJobUsesSuppressions(t *testing.T) {
+	t.Parallel()
 	for _, uses := range []string{"invalid", "${{ 'invalid' }}"} {
 		for _, tc := range []struct {
 			name, config, directive string
@@ -19,6 +20,7 @@ func TestReusableWorkflowJobUsesSuppressions(t *testing.T) {
 			{"inline uses line", "ignores: [{rule: workflow-call, uses: different}]", " # actionlint:ignore workflow-call -- reviewed invalid reference", 0},
 		} {
 			t.Run(uses+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				source := "on: push\njobs:\n  caller:\n    uses: " + uses + tc.directive + "\n" + "\npermissions: {}\n"
 				findings := testutil.WorkflowDiagnostics(t, source, tc.config)
 				if len(findings) != tc.want {

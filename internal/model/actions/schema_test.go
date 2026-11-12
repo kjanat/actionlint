@@ -8,6 +8,7 @@ import (
 )
 
 func TestSchemaActionDefinitionCoverage(t *testing.T) {
+	t.Parallel()
 	want := strings.Fields("action-root boolean-steps-context composite-runs composite-step composite-steps container-runs container-runs-args container-runs-context container-runs-env input input-default-context inputs node-runs non-empty-string output-definition output-value outputs plugin-runs run-step runs step-env step-if step-with string-steps-context uses-step")
 	if got := slices.Sorted(maps.Keys(actionMetadataSchema)); !slices.Equal(got, want) {
 		t.Fatalf("runner definition inventory changed: %v", got)
@@ -21,6 +22,7 @@ func TestSchemaActionDefinitionCoverage(t *testing.T) {
 }
 
 func TestSchemaActionEveryProperty(t *testing.T) {
+	t.Parallel()
 	const header = `name: audit
 description: audit
 `
@@ -67,6 +69,7 @@ description: audit
 				continue
 			}
 			t.Run(definition+"/"+property, func(t *testing.T) {
+				t.Parallel()
 				// Invalid shapes must be found even on optional fields. Replace an
 				// existing field, preserving the surrounding valid action.
 				invalid := "[]"

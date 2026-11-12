@@ -17,6 +17,7 @@ import (
 )
 
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	parentDir := filepath.Join(root, "parent")
 	if err := os.Mkdir(parentDir, 0o700); err != nil {
@@ -70,6 +71,7 @@ type backendFinding struct {
 }
 
 func TestConfiguredBackendProcessHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_BACKEND_HELPER") != "1" {
 		return
 	}
@@ -108,6 +110,7 @@ func TestConfiguredBackendProcessHelper(t *testing.T) {
 }
 
 func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -121,6 +124,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	process := toolconfig.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			cfg := &config.Config{}
 			request := analysisRequest{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
 			options := registry.Selections{}

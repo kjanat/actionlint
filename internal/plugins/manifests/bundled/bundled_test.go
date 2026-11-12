@@ -24,6 +24,7 @@ import (
 var update = flag.Bool("update", false, "rewrite testdata/*/diagnostics.json from the decoders")
 
 func TestBundledManifestsValidate(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +44,7 @@ func TestBundledManifestsValidate(t *testing.T) {
 // Every program file is referenced by its manifest, so an edited program
 // without an updated digest fails here with the digest to record.
 func TestBundledProgramsAreReferenced(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +93,7 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 // (internal/checking/session/shellcheck_sources_test.go and the Ruff adapter's
 // diagnostic tests).
 func TestBundledGoldenDecode(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
@@ -106,6 +109,7 @@ func TestBundledGoldenDecode(t *testing.T) {
 		}
 		for _, dir := range cases {
 			t.Run(filepath.ToSlash(dir), func(t *testing.T) {
+				t.Parallel()
 				stdout := readFile(t, filepath.Join(dir, "stdout.json"))
 				var vars map[string]string
 				if err := jsonv2.Unmarshal(readFile(t, filepath.Join(dir, "vars.json")), &vars); err != nil {
@@ -135,6 +139,7 @@ func TestBundledGoldenDecode(t *testing.T) {
 }
 
 func TestRuffConfigTransform(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
@@ -166,6 +171,7 @@ func TestRuffConfigTransform(t *testing.T) {
 		{"configured target replaces the inferred one", `{"target-version":"py311"}`, `{"config":{},"vars":{"target_version":"py311"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var input any
 			if err := jsonv2.Unmarshal([]byte(tc.input), &input); err != nil {
 				t.Fatal(err)

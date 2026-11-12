@@ -14,6 +14,7 @@ import (
 )
 
 func TestErrorErrorAt(t *testing.T) {
+	t.Parallel()
 	m := "message"
 	k := "kind"
 	err := At(&workflowlang.Pos{Line: 1, Col: 2}, k, m)
@@ -35,6 +36,7 @@ func TestErrorErrorAt(t *testing.T) {
 }
 
 func TestErrorErrorfAt(t *testing.T) {
+	t.Parallel()
 	m := "this is message"
 	k := "kind"
 	err := Errorf(&workflowlang.Pos{Line: 1, Col: 2}, k, "%s is %s", "this", "message")
@@ -56,6 +58,7 @@ func TestErrorErrorfAt(t *testing.T) {
 }
 
 func TestErrorSortErrorsByPosition(t *testing.T) {
+	t.Parallel()
 	testCases := [][]struct {
 		line int
 		col  int
@@ -79,6 +82,7 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
 			errs := make([]*Finding, 0, len(tc))
 			for _, p := range tc {
 				errs = append(errs, &Finding{Start: sourcepos.Position{Line: p.line, Column: p.col}})
@@ -101,6 +105,7 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 }
 
 func TestErrorSortErrorsByFile(t *testing.T) {
+	t.Parallel()
 	errs := []*Finding{
 		{
 			Path: "path/to/C.txt", Start: sourcepos.Position{
@@ -136,6 +141,7 @@ func TestErrorSortErrorsByFile(t *testing.T) {
 }
 
 func TestErrorSortErrorsByMessage(t *testing.T) {
+	t.Parallel()
 	msgs := []string{}
 	for c := 'z'; c >= 'a'; c-- {
 		msgs = append(msgs, fmt.Sprintf("Message %c", c))
@@ -167,6 +173,7 @@ func TestErrorSortErrorsByMessage(t *testing.T) {
 }
 
 func TestErrorErrorToString(t *testing.T) {
+	t.Parallel()
 	err := &Finding{
 		Message: "this is message", Start: sourcepos.Position{
 			Line:   1,

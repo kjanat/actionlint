@@ -16,12 +16,8 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
-func isolatePluginCache(t *testing.T) string {
+func pluginCacheDirectory(t *testing.T) string {
 	t.Helper()
-	cache := t.TempDir()
-	t.Setenv("HOME", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LocalAppData", cache)
 	base, err := os.UserCacheDir()
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +41,11 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				t.Fatal(err)
 			}
 			registry := fixtureregistry.NewPluginRegistry(t)
-			directory := isolatePluginCache(t)
+			cache := t.TempDir()
+			t.Setenv("HOME", cache)
+			t.Setenv("XDG_CACHE_HOME", cache)
+			t.Setenv("LocalAppData", cache)
+			directory := pluginCacheDirectory(t)
 			registry.Add(t, "v1.0.0", wasm)
 			client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
 			if err != nil {
@@ -136,7 +136,10 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 func TestActionConfiguredWasm(t *testing.T) {
 	for _, fixture := range []string{"../../plugins/execution/module/testdata/engines/echo.wasm", "../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm"} {
 		t.Run(fixture, func(t *testing.T) {
-			isolatePluginCache(t)
+			cache := t.TempDir()
+			t.Setenv("HOME", cache)
+			t.Setenv("XDG_CACHE_HOME", cache)
+			t.Setenv("LocalAppData", cache)
 			module, err := os.ReadFile(fixture)
 			if err != nil {
 				t.Fatal(err)
@@ -221,7 +224,11 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 }
 
 func TestActionPluginPlanConfiguredDigests(t *testing.T) {
-	directory := isolatePluginCache(t)
+	cache := t.TempDir()
+	t.Setenv("HOME", cache)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("LocalAppData", cache)
+	directory := pluginCacheDirectory(t)
 	digest := strings.Repeat("a", 64)
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: https://example.invalid/ruff.wasm#sha256=" + digest + "\n",
@@ -246,7 +253,10 @@ func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	isolatePluginCache(t)
+	cache := t.TempDir()
+	t.Setenv("HOME", cache)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("LocalAppData", cache)
 	registry.Add(t, "v1.0.0", wasm)
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
 	if err != nil {
@@ -359,7 +369,10 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 		{name: "malformed config", config: "policy: [\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			isolatePluginCache(t)
+			cache := t.TempDir()
+			t.Setenv("HOME", cache)
+			t.Setenv("XDG_CACHE_HOME", cache)
+			t.Setenv("LocalAppData", cache)
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", ".github/actionlint.yaml": tc.config,
 			})
@@ -393,7 +406,10 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 }
 
 func TestActionInlinePinnedPlugin(t *testing.T) {
-	isolatePluginCache(t)
+	cache := t.TempDir()
+	t.Setenv("HOME", cache)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("LocalAppData", cache)
 	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)

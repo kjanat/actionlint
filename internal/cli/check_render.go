@@ -5,12 +5,15 @@ import (
 	"context"
 	"io"
 	"os"
+	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
+
+var globalColorMode sync.Mutex
 
 type resultRenderer struct {
 	format   render.Format
@@ -38,6 +41,8 @@ func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, form
 		defer restore()
 	}
 	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (format == render.FormatJSON || format == render.FormatSARIF)
+	globalColorMode.Lock()
+	defer globalColorMode.Unlock()
 	previous := color.NoColor
 	defer func() { color.NoColor = previous }()
 	if legacy {

@@ -10,6 +10,7 @@ import (
 )
 
 func TestWorkflowDiscoveryFileLinks(t *testing.T) {
+	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
 	writeFixture(t, root, "regular.yml", "on: push\n")
 	writeFixture(t, outside, "ci.yml", "on: push\n")
@@ -35,6 +36,7 @@ func TestWorkflowDiscoveryFileLinks(t *testing.T) {
 }
 
 func TestWorkflowDiscoverySkipsIgnoredFileLinks(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := t.TempDir()
 	gitFixture(t, root)
 	writeFixture(t, root, ".gitignore", "ignored.yml\n")

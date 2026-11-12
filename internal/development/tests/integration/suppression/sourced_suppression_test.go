@@ -17,6 +17,7 @@ import (
 )
 
 func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	for _, composite := range []bool{false, true} {
 		for _, tc := range []struct {
@@ -48,6 +49,7 @@ name: *script`, "", "", false},
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				t.Run(fmt.Sprintf("composite=%t/%s/%q", composite, tc.name, ending), func(t *testing.T) {
+					t.Parallel()
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n"+tc.config)
 					script := fixturefiles.Write(t, root, "scripts/check.sh", "echo $VALUE\n")
@@ -119,11 +121,13 @@ runs:
 }
 
 func TestSourcedShellcheckOriginIsolation(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	const directive = " # actionlint:ignore shellcheck -- reviewed"
 	for _, composite := range []bool{false, true} {
 		for _, both := range []bool{false, true} {
 			t.Run(fmt.Sprintf("composite=%t/both=%t", composite, both), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 				fixturefiles.Write(t, root, "scripts/check.sh", "echo $VALUE\n")
@@ -164,6 +168,7 @@ runs:
 }
 
 func TestSourcedShellcheckAliasOrigin(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -196,9 +201,11 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 }
 
 func TestSourcedShellcheckMetadataScope(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	for _, ignoredPath := range []string{"", "scripts/**", "local/**"} {
 		t.Run(ignoredPath, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			config := `tools: {shellcheck: true}
 policy: {disallow-suppressions: true}
@@ -259,6 +266,7 @@ runs:
 }
 
 func TestSourcedScriptsAreNotSuppressionMetadata(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	for _, suffix := range []string{".sh", ".yml", ".yaml"} {
 		for _, composite := range []bool{false, true} {
@@ -268,6 +276,7 @@ func TestSourcedScriptsAreNotSuppressionMetadata(t *testing.T) {
 				{"prohibited", "# actionlint:ignore shellcheck -- reviewed", "policy: {disallow-suppressions: true}\n"},
 			} {
 				t.Run(fmt.Sprintf("%s/composite=%t/%s", suffix, composite, tc.name), func(t *testing.T) {
+					t.Parallel()
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n"+tc.policy)
 					name := "scripts/check" + suffix

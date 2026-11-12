@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,6 +21,7 @@ import (
 )
 
 func TestScriptDescriptorShellValidation(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
 	if err != nil {
@@ -51,6 +53,7 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 		{"input-only catalogue validated by static metadata", nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			value := wacogo.NewValRecord(field("id", original.Field("id")), field("version", original.Field("version")),
 				field("name", original.Field("name")), field("engine", original.Field("engine")), field("engine-version", original.Field("engine-version")),
 				field("shells", wacogo.NewValListOf(tc.shells...)), field("rule", original.Field("rule")))
@@ -70,6 +73,7 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 }
 
 func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
 	if err != nil {
@@ -94,6 +98,7 @@ func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 		{"org/foo", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			descriptor, err := scriptDescriptorWithRuleName(original, test.name)
 			if err != nil {
 				t.Fatal(err)
@@ -151,6 +156,7 @@ func loadScriptFixture(t *testing.T) *Plugin {
 }
 
 func TestScriptEngineComponent(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	if !p.HasScriptEngine() || p.HasAnalyzer() || p.HasRunnerProvider() {
 		t.Fatal("script-only component advertised wrong roles")
@@ -197,6 +203,7 @@ func TestScriptEngineComponent(t *testing.T) {
 }
 
 func TestScriptEngineResultLimits(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	for _, request := range []checkinputs.ScriptRequest{
 		{Source: strings.Repeat("missing\n", maxScriptDiagnostics+1), Filename: "script.py"},
@@ -209,6 +216,7 @@ func TestScriptEngineResultLimits(t *testing.T) {
 }
 
 func TestScriptEngineUniversalNewlines(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	for _, tc := range []struct {
 		source string
@@ -220,6 +228,7 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 		{"é = missing\r\nmissing\rmissing\nmissing\r", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}, {Row: 2, Column: 9}, {Row: 3, Column: 1}}},
 	} {
 		t.Run(fmt.Sprintf("%q", tc.source), func(t *testing.T) {
+			t.Parallel()
 			found, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: tc.source, Filename: "script.py"})
 			if err != nil {
 				t.Fatal(err)
@@ -239,6 +248,7 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 }
 
 func TestScriptLineWidths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source string
 		widths []int
@@ -255,6 +265,7 @@ func TestScriptLineWidths(t *testing.T) {
 }
 
 func TestScriptEngineCancellationAndRecovery(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	request := checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"}
 	ctx, cancel := context.WithCancel(t.Context())
@@ -296,6 +307,7 @@ func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 }
 
 func TestScriptEngineContractCurrent(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../../../../plugins/protocol/wit/script-engine.wit")
 	if err != nil {
 		t.Fatal(err)
@@ -306,6 +318,7 @@ func TestScriptEngineContractCurrent(t *testing.T) {
 }
 
 func TestScriptEngineRejectsOtherRoles(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	if _, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"}); err == nil {
 		t.Fatal("provider accepted script request")
@@ -316,6 +329,7 @@ func TestScriptEngineRejectsOtherRoles(t *testing.T) {
 }
 
 func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture(t)
 	d := p.ScriptDescriptor()
 	metadata := map[string]any{
@@ -327,12 +341,12 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	}
 	for _, key := range []string{"", "id", "plugin_version", "engine", "capabilities", "rules", "config_schema"} {
 		t.Run(key, func(t *testing.T) {
-			original := metadata[key]
+			t.Parallel()
+			variant := maps.Clone(metadata)
 			if key != "" {
-				metadata[key] = nil
-				defer func() { metadata[key] = original }()
+				variant[key] = nil
 			}
-			data, err := json.Marshal(metadata)
+			data, err := json.Marshal(variant)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -344,8 +358,9 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	}
 	// Structural WIT validation defines compatibility; source formatting hashes
 	// identify build inputs but cannot reject a conforming fork.
-	metadata["wit_sha256"] = "independent-wit-source"
-	data, err := json.Marshal(metadata)
+	independent := maps.Clone(metadata)
+	independent["wit_sha256"] = "independent-wit-source"
+	data, err := json.Marshal(independent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,8 +369,10 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 	}
 	for _, shells := range [][]string{{"python"}, {"Python"}, {"python.exe"}, {"python", "Python"}} {
 		t.Run("shells="+strings.Join(shells, ","), func(t *testing.T) {
-			metadata["capabilities"] = map[string][]string{"script_shells": shells}
-			data, err := json.Marshal(metadata)
+			t.Parallel()
+			variant := maps.Clone(independent)
+			variant["capabilities"] = map[string][]string{"script_shells": shells}
+			data, err := json.Marshal(variant)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -367,6 +384,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 }
 
 func TestScriptEngineRejectsChangedInterface(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/plugins/script-engine.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -376,6 +394,7 @@ func TestScriptEngineRejectsChangedInterface(t *testing.T) {
 		{"end-location", "bad-location"},
 	} {
 		t.Run(change.old, func(t *testing.T) {
+			t.Parallel()
 			changed := bytes.ReplaceAll(data, []byte(change.old), []byte(change.replacement))
 			if bytes.Equal(changed, data) {
 				t.Fatal("fixture did not contain interface field")

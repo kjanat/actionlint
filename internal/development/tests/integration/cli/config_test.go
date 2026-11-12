@@ -15,15 +15,16 @@ import (
 )
 
 func TestConfigValidationWarnings(t *testing.T) {
-	commandTestRepo(t)
-	if err := os.WriteFile(".github/actionlint.yaml", []byte("config-variable: [FOO]\n"), 0o600); err != nil {
+	t.Parallel()
+	config := filepath.Join(commandTestRepo(t), ".github", "actionlint.yaml")
+	if err := os.WriteFile(config, []byte("config-variable: [FOO]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	text := testRunCommand("", "config", "validate")
-	if text.Status != 0 || !strings.Contains(text.Stdout, "unknown configuration key") || !strings.Contains(text.Stdout, ":1:1:") {
+	text := testRunCommand("", "config", "validate", "--config", config)
+	if text.Status != 0 || !strings.Contains(text.Stdout, "unknown configuration key") || !strings.Contains(text.Stdout, config+":1:1:") {
 		t.Fatal(text)
 	}
-	encoded := testRunCommand("", "config", "validate", "--json")
+	encoded := testRunCommand("", "config", "validate", "--config", config, "--json")
 	var result struct {
 		Valid    bool
 		Warnings []repoconfig.Warning
@@ -34,14 +35,15 @@ func TestConfigValidationWarnings(t *testing.T) {
 }
 
 func TestConfigInheritedWarningLocation(t *testing.T) {
-	commandTestRepo(t)
+	t.Parallel()
+	dir := commandTestRepo(t)
 	base := filepath.Join(t.TempDir(), "base.yml")
 	if err := os.WriteFile(base, []byte(`# inherited settings
 config-variable: [TYPO]
 `), 0600); err != nil {
 		t.Fatal(err)
 	}
-	leaf := filepath.Join(".github", "actionlint.yaml")
+	leaf := filepath.Join(dir, ".github", "actionlint.yaml")
 	encodedBase, err := json.Marshal(base)
 	if err != nil {
 		t.Fatal(err)
@@ -49,11 +51,11 @@ config-variable: [TYPO]
 	if err := os.WriteFile(leaf, []byte("extends: ["+string(encodedBase)+"]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand("", "config", "validate")
+	got := testRunCommand("", "config", "validate", "--config", leaf)
 	if got.Status != 0 || !strings.Contains(got.Stdout, base+":2:1: warning:") {
 		t.Fatalf("wrong inherited warning location: %+v", got)
 	}
-	got = testRunCommand("", "config", "validate", "--json")
+	got = testRunCommand("", "config", "validate", "--config", leaf, "--json")
 	var result struct{ Warnings []repoconfig.Warning }
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil || got.Status != 0 || len(result.Warnings) != 1 || result.Warnings[0].File != base {
 		t.Fatalf("inherited warning JSON=%+v, %v", got, err)
@@ -75,7 +77,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	catalog := registry.File(base + "index.json")
 	registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "ruff", BaseURL: base, Name: "github.com/kjanat/actionlint-plugin-ruff", Aliases: []string{"ruff"}, RepositoryID: 11}, "v1.0.0", other)
 	registry.SetFile(base+"index.json", catalog)
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
 		if got := testRunCommand("", args...); got.Status != 2 {
@@ -119,7 +121,7 @@ repository:
 }
 
 func TestModernConfigSelectionAndOrigins(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	config := `plugins: []
 repository: {variables: {}, secrets: null}
 lint:
@@ -245,7 +247,8 @@ lint:
 }
 
 func TestConfigOriginNestedReplacement(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
+	config := filepath.Join(t.TempDir(), "config.yml")
 	for _, replacement := range []string{"{}", "null", "{require-permissions: {level: on, options: {scope: job}}}"} {
 		source := `defaults: &defaults
   policy:
@@ -254,10 +257,10 @@ lint:
   rules:
     <<: *defaults
     policy: ` + replacement + "\n"
-		if err := os.WriteFile("config.yml", []byte(source), 0600); err != nil {
+		if err := os.WriteFile(config, []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
-		result, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: "config.yml"}, true)
+		result, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: config}, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -278,7 +281,7 @@ lint:
 func TestLegacyInitValidatesBeforeWriting(t *testing.T) {
 	for _, args := range [][]string{{"--ignore-regex", "["}, {"-format", "{{"}, {"--template-file", "missing.tmpl"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			got := testRunCommand("", append([]string{"-init-config"}, args...)...)
 			if got.Status != 3 {
 				t.Fatal(got)

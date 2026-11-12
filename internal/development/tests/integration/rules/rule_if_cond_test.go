@@ -15,6 +15,7 @@ import (
 )
 
 func TestRuleIfCond(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		cond  string
 		valid bool
@@ -36,6 +37,7 @@ func TestRuleIfCond(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%q at step", tc.cond), func(t *testing.T) {
+			t.Parallel()
 			var s workflowlang.Step
 			if len(tc.cond) > 0 {
 				s.If = &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}}
@@ -58,6 +60,7 @@ func TestRuleIfCond(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%q at job", tc.cond), func(t *testing.T) {
+			t.Parallel()
 			var j workflowlang.Job
 			if len(tc.cond) > 0 {
 				j.If = &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}}

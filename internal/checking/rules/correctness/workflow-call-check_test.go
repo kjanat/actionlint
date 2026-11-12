@@ -14,6 +14,7 @@ import (
 )
 
 func TestWorkflowCallCallbacksUseCapturedDefaultsIndependently(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 permissions: {}
 jobs:

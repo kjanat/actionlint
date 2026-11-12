@@ -3,6 +3,7 @@ package runner
 import "testing"
 
 func TestRuleShellNameGetPlatformFromXcodeRunner(t *testing.T) {
+	t.Parallel()
 	testCases := []string{
 		"xcode-27",
 		"xcode-27-xlarge",
@@ -11,6 +12,7 @@ func TestRuleShellNameGetPlatformFromXcodeRunner(t *testing.T) {
 
 	for _, label := range testCases {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			fixture := runnerWorkflow(t, label)
 			selection := fixture.Views["test"].RunsOn().Selection()
 			if got := PlatformOf(selection); got != MacOrLinux {

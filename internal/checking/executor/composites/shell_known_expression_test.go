@@ -10,6 +10,7 @@ import (
 )
 
 func TestKnownShellStateReset(t *testing.T) {
+	t.Parallel()
 	content := []byte(`on: push
 jobs:
   python:

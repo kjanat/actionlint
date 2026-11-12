@@ -21,6 +21,7 @@ import (
 )
 
 func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 		t.Fatal(err)
@@ -54,6 +55,7 @@ func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
 }
 
 func TestShellcheckSourcedDiagnostics(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name  string
@@ -66,6 +68,7 @@ func TestShellcheckSourcedDiagnostics(t *testing.T) {
 		{"symlinked checkout", 1, false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if tc.alias {
 				alias := filepath.Join(t.TempDir(), "checkout")
@@ -150,6 +153,7 @@ permissions: {}
 }
 
 func TestShellcheckSourcedDiagnosticPathFilters(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, pattern string
@@ -164,6 +168,7 @@ func TestShellcheckSourcedDiagnosticPathFilters(t *testing.T) {
 		{"symlinked combined filter removes both", "**", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if tc.alias {
 				alias := filepath.Join(t.TempDir(), "checkout")
@@ -210,9 +215,11 @@ permissions: {}
 }
 
 func TestUnavailableSourcedDiagnosticKeepsYAMLSuppressionAnchor(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, suppressed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "reported", true: "suppressed"}[suppressed], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)

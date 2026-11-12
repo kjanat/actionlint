@@ -43,6 +43,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 }
 
 func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, level string
 		workflowRun bool
@@ -53,6 +54,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 		{"no producer filters", "on", false, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			loads := 0
 			inputs := workflowNameInputs(t, tc.level, tc.workflowRun, func(string) (string, bool, error) {
 				loads++
@@ -96,6 +98,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 }
 
 func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
+	t.Parallel()
 	loads := 0
 	inputs := workflowNameInputs(t, "on", true, func(string) (string, bool, error) {
 		loads++
@@ -125,6 +128,7 @@ func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
 }
 
 func TestWorkflowNamePreparationReportsUnavailableKnowledge(t *testing.T) {
+	t.Parallel()
 	inputs := workflowNameInputs(t, "on", true, func(string) (string, bool, error) {
 		return "", false, nil
 	})

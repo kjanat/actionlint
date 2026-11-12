@@ -37,6 +37,7 @@ func runConfiguredOutput(t *testing.T, config, workflow string, flags ...string)
 }
 
 func TestConfiguredOutputEmitsEachFormatOnce(t *testing.T) {
+	t.Parallel()
 	config, workflow := configuredOutputFixture(t, "output: {formats: [github, pretty, github], log-level: info, summary: true, network-stats: true}\n")
 	status, out, log := runConfiguredOutput(t, config, workflow)
 	if status != 1 || strings.Count(out, "::warning ") != 1 || strings.Count(out, "warning[empty-run]") != 1 {
@@ -48,6 +49,7 @@ func TestConfiguredOutputEmitsEachFormatOnce(t *testing.T) {
 }
 
 func TestConfiguredOutputExplicitFlagsOverride(t *testing.T) {
+	t.Parallel()
 	config, workflow := configuredOutputFixture(t, "output: {formats: [github, pretty], log-level: debug, summary: true, network-stats: true, quiet: true}\n")
 	status, out, log := runConfiguredOutput(t, config, workflow, "--json", "--log-level=none", "--summary=false", "--network-stats=false", "--quiet=false")
 	if status != 1 || !json.Valid([]byte(out)) || log != "" {
@@ -111,6 +113,7 @@ func TestConfiguredOutputEmptyEnvironmentUsesConfig(t *testing.T) {
 }
 
 func TestConfiguredOutputInheritsAcrossFormats(t *testing.T) {
+	t.Parallel()
 	config, workflow := configuredOutputFixture(t, "")
 	dir := filepath.Dir(config)
 	if err := os.WriteFile(filepath.Join(dir, "base.jsonc"), []byte("{ // shared output\n\"output\": {\"formats\": [\"github\"], \"summary\": true,},\n}"), 0600); err != nil {
@@ -158,9 +161,11 @@ func TestConfiguredOutputUsesInvokingRepository(t *testing.T) {
 }
 
 func TestConfiguredExperimentalAndOverrides(t *testing.T) {
+	t.Parallel()
 	for _, enabled := range []bool{false, true} {
 		for _, flag := range []string{"", "--experimental=true", "--experimental=false"} {
 			t.Run(fmt.Sprintf("config=%t/flag=%s", enabled, flag), func(t *testing.T) {
+				t.Parallel()
 				config, workflow := configuredOutputFixture(t, fmt.Sprintf("lint: {experimental: %t}\noutput: {formats: [json], summary: false}\n", enabled))
 				if err := os.WriteFile(workflow, []byte("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo \"::notice:Up to date\"\n"), 0600); err != nil {
 					t.Fatal(err)

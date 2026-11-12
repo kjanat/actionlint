@@ -33,6 +33,7 @@ func sourcePin(t *testing.T) plugininstall.SourcePin {
 // A schema 1 lock is read and rewritten as schema 2, which adds the
 // per-platform blobs of each oci:// source.
 func TestLockV1RewrittenAsV2(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), plugininstall.LockName)
 	if err := os.WriteFile(path, []byte("{\"schema_version\":1,\"plugins\":[]}\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -79,6 +80,7 @@ func TestLockV1RewrittenAsV2(t *testing.T) {
 }
 
 func TestSourcePinRejected(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("a", 64)
 	for name, edit := range map[string]func(source *string, platforms map[string]artifacts.OCIPlatform){
 		"tag reference": func(source *string, _ map[string]artifacts.OCIPlatform) { *source = "oci://ghcr.io/kjanat/provider:v1" },
@@ -100,6 +102,7 @@ func TestSourcePinRejected(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			source, platforms := lockedSource, lockedPlatforms()
 			edit(&source, platforms)
 			if _, err := plugininstall.NewSourcePin(source, platforms); err == nil {
@@ -121,6 +124,7 @@ func TestSourcePinRejected(t *testing.T) {
 }
 
 func TestLockSourcesRejected(t *testing.T) {
+	t.Parallel()
 	for name, lock := range map[string]plugininstall.Lock{
 		"duplicate source":    {SchemaVersion: 2, Plugins: []plugininstall.Pin{}, Sources: []plugininstall.SourcePin{sourcePin(t), sourcePin(t)}},
 		"sources in schema 1": {SchemaVersion: 1, Plugins: []plugininstall.Pin{}, Sources: []plugininstall.SourcePin{sourcePin(t)}},
@@ -128,6 +132,7 @@ func TestLockSourcesRejected(t *testing.T) {
 		"zero source pin":     {SchemaVersion: 2, Plugins: []plugininstall.Pin{}, Sources: []plugininstall.SourcePin{{}}},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if err := lock.Validate(); err == nil {
 				t.Fatal("accepted")
 			}
@@ -136,6 +141,7 @@ func TestLockSourcesRejected(t *testing.T) {
 }
 
 func TestSourcePinDigestsAndVerify(t *testing.T) {
+	t.Parallel()
 	pin := sourcePin(t)
 	got, ok := pin.Digests("linux/amd64")
 	if !ok || !slices.Equal(got, []string{strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64), strings.Repeat("d", 64)}) {

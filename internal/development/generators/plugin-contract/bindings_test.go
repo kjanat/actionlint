@@ -6,6 +6,7 @@ import (
 )
 
 func TestHostTypeDependencyOrder(t *testing.T) {
+	t.Parallel()
 	input := "\ttypRecord_ := b_.AddType(\"record\", host.List{Elem:typVariant_})\n\t_ = typRecord_\n\ttypVariant_ := b_.AddType(\"variant\", host.String)\n\t_ = typVariant_\n"
 	got, err := orderHostTypes([]byte(input))
 	if err != nil {

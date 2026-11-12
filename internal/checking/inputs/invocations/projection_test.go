@@ -52,6 +52,7 @@ func publish(t *testing.T, b *invocation.Builder) invocation.Graph {
 }
 
 func TestProjectionRepeatedDeclarationsKeepOccurrenceAncestry(t *testing.T) {
+	t.Parallel()
 	rootRef, outerRef, innerRef := ref("workflow.yml", "root"), ref("outer/action.yml", "outer"), ref("inner/action.yml", "inner")
 	b, err := invocation.NewBuilder(invocation.EntryWorkflow, rootRef, invocation.DefaultBudget())
 	if err != nil {
@@ -100,6 +101,7 @@ func TestProjectionRepeatedDeclarationsKeepOccurrenceAncestry(t *testing.T) {
 }
 
 func TestProjectionRootScriptAndScopesOnlyOccurrences(t *testing.T) {
+	t.Parallel()
 	entry := ref("action.yml", "entry")
 	b, err := invocation.NewBuilder(invocation.EntryAction, entry, invocation.DefaultBudget())
 	if err != nil {
@@ -126,6 +128,7 @@ func TestProjectionRootScriptAndScopesOnlyOccurrences(t *testing.T) {
 }
 
 func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
+	t.Parallel()
 	target := ref("target/action.yml", "action")
 	tests := []struct {
 		name  string
@@ -223,6 +226,7 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			entry := ref("workflow.yml", "root")
 			kind := invocation.EntryWorkflow
 			if tt.name == "cycle" {
@@ -312,7 +316,9 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 }
 
 func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
+	t.Parallel()
 	t.Run("calls", func(t *testing.T) {
+		t.Parallel()
 		budget := invocation.Budget{MaxDepth: 3, MaxCalls: 1, MaxScripts: 2}
 		b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), budget)
 		if err != nil {
@@ -337,6 +343,7 @@ func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
 		}
 	})
 	t.Run("scripts", func(t *testing.T) {
+		t.Parallel()
 		budget := invocation.Budget{MaxDepth: 3, MaxCalls: 2, MaxScripts: 1}
 		b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), budget)
 		if err != nil {
@@ -358,6 +365,7 @@ func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
 		}
 	})
 	t.Run("entry interruption", func(t *testing.T) {
+		t.Parallel()
 		b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), invocation.DefaultBudget())
 		if err != nil {
 			t.Fatal(err)
@@ -378,6 +386,7 @@ func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
 }
 
 func TestProjectionSnapshotsAndScriptAccessorsAreDetached(t *testing.T) {
+	t.Parallel()
 	entry := ref("workflow.yml", "root")
 	b, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
@@ -419,6 +428,7 @@ func TestProjectionSnapshotsAndScriptAccessorsAreDetached(t *testing.T) {
 }
 
 func TestProjectionRejectsUnknownEnumsAndInvalidPublicOutcomes(t *testing.T) {
+	t.Parallel()
 	if _, err := projectCondition(invocation.Condition(255)); !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
 		t.Fatalf("condition error=%v", err)
 	}
@@ -436,8 +446,10 @@ func TestProjectionRejectsUnknownEnumsAndInvalidPublicOutcomes(t *testing.T) {
 }
 
 func TestProjectionOwnerEnumParity(t *testing.T) {
+	t.Parallel()
 	for _, entryKind := range []invocation.EntryKind{invocation.EntryWorkflow, invocation.EntryAction} {
 		t.Run(string(entryKind), func(t *testing.T) {
+			t.Parallel()
 			entry := ref("workflow.yml", "root")
 			if entryKind == invocation.EntryAction {
 				entry = ref("action.yml", "root")
@@ -491,6 +503,7 @@ func TestProjectionOwnerEnumParity(t *testing.T) {
 }
 
 func TestOwnerRejectsUnknownInvocationKinds(t *testing.T) {
+	t.Parallel()
 	if _, err := invocation.NewBuilder(invocation.EntryKind("unknown"), ref("workflow.yml", "root"), invocation.DefaultBudget()); !errors.Is(err, invocation.ErrInvalidEntry) {
 		t.Fatalf("unknown entry kind error=%v", err)
 	}
@@ -504,6 +517,7 @@ func TestOwnerRejectsUnknownInvocationKinds(t *testing.T) {
 }
 
 func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		owner   invocation.Reason
@@ -681,6 +695,7 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), invocation.DefaultBudget())
 			if err != nil {
 				t.Fatal(err)
@@ -722,6 +737,7 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 	} {
 		for _, reason := range reasons {
 			t.Run(category.name+"/"+string(reason), func(t *testing.T) {
+				t.Parallel()
 				err := category.check(reason)
 				if category.valid[reason] && err != nil || !category.valid[reason] && !errors.Is(err, invocation.ErrInvalidOutcome) {
 					t.Fatalf("reason %q error=%v, accepted=%v", reason, err, category.valid[reason])

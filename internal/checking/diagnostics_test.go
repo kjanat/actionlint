@@ -25,6 +25,7 @@ func (a detailedAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]r
 }
 
 func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
+	t.Parallel()
 	const content = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: 'echo ok'}]\npermissions: {}\n"
 	base := results.Diagnostic{Rule: "detailed-check", Path: "ci.yml", Message: "same location and message", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 3}, Code: "A", Severity: "warning", Help: "help", Explanation: "explanation", DocumentationURL: "https://example.invalid/rule", Related: []results.Related{{Path: "ci.yml", Message: "related", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}}, Fixes: []results.Fix{{Applicability: results.FixSafe, Description: "replace", Edits: []results.Edit{{Path: "ci.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 3}, Replacement: "on"}}}}}
 	second := base

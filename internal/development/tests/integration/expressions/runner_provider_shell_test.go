@@ -28,6 +28,7 @@ func (p expressionShellProvider) ResolveRunners(_ context.Context, request runne
 }
 
 func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, label, providerShell, stepShell, defaults, container string
 		wantFinding                                                bool
@@ -41,6 +42,7 @@ func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
 		{name: "container shell overrides provider", label: "ubuntu-latest", providerShell: "python", container: "    container: alpine\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := "on: push\n"
 			if len(tc.defaults) > 0 && tc.defaults[0] != ' ' {
 				content += tc.defaults

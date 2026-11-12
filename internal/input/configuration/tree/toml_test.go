@@ -14,6 +14,7 @@ import (
 func decodeValue(t *testing.T, doc document.Document) any { t.Helper(); return doc.Value }
 
 func TestDecodeTOMLValues(t *testing.T) {
+	t.Parallel()
 	source := `# settings
 title = "Hello"
 count = 1_000
@@ -65,6 +66,7 @@ tags.primary = "x"
 }
 
 func TestDecodeTOMLPositions(t *testing.T) {
+	t.Parallel()
 	node, err := Decode("actionlint.toml", []byte("names = [\"é\", \"b\"]\nt = { \"é\" = 1, b = 2 }\n[server]\nhost = \"x\"\n  port = 8080\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -90,6 +92,7 @@ func TestDecodeTOMLPositions(t *testing.T) {
 }
 
 func TestDecodeTOMLErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ name, source, want string }{
 		{"duplicate key", "a = 1\na = 2\n", `line 2, column 1: key "a" defined twice`},
 		{"table twice", "[a]\n[a]\n", `line 2, column 2: table "a" defined twice`},
@@ -102,6 +105,7 @@ func TestDecodeTOMLErrors(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := Decode("actionlint.toml", []byte(test.source))
 			if err == nil || !strings.Contains(err.Error(), "actionlint.toml:") {
 				t.Fatalf("got %v, want %q", err, test.want)
@@ -115,6 +119,7 @@ func TestDecodeTOMLErrors(t *testing.T) {
 }
 
 func TestDecodeTOMLEmptyDocument(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"", "# only a comment\n", "\n\n"} {
 		node, err := Decode("actionlint.toml", []byte(source))
 		if err != nil {
@@ -127,6 +132,7 @@ func TestDecodeTOMLEmptyDocument(t *testing.T) {
 }
 
 func TestDecodeSelectsFormatByExtension(t *testing.T) {
+	t.Parallel()
 	want := map[string]any{"self-hosted-runner": map[string]any{"labels": []any{"gpu"}}}
 	json := "{\n\t\"self-hosted-runner\": {\n\t\t\"labels\": [\"gpu\"]\n\t}\n}\n"
 	for _, path := range []string{"actionlint.json", "actionlint.yaml", "actionlint.yml", "config"} {

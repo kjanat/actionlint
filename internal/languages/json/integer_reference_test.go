@@ -20,6 +20,7 @@ import (
 // https://github.com/dotnet/runtime/blob/v8.0.31/src/libraries/System.Private.CoreLib/src/System/ParseNumbers.cs#L217
 // https://github.com/dotnet/runtime/blob/v8.0.31/src/libraries/System.Runtime.Numerics/src/System/Numerics/NumericsHelpers.cs#L40
 func TestFromJSONIntegerBoundariesAgainstRunner(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		want         float64
@@ -45,6 +46,7 @@ func TestFromJSONIntegerBoundariesAgainstRunner(t *testing.T) {
 		{"decimal negative Int64 rounds to nearest", "-9007199254740995", float64(-9007199254740996), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			input := "fromJSON('" + tc.source + "')"
 			value, err := jsonlang.FromJSONValue(tc.source)
 			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
@@ -68,6 +70,7 @@ func TestFromJSONIntegerBoundariesAgainstRunner(t *testing.T) {
 }
 
 func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
+	t.Parallel()
 	maximum, _ := new(big.Float).SetFloat64(math.MaxFloat64).Int(nil)
 	aboveMaximum := new(big.Int).Add(maximum, big.NewInt(1))
 	overflow := new(big.Int).Lsh(big.NewInt(1), 1024)
@@ -86,6 +89,7 @@ func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
 				name, source, want = "negative "+name, "-"+source, -want
 			}
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				value, err := jsonlang.FromJSONValue(source)
 				if err != nil || value != want {
 					t.Fatalf("parsed=%v error=%v, want %v", value, err, want)
@@ -112,6 +116,7 @@ func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
 }
 
 func TestFromJSONNonDecimalIntegerStrictModeAgainstRunner(t *testing.T) {
+	t.Parallel()
 	runnerreference.CheckOutcomeWithJSONMode(t, "fromJSON('0xffffffffffffffff')", nil, runnerreference.StrictJSON,
 		runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
 }

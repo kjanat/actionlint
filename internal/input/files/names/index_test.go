@@ -13,6 +13,7 @@ import (
 )
 
 func TestWorkflowPathsLinearIdentityChecks(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	candidates := make([]string, 1000)
 	for i := range candidates {
@@ -33,6 +34,7 @@ func TestWorkflowPathsLinearIdentityChecks(t *testing.T) {
 }
 
 func TestWorkflowFilenameFoldKeys(t *testing.T) {
+	t.Parallel()
 	for _, names := range [][2]string{{"build.yml", "BUILD.yml"}, {"s.yml", "ſ.yml"}, {"K.yml", "K.yml"}, {"Σ.yml", "ς.yml"}, {"ß.yml", "ẞ.yml"}} {
 		if !strings.EqualFold(names[0], names[1]) || filenameKey(names[0]) != filenameKey(names[1]) {
 			t.Fatalf("case-fold bucket differs for %q", names)
@@ -56,6 +58,7 @@ func BenchmarkWorkflowPathsDistinct(b *testing.B) {
 }
 
 func TestIndexSymlinkCheckout(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	root := filepath.Join(base, "checkout")
 	dir := filepath.Join(root, ".github", "workflows")
@@ -99,6 +102,7 @@ func TestIndexSymlinkCheckout(t *testing.T) {
 }
 
 func TestIndexUnnamedOverlaySpelling(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -132,6 +136,7 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 }
 
 func TestWorkflowPathsPlatformIdentity(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join("repo", ".github", "workflows")
 	disk := filepath.Join(dir, "build.yml")
 	overlay := filepath.Join("REPO", ".GITHUB", "WORKFLOWS", "BUILD.yml")
@@ -157,6 +162,7 @@ func TestWorkflowPathsPlatformIdentity(t *testing.T) {
 }
 
 func TestWorkflowPathsLastOverlayWins(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join("repo", ".github", "workflows")
 	disk := filepath.Join(dir, "build.yml")
 	first := filepath.Join(dir, "BUILD.yml")
@@ -181,6 +187,7 @@ func missingPathIdentity(windows bool) func(string, string) bool {
 }
 
 func TestWorkflowPathsHostFilesystemIdentity(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	disk := filepath.Join(dir, "build.yml")
 	overlay := filepath.Join(dir, "BUILD.yml")
@@ -209,6 +216,7 @@ func TestWorkflowPathsHostFilesystemIdentity(t *testing.T) {
 }
 
 func TestWorkflowPathsUppercaseExtensionIgnored(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join("repo", ".github", "workflows")
 	valid := filepath.Join(dir, "build.yml")
 	for _, windows := range []bool{false, true} {
@@ -220,6 +228,7 @@ func TestWorkflowPathsUppercaseExtensionIgnored(t *testing.T) {
 }
 
 func TestIndexFilesystemCaseAlias(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -260,6 +269,7 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 }
 
 func TestWorkflowPathsDistinctFiles(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	first := filepath.Join(dir, "build.yml")
 	other := filepath.Join(dir, "other.yml")
@@ -297,6 +307,7 @@ func TestWorkflowPathsDistinctFiles(t *testing.T) {
 }
 
 func TestSamePathFilesystemIdentity(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lower, upper := filepath.Join(dir, "build.yml"), filepath.Join(dir, "BUILD.yml")
 	if err := os.WriteFile(lower, nil, 0o600); err != nil {

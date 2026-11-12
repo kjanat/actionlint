@@ -42,6 +42,7 @@ func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, registry *par
 }
 
 func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.T) {
+	t.Parallel()
 	source := []byte("name: source\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
 	metadata, err := actionmeta.Parse(filepath.Join(sourceFixtureBase(t), "source", "action.yml"), source)
 	if err != nil {
@@ -49,6 +50,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 	}
 	for _, mappedFirst := range []bool{false, true} {
 		t.Run(map[bool]string{false: "unmapped first", true: "mapped first"}[mappedFirst], func(t *testing.T) {
+			t.Parallel()
 			plain, mapped := *metadata, *metadata
 			mapped.SourceMapped = true
 			first, second := &plain, &mapped

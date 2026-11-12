@@ -39,13 +39,16 @@ func TestLSPRepositoryProcessOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	marker := filepath.Join(root, "executed")
-	config := "tools:\n  ruff:\n    backend:\n      process:\n        executable: " + strconv.Quote(executable) + "\n        args: ['-test.run=^TestRepositoryRuffCommandHelper$', '--']\n        env:\n          ACTIONLINT_REPO_RUFF_HELPER: '1'\n          ACTIONLINT_REPO_RUFF_MARKER: " + strconv.Quote(marker) + "\n"
-	if err := os.WriteFile("actionlint.yaml", []byte(config), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	for _, allow := range []bool{false, true} {
-		t.Run(strconv.FormatBool(allow), func(t *testing.T) {
+		name := strconv.FormatBool(allow)
+		marker := filepath.Join(root, "executed-"+name)
+		configPath := "actionlint-" + name + ".yaml"
+		config := "tools:\n  ruff:\n    backend:\n      process:\n        executable: " + strconv.Quote(executable) + "\n        args: ['-test.run=^TestRepositoryRuffCommandHelper$', '--']\n        env:\n          ACTIONLINT_REPO_RUFF_HELPER: '1'\n          ACTIONLINT_REPO_RUFF_MARKER: " + strconv.Quote(marker) + "\n"
+		if err := os.WriteFile(configPath, []byte(config), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			server, client := net.Pipe()
@@ -56,7 +59,7 @@ func TestLSPRepositoryProcessOptIn(t *testing.T) {
 			}
 			var stderr bytes.Buffer
 			command := Command{Stdin: server, Stdout: server, Stderr: &stderr}
-			args := []string{"actionlint", "lsp", "--config=actionlint.yaml", "--no-tool=shellcheck"}
+			args := []string{"actionlint", "lsp", "--config=" + configPath, "--no-tool=shellcheck"}
 			if allow {
 				args = append(args, "--allow-config-processes")
 			}

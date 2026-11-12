@@ -8,6 +8,7 @@ import (
 )
 
 func TestIndexedColumnsMatchRawCodepointColumns(t *testing.T) {
+	t.Parallel()
 	for _, line := range []string{"", "abc", "é🐚x", "a\xffb", "a\u0301z"} {
 		document := NewDocument(line)
 		for column := 0; column <= utf8.RuneCountInString(line)+2; column++ {

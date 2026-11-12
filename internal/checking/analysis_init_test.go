@@ -20,6 +20,7 @@ type initializationJoinFunc func(context.Context) error
 func (f initializationJoinFunc) Join(ctx context.Context) error { return f(ctx) }
 
 func TestSourceCaptureInitializationJoinCancelsLifetimeAndKeepsCallerValues(t *testing.T) {
+	t.Parallel()
 	type contextKey struct{}
 	parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), contextKey{}, "parent value"))
 	lifetime, cancelLifetime := context.WithCancel(t.Context())
@@ -47,6 +48,7 @@ func TestSourceCaptureInitializationJoinCancelsLifetimeAndKeepsCallerValues(t *t
 }
 
 func TestSourceCaptureInitializationJoinReturnsWithinBudgetAndPreservesErrors(t *testing.T) {
+	t.Parallel()
 	parent, cancelParent := context.WithCancel(t.Context())
 	cancelParent()
 	lifetime, cancelLifetime := context.WithCancel(t.Context())
@@ -73,6 +75,7 @@ func TestSourceCaptureInitializationJoinReturnsWithinBudgetAndPreservesErrors(t 
 }
 
 func TestAnalysisCaptureInitializationFailureReturnsNoResult(t *testing.T) {
+	t.Parallel()
 	var reads atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir:     t.TempDir(),
@@ -109,12 +112,14 @@ func (e *blockedAnalysisInitError) Join(ctx context.Context) error {
 }
 
 func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *testing.T) {
+	t.Parallel()
 	for _, complete := range []bool{true, false} {
 		name := "join timeout"
 		if complete {
 			name = "joined"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			synctest.Test(t, func(t *testing.T) {
 				type contextKey struct{}
 				parent, cancel := context.WithCancel(context.WithValue(t.Context(), contextKey{}, "caller value"))

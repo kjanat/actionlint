@@ -13,6 +13,7 @@ import (
 )
 
 func TestScriptBudgetWithoutRegisteredTools(t *testing.T) {
+	t.Parallel()
 	content := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" +
 		strings.Repeat("      - run: echo ok\n", invocation.DefaultMaxScripts) +
 		"      - uses: actions/github-script@v7\n        with: {script: console.log(1)}\n"

@@ -15,6 +15,7 @@ import (
 )
 
 func TestPermissionLevelString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		level PermissionLevel
 		want  string
@@ -26,6 +27,7 @@ func TestPermissionLevelString(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.want, func(t *testing.T) {
+			t.Parallel()
 			if have := tc.level.String(); have != tc.want {
 				t.Fatalf("wanted %q but have %q", tc.want, have)
 			}
@@ -34,6 +36,7 @@ func TestPermissionLevelString(t *testing.T) {
 }
 
 func TestPermissionLevelClamp(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what  string
 		scope string
@@ -53,6 +56,7 @@ func TestPermissionLevelClamp(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			if have := clampPermissionLevel(tc.scope, tc.level); have != tc.want {
 				t.Fatalf("wanted %v but have %v for scope %q", tc.want, have, tc.scope)
 			}
@@ -61,6 +65,7 @@ func TestPermissionLevelClamp(t *testing.T) {
 }
 
 func TestResolvePermissionsShapes(t *testing.T) {
+	t.Parallel()
 	readAll := PermissionScopeLevels{}
 	writeAll := PermissionScopeLevels{}
 	for s, vs := range allPermissionScopes {
@@ -136,6 +141,7 @@ func TestResolvePermissionsShapes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			have := resolvePermissions(tc.src)
 			if have.Kind != tc.Kind {
 				t.Fatalf("wanted kind %v but have %v", tc.Kind, have.Kind)
@@ -148,6 +154,7 @@ func TestResolvePermissionsShapes(t *testing.T) {
 }
 
 func TestResolvePermissionsModelViewAndYAMLAgree(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"permissions:",
 		"permissions: ~",
@@ -166,6 +173,7 @@ func TestResolvePermissionsModelViewAndYAMLAgree(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
 			src := "on: push\n" + tc + `
 jobs:
   j:
@@ -197,6 +205,7 @@ jobs:
 }
 
 func TestResolvePermissionsScopeNamesAreCaseSensitive(t *testing.T) {
+	t.Parallel()
 	src := []byte(`on: push
 permissions:
   Contents: read
@@ -224,6 +233,7 @@ permissions:
 }
 
 func TestResolvePermissionsAbsent(t *testing.T) {
+	t.Parallel()
 	if have := resolvePermissionsModel(nil); have.Kind != PermissionsAbsent {
 		t.Errorf("nil AST node should be absent but got %v", have.Kind)
 	}
@@ -239,6 +249,7 @@ func TestResolvePermissionsAbsent(t *testing.T) {
 }
 
 func TestDefaultPermissionLevels(t *testing.T) {
+	t.Parallel()
 	restricted := PermissionScopeLevels{
 		"contents": PermissionLevelRead,
 		"packages": PermissionLevelRead,
@@ -268,6 +279,7 @@ func TestDefaultPermissionLevels(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			if diff := cmp.Diff(tc.want, DefaultPermissionLevels(tc.a)); diff != "" {
 				t.Fatal(diff)
 			}
@@ -291,6 +303,7 @@ func permissionSourceNode(t *testing.T, data []byte) *syntax.Node {
 }
 
 func TestResolvePermissionsYAMLDoesNotMutateSource(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"permissions: READ-ALL\n", "permissions: {Contents: READ, issues: Write}\n"} {
 		node := permissionSourceNode(t, []byte(source))
 		if node == nil {
@@ -318,6 +331,7 @@ func TestResolvePermissionsYAMLDoesNotMutateSource(t *testing.T) {
 }
 
 func TestResolvePermissionsAbsentView(t *testing.T) {
+	t.Parallel()
 	if got := ResolvePermissions(declaration.PermissionsView{}); got.Kind != PermissionsAbsent {
 		t.Fatalf("absent permissions = %#v", got)
 	}

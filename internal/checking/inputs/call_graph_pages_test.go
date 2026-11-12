@@ -10,6 +10,7 @@ import (
 )
 
 func TestCallGraphPagesRetainOrderAndIsolateReaders(t *testing.T) {
+	t.Parallel()
 	records := graphFixture(t)
 	callOutcome := records.Calls[0].Outcome
 	records.Calls = nil

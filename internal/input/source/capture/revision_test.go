@@ -11,6 +11,7 @@ import (
 )
 
 func TestRevisionLookupRequiresSealingAndPerformsNoIO(t *testing.T) {
+	t.Parallel()
 	var reads, resolves atomic.Int32
 	path := filepath.Join(t.TempDir(), "ci.yml")
 	store, err := newStoreWithResolver(t.Context(), nil, func(context.Context, string) ([]byte, error) { reads.Add(1); return []byte("abc"), nil }, func(path string) string { resolves.Add(1); return filepath.ToSlash(path) })

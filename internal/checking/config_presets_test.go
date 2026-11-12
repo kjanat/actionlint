@@ -21,6 +21,7 @@ func newConfigRecorder() *configRecorder {
 func (r *configRecorder) SetConfig(config *repoconfig.Config) { r.config = config }
 
 func TestRulePresetsPrepareConfigurationWithoutFile(t *testing.T) {
+	t.Parallel()
 	content := []byte(`on: push
 jobs:
   test:
@@ -40,6 +41,7 @@ jobs:
 		{"experimental disabled", nil, repoconfig.Presets{Experimental: new(false)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			rule := newConfigRecorder()
 			called := false
 			_, err := runTestAnalysis(t.Context(), analysisRequest{
@@ -66,6 +68,7 @@ jobs:
 		})
 	}
 	t.Run("without project", func(t *testing.T) {
+		t.Parallel()
 		root := t.TempDir()
 		rule := newConfigRecorder()
 		called := false

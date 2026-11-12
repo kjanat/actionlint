@@ -58,8 +58,10 @@ func (r *resolverMetadataTransport) RoundTrip(request *http.Request) (*http.Resp
 }
 
 func TestBundledCommitishResolvesMetadataWithoutExternalExecutable(t *testing.T) {
+	t.Parallel()
 	for _, reference := range []string{"v1", strings.Repeat("a", 40), strings.Repeat("b", 40)} {
 		t.Run(reference, func(t *testing.T) {
+			t.Parallel()
 			transport := &resolverMetadataTransport{commit: strings.Repeat("a", 40), tag: strings.Repeat("b", 40)}
 			provider, err := github.New(github.Options{Mode: github.Online, CacheDir: t.TempDir(), Transport: transport})
 			if err != nil {
@@ -110,6 +112,7 @@ func (r forbiddenMetadataResolver) Resolve(context.Context, references.Request) 
 }
 
 func TestBundledCommitishUnavailableMetadataDoesNotFailAnalysis(t *testing.T) {
+	t.Parallel()
 	transport := &resolverMetadataTransport{missing: true}
 	provider, err := github.New(github.Options{Mode: github.Online, CacheDir: t.TempDir(), Transport: transport})
 	if err != nil {
@@ -122,8 +125,10 @@ func TestBundledCommitishUnavailableMetadataDoesNotFailAnalysis(t *testing.T) {
 }
 
 func TestBundledCommitishOfflineDoesNotResolve(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []github.Mode{github.Off, github.Offline} {
 		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
 			transport := &resolverMetadataTransport{}
 			provider, err := github.New(github.Options{Mode: mode, CacheDir: t.TempDir(), Transport: transport})
 			if err != nil {
@@ -177,9 +182,11 @@ func (b *barrierTransport) RoundTrip(request *http.Request) (*http.Response, err
 }
 
 func TestBundledCommitishListsDifferentRepositoriesConcurrently(t *testing.T) {
+	t.Parallel()
 	commit := strings.Repeat("a", 40)
 	for _, tc := range []struct{ host, ref string }{{"github.com", "v1"}, {"raw.githubusercontent.com", commit}} {
 		t.Run(tc.host, func(t *testing.T) {
+			t.Parallel()
 			transport := &barrierTransport{host: tc.host, released: make(chan struct{}), commit: commit}
 			provider, err := github.New(github.Options{Mode: github.Online, Transport: transport})
 			if err != nil {

@@ -15,6 +15,7 @@ import (
 )
 
 func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
@@ -79,6 +80,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 }
 
 func TestRuleSelectionRejectsDependencyErrors(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, base, leaf, want string
 	}{
@@ -89,6 +91,7 @@ func TestRuleSelectionRejectsDependencyErrors(t *testing.T) {
 		{"missing pin", "", "plugins: [community-check]\n", "plugin install"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			directory := filepath.Join(root, ".github")
 			if err := os.MkdirAll(directory, 0700); err != nil {

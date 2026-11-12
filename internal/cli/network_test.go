@@ -10,6 +10,7 @@ import (
 )
 
 func TestNetworkStatisticsDoNotPolluteDiagnosticJSON(t *testing.T) {
+	t.Parallel()
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
 	status := command.Main([]string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--output=json", "--summary=false", "--network-stats", "-"})
@@ -28,8 +29,10 @@ func TestNetworkStatisticsDoNotPolluteDiagnosticJSON(t *testing.T) {
 }
 
 func TestNetworkStatisticsAvailableAcrossCommands(t *testing.T) {
+	t.Parallel()
 	for _, commandName := range []string{"plugin", "config", "doctor", "check", "fix"} {
 		t.Run(commandName, func(t *testing.T) {
+			t.Parallel()
 			var out, log bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &log}
 			status := command.Main([]string{"actionlint", commandName, "--help", "--network-stats"})

@@ -3,8 +3,10 @@ package scripts
 import "testing"
 
 func TestFactRejectsMissingOrMismatchedOccurrence(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"occurrence", "declaration"} {
 		t.Run(field, func(t *testing.T) {
+			t.Parallel()
 			graph, collection := batchFixture(t, false)
 			batch, err := NewBatch(graph, collection)
 			if err != nil {

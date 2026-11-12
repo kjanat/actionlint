@@ -7,6 +7,7 @@ import (
 )
 
 func TestFixtureRepositoryIDIsOptional(t *testing.T) {
+	t.Parallel()
 	id, err := fixtureRepositoryID(map[string]string{})
 	if err != nil || !id.IsZero() {
 		t.Fatalf("absent header = %+v, %v", id, err)

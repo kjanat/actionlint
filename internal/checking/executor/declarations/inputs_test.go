@@ -13,6 +13,7 @@ import (
 )
 
 func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
+	t.Parallel()
 	const source = "name: Native\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: work\n        run: echo ok\n"
 	parsed, errs := workflowparser.Parse([]byte(source))
 	if len(errs) != 0 {
@@ -26,6 +27,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	step := slices.Collect(job.Steps())[0]
 	for _, scope := range []string{"workflow", "job", "step"} {
 		t.Run(scope, func(t *testing.T) {
+			t.Parallel()
 			check := checkinputs.DeclarationCheck{Name: "native-" + scope, Category: "correctness"}
 			calls := 0
 			switch scope {

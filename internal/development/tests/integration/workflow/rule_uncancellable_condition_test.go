@@ -10,6 +10,7 @@ import (
 )
 
 func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\npermissions: {}\njobs:\n  build:\n    if: ${{ always() }}%s\n    timeout-minutes: 5\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 	for _, tc := range []struct {
 		name, config, comment, severity string
@@ -24,6 +25,7 @@ func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
 		{"suppressed", "lint: {rules: {correctness: {uncancellable-condition: on}}}", " # ignore[uncancellable-condition]", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, fmt.Sprintf(workflow, tc.comment), tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
 			if tc.severity == "" {
 				if len(findings) != 0 {
@@ -42,6 +44,7 @@ func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
 }
 
 func TestCancellationPolicyDoesNotClassifyCheckoutSteps(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\npermissions: {}\njobs:\n  build:\n    cancel-timeout-minutes: 1\n    timeout-minutes: 5\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n        if: always()\n"
 	for _, tc := range []struct {
 		name, config string
@@ -52,6 +55,7 @@ func TestCancellationPolicyDoesNotClassifyCheckoutSteps(t *testing.T) {
 		{"strict", "lint: {rules: {policy: off}}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, workflow, tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
 			for _, finding := range findings {
 				if finding.Rule == "uncancellable-condition" {

@@ -25,6 +25,7 @@ func (p actionSourceReferenceProbe) CheckDocument(context.Context, checkinputs.I
 }
 
 func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		manifest   string
@@ -35,6 +36,7 @@ func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
 		{"fetched-source-policy", "name: node # actionlint:ignore action-source-reference -- reviewed\ndescription: node action\nruns: {using: node20, main: index.js}\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			actionPath := writeFixture(t, root, "local/action.yml", tc.manifest)
 			workflowPath := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")

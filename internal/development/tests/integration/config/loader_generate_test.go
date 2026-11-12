@@ -38,6 +38,7 @@ func uncommentConfigExamples(document string) string {
 }
 
 func TestDefaultConfigFormats(t *testing.T) {
+	t.Parallel()
 	document, err := configschema.Document(configschema.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -48,6 +49,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 	}
 	for _, format := range repoconfig.FileFormats() {
 		t.Run(string(format), func(t *testing.T) {
+			t.Parallel()
 			content, err := checking.ConfigurationRules().DefaultDocument("2.0.0-SNAPSHOT-02d216d", format)
 			if err != nil {
 				t.Fatal(err)
@@ -96,6 +98,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 }
 
 func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, category, maturity, level, want string
 	}{
@@ -104,6 +107,7 @@ func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
 		{"renamed-rule", "conventions", "nursery", "error", "off"},
 	} {
 		t.Run(tc.name+"/"+tc.category, func(t *testing.T) {
+			t.Parallel()
 			rules, err := repoconfig.NewRuleSet([]rule.Declaration{{
 				Name: tc.name, Category: tc.category, Maturity: tc.maturity,
 				Aliases:     []rule.Alias{{Name: "previous-name", Deprecated: true}},
@@ -164,6 +168,7 @@ func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
 }
 
 func TestDefaultConfigReferenceExamples(t *testing.T) {
+	t.Parallel()
 	document, err := configschema.Document(configschema.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -179,6 +184,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 	generated := string(generatedBytes)
 	for name, content := range map[string]string{"defaults": generated, "examples": uncommentConfigExamples(generated)} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			var value any
 			if err := yaml.Unmarshal([]byte(content), &value); err != nil {
 				t.Fatal(err)

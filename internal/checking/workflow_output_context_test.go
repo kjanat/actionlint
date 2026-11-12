@@ -14,6 +14,7 @@ import (
 )
 
 func TestWorkflowCallOutputContextUsesCapturedCalleeMetadata(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
@@ -39,6 +40,7 @@ jobs:
 	}
 	for _, output := range []string{"artifact", "missing"} {
 		t.Run(output, func(t *testing.T) {
+			t.Parallel()
 			caller := fmt.Sprintf(`on:
   workflow_call:
     outputs:

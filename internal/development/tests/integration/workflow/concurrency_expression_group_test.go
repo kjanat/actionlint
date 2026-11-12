@@ -12,6 +12,7 @@ import (
 )
 
 func TestConcurrencyExpressionGroups(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, value string
 		emptyScalar bool
@@ -39,6 +40,7 @@ func TestConcurrencyExpressionGroups(t *testing.T) {
 					continue
 				}
 				t.Run(scope+"/"+form+"/"+tc.name, func(t *testing.T) {
+					t.Parallel()
 					field := fmt.Sprintf("concurrency: %q\n", tc.value)
 					if form == "group" {
 						field = fmt.Sprintf("concurrency: {group: %q}\n", tc.value)

@@ -28,6 +28,7 @@ type recordingEngine struct {
 }
 
 func TestScriptEngineReceivesEnvironmentNamesWithoutValues(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflow := writeFixture(t, root, ".github/workflows/ci.yml", `on: push
 env: { lowercase: a-secret-value, UPPERCASE: upper, miXedCase: mixed }
@@ -114,6 +115,7 @@ func writeScriptEngineRepository(t *testing.T) (root string, workflows []string)
 }
 
 func TestConfiguredScriptEngineLoadsOncePerInvocation(t *testing.T) {
+	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	engine := &recordingEngine{}
 	var paths []string
@@ -142,6 +144,7 @@ func TestConfiguredScriptEngineLoadsOncePerInvocation(t *testing.T) {
 }
 
 func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/overlay.wasm}\noverrides:\n  - includes: ['**/night.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: engines/night.wasm}\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -171,6 +174,7 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 }
 
 func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
+	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}})}
 
@@ -186,6 +190,7 @@ func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 }
 
 func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
+	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	options := checking.Options{
 		WorkingDir:       root,
@@ -198,6 +203,7 @@ func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
 }
 
 func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
+	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	loads := 0
 	loader := func(context.Context, string) (checkinputs.ScriptBackend, error) {
@@ -225,6 +231,7 @@ func (e namedShellEngine) Check(_ context.Context, request checkinputs.ScriptReq
 }
 
 func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	files := map[string]string{
 		".git/HEAD":                        "ref: refs/heads/main\n",
@@ -269,6 +276,7 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 }
 
 func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
+	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	config := "tools:\n  shellcheck:\n    backend:\n      wasm: {path: first.wasm}\noverrides:\n  - includes: ['**/night.yml']\n    tools:\n      shellcheck:\n        backend:\n          wasm: {path: second.wasm}\n"
 	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte(config), 0o600); err != nil {

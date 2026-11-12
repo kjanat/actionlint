@@ -7,6 +7,7 @@ import (
 )
 
 func TestRuleSettingsAnalysis(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   test:
@@ -18,6 +19,7 @@ permissions: {}
 `
 	for _, level := range []string{"off", "on", "info", "warn", "error"} {
 		t.Run(level, func(t *testing.T) {
+			t.Parallel()
 			findings := testutil.WorkflowDiagnostics(t, source, "lint: {rules: {correctness: {if-cond: "+level+"}}}")
 			if level == "off" {
 				if len(findings) != 0 {

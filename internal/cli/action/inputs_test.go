@@ -30,6 +30,7 @@ func isInputError(t *testing.T, err error) *inputError {
 }
 
 func TestParseInputsDefaults(t *testing.T) {
+	t.Parallel()
 	in, err := parseInputs(defaultArgs())
 	if err != nil {
 		t.Fatal(err)
@@ -49,6 +50,7 @@ func TestParseInputsDefaults(t *testing.T) {
 }
 
 func TestParseInputsArgumentCount(t *testing.T) {
+	t.Parallel()
 	for _, tc := range [][]string{
 		args(),
 		args("", "github", "", "", ".", ""),
@@ -63,6 +65,7 @@ func TestParseInputsArgumentCount(t *testing.T) {
 }
 
 func TestParseInputsFormats(t *testing.T) {
+	t.Parallel()
 	for _, want := range formats {
 		a := defaultArgs()
 		a[2] = string(want)
@@ -87,6 +90,7 @@ func TestParseInputsFormats(t *testing.T) {
 }
 
 func TestParseInputsBooleans(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		index int
 		name  string
@@ -121,6 +125,7 @@ func TestParseInputsBooleans(t *testing.T) {
 }
 
 func TestSplitLines(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		want  []string
@@ -141,6 +146,7 @@ func TestSplitLines(t *testing.T) {
 }
 
 func TestParseInputsRejectsOptionLikeFiles(t *testing.T) {
+	t.Parallel()
 	for _, files := range []string{"--help", "workflow.yaml\n-color", "-"} {
 		a := defaultArgs()
 		a[1] = files
@@ -163,6 +169,7 @@ func openRoot(t *testing.T, dir string) *os.Root {
 }
 
 func TestWorkspaceRel(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 
 	for _, tc := range []struct {
@@ -202,6 +209,7 @@ func TestWorkspaceRel(t *testing.T) {
 }
 
 func TestWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	if err := os.MkdirAll(filepath.Join(workspace, "sub", "dir"), 0o755); err != nil {
 		t.Fatal(err)
@@ -241,6 +249,7 @@ func TestWorkingDirectory(t *testing.T) {
 }
 
 func TestWorkingDirectoryAllowsExternalSymlink(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	outside := resolved(t, t.TempDir())
 	if err := os.Symlink(outside, filepath.Join(workspace, "escape")); err != nil {
@@ -252,6 +261,7 @@ func TestWorkingDirectoryAllowsExternalSymlink(t *testing.T) {
 }
 
 func TestResolveOutputFile(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	root := openRoot(t, workspace)
 

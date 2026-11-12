@@ -15,6 +15,7 @@ import (
 )
 
 func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
+	t.Parallel()
 	metadata := testRunCommand("", "rules", "--no-config", "--json")
 	want, err := checking.RulesWithPlugins(t.Context(), plugininstall.Sources{})
 	if err != nil {
@@ -92,6 +93,7 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 }
 
 func TestRulesIncludesSelectedPluginMetadata(t *testing.T) {
+	t.Parallel()
 	path := "internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"
 	got := testRunCommand("", "rules", "no-sudo", "--plugin", path, "--json")
 	var descriptor rule.Descriptor

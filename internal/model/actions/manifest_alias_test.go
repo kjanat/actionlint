@@ -10,6 +10,7 @@ import (
 )
 
 func TestManifestRejectsAnchorsAndAliases(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		want         []sourcepos.Position
@@ -20,6 +21,7 @@ func TestManifestRejectsAnchorsAndAliases(t *testing.T) {
 		{"literal text", "name: example\ndescription: 'literal &label *label'\nruns: {using: composite, steps: []}\n# &comment *comment\n", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			meta, err := Parse("nested/action.yaml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestDeclaredEnvironmentPreservesSourceOrderAndCase(t *testing.T) {
+	t.Parallel()
 	declarations := mapping.Resolve(&mapping.Inputs{Values: map[string]mapping.Input{
 		"foo": {Name: value.YAMLScalar("foo", "!!str", value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 2, Column: 3}}})},
 		"FOO": {Name: value.YAMLScalar("FOO", "!!str", value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 3, Column: 3}}})},
@@ -26,6 +27,7 @@ func TestDeclaredEnvironmentPreservesSourceOrderAndCase(t *testing.T) {
 }
 
 func TestEnvironmentNamesSeparateMergeFromLookup(t *testing.T) {
+	t.Parallel()
 	layers := []EnvironmentLayer{
 		{Scope: EnvironmentWorkflow, Names: []string{"lowercase", "UPPERCASE", "miXedCase"}},
 		{Scope: EnvironmentJob, Names: []string{"LOWERCASE"}},
@@ -47,6 +49,7 @@ func TestEnvironmentNamesSeparateMergeFromLookup(t *testing.T) {
 		{"PowerShell template", "pwsh -command . '{0}'", runnerapi.Windows, []string{"lowercase", "UPPERCASE", "miXedCase"}, EnvironmentDeclared},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			environment := EnvironmentAlternatives(tc.shell, []runnerapi.OS{tc.os}, layers...)[0]
 			var names []string
 			for _, variable := range environment.Names() {
@@ -66,6 +69,7 @@ func TestEnvironmentNamesSeparateMergeFromLookup(t *testing.T) {
 }
 
 func TestWindowsBashUsesFirstScopeSpelling(t *testing.T) {
+	t.Parallel()
 	environment := EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Windows},
 		EnvironmentLayer{Scope: EnvironmentWorkflow, Names: []string{"foo"}},
 		EnvironmentLayer{Scope: EnvironmentJob, Names: []string{"FOO"}},
@@ -81,6 +85,7 @@ func TestWindowsBashUsesFirstScopeSpelling(t *testing.T) {
 }
 
 func TestUnknownEnvironmentDeclarationsDoNotInventWindowsSpelling(t *testing.T) {
+	t.Parallel()
 	layers := []EnvironmentLayer{
 		{Scope: EnvironmentWorkflow, Names: []string{"EXISTING"}},
 		{Scope: EnvironmentCaller, UnknownNames: true},
@@ -103,6 +108,7 @@ func TestUnknownEnvironmentDeclarationsDoNotInventWindowsSpelling(t *testing.T) 
 }
 
 func TestEnvironmentAlternativesOwnTheirNames(t *testing.T) {
+	t.Parallel()
 	names := []string{"original"}
 	alternatives := EnvironmentAlternatives("bash", nil, EnvironmentLayer{Scope: EnvironmentStep, Names: names})
 	names[0] = "mutated"
@@ -119,6 +125,7 @@ func TestEnvironmentAlternativesOwnTheirNames(t *testing.T) {
 }
 
 func TestWindowsEnvironmentUsesRunnerOrdinalComparison(t *testing.T) {
+	t.Parallel()
 	environment := EnvironmentAlternatives("pwsh", []runnerapi.OS{runnerapi.Windows}, EnvironmentLayer{Names: []string{"I", "S"}})[0]
 	for _, name := range []string{"ı", "ſ"} {
 		if environment.Lookup(name) != EnvironmentUndeclared {

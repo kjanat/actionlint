@@ -51,8 +51,10 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	}
 	// Keep tool-manager shims in the repository's version context. Both the
 	// native command and actionlint disable configuration discovery below.
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", "")
+	t.Setenv("ACTIONLINT_TOOL_RUFF_ENV", "")
 	for _, key := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
-		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatal(err)
 		}
@@ -106,6 +108,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 				continue
 			}
 			t.Run(strings.Join(prefix, " ")+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				args := append([]string{"actionlint", "--no-color", "--summary=false", "--no-config", "--shellcheck=", "--json"}, prefix...)
 				args = append(args, tc.flags...)
 				var stdout, stderr bytes.Buffer
@@ -134,6 +137,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 }
 
 func TestDeprecatedPyflakesFlag(t *testing.T) {
+	t.Parallel()
 	workflow := `on: push
 jobs:
   test:

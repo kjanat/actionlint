@@ -21,6 +21,7 @@ func writeNeutralFixture(t *testing.T, dir, name, content string) string {
 }
 
 func TestNeutralMixedFormatExtends(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	writeNeutralFixture(t, dir, "base.toml", "[repository]\nrunners = ['gpu']\nsecrets = ['BASE']\n")
 	writeNeutralFixture(t, dir, "middle.jsonc", "{\n // inherit TOML\n \"extends\": [\"base.toml\"],\n \"repository\": {\"secrets\": [],},\n}\n")
@@ -42,6 +43,7 @@ func TestNeutralMixedFormatExtends(t *testing.T) {
 }
 
 func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, overlay string
 		want          any
@@ -52,6 +54,7 @@ func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
 		{"empty list", "list: []", map[string]any{"mapping": map[string]any{"one": "base"}, "list": []any{}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			writeNeutralFixture(t, dir, "base.yaml", "mapping: {one: base}\nlist: [base]\n")
 			leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [base.yaml]\n"+tc.overlay+"\n")
@@ -67,6 +70,7 @@ func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
 }
 
 func TestNeutralFileOverrideAfterNull(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: off}}\noverrides:\n  - includes: ['**']\n    lint: {rules: {correctness: null}}\n  - includes: ['**']\n    lint: {rules: {correctness: {if-cond: warn}}}\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -84,11 +88,13 @@ func TestNeutralFileOverrideAfterNull(t *testing.T) {
 }
 
 func TestNeutralLegacyPermissionScopeMigration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source string }{
 		{"policy", "policy: {require-permissions: {scope: job}}"},
 		{"rule", "lint: {rules: {security: {explicit-permissions: {level: on, options: {scope: job}}}}}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			migration, err := checking.ConfigurationRules().MigrateDocument("legacy.yaml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)

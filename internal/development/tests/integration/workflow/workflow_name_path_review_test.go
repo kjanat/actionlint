@@ -15,6 +15,7 @@ import (
 )
 
 func TestWorkflowRunSymlinkCheckout(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	realRoot := filepath.Join(base, "checkout")
 	fixturefiles.Write(t, realRoot, ".github/workflows/build.yml", "name: [\n")
@@ -25,6 +26,7 @@ func TestWorkflowRunSymlinkCheckout(t *testing.T) {
 	for _, roots := range [][2]string{{realRoot, alias}, {alias, realRoot}} {
 		for _, name := range []string{"New", "Missing"} {
 			t.Run(roots[0]+name, func(t *testing.T) {
+				t.Parallel()
 				project := workspace.Identity(roots[1])
 				consumer := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
 jobs:
@@ -53,9 +55,11 @@ permissions: {}
 }
 
 func TestWorkflowRunPatternLineBreaks(t *testing.T) {
+	t.Parallel()
 	for _, pattern := range []string{"Build\nCI", "Build\rCI", "Build\r\nCI", "!Build\nCI", "Build\\\nCI", "\nBuild", "Build\r"} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(strconv.Quote(pattern)+strconv.Quote(ending), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				source := `on:
   workflow_run:
@@ -77,6 +81,7 @@ permissions: {}
 }
 
 func TestWorkflowRunPatternScalarLineBreaks(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, scalar string
 		want         int
@@ -89,6 +94,7 @@ func TestWorkflowRunPatternScalarLineBreaks(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+strconv.Quote(ending), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				project := workspace.Identity(root)
 				source := `on:

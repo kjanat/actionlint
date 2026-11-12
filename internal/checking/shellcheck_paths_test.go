@@ -18,6 +18,7 @@ import (
 )
 
 func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, rc, environment string
@@ -38,7 +39,7 @@ func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
 		{name: "unknown directory environment", rc: "external-sources=true\n", unknown: true, environment: "-x"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("SHELLCHECK_OPTS", tc.environment)
+			t.Parallel()
 			root := t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)
@@ -63,7 +64,7 @@ jobs:
 			}
 			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
@@ -82,8 +83,8 @@ jobs:
 }
 
 func TestShellcheckConfigPaths(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
-	t.Setenv("GITHUB_WORKSPACE", "")
 	for _, tc := range []struct {
 		name, selection, rcname string
 		explicit, overlay       bool
@@ -98,6 +99,7 @@ func TestShellcheckConfigPaths(t *testing.T) {
 		{"overlay keeps configdir", "./.shellcheckrc", ".shellcheckrc", true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)
@@ -151,6 +153,7 @@ permissions: {}
 }
 
 func TestShellcheckSourceWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, workflowDefaults, jobDefaults, stepDir, sourceDir string
@@ -170,6 +173,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 		{"Unix drive-like nested name", "", "", "C:/work", "C:/work/scripts", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if runtime.GOOS == "windows" && strings.Contains(tc.stepDir, ":") {
 				t.Skip("fixture requires Unix filenames containing colons")
 			}
@@ -193,7 +197,6 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 				decoy = "VALUE=42\n"
 			}
 			writeFixture(t, analyzer, "scripts/config.sh", decoy)
-			t.Chdir(analyzer)
 			workflow := "on: push\n"
 			if tc.workflowDefaults != "" {
 				workflow += `defaults:
@@ -243,6 +246,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 }
 
 func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, runner, directory, scope string
@@ -265,6 +269,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 		{"Windows escape", "windows-latest", `..\..\scripts\build`, "step", false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
 				t.Fatal(err)
@@ -328,6 +333,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 }
 
 func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	root, outside := t.TempDir(), t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
@@ -343,10 +349,11 @@ func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
 		{"external", outside, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if err := os.Symlink(tc.target, filepath.Join(root, tc.name)); err != nil {
 				t.Skipf("symlinks are unavailable: %v", err)
 			}
-			workflow := writeFixture(t, root, ".github/workflows/test.yml", `on: push
+			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -374,6 +381,7 @@ jobs:
 }
 
 func TestShellcheckSiblingWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	parent := t.TempDir()
 	root, shared := filepath.Join(parent, "project"), filepath.Join(parent, "shared")
@@ -387,7 +395,8 @@ func TestShellcheckSiblingWorkingDirectory(t *testing.T) {
 	}
 	for _, directory := range []string{"../shared", shared} {
 		t.Run(directory, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/test.yml", `on: push
+			t.Parallel()
+			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), `on: push
 jobs:
   test:
     runs-on: `+runner+`
@@ -414,6 +423,7 @@ permissions: {}
 }
 
 func TestShellcheckSelectedConfigFailure(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, config, content string
@@ -422,6 +432,7 @@ func TestShellcheckSelectedConfigFailure(t *testing.T) {
 		{"invalid rc", "broken.rc", "disable=not-a-code\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if tc.content != "" {
 				writeFixture(t, root, tc.config, tc.content)
@@ -446,9 +457,11 @@ jobs:
 }
 
 func TestShellcheckOverlayPathOrigin(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, explicitContext := range []bool{false, true} {
 		t.Run(strconv.FormatBool(explicitContext), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			config := writeFixture(t, root, "settings/actionlint.yaml", "tools: {shellcheck: {config: missing.rc}}\n")
 			workingDir := filepath.Join(root, "project")

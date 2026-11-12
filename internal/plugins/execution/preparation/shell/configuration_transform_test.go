@@ -42,6 +42,7 @@ func quotedDirectivePath(t *testing.T, path string) (string, error) {
 }
 
 func TestConfigurationTransformExpandsEnableAll(t *testing.T) {
+	t.Parallel()
 	for _, enable := range []string{`"all"`, `true`, `["all"]`} {
 		directives, err := shellcheckConfiguration(t, []byte(`{"enable": `+enable+`, "disable": ["SC2086"], "extended-analysis": false, "source-path": ["lib dir"]}`))
 		if err != nil {
@@ -56,6 +57,7 @@ func TestConfigurationTransformExpandsEnableAll(t *testing.T) {
 }
 
 func TestParseDirectivesNamesTheOffendingKey(t *testing.T) {
+	t.Parallel()
 	for document, want := range map[string]string{
 		`{"disable": ["SC2086x"]}`:          "disable",
 		`{"enable": ["bad name"]}`:          "enable",
@@ -72,6 +74,7 @@ func TestParseDirectivesNamesTheOffendingKey(t *testing.T) {
 }
 
 func TestRenderDirectivesOfNoneIsEmpty(t *testing.T) {
+	t.Parallel()
 	if settings, err := shellcheckConfiguration(t, nil); settings.Prefix != "" || err != nil {
 		t.Fatalf("got %q, %v", settings.Prefix, err)
 	}
@@ -81,6 +84,7 @@ func TestRenderDirectivesOfNoneIsEmpty(t *testing.T) {
 // wrapped in a quote type it does not contain, and left bare only when it
 // holds both types and no whitespace that would start another directive key.
 func TestDirectivePathQuotesWithAQuoteThePathDoesNotContain(t *testing.T) {
+	t.Parallel()
 	for path, want := range map[string]string{
 		"lib":      `"lib"`,
 		"lib dir":  `"lib dir"`,
@@ -95,6 +99,7 @@ func TestDirectivePathQuotesWithAQuoteThePathDoesNotContain(t *testing.T) {
 }
 
 func TestDirectivePathRejectsPathsShellCheckCannotRead(t *testing.T) {
+	t.Parallel()
 	for _, path := range []string{
 		"",
 		"a\nb",

@@ -6,6 +6,7 @@ import (
 )
 
 func TestWorkspaceURIsPreserveVirtualIdentity(t *testing.T) {
+	t.Parallel()
 	directory := filepath.Join(t.TempDir(), "virtual-workspace")
 	for _, root := range []string{"file:///workspace", "vscode-vfs://github/owner/repo?ref=master"} {
 		workspace, err := NewWorkspaceURIs(root, directory)
@@ -32,6 +33,7 @@ func TestWorkspaceURIsPreserveVirtualIdentity(t *testing.T) {
 }
 
 func TestWorkspaceURIsRejectDifferentRootsAndRevisions(t *testing.T) {
+	t.Parallel()
 	workspace, err := NewWorkspaceURIs("vscode-vfs://github/owner/repo?ref=master", t.TempDir())
 	if err != nil {
 		t.Fatal(err)

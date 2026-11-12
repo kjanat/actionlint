@@ -21,6 +21,7 @@ import (
 )
 
 func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "blocked")
 	lifetime, cancelLifetime := context.WithCancel(t.Context())
 	defer cancelLifetime()
@@ -77,6 +78,7 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 }
 
 func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
+	t.Parallel()
 	lifetime, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	path := filepath.Join(t.TempDir(), "complete.yml")
@@ -111,6 +113,7 @@ func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
 }
 
 func TestPartialReadErrorCannotPublishBytes(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "partial.yml")
 	failure := errors.New("truncated read")
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return []byte("partial"), failure })
@@ -130,8 +133,10 @@ func TestPartialReadErrorCannotPublishBytes(t *testing.T) {
 }
 
 func TestCancelledCaptureCauseIsCachedAndPublished(t *testing.T) {
+	t.Parallel()
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
 		t.Run(cause.Error(), func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "cancelled")
 			var reads int
 			store := newStore(t, nil, func(context.Context, string) ([]byte, error) {
@@ -160,6 +165,7 @@ func TestCancelledCaptureCauseIsCachedAndPublished(t *testing.T) {
 }
 
 func TestConcurrentCaptureStartsAndCloseAreJoined(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	for range 32 {
 		var resolutions, reads, active atomic.Int32
@@ -231,6 +237,7 @@ func TestConcurrentCaptureStartsAndCloseAreJoined(t *testing.T) {
 }
 
 func TestCanonicalSingleflightCancellationAndCloseJoining(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	slow, fast := filepath.Join(dir, "slow"), filepath.Join(dir, "fast")
 	started, release := make(chan struct{}), make(chan struct{})
@@ -307,6 +314,7 @@ func TestCanonicalSingleflightCancellationAndCloseJoining(t *testing.T) {
 }
 
 func TestLookupNeverStartsMetadataOrContentIO(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	good, failed, absent := filepath.Join(dir, "good"), filepath.Join(dir, "failed"), filepath.Join(dir, "absent")
 	started, release := make(chan struct{}), make(chan struct{})
@@ -363,6 +371,7 @@ func TestLookupNeverStartsMetadataOrContentIO(t *testing.T) {
 }
 
 func TestStdinRequiresOverlay(t *testing.T) {
+	t.Parallel()
 	var reads atomic.Int32
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { reads.Add(1); return []byte("wrong"), nil })
 	for range 2 {
@@ -375,6 +384,7 @@ func TestStdinRequiresOverlay(t *testing.T) {
 }
 
 func TestRelativeAliasesRejectedWithoutIO(t *testing.T) {
+	t.Parallel()
 	var work atomic.Int32
 	store, err := newStoreWithResolver(t.Context(), nil,
 		func(context.Context, string) ([]byte, error) { work.Add(1); return nil, nil },
@@ -400,6 +410,7 @@ func TestRelativeAliasesRejectedWithoutIO(t *testing.T) {
 }
 
 func TestVirtualReaderUsesHostMetadataIdentity(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "virtual", "missing", "file")
 	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("virtual source unexpectedly exists on host: %v", err)
@@ -418,10 +429,22 @@ func TestVirtualReaderUsesHostMetadataIdentity(t *testing.T) {
 }
 
 func TestModelConflictStickyAcrossPendingSuccessAndFailure(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "file")
-	var expected string
+	var mutex sync.Mutex
+	messages := map[string]string{}
+	t.Cleanup(func() {
+		distinct := map[string]bool{}
+		for _, message := range messages {
+			distinct[message] = true
+		}
+		if len(distinct) > 1 {
+			t.Errorf("phase changed conflict: %q", messages)
+		}
+	})
 	for _, phase := range []string{"pending", "success", "failure"} {
 		t.Run(phase, func(t *testing.T) {
+			t.Parallel()
 			started, release := make(chan struct{}), make(chan struct{})
 			store := newStore(t, nil, func(context.Context, string) ([]byte, error) {
 				close(started)
@@ -446,12 +469,10 @@ func TestModelConflictStickyAcrossPendingSuccessAndFailure(t *testing.T) {
 				}
 			}
 			_, err := store.Read(t.Context(), path, source.YAML)
-			conflict := requireConflict(t, err)
-			if expected == "" {
-				expected = conflict.message
-			} else if conflict.message != expected {
-				t.Fatalf("phase changed conflict: %q != %q", conflict.message, expected)
-			}
+			expected := requireConflict(t, err).message
+			mutex.Lock()
+			messages[phase] = expected
+			mutex.Unlock()
 			if phase == "pending" {
 				close(release)
 				requireConflict(t, <-first)
@@ -472,6 +493,7 @@ func TestModelConflictStickyAcrossPendingSuccessAndFailure(t *testing.T) {
 }
 
 func TestSealedSourcesDeterministicAcrossOrdersAndConcurrency(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	good, bad, failed := filepath.Join(dir, "good"), filepath.Join(dir, "bad"), filepath.Join(dir, "failed")
 	alias := func(name string) string {

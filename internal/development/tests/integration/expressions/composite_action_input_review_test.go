@@ -12,6 +12,7 @@ import (
 )
 
 func TestCompositeActionInputScriptSinks(t *testing.T) {
+	t.Parallel()
 	for _, nested := range []bool{false, true} {
 		for _, tc := range []struct {
 			name, action, input, value string
@@ -27,6 +28,7 @@ func TestCompositeActionInputScriptSinks(t *testing.T) {
 			{"independent invalid context", "actions/github-script@v8", "script", "console.log('${{ githbu.ref }}', '${{ github.event.issue.title }}')", map[string]int{"action": 1, "script-injection": 1}},
 		} {
 			t.Run(fmt.Sprintf("nested=%t/%s", nested, tc.name), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				body := "name: inner\ndescription: test\ninputs:\n  token:\n    description: test\nruns:\n  using: composite\n  steps:\n    - uses: " + tc.action + "\n      with:\n        " + tc.input + ": |\n          " + tc.value + "\n"
@@ -61,6 +63,7 @@ func TestCompositeActionInputScriptSinks(t *testing.T) {
 }
 
 func TestCompositeActionInputScriptSourceLocations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, scalar string
 		line, column int
@@ -71,6 +74,7 @@ func TestCompositeActionInputScriptSourceLocations(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+fmt.Sprintf("/%q", ending), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v8\n      with:\n        script: " + tc.scalar + "\n"
@@ -89,12 +93,14 @@ func TestCompositeActionInputScriptSourceLocations(t *testing.T) {
 }
 
 func TestCompositeActionInputMappingValidationOwnership(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, mapping string }{
 		{"whole string", "${{ 'not-a-map' }}"},
 		{"whole array", "${{ fromJSON('[]') }}"},
 		{"inserted array", "\n        ${{ insert }}: ${{ fromJSON('[]') }}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      with: " + tc.mapping + "\n"

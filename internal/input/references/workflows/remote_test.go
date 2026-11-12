@@ -20,6 +20,7 @@ func (f workflowProviderFunc) LookupWorkflow(ctx context.Context, spec string) (
 }
 
 func TestRemoteWorkflowMetadataSharedWithoutRepositoryRoot(t *testing.T) {
+	t.Parallel()
 	const spec = "example/workflows/.github/workflows/build.yml@v1"
 	var requests atomic.Int32
 	remote := NewRemote(workflowProviderFunc(func(_ context.Context, got string) (RemoteFile, error) {
@@ -60,9 +61,11 @@ func TestRemoteWorkflowMetadataSharedWithoutRepositoryRoot(t *testing.T) {
 }
 
 func TestRemoteWorkflowUnavailableInvalidAndCanceled(t *testing.T) {
+	t.Parallel()
 	const spec = "example/workflows/.github/workflows/build.yml@v1"
 	for _, scenario := range []string{"unavailable", "invalid", "foreign", "canceled"} {
 		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			remote := NewRemote(workflowProviderFunc(func(_ context.Context, request string) (RemoteFile, error) {
@@ -108,6 +111,7 @@ func TestRemoteWorkflowUnavailableInvalidAndCanceled(t *testing.T) {
 }
 
 func TestRemoteWorkflowReferenceValidation(t *testing.T) {
+	t.Parallel()
 	sha := strings.Repeat("a", 40)
 	for _, spec := range []string{"./.github/workflows/build.yml", "example/repo@v1", "example/repo/.github/workflows/../build.yml@v1", "example/repo/.github/workflows/nested/build.yml@v1", "example/repo/.github/workflows/build.yml@${{ inputs.ref }}"} {
 		if IsRemoteReference(spec) {
@@ -120,6 +124,7 @@ func TestRemoteWorkflowReferenceValidation(t *testing.T) {
 }
 
 func TestRemoteWorkflowRejectsDifferentContentAtSameCommit(t *testing.T) {
+	t.Parallel()
 	requests := 0
 	remote := NewRemote(workflowProviderFunc(func(_ context.Context, spec string) (RemoteFile, error) {
 		requests++
@@ -138,6 +143,7 @@ func TestRemoteWorkflowRejectsDifferentContentAtSameCommit(t *testing.T) {
 }
 
 func TestLoadCallsFetchesRemoteWorkflowsConcurrently(t *testing.T) {
+	t.Parallel()
 	specs := []string{"example/first/.github/workflows/build.yml@v1", "example/second/.github/workflows/build.yml@v1", "./.github/workflows/local.yml"}
 	released := make(chan struct{})
 	var inFlight atomic.Int32
@@ -164,9 +170,11 @@ func TestLoadCallsFetchesRemoteWorkflowsConcurrently(t *testing.T) {
 }
 
 func TestLoadCallsKeepsRemoteWorkflowErrors(t *testing.T) {
+	t.Parallel()
 	const spec = "example/workflows/.github/workflows/build.yml@v1"
 	for _, scenario := range []string{"foreign", "canceled"} {
 		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			var requests atomic.Int32

@@ -15,6 +15,7 @@ import (
 // metadata and loads each package through the same path used for real plugins.
 // It is opt-in because it builds Rust components and requires wasm32-wasip2.
 func TestRustSDKScriptWorlds(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_RUST_SDK_INTEGRATION") != "1" {
 		t.Skip("set ACTIONLINT_RUST_SDK_INTEGRATION=1 to build the Rust SDK fixture")
 	}
@@ -42,6 +43,7 @@ func TestRustSDKScriptWorlds(t *testing.T) {
 		{"template-03", "v03,template", ScriptEngine03Interface, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			featureArgs := []string{}
 			if tc.features != "" {
 				featureArgs = []string{"--features", tc.features}

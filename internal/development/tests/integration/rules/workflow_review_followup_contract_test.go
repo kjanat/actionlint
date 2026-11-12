@@ -18,6 +18,7 @@ import (
 )
 
 func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
+	t.Parallel()
 	for _, pattern := range []string{"Build [", "?Build", "Build*", "!Build*", "Build's CI", "${{ vars.WORKFLOW }}"} {
 		reference := "${{ '" + strings.ReplaceAll(pattern, "'", "''") + "' }}"
 		if strings.HasPrefix(pattern, "${{") {

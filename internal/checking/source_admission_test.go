@@ -30,6 +30,7 @@ func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.Input)
 }
 
 func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
@@ -39,6 +40,7 @@ func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) 
 }
 
 func TestPublicationRejectsForeignPathWithoutSource(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store, fixture := capturefixture.NewCapturedSources(t, root)
 	path := filepath.Join(root, "ci.yml")
@@ -68,8 +70,10 @@ func TestPublicationRejectsForeignPathWithoutSource(t *testing.T) {
 }
 
 func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
+	t.Parallel()
 	for _, failed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "changed reread", true: "failed reread"}[failed], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			entryPath, reportedPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "library.sh")
 			store, fixture := capturefixture.NewCapturedSources(t, root)
@@ -123,6 +127,7 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 }
 
 func TestReportedSourceAdmissionRejectsUnmarkedForeignSourcesExactly(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store, _ := capturefixture.NewCapturedSources(t, root)
 	session := analysisSession{ctx: t.Context(), captures: store, workingDir: root}
@@ -140,6 +145,7 @@ func TestReportedSourceAdmissionRejectsUnmarkedForeignSourcesExactly(t *testing.
 }
 
 func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	entryPath, dependencyPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "dependency.yml")
 	store, fixture := capturefixture.NewCapturedSources(t, root)
@@ -179,6 +185,7 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 }
 
 func TestDependencyVerifyFailureRejectsReferenceLessFindings(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	dependencyPath := filepath.Join(root, "dependency.yml")
 	store, fixture := capturefixture.NewCapturedSources(t, root)
@@ -201,8 +208,10 @@ func TestDependencyVerifyFailureRejectsReferenceLessFindings(t *testing.T) {
 }
 
 func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
+	t.Parallel()
 	for _, state := range []string{"captured", "rejected", "stale", "quarantined", "foreign captured"} {
 		t.Run(state, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
 			store, fixture := capturefixture.NewCapturedSources(t, root)

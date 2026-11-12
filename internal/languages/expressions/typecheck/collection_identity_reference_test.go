@@ -9,6 +9,7 @@ import (
 )
 
 func TestCollectionIdentityReference(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_REFERENCE_IMAGE") == "" {
 		t.Skip("set ACTIONLINT_REFERENCE_IMAGE to compare against Runny")
 	}
@@ -31,6 +32,7 @@ func TestCollectionIdentityReference(t *testing.T) {
 	} {
 		for _, mode := range []reference.JSONMode{reference.StrictJSON, reference.LooseJSON} {
 			t.Run(tc.expression+"/strict="+strconv.FormatBool(mode == reference.StrictJSON), func(t *testing.T) {
+				t.Parallel()
 				reference.CheckOutcomeWithJSONMode(t, tc.expression, variables, mode, reference.Expectation{Value: tc.want})
 			})
 		}

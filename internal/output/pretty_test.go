@@ -13,9 +13,7 @@ import (
 )
 
 func TestPrettyWrappedHyperlinks(t *testing.T) {
-	previous := color.NoColor
-	color.NoColor = true
-	t.Cleanup(func() { color.NoColor = previous })
+	t.Parallel()
 	target := "https://example.com/" + strings.Repeat("long-path/", 9) + "rule?q=hello%20world#details"
 	help := "https://example.com/help_(bash)?a=1&b=2"
 	docs := "https://example.com/docs"
@@ -62,9 +60,7 @@ func TestPrettyWrappedHyperlinks(t *testing.T) {
 }
 
 func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
-	previous := color.NoColor
-	color.NoColor = true
-	t.Cleanup(func() { color.NoColor = previous })
+	t.Parallel()
 	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
 	var out strings.Builder
 	f := FindingOf(results.Diagnostic{Message: message}, nil)
@@ -83,6 +79,7 @@ func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 }
 
 func TestPrettyDiagnostic(t *testing.T) {
+	t.Parallel()
 	r, err := New(FormatPretty, "", false, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -106,6 +103,7 @@ func TestPrettyDiagnostic(t *testing.T) {
 }
 
 func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
+	t.Parallel()
 	rule := Rule{Name: "shellcheck", Help: "Configure this plugin.", Explanation: "Checks shell snippets.", DocumentationURL: "https://example.com/rule"}
 	d := results.Diagnostic{
 		Rule: rule.Name, Code: "SC2035", Severity: "info", Message: "Use ./*glob* or -- *glob*",
@@ -139,6 +137,7 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 }
 
 func TestPrettyRuleConfiguration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		rules    []Rule
@@ -161,6 +160,7 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 		{name: "diagnostic without rule"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			renderer, err := New(FormatPretty, "", false, testVersion, tc.rules)
 			if err != nil {
 				t.Fatal(err)
@@ -193,6 +193,7 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 }
 
 func TestPrettyWidthAndCoordinates(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		line          string
 		column, end   int

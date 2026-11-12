@@ -65,6 +65,7 @@ func requestsTo(hosts *recorder, host string) []string {
 }
 
 func TestRawNotFoundNeverReachesJSDelivr(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, spec, token string
 		raw               int
@@ -75,6 +76,7 @@ func TestRawNotFoundNeverReachesJSDelivr(t *testing.T) {
 		{name: "named reference", spec: "example/action@v2", token: "fixture-token", raw: 4, listing: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Host {
 				case "raw.githubusercontent.com":
@@ -140,6 +142,7 @@ func TestTagObjectNotFoundPreventsCDNFallbackAtItsCommit(t *testing.T) {
 }
 
 func TestJSDelivrFileIsCachedWithoutRepositoryID(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
 	hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusOK, jsDelivrYAML, actionSource))
 	client, err := New(Options{Mirrors: references.AllowUnknownMirrors, CacheDir: cache, Transport: hosts})
@@ -176,7 +179,9 @@ func TestJSDelivrFileIsCachedWithoutRepositoryID(t *testing.T) {
 }
 
 func TestJSDelivrNotFoundTriesSecondFilenameThenAPI(t *testing.T) {
+	t.Parallel()
 	t.Run("action.yaml", func(t *testing.T) {
+		t.Parallel()
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), func(r *http.Request) (*http.Response, error) {
 			if strings.HasSuffix(r.URL.Path, "/action.yaml") {
 				return respond(r, http.StatusOK, jsDelivrYAML, actionSource), nil
@@ -194,6 +199,7 @@ func TestJSDelivrNotFoundTriesSecondFilenameThenAPI(t *testing.T) {
 		}
 	})
 	t.Run("neither", func(t *testing.T) {
+		t.Parallel()
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusNotFound, rawText, "Couldn't find the requested file."))
 		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
@@ -208,12 +214,14 @@ func TestJSDelivrNotFoundTriesSecondFilenameThenAPI(t *testing.T) {
 }
 
 func TestJSDelivrEnvironmentFailuresFallBackToAPI(t *testing.T) {
+	t.Parallel()
 	failures := append(environmentFailures(),
 		failure{name: "oversized", status: http.StatusOK, contentType: jsDelivrYAML, body: strings.Repeat("x", maxBody+1)},
 		failure{name: "plain text", status: http.StatusOK, contentType: rawText, body: actionSource},
 	)
 	for _, f := range failures {
 		t.Run(f.name, func(t *testing.T) {
+			t.Parallel()
 			hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), f.respond)
 			client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 			if err != nil {
@@ -229,6 +237,7 @@ func TestJSDelivrEnvironmentFailuresFallBackToAPI(t *testing.T) {
 }
 
 func TestJSDelivrTimeoutFallsBackToAPI(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), func(r *http.Request) (*http.Response, error) {
 			<-r.Context().Done()
@@ -248,6 +257,7 @@ func TestJSDelivrTimeoutFallsBackToAPI(t *testing.T) {
 }
 
 func TestJSDelivrRequestsOnlyResolvedCommits(t *testing.T) {
+	t.Parallel()
 	cdn := func(r *http.Request) (*http.Response, error) {
 		return respond(r, http.StatusOK, jsDelivrYAML, actionSource), nil
 	}
@@ -277,7 +287,9 @@ func TestJSDelivrRequestsOnlyResolvedCommits(t *testing.T) {
 }
 
 func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
+	t.Parallel()
 	t.Run("redirect", func(t *testing.T) {
+		t.Parallel()
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), func(r *http.Request) (*http.Response, error) {
 			response := respond(r, http.StatusFound, "", "")
 			response.Header.Set("Location", "https://foreign.test/action.yml")
@@ -294,6 +306,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 		}
 	})
 	t.Run("transfer slot", func(t *testing.T) {
+		t.Parallel()
 		var client *GitHub
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), func(r *http.Request) (*http.Response, error) {
 			if client.requests.TryAcquire(concurrentTransfers) {
@@ -311,6 +324,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 		}
 	})
 	t.Run("escaping", func(t *testing.T) {
+		t.Parallel()
 		hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusOK, jsDelivrYAML, actionSource))
 		client, err := New(Options{Mirrors: references.AllowUnknownMirrors, Transport: hosts})
 		if err != nil {
@@ -323,6 +337,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 		}
 	})
 	t.Run("lookup budget", func(t *testing.T) {
+		t.Parallel()
 		synctest.Test(t, func(t *testing.T) {
 			hosts := mirrorHosts(t, func(r *http.Request) (*http.Response, error) {
 				time.Sleep(10 * time.Second)
@@ -349,6 +364,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 }
 
 func TestRequestAccountingLabelsJSDelivr(t *testing.T) {
+	t.Parallel()
 	ctx, tracker := accounting.TrackRequests(t.Context())
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Host {
@@ -400,6 +416,7 @@ func TestRequestAccountingLabelsJSDelivr(t *testing.T) {
 }
 
 func TestWorkflowFileUsesJSDelivrAfterRawFailure(t *testing.T) {
+	t.Parallel()
 	const source = "on: workflow_call\njobs: {}\n"
 	const path = "/.github/workflows/build.yml"
 	workflowHosts := func(t *testing.T, cdn handler) *recorder {
@@ -424,6 +441,7 @@ func TestWorkflowFileUsesJSDelivrAfterRawFailure(t *testing.T) {
 		}}
 	}
 	t.Run("found", func(t *testing.T) {
+		t.Parallel()
 		hosts := workflowHosts(t, reply(http.StatusOK, jsDelivrYAML, source))
 		client := newListingClient(t, Options{Transport: hosts}, &listingResolver{})
 		for _, spec := range []string{"example/workflows" + path + "@v1", "example/workflows" + path + "@" + sha} {
@@ -444,6 +462,7 @@ func TestWorkflowFileUsesJSDelivrAfterRawFailure(t *testing.T) {
 		}
 	})
 	t.Run("missing", func(t *testing.T) {
+		t.Parallel()
 		hosts := workflowHosts(t, reply(http.StatusNotFound, rawText, "Couldn't find the requested file."))
 		client, err := New(Options{Transport: hosts, Mirrors: references.AllowUnknownMirrors})
 		if err != nil {

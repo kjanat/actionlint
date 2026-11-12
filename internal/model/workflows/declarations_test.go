@@ -9,6 +9,7 @@ import (
 )
 
 func TestDeclarationProjectionPreservesKeySourceAndOrigin(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 env:
   plain: environment value

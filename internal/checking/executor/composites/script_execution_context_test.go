@@ -11,6 +11,7 @@ import (
 
 // Regression for #409
 func TestRuleShellcheckDetectShell(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what     string
 		want     string
@@ -100,6 +101,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: workspaceactions.NewResolver(nil, nil)}
 
 			var source strings.Builder

@@ -15,6 +15,7 @@ import (
 )
 
 func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
+	t.Parallel()
 	root, other := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -52,8 +53,10 @@ func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
 }
 
 func TestPluginSelectionOverlaysDetermineLinkedActivation(t *testing.T) {
+	t.Parallel()
 	for _, inherited := range []bool{false, true} {
 		t.Run(map[bool]string{false: "leaf", true: "inherited"}[inherited], func(t *testing.T) {
+			t.Parallel()
 			root, other := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
 			path := filepath.Join(root, ".github", "actionlint.yaml")
 			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

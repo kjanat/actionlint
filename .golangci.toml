@@ -42,6 +42,7 @@ enable  = [
   "nilerr",
   "nilnesserr",
   "noctx",
+  "paralleltest",
   "perfsprint",
   "prealloc",
   "predeclared",
@@ -145,6 +146,18 @@ linters = ["forbidigo"]
 [[linters.exclusions.rules]]
 path    = "_test\\.go"
 linters = ["dupword", "forcetypeassert", "prealloc", "unparam"]
+
+# testing.AllocsPerRun panics while a parallel test runs.
+[[linters.exclusions.rules]]
+path    = '^internal/(checking/inputs/input_selection_cost|input/source/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
+text    = "(Function|test) Test(SelectedInvocationValidationAllocationBound|VerifyHandleRejectsForeignAndQuarantinedEvidence|SemanticAccessorsDoNotCopySourceBytes|WorkflowAdmissionDoesNotGrowWithAliasExpansion) missing"
+linters = ["paralleltest"]
+
+# These tests replace a process-wide variable: exprfunctions.Builtins, http.DefaultTransport or color.NoColor.
+[[linters.exclusions.rules]]
+path    = '^internal/(checking/expressions/expr_interpolation_review|plugins/artifacts/candidate|plugins/artifacts/redirect_transport|plugins/artifacts/oci/acquisition|output/pretty)_test\.go$'
+text    = "(Function|test) Test(ExpressionPreservesCallFacts|CandidateCacheResolution|DownloadAutomaticPrivateInitialIsRejected|DownloadExplicitGrantPreservesInitialAndConfinesRedirect|AutomaticOCIInitialAndPinNeverDialPrivate|OCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority|PrettyColorAndUnavailableSource) missing"
+linters = ["paralleltest"]
 
 [formatters]
 enable = ["gofmt"]

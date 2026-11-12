@@ -57,6 +57,7 @@ func legacyRegistryProject(t *testing.T) (*fixtureregistry.PluginRegistry, strin
 }
 
 func TestLegacyLockMigrationFreezesRecordedRelease(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry, path, lockPath := legacyRegistryProject(t)
 	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	before, err := os.ReadFile(path)
@@ -101,6 +102,7 @@ func TestLegacyLockMigrationFreezesRecordedRelease(t *testing.T) {
 }
 
 func TestLegacyLockMigrationRejectsConflictingRegistryBinding(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_, path, lockPath := legacyRegistryProject(t)
 	lock, err := plugininstall.OpenLock(t.Context(), lockPath)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 )
 
 func TestDocumentationRef(t *testing.T) {
+	t.Parallel()
 	const revision = "02d216da011da64ff17a48a9d2adcfb54131b765"
 	sourceBuild := &debug.BuildInfo{Settings: []debug.BuildSetting{
 		{Key: "vcs", Value: "git"},
@@ -47,6 +48,7 @@ func TestDocumentationRef(t *testing.T) {
 		{"empty revision", "(devel)", &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs.revision"}}}, "HEAD"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if got := documentationRef(tc.version, tc.info); got != tc.want {
 				t.Fatalf("documentation ref = %q, want %q", got, tc.want)
 			}

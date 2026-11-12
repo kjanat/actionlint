@@ -10,6 +10,7 @@ import (
 )
 
 func TestTemplateEffectNegotiation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, contract string
 		version        int
@@ -22,6 +23,7 @@ func TestTemplateEffectNegotiation(t *testing.T) {
 		{"missing contract", "", 2, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			engine := pooledEngine(t)
 			metadata := engine.Metadata()
 			metadata.TemplateContract = tc.contract
@@ -42,6 +44,7 @@ func TestTemplateEffectNegotiation(t *testing.T) {
 }
 
 func TestPartialOutcomeRejectsUnknownTemplateEffects(t *testing.T) {
+	t.Parallel()
 	engine := pooledEngine(t)
 	engine.metadata.TemplateContract = checkinputs.TemplateEffectsContract
 	module, err := engine.instantiate(t.Context())
@@ -72,6 +75,7 @@ func TestPartialOutcomeRejectsUnknownTemplateEffects(t *testing.T) {
 }
 
 func TestCoreCoordinatesUseDecodedSourceRows(t *testing.T) {
+	t.Parallel()
 	engine := pooledEngine(t)
 	module, err := engine.instantiate(t.Context())
 	if err != nil {

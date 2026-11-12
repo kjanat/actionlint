@@ -12,6 +12,7 @@ import (
 )
 
 func TestExpressionConversionsThroughCLI(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, expression, rule, token string }{
 		{"object-json", "fromJSON(steps.check.outputs).available", "expression-call", "steps.check.outputs"},
 		{"boolean-json", "fromJSON(true)", "", ""},
@@ -34,6 +35,7 @@ func TestExpressionConversionsThroughCLI(t *testing.T) {
 		for _, kind := range []string{"workflow", "composite", "composite-output"} {
 			for _, selection := range []string{"off", "selected", "suppressed"} {
 				t.Run(tc.name+"/"+kind+"/"+selection, func(t *testing.T) {
+					t.Parallel()
 					root := t.TempDir()
 					config := "tools: {shellcheck: false, ruff: false}\nlint:\n  rules:\n    preset: none\n    correctness:\n      expression-call: error\n      expression-type: error\n"
 					if selection != "off" {

@@ -28,6 +28,7 @@ import (
 var sourceRunner = documentRunner{documentRoute: shellcheckRoute}
 
 func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.T) {
+	t.Parallel()
 	reference := sourcepos.Reference{Document: "captured-action", Revision: "captured-revision", Node: "run", Address: "runs.steps[0].run"}
 	script := tools.Script{Path: filepath.Join(t.TempDir(), "action.yml"), Content: []byte("captured action"), Fact: checkinputs.Script{Reference: reference}}
 	files := pluginSourceFiles{}
@@ -45,6 +46,7 @@ func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.
 }
 
 func TestPluginSourceGrantsAndMapping(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	shared := filepath.Join(root, "shared-sources")
 	file := fixturefiles.Write(t, root, "lib/clean.sh", "VALUE=one\n")
@@ -134,6 +136,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 }
 
 func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	shared := filepath.Join(root, "shared-sources")
 	file := fixturefiles.Write(t, shared, "shared.sh", "SHARED=two\n")
@@ -158,6 +161,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 		{"symlink before parent", resolved, link + string(os.PathSeparator) + ".."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := (config.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant)))
 			if err != nil {
 				t.Fatal(err)
@@ -211,6 +215,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 }
 
 func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
+	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
 	cfg, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
 	if err != nil {
@@ -246,6 +251,7 @@ func requestedSourceGrants(t *testing.T, cfg *config.Config) []checkinputs.ToolR
 }
 
 func TestPluginWorkingDirectoryUsesMostSpecificGrant(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	nested := filepath.Join(root, "nested")
 	if err := os.Mkdir(nested, 0o700); err != nil {
@@ -267,6 +273,7 @@ func TestPluginWorkingDirectoryUsesMostSpecificGrant(t *testing.T) {
 }
 
 func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
+	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
 	nested := filepath.Join(workspace, "nested")
 	if err := os.Mkdir(nested, 0o700); err != nil {
@@ -290,6 +297,7 @@ func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
 		{"denial overrides configured paths", "{external-sources: false, source-path: [" + strconv.Quote(outside) + "]}", outside, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: " + tc.config + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -318,6 +326,7 @@ func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
 }
 
 func TestMissingPluginSourcePathCannotGrantEscape(t *testing.T) {
+	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
 	fixturefiles.Write(t, outside, "secret.txt", "private-host-marker")
 	escape := filepath.Join(workspace, "escape")

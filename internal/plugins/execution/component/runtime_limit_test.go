@@ -13,8 +13,10 @@ import (
 )
 
 func TestLoadBoundsCanonicalDescriptorAllocations(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"oversized-descriptor-values", "oversized-descriptor-bytes"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			plugin, err := component.Load(t.Context(), filepath.Join("testdata", "plugins", name+".wasm"), component.Options{})
 			if err == nil {
 				_ = plugin.Close(context.Background())
@@ -31,6 +33,7 @@ func TestLoadBoundsCanonicalDescriptorAllocations(t *testing.T) {
 // null pointer is valid for a zero-size request, which TinyGo's cabi_realloc
 // returns. wacogo accepts it since partite-ai/wacogo#12 (partite-ai/wacogo#11).
 func TestRuntimeAcceptsNullReallocForZeroSize(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "null-realloc.wasm"))
 	if err != nil {
 		t.Fatal(err)

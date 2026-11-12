@@ -10,6 +10,7 @@ import (
 )
 
 func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
+	t.Parallel()
 	rules := checking.ConfigurationRules()
 	for _, descriptor := range rules.Rules() {
 		legacy := rules.LegacyGroup(descriptor.Name)
@@ -23,6 +24,7 @@ func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
 		for _, name := range names {
 			for _, categories := range [][2]string{{legacy, descriptor.Category}, {descriptor.Category, legacy}} {
 				t.Run(name+"/"+categories[0]+"-to-"+categories[1], func(t *testing.T) {
+					t.Parallel()
 					input := fmt.Appendf(nil, "lint: {rules: {%s: {%s: warn}}}\noverrides:\n  - includes: ['target.yml']\n    lint: {rules: {%s: {%s: off}}}\n", categories[0], name, categories[1], name)
 					project, err := rules.Parse(input)
 					if err != nil {
@@ -53,6 +55,7 @@ func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
 }
 
 func TestFileOverridePreservesSameLayerRulePrecedence(t *testing.T) {
+	t.Parallel()
 	rules := checking.ConfigurationRules()
 	project, err := rules.Parse([]byte(`lint:
   rules:
@@ -78,6 +81,7 @@ overrides:
 		minimum float64
 	}{{"target.yml", "error", 0}, {"options.yml", "warn", 10}} {
 		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
 			selected, err := rules.ForFile(project, tc.path, "")
 			if err != nil {
 				t.Fatal(err)

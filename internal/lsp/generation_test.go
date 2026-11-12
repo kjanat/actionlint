@@ -11,6 +11,7 @@ import (
 )
 
 func TestBufferedStaleGenerationRejectsErrorAndCapturedText(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

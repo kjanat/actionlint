@@ -13,6 +13,7 @@ import (
 )
 
 func TestCustomMetadataMustMatchRuntime(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(enginePath("echo"))
 	if err != nil {
 		t.Fatal(err)

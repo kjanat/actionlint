@@ -9,6 +9,7 @@ import (
 )
 
 func TestGCCOutput(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, severity, code, message, want string
 	}{
@@ -20,6 +21,7 @@ func TestGCCOutput(t *testing.T) {
 		{"multiline", "error", "", "first\r\nsecond\nthird\rfourth; keep  spaces", "error: first second third fourth; keep  spaces [expression-reference]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			renderer, err := New(FormatGCC, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)

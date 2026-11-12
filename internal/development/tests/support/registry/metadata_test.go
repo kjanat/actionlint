@@ -10,6 +10,7 @@ import (
 )
 
 func TestRegistryReplacesPackagedArtifactMetadata(t *testing.T) {
+	t.Parallel()
 	publisher := PluginPublisher{PluginID: "original", BaseURL: "https://registry.example/", Name: "github.com/example/plugin", RepositoryID: 10}
 	core := []byte{0, 'a', 's', 'm', 1, 0, 0, 0}
 	component := []byte{0, 'a', 's', 'm', 13, 0, 1, 0}
@@ -20,6 +21,7 @@ func TestRegistryReplacesPackagedArtifactMetadata(t *testing.T) {
 	nested = append(nested, child...)
 	for name, input := range map[string][]byte{"core": core, "component": component, "nested": nested} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			first := writeArtifact(t, map[string][]byte{}, publisher, "v1.0.0", "plugin.wasm", input)
 			before := bytes.Clone(first)
 			next := publisher

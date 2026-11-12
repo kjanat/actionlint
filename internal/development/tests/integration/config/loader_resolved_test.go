@@ -10,6 +10,7 @@ import (
 )
 
 func TestResolvedConfigRoundTrip(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"",
 		`config-variables: []
@@ -23,6 +24,7 @@ paths: {'**': {ignore: ['a.*b']}}
 `,
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			resolved, err := checking.ConfigurationRules().ResolveDocument([]byte(source))
 			if err != nil {
 				t.Fatal(err)

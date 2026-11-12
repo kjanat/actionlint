@@ -22,6 +22,7 @@ import (
 var updateSARIF = flag.Bool("update-sarif", false, "Update the expected SARIF output")
 
 func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t)
 	file := filepath.Join("testdata", "format", "test.yaml")
 	content, err := os.ReadFile(file)
@@ -90,6 +91,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 }
 
 func TestWorkflowDiagnosticTemplates(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		file   string
 		format string
@@ -117,6 +119,7 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 	infile := filepath.Join(dir, "test.yaml")
 	for _, tc := range tests {
 		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
 			var b strings.Builder
 			content, err := os.ReadFile(filepath.Join(root, infile))
 			if err != nil {
@@ -160,6 +163,7 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 }
 
 func TestWorkflowDiagnosticSARIF(t *testing.T) {
+	t.Parallel()
 	fixtureRoot, err := filepath.Abs(".")
 	if err != nil {
 		t.Fatal(err)

@@ -14,8 +14,10 @@ import (
 )
 
 func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
+	t.Parallel()
 	for _, brokenSchema := range []bool{false, true} {
 		t.Run(strconv.FormatBool(brokenSchema), func(t *testing.T) {
+			t.Parallel()
 			var source strings.Builder
 			source.WriteString("name: recovered\ndescription: test\n")
 			if brokenSchema {
@@ -72,6 +74,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 }
 
 func TestActionAdmissionKeepsOriginalFatalDecodeFinding(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("name: recovered\ndefinitions: &definitions\n")
 	for input := range 650 {
@@ -100,6 +103,7 @@ func TestActionAdmissionKeepsOriginalFatalDecodeFinding(t *testing.T) {
 }
 
 func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("name: parallel\nruns:\n  using: composite\n  steps:\n    - a0: &a0 [{run: echo ok, shell: bash}]\n")
 	for level := 1; level <= 8; level++ {
@@ -116,6 +120,7 @@ func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
 }
 
 func TestActionAdmissionKeepsRecursiveStepsOpaque(t *testing.T) {
+	t.Parallel()
 	const source = "name: cycle\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n      unknown: &cycle [*cycle]\n"
 	document := Action("action.yml", []byte(source))
 	if document.ParseError != nil || !document.CanAnalyze() {
@@ -136,6 +141,7 @@ func TestActionAdmissionKeepsRecursiveStepsOpaque(t *testing.T) {
 }
 
 func TestActionAdmissionPreservesEmptyInputs(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"", " ", "# comment\n"} {
 		metadata, err := actionmeta.Parse("action.yml", []byte(source))
 		if err != nil || metadata == nil || metadata.Root != nil {
@@ -145,6 +151,7 @@ func TestActionAdmissionPreservesEmptyInputs(t *testing.T) {
 }
 
 func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
+	t.Parallel()
 	for _, header := range []string{"inputs: invalid\n", ""} {
 		content := []byte("name: recovered\n" + header + "runs: &runs\n  using: composite\n  steps: [{run: echo recovered, shell: bash}]\n  env: *runs\n")
 		metadata, parseErr := actionmeta.Parse("action.yml", content)
@@ -180,6 +187,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 }
 
 func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: recovered\ninputs: invalid\nruns: {using: composite, steps: [{run: echo ok, shell: bash}]}\n")
 	metadata, parseErr := actionmeta.Parse("action.yml", content)
 	if parseErr == nil {
@@ -210,6 +218,7 @@ func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 }
 
 func TestFatalDecodePrecedesAnIndependentAdmissionFailure(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("name: rejected\nruns: &runs\n  using: composite\n  env: *runs\n  steps:\n    - run: echo ok\n      shell: bash\n      a0: &a0 [value]\n")
 	for level := 1; level <= 8; level++ {

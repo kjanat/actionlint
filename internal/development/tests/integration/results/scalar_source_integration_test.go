@@ -21,6 +21,7 @@ import (
 )
 
 func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "library.sh")
 	if err := os.WriteFile(path, []byte("echo first\u2028still-first\u0085same-line\u2029same-line\necho $VALUE\n"), 0o600); err != nil {
@@ -55,8 +56,10 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 }
 
 func TestPhysicalYAMLLineRendering(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []string{"\n", "\r\n", "\r", "\u0085", "\u2028", "\u2029"} {
 		t.Run(fmt.Sprintf("%q", ending), func(t *testing.T) {
+			t.Parallel()
 			src := strings.ReplaceAll("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"first\n        ${{ unknown }}\"\npermissions: {}\n", "\n", ending)
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {

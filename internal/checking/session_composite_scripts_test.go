@@ -13,6 +13,7 @@ import (
 )
 
 func TestCompositeActionRuleSelection(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
 description: test
@@ -30,6 +31,7 @@ runs:
 `)
 	for _, selection := range []string{"enabled", "removed", "empty"} {
 		t.Run(selection, func(t *testing.T) {
+			t.Parallel()
 			result := compositeAnalysis(t, root, "- uses: ./outer", analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				switch selection {
 				case "removed":
@@ -52,7 +54,7 @@ runs:
 
 func compositeAnalysis(t *testing.T, root, steps string, request analysisRequest) *analysisResult {
 	t.Helper()
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/composite.yml", `on: push
+	workflow := writeShellcheckFixture(t, root, workflowFixturePath(t, "composite"), `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -80,6 +82,7 @@ jobs:
 }
 
 func TestCompositeCheckoutMetadataPaths(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	outer := writeShellcheckFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -103,6 +106,7 @@ runs: {using: composite, steps: []}
 	for _, spec := range []string{"./source/local", "$/local"} {
 		for _, removed := range []string{"", "executable-bit", "action"} {
 			t.Run(spec+"/"+removed, func(t *testing.T) {
+				t.Parallel()
 				result := compositeAnalysis(t, root, `- uses: actions/checkout@v6
   with: {path: source}
 - uses: `+spec, analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
@@ -132,6 +136,7 @@ runs: {using: composite, steps: []}
 }
 
 func TestCompositeCheckoutShellcheckWithoutExecutableBit(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -159,6 +164,7 @@ runs:
 }
 
 func TestCompositeSparseCheckoutSources(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -183,6 +189,7 @@ runs:
 		{"empty expression", "\"${{ '' }}\"", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
 			}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
@@ -209,6 +216,7 @@ runs:
 }
 
 func TestCompositeCheckoutServerPaths(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -229,6 +237,7 @@ runs:
 		{"best effort metadata", "https://git.example.com", "./local", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: source, github-server-url: "+tc.server+"}\n- uses: "+tc.spec, analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
 			}})

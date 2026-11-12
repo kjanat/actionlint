@@ -3,6 +3,7 @@ package cli_test
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
@@ -14,20 +15,23 @@ import (
 )
 
 func TestCommandActionInputs(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
+	dir := t.TempDir()
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"
 	for name, content := range map[string]string{"action.yml": manifest, "workflow.yml": testutil.GoodWorkflow} {
-		if err := os.WriteFile(name, []byte(content), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, modern := range []bool{false, true} {
 		for _, stdin := range []bool{false, true} {
 			args := []string{"--json", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config"}
+			wantPath := "action.yml"
 			if stdin {
 				args = append(args, "--stdin-filename=action.yml", "-")
 			} else {
-				args = append(args, "workflow.yml", "action.yml")
+				args = append(args, filepath.Join(dir, "workflow.yml"), filepath.Join(dir, "action.yml"))
+				wantPath = workingDirectoryPath(t, filepath.Join(dir, "action.yml"))
 			}
 			if modern {
 				args = append([]string{"check"}, args...)
@@ -37,7 +41,7 @@ func TestCommandActionInputs(t *testing.T) {
 			if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 				t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 			}
-			if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "action" || report.Diagnostics[0].Path != "action.yml" {
+			if got.Status != 1 || len(report.Diagnostics) != 1 || report.Diagnostics[0].Rule != "action" || report.Diagnostics[0].Path != wantPath {
 				t.Fatalf("args=%v: expected one metadata error, got %+v, diagnostics=%+v", args, got, report.Diagnostics)
 			}
 			want := 2

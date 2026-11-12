@@ -18,6 +18,7 @@ func (p metadataProvider) Lookup(ctx context.Context, r actions.Reference) (acti
 }
 
 func TestRequiredActionMetadataAndCoverage(t *testing.T) {
+	t.Parallel()
 	for _, enabled := range []bool{false, true} {
 		cfg, err := ConfigurationRules().ParseOverlay("config", []byte("lint: {rules: {conventions: {missing-action-metadata: "+map[bool]string{false: "off", true: "on"}[enabled]+"}}}"))
 		if err != nil {

@@ -13,6 +13,7 @@ import (
 )
 
 func TestMissingPermissionsRequiredLocationsThroughCLI(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, setting       string
 		workflowPermissions bool
@@ -31,6 +32,7 @@ func TestMissingPermissionsRequiredLocationsThroughCLI(t *testing.T) {
 		{"require both present", "{level: error, options: {require-at: [workflow, every-job]}}", true, []bool{true, true}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			contents := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {preset: none, security: {missing-permissions: " + tc.setting + "}}}\n"
 			if err := os.WriteFile(config, []byte(contents), 0o600); err != nil {

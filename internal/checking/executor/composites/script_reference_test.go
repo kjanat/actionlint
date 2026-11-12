@@ -12,6 +12,7 @@ import (
 )
 
 func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo ok\n      - *shared\n")
 	document := parsing.Workflow(content)
 	if len(document.SyntaxErrors) != 0 {
@@ -51,6 +52,7 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 }
 
 func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "ci.yml")
 	actionPath := filepath.Join(root, "source", "action.yml")
@@ -105,6 +107,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 }
 
 func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	indexed := parsing.Workflow(content)
 	foreign := parsing.Workflow(content)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
+	t.Parallel()
 	const jobs = "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 	for _, tc := range []struct {
 		name   string
@@ -36,6 +37,7 @@ func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
 		{"comment", "on: push # { pull_request:, push: null }", 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, findings := Parse([]byte(tc.source + jobs))
 			if workflow == nil || len(workflow.Jobs) != 1 {
 				t.Fatalf("workflow recovery failed: %v", findings)
@@ -65,6 +67,7 @@ func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
 }
 
 func TestFlowMappingNullsPhysicalTree(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source string
 		count  int
@@ -82,6 +85,7 @@ func TestFlowMappingNullsPhysicalTree(t *testing.T) {
 		{"{missing: &empty , ok: *empty}", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			root, err := codec.Parse([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)

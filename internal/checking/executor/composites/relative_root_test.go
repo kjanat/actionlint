@@ -11,6 +11,7 @@ import (
 )
 
 func TestCompositeCarriesCaptureAcrossRelativeDisplayPaths(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	root := filepath.Join(base, "repository")
 	manifest := filepath.Join(root, "child", "action.yml")

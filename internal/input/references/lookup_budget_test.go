@@ -9,6 +9,7 @@ import (
 )
 
 func TestLookupBudgetExcludesWaits(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		ctx, stop := StartLookupBudget(t.Context(), 30*time.Second)
 		defer stop()
@@ -34,6 +35,7 @@ func TestLookupBudgetExcludesWaits(t *testing.T) {
 }
 
 func TestLookupBudgetStopAndParentCancellation(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		parent, cancel := context.WithCancel(t.Context())
 		ctx, stop := StartLookupBudget(parent, time.Second)
@@ -65,6 +67,7 @@ func TestLookupBudgetStopAndParentCancellation(t *testing.T) {
 }
 
 func TestWaitOutsideLookupBudgetWithoutBudget(t *testing.T) {
+	t.Parallel()
 	want := errors.New("wait failed")
 	if err := WaitOutsideLookupBudget(t.Context(), func() error { return want }); !errors.Is(err, want) {
 		t.Fatalf("error=%v", err)

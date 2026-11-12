@@ -9,6 +9,7 @@ import (
 )
 
 func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
+	t.Parallel()
 	valid := documentBatchFixture(t, 1)
 	missingFact := valid
 	missingFact.Scripts = append([]tools.Script(nil), valid.Scripts...)
@@ -22,6 +23,7 @@ func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
 		"foreign fact":  foreign,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			// Nil callbacks prove invalid batches cannot reach negotiation or analysis.
 			runner := documentRunner{documentRoute: shellcheckRoute, context: tools.Context{Document: checkinputs.Input{Reference: valid.CallGraph.Entry().Reference}}}
 			_, err := runner.Analyze(t.Context(), batch)

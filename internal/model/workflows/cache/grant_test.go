@@ -9,6 +9,7 @@ import (
 )
 
 func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
+	t.Parallel()
 	parent := FromMetadata(calls.DeclaredCacheMode(workflowlang.CacheModeWrite))
 	for _, tc := range []struct {
 		name     string
@@ -24,6 +25,7 @@ func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 		{"write-only overrides", calls.DeclaredCacheMode(workflowlang.CacheModeWriteOnly), workflowlang.CacheModeWriteOnly, 2, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			child := FromMetadata(tc.metadata)
 			grant := parent.Override(child)
 			bits, known := grant.Capabilities()
@@ -42,6 +44,7 @@ func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 }
 
 func TestEffectiveModePreservesPublishedDeclaration(t *testing.T) {
+	t.Parallel()
 	workflowMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead, Pos: &workflowlang.Pos{Line: 2, Col: 13}}
 	jobMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone, Pos: &workflowlang.Pos{Line: 5, Col: 17}}
 	decoded := &workflowlang.Workflow{CacheMode: workflowMode, Jobs: map[string]*workflowlang.Job{

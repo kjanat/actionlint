@@ -7,6 +7,7 @@ import (
 )
 
 func TestParserOwnedExpressionSpans(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ text, want string }{
 		{`fromJSON('{"win":1}')['mac']`, `fromJSON('{"win":1}')['mac']`},
 		{`steps.foo.outputs['bar']`, `steps.foo.outputs['bar']`},
@@ -20,6 +21,7 @@ func TestParserOwnedExpressionSpans(t *testing.T) {
 		{`env . NAME [ 'x' ]`, `env . NAME [ 'x' ]`},
 	} {
 		t.Run(tc.text, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.text + "}}"))
 			if err != nil {
 				t.Fatal(err)

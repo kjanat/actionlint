@@ -13,17 +13,8 @@ import (
 )
 
 func TestCompositeContextDirectorySeparators(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
-	root, _ := executableFixture(t)
-	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	for _, directory := range []string{"scripts", "local/scripts"} {
-		writeFixture(t, root, directory+"/lib.sh", "VALUE=42\n")
-	}
-	if runtime.GOOS != "windows" {
-		for _, directory := range []string{`literal\scripts`, `local/literal\scripts`} {
-			writeFixture(t, root, directory+"/lib.sh", "VALUE=42\n")
-		}
-	}
 	for _, context := range []string{"github.action_path", "github.workspace"} {
 		for _, tc := range []struct {
 			runner, suffix string
@@ -35,6 +26,17 @@ func TestCompositeContextDirectorySeparators(t *testing.T) {
 			{"ubuntu-latest", `/literal\scripts`, runtime.GOOS != "windows"},
 		} {
 			t.Run(context+"/"+tc.runner+"/"+tc.suffix, func(t *testing.T) {
+				t.Parallel()
+				root, _ := executableFixture(t)
+				writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+				for _, directory := range []string{"scripts", "local/scripts"} {
+					writeFixture(t, root, directory+"/lib.sh", "VALUE=42\n")
+				}
+				if runtime.GOOS != "windows" {
+					for _, directory := range []string{`literal\scripts`, `local/literal\scripts`} {
+						writeFixture(t, root, directory+"/lib.sh", "VALUE=42\n")
+					}
+				}
 				metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:

@@ -19,6 +19,7 @@ func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs
 }
 
 func TestDocumentPluginMapsRelativeFindingToAbsoluteScriptPath(t *testing.T) {
+	t.Parallel()
 	batch := documentBatchFixture(t, 1)
 	batch.Scripts[0].Path = filepath.Join(t.TempDir(), "workflow.yml")
 	batch.Scripts[0].Content = []byte("captured content")
@@ -38,6 +39,7 @@ func TestDocumentPluginMapsRelativeFindingToAbsoluteScriptPath(t *testing.T) {
 }
 
 func TestSourceGrantsTranslateScriptsAndInvokedRuntimeWithoutMutatingFacts(t *testing.T) {
+	t.Parallel()
 	scriptRuntime := &scriptmodel.Execution{Directory: "script-host", DirectoryKnown: true}
 	invokedRuntime := &scriptmodel.Execution{Directory: "invoked-host", DirectoryKnown: true}
 	input := checkinputs.Input{

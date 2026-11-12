@@ -8,6 +8,7 @@ import (
 )
 
 func TestCompositeOutputCaseCollisions(t *testing.T) {
+	t.Parallel()
 	for _, second := range []string{"APPROVED", "denied"} {
 		source := `name: test
 description: test

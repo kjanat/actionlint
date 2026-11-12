@@ -7,6 +7,7 @@ import (
 )
 
 func TestStrictCapturedRanges(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		model      sourcepos.Coordinates
@@ -27,6 +28,7 @@ func TestStrictCapturedRanges(t *testing.T) {
 		{"invalid UTF8", sourcepos.RawLF, string([]byte{0xff}), sourcepos.Position{Line: 1, Column: 1}, sourcepos.Position{Line: 1, Column: 1}, false, 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			a, b, err := Range([]byte(tc.content), tc.model, tc.start, tc.end)
 			if (err == nil) != tc.valid || tc.valid && (a != tc.a || b != tc.b) {
 				t.Fatalf("range=(%d,%d) err=%v", a, b, err)

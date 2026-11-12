@@ -36,6 +36,7 @@ func providerRegistration(t *testing.T, name string, selection scripts.Selection
 }
 
 func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, shell  string
 		registration tools.Registration
@@ -44,6 +45,7 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 		{"shellcheck", "bash", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			engine := &inputReplacementBackend{}
 			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}}}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
@@ -66,6 +68,7 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 }
 
 func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
+	t.Parallel()
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -111,12 +114,14 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 }
 
 func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
+	t.Parallel()
 	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			files := map[string]string{
 				".git/HEAD":               "ref: refs/heads/master\n",
@@ -147,8 +152,10 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 }
 
 func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
+	t.Parallel()
 	for _, enabled := range []bool{false, true} {
 		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
+			t.Parallel()
 			engine := &inputReplacementBackend{}
 			registration, err := scripts.RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent", Category: "correctness"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
 			if err != nil {
@@ -192,6 +199,7 @@ func (pythonInputBackend) Check(_ context.Context, request checkinputs.ScriptReq
 }
 
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
+	t.Parallel()
 	plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: pythonInputBackend{}, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: checkinputs.TemplateEffectsContract, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
 	options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})}})
 	if err != nil {
@@ -230,6 +238,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 	for _, mode := range []string{"caller-disabled", "failed-optional", "built"} {
 		for _, failure := range []string{"missing", "conflicting"} {
 			t.Run(mode+"/"+failure, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				enabled := mode != "caller-disabled"
 				files := map[string]string{

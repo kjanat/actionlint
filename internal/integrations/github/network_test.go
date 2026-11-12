@@ -14,8 +14,10 @@ import (
 )
 
 func TestMetadataProtectsReservedPipelineFetches(t *testing.T) {
+	t.Parallel()
 	for _, rawStatus := range []int{http.StatusOK, http.StatusServiceUnavailable} {
 		t.Run(http.StatusText(rawStatus), func(t *testing.T) {
+			t.Parallel()
 			ctx, session := accounting.TrackRequests(t.Context())
 			prototype, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/example/action", nil)
 			if err != nil {
@@ -75,6 +77,7 @@ func TestMetadataProtectsReservedPipelineFetches(t *testing.T) {
 }
 
 func TestMetadataStopsBeforeAnExhaustedBatch(t *testing.T) {
+	t.Parallel()
 	ctx, _ := accounting.TrackRequests(t.Context())
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host == "raw.githubusercontent.com" || r.URL.Host == "cdn.jsdelivr.net" {
@@ -102,6 +105,7 @@ func TestMetadataStopsBeforeAnExhaustedBatch(t *testing.T) {
 }
 
 func TestAdmitBatchClassifiesQuotaFailures(t *testing.T) {
+	t.Parallel()
 	ctx, session := accounting.TrackRequests(t.Context())
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "action-metadata", Priority: accounting.Enrichment, RequestKind: accounting.REST, QuotaPool: "core"})
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/example/action", nil)

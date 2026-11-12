@@ -8,6 +8,7 @@ import (
 )
 
 func TestModernRepeatedIgnoreFilters(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"check", "--ignore-regex", "undefined variable", "--ignore", "other", "-"},
 		{"check", "--ignore-regex", "undefined variable", "--ignore-regex", "other", "-"},
@@ -20,6 +21,7 @@ func TestModernRepeatedIgnoreFilters(t *testing.T) {
 }
 
 func TestCommandArgumentCompatibility(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		args     []string
@@ -48,6 +50,7 @@ func TestCommandArgumentCompatibility(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got := testRunCommand(commandBadWorkflow, tc.args...)
 			if got.Status != tc.status || !strings.Contains(got.Stdout+got.Stderr, tc.contains) {
 				t.Fatalf("got %+v, want status=%d containing %q", got, tc.status, tc.contains)
@@ -57,12 +60,12 @@ func TestCommandArgumentCompatibility(t *testing.T) {
 }
 
 func TestCommandRepeatedOutputs(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	for _, args := range [][]string{
-		{"--output", "github", "--output", "pretty", "-"},
-		{"check", "-o", "github", "--output", "pretty", "-"},
-		{"--output", "github", "check", "--output-format", "pretty", "-"},
-		{"-o", "github", "-o", "github", "-o", "pretty", "-"},
+		{"--output", "github", "--output", "pretty", "--no-config", "-"},
+		{"check", "-o", "github", "--output", "pretty", "--no-config", "-"},
+		{"--output", "github", "check", "--output-format", "pretty", "--no-config", "-"},
+		{"-o", "github", "-o", "github", "-o", "pretty", "--no-config", "-"},
 	} {
 		got := testRunCommand(commandBadWorkflow, args...)
 		annotation := strings.Index(got.Stdout, "::error ")
@@ -73,11 +76,11 @@ func TestCommandRepeatedOutputs(t *testing.T) {
 		}
 	}
 	for _, command := range [][]string{nil, {"check"}} {
-		got := testRunCommand(commandBadWorkflow, append(command, "-")...)
+		got := testRunCommand(commandBadWorkflow, append(command, "--no-config", "-")...)
 		if got.Status != 1 || !strings.HasPrefix(got.Stdout, "error[expression-reference]") {
 			t.Fatalf("pretty default through %v: %+v", command, got)
 		}
-		got = testRunCommand(commandBadWorkflow, append(command, "--output", "pretty", "--output", "jsonl", "-")...)
+		got = testRunCommand(commandBadWorkflow, append(command, "--output", "pretty", "--output", "jsonl", "--no-config", "-")...)
 		if got.Status != 1 || !strings.HasPrefix(got.Stdout, "error[expression-reference]") ||
 			!strings.Contains(got.Stdout, `"rule":"expression-reference"`) {
 			t.Fatalf("mixed JSON and pretty through %v: %+v", command, got)
@@ -86,11 +89,11 @@ func TestCommandRepeatedOutputs(t *testing.T) {
 }
 
 func TestCommandTemplateGitHubEscaping(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	format := "{{range .}}::error file={{.Filepath | escapeProperty}}::{{.Message | escapeData}}%0A{{.Snippet | escapeData}}{{end}}"
 	input := strings.Replace(commandBadWorkflow, "echo", "echo 100%", 1)
 	for _, command := range [][]string{nil, {"check"}} {
-		args := slices.Concat(command, []string{"-format", format, "--stdin-filename", "workflow%,x.yml", "-"})
+		args := slices.Concat(command, []string{"-format", format, "--stdin-filename", "workflow%,x.yml", "--no-config", "-"})
 		got := testRunCommand(input, args...)
 		if got.Status != 1 || got.Stderr != "" || !strings.HasPrefix(got.Stdout, "::error file=workflow%25%2Cx.yml::") ||
 			!strings.Contains(got.Stdout, "100%25") || !strings.Contains(got.Stdout, "%0A") || strings.ContainsAny(got.Stdout, "\r\n") {
@@ -100,7 +103,7 @@ func TestCommandTemplateGitHubEscaping(t *testing.T) {
 }
 
 func TestCommandPlainIgnore(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	for _, input := range []string{
 		strings.Replace(commandBadWorkflow, "missing.value }}'", "missing.value }}' #ignore expression-reference", 1),
 		strings.Replace(commandBadWorkflow, "      - run:", "      # ignore-next-line expression-reference\n      - run:", 1),
@@ -112,6 +115,7 @@ func TestCommandPlainIgnore(t *testing.T) {
 }
 
 func TestRootAndCheckArgumentParity(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"-qv", "-"},
 		{"-qojson", "-"},
@@ -154,6 +158,7 @@ func TestCommandLiteralFilenames(t *testing.T) {
 }
 
 func TestRootOptionsAfterInput(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"-", "--ignore-regex", "undefined variable", "--ignore", "other"},
 		{"-", "-ignore", "other", "--ignore-regex", "undefined variable"},

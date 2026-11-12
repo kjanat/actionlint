@@ -35,6 +35,7 @@ func (b *ownedBackend) Close(ctx context.Context) error {
 }
 
 func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
+	t.Parallel()
 	checkFailure := errors.New("checker failed")
 	closeFailure := errors.New("cleanup failed")
 	for _, tc := range []struct {
@@ -49,6 +50,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 		{name: "cancellation", checkErr: context.Canceled, cancel: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			config := filepath.Join(root, "config.yaml")
 			if err := os.WriteFile(config, []byte("tools:\n  shellcheck:\n    backend:\n      wasm: {path: checker.wasm}\n"), 0600); err != nil {
@@ -84,6 +86,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 }
 
 func TestEmptyFileSelectionDoesNotDiscoverRepository(t *testing.T) {
+	t.Parallel()
 	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, inputmodel.Request{Kind: inputmodel.Files})
 	if err != nil || result == nil || result.FileCount != 0 {
 		t.Fatalf("result=%+v error=%v", result, err)

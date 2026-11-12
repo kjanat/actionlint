@@ -11,6 +11,7 @@ import (
 )
 
 func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
+	t.Parallel()
 	workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: {JOB: safe}\n    strategy:\n      matrix: {os: [ubuntu-latest]}\n    steps:\n      - uses: actions/github-script@v8\n        env: {STEP: safe}\n        with:\n          script: ${{ github.event.issue.title }}\n"))
 	if len(errors) != 0 {
 		t.Fatal(errors)

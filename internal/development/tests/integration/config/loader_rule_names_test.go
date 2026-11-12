@@ -8,6 +8,7 @@ import (
 )
 
 func TestAdditionalRulesAreScopedToResolution(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"lint: {rules: {plugins: {no-sudo: {level: warn, options: {key: value}}}}}",
 		"lint: {rules: {disable: [no-sudo]}}",

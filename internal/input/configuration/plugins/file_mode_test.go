@@ -15,8 +15,10 @@ import (
 )
 
 func TestPluginManifestFileMode(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []os.FileMode{0, 0o640, 0o444} {
 		t.Run(fmt.Sprintf("%o", mode), func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			path := filepath.Join(dir, "actionlint.yml")
 			control := filepath.Join(dir, "control")

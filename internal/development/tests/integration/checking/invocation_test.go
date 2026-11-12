@@ -51,6 +51,7 @@ func (a *invocationAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 }
 
 func TestPublicCompositeInvocationFacts(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	resolved, err := filepath.EvalSymlinks(root)
 	if err != nil {
@@ -119,6 +120,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 }
 
 func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for path, content := range map[string]string{
 		".git/HEAD":                "ref: refs/heads/main\n",

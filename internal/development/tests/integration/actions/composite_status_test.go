@@ -11,14 +11,7 @@ import (
 )
 
 func TestCompositeStatusConditionCheckout(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: actions/checkout@v6
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		condition string
 		want      bool
@@ -37,6 +30,15 @@ runs:
 		{"'success() && always()'", true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+`)
 			result := testutil.Composite(t, root, "- uses: ./local\n  if: ${{ "+tc.condition+` }}
 - uses: actions/checkout@v6
 - shell: bash

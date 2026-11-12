@@ -11,6 +11,7 @@ import (
 )
 
 func TestRuleBaseErrorfAndErrs(t *testing.T) {
+	t.Parallel()
 	r := NewBase("dummy name", "dummy description")
 	errs := r.Errs()
 	if len(errs) > 0 {
@@ -42,6 +43,7 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 }
 
 func TestRuleBaseErrsAreDetached(t *testing.T) {
+	t.Parallel()
 	r := NewBase("rule", "description")
 	r.Error(&workflowlang.Pos{Line: 1, Col: 1}, "message")
 	r.Errs()[0].Path = "changed"
@@ -51,6 +53,7 @@ func TestRuleBaseErrsAreDetached(t *testing.T) {
 }
 
 func TestRuleBaseAnnotateSince(t *testing.T) {
+	t.Parallel()
 	r := NewBase("rule", "description")
 	r.Error(&workflowlang.Pos{Line: 1, Col: 1}, "before")
 	mark := r.FindingCount()
@@ -67,6 +70,7 @@ func TestRuleBaseAnnotateSince(t *testing.T) {
 }
 
 func TestRuleBaseNameAndDescription(t *testing.T) {
+	t.Parallel()
 	r := NewBase("dummy name", "dummy description")
 	if r.Name() != "dummy name" {
 		t.Errorf("name is unexpected: %q", r.Name())

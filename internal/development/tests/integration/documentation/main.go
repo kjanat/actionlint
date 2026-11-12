@@ -52,6 +52,8 @@ func readDocumentationFile(path string) ([]byte, error) {
 	return data, err
 }
 
+func init() { color.NoColor = true }
+
 func Actionlint(src []byte) ([]byte, error) {
 	var out bytes.Buffer
 
@@ -85,7 +87,6 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	color.NoColor = true
 	renderer, err := render.New(render.FormatText, "", false, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err

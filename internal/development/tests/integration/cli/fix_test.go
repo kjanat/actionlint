@@ -12,6 +12,7 @@ import (
 )
 
 func TestFixPreviewAndApplyRechecks(t *testing.T) {
+	t.Parallel()
 	shellcheck, err := exec.LookPath("shellcheck")
 	if err != nil {
 		t.Skip("ShellCheck is not installed")
@@ -54,6 +55,7 @@ func TestFixPreviewAndApplyRechecks(t *testing.T) {
 }
 
 func TestFixUnusedSuppressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, before, after string }{
 		{"all unused", "      - run: echo ok # ignore[expression-reference, script-interpolation] -- obsolete\n", "      - run: echo ok\n"},
 		{"partially used", "      - run: echo '::set-output name=x::y' # actionlint:ignore deprecated-commands, script-interpolation -- keep reason\n", "      - run: echo '::set-output name=x::y' # actionlint:ignore deprecated-commands -- keep reason\n"},
@@ -61,14 +63,15 @@ func TestFixUnusedSuppressions(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
-				t.Chdir(t.TempDir())
+				t.Parallel()
 				const prefix = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n"
 				before := strings.ReplaceAll(prefix+tc.before+"permissions: {}\n", "\n", ending)
 				after := strings.ReplaceAll(prefix+tc.after+"permissions: {}\n", "\n", ending)
-				if err := os.WriteFile("ci.yml", []byte(before), 0o600); err != nil {
+				path := filepath.Join(t.TempDir(), "ci.yml")
+				if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				got := testRunCommand("", "fix", "--norc", "ci.yml")
+				got := testRunCommand("", "fix", "--norc", path)
 				var plan edits.Plan
 				if err := json.Unmarshal([]byte(got.Stdout), &plan); err != nil {
 					t.Fatalf("preview: %+v: %v", got, err)
@@ -76,12 +79,12 @@ func TestFixUnusedSuppressions(t *testing.T) {
 				if got.Status != 0 || len(plan.Changes) != 1 || plan.Skipped != 0 || plan.Changes[0].After != after {
 					t.Fatalf("unsafe or overlapping suppression cleanup: %+v, %+v", got, plan)
 				}
-				data, err := os.ReadFile("ci.yml")
+				data, err := os.ReadFile(path)
 				if err != nil || string(data) != before {
 					t.Fatalf("preview modified source: %q, %v", data, err)
 				}
-				got = testRunCommand("", "fix", "--apply", "--norc", "ci.yml")
-				data, err = os.ReadFile("ci.yml")
+				got = testRunCommand("", "fix", "--apply", "--norc", path)
+				data, err = os.ReadFile(path)
 				if got.Status != 0 || err != nil || string(data) != after {
 					t.Fatalf("cleanup did not apply and recheck cleanly: %+v; bytes=%q, err=%v", got, data, err)
 				}

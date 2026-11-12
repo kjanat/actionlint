@@ -27,6 +27,7 @@ func (interpreterProvider) CheckDocument(context.Context, checkinputs.Input) ([]
 }
 
 func TestShellInvocationValidationThroughSession(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ shell, code, severity string }{
 		{"bash -euo -pipefail {0}", "invalid-option-value", "error"},
 		{"bash -euo pipefail {0}", "", ""},
@@ -37,6 +38,7 @@ func TestShellInvocationValidationThroughSession(t *testing.T) {
 		{"actions-shell rust {0}", "", ""},
 	} {
 		t.Run(tc.shell, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + tc.shell + "\n        run: echo hi\n"
 			result, err := checking.Check(t.Context(), checking.Options{SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: interpreterProvider{}}}}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(source), Name: "workflow.yml"})
 			if err != nil {

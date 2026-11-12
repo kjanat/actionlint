@@ -7,6 +7,7 @@ import (
 )
 
 func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, exclude, include string
 		wantRejections         int
@@ -17,6 +18,7 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 		{"explicit include reintroduces typo", `[{os: ubuntu-lates}]`, `[{os: ubuntu-lates}, "${{ fromJSON(vars.INCLUDE) }}"]`, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-latest, ubuntu-lates], arch: [x64, arm64], exclude: "+tc.exclude+", include: "+tc.include+"}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 			// This contract covers execution selectors. Declaration lint separately
 			// retains excluded spelling errors in prepared job findings.
@@ -36,6 +38,7 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 }
 
 func TestRunnerMatrixPropertyRequiresWholeReference(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, want string }{
 		{`${{ matrix.os }}`, "os"},
 		{"  ${{ MATRIX.OS }}  ", "os"},
@@ -55,6 +58,7 @@ func TestRunnerMatrixPropertyRequiresWholeReference(t *testing.T) {
 }
 
 func TestRunnerCheckCompleteMatrixDoesNotAddPhantomIncludeAlternative(t *testing.T) {
+	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [build-pool], include: [{os: BUILD-POOL}]}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 	selectors := Selectors(w.Views["test"])
 	if len(selectors) != 1 || len(selectors[0].Labels) != 1 || selectors[0].Labels[0].Value != runnerapi.Literal("build-pool") {
@@ -66,6 +70,7 @@ func TestRunnerCheckCompleteMatrixDoesNotAddPhantomIncludeAlternative(t *testing
 }
 
 func TestIncompleteMatrixOmitsOnlyProvedMergedIncludeAxisValues(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
 		wantUpper    bool
@@ -77,6 +82,7 @@ func TestIncompleteMatrixOmitsOnlyProvedMergedIncludeAxisValues(t *testing.T) {
 		{"dynamic exclusion may reintroduce include", `{os: [build-pool], exclude: [{os: "${{ vars.OS }}"}], include: [{os: BUILD-POOL}]}`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: "+tc.matrix+"\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 			upper := false
 			for _, selector := range Selectors(w.Views["test"]) {

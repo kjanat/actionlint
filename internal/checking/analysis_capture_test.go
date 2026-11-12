@@ -32,6 +32,7 @@ import (
 )
 
 func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
+	t.Parallel()
 	lifetime, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	started := make(chan struct{})
@@ -65,6 +66,7 @@ func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
 }
 
 func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
+	t.Parallel()
 	lifetime, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	started, release := make(chan struct{}), make(chan struct{})
@@ -124,6 +126,7 @@ func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.WorkflowView)
 }
 
 func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
+	t.Parallel()
 	var mu sync.Mutex
 	var workflows []workflowdecl.StepView
 	content := []byte(commandGoodWorkflow)
@@ -174,6 +177,7 @@ func (*sharedCompositeObserver) VisitOpaqueAction(workflowdecl.StepView) error {
 func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error      { return nil }
 
 func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	actionPath := filepath.Join(root, "local", "action.yml")
 	if err := os.MkdirAll(filepath.Dir(actionPath), 0o700); err != nil {
@@ -215,6 +219,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 }
 
 func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	badPath, goodPath := filepath.Join(directory, "bad.yml"), filepath.Join(directory, "good.yml")
 	content := []byte(commandGoodWorkflow)
@@ -263,6 +268,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 }
 
 func TestCaptureInputsExcludeUnusedExplicitOverlays(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config, err := ConfigurationRules().Parse([]byte("files: {excludes: ['**/excluded.yml']}\n"))
 	if err != nil {
@@ -286,6 +292,7 @@ func TestCaptureInputsExcludeUnusedExplicitOverlays(t *testing.T) {
 }
 
 func TestCapturedActionInputsKeepRequestedAlias(t *testing.T) {
+	t.Parallel()
 	root, physical, alias := virtualActionPaths(t)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
@@ -307,6 +314,7 @@ func TestCapturedActionInputsKeepRequestedAlias(t *testing.T) {
 }
 
 func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name                                   string
 		requested, read, failed, conflict, raw bool
@@ -320,6 +328,7 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 		{name: "raw auxiliary read", requested: true, read: true, raw: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			address := filepath.Join(t.TempDir(), "action.yml")
 			model := source.YAML
 			if test.raw {

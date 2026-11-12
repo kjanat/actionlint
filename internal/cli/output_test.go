@@ -11,6 +11,7 @@ import (
 )
 
 func TestCommandLogRecords(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	w := commandJSONLogWriter{out: &out}
 	_, _ = io.WriteString(&w, "first ")

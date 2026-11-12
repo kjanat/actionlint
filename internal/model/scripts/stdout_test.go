@@ -8,6 +8,7 @@ import (
 )
 
 func TestLiteralStdoutWorkflowCommands(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, language, text string
 		want                 int
@@ -61,6 +62,7 @@ func TestLiteralStdoutWorkflowCommands(t *testing.T) {
 		{"explicit exit bypasses negation", "bash", `(! exit 1); echo '::notice: bad'`, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			count := 0
 			seen := make(map[ScriptRange]bool)
 			invocation := interpreters.Builtin().Analyze(tc.language, false)
@@ -87,6 +89,7 @@ func TestLiteralStdoutWorkflowCommands(t *testing.T) {
 }
 
 func TestLiteralStdoutJoinedSourceRange(t *testing.T) {
+	t.Parallel()
 	const text = `printf '::not'; echo 'ic::bad'`
 	registry := interpreters.Builtin()
 	paths := LiteralStdoutPaths(text, registry.Analyze("bash", false), registry)

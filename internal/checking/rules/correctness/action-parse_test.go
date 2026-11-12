@@ -20,8 +20,10 @@ import (
 )
 
 func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
+	t.Parallel()
 	for _, mapped := range []bool{false, true} {
 		t.Run(map[bool]string{false: "cache", true: "mapped resolver"}[mapped], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			content := []byte("name: [\n")
 			var reads atomic.Int32
@@ -63,8 +65,10 @@ func (lookup metadataParseFailureLookup) FindMetadataDocument(string) (*actionme
 }
 
 func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) {
+	t.Parallel()
 	for _, failure := range []error{errors.New("invalid YAML"), context.Canceled, context.DeadlineExceeded} {
 		t.Run(failure.Error(), func(t *testing.T) {
+			t.Parallel()
 			rule := NewRuleAction(t.Context(), metadataParseFailureLookup{cause: failure}, nil)
 			err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}))
 			if !errors.Is(err, failure) || len(rule.Errs()) != 0 {

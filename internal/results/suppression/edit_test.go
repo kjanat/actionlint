@@ -11,6 +11,7 @@ import (
 )
 
 func TestSuppressionEdit(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source, want string
 		line               int
@@ -28,6 +29,7 @@ func TestSuppressionEdit(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+"/"+ending, func(t *testing.T) {
+				t.Parallel()
 				content := []byte(strings.ReplaceAll(tc.source, "\n", ending))
 				edit, ok := Edit(content, tc.line, "expression", []string{"expression", "shellcheck"}, rule.Names{})
 				if !ok {

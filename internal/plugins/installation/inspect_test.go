@@ -3,6 +3,7 @@ package installation
 import "testing"
 
 func TestPinSourceLeavesLocalAndPinnedSourcesUnchanged(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"plugin.wasm",
 		"plugins/100%/plugin.wasm",
@@ -12,6 +13,7 @@ func TestPinSourceLeavesLocalAndPinnedSourcesUnchanged(t *testing.T) {
 		"https://example.com/plugin.wasm#sha256=0123456789abcdef",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			got, err := PinSource(t.Context(), source)
 			if err != nil {
 				t.Fatal(err)

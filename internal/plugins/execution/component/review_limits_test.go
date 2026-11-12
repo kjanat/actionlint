@@ -15,12 +15,14 @@ import (
 )
 
 func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
+	t.Parallel()
 	if _, err := Load(t.Context(), "not-opened.wasm", Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }
 
 func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
+	t.Parallel()
 	artifact := &pluginartifact.Artifact{Info: pluginartifact.Info{Source: "in-memory"}}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("in-memory artifact bypassed memory option validation: %v", err)
@@ -28,6 +30,7 @@ func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 }
 
 func TestComponentCoordinatesAreOneBasedAndRepresentable(t *testing.T) {
+	t.Parallel()
 	for _, coordinate := range []struct{ line, column uint32 }{{0, 1}, {1, 0}, {1, 1}, {math.MaxUint32, 1}, {1, math.MaxUint32}} {
 		value := wacogo.NewValRecord(field("line", wacogo.ValU32(coordinate.line)), field("column", wacogo.ValU32(coordinate.column)))
 		position, err := liftPosition(value)
@@ -43,6 +46,7 @@ func TestComponentCoordinatesAreOneBasedAndRepresentable(t *testing.T) {
 }
 
 func TestQueuedPluginCallsHonorCallerCancellationAndDeadline(t *testing.T) {
+	t.Parallel()
 	for _, callerCancels := range []bool{false, true} {
 		p := &Plugin{limits: Limits{Timeout: time.Second}, gate: semaphore.NewWeighted(1)}
 		if err := p.gate.Acquire(t.Context(), 1); err != nil {
@@ -72,6 +76,7 @@ func TestQueuedPluginCallsHonorCallerCancellationAndDeadline(t *testing.T) {
 }
 
 func TestPluginExecutionBudgetStartsAfterQueue(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{limits: Limits{Timeout: 5 * time.Millisecond}, gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)
@@ -91,6 +96,7 @@ func TestPluginExecutionBudgetStartsAfterQueue(t *testing.T) {
 }
 
 func TestQueuedCloseHonorsCancellation(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)

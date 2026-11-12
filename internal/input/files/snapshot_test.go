@@ -12,6 +12,7 @@ import (
 )
 
 func TestSnapshotReadOnlyAndStable(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	file := filepath.Join(root, "source.sh")
 	if err := os.WriteFile(file, []byte("original"), 0o600); err != nil {
@@ -64,6 +65,7 @@ func TestSnapshotReadOnlyAndStable(t *testing.T) {
 }
 
 func TestSnapshotRejectsEscapesAndLimits(t *testing.T) {
+	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
 	snapshot, err := NewSnapshot(t.Context(), root, New(t.Context(), nil, nil), nil)
 	if err != nil {
@@ -93,6 +95,7 @@ func TestSnapshotRejectsEscapesAndLimits(t *testing.T) {
 }
 
 func TestSnapshotResolvesSymlinksBeforeParents(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "real", "sub"), 0o700); err != nil {
 		t.Fatal(err)
@@ -147,6 +150,7 @@ func TestSnapshotResolvesSymlinksBeforeParents(t *testing.T) {
 }
 
 func TestSnapshotBudgetIsSharedAndCannotBeIgnored(t *testing.T) {
+	t.Parallel()
 	budget := &SnapshotBudget{}
 	var snapshots []*SnapshotFS
 	for range 2 {

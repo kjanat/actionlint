@@ -13,6 +13,7 @@ import (
 )
 
 func TestPreparerSelectsExactOccurrence(t *testing.T) {
+	t.Parallel()
 	reference := sourcepos.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
 	bashID, shID := checkinputs.OccurrenceID(strings.Repeat("a", 64)), checkinputs.OccurrenceID(strings.Repeat("b", 64))
 	scripts := []checkinputs.Script{
@@ -31,11 +32,13 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 }
 
 func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
+	t.Parallel()
 	const id checkinputs.OccurrenceID = "known"
 	script := checkinputs.Script{Text: "echo hi", Occurrence: checkinputs.ScriptOccurrence{ID: id}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 	prepare := NewShellScriptInputBuilder([]checkinputs.Script{script})
 	for name, occurrence := range map[string]checkinputs.OccurrenceID{"empty": "", "unknown": "foreign"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := prepare(t.Context(), occurrence, nil); err == nil {
 				t.Fatalf("%s occurrence accepted", name)
 			}
@@ -53,6 +56,7 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 }
 
 func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
+	t.Parallel()
 	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []workflowfacts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: sourcepos.Position{Line: 4, Column: 7}}}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
@@ -73,6 +77,7 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 }
 
 func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t *testing.T) {
+	t.Parallel()
 	script := checkinputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil || prepared.Dialect == nil || *prepared.Dialect != "bash" || prepared.ShellSetup != "set -e -o pipefail" {
@@ -91,6 +96,7 @@ func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t 
 // A closing marker inside a template's string literal does not end the
 // template, so no part of it reaches the plugin.
 func TestPluginPreparationMasksWholeTemplates(t *testing.T) {
+	t.Parallel()
 	script := checkinputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {

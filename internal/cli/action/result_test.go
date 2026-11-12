@@ -20,6 +20,7 @@ import (
 )
 
 func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("different Windows volumes have no relative path")
 	}
@@ -67,23 +68,31 @@ jobs:
           echo $VALUE
 permissions: {}
 `
-	workspace := workspaceWith(t, map[string]string{
-		".git": "", "my workflow.yml": workflow, "work/my workflow.yml": workflow, ".github/workflows/my workflow.yml": workflow,
-	})
 	for _, format := range []string{"default", "json", "sarif"} {
-		for _, tc := range []struct{ name, file, diagnostic, uri string }{
-			{"relative spelling", "./my workflow.yml", "./my workflow.yml", "work/my%20workflow.yml"},
-			{"parent path", "../my workflow.yml", "../my workflow.yml", "my%20workflow.yml"},
-			{"absolute input", filepath.Join(workspace, "my workflow.yml"), "../my workflow.yml", "my%20workflow.yml"},
-			{"repository discovery", "", "../.github/workflows/my workflow.yml", ".github/workflows/my%20workflow.yml"},
+		for _, tc := range []struct {
+			name, file, diagnostic, uri string
+			absolute                    bool
+		}{
+			{"relative spelling", "./my workflow.yml", "./my workflow.yml", "work/my%20workflow.yml", false},
+			{"parent path", "../my workflow.yml", "../my workflow.yml", "my%20workflow.yml", false},
+			{"absolute input", "my workflow.yml", "../my workflow.yml", "my%20workflow.yml", true},
+			{"repository discovery", "", "../.github/workflows/my workflow.yml", ".github/workflows/my%20workflow.yml", false},
 		} {
 			t.Run(format+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+				workspace := workspaceWith(t, map[string]string{
+					".git": "", "my workflow.yml": workflow, "work/my workflow.yml": workflow, ".github/workflows/my workflow.yml": workflow,
+				})
+				file := tc.file
+				if tc.absolute {
+					file = filepath.Join(workspace, file)
+				}
 				resultPath := filepath.Join(t.TempDir(), "result.json")
 				outputPath := filepath.Join(t.TempDir(), "output")
 				env := map[string]string{
 					"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
 					"INPUT_WORKING-DIRECTORY": "work",
-					"INPUT_FILES":             tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
+					"INPUT_FILES":             file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
 					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
@@ -246,6 +255,7 @@ permissions: {}
 }
 
 func TestPersistedResultRetainsAnalysisStatus(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, content, format string
 		code, analysisCode    int
@@ -270,6 +280,7 @@ permissions: {}
 		{"invalid format", "", "invalid", 2, 2, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workspace := t.TempDir()
 			if err := os.WriteFile(filepath.Join(workspace, "ci.yml"), []byte(tc.content), 0o600); err != nil {
 				t.Fatal(err)
@@ -313,6 +324,7 @@ permissions: {}
 }
 
 func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "result.json")
 	outputPath := filepath.Join(t.TempDir(), "outputs")
 	env := map[string]string{
@@ -341,6 +353,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 }
 
 func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, format, sarif string
 		wantSARIF           bool
@@ -353,6 +366,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 		{"both reports", "sarif", "true", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workspace := workspaceWith(t, map[string]string{"ci.yml": cleanWorkflow})
 			resultPath := filepath.Join(t.TempDir(), "result.json")
 			outputPath := filepath.Join(t.TempDir(), "outputs")

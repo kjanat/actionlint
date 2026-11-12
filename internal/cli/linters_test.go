@@ -6,6 +6,7 @@ import (
 )
 
 func TestRootOptionalLinterCommands(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"ruff", "shellcheck"} {
 		for _, tc := range []struct {
 			label, want string
@@ -21,6 +22,7 @@ func TestRootOptionalLinterCommands(t *testing.T) {
 			{"last tool wins", "last", []string{"--tool", name + "=first", "--tool", name + "=last", "input.yml"}},
 		} {
 			t.Run(name+"/"+tc.label, func(t *testing.T) {
+				t.Parallel()
 				assertToolCommand(t, name, tc.args, tc.want)
 			})
 		}
@@ -30,6 +32,7 @@ func TestRootOptionalLinterCommands(t *testing.T) {
 // TestRootDeprecatedShellCheckCommand checks the --shellcheck=COMMAND flag
 // of actionlint v1.17.0, which the bundled ShellCheck manifest declares.
 func TestRootDeprecatedShellCheckCommand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		label, want string
 		args        []string
@@ -41,6 +44,7 @@ func TestRootDeprecatedShellCheckCommand(t *testing.T) {
 		{"last deprecated flag wins", "last", []string{"--no-tool", "shellcheck", "--shellcheck=last", "input.yml"}},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
+			t.Parallel()
 			assertToolCommand(t, "shellcheck", tc.args, tc.want)
 		})
 	}

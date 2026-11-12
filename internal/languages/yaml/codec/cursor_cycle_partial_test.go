@@ -55,6 +55,7 @@ func cyclePartialField(t *testing.T, parent Entered, selected string) Cursor {
 }
 
 func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
+	t.Parallel()
 	const source = "a: &a {x: 1, c: *a}\nitems: *a\n"
 	root, err := Parse([]byte(source))
 	if err != nil {
@@ -71,6 +72,7 @@ func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
 				name = mode + "/prefilled"
 			}
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				initial := func() map[string]any {
 					if prefilled {
 						return map[string]any{"existing": "unchanged"}

@@ -18,6 +18,7 @@ import (
 )
 
 func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		patterns []string
 		invalid  bool
@@ -31,6 +32,7 @@ func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
 		{[]string{"!Build", "${{ inputs.workflow }}"}, false},
 	} {
 		t.Run(strings.Join(tc.patterns, ","), func(t *testing.T) {
+			t.Parallel()
 			var patterns []string
 			for _, pattern := range tc.patterns {
 				patterns = append(patterns, strconv.Quote(pattern))
@@ -57,6 +59,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 }
 
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
+	t.Parallel()
 	rule := declarationchecks.New(checking.ConfigurationRules(), correctness.GlobCheck())
 	workflow := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Workflows: []*workflowlang.String{{Value: "${{ inputs.pattern }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}}}
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil || len(rule.Errs()) != 0 {

@@ -14,6 +14,7 @@ import (
 )
 
 func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
+	t.Parallel()
 	for _, collect := range []bool{false, true} {
 		f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}, {uses: $/child}]}}\n", map[string]string{
 			"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
@@ -46,6 +47,7 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 }
 
 func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", nil, nil)
 	result, err := Workflow(f.options, f.root)
 	if err != nil {
@@ -64,6 +66,7 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 		{"stale revision", source.Reference{Document: reference.Document, Revision: "old", Node: reference.Node, Address: reference.Address}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			refs := map[string]workflowfacts.SourceIndex{"ci.yml": {Document: test.reference}}
 			input, err := CheckInput(result, "ci.yml", "ci.yml", content, document, refs)
 			if !test.valid {
@@ -86,6 +89,7 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 }
 
 func TestAnalyzerEmptyCollectedGraphAndUnavailableGraph(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	f := newInvocationFixture(t, t.Context(), string(content), nil, nil)
 	result, err := Workflow(f.options, f.root)

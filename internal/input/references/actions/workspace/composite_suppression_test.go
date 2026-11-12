@@ -10,11 +10,13 @@ import (
 )
 
 func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
+	t.Parallel()
 	root := tempdir.Physical(t)
 	source := "false # actionlint:ignore action\n"
 	path := writeFixture(t, root, "inner/action.yml", source)
 	for _, spec := range []string{"./inner", "$/inner", "./INNER", "$/INNER"} {
 		t.Run(spec, func(t *testing.T) {
+			t.Parallel()
 			base := newCapturedActionCache(t, root, nil)
 			var inputs []string
 			base.reader = files.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })

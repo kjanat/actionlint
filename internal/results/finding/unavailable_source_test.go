@@ -12,6 +12,7 @@ import (
 )
 
 func TestUnavailableSourceProducerGate(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join("..", "..", "..")
 	// The process runner and the managed document route each produce the
 	// marker once.
@@ -108,6 +109,7 @@ func unavailableSourceUse(node ast.Node) (string, bool) {
 }
 
 func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []struct {
 		source, factory string
 		literal         bool
@@ -157,6 +159,7 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 }
 
 func TestUnavailableSourceStatesAndBinding(t *testing.T) {
+	t.Parallel()
 	if (UnavailableSource{}).Present() || ReportedSourceUnavailable("tool", "", false).Present() || ReportedSourceUnavailable("", "reported.sh", false).Present() {
 		t.Fatal("marker without a provider or an address became a reported source")
 	}

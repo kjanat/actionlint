@@ -14,6 +14,7 @@ import (
 )
 
 func TestCompositeUnixColonCheckoutDestination(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -24,7 +25,8 @@ runs:
 `)
 	for _, runner := range []string{"ubuntu-latest", "windows-latest", "self-hosted"} {
 		t.Run(runner, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/colon.yml", `on: push
+			t.Parallel()
+			workflow := writeFixture(t, root, workflowFixturePath(t, "colon"), `on: push
 jobs:
   test:
     runs-on: `+runner+`
@@ -49,6 +51,7 @@ jobs:
 }
 
 func TestCompositeWindowsCheckoutDestination(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -59,7 +62,8 @@ runs:
 `)
 	for _, runner := range []string{"windows-latest", "self-hosted"} {
 		t.Run(runner, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/windows.yml", `on: push
+			t.Parallel()
+			workflow := writeFixture(t, root, workflowFixturePath(t, "windows"), `on: push
 jobs:
   test:
     runs-on: `+runner+`
@@ -83,14 +87,7 @@ jobs:
 }
 
 func TestCompositeRunnerReadonlyAssignments(t *testing.T) {
-	root, _ := executableFixture(t)
-	writeFixture(t, root, "outer/action.yml", `name: outer
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: ./inner
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		runner, shell string
 		want          bool
@@ -100,6 +97,15 @@ runs:
 		{"macos-latest", "sh", false},
 	} {
 		t.Run(tc.runner+"/"+tc.shell, func(t *testing.T) {
+			t.Parallel()
+			root, _ := executableFixture(t)
+			writeFixture(t, root, "outer/action.yml", `name: outer
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: ./inner
+`)
 			metadata := writeFixture(t, root, "inner/action.yml", `name: inner
 description: test
 runs:
@@ -137,6 +143,7 @@ jobs:
 }
 
 func TestCompositeCheckoutPrefixCase(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -154,7 +161,8 @@ runs:
 	writeFixture(t, root, "local/lib.sh", "VALUE=42\n")
 	for _, runner := range []string{"windows-latest", "macos-latest", "ubuntu-latest", "self-hosted"} {
 		t.Run(runner, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/case.yml", `on: push
+			t.Parallel()
+			workflow := writeFixture(t, root, workflowFixturePath(t, "case"), `on: push
 jobs:
   test:
     runs-on: `+runner+`
@@ -183,6 +191,7 @@ jobs:
 }
 
 func TestCompositeActionSubpathCase(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	metadata := writeFixture(t, root, "local/Nested/action.yml", `name: local
 description: test
@@ -198,7 +207,8 @@ runs:
 			{"independent", "        with: {path: Source}\n", "$/LOCAL/nested"},
 		} {
 			t.Run(runner+"/"+tc.name, func(t *testing.T) {
-				workflow := writeFixture(t, root, ".github/workflows/subpath-case.yml", `on: push
+				t.Parallel()
+				workflow := writeFixture(t, root, workflowFixturePath(t, "subpath-case"), `on: push
 jobs:
   test:
     runs-on: `+runner+`
@@ -226,6 +236,7 @@ jobs:
 }
 
 func TestCompositeActionPathCaseSources(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -257,7 +268,8 @@ runs:
 			{"independent", "", "$/LOCAL/nested"},
 		} {
 			t.Run(runner+"/"+tc.name, func(t *testing.T) {
-				workflow := writeFixture(t, root, ".github/workflows/source-case.yml", `on: push
+				t.Parallel()
+				workflow := writeFixture(t, root, workflowFixturePath(t, "source-case"), `on: push
 jobs:
   test:
     runs-on: `+runner+`

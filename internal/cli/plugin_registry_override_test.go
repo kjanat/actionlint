@@ -77,6 +77,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 }
 
 func TestRegistryInstallDeclarationSelection(t *testing.T) {
+	t.Parallel()
 	const first = "https://first.example/"
 	const second = "https://second.example/"
 	const third = "https://third.example/"
@@ -98,6 +99,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 		{"check", "", 2, -1, "", true},
 	} {
 		t.Run(test.name+test.registry, func(t *testing.T) {
+			t.Parallel()
 			one, err := pluginref.New(test.name, "v1", first)
 			if err != nil {
 				t.Fatal(err)
@@ -124,6 +126,7 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 
 func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
+	t.Chdir(t.TempDir())
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
 		for _, args := range [][]string{{"plugin", "search"}, {"plugin", "versions", "publisher/plugin"}} {
 			pluginCommandTest(t, 2, append(args, "--registry", registry)...)
@@ -135,6 +138,7 @@ func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 }
 
 func TestRegistryInstallDirectURLDeclarationSelection(t *testing.T) {
+	t.Parallel()
 	const source = "https://plugins.example/check.wasm#sha256="
 	old, err := pluginref.Parse(source + strings.Repeat("1", 64))
 	if err != nil {

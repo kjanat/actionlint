@@ -13,6 +13,7 @@ import (
 )
 
 func TestInvalidLocalActionSuppressionDirectives(t *testing.T) {
+	t.Parallel()
 	for _, metadata := range []struct {
 		name, source string
 	}{
@@ -36,6 +37,7 @@ runs: false
 				{"allowed", "# actionlint:ignore action -- reviewed", "", ""},
 			} {
 				t.Run(fmt.Sprintf("%s/nested=%t/%s", metadata.name, nested, tc.name), func(t *testing.T) {
+					t.Parallel()
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.config)
 					fixturefiles.Write(t, root, "inner/action.yml", fmt.Sprintf(metadata.source, tc.directive))
@@ -76,6 +78,7 @@ runs:
 }
 
 func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
+	t.Parallel()
 	for _, runtime := range []struct{ name, runs string }{
 		{"javascript", "using: node24\n  main: index.js"},
 		{"docker", "using: docker\n  image: docker://alpine:3.22"},
@@ -96,6 +99,7 @@ func TestLocalActionSuppressionDiagnosticLevels(t *testing.T) {
 			{"policy-severities", "forbidden-suppression", "policy", "# actionlint:ignore action -- reviewed", "info", "warn", "info", "warning"},
 		} {
 			t.Run(runtime.name+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := fmt.Sprintf(`lint: {rules: {%s: {%s: %s}}}
 overrides:
@@ -137,6 +141,7 @@ runs:
 }
 
 func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
+	t.Parallel()
 	for _, runtime := range []struct{ name, runs string }{
 		{"javascript", "using: node24\n  main: index.js"},
 		{"docker", "using: docker\n  image: docker://alpine:3.22"},
@@ -151,6 +156,7 @@ func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
 		} {
 			for _, enabled := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/enabled=%t", runtime.name, tc.name, enabled), func(t *testing.T) {
+					t.Parallel()
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					config := tc.config + fmt.Sprintf(`overrides:
   - includes: ['.github/workflows/**']
@@ -189,6 +195,7 @@ runs:
 }
 
 func TestCleanCompositeSuppressionDirectives(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, directive, config string
 		want                    []string
@@ -203,6 +210,7 @@ overrides:
 `, []string{"unused-suppression"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.config)
 			fixturefiles.Write(t, root, "outer/action.yml", `name: outer
@@ -234,6 +242,7 @@ runs:
 }
 
 func TestCompositeBlockSuppression(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true, ruff: false}\n")
@@ -259,6 +268,7 @@ runs:
 }
 
 func TestCleanLocalActionSuppressionDirectives(t *testing.T) {
+	t.Parallel()
 	for _, runtime := range []struct{ name, runs string }{
 		{"javascript", "using: node24\n  main: index.js"},
 		{"docker", "using: docker\n  image: docker://alpine:3.22"},
@@ -281,6 +291,7 @@ overrides:
 `, []string{"unused-suppression"}},
 			} {
 				t.Run(runtime.name+"/"+invocation.name+"/"+tc.name, func(t *testing.T) {
+					t.Parallel()
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.config)
 					fixturefiles.Write(t, root, "inner/index.js", "console.log('ok');\n")

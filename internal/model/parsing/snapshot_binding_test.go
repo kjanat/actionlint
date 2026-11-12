@@ -9,6 +9,7 @@ import (
 )
 
 func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n")
 	document := Workflow(content)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -56,6 +57,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			modified := ref
 			mutate(&modified)
 			documentRef := snapshot.Reference()
@@ -71,6 +73,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 }
 
 func TestSourceSnapshotsRejectRevisionAndKindConflicts(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	if _, err := snapshots.Document("ci.yml", content, Workflow(content)); err != nil {
@@ -86,6 +89,7 @@ func TestSourceSnapshotsRejectRevisionAndKindConflicts(t *testing.T) {
 }
 
 func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
+	t.Parallel()
 	workflowContent := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo alias\n      - *shared\n      - id: outer\n        parallel:\n          - run: echo first\n          - uses: actions/checkout@v4\n  Deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo deploy\n")
 	workflowSnapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	workflowSnapshot, err := workflowSnapshots.Document("ci.yml", workflowContent, Workflow(workflowContent))

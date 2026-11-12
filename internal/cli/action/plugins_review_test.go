@@ -16,6 +16,7 @@ import (
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
+	t.Parallel()
 	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -136,6 +137,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 }
 
 func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
+	t.Parallel()
 	executable := "explicit-native-command"
 	for _, tc := range []struct {
 		name    string
@@ -148,6 +150,7 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 		{"wasm", &processconfig.Options{AllowWasm: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			want := processconfig.Options{Optional: true}
 			if tc.options != nil {
 				want = *tc.options
@@ -170,6 +173,7 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 }
 
 func TestActionRunsConfiguredScriptComponent(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "component", "testdata", "plugins", "ruff-script-engine.wasm"))
 	if err != nil {
 		t.Fatal(err)

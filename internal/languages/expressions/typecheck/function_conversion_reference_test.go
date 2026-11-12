@@ -9,6 +9,7 @@ import (
 )
 
 func TestFunctionConversionReference(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_REFERENCE_IMAGE") == "" {
 		t.Skip("set ACTIONLINT_REFERENCE_IMAGE to run the pinned expression reference")
 	}
@@ -30,6 +31,7 @@ func TestFunctionConversionReference(t *testing.T) {
 	} {
 		for _, mode := range []reference.JSONMode{reference.StrictJSON, reference.LooseJSON} {
 			t.Run(tc.expression+"/strict="+strconv.FormatBool(mode == reference.StrictJSON), func(t *testing.T) {
+				t.Parallel()
 				want := tc.want
 				if want.Failure == reference.RuntimeFailure && mode == reference.LooseJSON {
 					want.ExceptionType = "Newtonsoft.Json.JsonReaderException"
@@ -41,6 +43,7 @@ func TestFunctionConversionReference(t *testing.T) {
 }
 
 func TestOutputStringTruthinessReference(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_REFERENCE_IMAGE") == "" {
 		t.Skip("set ACTIONLINT_REFERENCE_IMAGE to run the pinned expression reference")
 	}
@@ -49,6 +52,7 @@ func TestOutputStringTruthinessReference(t *testing.T) {
 	for _, output := range []string{"", "false", "true"} {
 		for _, mode := range []reference.JSONMode{reference.StrictJSON, reference.LooseJSON} {
 			t.Run(output+"/strict="+strconv.FormatBool(mode == reference.StrictJSON), func(t *testing.T) {
+				t.Parallel()
 				variables := map[string]any{"steps": map[string]any{"check": map[string]any{"outputs": map[string]any{"available": output}}}}
 				reference.CheckOutcomeWithJSONMode(t, "!!steps.check.outputs.available", variables, mode, reference.Expectation{Value: output != ""})
 			})

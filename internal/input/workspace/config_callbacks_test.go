@@ -14,6 +14,7 @@ import (
 )
 
 func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
+	t.Parallel()
 	overlay, err := checking.ConfigurationRules().ParseOverlay("config-variables", []byte("[ALLOWED]"))
 	if err != nil {
 		t.Fatal(err)
@@ -63,6 +64,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 }
 
 func TestConfigOverlayResetOrigins(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input, value, source, state string
 	}{
@@ -71,6 +73,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 		{"policy", "{}", "config", "value"},
 	} {
 		t.Run(tc.input+"/"+tc.value, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := os.WriteFile(path, []byte("policy: {require-commit-hash: true}"), 0o600); err != nil {
 				t.Fatal(err)
@@ -107,8 +110,10 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 }
 
 func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
+	t.Parallel()
 	for _, reset := range []string{"null", "policy: null"} {
 		t.Run(reset, func(t *testing.T) {
+			t.Parallel()
 			var overlays []repoconfig.Overlay
 			for _, input := range []struct{ name, value string }{
 				{"config", reset},

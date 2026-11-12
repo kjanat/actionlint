@@ -8,6 +8,7 @@ import (
 )
 
 func TestConfigInspectionCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, request := range []commandRequest{

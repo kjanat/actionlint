@@ -58,6 +58,7 @@ func newSelectionCounts() *selectionCounts {
 }
 
 func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
+	t.Parallel()
 	const source = "picked: &node {self: *node}\ncopy: *node\n"
 	root, err := Parse([]byte(source))
 	if err != nil {
@@ -114,6 +115,7 @@ func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
 }
 
 func TestSelectAliasAndMergeCountsMatchPlainDecode(t *testing.T) {
+	t.Parallel()
 	const source = `defaults: &defaults {name: shared, enabled: true}
 items: &items
   - <<: *defaults
@@ -192,6 +194,7 @@ picked: *items
 }
 
 func TestSelectSchemaErrorsAndClosedCursor(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("first: one\nsecond: two\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -222,6 +225,7 @@ func TestSelectSchemaErrorsAndClosedCursor(t *testing.T) {
 }
 
 func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
+	t.Parallel()
 	data := []byte("payload: &payload [" + strings.TrimSuffix(strings.Repeat("value, ", 650), ", ") + "]\nitems:\n  - *payload\n  - *payload\n  - *payload\nafter: reached\n")
 	var baseline struct {
 		Items [][]string `yaml:"items"`
@@ -283,6 +287,7 @@ func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
 }
 
 func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("value: ok\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -318,6 +323,7 @@ func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if err := tc.call(); err == nil {
 				t.Fatal("Select succeeded for invalid call")
 			}

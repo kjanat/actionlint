@@ -10,6 +10,7 @@ import (
 )
 
 func TestExpressionWhitespaceActionMappingBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"env", "with"} {
 		for _, tc := range []struct {
 			name, value string
@@ -22,6 +23,7 @@ func TestExpressionWhitespaceActionMappingBoundaries(t *testing.T) {
 			{"stripped block map", "|-\n        ${{ fromJSON('{}') }}", false},
 		} {
 			t.Run(field+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				source := []byte(`name: test
 description: test
 runs:

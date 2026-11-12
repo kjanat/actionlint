@@ -8,6 +8,7 @@ import (
 )
 
 func TestInlineProgramManifestContract(t *testing.T) {
+	t.Parallel()
 	document := strings.Replace(minimal, `"entry": "lint",`, `"entry": "lint", "program":{"filename":"actionlint.mjs","inline":"export {};"},`, 1)
 	document = strings.Replace(document, `"args": ["--format=json", "{flag:dialect:--shell}", "{user-args}", "-"]`, `"args":["{program-file}"]`, 1)
 	manifest, err := manifests.Parse([]byte(document))
@@ -27,6 +28,7 @@ func TestInlineProgramManifestContract(t *testing.T) {
 		"empty-source":           strings.Replace(document, `"inline":"export {};"`, `"inline":""`, 1),
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := manifests.Parse([]byte(invalid)); err == nil {
 				t.Fatal("invalid program contract accepted")
 			}
@@ -35,6 +37,7 @@ func TestInlineProgramManifestContract(t *testing.T) {
 }
 
 func TestInlineProgramTypedValidation(t *testing.T) {
+	t.Parallel()
 	valid := manifests.ProcessSpec{Args: []string{"{program-file}"}, Program: &manifests.InlineProgram{Filename: "actionlint.mjs", Inline: "export {};"}}
 	for _, program := range []manifests.InlineProgram{{Filename: "bad/name.mjs", Inline: "x"}, {Filename: "ok.mjs", Inline: ""}, {Filename: "ok.mjs", Inline: strings.Repeat("é", manifests.MaxInlineProgramBytes/2+1)}, {Filename: "ok.mjs", Inline: string([]byte{255})}} {
 		invalid := valid

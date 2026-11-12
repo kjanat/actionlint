@@ -19,6 +19,7 @@ import (
 )
 
 func TestEditorUnusedSuppressionQuickFix(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	uri := FileURI(path)
@@ -73,6 +74,7 @@ func TestEditorUnusedSuppressionQuickFix(t *testing.T) {
 }
 
 func TestEditorSuppressionQuickFix(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	uri := FileURI(path)
@@ -149,6 +151,7 @@ func TestEditorSuppressionQuickFix(t *testing.T) {
 }
 
 func TestEditorSuppressionRespectsPolicy(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte("policy: {disallow-suppressions: true}\n"))
@@ -168,6 +171,7 @@ func TestEditorSuppressionRespectsPolicy(t *testing.T) {
 }
 
 func TestEditorSuppressionTargetsCapturedOrigin(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflow, script := filepath.Join(root, "workflow.yml"), filepath.Join(root, "check.sh")
 	yaml := []byte("run: |\n  . ./check.sh\n")

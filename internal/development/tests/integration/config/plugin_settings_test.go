@@ -29,6 +29,7 @@ func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.In
 }
 
 func TestRegisteredAnalyzerSettings(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - run: echo ok\n"
 	for _, test := range []struct {
 		name, configuration, severity, options string
@@ -46,6 +47,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 		{"override", "overrides:\n  - includes: ['example.yml']\n    lint: {rules: {plugins: {custom-check: info}}}", "info", "", 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte(test.configuration), "custom-check")
 			if err != nil {
 				t.Fatal(err)

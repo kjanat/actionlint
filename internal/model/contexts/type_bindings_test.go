@@ -38,6 +38,7 @@ func boundProperty(t *testing.T, bindings TypeBindings, root string, path ...str
 }
 
 func TestDispatchInputsUpdateOnlyTheirEventVariant(t *testing.T) {
+	t.Parallel()
 	dispatch := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"dispatch_marker": exprtypes.BoolType()})
 	push := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"push_marker": exprtypes.NumberType()})
 	event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "workflow_dispatch", Payload: dispatch}, {Event: "push", Payload: push}})
@@ -87,6 +88,7 @@ func TestDispatchInputsUpdateOnlyTheirEventVariant(t *testing.T) {
 }
 
 func TestDispatchInputsDoNotInventGitHubContext(t *testing.T) {
+	t.Parallel()
 	bindings := modelBindings{}
 	SetDispatchInputTypes(bindings, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
 	if _, found := bindings.ContextType("github"); found {
@@ -98,6 +100,7 @@ func TestDispatchInputsDoNotInventGitHubContext(t *testing.T) {
 }
 
 func TestSecretUpdatesReplaceDeclarationsAndPreserveOpenness(t *testing.T) {
+	t.Parallel()
 	for _, open := range []bool{false, true} {
 		bindings := modelBindings{}
 		SetSecretTypes(bindings, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"old": exprtypes.StringType()}))

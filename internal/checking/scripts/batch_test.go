@@ -17,8 +17,10 @@ import (
 )
 
 func TestBatchRejectsUnboundSource(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"missing registry", "missing document", "stale revision", "foreign document"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			graph, collection := batchFixture(t, false)
 			snapshot, _ := collection.Declarations.Lookup(graph.Entry().Reference)
 			content, identity := snapshot.Content(), "ci.yml"
@@ -45,8 +47,10 @@ func TestBatchRejectsUnboundSource(t *testing.T) {
 }
 
 func TestBatchValidatesScopeOutcome(t *testing.T) {
+	t.Parallel()
 	for _, state := range []string{"depth", "cycle", "pending interrupted", "interrupted", "noncomposite"} {
 		t.Run(state, func(t *testing.T) {
+			t.Parallel()
 			entry := source.Reference{Document: "entry", Node: "document"}
 			builder, err := invocation.NewBuilder(invocation.EntryAction, entry, invocation.Budget{MaxDepth: 1, MaxCalls: 5, MaxScripts: 5})
 			if err != nil {
@@ -122,8 +126,10 @@ func TestBatchValidatesScopeOutcome(t *testing.T) {
 }
 
 func TestBatchRejectsForgedEntryPaths(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"analysis path", "declared analysis path", "runner path", "independent"} {
 		t.Run(field, func(t *testing.T) {
+			t.Parallel()
 			graph, collection := batchFixture(t, false)
 			scopes := collection.Scopes
 			want := "action paths disagree"
@@ -213,6 +219,7 @@ func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Gr
 }
 
 func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
+	t.Parallel()
 	for name, mutate := range map[string]func(*invocation.Graph, *Collection, *workflowlang.ExecRun, *workflowlang.Input){
 		"missing run mapping": func(_ *invocation.Graph, _ *Collection, r *workflowlang.ExecRun, _ *workflowlang.Input) {
 			r.Source = nil
@@ -272,6 +279,7 @@ func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			graph, collection, workflow := batchFixtureWithWorkflow(t, true)
 			run, input := fixtureBodies(t, graph, collection, workflow)
 			baseline, err := NewBatch(graph, collection)
@@ -302,6 +310,7 @@ func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
 }
 
 func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, identity, content string
 		kind                    invocation.EntryKind
@@ -325,6 +334,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := []byte(tc.content)
 			var document parsing.Document
 			if tc.kind == invocation.EntryWorkflow {
@@ -403,6 +413,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 }
 
 func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
+	t.Parallel()
 	graph, collection := batchFixture(t, true)
 	for _, record := range graph.Scripts() {
 		declaration, exists := collection.Declarations.Declaration(record.Declaration)
@@ -468,6 +479,7 @@ func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, 
 }
 
 func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
+	t.Parallel()
 	graph, collection, workflow := batchFixtureWithWorkflow(t, true)
 	scopes := collection.Scopes
 	run, argument := fixtureBodies(t, graph, collection, workflow)
@@ -563,6 +575,7 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 }
 
 func TestScopesOnlyBatchRetainsGraphWithoutMaterializedScripts(t *testing.T) {
+	t.Parallel()
 	graph, collection := batchFixture(t, false)
 	batch, err := NewBatch(graph, Collection{Scopes: collection.Scopes})
 	if err != nil || !batch.Valid() || batch.CollectedScripts() || len(batch.Scripts()) != 0 || len(batch.Invocations().Scripts()) != 1 {
@@ -574,6 +587,7 @@ func TestScopesOnlyBatchRetainsGraphWithoutMaterializedScripts(t *testing.T) {
 }
 
 func TestScopesOnlyBatchCannotDropCompletedScopes(t *testing.T) {
+	t.Parallel()
 	graph, collection := batchFixture(t, false)
 	scopes := collection.Scopes
 	if _, err := NewBatch(graph, Collection{}); !errors.Is(err, ErrInvalidBatch) {
@@ -614,11 +628,13 @@ func TestScopesOnlyBatchCannotDropCompletedScopes(t *testing.T) {
 }
 
 func TestUnpreparedBatchCannotExecute(t *testing.T) {
+	t.Parallel()
 	for name, adapter := range map[string]Analyzer{
 		"fact": FactAnalyzer{Analyzer: partialFactAnalyzer{t: t}},
 		"tool": Tool{Runner: partialTool{t: t}},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := adapter.AnalyzeScripts(t.Context(), Batch{}); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("adapter accepted unprepared batch: %v", err)
 			}
@@ -630,6 +646,7 @@ func TestUnpreparedBatchCannotExecute(t *testing.T) {
 }
 
 func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
+	t.Parallel()
 	graph, collection, workflow := batchFixtureWithWorkflow(t, true)
 	run, _ := fixtureBodies(t, graph, collection, workflow)
 	run.Source.Comments = []workflowlang.ScalarComment{{Text: "forged", Pos: workflowlang.Pos{Line: 1, Col: 1}}}

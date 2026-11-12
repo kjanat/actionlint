@@ -11,6 +11,7 @@ import (
 )
 
 func TestContentPathDetectsProject(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.CopyFS(root, os.DirFS(filepath.Join("..", "input", "workspace", "testdata", "find-project"))); err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ func TestContentPathDetectsProject(t *testing.T) {
 		{"missing path", filepath.Join("this-dir-doesnt-exist", "not-found.yaml"), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, inputmodel.Request{Kind: inputmodel.Stdin, Name: tc.path, Reader: bytes.NewReader(content)})
 			if err != nil {
 				t.Fatal(err)

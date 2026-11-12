@@ -8,6 +8,7 @@ import (
 )
 
 func TestMatrixFilterTypeMismatchUsesSemanticValues(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		axis, filt value.Value
@@ -18,6 +19,7 @@ func TestMatrixFilterTypeMismatchUsesSemanticValues(t *testing.T) {
 		{"dynamic string", value.Template("${{ inputs.value }}", value.Origin{}), value.YAMLScalar("", "!!str", value.Origin{}), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if got := FilterMayCompareDifferentTypes(tc.axis, tc.filt); got != tc.want {
 				t.Fatalf("mismatch=%v, want %v", got, tc.want)
 			}
@@ -26,6 +28,7 @@ func TestMatrixFilterTypeMismatchUsesSemanticValues(t *testing.T) {
 }
 
 func TestResolutionRetainsExpressionOrigin(t *testing.T) {
+	t.Parallel()
 	got := value.Template("${{ inputs.value }}", value.Origin{})
 	if got.State() != value.Dynamic || !strings.Contains(got.Source(), "inputs.value") {
 		t.Fatalf("dynamic value lost expression source: %#v", got)

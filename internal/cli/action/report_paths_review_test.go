@@ -11,6 +11,7 @@ import (
 )
 
 func TestWorkspaceReportRebasesRelatedLocationsAndFixRevisions(t *testing.T) {
+	t.Parallel()
 	workspace := t.TempDir()
 	revision, err := source.NewRevision(filepath.ToSlash(filepath.Join(workspace, "subdir", "other.yml")), strings.Repeat("a", 64))
 	if err != nil {

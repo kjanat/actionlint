@@ -20,6 +20,7 @@ import (
 func TestCommandCompatibility(t *testing.T) {
 	oldColor := color.NoColor
 	t.Cleanup(func() { color.NoColor = oldColor })
+	color.NoColor = true
 	repoDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +96,7 @@ permissions: {}
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			color.NoColor = true
+			t.Parallel()
 			var stdout, stderr bytes.Buffer
 			cmd := cli.Command{Stdin: strings.NewReader(tc.in), Stdout: &stdout, Stderr: &stderr}
 			args := append([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color"}, tc.args...)

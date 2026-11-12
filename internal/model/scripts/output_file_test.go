@@ -11,6 +11,7 @@ import (
 )
 
 func TestNamedFileCommandFormat(t *testing.T) {
+	t.Parallel()
 	// Reference: actions/runner 1ba885c2065fd9be317808ab3fd406f392635cf7,
 	// EnvFileKeyValuePairs in src/Runner.Worker/FileCommandManager.cs.
 	for _, tc := range []struct {
@@ -35,6 +36,7 @@ func TestNamedFileCommandFormat(t *testing.T) {
 		{"invalid record after multiline", "available<<EOF\nvalue\nEOF\n{\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if problem := scriptmodel.NamedFileCommandError(tc.text); (problem != "") != tc.invalid {
 				t.Fatalf("format error = %q, want invalid=%t", problem, tc.invalid)
 			}
@@ -43,6 +45,7 @@ func TestNamedFileCommandFormat(t *testing.T) {
 }
 
 func TestKnownOutputFile(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, script, want string
 		unknown            bool
@@ -80,6 +83,7 @@ func TestKnownOutputFile(t *testing.T) {
 		{"pipeline concurrent writes", `echo '{' > "$GITHUB_OUTPUT" | tee -a "$GITHUB_OUTPUT"`, "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, shell := range []string{"bash", "sh"} {
 				got, known := scriptmodel.KnownOutputFile(tc.script, shell)
 				if known == tc.unknown || known && got.Text != tc.want {
@@ -99,6 +103,7 @@ func TestKnownOutputFile(t *testing.T) {
 }
 
 func TestOutputFileOriginalTeeWithBash(t *testing.T) {
+	t.Parallel()
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("Bash is not installed")

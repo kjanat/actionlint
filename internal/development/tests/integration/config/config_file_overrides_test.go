@@ -11,6 +11,7 @@ import (
 )
 
 func TestRuleLevelAliasOverrides(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		base, overlay string
 		want          repoconfig.Level
@@ -61,6 +62,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 }
 
 func TestFileOverrideAnalysisIsolation(t *testing.T) {
+	t.Parallel()
 	const configuration = `overrides:
   - includes: ['.github/workflows/suspicious.yml']
     lint: {rules: {suspicious: on}}

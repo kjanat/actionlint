@@ -16,6 +16,7 @@ import (
 )
 
 func TestCategoryMigrationPreservesSelection(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		`lint: {rules: {style: warn}}`,
 		`lint: {rules: {style: {preset: all, empty-job: off}}}`,
@@ -31,6 +32,7 @@ func TestCategoryMigrationPreservesSelection(t *testing.T) {
 		`lint: {rules: {conventions: {job-timeout: {level: error, options: {max-minutes: 20}}}}}`,
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			before, err := checking.ConfigurationRules().Parse([]byte(input))
 			if err != nil {
 				t.Fatal(err)
@@ -70,6 +72,7 @@ func TestCategoryMigrationPreservesSelection(t *testing.T) {
 }
 
 func TestCategoryMigrationPluginMetadata(t *testing.T) {
+	t.Parallel()
 	input := []byte(`lint: {rules: {plugins: {level: off, custom-check: {level: warn, options: {mode: audit}}}}}`)
 	descriptor := rule.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"mode":{"enum":["audit"]}},"additionalProperties":false}`)}
 	if _, err := checking.ConfigurationRules().MigrateDocument("config.yaml", input); err == nil || !strings.Contains(err.Error(), "metadata") {
@@ -111,6 +114,7 @@ func TestCategoryMigrationPluginMetadata(t *testing.T) {
 }
 
 func TestCategoryMigrationFormatsAndConflicts(t *testing.T) {
+	t.Parallel()
 	for filename, input := range map[string]string{
 		"config.yaml": `lint: {rules: {policy: {require-commit-hash: error}}}`,
 		"config.json": `{"lint":{"rules":{"policy":{"require-commit-hash":"error"}}}}`,
@@ -151,6 +155,7 @@ func TestCategoryMigrationFormatsAndConflicts(t *testing.T) {
 }
 
 func TestCategoryFileMigrationChecksInheritedSelection(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	base, leaf := filepath.Join(directory, "base.yaml"), filepath.Join(directory, "config.yaml")
 	if err := os.WriteFile(base, []byte("lint: {rules: {style: {level: warn}}}\n"), 0o600); err != nil {

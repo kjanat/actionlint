@@ -16,6 +16,7 @@ import (
 )
 
 func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	invalid, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: missing.shellcheckrc}}"))
 	if err != nil {
@@ -48,6 +49,7 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 }
 
 func TestDocumentPluginScopesOnlyNegotiationAndDisable(t *testing.T) {
+	t.Parallel()
 	disabled, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {enabled: false}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -71,6 +73,7 @@ func TestDocumentPluginScopesOnlyNegotiationAndDisable(t *testing.T) {
 }
 
 func TestDocumentPluginRetainsScriptsBesideScopeFailure(t *testing.T) {
+	t.Parallel()
 	batch := documentBatchFixture(t, 1)
 	batch.Scopes = []*tools.Scope{{}}
 	failure := errors.New("empty scope failed")

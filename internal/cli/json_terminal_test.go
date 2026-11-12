@@ -19,11 +19,13 @@ import (
 )
 
 func TestJSONHelpUsesInvocationContext(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"actionlint", "--json", "--help"},
 		{"actionlint", "check", "--json", "--help"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			t.Parallel()
 			var out, stderr bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &stderr}
 			if status := command.MainContext(t.Context(), args); status != 0 || !json.Valid(out.Bytes()) {
@@ -41,6 +43,7 @@ func TestJSONHelpUsesInvocationContext(t *testing.T) {
 }
 
 func TestTerminalJSONKeepsRedirectedBytes(t *testing.T) {
+	t.Parallel()
 	data := []byte("{\"unicode\":\"résumé\",\"count\":2}\n")
 	var out bytes.Buffer
 	if err := writePrettyJSON(t.Context(), &out, render.ColorAlways, data, false); err != nil {

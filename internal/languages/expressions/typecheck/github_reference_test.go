@@ -21,6 +21,7 @@ import (
 // on 2026-11-04. Tests use local inputs and never fetch the page:
 // https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
 func TestGitHubReferenceValues(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, input string
 		kind        exprtypes.Kind
@@ -84,6 +85,7 @@ func TestGitHubReferenceValues(t *testing.T) {
 		{"case default", "case(false, 'first', false, 'second', 'default')", exprtypes.KindString, "default"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			node, ty := checkGitHubReference(t, tc.input)
 			if ty.Kind() != tc.kind {
 				t.Fatalf("type = %s, want %s", ty, tc.kind)
@@ -101,6 +103,7 @@ func TestGitHubReferenceValues(t *testing.T) {
 }
 
 func TestGitHubReferenceCoercions(t *testing.T) {
+	t.Parallel()
 	// Supported coercions infer bool without type errors, independently of warning selection.
 	for _, tc := range []struct {
 		input string
@@ -116,6 +119,7 @@ func TestGitHubReferenceCoercions(t *testing.T) {
 		{"null <= 0", true, exprtypes.KindBool, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node, ty := checkGitHubReference(t, tc.input, tc.kinds...)
 			got, known := expreval.ConditionConstantValue(node)
 			if ty.Kind() != tc.kind || !known || got != tc.want {
@@ -127,6 +131,7 @@ func TestGitHubReferenceCoercions(t *testing.T) {
 }
 
 func TestGitHubReferenceTruthiness(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		want  bool
@@ -145,6 +150,7 @@ func TestGitHubReferenceTruthiness(t *testing.T) {
 		{"fromJSON('{}')", true},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node, _ := checkGitHubReference(t, tc.input)
 			got, known := expreval.ConditionConstantValue(node)
 			if !known || exprvalues.ExpressionTruthy(got) != tc.want {
@@ -158,6 +164,7 @@ func TestGitHubReferenceTruthiness(t *testing.T) {
 }
 
 func TestGitHubReferenceContextScenarios(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input, property, value string
 		want                   any
@@ -174,6 +181,7 @@ func TestGitHubReferenceContextScenarios(t *testing.T) {
 		{"case(github.ref == 'refs/heads/main', 'production', github.ref == 'refs/heads/staging', 'staging', startsWith(github.ref, 'refs/heads/feature/'), 'development', 'unknown')", "ref", "refs/heads/other", "unknown"},
 	} {
 		t.Run(tc.input+"/"+tc.value, func(t *testing.T) {
+			t.Parallel()
 			node, _ := checkGitHubReference(t, tc.input)
 			if got, known := expreval.ConditionConstantValue(node); known {
 				t.Fatalf("invented context value: %v", got)
@@ -192,6 +200,7 @@ func TestGitHubReferenceContextScenarios(t *testing.T) {
 }
 
 func TestGitHubReferenceRuntimeExpressions(t *testing.T) {
+	t.Parallel()
 	// These expressions are valid, but the constant evaluator must not invent
 	// filesystem contents, execution status, object identity, or JSON formatting.
 	for _, tc := range []struct {
@@ -218,6 +227,7 @@ func TestGitHubReferenceRuntimeExpressions(t *testing.T) {
 		{"fromJSON('[]') == fromJSON('[]')", exprtypes.KindBool},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node, ty := checkGitHubReference(t, tc.input)
 			if ty.Kind() != tc.kind {
 				t.Fatalf("type = %s, want %s", ty, tc.kind)
@@ -230,6 +240,7 @@ func TestGitHubReferenceRuntimeExpressions(t *testing.T) {
 }
 
 func TestGitHubReferenceObjectFilters(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		elem  exprtypes.Type
@@ -238,6 +249,7 @@ func TestGitHubReferenceObjectFilters(t *testing.T) {
 		{`fromJSON('{"scallions":{"ediblePortions":["roots","stalks"]},"beets":{"ediblePortions":["roots","stems","leaves"]},"artichokes":{"ediblePortions":["hearts","stems","leaves"]}}').*.ediblePortions`, exprtypes.AnyType()},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			_, ty := checkGitHubReference(t, tc.input)
 			array, ok := ty.Array()
 			if !ok || !array.Elem().Equal(tc.elem) {

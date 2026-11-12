@@ -15,6 +15,7 @@ import (
 )
 
 func TestScriptSafeScalarReferences(t *testing.T) {
+	t.Parallel()
 	checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
 	for _, tc := range []struct {
@@ -46,6 +47,7 @@ func TestScriptSafeScalarReferences(t *testing.T) {
 }
 
 func TestScriptInterpolationValueSafety(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		typeOf     exprtypes.Type
@@ -102,6 +104,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 		{"toJSON('safe')", exprtypes.StringType(), true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -121,6 +124,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 }
 
 func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		known      bool
@@ -135,6 +139,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		{"steps.test.outputs.value", false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -161,6 +166,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 }
 
 func TestSafeScriptLiteral(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{"", "linux-x64", "org/repo", "https://github.com/org/repo", "false", "123"} {
 		if !SafeScriptLiteral(value) {
 			t.Errorf("safe value rejected: %q", value)
@@ -174,6 +180,7 @@ func TestSafeScriptLiteral(t *testing.T) {
 }
 
 func TestScriptKeywordWordProof(t *testing.T) {
+	t.Parallel()
 	for _, word := range []string{"case", "coproc", "do", "done", "else", "elif", "esac", "fi", "for", "function", "if", "in", "select", "then", "time", "until", "while"} {
 		if !SafeScriptLiteral(word) || SafeScriptWord(word) {
 			t.Errorf("keyword must retain only its character proof: %q", word)
@@ -187,6 +194,7 @@ func TestScriptKeywordWordProof(t *testing.T) {
 }
 
 func TestNumericScriptLiteralsRequireArgumentPosition(t *testing.T) {
+	t.Parallel()
 	if !SafeScriptLiteral("") || SafeScriptWord("") {
 		t.Error("empty literal must have only an argument proof")
 	}
@@ -203,6 +211,7 @@ func TestNumericScriptLiteralsRequireArgumentPosition(t *testing.T) {
 }
 
 func TestSafeScriptArguments(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{"", "--allow-no-files --diff ", "--excludes .github", "--flag\tvalue", "if fi 2"} {
 		if !SafeScriptArguments(text) {
 			t.Fatalf("literal argument list rejected: %q", text)

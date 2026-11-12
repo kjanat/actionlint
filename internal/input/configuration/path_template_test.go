@@ -6,6 +6,7 @@ import (
 )
 
 func TestConfigPathInterpolation(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	context := PathContext{
 		ConfigDir: filepath.Join(root, "config with spaces"),

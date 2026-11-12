@@ -72,8 +72,10 @@ var scalarDecoderInvariantCorpus = []string{
 }
 
 func TestScalarDecoderInvariants(t *testing.T) {
+	t.Parallel()
 	for _, input := range scalarDecoderInvariantCorpus {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			root, err := codec.Parse([]byte(input))
 			if err != nil {
 				t.Fatal(err)

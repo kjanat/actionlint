@@ -20,10 +20,12 @@ import (
 )
 
 func TestCacheOperationCallerCeilings(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"", "read", "write", "write-only", "none"} {
 		for _, action := range []string{"actions/cache", "actions/cache/save", "actions/cache/restore"} {
 			for _, prefix := range []string{"./", "$/"} {
 				t.Run(mode+"/"+action+"/"+prefix, func(t *testing.T) {
+					t.Parallel()
 					grant := ""
 					if mode != "" {
 						grant = "    cache-mode: " + mode + "\n"
@@ -65,6 +67,7 @@ jobs:
 }
 
 func TestCacheOperationCallerBoundaries(t *testing.T) {
+	t.Parallel()
 	const save = `on: workflow_call
 jobs:
   build:
@@ -116,6 +119,7 @@ permissions: {}
 		{name: "malformed", caller: caller, callee: "on: [", kind: "workflow-call", file: "caller.yaml", fragment: "error while parsing reusable workflow"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			files := map[string]string{"caller.yaml": tc.caller}
 			if tc.callee != "" {
 				files["callee.yaml"] = tc.callee
@@ -153,6 +157,7 @@ permissions: {}
 }
 
 func TestCacheOperationDistinctCallerCeilings(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	callee := `on: workflow_call
 jobs:
@@ -222,6 +227,7 @@ permissions: {}
 }
 
 func TestCacheOperationIntermediateCeilingOwnership(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, ancestor, intermediate, owner string
 		workflow                            bool
@@ -235,6 +241,7 @@ func TestCacheOperationIntermediateCeilingOwnership(t *testing.T) {
 	} {
 		for _, suppressed := range []string{"", "caller.yaml", "callee.yaml"} {
 			t.Run(tc.name+"/suppress="+suppressed, func(t *testing.T) {
+				t.Parallel()
 				caller := "on: push\n"
 				if tc.ancestor != "" {
 					caller += "cache-mode: " + tc.ancestor + "\n"
@@ -337,10 +344,12 @@ permissions: {}
 }
 
 func TestCacheOperationParallelCallerCeilings(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"read", "write", "write-only", "none"} {
 		for _, action := range []string{"actions/cache", "actions/cache/save", "actions/cache/restore"} {
 			for _, suppressed := range []bool{false, true} {
 				t.Run(mode+"/"+action+"/suppressed="+strconv.FormatBool(suppressed), func(t *testing.T) {
+					t.Parallel()
 					caller := "on: push\ncache-mode: " + mode + `
 jobs:
   call:

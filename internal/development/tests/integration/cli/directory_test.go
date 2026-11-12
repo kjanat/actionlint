@@ -79,7 +79,7 @@ func TestChangeDirectoryBareInvocation(t *testing.T) {
 }
 
 func TestExcludedFilesDoNotReportSuccess(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	if err := os.WriteFile(".github/actionlint.yaml", []byte("files: {excludes: ['**']}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -90,33 +90,36 @@ func TestExcludedFilesDoNotReportSuccess(t *testing.T) {
 }
 
 func TestDirectoryExclusionsAndExplicitFileOverride(t *testing.T) {
-	commandTestRepo(t)
-	if err := os.MkdirAll(filepath.Join("testdata", ".github", "workflows"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	file := filepath.Join("testdata", ".github", "workflows", "ci.yml")
-	if err := os.WriteFile(file, []byte(commandBadWorkflow), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	t.Parallel()
 	for _, scope := range []string{
 		"excludes: ['testdata/**']",
 		"includes: ['**', '!testdata/**']",
 		"includes: ['.github/workflows/**', '!testdata/**']",
 	} {
 		t.Run(scope, func(t *testing.T) {
-			if err := os.WriteFile(".github/actionlint.yaml", []byte("files: {"+scope+"}\n"), 0o600); err != nil {
+			t.Parallel()
+			dir := commandTestRepo(t)
+			testdata := filepath.Join(dir, "testdata")
+			if err := os.MkdirAll(filepath.Join(testdata, ".github", "workflows"), 0o700); err != nil {
 				t.Fatal(err)
 			}
-			got := testRunCommandDefaults("", "-o", "pretty", "testdata")
+			file := filepath.Join(testdata, ".github", "workflows", "ci.yml")
+			if err := os.WriteFile(file, []byte(commandBadWorkflow), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, ".github", "actionlint.yaml"), []byte("files: {"+scope+"}\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			got := testRunCommandDefaults("", "-o", "pretty", testdata)
 			if got.Status != 3 || strings.Contains(got.Stderr, "All clear") || !strings.Contains(got.Stderr, "no workflow or action files were selected") {
 				t.Fatalf("directory input overrode configured exclusions: %+v", got)
 			}
-			got = testRunCommandDefaults("", "-o", "pretty", file)
-			if got.Status != 1 || !strings.Contains(got.Stdout, file) || !strings.Contains(got.Stderr, "Checked 1 file") {
+			got = testRunCommandDefaults("", "-o", "pretty", "--diagnostic-width=400", file)
+			if got.Status != 1 || !strings.Contains(got.Stdout, workingDirectoryPath(t, file)) || !strings.Contains(got.Stderr, "Checked 1 file") {
 				t.Fatalf("literal file did not override file filters: %+v", got)
 			}
-			got = testRunCommandDefaults("", "-o", "pretty", ".")
-			if got.Status != 1 || strings.Contains(got.Stdout, "testdata") || !strings.Contains(got.Stderr, "Checked 1 file") {
+			got = testRunCommandDefaults("", "-o", "pretty", "--diagnostic-width=400", dir)
+			if got.Status != 1 || strings.Contains(got.Stdout, workingDirectoryPath(t, testdata)) || !strings.Contains(got.Stderr, "Checked 1 file") {
 				t.Fatalf("broad discovery ignored the configured exclusion: %+v", got)
 			}
 		})
@@ -124,18 +127,6 @@ func TestDirectoryExclusionsAndExplicitFileOverride(t *testing.T) {
 }
 
 func TestNoIgnoreChecksGitIgnoredAndConfigExcludedFiles(t *testing.T) {
-	commandTestRepo(t)
-	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"ignored", "excluded"} {
-		if err := os.WriteFile(".github/workflows/"+name+".yml", []byte(commandBadWorkflow), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(".gitignore", []byte(".github/workflows/ignored.yml\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	for _, scope := range []string{
 		"excludes: ['.github/workflows/excluded.yml']",
 		"includes: ['**', '!.github/workflows/excluded.yml']",
@@ -143,6 +134,18 @@ func TestNoIgnoreChecksGitIgnoredAndConfigExcludedFiles(t *testing.T) {
 		"includes: []",
 	} {
 		t.Run(scope, func(t *testing.T) {
+			t.Chdir(commandTestRepo(t))
+			if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"ignored", "excluded"} {
+				if err := os.WriteFile(".github/workflows/"+name+".yml", []byte(commandBadWorkflow), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(".gitignore", []byte(".github/workflows/ignored.yml\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
 			if err := os.WriteFile(".github/actionlint.yaml", []byte("files: {"+scope+"}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}

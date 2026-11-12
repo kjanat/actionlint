@@ -15,6 +15,7 @@ import (
 )
 
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
 	if err != nil {
@@ -49,6 +50,7 @@ func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 }
 
 func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
@@ -85,8 +87,10 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 }
 
 func TestPluginProjectRollsBackLockWhenConfigIsBusy(t *testing.T) {
+	t.Parallel()
 	for _, existing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "absent lock", true: "existing lock"}[existing], func(t *testing.T) {
+			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			directory := filepath.Join(root, ".github")
 			if err := os.Mkdir(directory, 0700); err != nil {
@@ -124,6 +128,7 @@ func TestPluginProjectRollsBackLockWhenConfigIsBusy(t *testing.T) {
 }
 
 func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)

@@ -18,12 +18,14 @@ import (
 )
 
 func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T) {
+	t.Parallel()
 	for _, callerFirst := range []bool{false, true} {
 		name := "callee-first"
 		if callerFirst {
 			name = "caller-first"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			calleePath := filepath.Join(root, "callee.yml")
 			calleeBytes := []byte("on:\n  workflow_call:\n    inputs: invalid\njobs:\n  test:\n    runs-on: ubuntu-latset\n    steps: [{run: echo ok}]\n")

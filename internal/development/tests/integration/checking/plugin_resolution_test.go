@@ -18,6 +18,7 @@ import (
 )
 
 func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
@@ -55,6 +56,7 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 }
 
 func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("community-check")
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
@@ -89,6 +91,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 }
 
 func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	root := repositoryfixture.Directory(t)

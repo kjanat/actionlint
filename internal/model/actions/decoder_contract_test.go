@@ -11,6 +11,7 @@ import (
 )
 
 func TestAliasKeysDecodeOriginalMetadataValues(t *testing.T) {
+	t.Parallel()
 	const source = `nameKey: &name name
 usingKey: &using using
 iconKey: &icon icon
@@ -39,6 +40,7 @@ inputs:
 }
 
 func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
+	t.Parallel()
 	var fields strings.Builder
 	for i := range 650 {
 		fmt.Fprintf(&fields, "key%d: value, ", i)
@@ -53,6 +55,7 @@ func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
 		{"alias", "template: &runs " + runs + "\nruns: *runs\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var plain struct {
 				Runs struct {
 					Using string            `yaml:"using"`
@@ -83,6 +86,7 @@ func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
 }
 
 func TestNormalizedDuplicateFieldPreservesFirstAndOtherMetadata(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte("name: first\nName: second\nruns: {using: node24, main: index.js}\n"))
 	if metadata.Name != "first" || metadata.Runs.Using != "node24" {
 		t.Fatalf("partial metadata lost: %+v", metadata)
@@ -98,6 +102,7 @@ func TestNormalizedDuplicateFieldPreservesFirstAndOtherMetadata(t *testing.T) {
 }
 
 func TestMetadataDecoderErrorsNameSchemaFields(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, want string }{
 		{"scalar\n", "yaml: construct errors: line 1: yaml: action metadata must be mapping node but scalar node was found at line:1, col:1"},
 		{"runs: scalar\n", "yaml: construct errors: line 1: yaml: runs must be mapping node but scalar node was found at line:1, col:7"},

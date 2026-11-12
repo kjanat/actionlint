@@ -15,6 +15,7 @@ import (
 )
 
 func TestMainConfigurationInputs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		env  map[string]string
@@ -33,6 +34,7 @@ func TestMainConfigurationInputs(t *testing.T) {
 		{"conflicting merged bounds", map[string]string{"INPUT_CONFIG": "policy: {require-job-timeout: {min-minutes: 20, max-minutes: 10}}"}, 2, "input config"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", ".github/workflows/test.yaml": brokenWorkflow,
 				".github/actionlint.yaml": "self-hosted-runner: {labels: [yaml-label]}",
@@ -59,6 +61,7 @@ func TestMainConfigurationInputs(t *testing.T) {
 }
 
 func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		pattern string
 		want    bool
@@ -78,6 +81,7 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 }
 
 func TestRetiredToolCommandsFromEnvironmentIgnored(t *testing.T) {
+	t.Parallel()
 	req := &lintRequest{}
 	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck"}
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
@@ -94,6 +98,7 @@ func TestRetiredToolCommandsFromEnvironmentIgnored(t *testing.T) {
 }
 
 func TestActionMetadataHasOneConfigOverlay(t *testing.T) {
+	t.Parallel()
 	var metadata struct {
 		Inputs map[string]struct {
 			Default string `yaml:"default"`
@@ -111,6 +116,7 @@ func TestActionMetadataHasOneConfigOverlay(t *testing.T) {
 }
 
 func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
+	t.Parallel()
 	var metadata struct {
 		Inputs map[string]any `yaml:"inputs"`
 	}
@@ -129,6 +135,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 }
 
 func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": "on: [\n"})
 	output := filepath.Join(t.TempDir(), "outputs")
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_ANNOTATIONS": "false"}
@@ -145,6 +152,7 @@ func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
 }
 
 func TestConfigWarningsVisibleInAction(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": cleanWorkflow, ".github/actionlint.yaml": "config-variable: [TYPO]\n"})
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 	var out strings.Builder
@@ -157,8 +165,10 @@ func TestConfigWarningsVisibleInAction(t *testing.T) {
 }
 
 func TestInheritedConfigWarningsVisibleInAction(t *testing.T) {
+	t.Parallel()
 	for _, overlay := range []string{"", "policy: {require-commit-hash: false}"} {
 		t.Run(overlay, func(t *testing.T) {
+			t.Parallel()
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", ".github/workflows/test.yaml": cleanWorkflow,
 				".github/actionlint.yaml": "extends: ['../base.yml']\n",
@@ -180,6 +190,7 @@ config-variable: [TYPO]
 }
 
 func TestDisableToolsRejectsUnknownTool(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yml": cleanWorkflow})
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff\nmissing"}
 	var out strings.Builder

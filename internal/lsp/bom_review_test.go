@@ -7,6 +7,7 @@ import (
 )
 
 func TestBOMEditorCoordinatesRoundTrip(t *testing.T) {
+	t.Parallel()
 	text := "\ufeffa😀b\r\néx"
 	for _, point := range []struct {
 		editor position
@@ -37,6 +38,7 @@ func TestBOMEditorCoordinatesRoundTrip(t *testing.T) {
 }
 
 func TestBOMRangedChangePreservesMarker(t *testing.T) {
+	t.Parallel()
 	text := "\ufeffabc"
 	start, err := byteOffset(text, position{0, 0})
 	if err != nil {

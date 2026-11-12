@@ -22,6 +22,7 @@ func (guest *negotiationObserver) NegotiateTool(ctx context.Context, data, versi
 }
 
 func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(*checkinputs.ScriptOccurrence){
 		"owner":    func(value *checkinputs.ScriptOccurrence) { value.Owner = "foreign" },
 		"ancestry": func(value *checkinputs.ScriptOccurrence) { value.Ancestry[0] = "foreign" },
@@ -29,6 +30,7 @@ func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 		"input":    func(value *checkinputs.ScriptOccurrence) { value.Input = "script" },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			batch := documentBatchFixture(t, 1)
 			change(&batch.Scripts[0].Fact.Occurrence)
 			guest := &negotiationObserver{}
@@ -48,6 +50,7 @@ func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 }
 
 func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
+	t.Parallel()
 	batch := documentBatchFixture(t, 1)
 	wrong := batch.CallGraph.Entry().Reference
 	wrong.Revision = "wrong"
@@ -62,6 +65,7 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 }
 
 func TestDocumentBatchHeaderRequiredForSkippedInputs(t *testing.T) {
+	t.Parallel()
 	batch := documentBatchFixture(t, 1)
 	records := batch.CallGraph.Export()
 	records.Scripts[0].Kind = checkinputs.ActionInputScript

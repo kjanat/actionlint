@@ -12,6 +12,7 @@ import (
 )
 
 func TestAgenticWorkflowCompiledLockDiscoveryAndAnalysis(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflowDir := filepath.Join(root, ".github", "workflows")
 	if err := os.MkdirAll(workflowDir, 0o700); err != nil {

@@ -11,9 +11,9 @@ func TestPluginRegistryIsolatesUserCache(t *testing.T) {
 	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"XDG_CACHE_HOME", "LOCALAPPDATA", "HOME"} {
-		t.Setenv(name, blocked)
-	}
+	t.Setenv("XDG_CACHE_HOME", blocked)
+	t.Setenv("LOCALAPPDATA", blocked)
+	t.Setenv("HOME", blocked)
 	t.Run("registry", func(t *testing.T) {
 		NewPluginRegistry(t)
 		cache, err := os.UserCacheDir()

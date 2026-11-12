@@ -30,6 +30,7 @@ func property(t *testing.T, object exprtypes.ObjectType, path ...string) exprtyp
 }
 
 func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
+	t.Parallel()
 	composite := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {value: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
 	node := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {value: {description: result}}\nruns: {using: node24, main: index.js}\n"))
 	for _, tc := range []struct {
@@ -42,6 +43,7 @@ func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
 		{"composite", composite, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			object := outputs.ActionType(tc.definition)
 			mapped, open := object.Mapped()
 			if object.IsStrict() != tc.strict || open == tc.strict || open && mapped.Kind() != exprtypes.KindString {
@@ -97,6 +99,7 @@ func job(t *testing.T, workflow declaration.WorkflowView, name string) declarati
 }
 
 func TestJobsAndNeedsShareLoadedOutputDeclarations(t *testing.T) {
+	t.Parallel()
 	workflow := outputWorkflow(t)
 	consumer := job(t, workflow, "consumer")
 	called := job(t, workflow, "call")
@@ -141,6 +144,7 @@ func TestJobsAndNeedsShareLoadedOutputDeclarations(t *testing.T) {
 }
 
 func TestUnknownAndEmptyReusableOutputsAreDifferent(t *testing.T) {
+	t.Parallel()
 	workflow := outputWorkflow(t)
 	called := job(t, workflow, "call")
 	for _, known := range []bool{false, true} {

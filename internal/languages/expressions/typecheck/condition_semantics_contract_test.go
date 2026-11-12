@@ -11,6 +11,7 @@ import (
 )
 
 func TestConditionConstantCase(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		value      any
@@ -45,6 +46,7 @@ func TestConditionConstantCase(t *testing.T) {
 		{"case(true, false, true, false)", nil, false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid fixture")
@@ -58,6 +60,7 @@ func TestConditionConstantCase(t *testing.T) {
 }
 
 func TestConditionConstantOutcomes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		truthy     bool
@@ -92,6 +95,7 @@ func TestConditionConstantOutcomes(t *testing.T) {
 		{`null != fromJSON('{}')`, true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -105,6 +109,7 @@ func TestConditionConstantOutcomes(t *testing.T) {
 }
 
 func TestConditionConstantSerialization(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, want string }{
 		{"toJSON(null)", "null"},
 		{"toJSON(false)", "false"},
@@ -122,6 +127,7 @@ func TestConditionConstantSerialization(t *testing.T) {
 		{`join(fromJSON('[null, false, true]'), '-')`, "-false-true"},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			value, known := expreval.ConditionConstantValue(expr)
 			if !known || value != tc.want {
@@ -132,6 +138,7 @@ func TestConditionConstantSerialization(t *testing.T) {
 }
 
 func TestConditionSerializationRemainsUnknown(t *testing.T) {
+	t.Parallel()
 	// The engines disagree on signed-zero serialization; strict JSON rejects
 	// non-finite round trips. Do not invent a single folded outcome.
 	for _, expression := range []string{

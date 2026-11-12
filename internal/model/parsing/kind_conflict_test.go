@@ -13,8 +13,10 @@ import (
 )
 
 func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
+	t.Parallel()
 	for _, order := range []string{"workflow-first", "action-first", "concurrent"} {
 		t.Run(order, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "shared.yml")
 			content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\nname: shared\ndescription: shared\nruns: {using: composite, steps: [{shell: bash, run: echo ok}]}\n")
 			fixtures := newCapturedSnapshots(t, filepath.Dir(path))

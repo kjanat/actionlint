@@ -11,6 +11,7 @@ import (
 )
 
 func TestEncoderRejectsInvalidGraphBeforeWriting(t *testing.T) {
+	t.Parallel()
 	anchor := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "value", Anchor: "a"}
 	for _, invalid := range []*syntax.Node{
 		{Kind: syntax.AliasNode, Value: "a", Alias: anchor},
@@ -48,6 +49,7 @@ func TestEncoderRejectsInvalidGraphBeforeWriting(t *testing.T) {
 }
 
 func TestGraphRejectsInvalidStructure(t *testing.T) {
+	t.Parallel()
 	cycle := &syntax.Node{Kind: syntax.SequenceNode}
 	cycle.Content = []*syntax.Node{cycle}
 	aliasCycle := &syntax.Node{Kind: syntax.AliasNode, Line: 5, Column: 3}
@@ -76,6 +78,7 @@ func TestGraphRejectsInvalidStructure(t *testing.T) {
 }
 
 func TestRecursiveAliasGraphEncodesWithoutExpanding(t *testing.T) {
+	t.Parallel()
 	node, err := Parse([]byte("&a [*a]\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -90,6 +93,7 @@ func TestRecursiveAliasGraphEncodesWithoutExpanding(t *testing.T) {
 }
 
 func TestKindAndStyleMappings(t *testing.T) {
+	t.Parallel()
 	for _, pair := range kinds {
 		gotParser, parserErr := parserKind(pair.owned)
 		gotOwned, ownedErr := ownedKind(pair.parser)

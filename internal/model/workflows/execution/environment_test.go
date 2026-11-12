@@ -14,9 +14,11 @@ import (
 )
 
 func TestCheckoutEnvironmentPlatform(t *testing.T) {
+	t.Parallel()
 	for _, platform := range []runnerlang.Platform{runnerlang.Windows, runnerlang.MacOrLinux, runnerlang.Any} {
 		for _, name := range []string{"git_work_tree", "path", "Node_Options", "ssh_askpass", "git_allow_protocol"} {
 			t.Run(fmt.Sprintf("%s/%d", name, platform), func(t *testing.T) {
+				t.Parallel()
 				env := &workflowlang.Env{Vars: map[string]*workflowlang.EnvVar{name: {Name: &workflowlang.String{Value: name}, Value: &workflowlang.String{Value: "override"}}}}
 				semantic := mapping.Resolve(workflowlang.EnvMappingView(env))
 				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runnerlang.MacOrLinux; got != want {
@@ -38,6 +40,7 @@ func TestCheckoutEnvironmentPlatform(t *testing.T) {
 }
 
 func TestEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
+	t.Parallel()
 	workflow, errs := workflowparser.Parse([]byte("on: push\nenv:\n  NULL_VALUE: null\n  STRING: 'null'\n  BOOL: false\n  BOOL_TEXT: 'false'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
@@ -58,6 +61,7 @@ func TestEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 }
 
 func TestCanonicalEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\nenv:\n  NULL_VALUE: null\n  STRING: 'null'\n  BOOL: false\n  BOOL_TEXT: 'false'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	parsed := parsing.Workflow(content)
 	if len(parsed.SyntaxErrors) != 0 {

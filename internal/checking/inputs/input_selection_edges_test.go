@@ -12,6 +12,7 @@ import (
 )
 
 func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
+	t.Parallel()
 	graph := graphFixture(t)
 	entryID, callID := graph.Entry.ID, graph.Calls[0].ID
 	rootRun := ScriptOccurrence{
@@ -64,6 +65,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			input := valid()
 			change(&input)
 			if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
@@ -74,6 +76,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 }
 
 func TestCollectedInvocationGraphCanHaveZeroScripts(t *testing.T) {
+	t.Parallel()
 	graph := graphFixture(t)
 	graph.Scripts = nil
 	input := Input{

@@ -1,6 +1,8 @@
 package checking_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -48,6 +50,7 @@ func writeGitRepository(t *testing.T, root string) {
 }
 
 func TestShellcheckPlanningHelper(t *testing.T) {
+	t.Parallel()
 	index := -1
 	for i, arg := range os.Args {
 		if arg == "--" {
@@ -71,6 +74,7 @@ func TestShellcheckPlanningHelper(t *testing.T) {
 }
 
 func TestRuffPlanningHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_RUFF_PLANNING_HELPER") != "1" {
 		return
 	}
@@ -95,10 +99,6 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 		t.Skip("Git required")
 	}
 	root := tempdir.Physical(t)
-	configRoot := t.TempDir()
-	t.Setenv("GIT_CONFIG_GLOBAL", writeFixture(t, configRoot, "gitconfig", ""))
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	t.Setenv("XDG_CONFIG_HOME", configRoot)
 	command := func(args ...string) {
 		t.Helper()
 		if out, err := gitclient.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
@@ -140,7 +140,7 @@ func assertShellcheckSourceFile(t *testing.T, got, want string) {
 
 func compositeAnalysis(t *testing.T, root, steps string, options checking.Options) *checking.Result {
 	t.Helper()
-	workflow := writeFixture(t, root, ".github/workflows/composite.yml", `on: push
+	workflow := writeFixture(t, root, workflowFixturePath(t, "composite"), `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -167,6 +167,11 @@ func shellcheckForTest(t *testing.T) string {
 	if err != nil {
 		t.Skip("ShellCheck required")
 	}
-	t.Setenv("SHELLCHECK_OPTS", "")
 	return command
+}
+
+func workflowFixturePath(t *testing.T, name string) string {
+	t.Helper()
+	sum := sha256.Sum256([]byte(t.Name()))
+	return ".github/workflows/" + name + "-" + hex.EncodeToString(sum[:4]) + ".yml"
 }

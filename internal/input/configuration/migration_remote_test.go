@@ -12,6 +12,7 @@ import (
 )
 
 func TestMigrationRemoteDependencySnapshot(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	path := filepath.Join(files.PhysicalPath(t.TempDir()), "actionlint.yaml")
 	remote := fixtureregistry.FixtureRegistryURL + "base.yaml"
@@ -61,6 +62,7 @@ func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 }
 
 func TestMigrationRemoteLeafReadOnly(t *testing.T) {
+	t.Parallel()
 	_, err := checking.ConfigurationRules().PrepareMigration(t.Context(), "https://example.test/actionlint.yaml")
 	if err == nil || !strings.Contains(err.Error(), "read-only") {
 		t.Fatalf("remote leaf error = %v", err)

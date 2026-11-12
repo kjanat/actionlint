@@ -32,6 +32,7 @@ func loadRunnerFixture(t *testing.T) *Plugin {
 }
 
 func TestRunnerContractShapeAndDigest(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../../../../plugins/protocol/wit/runner.wit")
 	if err != nil {
 		t.Fatal(err)
@@ -56,6 +57,7 @@ func TestRunnerContractShapeAndDigest(t *testing.T) {
 }
 
 func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
+	t.Parallel()
 	plugin := loadRunnerFixture(t)
 	data, err := os.ReadFile("testdata/plugins/buildkite-runners.wasm")
 	if err != nil {

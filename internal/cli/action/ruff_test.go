@@ -10,6 +10,7 @@ import (
 )
 
 func TestRuffDisableToolsInput(t *testing.T) {
+	t.Parallel()
 	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)

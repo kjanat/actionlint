@@ -9,6 +9,7 @@ import (
 )
 
 func TestCacheModeSyntax(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		kind         workflowmodel.CacheModeKind
 		name         string

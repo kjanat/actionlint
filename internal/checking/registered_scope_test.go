@@ -27,6 +27,7 @@ func (sourceScopedChecker) CheckDocument(_ context.Context, input checkinputs.In
 }
 
 func TestRegisteredSourceScopeUsesActionConfiguration(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeSuppressionFixture(t, root, ".git/HEAD", "ref: refs/heads/master\n")
 	writeSuppressionFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nlint:\n  rules:\n    correctness: {source-check: error}\noverrides:\n  - includes: ['actions/**']\n    lint:\n      rules:\n        correctness: {source-check: info}\n")
@@ -34,6 +35,7 @@ func TestRegisteredSourceScopeUsesActionConfiguration(t *testing.T) {
 	workflow := writeSuppressionFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./actions/local\n")
 	for _, path := range []string{action, workflow} {
 		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: sourceScopedChecker{}}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)

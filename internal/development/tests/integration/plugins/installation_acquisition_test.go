@@ -21,6 +21,7 @@ func (transport registryTestTransport) RoundTrip(request *http.Request) (*http.R
 }
 
 func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	previous := http.DefaultTransport
 	dials := 0
 	http.DefaultTransport = &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
@@ -38,6 +39,7 @@ func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
 }
 
 func TestRegistryExplicitNewPreservesSelectedPrivateAuthority(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	previous := http.DefaultTransport
 	calls := 0
 	http.DefaultTransport = registryTestTransport(func(request *http.Request) (*http.Response, error) {
@@ -58,6 +60,7 @@ func TestRegistryExplicitNewPreservesSelectedPrivateAuthority(t *testing.T) {
 }
 
 func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", []byte(`{"schema_version":1,"plugins":[]}`))
 	client, err := plugininstall.NewWithGrant(fixtureregistry.FixtureRegistryURL, acquisitionhttp.Grant{})

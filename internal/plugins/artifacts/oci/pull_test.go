@@ -49,6 +49,7 @@ func options(t *testing.T, source, cache string) artifacts.Options {
 }
 
 func TestPullSelectsHostPlatform(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
@@ -91,6 +92,7 @@ func TestPullSelectsHostPlatform(t *testing.T) {
 }
 
 func TestPullLayersStoresEveryHostLayer(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
@@ -105,6 +107,7 @@ func TestPullLayersStoresEveryHostLayer(t *testing.T) {
 }
 
 func TestLayerRefusesDigestOutsideManifest(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	other := registry.Blob("application/octet-stream", []byte("not a layer"))
@@ -117,6 +120,7 @@ func TestLayerRefusesDigestOutsideManifest(t *testing.T) {
 }
 
 func TestPullWasmLayer(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	wasm := registry.Blob(artifacts.MediaTypeWasm, []byte("\x00asm\x01\x00\x00\x00"))
 	root := registry.Manifest(t, wasm)
@@ -130,6 +134,7 @@ func TestPullWasmLayer(t *testing.T) {
 }
 
 func TestPullRejectsBlobNotMatchingDigest(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	registry.Tamper(pkg.executable, bytes.Repeat([]byte("x"), int(pkg.executable.Size)))
@@ -144,6 +149,7 @@ func TestPullRejectsBlobNotMatchingDigest(t *testing.T) {
 }
 
 func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	cache := t.TempDir()
@@ -174,6 +180,7 @@ func TestPullRefetchesHalfWrittenBlob(t *testing.T) {
 }
 
 func TestResolveWithoutPullerRefusesOCI(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	if _, err := artifacts.Resolve(t.Context(), pkg.reference, artifacts.Options{}); err == nil || !strings.Contains(err.Error(), "cannot pull oci://") {
@@ -182,6 +189,7 @@ func TestResolveWithoutPullerRefusesOCI(t *testing.T) {
 }
 
 func TestPinResolvesTag(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	registry.Tag("v1", pkg.index)
@@ -196,6 +204,7 @@ func TestPinResolvesTag(t *testing.T) {
 }
 
 func TestDescribeReadsNoLayers(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	described, err := oci.Describe(t.Context(), pkg.reference, options(t, pkg.reference, ""))
@@ -219,6 +228,7 @@ func TestDescribeReadsNoLayers(t *testing.T) {
 }
 
 func TestDigestPlanReadsOnlyHostManifests(t *testing.T) {
+	t.Parallel()
 	registry := ocitest.New(t)
 	pkg := publishProvider(t, registry)
 	digests, err := oci.Digests(t.Context(), pkg.reference, options(t, pkg.reference, ""))

@@ -10,8 +10,10 @@ import (
 )
 
 func TestStdinFlowMappingCompatibility(t *testing.T) {
+	t.Parallel()
 	for _, separator := range []string{":,", ": ,", ": null,"} {
 		t.Run(separator, func(t *testing.T) {
+			t.Parallel()
 			source := "name: autofix.ci\nrun-name: test\non: { pull_request" + separator + " push: { branches: [master] } }\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 			source += "permissions: {}\n"
 			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, inputmodel.Request{
@@ -38,6 +40,7 @@ func TestStdinFlowMappingCompatibility(t *testing.T) {
 }
 
 func TestStdinSyntaxDiagnosticPath(t *testing.T) {
+	t.Parallel()
 	for _, f := range []string{"", "foo.yaml"} {
 		in := []byte(`on: push
 jobs:

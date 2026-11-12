@@ -9,6 +9,7 @@ import (
 )
 
 func TestRunnerPositionsAllowOnlyTheJobSentinelOrSourceCoordinates(t *testing.T) {
+	t.Parallel()
 	for _, coordinate := range []struct{ line, column uint32 }{{0, 0}, {0, 1}, {1, 0}, {4, 14}, {math.MaxUint32, 1}, {1, math.MaxUint32}} {
 		value := wacogo.NewValRecord(field("line", wacogo.ValU32(coordinate.line)), field("column", wacogo.ValU32(coordinate.column)))
 		position, err := liftRunnerPosition(value)

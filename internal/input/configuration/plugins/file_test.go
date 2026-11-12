@@ -37,6 +37,7 @@ func readManifestTest(t *testing.T, path string) string {
 }
 
 func TestPluginManifestFormats(t *testing.T) {
+	t.Parallel()
 	ref := manifestTestReference(t, "kjanat/actionlint-plugin-shellcheck@v0.2.0")
 	custom, err := pluginref.New("gitlab.com/team/plugin", "v2", "https://example.com/catalogue/")
 	if err != nil {
@@ -77,6 +78,7 @@ func TestPluginManifestFormats(t *testing.T) {
 		{"crlf.yaml", "plugins: [old/plugin]\r\n# preserve\r\nother: true\r\n", "# preserve\r\nother: true\r\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), test.name)
 			if test.source != "" {
 				fixturefiles.WriteText(t, path, test.source)
@@ -118,6 +120,7 @@ func TestPluginManifestFormats(t *testing.T) {
 }
 
 func TestPluginTOMLInsertionPreservesSchemaHeader(t *testing.T) {
+	t.Parallel()
 	ref := manifestTestReference(t, "github.com/kjanat/actionlint-plugin-shellcheck@v0.2.0")
 	for _, test := range []struct{ name, source, header string }{
 		{"schema-only", "#:schema ../actionlint.schema.json\n", "#:schema ../actionlint.schema.json\n"},
@@ -129,6 +132,7 @@ func TestPluginTOMLInsertionPreservesSchemaHeader(t *testing.T) {
 		{"plugin-table", "#:schema ../actionlint.schema.json\n\n[[plugins]]\nname = 'old/plugin'\nversion = 'v1'\n", "#:schema ../actionlint.schema.json\n\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "actionlint.toml")
 			fixturefiles.WriteText(t, path, test.source)
 			manifest, err := Open(t.Context(), config.RuleSet{}, path)
@@ -165,6 +169,7 @@ func TestPluginTOMLInsertionPreservesSchemaHeader(t *testing.T) {
 }
 
 func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T) {
+	t.Parallel()
 	ref := manifestTestReference(t, "github.com/owner/plugin@v1.2.3")
 	direct := manifestTestReference(t, "https://example.org/check.wasm#sha256="+strings.Repeat("a", 64))
 	const original = "#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json\n\n[lint.rules]\npreset = 'none'\n"
@@ -202,6 +207,7 @@ func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T
 }
 
 func TestPluginManifestInheritance(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yml")
 	leaf := filepath.Join(dir, "leaf.yml")
@@ -231,6 +237,7 @@ func TestPluginManifestInheritance(t *testing.T) {
 }
 
 func TestPluginManifestExplicitNull(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	fixturefiles.WriteText(t, filepath.Join(dir, "base.yml"), "plugins: [base/plugin]\n")
 	path := filepath.Join(dir, "leaf.yml")
@@ -245,8 +252,10 @@ func TestPluginManifestExplicitNull(t *testing.T) {
 }
 
 func TestPluginManifestConcurrentEdits(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"leaf", "base", "created", "empty-created"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			base := filepath.Join(dir, "base.yml")
 			path := filepath.Join(dir, "leaf.yml")
@@ -278,6 +287,7 @@ func TestPluginManifestConcurrentEdits(t *testing.T) {
 }
 
 func TestPluginManifestRefusesSymlink(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	target := filepath.Join(dir, "target.yml")
 	link := filepath.Join(dir, "config.yml")
@@ -294,6 +304,7 @@ func TestPluginManifestRefusesSymlink(t *testing.T) {
 }
 
 func TestPluginManifestDirectoryAlias(t *testing.T) {
+	t.Parallel()
 	physical, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -306,6 +317,7 @@ func TestPluginManifestDirectoryAlias(t *testing.T) {
 	fixturefiles.WriteText(t, filepath.Join(physical, "config.yml"), "extends: [base.yml]\n")
 	for _, name := range []string{"config.yml", filepath.Join("new", "config.yml")} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			manifest, err := Open(t.Context(), config.RuleSet{}, filepath.Join(alias, name))
 			if err != nil {
 				t.Fatal(err)
@@ -324,6 +336,7 @@ func TestPluginManifestDirectoryAlias(t *testing.T) {
 }
 
 func TestPluginManifestRejectsInheritedDirectoryLink(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	external := t.TempDir()
 	fixturefiles.WriteText(t, filepath.Join(external, "base.yml"), "plugins: []\n")
@@ -338,6 +351,7 @@ func TestPluginManifestRejectsInheritedDirectoryLink(t *testing.T) {
 }
 
 func TestPluginManifestRejectsDirectoryReplacement(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	directory := filepath.Join(root, "config")
 	if err := os.Mkdir(directory, 0700); err != nil {
@@ -368,6 +382,7 @@ func TestPluginManifestRejectsDirectoryReplacement(t *testing.T) {
 }
 
 func TestPluginManifestCancellationAndAnchors(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.yml")
 	source := "plugins: &dependencies [old/plugin]\nother: *dependencies\n"
 	fixturefiles.WriteText(t, path, source)
@@ -398,6 +413,7 @@ func TestPluginManifestCancellationAndAnchors(t *testing.T) {
 }
 
 func TestPluginManifestRejectsAmbiguousDeclarations(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"plugins: []\nplugins: [other/plugin]\n",
 		"plugins: [one/plugin, one/plugin]\n",
@@ -413,6 +429,7 @@ func TestPluginManifestRejectsAmbiguousDeclarations(t *testing.T) {
 }
 
 func TestPluginManifestOversize(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.yml")
 	if err := os.WriteFile(path, bytes.Repeat([]byte{' '}, MaxFileBytes+1), 0o600); err != nil {
 		t.Fatal(err)

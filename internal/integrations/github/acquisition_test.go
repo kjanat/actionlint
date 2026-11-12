@@ -61,8 +61,10 @@ func gitAndRawHosts(t *testing.T, files map[string]string) *recorder {
 }
 
 func TestFullSHACacheHitMakesNoRequests(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"raw", "REST"} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			cache := t.TempDir()
 			hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
 			if source == "REST" {
@@ -113,6 +115,7 @@ func TestFullSHACacheHitMakesNoRequests(t *testing.T) {
 }
 
 func TestOnlineRepairsInvalidMetadataCache(t *testing.T) {
+	t.Parallel()
 	for name, record := range map[string]string{
 		"previous version": cacheRecordJSON(1, `"repository_id":42,`, actionSource, digest(actionSource)),
 		"tampered content": cacheRecordJSON(2, "", "tampered", digest(actionSource)),
@@ -143,8 +146,10 @@ func TestOnlineRepairsInvalidMetadataCache(t *testing.T) {
 }
 
 func TestFullSHAFetchesRawManifest(t *testing.T) {
+	t.Parallel()
 	for _, filename := range []string{"action.yml", "action.yaml"} {
 		t.Run(filename, func(t *testing.T) {
+			t.Parallel()
 			cache := t.TempDir()
 			hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/nested/dir/" + filename: actionSource})
 			client, err := New(Options{CacheDir: cache, Transport: hosts})
@@ -176,6 +181,7 @@ func TestFullSHAFetchesRawManifest(t *testing.T) {
 }
 
 func TestNamedRefListsRefsOncePerAnalysis(t *testing.T) {
+	t.Parallel()
 	hosts := gitAndRawHosts(t, map[string]string{
 		"/example/action/" + sha + "/action.yml":           actionSource,
 		"/example/action/" + sha + "/sub/action.yml":       actionSource,
@@ -206,6 +212,7 @@ func TestNamedRefListsRefsOncePerAnalysis(t *testing.T) {
 }
 
 func TestNamedRefWarmCacheSkipsRawHost(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
 	rest := &recorder{handle: func(r *http.Request) (*http.Response, error) { return restFallback(t, r) }}
 	learned, err := New(Options{CacheDir: cache, Transport: rest})
@@ -224,6 +231,7 @@ func TestNamedRefWarmCacheSkipsRawHost(t *testing.T) {
 }
 
 func TestInvalidRepositoryNamesMakeNoRequests(t *testing.T) {
+	t.Parallel()
 	client := newListingClient(t, Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("invalid repository reached the network: %s", r.URL)
 		return nil, nil
@@ -237,6 +245,7 @@ func TestInvalidRepositoryNamesMakeNoRequests(t *testing.T) {
 }
 
 func TestNewAnalysisSeesMovedBranchWithCachedManifest(t *testing.T) {
+	t.Parallel()
 	tip := sha
 	updated := strings.Replace(actionSource, "name: test", "name: updated", 1)
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
@@ -271,6 +280,7 @@ func TestNewAnalysisSeesMovedBranchWithCachedManifest(t *testing.T) {
 }
 
 func TestParseRefAdvertisement(t *testing.T) {
+	t.Parallel()
 	packet := func(payload string) string { return fmt.Sprintf("%04x%s", len(payload)+4, payload) }
 	header := packet("# service=git-upload-pack\n") + "0000"
 	first := packet(branchTip + " HEAD\x00symref=HEAD:refs/heads/main object-format=sha1 agent=git/2\n")
@@ -323,6 +333,7 @@ func TestParseRefAdvertisement(t *testing.T) {
 }
 
 func TestListingSessionFinishMakesNoRequests(t *testing.T) {
+	t.Parallel()
 	hosts := gitAndRawHosts(t, nil)
 	client, err := New(Options{Transport: hosts})
 	if err != nil {
@@ -439,6 +450,7 @@ func (f failure) respond(r *http.Request) (*http.Response, error) {
 }
 
 func TestEnvironmentFailuresFallBackToAPI(t *testing.T) {
+	t.Parallel()
 	oversized := failure{name: "oversized listing", status: http.StatusOK, contentType: gitwire.ContentType, body: strings.Repeat("0", maxListing+1)}
 	unparseable := failure{name: "unparseable listing", status: http.StatusOK, contentType: gitwire.ContentType, body: "0000"}
 	for _, target := range []string{"git", "raw"} {
@@ -448,6 +460,7 @@ func TestEnvironmentFailuresFallBackToAPI(t *testing.T) {
 		}
 		for _, f := range failures {
 			t.Run(target+"/"+f.name, func(t *testing.T) {
+				t.Parallel()
 				hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 					switch {
 					case target == "git" && r.URL.Host == "github.com", target == "raw" && r.URL.Host == "raw.githubusercontent.com":
@@ -484,6 +497,7 @@ func TestEnvironmentFailuresFallBackToAPI(t *testing.T) {
 }
 
 func TestDefiniteAnswersNeverReachAPI(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, spec  string
 		git, raw    int
@@ -501,6 +515,7 @@ func TestDefiniteAnswersNeverReachAPI(t *testing.T) {
 		{"named raw 404", "example/action@v1", http.StatusOK, http.StatusNotFound, availability.InaccessibleReason, 3, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Host {
 				case "github.com":
@@ -524,6 +539,7 @@ func TestDefiniteAnswersNeverReachAPI(t *testing.T) {
 }
 
 func TestAnnotatedTagObjectSHAUsesListingAndPeeledCommit(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
 	hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
 	resolver := &listingResolver{}
@@ -564,6 +580,7 @@ func TestAnnotatedTagObjectSHAUsesListingAndPeeledCommit(t *testing.T) {
 }
 
 func TestMissingSHAWithUnavailableListingFallsBackToAPI(t *testing.T) {
+	t.Parallel()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Host {
 		case "raw.githubusercontent.com":
@@ -641,6 +658,7 @@ func TestRESTTagObjectCacheSupportsBothObjectAndCommit(t *testing.T) {
 }
 
 func TestSHA256RepositoryListingIsUnsupported(t *testing.T) {
+	t.Parallel()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "github.com" {
 			t.Fatalf("unexpected request %s", r.URL)
@@ -656,8 +674,10 @@ func TestSHA256RepositoryListingIsUnsupported(t *testing.T) {
 }
 
 func TestPreflightOnlyOnFallback(t *testing.T) {
+	t.Parallel()
 	for _, rawStatus := range []int{http.StatusOK, http.StatusBadGateway} {
 		t.Run(http.StatusText(rawStatus), func(t *testing.T) {
+			t.Parallel()
 			ctx, _ := accounting.TrackRequests(t.Context())
 			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				switch {
@@ -685,6 +705,7 @@ func TestPreflightOnlyOnFallback(t *testing.T) {
 }
 
 func TestRequestAccountingLabelsGitAndRaw(t *testing.T) {
+	t.Parallel()
 	ctx, tracker := accounting.TrackRequests(t.Context())
 	hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
 	client := newListingClient(t, Options{Transport: hosts}, &listingResolver{})
@@ -719,6 +740,7 @@ func TestRequestAccountingLabelsGitAndRaw(t *testing.T) {
 }
 
 func TestCredentialsForGitRawAndJSDelivr(t *testing.T) {
+	t.Parallel()
 	const token = "secret-token"
 	basic := "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token))
 	cache := t.TempDir()
@@ -785,6 +807,7 @@ func TestCredentialsForGitRawAndJSDelivr(t *testing.T) {
 }
 
 func TestRefListingWaiterRetriesAfterCanceledInitiator(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		requests := 0
 		client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
@@ -836,6 +859,7 @@ func TestRefListingWaiterRetriesAfterCanceledInitiator(t *testing.T) {
 }
 
 func TestRefListingWaitIsOutsideLookupBudget(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 			time.Sleep(10 * time.Second)
@@ -861,6 +885,7 @@ func TestRefListingWaitIsOutsideLookupBudget(t *testing.T) {
 }
 
 func TestEnvironmentListingFailureIsSharedPerAnalysis(t *testing.T) {
+	t.Parallel()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "github.com" {
 			return restFallback(t, r)
@@ -899,6 +924,7 @@ func blackholedRawHost(r *http.Request) (*http.Response, error) {
 }
 
 func TestQueuedLookupsKeepTheirBudgetForAPIFallback(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		hosts := &recorder{handle: blackholedRawHost}
 		client, err := New(Options{Transport: hosts})
@@ -924,6 +950,7 @@ func TestQueuedLookupsKeepTheirBudgetForAPIFallback(t *testing.T) {
 }
 
 func TestExhaustedLookupBudgetIsUnavailability(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 			select {
@@ -956,6 +983,7 @@ func TestExhaustedLookupBudgetIsUnavailability(t *testing.T) {
 }
 
 func TestLookupsForDifferentRepositoriesRunConcurrently(t *testing.T) {
+	t.Parallel()
 	var mu sync.Mutex
 	inFlight := 0
 	released := make(chan struct{})

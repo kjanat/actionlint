@@ -11,6 +11,7 @@ import (
 )
 
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
+	t.Parallel()
 	meta := &actionmeta.Metadata{Inputs: actionmeta.Inputs{"token": {Name: "token", Required: true}}}
 	for _, dynamic := range []bool{false, true} {
 		exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}
@@ -25,6 +26,7 @@ func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 }
 
 func TestSchemaActionAudit(t *testing.T) {
+	t.Parallel()
 	const composite = `name: audit
 description: audit
 runs:
@@ -169,6 +171,7 @@ runs:
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
 			var findings []*findingmodel.Finding
 			if err == nil {
@@ -184,8 +187,10 @@ runs:
 }
 
 func TestActionStepValueShapes(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{"run: [invalid]\n      shell: bash", "run: echo ok\n      shell: [invalid]", "uses: [invalid]"} {
 		t.Run(declaration, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - " + declaration + "\n")
 			meta, err := actionmeta.Parse("action.yml", source)
 			if err != nil {

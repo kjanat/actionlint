@@ -17,6 +17,7 @@ type runnerFixture struct {
 }
 
 func TestJobOperatingSystemsPreserveUncertainty(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name      string
 		knowledge JobKnowledge
@@ -32,6 +33,7 @@ func TestJobOperatingSystemsPreserveUncertainty(t *testing.T) {
 		{"incomplete", JobKnowledge{Answers: []runnerapi.Answer{{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{OS: runnerapi.Windows}}}, DatasetStatus: runnerapi.DatasetStatus{Freshness: runnerapi.Fresh}}}}, []runnerapi.OS{runnerapi.UnknownOS}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tc.knowledge.OperatingSystems(); !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("operating systems = %v, want %v", got, tc.want)
 			}
@@ -72,6 +74,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 }
 
 func TestProviderSelectorsPreserveGroupAndMatrix(t *testing.T) {
+	t.Parallel()
 	w := runnerSource(t, `on: push
 jobs:
   test:

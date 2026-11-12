@@ -12,6 +12,7 @@ import (
 )
 
 func TestInvalidOutputFileThroughCLI(t *testing.T) {
+	t.Parallel()
 	// Test the output-writing step from comment 6710252262 on its own.
 	const source = `name: Output file regression
 description: Check the producer independently

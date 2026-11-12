@@ -80,6 +80,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 }
 
 func TestEditorCaseVariantBuffersConflictOnWindows(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows case-insensitive drive alias regression")
 	}
@@ -133,6 +134,7 @@ func TestEditorCaseVariantBuffersConflictOnWindows(t *testing.T) {
 }
 
 func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name                       string
 		content                    []byte
@@ -147,6 +149,7 @@ func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
 		{name: "invalid UTF8 capture", content: []byte{0xff}, model: sourcepos.YAML},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path := filepath.Join(root, "workflow.yml")
 			captured := reportfixture.CapturedSource(t, path, test.content, test.model)
@@ -164,6 +167,7 @@ func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
 }
 
 func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows drive-case alias regression")
 	}

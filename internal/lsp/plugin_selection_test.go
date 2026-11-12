@@ -18,6 +18,7 @@ import (
 )
 
 func TestDirectoryPluginSelectionUsesDirectoryRepository(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	if err := os.Mkdir(filepath.Join(root, ".github"), 0o700); err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ func TestDirectoryPluginSelectionUsesDirectoryRepository(t *testing.T) {
 }
 
 func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	if err := os.Mkdir(filepath.Join(root, ".github"), 0o700); err != nil {
 		t.Fatal(err)
@@ -62,6 +64,7 @@ func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
 }
 
 func TestPluginSelectionScopes(t *testing.T) {
+	t.Parallel()
 	root, other := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
 	input := inputmodel.Request{Kind: inputmodel.Repository}
 	empty, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
@@ -131,6 +134,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 }
 
 func TestManagedPluginEditorSnapshot(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	wasm, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 )
 
 func TestConfigInspectionLoadsPluginRules(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	for _, setting := range []string{
 		"ignores: [{rule: no-sudo, job: build}]\n",
 		"lint: {rules: {disable: [no-sudo]}}\n",
@@ -44,6 +44,7 @@ func TestConfigInspectionLoadsPluginRules(t *testing.T) {
 }
 
 func TestConfigInspectionPluginFailures(t *testing.T) {
+	t.Parallel()
 	for _, command := range [][]string{{"config", "show"}, {"config", "validate"}, {"doctor"}} {
 		got := testRunCommand("", append(command, "--no-config", "--plugin", pluginFixture("missing"))...)
 		if got.Status == 0 || !strings.Contains(got.Stdout+got.Stderr, "missing.wasm") {
@@ -53,7 +54,7 @@ func TestConfigInspectionPluginFailures(t *testing.T) {
 }
 
 func TestConfigInspectionWithoutProjectConfig(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	if err := os.WriteFile(".github/actionlint.yaml", []byte("plugins: invalid\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

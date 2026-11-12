@@ -95,10 +95,10 @@ func TestExplicitRuffMissingExecutable(t *testing.T) {
 }
 
 func TestFalseDisablesExternalCheckers(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	for _, prefix := range [][]string{nil, {"check"}} {
 		for _, disabled := range []string{"", "false", "FALSE"} {
-			args := append(append([]string{}, prefix...), "--tool=shellcheck="+disabled, "--tool=ruff="+disabled, "-")
+			args := append(append([]string{}, prefix...), "--tool=shellcheck="+disabled, "--tool=ruff="+disabled, "--no-config", "-")
 			got := testRunCommand(`on: push
 jobs:
   test:
@@ -199,11 +199,9 @@ func TestEnvironmentRejectsNullFilters(t *testing.T) {
 }
 
 func TestEnvironmentDisabledTools(t *testing.T) {
-	for _, tool := range []string{"SHELLCHECK"} {
-		t.Setenv("ACTIONLINT_TOOL_"+tool+"_BIN", "")
-		t.Setenv("ACTIONLINT_TOOL_"+tool+"_FLAGS", `"unterminated`)
-		t.Setenv("ACTIONLINT_TOOL_"+tool+"_ENV", `{"INVALID":123}`)
-	}
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `"unterminated`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_ENV", `{"INVALID":123}`)
 	var out, stderr bytes.Buffer
 	cmd := cli.Command{Stdout: &out, Stderr: &stderr}
 	if status := cmd.Main([]string{"actionlint", "doctor", "--json", "--no-config"}); status != 0 || strings.Count(out.String(), `"status":"disabled"`) != 1 {

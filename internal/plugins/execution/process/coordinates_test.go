@@ -12,6 +12,7 @@ func position(row, column int) checkinputs.ScriptPosition {
 }
 
 func TestCoordinates(t *testing.T) {
+	t.Parallel()
 	// "é" is two UTF-8 bytes and one UTF-16 unit; "🐚" is four bytes and two units.
 	const source = "aé🐚b\r\ncd\rxy\n"
 	for _, tc := range []struct {
@@ -30,6 +31,7 @@ func TestCoordinates(t *testing.T) {
 		{"past line end", manifests.Coordinates{Rows: manifests.RowsLF, Columns: manifests.ColumnsBytes, End: manifests.EndExclusive}, position(3, 9), position(9, 1), position(3, 9), position(9, 1)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			c := newCoordinates(source, &tc.convention)
 			d := checkinputs.ScriptDiagnostic{Location: tc.start, EndLocation: tc.end, Fixes: []checkinputs.ScriptFix{{Replacements: []checkinputs.ScriptReplacement{{Row: tc.start.Row, Column: tc.start.Column, EndRow: tc.end.Row, EndColumn: tc.end.Column}}}}}
 			c.diagnostic(&d)

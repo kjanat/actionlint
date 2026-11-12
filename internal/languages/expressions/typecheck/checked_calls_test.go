@@ -15,6 +15,7 @@ import (
 )
 
 func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source  string
 		demand  exprfunctions.ArgumentDemand
@@ -26,6 +27,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 		{"case(inputs.flag, startsWith(true, 't'), false)", exprfunctions.DemandConditional, true},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			root := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
@@ -53,6 +55,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 }
 
 func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
+	t.Parallel()
 	root := exprsyntax.ParseAssignedExpression(`${{ contains(fromJSON('[{"items":["original"]}]'), 'x') }}`)
 	call, ok := root.(*exprsyntax.FuncCallNode)
 	if !ok {

@@ -10,6 +10,7 @@ import (
 )
 
 func TestCompositePersistentCheckoutEnvironment(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -55,6 +56,7 @@ runs:
 		{"unknown shell", "- shell: ${{ inputs.shell }}\n  run: echo ready", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result := compositeAnalysis(t, root, tc.before+`
 - uses: actions/checkout@v6
 - uses: ./local`, checking.Options{})
@@ -89,6 +91,7 @@ jobs:
 }
 
 func TestCompositePersistentEnvironmentPlatforms(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -124,7 +127,8 @@ env:
 		{"unknown default shell", "${{ inputs.runner }}", "run: echo ready", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/platform-env.yml", `on: push
+			t.Parallel()
+			workflow := writeFixture(t, root, workflowFixturePath(t, "platform-env"), `on: push
 jobs:
   test:
     runs-on: `+tc.runner+`

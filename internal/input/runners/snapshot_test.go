@@ -13,6 +13,7 @@ import (
 const desktopInventory = `{"runners":[{"name":"desktop","labels":["self-hosted","desktop-pool","x64"],"group":"build","os":"windows","default_shell":"pwsh","case_sensitivity":"insensitive"},{"name":"server","labels":["self-hosted","server-pool","arm64"],"group":"build","os":"linux","default_shell":"bash"}]}`
 
 func TestSnapshotKnowledge(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, selector, shell string
 		platform              runnermodel.Platform
@@ -36,6 +37,7 @@ func TestSnapshotKnowledge(t *testing.T) {
 		{"missing", "desktop-pool", "", runnermodel.Any, runnerapi.Missing, false, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow := runnerWorkflow(t, tc.selector)
 			options := runnerapi.Options{Provider: "snapshot", Snapshot: runnerapi.Snapshot{
 				Content: desktopInventory, Scope: "repo", Freshness: tc.freshness, Complete: tc.complete,
@@ -53,6 +55,7 @@ func TestSnapshotKnowledge(t *testing.T) {
 }
 
 func TestSnapshotJoinsOSAndShellIndependently(t *testing.T) {
+	t.Parallel()
 	workflow := runnerWorkflow(t, "{group: build}")
 	knowledge, err := Prepare(t.Context(), workflow.Snapshot, nil, runnerapi.Options{
 		Provider: "snapshot", Snapshot: runnerapi.Snapshot{
@@ -70,6 +73,7 @@ func TestSnapshotJoinsOSAndShellIndependently(t *testing.T) {
 }
 
 func TestSnapshotSelectionAndIdentity(t *testing.T) {
+	t.Parallel()
 	workflow := runnerWorkflow(t, "desktop-pool")
 	options := runnerapi.Options{Snapshot: runnerapi.Snapshot{Content: desktopInventory, Scope: "repo", Freshness: runnerapi.Fresh, Complete: true}}
 	knowledge, err := Prepare(t.Context(), workflow.Snapshot, nil, options, "repo")

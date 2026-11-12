@@ -18,6 +18,7 @@ import (
 )
 
 func TestRuffPythonScripts(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		name, defaults, job, shell, script, config, runner string
@@ -89,6 +90,7 @@ func TestRuffPythonScripts(t *testing.T) {
 		{name: "disabled rule", shell: "python", script: "print(missing)", config: "lint: {rules: {external: {ruff: off}}}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runner := tc.runner
 			if runner == "" {
 				runner = "ubuntu-latest"
@@ -119,6 +121,7 @@ func TestRuffPythonScripts(t *testing.T) {
 }
 
 func TestRuffSourceMappingAndIsolation(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "ruff.toml", "[lint]\nignore = ['F821']\n")
@@ -147,6 +150,7 @@ jobs:
 }
 
 func TestRuffCancellation(t *testing.T) {
+	t.Parallel()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -171,6 +175,7 @@ permissions: {}
 }
 
 func TestRuffMissingExecutable(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name      string
 		optional  bool
@@ -183,6 +188,7 @@ func TestRuffMissingExecutable(t *testing.T) {
 		{"disabled rule", false, "lint: {rules: {external: {ruff: off}}}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
@@ -210,6 +216,7 @@ permissions: {}
 }
 
 func TestRuffSuppressionAndOverride(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	src := `on: push
 jobs:
@@ -236,8 +243,10 @@ permissions: {}
 }
 
 func TestRuffInterpolatedTokenSkipsOnlyItsScript(t *testing.T) {
+	t.Parallel()
 	for _, script := range []string{"value = ${{ github.run_number }}.0", "import ${{ 'json' }}", "from json import ${{ 'loads' }}", `print(f"{lhs ${{ '==' }} rhs}")`, `print(f"{item_${{ 'suffix' }}}")`} {
 		t.Run(script, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -267,6 +276,7 @@ permissions: {}
 }
 
 func TestRuffQuotedEmptyLineSkipsOnlyItsScript(t *testing.T) {
+	t.Parallel()
 	for _, quote := range []string{"'", "\""} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := `on: push
@@ -298,6 +308,7 @@ jobs:
 }
 
 func TestRuffProcessFailures(t *testing.T) {
+	t.Parallel()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -315,6 +326,7 @@ func TestRuffProcessFailures(t *testing.T) {
 		{"invalid diagnostic", `[{"code":"F821"}]`, 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			options := &processconfig.Options{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
 			src := `on: push
 jobs:
@@ -341,6 +353,7 @@ func TestRuffConfiguredFlagsAndEnvironment(t *testing.T) {
 	t.Setenv("RUFF_OUTPUT_FILE", filepath.Join(t.TempDir(), "must-not-write.json"))
 	for _, legacy := range []bool{false, true} {
 		t.Run(strconv.FormatBool(legacy), func(t *testing.T) {
+			t.Parallel()
 			options := &processconfig.Options{
 				Executable:  &executable,
 				Arguments:   []string{"--preview", "--exclude", "vendor/**"},
@@ -400,6 +413,7 @@ permissions: {}
 }
 
 func TestRuffInlineConfigCannotChangeSourceType(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
@@ -423,6 +437,7 @@ permissions: {}
 }
 
 func TestRuffComposite(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	fixturefiles.Write(t, root, ".github/workflows/ci.yml", testutil.GoodWorkflow)

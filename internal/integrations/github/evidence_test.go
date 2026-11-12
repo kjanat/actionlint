@@ -23,6 +23,7 @@ func (f resolveFunc) Resolve(ctx context.Context, r references.Request) (referen
 }
 
 func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
+	t.Parallel()
 	for _, selectedRef := range []string{"", "refs/heads/v1"} {
 		client, err := New(Options{Mode: Online, Resolver: func() references.Resolver {
 			return resolveFunc(func(ctx context.Context, r references.Request) (references.Result, error) {
@@ -59,6 +60,7 @@ func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
 }
 
 func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		change   func(*references.Result)
@@ -80,6 +82,7 @@ func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
 				continue
 			}
 			t.Run(fmt.Sprintf("%s/fallback=%t", tc.name, fallback), func(t *testing.T) {
+				t.Parallel()
 				hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 					switch r.URL.Host + r.URL.Path {
 					case "github.com/example/action.git/info/refs":
@@ -119,6 +122,7 @@ func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
 }
 
 func TestMissingObjectNeverFallsBackToNamedTag(t *testing.T) {
+	t.Parallel()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "raw.githubusercontent.com" {
 			t.Fatalf("object fallback: %s", r.URL)
@@ -152,8 +156,10 @@ func TestMissingObjectNeverFallsBackToNamedTag(t *testing.T) {
 }
 
 func TestManifestFallbackLimitAndIdentityGuard(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []string{"yaml", "oversized", "identity"} {
 		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
 			repoReads := 0
 			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				status, body := http.StatusOK, actionSource
@@ -222,6 +228,7 @@ func TestManifestFallbackLimitAndIdentityGuard(t *testing.T) {
 }
 
 func TestOfflineRejectsCorruptionAndIgnoresPreviousLayout(t *testing.T) {
+	t.Parallel()
 	client, err := New(Options{Mode: Offline, CacheDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
@@ -285,6 +292,7 @@ func restFallback(t *testing.T, r *http.Request) (*http.Response, error) {
 }
 
 func TestCacheRecordRepositoryIDIsOptional(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) { return restFallback(t, r) }}
 	online, err := New(Options{CacheDir: cache, Transport: hosts})
@@ -335,6 +343,7 @@ func TestCacheRecordRepositoryIDIsOptional(t *testing.T) {
 }
 
 func TestResolverWithoutRepositoryIDUsesLearnedID(t *testing.T) {
+	t.Parallel()
 	client, err := New(Options{Mode: Online, Resolver: func() references.Resolver {
 		return resolveFunc(func(ctx context.Context, r references.Request) (references.Result, error) {
 			if r.ExpectedRepositoryID != knownRepositoryID(t, 42) || refListingFromContext(ctx) != nil {
@@ -353,6 +362,7 @@ func TestResolverWithoutRepositoryIDUsesLearnedID(t *testing.T) {
 }
 
 func TestRESTFallbackValidatesRepositoryCommitAndManifest(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, spec, repository, commit string
 		yaml, cached                   bool
@@ -366,6 +376,7 @@ func TestRESTFallbackValidatesRepositoryCommitAndManifest(t *testing.T) {
 		{name: "cached", spec: "example/action@v1", repository: `{"id":42,"full_name":"example/action"}`, cached: true, requests: []string{"github.com/example/action.git/info/refs?service=git-upload-pack", "api.github.com/repos/example/action"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cache := t.TempDir()
 			if tc.cached {
 				seeded, err := New(Options{CacheDir: cache})

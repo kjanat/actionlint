@@ -65,6 +65,7 @@ func (a deploymentAliasTool) Analyze(_ context.Context, batch tools.Batch) ([]to
 }
 
 func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
+	t.Parallel()
 	_, collection, snapshot, path := actionBatchFixture(t, false)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
@@ -114,6 +115,7 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 		"native": Tool{Runner: deploymentAliasTool{t: t, paths: want, content: content}},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			findings, err := adapter.AnalyzeScripts(t.Context(), batch)
 			if err != nil || len(findings) != len(want) {
 				t.Fatalf("alias findings: %v %v", findings, err)

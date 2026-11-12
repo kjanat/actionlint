@@ -10,6 +10,7 @@ import (
 )
 
 func TestActionSchemaQuotedMemberPaths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, body, path string }{
 		{"dotted-output", "outputs:\n  x.y:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x.y'].value`},
 		{"bracket-output", "outputs:\n  'x[0]':\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs['x[0]'].value`},
@@ -30,6 +31,7 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 		{"case-preserved", "outputs:\n  MixedCase:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs.MixedCase.value`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
@@ -45,6 +47,7 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 }
 
 func TestActionSchemaExpressionPaths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, body, message string }{
 		{
 			"loose-output-value",
@@ -63,6 +66,7 @@ func TestActionSchemaExpressionPaths(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)

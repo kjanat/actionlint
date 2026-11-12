@@ -9,6 +9,7 @@ import (
 )
 
 func TestRuleGroupConfigErrors(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"lint: {rulse: {}}", "lint: {rules: {experimetnal: true}}",
 		"lint: {rules: {experimental: true}}",
@@ -18,6 +19,7 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 		"lint: {rules: {nursery: {case-insensitive-conditions: on}}}",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte(input))
 			if err == nil {
 				_, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
@@ -35,6 +37,7 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 }
 
 func TestStableSuspiciousRuleSelection(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"string-conditions", "mixed-type-comparisons", "case-insensitive-conditions", "mixed-type-matrix-filters"} {
 		descriptor, ok := checking.ConfigurationRules().FindRule(name)
 		if !ok || descriptor.Category != "suspicious" || descriptor.Maturity == "nursery" || descriptor.Recommended {

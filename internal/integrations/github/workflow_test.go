@@ -13,6 +13,7 @@ import (
 )
 
 func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
 	const source = "on: workflow_call\npermissions: {contents: write}\njobs: {}\n"
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
@@ -71,6 +72,7 @@ func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
 }
 
 func TestWorkflowMetadataRejectsForeignRepositoryOrCommit(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		scenario  string
 		rawStatus int
@@ -85,6 +87,7 @@ func TestWorkflowMetadataRejectsForeignRepositoryOrCommit(t *testing.T) {
 		{"oversized", http.StatusOK, false, availability.LimitReason},
 	} {
 		t.Run(tc.scenario, func(t *testing.T) {
+			t.Parallel()
 			repositories := 0
 			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				status, body := http.StatusOK, "on: workflow_call\njobs: {}\n"
@@ -132,6 +135,7 @@ func TestWorkflowMetadataRejectsForeignRepositoryOrCommit(t *testing.T) {
 }
 
 func TestWorkflowUppercaseCommitIsRejectedBeforeNetwork(t *testing.T) {
+	t.Parallel()
 	client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("uppercase workflow commit reached the network: %s", r.URL)
 		return nil, nil

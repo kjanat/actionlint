@@ -8,6 +8,7 @@ import (
 )
 
 func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
+	t.Parallel()
 	var session *Session
 	var calls int
 	var reentered *Selection

@@ -5,6 +5,7 @@ import (
 )
 
 func TestShellStartup(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, setup string
 		implicit    bool
@@ -33,6 +34,7 @@ func TestShellStartup(t *testing.T) {
 		{"bash {0} -e", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			dialect, setup := (Shell{Name: tc.name, Implicit: tc.implicit}).Analysis()
 			if dialect == "" || setup != tc.setup {
 				t.Fatalf("got %q / %q, want setup %q", dialect, setup, tc.setup)
@@ -42,12 +44,14 @@ func TestShellStartup(t *testing.T) {
 }
 
 func TestUnknownScriptLanguage(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []string{
 		"bash -o future-option {0}", "bash -o 'pipefail' {0}", "bash ${{ vars.FLAGS }} {0}", "bash -c 'python {0}'", "bash -ec 'python {0}'", "bash -s {0}",
 		`bash "-c" "python {0}"`, "python {0}", "pwsh {0}",
 		"actions-shell python {0}", "wrapper bash {0}", "bash other-script {0}", "bash -- other-script {0}",
 	} {
 		t.Run(shell, func(t *testing.T) {
+			t.Parallel()
 			dialect, setup := (Shell{Name: shell}).Analysis()
 			if dialect != "" || setup != "" {
 				t.Fatalf("unknown script language inferred as %q / %q", dialect, setup)
@@ -57,6 +61,7 @@ func TestUnknownScriptLanguage(t *testing.T) {
 }
 
 func TestHeaderSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		script string
 		want   bool

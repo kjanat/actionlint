@@ -15,6 +15,7 @@ import (
 )
 
 func TestConditionValuesUseCheckedTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, rule string }{
 		{"env.FLAG", "string-conditions"},
 		{"github.event.issue.title", "string-conditions"},
@@ -25,6 +26,7 @@ func TestConditionValuesUseCheckedTypes(t *testing.T) {
 		{"contains(github.ref, 'main')", ""},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			node, err, _ := exprsyntax.ParseConditionExpression(tc.source)
 			if err != nil {
 				t.Fatal(err)

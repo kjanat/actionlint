@@ -13,6 +13,7 @@ import (
 )
 
 func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
+	t.Parallel()
 	entry := source.Reference{Document: "workflow.yml", Revision: "r", Node: "root"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
@@ -40,6 +41,7 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 		{name: "empty nonnil", available: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, selection: []checkinputs.OccurrenceID{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			input := checkinputs.Input{Reference: entry, AvailableInputs: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
 			registration := checkinputs.Registration{Checker: testAnalyzer{
 				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "selection-clone"}},

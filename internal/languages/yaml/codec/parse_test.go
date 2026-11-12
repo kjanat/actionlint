@@ -7,6 +7,7 @@ import (
 )
 
 func TestParseEmptyInput(t *testing.T) {
+	t.Parallel()
 	node, err := Parse(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -17,6 +18,7 @@ func TestParseEmptyInput(t *testing.T) {
 }
 
 func TestParsePreservesAliasTargetIdentityAndFirstDocument(t *testing.T) {
+	t.Parallel()
 	node, err := Parse([]byte("first: &value source\ncopy: *value\n---\nsecond: ignored\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +41,7 @@ func TestParsePreservesAliasTargetIdentityAndFirstDocument(t *testing.T) {
 }
 
 func TestParseMalformedInput(t *testing.T) {
+	t.Parallel()
 	node, err := Parse([]byte("key: [\n"))
 	if err == nil || node != nil {
 		t.Fatalf("Parse(malformed) = %#v, %v; want nil node and error", node, err)

@@ -18,6 +18,7 @@ import (
 )
 
 func TestWorkflowNamesRecordOnlyReadSiblings(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod cannot make a file unreadable on Windows")
 	}
@@ -51,6 +52,7 @@ jobs:
 }
 
 func TestCaseInsensitiveRepositoryPathRecordsListings(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
 	var listed []string

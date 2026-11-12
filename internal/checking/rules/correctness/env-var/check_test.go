@@ -8,6 +8,7 @@ import (
 )
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	position := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 7} }
 	findings := Check([]workflowfacts.Entry{
 		{Name: "GOOD_NAME", State: workflowfacts.KnownKey, Start: position(1)},

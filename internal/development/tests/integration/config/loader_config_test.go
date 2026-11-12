@@ -14,6 +14,7 @@ import (
 )
 
 func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what   string
 		input  string
@@ -48,6 +49,7 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -61,6 +63,7 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 }
 
 func TestConfigParseConfigSecrets(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what    string
 		input   string
@@ -90,6 +93,7 @@ func TestConfigParseConfigSecrets(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -103,6 +107,7 @@ func TestConfigParseConfigSecrets(t *testing.T) {
 }
 
 func TestConfigParseError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in   string
 		want string
@@ -146,6 +151,7 @@ paths:
 
 	for _, tc := range tests {
 		t.Run(tc.want, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte(tc.in))
 			if err == nil {
 				t.Fatal("no error occurred")
@@ -164,6 +170,7 @@ paths:
 }
 
 func TestConfigPathConfigIgnores(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		msg   string
@@ -198,6 +205,7 @@ func TestConfigPathConfigIgnores(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input+"_"+tc.msg, func(t *testing.T) {
+			t.Parallel()
 			var c repoconfig.PathConfig
 			if err := decodeConfigYAML([]byte(tc.input), &c); err != nil {
 				t.Fatal(err)
@@ -211,6 +219,7 @@ func TestConfigPathConfigIgnores(t *testing.T) {
 }
 
 func TestConfigIgnoreErrors(t *testing.T) {
+	t.Parallel()
 	src := `
 paths:
   .github/workflows/**/*.yaml:
@@ -282,6 +291,7 @@ paths:
 }
 
 func TestConfigReadFileOK(t *testing.T) {
+	t.Parallel()
 	p := filepath.Join("internal", "input", "configuration", "testdata", "inheritance", "ok.yml")
 	c, err := checking.ConfigurationRules().Load(p)
 	if err != nil {
@@ -294,6 +304,7 @@ func TestConfigReadFileOK(t *testing.T) {
 }
 
 func TestConfigReadFileReadError(t *testing.T) {
+	t.Parallel()
 	p := filepath.Join("internal", "input", "configuration", "testdata", "inheritance", "does-not-exist.yml")
 	_, err := checking.ConfigurationRules().Load(p)
 	if err == nil {
@@ -306,6 +317,7 @@ func TestConfigReadFileReadError(t *testing.T) {
 }
 
 func TestConfigReadFileParseError(t *testing.T) {
+	t.Parallel()
 	p := filepath.Join("internal", "input", "configuration", "testdata", "inheritance", "broken.yml")
 	_, err := checking.ConfigurationRules().Load(p)
 	if err == nil {
@@ -318,6 +330,7 @@ func TestConfigReadFileParseError(t *testing.T) {
 }
 
 func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what  string
 		input string
@@ -352,6 +365,7 @@ func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -364,6 +378,7 @@ func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
 }
 
 func TestConfigParsePolicyEmpty(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what  string
 		input string
@@ -384,6 +399,7 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -399,6 +415,7 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 }
 
 func TestConfigParsePolicyUnknownKey(t *testing.T) {
+	t.Parallel()
 	_, err := checking.ConfigurationRules().Parse([]byte(`policy:
   require-commit-hashes: true
 `))
@@ -412,6 +429,7 @@ func TestConfigParsePolicyUnknownKey(t *testing.T) {
 }
 
 func TestConfigParsePolicyNotAMapping(t *testing.T) {
+	t.Parallel()
 	_, err := checking.ConfigurationRules().Parse([]byte("policy: true\n"))
 	if err == nil {
 		t.Fatal("no error occurred")
@@ -423,6 +441,7 @@ func TestConfigParsePolicyNotAMapping(t *testing.T) {
 }
 
 func TestConfigParsePolicyTriState(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what  string
 		input string
@@ -458,6 +477,7 @@ func TestConfigParsePolicyTriState(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -473,6 +493,7 @@ func TestConfigParsePolicyTriState(t *testing.T) {
 }
 
 func TestConfigPolicyNilConfig(t *testing.T) {
+	t.Parallel()
 	var c *repoconfig.Config
 	if c.RequiresCommitHash() {
 		t.Fatal("\"require-commit-hash\" is enabled for a nil config")
@@ -480,6 +501,7 @@ func TestConfigPolicyNilConfig(t *testing.T) {
 }
 
 func TestRemovedRequiredActions(t *testing.T) {
+	t.Parallel()
 	if _, exists := checking.ConfigurationRules().FindRule("required-actions"); exists {
 		t.Fatal("removed rule remains in the catalog")
 	}
@@ -508,6 +530,7 @@ func TestRemovedRequiredActions(t *testing.T) {
 }
 
 func TestConfigParseRequireJobTimeout(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what        string
 		input       string
@@ -588,6 +611,7 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -611,6 +635,7 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 }
 
 func TestConfigParseRequireJobTimeoutError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what  string
 		input string
@@ -683,6 +708,7 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte(tc.input))
 			if err == nil {
 				t.Fatal("no error occurred")

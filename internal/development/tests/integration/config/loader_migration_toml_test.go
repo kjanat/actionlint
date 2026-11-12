@@ -14,6 +14,7 @@ import (
 )
 
 func TestTOMLMigrationPreservesComments(t *testing.T) {
+	t.Parallel()
 	original := []byte("#:schema https://actionlint.kjanat.dev/schema/config.json\r\n" +
 		"# settings for all workflows\r\n" +
 		"plugins = [] # unchanged root statement\r\n" +
@@ -105,6 +106,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 }
 
 func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		lint string
@@ -114,6 +116,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 		{name: "dotted", lint: "lint.rules.correctness.cache-operation = \"on\"\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("#:schema https://actionlint.kjanat.dev/schema/config.json\n" +
 				"config-secrets = [\"TOKEN#VALUE\"]\n" +
 				"# keep canonical note\n" + tc.lint +
@@ -148,6 +151,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 }
 
 func TestTOMLMigrationMovesCommentWithLintTable(t *testing.T) {
+	t.Parallel()
 	original := []byte("#:schema https://actionlint.kjanat.dev/schema/config.json\n" +
 		"config-secrets = [\"TOKEN\"]\n" +
 		"# lint rule defaults\n" +
@@ -171,6 +175,7 @@ func TestTOMLMigrationMovesCommentWithLintTable(t *testing.T) {
 }
 
 func TestTOMLMigrationAllLegacyRootsAndUntouchedTable(t *testing.T) {
+	t.Parallel()
 	original := []byte(`#:schema https://actionlint.kjanat.dev/schema/config.json
 description = """line one
 # this is multiline string data
@@ -264,6 +269,7 @@ value = "kept"
 }
 
 func TestTOMLMigrationRejectsUnrepresentableVariableValues(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		`config-variables = ["NAME"]`,
 		`[lint.rules.correctness]

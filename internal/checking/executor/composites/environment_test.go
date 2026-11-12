@@ -9,6 +9,7 @@ import (
 )
 
 func TestScriptEnvironmentScopesAndInvocationIsolation(t *testing.T) {
+	t.Parallel()
 	workflow := `on: push
 env: { lowercase: lower, UPPERCASE: upper, miXedCase: mixed }
 jobs:

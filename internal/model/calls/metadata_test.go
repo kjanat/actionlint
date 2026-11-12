@@ -9,6 +9,7 @@ import (
 )
 
 func TestReusableWorkflowUnmarshalOK(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		src  string
@@ -232,6 +233,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			src := strings.TrimSpace(tc.src)
 			src = strings.ReplaceAll(src, "\t", "")
 
@@ -248,6 +250,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 }
 
 func TestReusableWorkflowUnmarshalOnNodeNotFound(t *testing.T) {
+	t.Parallel()
 	src := "hello: world"
 	_, err := ParseMetadata([]byte(src))
 	if err == nil {
@@ -259,6 +262,7 @@ func TestReusableWorkflowUnmarshalOnNodeNotFound(t *testing.T) {
 }
 
 func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		src  string
@@ -319,6 +323,7 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			src := strings.TrimSpace(tc.src)
 			src = strings.ReplaceAll(src, "\t", "")
 
@@ -340,6 +345,7 @@ func TestReusableWorkflowUnmarshalEventNotFound(t *testing.T) {
 }
 
 func TestReusableWorkflowMetadataInvalidAnchorName(t *testing.T) {
+	t.Parallel()
 	src := []byte(`on: workflow_call
 jobs:
   first: &build+job

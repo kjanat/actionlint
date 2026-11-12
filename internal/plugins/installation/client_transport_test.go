@@ -14,6 +14,7 @@ type responseTransport func(*http.Request) (*http.Response, error)
 func (f responseTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestCatalogueTransportLimits(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, body, redirect string
 		status               int
@@ -29,6 +30,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 		{name: "loop", redirect: "https://example.org/catalogue/index.json", status: 302},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			c, err := New("https://example.org/catalogue/")
 			if err != nil {
 				t.Fatal(err)
@@ -58,6 +60,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 }
 
 func TestCatalogueRedirectHostCasing(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, base, target string
 		allowed            bool
@@ -80,6 +83,7 @@ func TestCatalogueRedirectHostCasing(t *testing.T) {
 		{name: "address scope", base: "https://[fe80::1%25Ethernet]:8443/catalogue/", target: "https://[fe80::1%25ethernet]:8443/catalogue/index.json"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			base := tc.base
 			if base == "" {
 				base = "https://EXAMPLE.ORG:8443/catalogue/"

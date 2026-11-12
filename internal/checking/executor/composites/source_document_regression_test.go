@@ -12,6 +12,7 @@ import (
 )
 
 func TestResolvedNonCompositeActionIsAdmittedToSourceSnapshots(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/node}, {uses: $/node}]}}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{
 		"node/action.yml": "name: node\ndescription: node action\nruns: {using: node20, main: index.js}\n",
@@ -39,6 +40,7 @@ func TestResolvedNonCompositeActionIsAdmittedToSourceSnapshots(t *testing.T) {
 }
 
 func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(tempdir.Physical(t), "action.yml")
 	content := []byte("name: recovered\ndescription: partial\ninputs: [wrong]\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo partial\n")
 	document := parsing.Action(path, content)
@@ -59,6 +61,7 @@ func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) 
 }
 
 func TestActionRunKindIgnoresMetadataCallbackMutation(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/node}]}}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{
 		"node/action.yml": "name: node\ndescription: node action\nruns: {using: node20, main: index.js}\n",

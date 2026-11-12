@@ -34,6 +34,7 @@ func referenceFinding() *Finding {
 var cloneComparison = cmp.AllowUnexported(UnavailableSource{}, source.Revision{})
 
 func TestCloneDetachesEveryReference(t *testing.T) {
+	t.Parallel()
 	original, want := referenceFinding(), referenceFinding()
 	clone := original.Clone()
 	if diff := cmp.Diff(want, clone, cloneComparison); diff != "" {
@@ -57,6 +58,7 @@ func TestCloneDetachesEveryReference(t *testing.T) {
 }
 
 func TestClonePreservesAbsentReferences(t *testing.T) {
+	t.Parallel()
 	original := At(&workflowlang.Pos{Line: 1, Col: 1}, "rule", "message")
 	if diff := cmp.Diff(original, original.Clone(), cloneComparison); diff != "" {
 		t.Fatalf("clone of a plain finding differs:\n%s", diff)

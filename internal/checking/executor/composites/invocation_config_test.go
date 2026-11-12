@@ -23,6 +23,7 @@ import (
 )
 
 func TestManifestConfigCacheKeepsLogicalPaths(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	first := filepath.Join(directory, "action.yml")
 	second := directory + string(os.PathSeparator) + "." + string(os.PathSeparator) + "action.yml"
@@ -75,6 +76,7 @@ type configVisitProbe struct {
 }
 
 func TestManifestConfigCacheRetriesFailuresAndCachesNil(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("configuration unavailable")
 	loads := 0
 	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
@@ -116,8 +118,10 @@ func (probe *configVisitProbe) VisitWorkflowPost(workflowdecl.WorkflowView) erro
 }
 
 func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
+	t.Parallel()
 	for _, collect := range []bool{false, true} {
 		t.Run(fmt.Sprintf("scripts=%t", collect), func(t *testing.T) {
+			t.Parallel()
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - {id: before, run: echo before}\n      - {id: broken, uses: $/outer}\n      - {id: after, run: echo after}\n  later:\n    runs-on: ubuntu-latest\n    steps: [{id: later-job, run: echo later}]\n"
 			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
 			probe := &configVisitProbe{Base: workflowvisit.NewBase("config-visits", "")}
@@ -153,6 +157,7 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 }
 
 func TestRepeatedCompositeConfigIsResolvedOnceWithoutScripts(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}, {uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
 	childConfig := &repoconfig.Config{}
 	loads := 0
@@ -173,6 +178,7 @@ func TestRepeatedCompositeConfigIsResolvedOnceWithoutScripts(t *testing.T) {
 }
 
 func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/without-inputs@v1\n      - uses: owner/root@v1\n        with: {script: 'root()'}\n      - uses: $/outer\n      - uses: owner/shared@v1\n        with: {script: 'shared()'}\n"
 	action := "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: owner/child@v1\n      with: {script: 'child()'}\n    - uses: owner/shared@v1\n      with: {script: 'shared()'}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": action}, nil)
@@ -205,8 +211,10 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 }
 
 func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
+	t.Parallel()
 	for _, collect := range []bool{false, true} {
 		t.Run(fmt.Sprintf("scripts=%t", collect), func(t *testing.T) {
+			t.Parallel()
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(1)'}\n      - uses: $/outer\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(3)'}\n"
 			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with: {script: 'console.log(2)'}\n"}, nil)
 			rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
@@ -259,6 +267,7 @@ func (rule *ignoreProbeRule) VisitOpaqueAction(step workflowdecl.StepView) error
 }
 
 func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
+	t.Parallel()
 	for _, outcome := range []string{"opaque", "cycle", "depth"} {
 		for _, collect := range []bool{false, true} {
 			for _, ignores := range []struct {
@@ -270,6 +279,7 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 					name = outcome + "/scripts/" + ignores.name
 				}
 				t.Run(name, func(t *testing.T) {
+					t.Parallel()
 					target := "owner/action@v1"
 					var budget *invocation.Budget
 					if outcome == "cycle" {
@@ -321,9 +331,11 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 }
 
 func TestRootOpaqueCallUsesEntryConfig(t *testing.T) {
+	t.Parallel()
 	for _, collect := range []bool{false, true} {
 		for _, ignores := range []bool{false, true} {
 			t.Run(fmt.Sprintf("scripts=%t/ignores=%t", collect, ignores), func(t *testing.T) {
+				t.Parallel()
 				f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{id: remote, uses: owner/action@v1}]}}\n", nil, nil)
 				config := &repoconfig.Config{}
 				if ignores {

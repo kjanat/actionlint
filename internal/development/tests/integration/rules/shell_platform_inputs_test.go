@@ -13,6 +13,7 @@ import (
 )
 
 func TestShellPlatformsDoNotDependOnTraversalOrder(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 defaults:
   run: {shell: cmd}

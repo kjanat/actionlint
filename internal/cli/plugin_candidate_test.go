@@ -63,7 +63,6 @@ func candidateProject(t *testing.T) string {
 	fixtureenvironment.IsolateUserCache(t)
 	directory := t.TempDir()
 	candidateProjectAt(t, directory)
-	t.Chdir(directory)
 	return directory
 }
 
@@ -96,7 +95,7 @@ func candidateDigest(t *testing.T, path string) string {
 // a plugin error. The network recorder catches accidental requests throughout.
 func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
-	candidateProject(t)
+	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, 0, "plugin", "search", "sudo", "--registry", registry)
 	pluginCommandTest(t, 0, "plugin", "versions", "publisher/plugin", "--registry", registry)
 	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
@@ -162,7 +161,7 @@ func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 	// The catalogue helper installs an in-memory HTTPS transport. This fixture
 	// instead serves OCI over loopback, so retain the original transport.
 	http.DefaultTransport = transport
-	candidateProject(t)
+	t.Chdir(candidateProject(t))
 	wasm, err := os.ReadFile(filepath.Join(root, "artifacts", "plugin.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +248,7 @@ func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 // earlier imported bytes until the author asks for that update.
 func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	root, registry, digest, _ := candidateCatalogue(t)
-	candidateProject(t)
+	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 	file := filepath.Join(root, "artifacts", "plugin.wasm")
 	data, err := os.ReadFile(file)
@@ -359,7 +358,7 @@ func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 // declaration should then allow an explicit update without resetting the project.
 func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
-	candidateProject(t)
+	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	beforeConfig, err := os.ReadFile(configPath)
@@ -434,7 +433,7 @@ func TestCandidateCLIRejectsArtifactSymlinkEscape(t *testing.T) {
 	if err := os.Symlink(outside, file); err != nil {
 		t.Fatal(err)
 	}
-	candidateProject(t)
+	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
 		t.Fatalf("escaping candidate wrote lock: %v", err)
@@ -470,7 +469,7 @@ func TestCandidateCLIRejectsInvalidInputs(t *testing.T) {
 			if err := os.WriteFile(file, changed, 0600); err != nil {
 				t.Fatal(err)
 			}
-			candidateProject(t)
+			t.Chdir(candidateProject(t))
 			pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 			for _, name := range []string{plugininstall.LockName, "actionlint.yaml"} {
 				if _, err := os.Stat(filepath.Join(".github", name)); !os.IsNotExist(err) {

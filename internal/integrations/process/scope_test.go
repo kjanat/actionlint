@@ -8,6 +8,7 @@ import (
 )
 
 func TestScopeJoinsAllResourcesOnce(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("resource failed")
 	var calls atomic.Int32
 	var scope Scope

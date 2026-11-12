@@ -168,6 +168,7 @@ permissions: {}
 }
 
 func TestRuffEnvironmentLauncher(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("ruff"); err != nil {
 		t.Skip("Ruff is not installed")
 	}

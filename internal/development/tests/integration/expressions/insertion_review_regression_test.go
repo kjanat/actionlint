@@ -10,8 +10,10 @@ import (
 )
 
 func TestInsertedUnknownMatrixAxisKeepsKnownProperties(t *testing.T) {
+	t.Parallel()
 	for depth := range 3 {
 		t.Run(fmt.Sprintf("depth=%d", depth), func(t *testing.T) {
+			t.Parallel()
 			matrix := `{'${{ vars.AXIS }}': [ubuntu-latest], count: [1]}`
 			for range depth {
 				matrix = "{'${{ insert }}': " + matrix + "}"
@@ -34,6 +36,7 @@ func TestInsertedUnknownMatrixAxisKeepsKnownProperties(t *testing.T) {
 }
 
 func TestActionMetadataDuplicatesAcrossInsertions(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		`{FOO: one, '${{ insert }}': {FOO: two}}`,
 		`{'${{ insert }}': {foo: one}, FOO: two}`,

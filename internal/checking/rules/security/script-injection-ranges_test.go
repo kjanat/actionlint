@@ -14,6 +14,7 @@ import (
 )
 
 func TestUntrustedExpressionSpans(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{`github.event.issue.title`, `github['event']['issue']['title']`, `github.event.*.body`, `github.event.issue`} {
 		for _, serialized := range []bool{false, true} {
 			if !serialized && expression == `github.event.issue` {
@@ -46,6 +47,7 @@ func TestUntrustedExpressionSpans(t *testing.T) {
 }
 
 func TestExpressionSpanParserReuse(t *testing.T) {
+	t.Parallel()
 	p := exprsyntax.NewParser()
 	for _, source := range []string{
 		"", "(", "foo.", "contains('a',)", "'unclosed", "foo\x00",

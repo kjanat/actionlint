@@ -3,6 +3,7 @@ package names
 import "testing"
 
 func TestPatternLineBreaks(t *testing.T) {
+	t.Parallel()
 	for _, pattern := range []string{"Build\nCI", "Build\rCI", "Build\r\nCI", "!Build\nCI", "Build\\\nCI"} {
 		if ValidPattern(pattern) {
 			t.Errorf("accepted line break in %q", pattern)
@@ -15,6 +16,7 @@ func TestPatternLineBreaks(t *testing.T) {
 }
 
 func TestMissingPattern(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		pattern, name string
 		missing       bool
@@ -65,6 +67,7 @@ func TestMissingPattern(t *testing.T) {
 		{"Build*", "Pre Build CI", true},
 	} {
 		t.Run(tc.pattern+"/"+tc.name, func(t *testing.T) {
+			t.Parallel()
 			names := Inventory{values: map[string]bool{tc.name: true}, complete: true}
 			if got := names.Missing(tc.pattern); got != tc.missing {
 				t.Fatalf("Missing(%q) for %q = %v, want %v", tc.pattern, tc.name, got, tc.missing)
@@ -77,8 +80,10 @@ func TestMissingPattern(t *testing.T) {
 }
 
 func TestCompilePatternInvalidRanges(t *testing.T) {
+	t.Parallel()
 	for _, pattern := range []string{"[A-z]", "[0-z]", "[a-Z]", "[z-a]", "[a-]", "[-a]"} {
 		t.Run(pattern, func(t *testing.T) {
+			t.Parallel()
 			if _, ok := compilePattern(pattern); ok {
 				t.Fatalf("accepted invalid character range %q", pattern)
 			}
@@ -87,6 +92,7 @@ func TestCompilePatternInvalidRanges(t *testing.T) {
 }
 
 func TestExcludesAllPatterns(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		patterns []string
 		names    []string

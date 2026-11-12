@@ -16,6 +16,7 @@ import (
 )
 
 func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	root, client := localCandidate(t)
 	client.StatusOptions.CacheDir = t.TempDir()
@@ -90,6 +91,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 }
 
 func TestExactRegistryLookupWorksOfflineAfterResolution(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
@@ -116,6 +118,7 @@ func TestExactRegistryLookupWorksOfflineAfterResolution(t *testing.T) {
 }
 
 func TestRegistryLookupRejectsFloatingDeclarations(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
 	if err != nil {
@@ -132,6 +135,7 @@ func TestRegistryLookupRejectsFloatingDeclarations(t *testing.T) {
 }
 
 func TestRegistryResolutionRejectsChangedImmutableVersion(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)

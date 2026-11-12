@@ -9,6 +9,7 @@ import (
 // GitHub normalises plain YAML booleans in if: before compiling the condition.
 // Quoted spellings stay strings and are checked as expressions.
 func TestParserConditionNormalisesYAMLBooleans(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ value, want string }{
 		{"True", "true"},
 		{"FALSE", "false"},
@@ -18,6 +19,7 @@ func TestParserConditionNormalisesYAMLBooleans(t *testing.T) {
 		{`"True"`, "True"},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  check:\n    if: " + tc.value + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 			root, err := codec.Parse([]byte(source))
 			if err != nil {

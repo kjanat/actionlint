@@ -19,12 +19,14 @@ import (
 )
 
 func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
+	t.Parallel()
 	for _, symlinked := range []bool{false, true} {
 		name := "relative-root"
 		if symlinked {
 			name = "symlink-root"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			base := t.TempDir()
 			root := filepath.Join(base, "repository")
 			if err := os.Mkdir(root, 0o755); err != nil {

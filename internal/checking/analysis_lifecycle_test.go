@@ -20,6 +20,7 @@ type failAfterScheduling struct {
 func (r *failAfterScheduling) VisitStep(workflowdecl.StepView) error { return r.failure }
 
 func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("stop traversal")
 	var completed atomic.Bool
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
@@ -62,6 +63,7 @@ func (r *failingResourceRule) attachScope(scope *process.Scope) {
 }
 
 func TestAnalysisReportsResourceFailureOnce(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("resource completion failed")
 	_, err := runTestAnalysis(t.Context(), analysisRequest{
 		Sources: []sourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},

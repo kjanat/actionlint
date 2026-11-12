@@ -19,6 +19,7 @@ import (
 // A candidate FIFO must fail before reading. A subprocess bounds the regression
 // even when an open syscall cannot observe context cancellation.
 func TestCandidateRejectsFIFO(t *testing.T) {
+	t.Parallel()
 	if directory := os.Getenv("ACTIONLINT_TEST_CANDIDATE_FIFO"); directory != "" {
 		registry := (&url.URL{Scheme: "file", Path: directory + "/"}).String()
 		var err error
@@ -43,6 +44,7 @@ func TestCandidateRejectsFIFO(t *testing.T) {
 	}
 	for _, kind := range []string{"metadata", "artifact"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			directory := t.TempDir()
 			name := "plugin.wasm"
 			if kind == "metadata" {

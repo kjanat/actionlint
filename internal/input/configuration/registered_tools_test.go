@@ -9,6 +9,7 @@ import (
 )
 
 func TestRegisteredToolSettingsForFiles(t *testing.T) {
+	t.Parallel()
 	metadata := configschema.Settings{
 		Schema:     json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
 		Shorthands: map[string]configschema.Shorthand{"limit": {Path: []string{"limit"}, Precedence: configschema.PrecedenceShorthand}},

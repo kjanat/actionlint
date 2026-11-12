@@ -10,12 +10,14 @@ import (
 )
 
 func TestFileOverrideExplicitToolResets(t *testing.T) {
+	t.Parallel()
 	for _, overlay := range []string{
 		"{shellcheck: {config: null}}",
 		"{shellcheck: null}",
 		"null",
 	} {
 		t.Run(overlay, func(t *testing.T) {
+			t.Parallel()
 			config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: {enabled: false, config: .shellcheckrc}}\noverrides: [{includes: [ci.yml], tools: " + overlay + "}]\n"))
 			if err != nil {
 				t.Fatal(err)
@@ -42,12 +44,14 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 }
 
 func TestInspectConfigErrorClassification(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, content string }{
 		{"invalid YAML", "files: ["},
 		{"invalid settings", "tools: {shellcheck: {enabled: wrong}}"},
 	} {
 		for _, inherited := range []bool{false, true} {
 			t.Run(tc.name+"/"+map[bool]string{false: "selected", true: "inherited"}[inherited], func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				path := writeOverrideFixture(t, root, "invalid.yml", tc.content)
 				if inherited {

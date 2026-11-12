@@ -12,6 +12,7 @@ import (
 )
 
 func TestGroupedCallDiagnosticSpans(t *testing.T) {
+	t.Parallel()
 	for _, suffix := range []string{"", ".x", "[0]", "['x'].y"} {
 		for _, tc := range []struct{ expr, fragment, want string }{
 			{"((startWith('a', 'b')))" + suffix, "undefined function", "startWith"},

@@ -11,6 +11,7 @@ import (
 )
 
 func TestMatrixExpressionFilterTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, axis, expression string
 		warn                   bool
@@ -35,6 +36,7 @@ func TestMatrixExpressionFilterTypes(t *testing.T) {
 		for _, section := range []string{"include", "exclude"} {
 			for _, enabled := range []string{"on", "off"} {
 				t.Run(tc.name+"/"+section+"/"+enabled, func(t *testing.T) {
+					t.Parallel()
 					expression := strconv.Quote("${{ " + tc.expression + " }}")
 					source := fmt.Sprintf(`on: push
 jobs:
@@ -79,6 +81,7 @@ jobs:
 }
 
 func TestMatrixExpressionFilterLeafTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, axis, filter string
 		warn               bool
@@ -126,6 +129,7 @@ func TestMatrixExpressionFilterLeafTypes(t *testing.T) {
 	} {
 		for _, section := range []string{"include", "exclude"} {
 			t.Run(tc.name+"/"+section, func(t *testing.T) {
+				t.Parallel()
 				source := fmt.Sprintf(`on: push
 jobs:
   test:
@@ -168,6 +172,7 @@ jobs:
 }
 
 func TestMatrixExpressionFilterCombinations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, axis, expression string
 		count                  int
@@ -192,6 +197,7 @@ func TestMatrixExpressionFilterCombinations(t *testing.T) {
 	} {
 		for _, section := range []string{"include", "exclude"} {
 			t.Run(tc.name+"/"+section, func(t *testing.T) {
+				t.Parallel()
 				expression := strconv.Quote("${{ " + tc.expression + " }}")
 				source := fmt.Sprintf(`on: push
 jobs:
@@ -244,6 +250,7 @@ jobs:
 }
 
 func TestKnownMatrixExpressionFilterTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, value string
 		warn        bool
@@ -261,6 +268,7 @@ func TestKnownMatrixExpressionFilterTypes(t *testing.T) {
 	} {
 		for _, section := range []string{"matrix", "strategy"} {
 			t.Run(tc.name+"/"+section, func(t *testing.T) {
+				t.Parallel()
 				value := tc.value
 				if section == "strategy" {
 					value = `{"matrix":` + value + `}`

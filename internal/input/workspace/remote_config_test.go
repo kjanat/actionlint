@@ -11,6 +11,7 @@ import (
 )
 
 func TestRemoteConfigInputIdentity(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	leaf := filepath.Join(root, "actionlint.yaml")
 	remote := "https://example.test/base.toml?version=1"

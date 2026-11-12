@@ -12,6 +12,7 @@ import (
 )
 
 func TestDocumentOutlinesRoundTrip(t *testing.T) {
+	t.Parallel()
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{
 		{Path: "ci.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v7\npermissions: {}\n")},
 		{Path: "action.yml", Content: []byte("name: Test\ndescription: Test action\nruns: {using: docker, image: 'docker://alpine:3'}\n")},

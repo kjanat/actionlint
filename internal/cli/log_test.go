@@ -8,6 +8,7 @@ import (
 )
 
 func TestSharedPluginAndBuiltinLogWriter(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	writer := &synchronizedLogWriter{out: &buffer}
 	var wg sync.WaitGroup

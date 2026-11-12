@@ -6,6 +6,7 @@ import (
 )
 
 func TestRuleLogger(t *testing.T) {
+	t.Parallel()
 	r := Logger{Tag: "dummy-name"}
 	r.Debug("this %s output", "is not")
 

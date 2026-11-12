@@ -13,6 +13,7 @@ import (
 )
 
 func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
+	t.Parallel()
 	const sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	ref, err := actions.ParseReference("github.com", "actions/github-script@"+sha)
 	if err != nil {
@@ -38,6 +39,7 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 		{"undeclared output is not an object", "steps.script.outputs.token.child", "expression-type", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@%s\n        id: script\n        with:\n          script: |\n            const token = 'value';\n            core.setOutput('token', token);\n      - run: echo ok\n        env:\n          TOKEN: ${{ %s }}\n", sha, tc.expression)
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}", checking.Options{RemoteActions: pinnedMetadataFixture{manifest}})
 			count := 0
@@ -53,6 +55,7 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 	}
 	for _, nested := range []bool{false, true} {
 		t.Run(fmt.Sprintf("local node nested=%t", nested), func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "node/action.yml", "name: node\ndescription: test\noutputs: {result: {description: result}}\nruns: {using: node24, main: index.js}\n")
@@ -71,6 +74,7 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 	}
 	for _, nested := range []bool{false, true} {
 		t.Run(fmt.Sprintf("composite nested=%t", nested), func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "closed/action.yml", "name: closed\ndescription: test\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n")
@@ -94,6 +98,7 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 }
 
 func TestRemoteCompositeOutputMappingIsClosed(t *testing.T) {
+	t.Parallel()
 	const sha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	ref, err := actions.ParseReference("github.com", "example/composite@"+sha)
 	if err != nil {

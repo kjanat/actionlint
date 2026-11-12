@@ -11,6 +11,7 @@ import (
 )
 
 func TestLocalActionRuntimeLifecycle(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "main.js"), nil, 0o600); err != nil {
 		t.Fatal(err)
@@ -28,6 +29,7 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 		{"node999", "invalid runner name", actionmeta.CodeRuntimeUnsupported},
 	} {
 		t.Run(tc.using, func(t *testing.T) {
+			t.Parallel()
 			meta := &actionmeta.Metadata{Name: "example", Directory: dir, Runs: actionmeta.Runs{Using: tc.using, Main: "main.js"}}
 			rule := validator{}
 			rule.checkLocalActionRuns(meta, &workflowlang.Pos{Line: 1, Col: 1})
@@ -44,6 +46,7 @@ func TestLocalActionRuntimeLifecycle(t *testing.T) {
 }
 
 func TestDeprecatedRuntimeStillChecksJavaScriptMetadata(t *testing.T) {
+	t.Parallel()
 	rule := validator{}
 	meta := &actionmeta.Metadata{Name: "example", Runs: actionmeta.Runs{Using: "node20"}}
 	rule.checkLocalActionRuns(meta, &workflowlang.Pos{Line: 1, Col: 1})

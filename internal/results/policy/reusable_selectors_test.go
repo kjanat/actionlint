@@ -29,6 +29,7 @@ jobs:
 `
 
 func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		policy string
 		kinds  []string
@@ -67,6 +68,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 }
 
 func TestReusableIgnoreReportedFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	script := filepath.Join(root, "scripts", "check.sh")
@@ -80,6 +82,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 		{"file: scripts/check.sh, job: other", 1},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: shellcheck, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)
@@ -94,6 +97,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 }
 
 func TestReusableIgnoreSelectors(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, tc := range []struct {
 		selector   string
@@ -112,6 +116,7 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 		{`uses: './generated', job: other`, false},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: expression-reference, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)

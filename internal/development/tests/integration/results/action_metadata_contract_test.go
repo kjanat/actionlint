@@ -14,6 +14,7 @@ import (
 )
 
 func TestActionMetadataReportContract(t *testing.T) {
+	t.Parallel()
 	schemaBytes, err := os.ReadFile("schemas/results/v1.schema.json")
 	if err != nil {
 		t.Fatal(err)

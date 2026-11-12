@@ -10,6 +10,7 @@ import (
 )
 
 func TestDiagnosticRangeRejectsUnresolvableCoordinates(t *testing.T) {
+	t.Parallel()
 	for _, start := range []sourcepos.Position{{Line: 2, Column: 1}, {Line: 0, Column: 1}, {Line: 1, Column: 9}} {
 		if _, err := diagnosticRange([]byte("😀bad"), start, sourcepos.Position{}); err == nil {
 			t.Fatalf("fabricated a range for %v", start)
@@ -28,6 +29,7 @@ func TestDiagnosticRangeRejectsUnresolvableCoordinates(t *testing.T) {
 }
 
 func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	dependency, target := filepath.Join(root, "dependency.yml"), filepath.Join(root, "workflow.yml")
 	content := "target"
@@ -44,6 +46,7 @@ func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
 }
 
 func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	const text = "run: echo ok\n"
 	doc := Document{URI: FileURI(path), Version: 8, Text: text}
@@ -65,6 +68,7 @@ func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
 }
 
 func TestCodeActionsUseEachFindingsFixes(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	const text = "first\nsecond\nthird\n"
 	doc := Document{URI: FileURI(path), Version: 1, Text: text}

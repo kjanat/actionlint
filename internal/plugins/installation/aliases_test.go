@@ -12,6 +12,7 @@ import (
 )
 
 func TestRegistryAssignedAliases(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("community-check", "other-name")
 	registry.Add(t, "v1.0.0", emptyComponent)
@@ -43,8 +44,10 @@ func TestRegistryAssignedAliases(t *testing.T) {
 }
 
 func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, aliases := range [][]string{{"UPPER"}, {"under_score"}, {""}, {strings.Repeat("a", 65)}, {"same", "same"}} {
 		t.Run(strings.Join(aliases, ","), func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.SetAliases(aliases...)
 			registry.Add(t, "v1.0.0", emptyComponent)
@@ -74,6 +77,7 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 }
 
 func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("check")
 	registry.Add(t, "v1.0.0", emptyComponent)

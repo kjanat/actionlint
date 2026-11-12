@@ -17,6 +17,7 @@ import (
 )
 
 func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
+	t.Parallel()
 	server, client := net.Pipe()
 	defer client.Close()
 	defer server.Close()

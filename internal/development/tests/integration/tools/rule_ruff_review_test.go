@@ -57,6 +57,7 @@ func templateDiagnosticLines(script string, firstLine int) []int {
 }
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, pattern := range []string{`{"x": x, **${{ 'rest' }}}`, `[*${{ 'rest' }}]`, `${{ 'Widget' }}()`, `Outer(${{ 'Widget' }}())`} {
 		source := `on: push
@@ -83,6 +84,7 @@ jobs:
 }
 
 func TestRuffStatisticsRejected(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
@@ -100,6 +102,7 @@ permissions: {}
 }
 
 func TestRuffFromTemplatePreservesFindings(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, script := range []string{
 		"def generate():\n    yield from ${{ '[]' }}",
@@ -111,6 +114,7 @@ func TestRuffFromTemplatePreservesFindings(t *testing.T) {
 		} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				t.Run(script+tc.code+ending, func(t *testing.T) {
+					t.Parallel()
 					source := `on: push
 jobs:
   test:
@@ -140,6 +144,7 @@ jobs:
 }
 
 func TestRuffSilentRejected(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, flag := range []string{"--silent", "-s", "-qs"} {
 		source := `on: push
@@ -159,6 +164,7 @@ permissions: {}
 }
 
 func TestRuffOperatorTemplateSkipsOnlyItsScript(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
@@ -183,6 +189,7 @@ permissions: {}
 }
 
 func TestRuffVersionedShellGrammar(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		config     string
@@ -222,9 +229,11 @@ permissions: {}
 }
 
 func TestRuffOutputRedirectionDoesNotWrite(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, option := range []string{"--output-file", "--output-file=", "-o", "-o=", "-oattached", "-qoattached"} {
 		t.Run(option, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			output := fixturefiles.Write(t, root, "output.json", "preserve this file")
 			flags := []string{option, output}

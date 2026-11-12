@@ -9,6 +9,7 @@ import (
 )
 
 func TestParseExpressionSyntaxOK(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what     string
 		input    string
@@ -650,6 +651,7 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			p := NewParser()
 			n, err := p.Parse(NewLexer(tc.input + "}}"))
 			if err != nil {
@@ -672,6 +674,7 @@ diff:
 }
 
 func TestParseExpressionSyntaxError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what     string
 		input    string
@@ -806,6 +809,7 @@ func TestParseExpressionSyntaxError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			p := NewParser()
 			_, err := p.Parse(NewLexer(tc.input + "}}"))
 			if err == nil {
@@ -820,6 +824,7 @@ func TestParseExpressionSyntaxError(t *testing.T) {
 }
 
 func TestParseExpressionNumberLiteralsError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what  string
 		tok   *Token
@@ -849,6 +854,7 @@ func TestParseExpressionNumberLiteralsError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			// This is really hacky depending on internal structure of parser. It is necessary
 			// because parsing int/float token never fails. To check the error handling, we need to
 			// inject an invalid token.
@@ -869,6 +875,7 @@ func TestParseExpressionNumberLiteralsError(t *testing.T) {
 }
 
 func TestParseExpressionTokenPosition(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what   string
 		input  string
@@ -951,6 +958,7 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			// Add 2 spaces so start position of token must be offset 2
 			p := NewParser()
 			e, err := p.Parse(NewLexer("  " + tc.input + "}}"))
@@ -978,6 +986,7 @@ func TestParseExpressionTokenPosition(t *testing.T) {
 }
 
 func TestParseReturnFirstErrorOnMultipleErrors(t *testing.T) {
+	t.Parallel()
 	p := NewParser()
 	_, want := p.Parse(NewLexer(".}}"))
 	if want == nil {

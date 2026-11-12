@@ -18,6 +18,7 @@ import (
 )
 
 func TestReusableWorkflowDuplicateKeyMetadataOrder(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, jobs string }{
 		{"cache-mode", `  call:
     uses: ./leaf.yaml
@@ -45,6 +46,7 @@ func TestReusableWorkflowDuplicateKeyMetadataOrder(t *testing.T) {
 `},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			project := workspace.Identity(root)
 			caller := []byte(`on: push

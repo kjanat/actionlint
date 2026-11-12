@@ -12,6 +12,7 @@ import (
 )
 
 func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []reflect.Type{reflect.TypeFor[*Config](), reflect.TypeFor[*Policy]()} {
 		if _, exists := typ.MethodByName("UnmarshalYAML"); exists {
 			t.Fatalf("%s owns decoding instead of its wire adapter", typ)
@@ -25,6 +26,7 @@ func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {
 }
 
 func TestConfigCodecPreservesProgrammaticProjectionsAndResets(t *testing.T) {
+	t.Parallel()
 	rules, err := NewRuleSet([]rule.Declaration{{
 		Name: "unpinned-reference", Aliases: []rule.Alias{{Name: "require-commit-hash", Deprecated: true}}, Category: "security", Maturity: "stable",
 		Options: func() any { return &lintconfig.CommitHashOptions{} },
@@ -63,6 +65,7 @@ func TestConfigCodecPreservesProgrammaticProjectionsAndResets(t *testing.T) {
 }
 
 func TestConfigGetterResultsDetached(t *testing.T) {
+	t.Parallel()
 	permissions, err := RequirePermissions("workflow")
 	if err != nil {
 		t.Fatal(err)
@@ -95,6 +98,7 @@ func TestConfigGetterResultsDetached(t *testing.T) {
 }
 
 func TestLoadedProvenanceSourcesDetached(t *testing.T) {
+	t.Parallel()
 	provenance := Provenance{path: "/root.yml", files: []string{"/base.yml", "/root.yml"}}
 	sources := provenance.Sources()
 	sources[0] = "changed"

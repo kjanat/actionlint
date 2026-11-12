@@ -13,6 +13,7 @@ import (
 )
 
 func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		`fromJSON('{"win":"windows-latest"}')['mac']`,
 		`steps.foo.outputs['bar']`,
@@ -47,6 +48,7 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 }
 
 func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
+	t.Parallel()
 	for _, call := range []string{`format('{0}{1}', 1, 2, 3)`, `startWith('a', 'b')`, `startsWith('a')`} {
 		for _, suffix := range []string{"", "[0]", ".x", "[0].x"} {
 			src := "on: push\nenv:\n  VALUE: ${{ " + call + suffix + " }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
@@ -70,8 +72,10 @@ func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
 }
 
 func TestCompositeDeprecatedCommands(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"enabled", "inline", "disabled", "nested", "override-off", "override-on"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			config := "tools: {shellcheck: false, ruff: false}\n"
 			if mode == "disabled" || mode == "override-on" {
@@ -133,6 +137,7 @@ func assertDiagnosticOffsetRange(t *testing.T, src string, d diagmodel.Diagnosti
 }
 
 func TestDeprecatedCommandMappedOccurrences(t *testing.T) {
+	t.Parallel()
 	for _, scalar := range []string{
 		"|\n          echo ::set-output name=x::1\n          echo ::set-output name=y::2",
 		">-\n          echo ::set-output name=x::1\n          echo ::set-output name=y::2",

@@ -13,6 +13,7 @@ import (
 )
 
 func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
+	t.Parallel()
 	var encoded bytes.Buffer
 	writer := gzip.NewWriter(&encoded)
 	if _, err := writer.Write(bytes.Repeat([]byte{0}, 1024*1024)); err != nil {
@@ -35,6 +36,7 @@ func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
 }
 
 func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
+	t.Parallel()
 	artifact := &pluginartifact.Artifact{Info: pluginartifact.Info{Source: "in-memory"}}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("in-memory artifact bypassed memory option validation: %v", err)
@@ -42,6 +44,7 @@ func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 }
 
 func TestLoadArtifactRejectsUnsupportedMetadataBeforeCompilation(t *testing.T) {
+	t.Parallel()
 	name := []byte(pluginartifact.MetadataSection)
 	payload := append(binary.AppendUvarint(nil, uint64(len(name))), name...)
 	payload = append(payload, []byte(`{"metadata_version":2,"abi_version":1}`)...)

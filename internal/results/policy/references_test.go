@@ -12,6 +12,7 @@ import (
 )
 
 func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo ok\n      - *shared\n")
 	workflow, parseErrors := workflowparser.Parse(content)
 	if len(parseErrors) != 0 {
@@ -44,6 +45,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		{name: "provider reference", owner: &findingmodel.Owner{Job: "test", Step: second.Pos}, reference: &explicit, want: explicit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			finding := &findingmodel.Finding{
 				Start: sourcepos.Position{Line: first.Pos.Line, Column: first.Pos.Col}, Owner: tc.owner,
 				IgnoreOrigin: &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, RawScriptSource: tc.raw, Reference: tc.reference,
@@ -57,6 +59,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 }
 
 func TestParsedMixedCaseJobReference(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
 	workflow, findings := workflowparser.Parse(content)
 	if len(findings) != 0 {
@@ -79,6 +82,7 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 }
 
 func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
+	t.Parallel()
 	references := workflowfacts.References{Document: sourcepos.Reference{Document: "entry", Revision: "revision", Node: "document"}}
 	foreign := &findingmodel.Finding{Path: "unrelated.sh"}
 	alias := &findingmodel.Finding{Path: "entry-alias.yml"}

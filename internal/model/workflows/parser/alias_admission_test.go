@@ -21,8 +21,10 @@ func aliasAdmissionWorkflow(depth int) []byte {
 }
 
 func TestWorkflowAdmissionRejectsAmplificationBeforeASTConstruction(t *testing.T) {
+	t.Parallel()
 	for _, depth := range []int{8, 12, 24} {
 		t.Run(strconv.Itoa(depth), func(t *testing.T) {
+			t.Parallel()
 			source := aliasAdmissionWorkflow(depth)
 			root, err := codec.Parse(source)
 			if err != nil {
@@ -54,6 +56,7 @@ func TestWorkflowAdmissionRejectsAmplificationBeforeASTConstruction(t *testing.T
 }
 
 func TestWorkflowAdmissionPreservesRecursiveDiagnostics(t *testing.T) {
+	t.Parallel()
 	source := append([]byte("env: {cycle: &cycle [*cycle]}\n"), aliasAdmissionWorkflow(8)...)
 	workflow, findings := Parse(source)
 	if workflow != nil {
@@ -90,8 +93,10 @@ func TestWorkflowAdmissionDoesNotGrowWithAliasExpansion(t *testing.T) {
 }
 
 func TestWorkflowAdmissionCoversSkippedValuesAndParallelSteps(t *testing.T) {
+	t.Parallel()
 	for _, parallel := range []bool{false, true} {
 		t.Run(strconv.FormatBool(parallel), func(t *testing.T) {
+			t.Parallel()
 			var source strings.Builder
 			source.WriteString("on: push\nenv:\n  a0: &a0 [{run: echo ok}]\n")
 			for level := 1; level <= 8; level++ {
@@ -114,6 +119,7 @@ func TestWorkflowAdmissionCoversSkippedValuesAndParallelSteps(t *testing.T) {
 }
 
 func TestWorkflowAdmissionAllowsNonAmplifyingReuse(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("on: push\nenv: &shared {VALUE: literal}\njobs:\n")
 	for job := range 100 {
@@ -126,6 +132,7 @@ func TestWorkflowAdmissionAllowsNonAmplifyingReuse(t *testing.T) {
 }
 
 func TestWorkflowAdmissionSkipsRecursiveSlotsInsideAcceptedAnchors(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\nenv:\n  base: &base {self: *base}\n  copy: *base\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 	workflow, findings := Parse([]byte(source))
 	if workflow == nil {

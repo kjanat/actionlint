@@ -8,6 +8,7 @@ import (
 )
 
 func TestEncodeRequestPerCheckVersion(t *testing.T) {
+	t.Parallel()
 	request := checkinputs.ScriptRequest{Source: "echo", Filename: "s.sh", Directory: "/work", Excluded: []string{"SC1091"}}
 	for _, tc := range []struct {
 		name      string
@@ -20,6 +21,7 @@ func TestEncodeRequestPerCheckVersion(t *testing.T) {
 		{"check 3 with the directory resource", 3, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}, `{"source":"echo","filename":"s.sh","excluded":["SC1091"],"directory":"/work"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			e := &Engine{checkVersion: tc.version, metadata: Metadata{Capabilities: Capabilities{Resources: tc.resources}}}
 			got, err := e.encodeRequest(request)
 			if err != nil {
@@ -38,6 +40,7 @@ func TestEncodeRequestPerCheckVersion(t *testing.T) {
 }
 
 func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
+	t.Parallel()
 	fix := []checkinputs.ScriptFix{{Replacements: []checkinputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 1, EndColumn: 2}}}}
 	for _, tc := range []struct {
 		name         string
@@ -58,6 +61,7 @@ func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
 		{"declared", Capabilities{Fixes: true, ReportedSources: true}, checkinputs.ScriptDiagnostic{Fixes: fix}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			e := &Engine{checkVersion: 3, metadata: Metadata{Capabilities: tc.capabilities}}
 			got := e.checkFindings3(tc.finding, "/work")
 			if tc.want == "" && got != "" || !strings.Contains(got, tc.want) {

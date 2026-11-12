@@ -11,6 +11,7 @@ import (
 )
 
 func TestCheckShellConvertsKnownScalar(t *testing.T) {
+	t.Parallel()
 	origin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 6, Column: 12}}}
 	shell := execution.DefaultShell(value.Template(`${{ fromJSON('{"shell":42}') }}`, origin))
 	findings := checkShell(shell, runnerlang.MacOrLinux)

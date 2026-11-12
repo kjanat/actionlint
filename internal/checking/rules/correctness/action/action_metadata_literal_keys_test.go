@@ -11,6 +11,7 @@ import (
 )
 
 func TestActionMetadataLiteralKeys(t *testing.T) {
+	t.Parallel()
 	const source = `name: test
 description: test
 runs:
@@ -22,6 +23,7 @@ runs:
 	for _, key := range []string{"name", "description", "runs", "using", "steps", "run", "shell"} {
 		for _, spelling := range []string{key, strings.ToUpper(key)} {
 			t.Run(spelling, func(t *testing.T) {
+				t.Parallel()
 				input := strings.Replace(source, key+":", "${{ '"+spelling+"' }}:", 1)
 				meta, err := actionmeta.Parse("action.yml", []byte(input))
 				if err != nil {
@@ -41,6 +43,7 @@ runs:
 }
 
 func TestActionMetadataLiteralKeysPreserveNamesAndSource(t *testing.T) {
+	t.Parallel()
 	const source = `name: test
 description: test
 ${{ 'Inputs' }}:
@@ -105,6 +108,7 @@ runs:
 }
 
 func TestActionMetadataLiteralRunKeyStillChecksExpressions(t *testing.T) {
+	t.Parallel()
 	const source = `name: test
 description: test
 runs:

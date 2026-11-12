@@ -11,6 +11,7 @@ import (
 )
 
 func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
+	t.Parallel()
 	const spec = "example/script@v1"
 	meta, err := actionmeta.Parse("action.yml", []byte("name: script\ndescription: script\ninputs:\n  script: {required: true}\noutputs:\n  result: {description: result}\nruns: {using: node20, main: index.js}\n"))
 	if err != nil {
@@ -30,6 +31,7 @@ func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
 }
 
 func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
+	t.Parallel()
 	const spec = "example/script@v1"
 	for _, tc := range []struct {
 		using   string
@@ -43,6 +45,7 @@ func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
 		{"node999", "", ""},
 	} {
 		t.Run(tc.using, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("name: script\ndescription: script\nruns: {using: %s, main: index.js}\n", tc.using)
 			meta, err := actionmeta.Parse("action.yml", []byte(source))
 			if err != nil {

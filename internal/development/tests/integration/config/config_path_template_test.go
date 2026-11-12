@@ -13,11 +13,7 @@ import (
 
 func TestShellcheckRelativeProjectPaths(t *testing.T) {
 	command := testutil.RequireTool(t, "shellcheck")
-	root := t.TempDir()
-	t.Chdir(root)
 	t.Setenv("GITHUB_WORKSPACE", "")
-	rc := fixturefiles.Write(t, root, ".shellcheckrc", "disable=SC2086\n")
-	fixturefiles.Write(t, root, ".github/.shellcheckrc", "enable=all\n")
 	content := []byte(`on: push
 jobs:
   test:
@@ -32,6 +28,10 @@ permissions: {}
 		"${{ configdir }}/../.shellcheckrc",
 	} {
 		t.Run(selection, func(t *testing.T) {
+			root := t.TempDir()
+			t.Chdir(root)
+			rc := fixturefiles.Write(t, root, ".shellcheckrc", "disable=SC2086\n")
+			fixturefiles.Write(t, root, ".github/.shellcheckrc", "enable=all\n")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: '"+selection+"'}}\n")
 			project, err := workspace.NewProject(checking.ConfigurationRules(), ".")
 			if err != nil {

@@ -3,6 +3,7 @@ package inputs
 import "testing"
 
 func TestScriptInputSelectors(t *testing.T) {
+	t.Parallel()
 	valid := ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}
 	if err := ValidateScriptInputs([]ScriptInput{valid}); err != nil {
 		t.Fatal(err)

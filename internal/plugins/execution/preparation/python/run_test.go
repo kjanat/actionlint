@@ -5,6 +5,7 @@ import (
 )
 
 func TestRunSelectsPythonShells(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		shell        *string
 		skip, target string
@@ -26,6 +27,7 @@ func TestRunSelectsPythonShells(t *testing.T) {
 }
 
 func TestEngineConfigAddsTheShellTarget(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ config, target, want string }{
 		{config: "", want: `{}`},
 		{config: "null", target: "py312", want: `{"target-version":"py312"}`},

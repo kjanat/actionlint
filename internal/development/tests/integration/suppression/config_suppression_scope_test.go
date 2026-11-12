@@ -11,6 +11,7 @@ import (
 )
 
 func TestMetadataSuppressionAliasConfigurations(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "inner/index.js", "console.log('ok');\n")
 	fixturefiles.Write(t, root, "inner/action.yml", `name: inner # actionlint:ignore action --
@@ -42,12 +43,14 @@ runs:
 }
 
 func TestMetadataSuppressionIgnoresWorkflowOptions(t *testing.T) {
+	t.Parallel()
 	for _, runtime := range []string{"using: node24\n  main: index.js", "using: docker\n  image: docker://alpine:3.22", `using: composite
   steps:
     - shell: bash
       run: echo ok`} {
 		for _, directive := range []string{"# actionlint:ignore action --", "# actionlint:ignore action -- reviewed"} {
 			t.Run(runtime+directive, func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := `lint:
   rules:

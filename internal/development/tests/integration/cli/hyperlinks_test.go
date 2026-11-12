@@ -91,6 +91,7 @@ func TestHyperlinksDoNotChangeMachineOutput(t *testing.T) {
 }
 
 func TestInvalidHyperlinkMode(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"--hyperlinks=bad", "--help"},
 		{"check", "--hyperlinks=bad", "--help"},
@@ -105,6 +106,7 @@ func TestInvalidHyperlinkMode(t *testing.T) {
 }
 
 func TestHyperlinksInRedirectedHelp(t *testing.T) {
+	t.Parallel()
 	file, err := os.Create(filepath.Join(t.TempDir(), "help.txt"))
 	if err != nil {
 		t.Fatal(err)
@@ -203,6 +205,7 @@ func TestPrettyHyperlinksInOutputFile(t *testing.T) {
 }
 
 func TestHyperlinkCompletion(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"__complete", "--hyperlinks", ""},
 		{"__complete", "check", "--hyperlinks", ""},

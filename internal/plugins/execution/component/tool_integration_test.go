@@ -10,6 +10,7 @@ import (
 )
 
 func TestToolNegotiationPreservesExplicitGrants(t *testing.T) {
+	t.Parallel()
 	value := wacogo.ValResultOk(wacogo.NewValRecord(
 		field("options", wacogo.ValString(`{"engine-option":true}`)),
 		field("resources", wacogo.NewValListOf(wacogo.NewValVariant(0, nil), wacogo.NewValVariant(1, wacogo.ValString("/other/source")))),
@@ -24,6 +25,7 @@ func TestToolNegotiationPreservesExplicitGrants(t *testing.T) {
 }
 
 func TestUnsupportedToolConfigurationErrorIsDistinctFromFailure(t *testing.T) {
+	t.Parallel()
 	got, err := liftToolNegotiation(wacogo.ValResultErr(wacogo.ValString("unsupported option")))
 	var unsupported *checkinputs.UnsupportedToolConfigurationError
 	if got != nil || !errors.As(err, &unsupported) || unsupported.Reason != "unsupported option" {
@@ -36,6 +38,7 @@ func TestUnsupportedToolConfigurationErrorIsDistinctFromFailure(t *testing.T) {
 }
 
 func TestToolNegotiationRejectsMalformedOptionsAndResources(t *testing.T) {
+	t.Parallel()
 	for _, value := range []wacogo.Val{
 		wacogo.ValResultOk(wacogo.NewValRecord(field("options", wacogo.ValString(`[]`)), field("resources", wacogo.NewValListOf[wacogo.Val]()))),
 		wacogo.ValResultOk(wacogo.NewValRecord(field("options", wacogo.ValString(`{}`)), field("resources", wacogo.NewValListOf(wacogo.NewValVariant(9, nil))))),
@@ -47,6 +50,7 @@ func TestToolNegotiationRejectsMalformedOptionsAndResources(t *testing.T) {
 }
 
 func TestSourceFilesStayCallScoped(t *testing.T) {
+	t.Parallel()
 	roots := []checkinputs.SourceRoot{{Host: "/project", Guest: "/workspace"}}
 	ctx := context.WithValue(context.Background(), sourceRootsKey{}, roots)
 	got, err := (sourceFiles{}).Roots(ctx)

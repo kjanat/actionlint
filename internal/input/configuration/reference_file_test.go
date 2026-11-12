@@ -14,6 +14,7 @@ import (
 )
 
 func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
+	t.Parallel()
 	f := filepath.Join(t.TempDir(), "default-config-for-test.yml")
 	if err := checking.ConfigurationRules().WriteDefaultFile(f, "1.17.0"); err != nil {
 		t.Fatal(err)
@@ -77,6 +78,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 }
 
 func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
+	t.Parallel()
 	p := filepath.Join(t.TempDir(), "missing", "test.yml")
 	err := checking.ConfigurationRules().WriteDefaultFile(p, "1.17.0")
 	if err == nil {
@@ -89,8 +91,10 @@ func TestConfigGenerateDefaultConfigFileError(t *testing.T) {
 }
 
 func TestConfigGenerateSnapshotSchemaHeader(t *testing.T) {
+	t.Parallel()
 	for _, version := range []string{"2.0.0-SNAPSHOT-02d216d", "v2.0.0-rc.1-SNAPSHOT-02d216d"} {
 		t.Run(version, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if err := checking.ConfigurationRules().WriteDefaultFile(path, version); err != nil {
 				t.Fatal(err)

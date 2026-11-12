@@ -12,6 +12,7 @@ import (
 )
 
 func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
+	t.Parallel()
 	source := []byte("name: café # actionlint:ignore cache-operation -- reviewed\n")
 	errs := []*findingmodel.Finding{
 		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation"},

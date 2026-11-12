@@ -11,10 +11,12 @@ import (
 )
 
 func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, escape := range []string{`\r`, `\n`, `\r\n`, `\n\r`, `\x0d`, `\u000d`, `\U0000000d`, `\x0a`, `\u000a`} {
 		for _, newline := range []string{"\n", "\r\n"} {
 			for _, metadata := range []bool{false, true} {
 				t.Run(escape+newline+map[bool]string{true: "metadata", false: "workflow"}[metadata], func(t *testing.T) {
+					t.Parallel()
 					root, _ := testutil.ExecutableFixture(t, "shellcheck")
 					fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 					scalar := `"echo ${{ github.ref` + escape + `"`

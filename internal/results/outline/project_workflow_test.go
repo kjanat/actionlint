@@ -8,6 +8,7 @@ import (
 )
 
 func TestOutlineLocalReferenceScope(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   local:
@@ -45,6 +46,7 @@ jobs:
 }
 
 func TestAnalysisPartialWorkflowCall(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   call:
@@ -65,6 +67,7 @@ jobs:
 }
 
 func TestAnalysisPartialStepUses(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, step, kind string
 	}{
@@ -78,6 +81,7 @@ func TestAnalysisPartialStepUses(t *testing.T) {
           - run: echo hi`, "parallel"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -98,6 +102,7 @@ jobs:
 }
 
 func TestAnalysisParallelOutline(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   test:

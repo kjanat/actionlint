@@ -9,6 +9,7 @@ import (
 )
 
 func TestUnavailableRolesRejectCallsWithoutRuntime(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{}
 	if p.HasAnalyzer() || p.HasRunnerProvider() || p.HasScriptEngine() {
 		t.Fatal("component without validated descriptors advertised roles")

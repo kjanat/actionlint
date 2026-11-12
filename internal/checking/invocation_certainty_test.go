@@ -11,6 +11,7 @@ import (
 )
 
 func TestExecutableBitUnixColonPaths(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix colon paths cannot be represented on the Windows host")
 	}
@@ -27,6 +28,7 @@ func TestExecutableBitUnixColonPaths(t *testing.T) {
 		{"checkout", "        with: {path: 'a:debug'}\n", "run: ./a:debug/bad.sh", "bad.sh"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow := `on: push
 jobs:
   test:
@@ -35,7 +37,7 @@ jobs:
       - uses: actions/checkout@v6
 ` + tc.checkout +
 				"      - " + strings.ReplaceAll(tc.step, "\n", "\n        ") + "\n"
-			file := writeFixture(t, root, ".github/workflows/colon.yml", workflow)
+			file := writeFixture(t, root, workflowFixturePath(t, "colon"), workflow)
 			session := checking.Options{WorkingDir: root}
 			var err error
 
@@ -57,6 +59,7 @@ jobs:
 }
 
 func TestExecutableBitRuntimeInputs(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	for _, tc := range []struct {
 		name, workflow, job, checkout, step string
@@ -129,6 +132,7 @@ env: {GIT_EXEC_PATH: helpers}
 		{"double quoted braces", "", "", "", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			indent := func(value, prefix string) string {
 				if value == "" {
 					return ""
@@ -147,7 +151,7 @@ env: {GIT_EXEC_PATH: helpers}
       - uses: actions/checkout@v6
 ` + indent(tc.checkout, "        ") +
 				"      - run: |\n          " + script + "\n" + indent(tc.step, "        ")
-			file := writeFixture(t, root, ".github/workflows/runtime.yml", workflow)
+			file := writeFixture(t, root, workflowFixturePath(t, "runtime"), workflow)
 			session := checking.Options{WorkingDir: root}
 			var err error
 

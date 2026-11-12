@@ -14,6 +14,7 @@ import (
 )
 
 func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
+	t.Parallel()
 	transform, err := configuration.New(manifests.Manifest{
 		ConfigSchema:           json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"search":{"type":"array","items":{"type":"string"}},"pattern":{"type":"string"},"limit":{"type":"integer","minimum":7}},"required":["limit"]}`),
 		ConfigurationPaths:     []string{"/search"},
@@ -48,6 +49,7 @@ func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
 }
 
 func TestPathPointersHandleEscapedNamesAndOptionalValues(t *testing.T) {
+	t.Parallel()
 	transform, err := configuration.New(manifests.Manifest{ConfigurationPaths: []string{"/a~1b/~0root", "/omitted", "/nullable", "/records/0/directory"}}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +64,7 @@ func TestPathPointersHandleEscapedNamesAndOptionalValues(t *testing.T) {
 }
 
 func TestConfigurationPreservesLargeIntegers(t *testing.T) {
+	t.Parallel()
 	for _, program := range []string{"", `{options:.config}`} {
 		manifest := manifests.Manifest{}
 		if program != "" {
@@ -80,8 +83,10 @@ func TestConfigurationPreservesLargeIntegers(t *testing.T) {
 }
 
 func TestConfigurationTransformRejectsInvalidResults(t *testing.T) {
+	t.Parallel()
 	for _, program := range []string{`empty`, `{}, {}`, `{options:[]}`, `{options:null}`, `{options:{},typo:true}`, `{options:{},source_prefix:"# missing newline"}`} {
 		t.Run(program, func(t *testing.T) {
+			t.Parallel()
 			transform, err := configuration.New(manifests.Manifest{ConfigurationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: program}}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -94,6 +99,7 @@ func TestConfigurationTransformRejectsInvalidResults(t *testing.T) {
 }
 
 func TestConfigurationTransformCancelsInfinitePrograms(t *testing.T) {
+	t.Parallel()
 	transform, err := configuration.New(manifests.Manifest{ConfigurationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `def forever: forever; forever`}}, nil)
 	if err != nil {
 		t.Fatal(err)

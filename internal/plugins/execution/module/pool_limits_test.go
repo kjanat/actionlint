@@ -79,6 +79,7 @@ func (f gatedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, er
 }
 
 func TestConcurrentChecksBoundActiveAndIdleInstances(t *testing.T) {
+	t.Parallel()
 	engine := pooledEngine(t)
 	entered := make(chan struct{}, 24)
 	release := make(chan struct{})
@@ -134,6 +135,7 @@ func TestConcurrentChecksBoundActiveAndIdleInstances(t *testing.T) {
 }
 
 func TestCallTimeoutIncludesGuestInstantiation(t *testing.T) {
+	t.Parallel()
 	engine := pooledEngine(t)
 	// This module's start function loops forever.
 	module := []byte{0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 8, 1, 0, 10, 9, 1, 7, 0, 3, 64, 12, 0, 11, 11}

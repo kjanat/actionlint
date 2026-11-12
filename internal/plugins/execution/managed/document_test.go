@@ -64,6 +64,7 @@ func (g *sourceProbeGuest) CheckDocument(_ context.Context, input checkinputs.In
 }
 
 func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) {
+	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
 	secret := filepath.Join(outside, "secret.txt")
 	if err := os.WriteFile(secret, []byte("private-host-marker"), 0o600); err != nil {
@@ -84,6 +85,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 		{"configured symlink", alias, "secret.txt"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			guest := &sourceProbeGuest{directory: tc.directory, file: tc.file}
 			registration, err := shellcheckRegistration(scripts.Selection{Command: "shellcheck"}).WithAnalyzer(guest)
 			if err != nil {
@@ -112,6 +114,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 }
 
 func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
+	t.Parallel()
 	workspace := t.TempDir()
 	sources := filepath.Join(workspace, "sources")
 	if err := os.Mkdir(sources, 0o700); err != nil {
@@ -126,6 +129,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 	}
 	for _, directory := range []string{"sources", alias} {
 		t.Run(directory, func(t *testing.T) {
+			t.Parallel()
 			guest := &sourceProbeGuest{directory: directory, file: "value.txt"}
 			registration, err := shellcheckRegistration(scripts.Selection{Command: "shellcheck"}).WithAnalyzer(guest)
 			if err != nil {
@@ -193,6 +197,7 @@ func (g *documentGuest) CheckDocument(_ context.Context, input checkinputs.Input
 }
 
 func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config string
 		disabled     bool
@@ -209,6 +214,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		{"wasm permitted", "{}", false, false, &processconfig.Options{Optional: true, AllowWasm: true, WorkingDir: t.TempDir()}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			guest := &documentGuest{fail: tc.partial}
 			registration, err := shellcheckRegistration(scripts.Selection{Command: "shellcheck", Process: tc.process}).WithAnalyzer(guest)
 			if err != nil {
@@ -271,12 +277,14 @@ permissions: {}
 }
 
 func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{
 		"tools: {shellcheck: {config: .shellcheckrc}}",
 		"tools: {shellcheck: {config: {disable: [SC1000-SC2000]}}}",
 		"tools: {shellcheck: {backend: {process: {executable: shellcheck-custom}}}}",
 	} {
 		t.Run(text, func(t *testing.T) {
+			t.Parallel()
 			overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte(text))
 			if err != nil {
 				t.Fatal(err)
@@ -307,7 +315,6 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 }
 
 func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
-	t.Setenv("PATH", t.TempDir())
 	for _, tc := range []struct {
 		name, rules, extra string
 		native             bool
@@ -320,6 +327,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 		{"override enables plugin", "external: {shellcheck: off}, plugins: {shellcheck: off}", "overrides: [{includes: [ci.yml], lint: {rules: {plugins: {shellcheck: on}}}}]", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PATH", t.TempDir())
 			root := t.TempDir()
 			if err := os.WriteFile(filepath.Join(root, ".shellcheckrc"), []byte("shell=bash\n"), 0o600); err != nil {
 				t.Fatal(err)
@@ -363,6 +371,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 }
 
 func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
+	t.Parallel()
 	for _, setting := range []string{
 		"lint: {enabled: false}",
 		"lint: {rules: {disable: [shellcheck]}}",
@@ -371,6 +380,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 		"overrides: [{includes: [ci.yml], tools: {shellcheck: false}}]",
 	} {
 		t.Run(setting, func(t *testing.T) {
+			t.Parallel()
 			base, err := checking.ConfigurationRules().ParseOverlay("config", []byte("tools: {shellcheck: {config: .shellcheckrc}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -457,6 +467,7 @@ func (g *planningContextGuest) NegotiateTool(ctx context.Context, data, _ json.R
 }
 
 func TestDocumentPluginPlanningPropagatesCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	release, finished := make(chan struct{}), make(chan struct{})

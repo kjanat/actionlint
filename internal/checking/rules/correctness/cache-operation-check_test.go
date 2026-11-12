@@ -8,6 +8,7 @@ import (
 )
 
 func TestCacheOperationStepCallbackUsesItsDeclaringJob(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 cache-mode: read
 jobs:

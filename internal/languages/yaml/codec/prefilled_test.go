@@ -46,8 +46,10 @@ func sliceBacking[T any](values []T) *T {
 }
 
 func TestPrefilledPlainContainersKeepAbsentValuesAndIdentity(t *testing.T) {
+	t.Parallel()
 	for _, selected := range []bool{false, true} {
 		t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+			t.Parallel()
 			const source = "other: decoded\n"
 			ownedEntry := &ownedPlainStruct{Name: "kept", private: "owned-private"}
 			ownedSliceEntry := &ownedPlainStruct{Name: "slice-kept", private: "slice-private"}
@@ -102,8 +104,10 @@ func TestPrefilledPlainContainersKeepAbsentValuesAndIdentity(t *testing.T) {
 }
 
 func TestExplicitEmptySequenceReplacesPrefilledSliceHeader(t *testing.T) {
+	t.Parallel()
 	for _, selected := range []bool{false, true} {
 		t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+			t.Parallel()
 			const source = "empty: []\n"
 			ownedSlice := make([]*ownedPlainStruct, 0, 3)
 			ownedBacking := sliceBacking(ownedSlice)
@@ -148,8 +152,10 @@ type upstreamValueMap struct {
 }
 
 func TestPrefilledPlainValueMapKeepsPrivateStateWhenAbsent(t *testing.T) {
+	t.Parallel()
 	for _, selected := range []bool{false, true} {
 		t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+			t.Parallel()
 			const source = "other: decoded\n"
 			got := ownedValueMap{Values: map[string]ownedPlainValue{"entry": {Name: "kept", private: "owned-private"}}}
 			want := upstreamValueMap{Values: map[string]upstreamPlainValue{"entry": {Name: "kept", private: "owned-private"}}}
@@ -211,8 +217,10 @@ func sameContainingPointer(got *ownedContainingPointer, want *upstreamContaining
 }
 
 func TestContainingPlainStructsPreservePrefilledContainerState(t *testing.T) {
+	t.Parallel()
 	for _, selected := range []bool{false, true} {
 		t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+			t.Parallel()
 			const source = "values:\n  empty: {}\npointers:\n  empty: {}\n"
 			keptValue := ownedContainingValue{Name: "kept", Child: prefilledChild{Called: true, Value: "kept-child"}, private: "kept-private"}
 			emptyValue := ownedContainingValue{Name: "before", Child: prefilledChild{Called: true, Value: "before-child"}, private: "before-private"}

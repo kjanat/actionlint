@@ -9,6 +9,7 @@ import (
 )
 
 func TestPreparedMalformedSelectorsRemainUnknown(t *testing.T) {
+	t.Parallel()
 	for _, selection := range []string{
 		`${{ null }}`,
 		`${{ fromJSON('{"labels":["windows-latest",{}]}') }}`,
@@ -17,6 +18,7 @@ func TestPreparedMalformedSelectorsRemainUnknown(t *testing.T) {
 		`{labels: '${{ null }}'}`,
 	} {
 		t.Run(selection, func(t *testing.T) {
+			t.Parallel()
 			w := runnerWorkflow(t, selection)
 			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {
@@ -31,6 +33,7 @@ func TestPreparedMalformedSelectorsRemainUnknown(t *testing.T) {
 }
 
 func TestPartialSelectorsPreserveConstraints(t *testing.T) {
+	t.Parallel()
 	for _, selection := range []string{
 		`{group: prod, labels: ['${{ matrix.os }}', "${{ 'x64' }}"]}`,
 		`${{ matrix.runner }}`,
@@ -55,6 +58,7 @@ func TestPartialSelectorsPreserveConstraints(t *testing.T) {
 }
 
 func TestDynamicMatrixSelector(t *testing.T) {
+	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy: {matrix: '${{ fromJSON(vars.MATRIX) }}'}\n    runs-on: ${{ matrix.os }}\n    steps: [{run: echo ok}]\n")
 	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 	if err != nil {
@@ -66,6 +70,7 @@ func TestDynamicMatrixSelector(t *testing.T) {
 }
 
 func TestPartialSelectorsKeepIndependentLabels(t *testing.T) {
+	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [windows]\n        image: [ubuntu-lates]\n        include: '${{ fromJSON(vars.INCLUDE) }}'\n    runs-on: [linux, '${{ matrix.os }}', '${{ matrix.image }}']\n    steps: [{run: echo ok}]\n")
 	selectors := runnermodel.Selectors(w.Views["test"])
 	if len(selectors) != 3 {
@@ -89,6 +94,7 @@ func TestPartialSelectorsKeepIndependentLabels(t *testing.T) {
 }
 
 func TestFixedSelectorDoesNotDependOnDynamicMatrix(t *testing.T) {
+	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        item: '${{ fromJSON(vars.ITEMS) }}'\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	selectors := runnermodel.Selectors(w.Views["test"])
 	if len(selectors) != 1 || selectors[0].Incomplete || len(selectors[0].Labels) != 1 || selectors[0].Labels[0].Value != runnerapi.Literal("ubuntu-latest") {
@@ -104,6 +110,7 @@ func TestFixedSelectorDoesNotDependOnDynamicMatrix(t *testing.T) {
 }
 
 func TestPreparedNativeRunnerRejections(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		selection string
 		count     int
@@ -126,8 +133,10 @@ func TestPreparedNativeRunnerRejections(t *testing.T) {
 }
 
 func TestMatrixIncludeUnresolvedLabelsKeepFixedConstraints(t *testing.T) {
+	t.Parallel()
 	for _, item := range []string{`"${{ vars.RUNNER }}"`, `{name: windows-latest}`, `[windows-latest]`} {
 		t.Run(item, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [a], include: [{os: a, runner: "+item+"}]}\n    runs-on: [self-hosted, '${{ matrix.runner }}']\n    steps: [{run: echo ok}]\n")
 			selectors := runnermodel.Selectors(w.Views["test"])
 			if len(selectors) != 1 || !selectors[0].Incomplete || len(selectors[0].Labels) != 2 || selectors[0].Labels[0].Value != runnerapi.Literal("self-hosted") || selectors[0].Labels[1].Value != runnerapi.Expression("${{ matrix.runner }}") {
@@ -145,12 +154,14 @@ func TestMatrixIncludeUnresolvedLabelsKeepFixedConstraints(t *testing.T) {
 }
 
 func TestDynamicMatrixFiltersKeepAlternativesIncomplete(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, matrix string }{
 		{"exclude", `{os: [ubuntu-latest, windows-latest], exclude: [{os: "${{ vars.OS }}"}]}`},
 		{"nested exclude", `{os: [ubuntu-latest, windows-latest], config: [{arch: x64}], exclude: [{os: ubuntu-latest, config: {arch: "${{ vars.ARCH }}"}}]}`},
 		{"include", `{os: [ubuntu-latest], include: [{os: "${{ vars.OS }}", extra: x64}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: "+tc.matrix+"\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 			selectors := runnermodel.Selectors(w.Views["test"])
 			known := map[runnerapi.Term]bool{}
@@ -177,6 +188,7 @@ func TestDynamicMatrixFiltersKeepAlternativesIncomplete(t *testing.T) {
 }
 
 func TestRejectedMatrixExclusionsCannotSupplyRunnerCertainty(t *testing.T) {
+	t.Parallel()
 	for _, filter := range []string{`[{os: windows-latest, nokey: x}]`, `"${{ fromJSON('[{}]') }}"`} {
 		w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-latest, windows-latest], exclude: "+filter+"}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 		selectors := runnermodel.Selectors(w.Views["test"])

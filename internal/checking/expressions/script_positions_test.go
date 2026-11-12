@@ -9,6 +9,7 @@ import (
 )
 
 func TestScalarScriptPositions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		script, shell string
 		safe          bool
@@ -63,6 +64,7 @@ func TestScalarScriptPositions(t *testing.T) {
 		{"echo '${{ inputs.count }}'", "", false},
 	} {
 		t.Run(tc.shell+"/"+tc.script, func(t *testing.T) {
+			t.Parallel()
 			positions := proveScriptArguments(tc.script, tc.shell).scalars
 			if safe := positions[strings.Index(tc.script, "${{")]; safe != tc.safe {
 				t.Fatalf("safe=%t, want %t: %v", safe, tc.safe, positions)
@@ -72,6 +74,7 @@ func TestScalarScriptPositions(t *testing.T) {
 }
 
 func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{"inputs.count", "inputs.flag", "toJSON(null)", "inputs.flag == true", "toJSON(inputs.flag)"} {
 		for _, tc := range []struct {
 			name, script, shell, defaults, runner string
@@ -94,6 +97,7 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 			{name: "custom Bash command", script: "%s", shell: "bash --noprofile --norc -e {0}", runner: "ubuntu-latest", unsafe: true},
 		} {
 			t.Run(expression+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				script := fmt.Sprintf(tc.script, "${{ "+expression+" }}")
 				source := "on: {workflow_dispatch: {inputs: {count: {type: number}, flag: {type: boolean}}}}\n" + tc.defaults + "jobs:\n  test:\n    runs-on: " + tc.runner + "\n    steps:\n      - run: |\n          " + script + "\n"
 				if tc.shell != "" {
@@ -119,6 +123,7 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 }
 
 func TestNullInterpolationUsesScriptPosition(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		script string
 		unsafe bool

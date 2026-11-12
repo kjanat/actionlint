@@ -31,6 +31,7 @@ func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflowdecl.Work
 }
 
 func TestExecutableBitUsesOriginalCompositeSourceWithImmutableCallback(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	original := writeShellcheckFixture(t, root, "local/action.yml", `name: original
 description: canonical source

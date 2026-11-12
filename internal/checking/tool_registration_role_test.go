@@ -33,11 +33,13 @@ func (selectedToolGuest) NegotiateTool(context.Context, json.RawMessage, json.Ra
 }
 
 func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		explicit bool
 	}{{name: "integrated"}, {name: "explicit process", explicit: true}} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			selection := registry.Selections{"shellcheck": {Command: "shellcheck"}}
 			if tc.explicit {
 				selection = registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{}}}

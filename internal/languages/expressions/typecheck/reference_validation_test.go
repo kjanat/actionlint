@@ -13,6 +13,7 @@ import (
 )
 
 func TestStaticReferencesInUnreachableEventBranches(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"github.event_name == 'issues' && noSuchFunction()",
 		"github.event_name == 'issues' && startsWith('one argument')",
@@ -20,6 +21,7 @@ func TestStaticReferencesInUnreachableEventBranches(t *testing.T) {
 		"github.event_name == 'issues' && noSuchContext",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
 			event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}})
 			contexts.SetEventPayloadType(checker, event)
@@ -37,6 +39,7 @@ func TestStaticReferencesInUnreachableEventBranches(t *testing.T) {
 }
 
 func TestUnavailableContextInUnreachableEventBranch(t *testing.T) {
+	t.Parallel()
 	const input = "case(github.event_name == 'issues', secrets.TOKEN, 'safe')"
 	checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
 	contexts.SetEventPayloadType(checker, exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}}))

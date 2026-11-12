@@ -9,8 +9,10 @@ import (
 )
 
 func TestSelectionCallbackPreservesInputs(t *testing.T) {
+	t.Parallel()
 	for _, excluded := range []string{"skip.yml", "*.yml"} {
 		t.Run(excluded, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			config := writeToolFixture(t, root, "actionlint.yml", "files: {excludes: ['"+excluded+"']}\n")
 			paths := []string{

@@ -3,6 +3,7 @@ package cli_test
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func TestFixVendorLockIn(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ scalar, fixed string }{
 		{"https://github.com/mlugg/setup-zig@v2 # comment", "mlugg/setup-zig@v2 # comment"},
 		{"'https://github.com/mlugg/setup-zig@v2'", "'mlugg/setup-zig@v2'"},
@@ -20,8 +22,8 @@ func TestFixVendorLockIn(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.scalar+ending, func(t *testing.T) {
-				t.Chdir(t.TempDir())
-				const path = "workflow.yml"
+				t.Parallel()
+				path := filepath.Join(t.TempDir(), "workflow.yml")
 				before := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.scalar + "\n"
 				if strings.HasPrefix(tc.scalar, "&action ") {
 					before += "      - uses: *action\n"
