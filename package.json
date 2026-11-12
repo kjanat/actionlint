@@ -33,6 +33,8 @@
     "applications/playground"
   ],
   "overrides": {
+    "fast-xml-parser": "^5.12.0",
+    "minimatch@>=7 <11": "^11.0.8",
     "undici": ">=8.11.2"
   },
   "dependencies": {
