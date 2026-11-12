@@ -15,7 +15,7 @@ import (
 
 type commandOptions struct {
 	output                                          outputModes
-	colorMode, logLevel, command                    string
+	colorMode, logLevel                             string
 	color, noColor, initConfig, version, helpLegacy bool
 	completion                                      completionShell
 	networkStats                                    bool
@@ -335,8 +335,6 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 		_ = f.MarkHidden(name)
 	}
 	if !modern {
-		f.StringVar(&a.opts.command, "command", "", "Select a command by name")
-		_ = f.MarkHidden("command")
 		f.BoolVarP(&a.opts.version, "version", "V", false, "Show version and build information")
 		annotateFlag(f, "version", "Information")
 		f.BoolVar(&a.opts.initConfig, "init-config", false, "Create the repository config")

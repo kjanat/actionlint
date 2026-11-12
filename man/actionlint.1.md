@@ -197,9 +197,6 @@ preserves a previous report. The output cannot also be a selected input.
 when stderr is not a terminal or when `-` supplies workflow stdin. Confirmation
 never consumes workflow input. Piping `yes` also works in an interactive terminal.
 
-**--command** *NAME*
-: Select a command by name.
-
 **--color**[=*MODE*]
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
 On the root, use boolean syntax such as `-color=false`.

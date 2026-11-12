@@ -13,7 +13,6 @@ func TestRootFlagsBetweenFilenames(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		args, want []string
-		forced     string
 		terminated bool
 		json       bool
 	}{
@@ -30,13 +29,12 @@ func TestRootFlagsBetweenFilenames(t *testing.T) {
 		{name: "delimiter after flag", args: []string{"first.yml", "--json", "--", "--help"}, want: []string{"first.yml", "--help"}, terminated: true, json: true},
 		{name: "command after file", args: []string{"first.yml", "version", "--json"}, want: []string{"first.yml", "version"}, json: true},
 		{name: "command boundary", args: []string{"check", "first.yml", "--json"}, want: []string{"check", "first.yml", "--json"}},
-		{name: "forced command", args: []string{"first.yml", "--command", "check", "--color=never", "--json"}, want: []string{"first.yml", "--color=never", "--json"}, forced: "check"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := newCommandApp(t.Context(), &Command{})
-			rest, forced, terminated, err := app.parseRoot(tc.args)
-			if err != nil || !slices.Equal(rest, tc.want) || forced != tc.forced || terminated != tc.terminated || app.inv.JSON != tc.json || app.errorJSON != tc.json {
-				t.Fatalf("paths=%v forced=%q terminated=%v json=%v errorJSON=%v err=%v", rest, forced, terminated, app.inv.JSON, app.errorJSON, err)
+			rest, terminated, err := app.parseRoot(tc.args)
+			if err != nil || !slices.Equal(rest, tc.want) || terminated != tc.terminated || app.inv.JSON != tc.json || app.errorJSON != tc.json {
+				t.Fatalf("paths=%v terminated=%v json=%v errorJSON=%v err=%v", rest, terminated, app.inv.JSON, app.errorJSON, err)
 			}
 		})
 	}
@@ -46,7 +44,7 @@ func TestRootUsesCommandFlagDefinitions(t *testing.T) {
 	app := newCommandApp(t.Context(), &Command{})
 	var enabled bool
 	app.root.Flags().BoolVarP(&enabled, "test-option", "t", false, "")
-	rest, _, _, err := app.parseRoot([]string{"-t", "input.yml"})
+	rest, _, err := app.parseRoot([]string{"-t", "input.yml"})
 	if err != nil || !enabled || !app.set["test-option"] || len(rest) != 1 || rest[0] != "input.yml" {
 		t.Fatalf("root did not use the shared flag definition: enabled=%v rest=%v err=%v", enabled, rest, err)
 	}

@@ -59,20 +59,6 @@ func TestModernCommandDispatch(t *testing.T) {
 			}
 		}
 	}
-	forced := testRunCommand("", "--command", "version", "--json")
-	var build commandBuildInfo
-	if err := json.Unmarshal([]byte(forced.Stdout), &build); err != nil || forced.Status != 0 || build.Version == "" {
-		t.Fatalf("command escape: %+v (%v)", forced, err)
-	}
-	for _, args := range [][]string{{"--command", "check", "--color=never", "-ojson", "good.yml"}, {"--command=check", "--json", "good.yml"}} {
-		if got := testRunCommand("", args...); got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
-			t.Fatalf("command escape used legacy grammar: %q: %+v", args, got)
-		}
-	}
-	unknown := testRunCommand("", "--command", "not-a-command")
-	if unknown.Status != 2 {
-		t.Fatal(unknown)
-	}
 }
 
 func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {

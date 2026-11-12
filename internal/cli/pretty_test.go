@@ -45,7 +45,7 @@ func TestPrettyOptions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := newCommandApp(t.Context(), &Command{})
-			if _, _, _, err := app.parseRoot(tc.args); err != nil {
+			if _, _, err := app.parseRoot(tc.args); err != nil {
 				t.Fatal(err)
 			}
 			err := app.prepareInvocation()

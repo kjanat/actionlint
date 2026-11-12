@@ -89,7 +89,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 func TestCLIIgnoreWithEnvironmentRegex(t *testing.T) {
 	t.Setenv("ACTIONLINT_IGNORE_REGEX", `["second"]`)
 	app := newCommandApp(t.Context(), &Command{})
-	if _, _, _, err := app.parseRoot([]string{"--ignore", "first"}); err != nil {
+	if _, _, err := app.parseRoot([]string{"--ignore", "first"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := app.applyEnvironment(); err != nil {
