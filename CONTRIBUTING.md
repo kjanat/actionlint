@@ -187,7 +187,9 @@ nix flake check
 nix develop
 ```
 
-The default package runs `go test ./...` with the external linters and completion shells available. The flake's integration check verifies the installed version, help, configuration generation, package files, and ShellCheck diagnostics. `nix develop` provides Go, Git, Make, Pandoc, the linters, Bash, Zsh, Fish, and `nixfmt`. It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
+The package runs the Go tests under `cmd/` and `internal/`. A separate check tests shell completions in Bash, Zsh and Fish. The integration check verifies the installed version, help, package files and diagnostics from the ShellCheck and Ruff Wasm plugins. Nix downloads those plugins with SHA-256 verification before the test runs without network access. Tests that require native ShellCheck or Ruff skip when those executables are absent.
+
+`nix develop` provides Go, Git, mise, Pandoc, Bash, Zsh, Fish and `nixfmt`. It sets `GOTOOLCHAIN=local` so Go uses the compiler selected by Nix. Format the Nix files with `nix fmt`.
 
 The bump script updates the version in `flake.nix` together with the other release references and runs `nix flake check --no-update-lock-file` before creating a commit or tag. CI checks the package on every supported platform. Publishing binaries and images also requires those checks, including a match between the Nix version and the release tag. Update the package set with `nix flake update nixpkgs`, then run the checks. When Go dependencies change, update `vendorHash` in [nix/package.nix]: temporarily set it to `lib.fakeHash`, run `nix build`, and replace it with the hash reported by Nix.
 
