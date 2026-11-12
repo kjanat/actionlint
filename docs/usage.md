@@ -903,7 +903,7 @@ If you want to enable
 command. Note that shellcheck is
 [pre-installed on Ubuntu worker][preinstall-ubuntu].
 
-`--output github` emits [GitHub annotations](#problem-matchers) directly.
+`--output github` emits [GitHub annotations](#github-annotations) directly.
 
 If you prefer Docker image to running a downloaded executable, using
 [actionlint Docker image](#docker) is another option.
@@ -1058,15 +1058,10 @@ CLI, select GitHub output:
 
 ```yaml
 - name: Check workflow files
-  run: actionlint --output github
+  run: actionlint check --output github
 ```
 
-This writes annotation commands directly to the runner, including findings from
-plugins. No matcher file or registration is required.
-
-For integrations that parse plain-text logs, the optional
-[problem matcher][actionlint-matcher] extracts annotations from that output.
-See GitHub's [problem matcher documentation][problem-matchers].
+This writes annotation commands directly to the runner, including findings from plugins.
 
 ### super-linter
 
@@ -1286,7 +1281,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 [Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
-[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html
 [docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
@@ -1305,7 +1299,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [nvim-lint]: https://github.com/mfussenegger/nvim-lint
 [pre-commit]: https://pre-commit.com
 [preinstall-ubuntu]: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
-[problem-matchers]: https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md
 [pulsar-linter]: https://web.pulsar-edit.dev/packages/linter-github-actions
 [pulsar]: https://pulsar-edit.dev/
 [re2]: https://golang.org/s/re2syntax

@@ -197,7 +197,7 @@ Nix includes only files known to Git when building a checkout. Add new source fi
 
 ## Testing
 
-[![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg)][CI] [![Upkeep](https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml/badge.svg)][Upkeep] [![Problem Matchers](https://github.com/kjanat/actionlint/actions/workflows/matcher.yml/badge.svg)][Problem-Matchers] [![Download script](https://github.com/kjanat/actionlint/actions/workflows/download.yml/badge.svg)][Download-script] [![Release](https://github.com/kjanat/actionlint/actions/workflows/release.yml/badge.svg)][Release] [![Codecov](https://codecov.io/gh/kjanat/actionlint/graph/badge.svg?token=CgcOo0m9oW)][Codecov]
+[![CI](https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg)][CI] [![Upkeep](https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml/badge.svg)][Upkeep] [![Download script](https://github.com/kjanat/actionlint/actions/workflows/download.yml/badge.svg)][Download-script] [![Release](https://github.com/kjanat/actionlint/actions/workflows/release.yml/badge.svg)][Release] [![Codecov](https://codecov.io/gh/kjanat/actionlint/graph/badge.svg?token=CgcOo0m9oW)][Codecov]
 
 Run the following command at the root of this repository.
 
@@ -399,14 +399,6 @@ The generator reads pinned copies of the workflow schema and Actions documentati
 
 The [`Upkeep`] workflow updates `webhooks.gen.go` weekly in CI.
 
-### Maintain `actionlint-matcher.json`
-
-[`actionlint-matcher.json`] is a matcher configuration to extract error annotations from outputs of `actionlint` command. See [the document] for its usage.
-
-The regular expression must match output containing ANSI color escape sequences. Use the generator to change it. Do not edit the JSON file manually.
-
-The [`generate-actionlint-matcher`] script generates it. See the script's README.md for usage and test instructions.
-
 ### Maintain `availability.gen.go`
 
 [`availability.gen.go`] lists the contexts and special functions allowed at each workflow key, such as `jobs.<job_id>.if`. For example:
@@ -440,7 +432,6 @@ See [the script README][the readme of the script-2] for usage and the document f
 [GoReleaser's SBOM configuration]: https://goreleaser.com/customization/sbom/
 [Linus Torvalds's message on AI-assisted maintenance]: https://lore.kernel.org/linux-media/CAHk-=wi4zC+Ze8e+p3tMv8TtG_80KzsZ1syL9anBtmEh5Z40vg@mail.gmail.com/
 [Pages workflow]: ./.github/workflows/pages.yml
-[Problem-Matchers]: https://github.com/kjanat/actionlint/actions/workflows/matcher.yml
 [README.md at the script directory]: ./internal/development/generators/event-triggers/README.md
 [Release]: https://github.com/kjanat/actionlint/actions/workflows/release.yml
 [Upkeep]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
@@ -449,14 +440,12 @@ See [the script README][the readme of the script-2] for usage and the document f
 [`Dockerfile`]: ./distribution/docker/Dockerfile
 [`Upkeep`]: .github/workflows/upkeep.yml
 [action-availability]: ./internal/model/actions/availability.gen.go
-[`actionlint-matcher.json`]: .github/actionlint-matcher.json
 [`webhooks.gen.go`]: ./internal/model/contexts/events/triggers/webhooks.gen.go
 [`availability.gen.go`]: ./internal/model/contexts/availability.gen.go
 [`check-checks`]: ./internal/development/tests/integration/documentation
 [`ci.yml`]: .github/workflows/ci.yml
 [`internal/development/tests/integration/fuzz/`]: internal/development/tests/integration/fuzz
 [`generate-action-metadata`]: ./internal/development/generators/action-metadata/main.go
-[`generate-actionlint-matcher`]: ./tools/matcher
 [`generate-webhook-events`]: ./internal/development/generators/event-triggers
 [`man/actionlint.1.md`]: ./man/actionlint.1.md
 [`man/manual.css`]: ./man/manual.css
@@ -484,7 +473,6 @@ See [the script README][the readme of the script-2] for usage and the document f
 [the configuration document]: docs/config.md
 [the configuration]: docs/config.md
 [the contexts document]: https://github.com/github/docs/blob/main/content/actions/reference/workflows-and-actions/contexts.md#context-availability
-[the document]: docs/usage.md#problem-matchers
 [the maintenance script]: #about-checks-doc
 [the readme of the script-2]: ./internal/development/tests/integration/documentation/README.md
 [the readme of the script]: ./internal/development/generators/expression-contexts/README.md

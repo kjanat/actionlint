@@ -490,7 +490,6 @@ test('mise setup is pinned, cached, and used once per job', () => {
 		'ci-changes.yml:changes': 'bun',
 		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
 		'npm-release.yml:build': 'bun',
-		'matcher.yml:matcher-test': 'bun,npm:runner-run',
 		'upkeep.yml:go-toolchain': 'bun,npm:runner-run',
 		'package-previews.yml:publish': 'bun,uv,yamllint,zizmor,npm:runner-run',
 		'changelog-release.yml:publish': 'bun,npm:runner-run',
