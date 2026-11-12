@@ -47,7 +47,7 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
 				context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
-				native: func() (tools.Runner, error) {
+				native: func(*config.Config) (tools.Runner, error) {
 					return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
 						nativeCalls++
 						if len(selected.Scripts) != 1 || selected.Scripts[0].Fact.Occurrence.ID != batch.Scripts[nativeIndex].Fact.Occurrence.ID || len(selected.Scopes) != 0 {
