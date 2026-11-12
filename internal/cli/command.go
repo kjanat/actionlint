@@ -64,7 +64,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 		}
 		return app.status
 	}
-	rest, forced, terminated, err := app.parseRoot(args)
+	rest, terminated, err := app.parseRoot(args)
 	if err != nil {
 		return app.reportError(err)
 	}
@@ -82,17 +82,11 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 			app.help(app.root, nil)
 			return app.status
 		}
-		forced = "check"
+		rest = []string{"check"}
 	}
 	legacyOperation := app.opts.version || app.opts.initConfig || app.opts.completion != "" || app.opts.helpLegacy
-	modern := forced != "" || (!legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0]))
+	modern := !legacyOperation && !terminated && len(rest) > 0 && isCommandName(rest[0])
 	if modern {
-		if forced != "" {
-			if !isCommandName(forced) {
-				return app.reportError(commandargs.UsageError{Cause: fmt.Errorf("unknown command %q", forced)})
-			}
-			rest = append([]string{forced}, rest...)
-		}
 		app.errorJSON = app.errorJSON || requestsJSON(app.root.Flags(), rest[1:], true)
 		// Parsing can fail before a command's RunE records its full operation.
 		// Keep metadata-command errors out of the analysis-result contract.

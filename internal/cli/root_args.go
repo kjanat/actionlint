@@ -15,7 +15,7 @@ import (
 
 // Split root options from command routing, then parse them with the same pflag
 // definitions and argument scanner used for subcommands and completion.
-func (a *commandApp) parseRoot(args []string) (rest []string, forced string, terminated bool, err error) {
+func (a *commandApp) parseRoot(args []string) (rest []string, terminated bool, err error) {
 	flags := a.root.Flags()
 	flags.SetOutput(io.Discard)
 	a.errorJSON = requestsJSON(flags, args, true)
@@ -36,10 +36,10 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		}
 		if helpIndex < 0 && len(arg.flags) == 1 && arg.flags[0].flag.Name == "directory" {
 			if len(arg.tokens) == 1 && !strings.Contains(arg.tokens[0], "=") {
-				return nil, "", false, commandargs.UsageError{Cause: errors.New("flag needs an argument: -C")}
+				return nil, false, commandargs.UsageError{Cause: errors.New("flag needs an argument: -C")}
 			}
 			if err := flags.Set("directory", arg.flags[0].value); err != nil {
-				return nil, "", false, commandargs.UsageError{Cause: err}
+				return nil, false, commandargs.UsageError{Cause: err}
 			}
 			continue
 		}
@@ -57,10 +57,6 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 			}
 		}
 		parsedArgs = append(parsedArgs, arg.tokens...)
-		if slices.ContainsFunc(arg.flags, func(option argumentFlag) bool { return option.flag.Name == "command" }) {
-			rest = slices.Clone(args[scanner.index:])
-			break
-		}
 	}
 	jsonOptions := scanJSONOptions(flags, parsedArgs, true)
 	a.errorJSON = jsonOptions.JSON
@@ -71,7 +67,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 	err = flags.Parse(parsedArgs)
 	flags.Visit(func(flag *pflag.Flag) { a.set[flag.Name] = true })
 	if err != nil {
-		return nil, "", false, commandargs.UsageError{Cause: err}
+		return nil, false, commandargs.UsageError{Cause: err}
 	}
 	if helpIndex >= 0 {
 		a.inv.JSON = a.errorJSON
@@ -80,17 +76,9 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 			a.inv.Render.PrettyJSON = jsonOptions.Pretty
 		}
 		a.help(a.root, nil)
-		return nil, "", false, nil
+		return nil, false, nil
 	}
-	rest = append(slices.Clone(flags.Args()), rest...)
-	forced = a.opts.command
-	if a.set["command"] {
-		if forced == "" {
-			return nil, "", false, commandargs.UsageError{Cause: errors.New("--command requires a command name")}
-		}
-		return rest, forced, false, nil
-	}
-	return rest, forced, terminated, nil
+	return append(slices.Clone(flags.Args()), rest...), terminated, nil
 }
 
 func isCommandName(name string) bool {

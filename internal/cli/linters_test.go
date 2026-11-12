@@ -51,7 +51,7 @@ func TestRootDeprecatedShellCheckCommand(t *testing.T) {
 func assertToolCommand(t *testing.T, name string, args []string, want string) {
 	t.Helper()
 	app := newCommandApp(t.Context(), &Command{})
-	rest, _, _, err := app.parseRoot(args)
+	rest, _, err := app.parseRoot(args)
 	var resolved resolvedTools
 	if err == nil {
 		resolved, err = app.inv.Check.resolveTools()

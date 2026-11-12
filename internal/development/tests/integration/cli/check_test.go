@@ -471,7 +471,6 @@ func TestCheckJSONFailureContract(t *testing.T) {
 	}{
 		{[]string{"check", "--json", "missing.yml"}, 3},
 		{[]string{"check", "--json", "--does-not-exist"}, 2},
-		{[]string{"--json", "--command=check", "--does-not-exist"}, 2},
 		{[]string{"--json", "missing.yml"}, 3},
 	} {
 		got := testRunCommand("", tc.args...)
@@ -498,9 +497,6 @@ func TestJSONErrorsBeforeOperationSelection(t *testing.T) {
 		{"--init-config", "--json", "--does-not-exist"},
 		{"--completion=bash", "--json", "--does-not-exist"},
 		{"--json", "--completion=invalid"},
-		{"--json", "--command=unknown"},
-		{"--json", "--command="},
-		{"--json", "--command"},
 		{"--json", "--does-not-exist"},
 	} {
 		got := testRunCommand("", args...)
