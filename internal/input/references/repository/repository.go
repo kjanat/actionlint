@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 type Identity struct {
 	Host       string
-	ID         uint64
+	ID         repositoryid.ID
 	Name       string
 	ObservedAt string
 }

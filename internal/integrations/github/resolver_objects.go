@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 type resolverRepository struct {
@@ -42,19 +43,23 @@ func (g *GitHub) Open(ctx context.Context, request references.Request) (reposito
 	if g.mode != Online {
 		return nil, errors.New("GitHub repository access is unavailable while network access is off or offline")
 	}
-	parts := strings.Split(request.Repository, "/")
-	if request.Version != 1 || len(parts) != 2 || parts[0] == "" || parts[1] == "" || strings.ContainsAny(request.Repository, "?#%\\\x00\r\n") || parts[0] == "." || parts[0] == ".." || parts[1] == "." || parts[1] == ".." {
+	owner, name, valid := splitRepository(request.Repository)
+	if request.Version != 1 || !valid {
 		return nil, errors.New("invalid GitHub repository request")
 	}
-	s := &resolverRepository{g: g, base: "https://api.github.com/repos/" + url.PathEscape(parts[0]) + "/" + url.PathEscape(parts[1]), refs: make(map[string]refObservation)}
+	if listing := refListingFromContext(ctx); listing != nil && strings.EqualFold(listing.repository, request.Repository) {
+		return newListingSession(listing, request), nil
+	}
+	s := &resolverRepository{g: g, base: "https://api.github.com/repos/" + url.PathEscape(owner) + "/" + url.PathEscape(name), refs: make(map[string]refObservation)}
 	repo, err := s.readRepository(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if repo.ID == 0 || !strings.EqualFold(repo.Name, request.Repository) || request.ExpectedRepositoryID != 0 && repo.ID != request.ExpectedRepositoryID || repo.DefaultBranch == "" {
+	id, err := repositoryid.Known(repo.ID)
+	if err != nil || !strings.EqualFold(repo.Name, request.Repository) || id.Conflicts(request.ExpectedRepositoryID) || repo.DefaultBranch == "" {
 		return nil, errors.New("GitHub repository identity or default branch is invalid")
 	}
-	s.identity = repository.Identity{Host: "github.com", ID: repo.ID, Name: repo.Name, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	s.identity = repository.Identity{Host: "github.com", ID: id, Name: repo.Name, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 	s.defaultBranch = repo.DefaultBranch
 	// A 404 from a Git endpoint is ambiguous unless contents are readable.
 	if err := s.guard(ctx); err != nil {
@@ -307,7 +312,7 @@ func (s *resolverRepository) Finish(ctx context.Context) (json.RawMessage, error
 	if err != nil {
 		return nil, err
 	}
-	if repo.ID != s.identity.ID || !strings.EqualFold(repo.Name, s.identity.Name) || repo.DefaultBranch != s.defaultBranch {
+	if id, _ := s.identity.ID.Value(); repo.ID != id || !strings.EqualFold(repo.Name, s.identity.Name) || repo.DefaultBranch != s.defaultBranch {
 		return nil, errors.New("GitHub repository identity or default branch changed during resolution")
 	}
 	log, err := json.Marshal(struct {

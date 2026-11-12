@@ -142,10 +142,14 @@ Missing optional tools are reported; malformed selected config returns status 3.
 : Pass a literal argument to the resolver. Repeat for multiple arguments.
 
 **--action-metadata** *MODE*
-: Select remote action metadata acquisition: `online` (default, GitHub acquisition), `offline` (cached
-manifests only), or `off` (no acquisition). Named references in
-online mode require **--resolve-with**. Online requests use `GH_TOKEN`, falling
-back to `GITHUB_TOKEN`. This option does not create project lockfiles.
+: Select remote action metadata acquisition: `online` (default), `offline` (cached
+manifests only), or `off` (no acquisition). Online mode reads the cache first,
+then each repository's Git reference list from `github.com` and manifests from
+`raw.githubusercontent.com`. When `raw.githubusercontent.com` fails, it requests
+the manifest at the same commit from `cdn.jsdelivr.net` without credentials. It
+uses the GitHub REST API only when these hosts do not return the manifest.
+Online requests use `GH_TOKEN`, falling back to `GITHUB_TOKEN`.
+This option does not create project lockfiles.
 
 These options belong to the root and to **check**, unless noted otherwise.
 The root accepts single- and double-dash spellings; **check**

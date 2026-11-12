@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
@@ -258,6 +259,28 @@ func TestConcurrentPreflightSharesOneRequest(t *testing.T) {
 	if calls.Load() != 1 {
 		t.Fatalf("sent %d quota requests for one credential scope", calls.Load())
 	}
+}
+
+func TestPreflightWaitIsOutsideLookupBudget(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, s := TrackRequests(t.Context())
+		reset := time.Now().Add(time.Hour)
+		client := &http.Client{Transport: TrackHTTPRequests(roundTripFunc(func(*http.Request) (*http.Response, error) {
+			time.Sleep(10 * time.Second)
+			return response(http.StatusOK, quota(20, reset, "core"), "{}"), nil
+		}))}
+		probing := make(chan error, 1)
+		go func() {
+			probing <- s.LoadGitHubRateLimits(ctx, client, request(t, ctx, "/repos/example/action", "token"))
+		}()
+		synctest.Wait()
+		budgeted, stop := references.StartLookupBudget(ctx, time.Second)
+		defer stop()
+		err := s.LoadGitHubRateLimits(budgeted, client, request(t, budgeted, "/repos/example/action", "token"))
+		if probeErr := <-probing; err != nil || probeErr != nil || budgeted.Err() != nil {
+			t.Fatalf("waiter=%v probe=%v budget=%v", err, probeErr, context.Cause(budgeted))
+		}
+	})
 }
 
 func TestOlderQuotaResponsesCannotRestoreSpentUnits(t *testing.T) {

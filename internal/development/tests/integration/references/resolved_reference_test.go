@@ -17,6 +17,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -25,7 +26,15 @@ type fakeResolver struct {
 	requests []references.Request
 	err      error
 	tree     bool
-	ids      []uint64
+	ids      []repositoryid.ID
+}
+
+func knownRepositoryID(value uint64) repositoryid.ID {
+	id, err := repositoryid.Known(value)
+	if err != nil {
+		panic(err)
+	}
+	return id
 }
 
 func TestCheckingSessionPreparesResolverFacts(t *testing.T) {
@@ -40,7 +49,7 @@ func TestCheckingSessionPreparesResolverFacts(t *testing.T) {
 			steps := "      - uses: owner/repo@v1\n"
 			if partial {
 				wantRequests = 2
-				provider.ids = []uint64{42, 43}
+				provider.ids = []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43)}
 				steps += "      - uses: owner/repo@v2\n"
 			}
 			content := "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + steps
@@ -81,7 +90,7 @@ func TestDisabledResolutionDoesNotCallProvider(t *testing.T) {
 
 func (f *fakeResolver) Resolve(_ context.Context, r references.Request) (references.Result, error) {
 	f.requests = append(f.requests, r)
-	result := references.Result{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: 42, ObservedAt: "2026-10-16T00:00:00Z"}
+	result := references.Result{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: knownRepositoryID(42), ObservedAt: "2026-10-16T00:00:00Z"}
 	if len(f.ids) >= len(f.requests) {
 		result.RepositoryID = f.ids[len(f.requests)-1]
 	}
@@ -120,7 +129,7 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 }
 
 func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
-	provider := &fakeResolver{ids: []uint64{42, 43, 43}}
+	provider := &fakeResolver{ids: []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
 	first := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
 	second := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
@@ -130,17 +139,37 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 	if findings, err := rule.CheckDocument(t.Context(), second); err == nil || len(findings) != 0 {
 		t.Fatalf("repository identity changed: %v, %v", findings, err)
 	}
-	if provider.requests[0].ExpectedRepositoryID != 0 || provider.requests[1].ExpectedRepositoryID != 42 {
+	if !provider.requests[0].ExpectedRepositoryID.IsZero() || provider.requests[1].ExpectedRepositoryID != knownRepositoryID(42) {
 		t.Fatalf("repository identity not forwarded: %+v", provider.requests)
 	}
 	fresh := newReferenceCheck(provider)
-	if findings, err := fresh.CheckDocument(t.Context(), second); err != nil || len(findings) != 1 || provider.requests[2].ExpectedRepositoryID != 0 {
+	if findings, err := fresh.CheckDocument(t.Context(), second); err != nil || len(findings) != 1 || !provider.requests[2].ExpectedRepositoryID.IsZero() {
 		t.Fatalf("identity leaked into fresh session: %v, %v, %+v", findings, err, provider.requests)
 	}
 }
 
+func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
+	provider := &fakeResolver{ids: []repositoryid.ID{{}, knownRepositoryID(42), {}, knownRepositoryID(42)}}
+	rule := newReferenceCheck(provider)
+	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2", "owner/repo@v3", "OWNER/REPO@v4"} {
+		findings, err := rule.CheckDocument(t.Context(), checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
+		if err != nil || len(findings) != 1 {
+			t.Fatalf("%s: %v, %v", uses, findings, err)
+		}
+		if uses == "Owner/Repo@v1" && findings[0].Message != "Owner/Repo@v1 resolves to commit "+strings.Repeat("a", 40)+" (observed 2026-10-16T00:00:00Z)" {
+			t.Fatalf("message without repository ID = %q", findings[0].Message)
+		}
+	}
+	want := []repositoryid.ID{{}, {}, knownRepositoryID(42), knownRepositoryID(42)}
+	for i, request := range provider.requests {
+		if request.ExpectedRepositoryID != want[i] {
+			t.Fatalf("request %d expected repository ID = %+v, want %+v", i, request.ExpectedRepositoryID, want[i])
+		}
+	}
+}
+
 func TestRepositoryIdentityRetainsPartialFindings(t *testing.T) {
-	provider := &fakeResolver{ids: []uint64{42, 43}}
+	provider := &fakeResolver{ids: []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
 	input := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
 	findings, err := rule.CheckDocument(t.Context(), input)
@@ -160,7 +189,7 @@ func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request refere
 	r.started <- struct{}{}
 	select {
 	case <-r.release:
-		return references.Result{Version: 1, Repository: request.Repository, RepositoryID: id, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+		return references.Result{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(id), Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 	case <-ctx.Done():
 		return references.Result{}, ctx.Err()
 	}

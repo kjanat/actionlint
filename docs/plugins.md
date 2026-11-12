@@ -8,7 +8,11 @@ jq tests and packaging. See [contribution routes](#contribute-a-rule) to choose 
 Commitish is the reference resolver bundled with actionlint. Resolver plugins
 export `kjanat:actionlint-resolver/reference-resolver@0.1.0` and request exact
 repository references and objects through the `repository-objects` import.
-Actionlint performs those requests and records their network usage. Loading a
+Actionlint performs those requests and records their network usage. The
+`repository.id` field of `repository-objects` and the `repository-id` field of
+the resolution are `option<u64>`: a resolver returns `none` when the repository
+ID is unknown, and the request's `expected-repository-id` is `none` when
+actionlint has no ID to expect. Loading a
 resolver plugin replaces Commitish for that analysis. See
 [reference resolution](remote-actions.md#reference-resolution).
 

@@ -2,53 +2,32 @@ package github
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
 func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
 	cache := t.TempDir()
 	const source = "on: workflow_call\npermissions: {contents: write}\njobs: {}\n"
-	requests, resolutions := 0, 0
-	client, err := New(Options{CacheDir: cache, Resolver: func() references.Resolver {
-		return resolveFunc(func(_ context.Context, request references.Request) (references.Result, error) {
-			resolutions++
-			if request.Kind != "workflow" || request.Ref != "v1" || request.ExpectedRepositoryID != 42 {
-				t.Fatalf("workflow used another resolution profile: %+v", request)
-			}
-			// Workflow resolution does not require an action's selection-route fields.
-			return references.Result{Version: 1, Repository: "example/workflows", RepositoryID: 42, Commit: sha, ObservedAt: "2026-11-08T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubWorkflow"}`)}, nil
-		})
-	}, Transport: transport(func(r *http.Request) (*http.Response, error) {
-		requests++
-		body := ""
-		switch r.URL.Path {
-		case "/repos/example/workflows":
-			body = `{"id":42,"full_name":"example/workflows"}`
-		case "/repos/example/workflows/git/commits/" + sha:
-			body = `{"sha":"` + sha + `"}`
-		case "/repos/example/workflows/contents/.github/workflows/build.yaml":
-			if r.URL.Query().Get("ref") != sha {
-				t.Fatal("named ref reached the contents endpoint")
-			}
-			body = source
-		default:
-			t.Fatalf("unexpected endpoint %s", r.URL)
+	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Host + r.URL.Path {
+		case "github.com/example/workflows.git/info/refs":
+			return respond(r, http.StatusOK, gitwire.ContentType, listing(sha, gitwire.Ref{Name: "refs/heads/main", Object: sha}, gitwire.Ref{Name: "refs/tags/v1", Object: sha})), nil
+		case "raw.githubusercontent.com/example/workflows/" + sha + "/.github/workflows/build.yaml":
+			return respond(r, http.StatusOK, rawText, source), nil
 		}
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
-	})})
-	if err != nil {
-		t.Fatal(err)
-	}
+		t.Fatalf("unexpected endpoint %s", r.URL)
+		return nil, nil
+	}}
+	resolver := &listingResolver{}
+	client := newListingClient(t, Options{CacheDir: cache, Transport: hosts}, resolver)
 	file, err := client.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yaml@v1")
-	if err != nil || !file.Available() || file.Commit() != sha || file.Content() != source || resolutions != 1 || requests != 4 {
-		t.Fatalf("file=%+v error=%v resolutions=%d requests=%d", file, err, resolutions, requests)
+	if err != nil || !file.Available() || file.Commit() != sha || file.Content() != source || resolver.resolutions() != 1 || len(hosts.recorded()) != 2 || hosts.count("github.com") != 1 {
+		t.Fatalf("file=%+v error=%v resolutions=%d requests=%v", file, err, resolver.resolutions(), hosts.recorded())
 	}
 	offline, err := New(Options{Mode: Offline, CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("offline request %s", r.URL)
@@ -74,46 +53,76 @@ func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
 }
 
 func TestWorkflowMetadataRejectsForeignRepositoryOrCommit(t *testing.T) {
-	for _, scenario := range []string{"identity-changed", "wrong-commit", "forbidden", "missing", "rate-limited", "oversized"} {
-		t.Run(scenario, func(t *testing.T) {
+	for _, tc := range []struct {
+		scenario  string
+		rawStatus int
+		api       bool
+		want      availability.Reason
+	}{
+		{"identity-changed", http.StatusServiceUnavailable, true, availability.FailedReason},
+		{"wrong-commit", http.StatusServiceUnavailable, true, availability.FailedReason},
+		{"forbidden", http.StatusForbidden, true, availability.DeniedReason},
+		{"rate-limited", http.StatusTooManyRequests, true, availability.LimitReason},
+		{"missing", http.StatusNotFound, false, availability.InaccessibleReason},
+		{"oversized", http.StatusOK, false, availability.LimitReason},
+	} {
+		t.Run(tc.scenario, func(t *testing.T) {
 			repositories := 0
-			client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
+			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				status, body := http.StatusOK, "on: workflow_call\njobs: {}\n"
-				switch r.URL.Path {
-				case "/repos/example/workflows":
+				switch r.URL.Host + r.URL.Path {
+				case "raw.githubusercontent.com/example/workflows/" + sha + "/.github/workflows/build.yml":
+					if tc.scenario == "oversized" {
+						body = strings.Repeat("x", maxBody+1)
+					}
+					return respond(r, tc.rawStatus, rawText, body), nil
+				case "cdn.jsdelivr.net/gh/example/workflows@" + sha + "/.github/workflows/build.yml":
+					return respond(r, http.StatusServiceUnavailable, "", ""), nil
+				case "api.github.com/repos/example/workflows":
 					repositories++
 					body = `{"id":42,"full_name":"example/workflows"}`
-					if scenario == "identity-changed" && repositories > 1 {
+					if tc.scenario == "identity-changed" && repositories > 1 {
 						body = `{"id":99,"full_name":"example/workflows"}`
 					}
-				case "/repos/example/workflows/git/commits/" + sha:
+				case "api.github.com/repos/example/workflows/git/commits/" + sha:
 					body = `{"sha":"` + sha + `"}`
-					if scenario == "wrong-commit" {
+					if tc.scenario == "wrong-commit" {
 						body = `{"sha":"` + strings.Repeat("b", 40) + `"}`
 					}
-				case "/repos/example/workflows/contents/.github/workflows/build.yml":
-					switch scenario {
+				case "api.github.com/repos/example/workflows/contents/.github/workflows/build.yml":
+					switch tc.scenario {
 					case "forbidden":
 						status = http.StatusForbidden
-					case "missing":
-						status = http.StatusNotFound
 					case "rate-limited":
 						status = http.StatusTooManyRequests
-					case "oversized":
-						body = strings.Repeat("x", maxBody+1)
 					}
 				default:
 					t.Fatalf("unexpected endpoint %s", r.URL)
 				}
-				return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
-			})})
+				return respond(r, status, "", body), nil
+			}}
+			client, err := New(Options{Transport: hosts})
 			if err != nil {
 				t.Fatal(err)
 			}
 			file, err := client.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yml@"+sha)
-			if err != nil || file.Available() {
-				t.Fatalf("unverified content accepted: %+v %v", file, err)
+			if err != nil || file.Available() || file.Reason() != tc.want || (hosts.count("api.github.com") != 0) != tc.api || (hosts.count("cdn.jsdelivr.net") != 0) != tc.api {
+				t.Fatalf("unverified content accepted: %+v %v requests=%v", file, err, hosts.recorded())
 			}
 		})
+	}
+}
+
+func TestWorkflowUppercaseCommitIsRejectedBeforeNetwork(t *testing.T) {
+	client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		t.Fatalf("uppercase workflow commit reached the network: %s", r.URL)
+		return nil, nil
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := client.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yml@"+strings.Repeat("A", 40))
+	if err != nil || file.Available() || file.Reason() != availability.FailedReason {
+		t.Fatalf("file=%+v error=%v", file, err)
 	}
 }

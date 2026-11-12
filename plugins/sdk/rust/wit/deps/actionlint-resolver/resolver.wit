@@ -5,7 +5,7 @@ package kjanat:actionlint-resolver@0.1.0;
 interface repository-objects {
     record repository {
         host: string,
-        id: u64,
+        id: option<u64>,
         name: string,
         observed-at: string,
     }
@@ -44,7 +44,7 @@ interface reference-resolver {
         tree(string),
     }
     record resolution {
-        repository-id: u64,
+        repository-id: option<u64>,
         repository: string,
         observed-at: string,
         selected-object: string,

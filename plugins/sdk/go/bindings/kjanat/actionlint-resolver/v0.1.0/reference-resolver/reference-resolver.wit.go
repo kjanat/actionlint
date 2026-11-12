@@ -139,7 +139,7 @@ func (v Content) String() string {
 // Resolution represents the record "kjanat:actionlint-resolver/reference-resolver@0.1.0#resolution".
 //
 //	record resolution {
-//		repository-id: u64,
+//		repository-id: option<u64>,
 //		repository: string,
 //		observed-at: string,
 //		selected-object: string,
@@ -147,11 +147,11 @@ func (v Content) String() string {
 //		content: content,
 //	}
 type Resolution struct {
-	_              cm.HostLayout `json:"-"`
-	RepositoryID   uint64        `json:"repository-id"`
-	Repository     string        `json:"repository"`
-	ObservedAt     string        `json:"observed-at"`
-	SelectedObject string        `json:"selected-object"`
-	Selection      SelectedBy    `json:"selection"`
-	Content        Content       `json:"content"`
+	_              cm.HostLayout     `json:"-"`
+	RepositoryID   cm.Option[uint64] `json:"repository-id"`
+	Repository     string            `json:"repository"`
+	ObservedAt     string            `json:"observed-at"`
+	SelectedObject string            `json:"selected-object"`
+	Selection      SelectedBy        `json:"selection"`
+	Content        Content           `json:"content"`
 }

@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 type provider func(context.Context, actions.Reference) (actions.Manifest, error)
@@ -19,7 +20,21 @@ func (p provider) Lookup(ctx context.Context, reference actions.Reference) (acti
 
 func manifest(t *testing.T, repo, commit, directory, ref, source string) actions.Manifest {
 	t.Helper()
-	identity, err := actions.NewIdentity("github.com", repo, 42, commit, directory)
+	return manifestWithID(t, knownRepositoryID(t, 42), repo, commit, directory, ref, source)
+}
+
+func knownRepositoryID(t *testing.T, value uint64) repositoryid.ID {
+	t.Helper()
+	id, err := repositoryid.Known(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func manifestWithID(t *testing.T, id repositoryid.ID, repo, commit, directory, ref, source string) actions.Manifest {
+	t.Helper()
+	identity, err := actions.NewIdentity("github.com", repo, id, commit, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,5 +158,39 @@ func TestInvalidMetadataPreservesDiagnosticCodes(t *testing.T) {
 		if len(problems) != 1 || problems[0].Code != tc.code {
 			t.Fatalf("manifest problem codes: %+v, want %s", problems, tc.code)
 		}
+	}
+}
+
+func TestRepositoryIDsAreComparedOnlyWhenBothAreKnown(t *testing.T) {
+	commit := strings.Repeat("a", 40)
+	for _, test := range []struct {
+		name     string
+		first    repositoryid.ID
+		second   repositoryid.ID
+		repo     string
+		rejected bool
+	}{
+		{name: "unknown then known", second: knownRepositoryID(t, 42), repo: "example/action"},
+		{name: "known then unknown", first: knownRepositoryID(t, 42), repo: "Example/Action"},
+		{name: "both unknown", repo: "example/action"},
+		{name: "same known", first: knownRepositoryID(t, 42), second: knownRepositoryID(t, 42), repo: "example/action"},
+		{name: "different known", first: knownRepositoryID(t, 42), second: knownRepositoryID(t, 43), repo: "example/action", rejected: true},
+		{name: "known ID under another name", first: knownRepositoryID(t, 42), second: knownRepositoryID(t, 42), repo: "example/renamed", rejected: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
+				if reference.Ref() == "v1" {
+					return manifestWithID(t, test.first, "example/action", commit, "", "v1", source), nil
+				}
+				return manifestWithID(t, test.second, test.repo, commit, "", "v2", source), nil
+			}))
+			if _, err := service.Lookup(t.Context(), "example/action@v1"); err != nil {
+				t.Fatal(err)
+			}
+			_, err := service.Lookup(t.Context(), test.repo+"@v2")
+			if test.rejected != (err != nil) {
+				t.Fatalf("second lookup error = %v, want rejected %t", err, test.rejected)
+			}
+		})
 	}
 }

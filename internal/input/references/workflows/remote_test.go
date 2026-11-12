@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -133,5 +134,61 @@ func TestRemoteWorkflowRejectsDifferentContentAtSameCommit(t *testing.T) {
 	}
 	if _, err := remote.Load(t.Context(), "example/workflows/.github/workflows/build.yml@v2"); err == nil || !strings.Contains(err.Error(), "changed content") {
 		t.Fatalf("conflicting immutable data accepted: %v", err)
+	}
+}
+
+func TestLoadCallsFetchesRemoteWorkflowsConcurrently(t *testing.T) {
+	specs := []string{"example/first/.github/workflows/build.yml@v1", "example/second/.github/workflows/build.yml@v1", "./.github/workflows/local.yml"}
+	released := make(chan struct{})
+	var inFlight atomic.Int32
+	cache := NewCache("", nil)
+	cache.SetRemote(NewRemote(workflowProviderFunc(func(_ context.Context, spec string) (RemoteFile, error) {
+		if inFlight.Add(1) == 2 {
+			close(released)
+		}
+		select {
+		case <-released:
+		case <-time.After(5 * time.Second):
+			return RemoteFile{}, errors.New("remote workflows were fetched one after another")
+		}
+		return NewRemoteFile(spec, strings.Repeat("a", 40), []byte("on: workflow_call\njobs: {}\n"))
+	})))
+	if err := cache.LoadCalls(t.Context(), specs); err != nil {
+		t.Fatal(err)
+	}
+	for _, spec := range specs[:2] {
+		if metadata, err := cache.Resolved().LookupForCall(spec); err != nil || metadata == nil {
+			t.Fatalf("%s=%+v,%v", spec, metadata, err)
+		}
+	}
+}
+
+func TestLoadCallsKeepsRemoteWorkflowErrors(t *testing.T) {
+	const spec = "example/workflows/.github/workflows/build.yml@v1"
+	for _, scenario := range []string{"foreign", "canceled"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			var requests atomic.Int32
+			cache := NewCache("", nil)
+			cache.SetRemote(NewRemote(workflowProviderFunc(func(context.Context, string) (RemoteFile, error) {
+				requests.Add(1)
+				if scenario == "canceled" {
+					cancel()
+				}
+				return NewRemoteFile("other/workflows/.github/workflows/build.yml@v1", strings.Repeat("a", 40), []byte("on: workflow_call\njobs: {}\n"))
+			})))
+			err := cache.LoadCalls(ctx, []string{spec})
+			switch scenario {
+			case "foreign":
+				if err == nil || !strings.Contains(err.Error(), "different reference") || requests.Load() != 2 {
+					t.Fatalf("error=%v requests=%d", err, requests.Load())
+				}
+			case "canceled":
+				if !errors.Is(err, context.Canceled) || requests.Load() != 1 {
+					t.Fatalf("error=%v requests=%d", err, requests.Load())
+				}
+			}
+		})
 	}
 }

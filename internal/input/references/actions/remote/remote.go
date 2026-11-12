@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 type repositoryKey struct {
@@ -20,7 +21,7 @@ type repositoryKey struct {
 type (
 	location   struct{ host, name string }
 	contentKey struct {
-		repository        repositoryKey
+		repository        location
 		commit, directory string
 	}
 )
@@ -35,11 +36,11 @@ type Service struct {
 	manifests  map[contentKey]actionmeta.DefinitionInspection
 	content    map[contentKey]string
 	names      map[repositoryKey]string
-	identities map[location]uint64
+	identities map[location]repositoryid.ID
 }
 
 func New(provider actions.Provider) *Service {
-	return &Service{provider: provider, references: make(map[actions.Reference]Result), pending: make(map[actions.Reference]*pendingLookup), manifests: make(map[contentKey]actionmeta.DefinitionInspection), content: make(map[contentKey]string), names: make(map[repositoryKey]string), identities: make(map[location]uint64)}
+	return &Service{provider: provider, references: make(map[actions.Reference]Result), pending: make(map[actions.Reference]*pendingLookup), manifests: make(map[contentKey]actionmeta.DefinitionInspection), content: make(map[contentKey]string), names: make(map[repositoryKey]string), identities: make(map[location]repositoryid.ID)}
 }
 
 type pendingLookup struct {
@@ -171,16 +172,18 @@ func (s *Service) fetch(ctx context.Context, reference actions.Reference) (Resul
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	repository := repositoryKey{host: identity.Host(), id: identity.RepositoryID()}
 	name := location{host: identity.Host(), name: strings.ToLower(identity.Repository())}
-	if previous, exists := s.names[repository]; exists && !strings.EqualFold(previous, identity.Repository()) {
-		return Result{}, errors.New("remote action repository name changed during analysis")
+	if id, known := identity.RepositoryID().Value(); known {
+		repository := repositoryKey{host: identity.Host(), id: id}
+		if previous, exists := s.names[repository]; exists && !strings.EqualFold(previous, identity.Repository()) {
+			return Result{}, errors.New("remote action repository name changed during analysis")
+		}
+		if previous, exists := s.identities[name]; exists && previous.Conflicts(identity.RepositoryID()) {
+			return Result{}, errors.New("remote action repository identity changed during analysis")
+		}
+		s.names[repository], s.identities[name] = identity.Repository(), identity.RepositoryID()
 	}
-	if previous, exists := s.identities[name]; exists && previous != identity.RepositoryID() {
-		return Result{}, errors.New("remote action repository identity changed during analysis")
-	}
-	s.names[repository], s.identities[name] = identity.Repository(), identity.RepositoryID()
-	key := contentKey{repository: repository, commit: identity.Commit(), directory: identity.Directory()}
+	key := contentKey{repository: name, commit: identity.Commit(), directory: identity.Directory()}
 	if previous, exists := s.content[key]; exists {
 		if previous != manifest.Filename()+"\x00"+manifest.Content() {
 			return Result{}, errors.New("remote action provider changed content for one immutable identity")
