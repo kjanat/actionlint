@@ -1,0 +1,36 @@
+<svg width="1200" height="240" viewBox="0 0 1200 240"
+     aria-labelledby="title desc" role="img"
+     xmlns="http://www.w3.org/2000/svg">
+  <title id="title">
+    UPCOMING: actionlint v2
+  </title>
+  <desc id="desc">
+    Try the master preview.
+  </desc>
+  <defs>
+    <pattern id="stripes"
+             width="24" height="24"
+             patternTransform="rotate(-35)" patternUnits="userSpaceOnUse">
+      <rect width="10" height="24" fill="#F07860" />
+    </pattern>
+  </defs>
+  <rect rx="16" width="1200" height="240" fill="#25251F" />
+  <rect x="1" y="1" rx="15" width="1198" height="238" fill="none" stroke="#F07860" stroke-width="2" />
+  <path d="M940 0h244a16 16 0 0 1 16 16v208a16 16 0 0 1-16 16H940Z"
+        fill="url(#stripes)" opacity=".12" />
+  <rect x="38" y="34" rx="3" width="6" height="172" fill="#F07860" />
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="70" y="77" fill="#F5F0E6" font-size="25" font-weight="700" letter-spacing="3">
+      ACTIONLINT V2
+    </text>
+    <text x="65" y="165" fill="#F07860" font-size="92" font-weight="900" letter-spacing="-2">
+      UPCOMING
+    </text>
+    <text x="72" y="205" fill="#F5F0E6" font-size="22">
+      Try the master preview.
+    </text>
+    <text x="940" y="163" fill="#F5F0E6" font-size="112" font-weight="900">
+      v2
+    </text>
+  </g>
+</svg>

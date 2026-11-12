@@ -118,17 +118,17 @@ Ruff or Python executables. For an existing configuration, follow the
 
 ## Preview builds
 
-Run a pull request preview, say PR 343, without installing it in your project:
+Run the latest preview from `master` without installing it in your project:
 
 ```sh
-npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@343 check
+npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@master check
 # Or use a commit SHA:
 npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<commit-sha>' check
 # Or use a branch name:
 npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<branch-name>' check
 ```
 
-Replace `343` with the pull request number or commit SHA.
+You can also replace `master` with a pull request number.
 
 Previews support macOS, Linux and Windows on x64 and ARM64.
 
