@@ -5,6 +5,9 @@
 
 version = "2"
 
+[run]
+allow-serial-runners = true
+
 [linters]
 default = "standard"
 enable  = [
