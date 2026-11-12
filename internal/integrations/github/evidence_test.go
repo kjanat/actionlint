@@ -61,6 +61,7 @@ func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
 
 func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
 	t.Parallel()
+	otherRepositoryID := knownRepositoryID(t, 99)
 	for _, tc := range []struct {
 		name     string
 		change   func(*references.Result)
@@ -68,7 +69,7 @@ func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
 	}{
 		{"version", func(r *references.Result) { r.Version = 2 }, false},
 		{"error", func(r *references.Result) { r.Error = "resolution failed" }, false},
-		{"repository ID", func(r *references.Result) { r.RepositoryID = knownRepositoryID(t, 99) }, true},
+		{"repository ID", func(r *references.Result) { r.RepositoryID = otherRepositoryID }, true},
 		{"repository name", func(r *references.Result) { r.Repository = "another/action" }, false},
 		{"commit", func(r *references.Result) { r.Commit = "short" }, false},
 		{"tree", func(r *references.Result) { r.Tree = sha }, false},

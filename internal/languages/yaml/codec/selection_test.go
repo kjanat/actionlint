@@ -288,35 +288,30 @@ func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
 
 func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 	t.Parallel()
-	root, err := Parse([]byte("value: ok\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	session, cursor, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer session.Close()
-	var target struct {
-		Value Selected `yaml:"value"`
-	}
 	for _, tc := range []struct {
 		name string
-		call func() error
+		call func(Cursor) error
 	}{
-		{"nil target", func() error { return cursor.Select(nil, func(*Selected, Cursor) error { return nil }) }},
-		{"nil visitor", func() error { return cursor.Select(&target, nil) }},
-		{"hook field", func() error {
+		{"nil target", func(cursor Cursor) error {
+			return cursor.Select(nil, func(*Selected, Cursor) error { return nil })
+		}},
+		{"nil visitor", func(cursor Cursor) error {
+			var target struct {
+				Value Selected `yaml:"value"`
+			}
+			return cursor.Select(&target, nil)
+		}},
+		{"hook field", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value selectionHookField `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
-		{"node field", func() error {
+		{"node field", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value *syntax.Node `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
-		{"nested marker", func() error {
+		{"nested marker", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value []Selected `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
@@ -324,7 +319,16 @@ func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if err := tc.call(); err == nil {
+			root, err := Parse([]byte("value: ok\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, cursor, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(session.Close)
+			if err := tc.call(cursor); err == nil {
 				t.Fatal("Select succeeded for invalid call")
 			}
 		})

@@ -143,7 +143,7 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 			if name == "shellcheck" {
 				registration = providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})
 			}
-			_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
+			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
 			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
 				t.Fatalf("foreign engine accepted for %s: %v", name, err)
 			}

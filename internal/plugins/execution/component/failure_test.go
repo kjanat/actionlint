@@ -13,7 +13,7 @@ func TestTimeoutFailurePreservesCause(t *testing.T) {
 	p := &Plugin{path: "timeout.wasm", limits: Limits{Timeout: time.Second}}
 	cause := errors.New("guest interrupted")
 	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
-	defer cancel()
+	t.Cleanup(cancel)
 	for _, test := range []struct {
 		name string
 		ctx  context.Context

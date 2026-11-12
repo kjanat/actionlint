@@ -629,12 +629,19 @@ func TestScopesOnlyBatchCannotDropCompletedScopes(t *testing.T) {
 
 func TestUnpreparedBatchCannotExecute(t *testing.T) {
 	t.Parallel()
-	for name, adapter := range map[string]Analyzer{
-		"fact": FactAnalyzer{Analyzer: partialFactAnalyzer{t: t}},
-		"tool": Tool{Runner: partialTool{t: t}},
+	for name, adapter := range map[string]func(*testing.T) Analyzer{
+		"fact": func(t *testing.T) Analyzer {
+			t.Helper()
+			return FactAnalyzer{Analyzer: partialFactAnalyzer{t: t}}
+		},
+		"tool": func(t *testing.T) Analyzer {
+			t.Helper()
+			return Tool{Runner: partialTool{t: t}}
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			adapter := adapter(t)
 			if _, err := adapter.AnalyzeScripts(t.Context(), Batch{}); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("adapter accepted unprepared batch: %v", err)
 			}

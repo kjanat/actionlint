@@ -10,19 +10,19 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func (f Finding) printPretty(out io.Writer, width int, hyperlinks bool, configPath string) error {
+func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool, configPath string) error {
 	var b strings.Builder
 	d := f.Diagnostic
 	severity := d.Severity
 	if severity == "" {
 		severity = "error"
 	}
-	style := new(color.Color).Add(color.Bold, color.FgRed)
+	style := colorStyle(colored, color.Bold, color.FgRed)
 	switch severity {
 	case "warning", "warn":
-		style = new(color.Color).Add(color.Bold, color.FgYellow)
+		style = colorStyle(colored, color.Bold, color.FgYellow)
 	case "info", "note", "hint":
-		style = new(color.Color).Add(color.Bold, color.FgCyan)
+		style = colorStyle(colored, color.Bold, color.FgCyan)
 	}
 	label := severity
 	if d.Rule != "" {

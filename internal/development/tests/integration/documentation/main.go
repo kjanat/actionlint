@@ -28,7 +28,6 @@ import (
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	render "actionlint.kjanat.dev/v2/internal/output"
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -51,8 +50,6 @@ func readDocumentationFile(path string) ([]byte, error) {
 	}
 	return data, err
 }
-
-func init() { color.NoColor = true }
 
 func Actionlint(src []byte) ([]byte, error) {
 	var out bytes.Buffer

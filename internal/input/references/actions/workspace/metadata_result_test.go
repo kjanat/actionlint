@@ -366,29 +366,31 @@ func TestMetadataOutcomesDistinguishMissingAndUnavailable(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "docker/Dockerfile", "FROM scratch\n")
 	cache := newCapturedActionCache(t, root, nil)
-	resolver := NewResolver(cache, map[string]string{"./generated": "./missing-source"})
+	mappings := map[string]string{"./generated": "./missing-source"}
 	for _, tc := range []struct {
 		name     string
-		lookup   func() (MetadataResult, bool)
+		lookup   func(*Resolver) (MetadataResult, bool)
 		status   MetadataStatus
 		hasError bool
 	}{
-		{"dockerfile", func() (MetadataResult, bool) { return resolver.LookupMetadata("$/docker") }, MetadataDockerfileOnly, false},
-		{"missing", func() (MetadataResult, bool) { return resolver.LookupMetadata("$/missing") }, MetadataMissingManifest, true},
-		{"mapping", func() (MetadataResult, bool) { return resolver.LookupMetadata("$/generated") }, MetadataMappingFailed, true},
-		{"remote", func() (MetadataResult, bool) { return resolver.LookupMetadata("owner/repo@v1") }, MetadataNonLocal, false},
-		{"disabled", func() (MetadataResult, bool) { return NewResolver(nil, nil).LookupMetadata("./action") }, MetadataLookupDisabled, false},
+		{"dockerfile", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("$/docker") }, MetadataDockerfileOnly, false},
+		{"missing", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("$/missing") }, MetadataMissingManifest, true},
+		{"mapping", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("$/generated") }, MetadataMappingFailed, true},
+		{"remote", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("owner/repo@v1") }, MetadataNonLocal, false},
+		{"disabled", func(*Resolver) (MetadataResult, bool) { return NewResolver(nil, nil).LookupMetadata("./action") }, MetadataLookupDisabled, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			resolver := NewResolver(cache, mappings)
 			for range 2 {
-				result, _ := tc.lookup()
+				result, _ := tc.lookup(resolver)
 				if result.Status() != tc.status || (result.Err() != nil) != tc.hasError || result.Metadata() != nil {
 					t.Fatalf("lookup result: %+v", result)
 				}
 			}
 		})
 	}
+	resolver := NewResolver(cache, mappings)
 	resolver.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
 	result, _ := resolver.LookupMetadata("./uncertain")
 	if result.Status() != MetadataPlacementUncertain || result.Err() != nil {

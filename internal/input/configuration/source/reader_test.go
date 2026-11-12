@@ -5,9 +5,10 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -38,24 +39,18 @@ func TestHTTPSReaderPreservesCustomSource(t *testing.T) {
 
 func TestHTTPSReaderRejectsPrivateDestinationBeforeDial(t *testing.T) {
 	t.Parallel()
-	previous := http.DefaultTransport
-	dialed := false
-	transport := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
-		dialed = true
-		return nil, errors.New("unexpected dial")
-	}}
-	http.DefaultTransport = transport
-	t.Cleanup(func() {
-		http.DefaultTransport = previous
-		transport.CloseIdleConnections()
+	var dialed atomic.Bool
+	ctx := httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
+		GetConn:      func(string) { dialed.Store(true) },
+		ConnectStart: func(string, string) { dialed.Store(true) },
 	})
 
-	reader := New(t.Context(), nil)
+	reader := New(ctx, nil)
 	_, err := reader.ReadFile("https://127.0.0.1/base.yaml")
 	if err == nil || !strings.Contains(err.Error(), "public destination addresses") {
 		t.Fatalf("private destination error = %v", err)
 	}
-	if dialed {
+	if dialed.Load() {
 		t.Fatal("private destination reached the transport dialer")
 	}
 }

@@ -29,14 +29,15 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	rootText := Script{Reference: rootRun.Declaration, Text: "root", Occurrence: rootRun}
 	invokedText := Script{Reference: invokedRun.Declaration, Text: "invoked", Occurrence: invokedRun}
 	inputText := Script{Reference: actionInput.Declaration, Text: "input", Occurrence: actionInput}
-	valid := func() Input {
+	valid := func(t *testing.T) Input {
+		t.Helper()
 		return Input{
 			Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph),
 			Scripts: []Script{rootText}, Invoked: []Script{invokedText},
 			ActionInputs: []ActionInput{{Script: inputText, Site: ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 		}
 	}
-	if err := valid().ValidateInvocations(); err != nil {
+	if err := valid(t).ValidateInvocations(); err != nil {
 		t.Fatalf("valid action input rejected: %v", err)
 	}
 	for name, change := range map[string]func(*Input){
@@ -66,7 +67,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			input := valid()
+			input := valid(t)
 			change(&input)
 			if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 				t.Fatalf("invalid collection accepted: %v", err)

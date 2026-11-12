@@ -15,15 +15,17 @@ import (
 
 func TestWorkflowCallOutputContextUsesCapturedCalleeMetadata(t *testing.T) {
 	t.Parallel()
-	root := t.TempDir()
-	if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, output)
-	}
-	directory := filepath.Join(root, ".github", "workflows")
-	if err := os.MkdirAll(directory, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	const callee = `on:
+	fixture := func(t *testing.T) (string, string) {
+		t.Helper()
+		root := t.TempDir()
+		if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
+			t.Fatalf("git init: %v: %s", err, output)
+		}
+		directory := filepath.Join(root, ".github", "workflows")
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		const callee = `on:
   workflow_call:
     outputs:
       artifact:
@@ -35,12 +37,15 @@ jobs:
     outputs: {artifact: artifact}
     steps: [{run: echo ok}]
 `
-	if err := os.WriteFile(filepath.Join(directory, "callee.yml"), []byte(callee), 0o600); err != nil {
-		t.Fatal(err)
+		if err := os.WriteFile(filepath.Join(directory, "callee.yml"), []byte(callee), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return root, directory
 	}
 	for _, output := range []string{"artifact", "missing"} {
 		t.Run(output, func(t *testing.T) {
 			t.Parallel()
+			root, directory := fixture(t)
 			caller := fmt.Sprintf(`on:
   workflow_call:
     outputs:

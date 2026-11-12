@@ -31,7 +31,7 @@ func TestCommandActionInputs(t *testing.T) {
 				args = append(args, "--stdin-filename=action.yml", "-")
 			} else {
 				args = append(args, filepath.Join(dir, "workflow.yml"), filepath.Join(dir, "action.yml"))
-				wantPath = workingDirectoryPath(t, filepath.Join(dir, "action.yml"))
+				wantPath = physicalWorkingDirectoryPath(t, filepath.Join(dir, "action.yml"))
 			}
 			if modern {
 				args = append([]string{"check"}, args...)

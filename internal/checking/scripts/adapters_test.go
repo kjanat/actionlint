@@ -171,12 +171,19 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 					actionPath = ""
 				}
 				content := snapshot.Content()
-				for name, adapter := range map[string]Analyzer{
-					"fact":   FactAnalyzer{Analyzer: sourceFactAnalyzer{t: t, path: factPath}},
-					"native": Tool{Runner: sourceTool{t: t, path: path, actionPath: actionPath, content: content}},
+				for name, adapter := range map[string]func(*testing.T) Analyzer{
+					"fact": func(t *testing.T) Analyzer {
+						t.Helper()
+						return FactAnalyzer{Analyzer: sourceFactAnalyzer{t: t, path: factPath}}
+					},
+					"native": func(t *testing.T) Analyzer {
+						t.Helper()
+						return Tool{Runner: sourceTool{t: t, path: path, actionPath: actionPath, content: content}}
+					},
 				} {
 					t.Run(name, func(t *testing.T) {
 						t.Parallel()
+						adapter := adapter(t)
 						for _, disabled := range []bool{false, true} {
 							findings, err := adapter.AnalyzeScripts(t.Context(), batch)
 							if err != nil || len(findings) != 2 {
@@ -259,12 +266,19 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 	owner := &findingmodel.Owner{Job: "test", Step: &position}
 	origin := &findingmodel.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
-	for name, adapter := range map[string]Analyzer{
-		"fact": FactAnalyzer{Analyzer: partialFactAnalyzer{t: t, failure: failure}},
-		"tool": Tool{Runner: partialTool{t: t, failure: failure}},
+	for name, adapter := range map[string]func(*testing.T) Analyzer{
+		"fact": func(t *testing.T) Analyzer {
+			t.Helper()
+			return FactAnalyzer{Analyzer: partialFactAnalyzer{t: t, failure: failure}}
+		},
+		"tool": func(t *testing.T) Analyzer {
+			t.Helper()
+			return Tool{Runner: partialTool{t: t, failure: failure}}
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			adapter := adapter(t)
 			findings, err := (Service{Analyzers: []Analyzer{adapter}}).Run(t.Context(), batch)
 			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Owner, owner) || !reflect.DeepEqual(findings[0].IgnoreOrigin, origin) || findings[0].Source != nil {
 				t.Fatalf("partial finding lost its independent owner or source: %+v %v", findings, err)

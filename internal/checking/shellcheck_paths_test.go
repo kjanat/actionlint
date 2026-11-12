@@ -335,22 +335,23 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 func TestShellcheckSymlinkDirectoryKeepsScriptAnalysis(t *testing.T) {
 	t.Parallel()
 	command := shellcheckForTest(t)
-	root, outside := t.TempDir(), t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeFixture(t, root, "scripts/value.sh", "VALUE=42\n")
-	writeFixture(t, outside, "value.sh", "VALUE=42\n")
 	for _, tc := range []struct {
-		name, target string
-		wantFinding  bool
+		name        string
+		target      func(root, outside string) string
+		wantFinding bool
 	}{
-		{"internal", filepath.Join(root, "scripts"), false},
-		{"external", outside, false},
+		{"internal", func(root, _ string) string { return filepath.Join(root, "scripts") }, false},
+		{"external", func(_, outside string) string { return outside }, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if err := os.Symlink(tc.target, filepath.Join(root, tc.name)); err != nil {
+			root, outside := t.TempDir(), t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, root, "scripts/value.sh", "VALUE=42\n")
+			writeFixture(t, outside, "value.sh", "VALUE=42\n")
+			if err := os.Symlink(tc.target(root, outside), filepath.Join(root, tc.name)); err != nil {
 				t.Skipf("symlinks are unavailable: %v", err)
 			}
 			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), `on: push
@@ -383,19 +384,26 @@ jobs:
 func TestShellcheckSiblingWorkingDirectory(t *testing.T) {
 	t.Parallel()
 	command := shellcheckForTest(t)
-	parent := t.TempDir()
-	root, shared := filepath.Join(parent, "project"), filepath.Join(parent, "shared")
-	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeFixture(t, shared, "value.sh", "VALUE=42\n")
 	runner := "ubuntu-latest"
 	if runtime.GOOS == "windows" {
 		runner = "windows-latest"
 	}
-	for _, directory := range []string{"../shared", shared} {
-		t.Run(directory, func(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		directory func(shared string) string
+	}{
+		{"relative", func(string) string { return "../shared" }},
+		{"absolute", func(shared string) string { return shared }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			parent := t.TempDir()
+			root, shared := filepath.Join(parent, "project"), filepath.Join(parent, "shared")
+			if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, shared, "value.sh", "VALUE=42\n")
+			directory := tc.directory(shared)
 			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), `on: push
 jobs:
   test:

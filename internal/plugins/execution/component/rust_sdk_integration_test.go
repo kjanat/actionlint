@@ -24,8 +24,7 @@ func TestRustSDKScriptWorlds(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixture := filepath.Join(root, "plugins", "sdk", "rust", "tests", "wit-consumer")
-	target := filepath.Join(root, "target", "wit-consumer")
-	run := func(args ...string) {
+	run := func(t *testing.T, args ...string) {
 		t.Helper()
 		cmd := exec.CommandContext(t.Context(), "cargo", args...)
 		cmd.Dir = fixture
@@ -44,17 +43,18 @@ func TestRustSDKScriptWorlds(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			target := filepath.Join(root, "target", "wit-consumer", tc.name)
 			featureArgs := []string{}
 			if tc.features != "" {
 				featureArgs = []string{"--features", tc.features}
 			}
 			build := append([]string{"build", "--locked", "--target", "wasm32-wasip2", "--target-dir", target, "--lib", "-j", "1"}, featureArgs...)
-			run(build...)
+			run(t, build...)
 			input := filepath.Join(target, "wasm32-wasip2", "debug", "wit_consumer_test.wasm")
 			output := filepath.Join(t.TempDir(), "distribution")
 			packageArgs := append([]string{"run", "--locked", "--target-dir", target, "--bin", "package", "-j", "1"}, featureArgs...)
 			packageArgs = append(packageArgs, "--", input, output)
-			run(packageArgs...)
+			run(t, packageArgs...)
 			p, err := Load(t.Context(), filepath.Join(output, "plugin.wasm"), Options{})
 			if err != nil {
 				t.Fatal(err)

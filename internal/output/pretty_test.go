@@ -1,6 +1,7 @@
 package output
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -8,7 +9,6 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -64,7 +64,7 @@ func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
 	var out strings.Builder
 	f := FindingOf(results.Diagnostic{Message: message}, nil)
-	if err := f.printPretty(&out, 40, true, ""); err != nil {
+	if err := f.printPretty(&out, 40, true, false, ""); err != nil {
 		t.Fatal(err)
 	}
 	osc := regexp.MustCompile(`\x1b\]8;;[^\x1b\a]*\x1b\\`)
@@ -216,7 +216,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 		Rule: "long-rule", Message: strings.Repeat("界", 100) + "\nnext paragraph",
 		Path: strings.Repeat("path/", 30), Help: "escape\x1b[31m must not execute",
 	}, nil)
-	if err := f.printPretty(&out, 40, false, "lint.rules.suspicious."+strings.Repeat("long-rule", 10)); err != nil {
+	if err := f.printPretty(&out, 40, false, false, "lint.rules.suspicious."+strings.Repeat("long-rule", 10)); err != nil {
 		t.Fatal(err)
 	}
 	for line := range strings.SplitSeq(out.String(), "\n") {
@@ -230,18 +230,63 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 }
 
 func TestPrettyColorAndUnavailableSource(t *testing.T) {
-	previous := color.NoColor
-	color.NoColor = false
-	t.Cleanup(func() { color.NoColor = previous })
-	var out strings.Builder
-	f := FindingOf(results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: sourcepos.Position{Line: 8, Column: 4}}, nil)
-	if err := f.printPretty(&out, 80, false, ""); err != nil {
+	t.Parallel()
+	d := results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: sourcepos.Position{Line: 8, Column: 4}}
+	renderer, err := New(FormatPretty, "", false, testVersion, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "\x1b[") {
-		t.Fatal("missing color")
+	renderer.SetColor(true)
+	var out strings.Builder
+	if err := renderer.Render(&out, Result{Findings: []Finding{FindingOf(d, nil)}}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "\x1b[1;33mwarning\x1b[22;0m\n") {
+		t.Fatalf("missing color: %q", out.String())
 	}
 	if strings.Contains(out.String(), " |") {
 		t.Fatal("invented unavailable source")
+	}
+}
+
+func TestRendererColorMode(t *testing.T) {
+	t.Parallel()
+	d := results.Diagnostic{
+		Severity: "warning", Rule: "expression-reference", Message: "unknown variable",
+		Path: "ci.yml", Start: sourcepos.Position{Line: 1, Column: 3}, End: sourcepos.Position{Line: 1, Column: 6},
+	}
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	for _, format := range []Format{FormatPretty, FormatText, FormatOneline} {
+		for _, colored := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/color=%t", format, colored), func(t *testing.T) {
+				t.Parallel()
+				plain, err := New(format, "", false, testVersion, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				renderer, err := New(format, "", false, testVersion, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				renderer.SetColor(colored)
+				result := Result{Findings: []Finding{FindingOf(d, []byte("  bad"))}}
+				var want, got strings.Builder
+				if err := plain.Render(&want, result); err != nil {
+					t.Fatal(err)
+				}
+				if err := renderer.Render(&got, result); err != nil {
+					t.Fatal(err)
+				}
+				if ansi.MatchString(want.String()) {
+					t.Fatalf("renderer without a color mode wrote color: %q", want.String())
+				}
+				if ansi.MatchString(got.String()) != colored {
+					t.Fatalf("color=%t: %q", colored, got.String())
+				}
+				if stripped := ansi.ReplaceAllString(got.String(), ""); stripped != want.String() {
+					t.Fatalf("color changed the text:\n%q\nwant:\n%q", stripped, want.String())
+				}
+			})
+		}
 	}
 }

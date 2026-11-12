@@ -9,7 +9,6 @@ import (
 
 func TestExecutableBitNumericFormatCheckout(t *testing.T) {
 	t.Parallel()
-	root, _ := executableFixture(t)
 	for _, tc := range []struct {
 		argument string
 		want     int
@@ -23,6 +22,7 @@ func TestExecutableBitNumericFormatCheckout(t *testing.T) {
 	} {
 		t.Run(tc.argument, func(t *testing.T) {
 			t.Parallel()
+			root, _ := executableFixture(t)
 			workflow := `on: push
 jobs:
   test:

@@ -13,21 +13,25 @@ import (
 
 func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
 	t.Parallel()
-	root, _ := executableFixture(t)
-	metadata := writeFixture(t, root, "local/action.yml", `name: local
+	fixture := func(t *testing.T) (string, string) {
+		t.Helper()
+		root, _ := executableFixture(t)
+		metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
   steps:
     - run: missing shell
 `)
-	writeFixture(t, root, "refresh/action.yml", `name: refresh
+		writeFixture(t, root, "refresh/action.yml", `name: refresh
 description: test
 runs:
   using: composite
   steps:
     - uses: actions/checkout@v6
 `)
+		return root, metadata
+	}
 	for _, scope := range []string{"workflow", "job", "step", "composite"} {
 		for _, tc := range []struct {
 			name, environment string
@@ -40,6 +44,7 @@ runs:
 		} {
 			t.Run(scope+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
+				root, metadata := fixture(t)
 				workflowEnv, jobEnv, stepEnv := "", "", ""
 				call := "actions/checkout@v6"
 				switch scope {

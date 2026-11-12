@@ -11,16 +11,16 @@ import (
 
 func TestLiftAnalysisPreservesValidSiblings(t *testing.T) {
 	t.Parallel()
-	values := wacogo.NewValListOf[wacogo.Val](
-		mixedDiagnostic("before", sourcepos.Position{Line: 1, Column: 1}, sourcepos.Position{Line: 1, Column: 2}),
-		mixedDiagnostic("zero", sourcepos.Position{}, sourcepos.Position{Line: 2, Column: 2}),
-		mixedDiagnostic("between", sourcepos.Position{Line: 3, Column: 1}, sourcepos.Position{Line: 3, Column: 2}),
-		mixedDiagnostic("reversed", sourcepos.Position{Line: 4, Column: 8}, sourcepos.Position{Line: 4, Column: 2}),
-		mixedDiagnostic("after", sourcepos.Position{Line: 5, Column: 1}, sourcepos.Position{Line: 5, Column: 2}),
-	)
 	for _, independentError := range []bool{false, true} {
 		t.Run(strconv.FormatBool(independentError), func(t *testing.T) {
 			t.Parallel()
+			values := wacogo.NewValListOf[wacogo.Val](
+				mixedDiagnostic("before", sourcepos.Position{Line: 1, Column: 1}, sourcepos.Position{Line: 1, Column: 2}),
+				mixedDiagnostic("zero", sourcepos.Position{}, sourcepos.Position{Line: 2, Column: 2}),
+				mixedDiagnostic("between", sourcepos.Position{Line: 3, Column: 1}, sourcepos.Position{Line: 3, Column: 2}),
+				mixedDiagnostic("reversed", sourcepos.Position{Line: 4, Column: 8}, sourcepos.Position{Line: 4, Column: 2}),
+				mixedDiagnostic("after", sourcepos.Position{Line: 5, Column: 1}, sourcepos.Position{Line: 5, Column: 2}),
+			)
 			completion := wacogo.ValOptionNone()
 			if independentError {
 				completion = wacogo.ValOptionSome(wacogo.ValString("analysis incomplete"))

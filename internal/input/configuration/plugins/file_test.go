@@ -305,19 +305,19 @@ func TestPluginManifestRefusesSymlink(t *testing.T) {
 
 func TestPluginManifestDirectoryAlias(t *testing.T) {
 	t.Parallel()
-	physical, err := filepath.EvalSymlinks(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	alias := filepath.Join(t.TempDir(), "alias")
-	if err := os.Symlink(physical, alias); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-	fixturefiles.WriteText(t, filepath.Join(physical, "base.yml"), "plugins: [base/plugin]\n")
-	fixturefiles.WriteText(t, filepath.Join(physical, "config.yml"), "extends: [base.yml]\n")
 	for _, name := range []string{"config.yml", filepath.Join("new", "config.yml")} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			physical, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			alias := filepath.Join(t.TempDir(), "alias")
+			if err := os.Symlink(physical, alias); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			fixturefiles.WriteText(t, filepath.Join(physical, "base.yml"), "plugins: [base/plugin]\n")
+			fixturefiles.WriteText(t, filepath.Join(physical, "config.yml"), "extends: [base.yml]\n")
 			manifest, err := Open(t.Context(), config.RuleSet{}, filepath.Join(alias, name))
 			if err != nil {
 				t.Fatal(err)

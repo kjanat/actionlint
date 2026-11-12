@@ -80,32 +80,32 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name string
-		call func(*repositoryObjects) error
+		call func(context.Context, *repositoryObjects) error
 	}{
-		{"outside resolve", func(objects *repositoryObjects) error {
+		{"outside resolve", func(ctx context.Context, objects *repositoryObjects) error {
 			objects.active = false
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
 			return err
 		}},
-		{"different repository", func(objects *repositoryObjects) error {
-			_, err := objects.open(t.Context(), "other/repo", repositorybind.SomeU64(7))
+		{"different repository", func(ctx context.Context, objects *repositoryObjects) error {
+			_, err := objects.open(ctx, "other/repo", repositorybind.SomeU64(7))
 			return err
 		}},
-		{"different identity", func(objects *repositoryObjects) error {
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(8))
+		{"different identity", func(ctx context.Context, objects *repositoryObjects) error {
+			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(8))
 			return err
 		}},
-		{"missing identity", func(objects *repositoryObjects) error {
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.NoneU64())
+		{"missing identity", func(ctx context.Context, objects *repositoryObjects) error {
+			_, err := objects.open(ctx, "owner/repo", repositorybind.NoneU64())
 			return err
 		}},
-		{"unexpected identity", func(objects *repositoryObjects) error {
+		{"unexpected identity", func(ctx context.Context, objects *repositoryObjects) error {
 			objects.request.ExpectedRepositoryID = repositoryid.ID{}
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
 			return err
 		}},
-		{"reference before open", func(objects *repositoryObjects) error {
-			value, err := objects.GetRef(t.Context(), "refs/tags/v1")
+		{"reference before open", func(ctx context.Context, objects *repositoryObjects) error {
+			value, err := objects.GetRef(ctx, "refs/tags/v1")
 			if err != nil {
 				return err
 			}
@@ -114,8 +114,8 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			}
 			return nil
 		}},
-		{"object before open", func(objects *repositoryObjects) error {
-			value, err := objects.GetObject(t.Context(), strings.Repeat("a", 40))
+		{"object before open", func(ctx context.Context, objects *repositoryObjects) error {
+			value, err := objects.GetObject(ctx, strings.Repeat("a", 40))
 			if err != nil {
 				return err
 			}
@@ -124,12 +124,12 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			}
 			return nil
 		}},
-		{"finish before open", func(objects *repositoryObjects) error { return objects.finish(t.Context()) }},
+		{"finish before open", func(ctx context.Context, objects *repositoryObjects) error { return objects.finish(ctx) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			objects, access, session := newResolverRepositoryTest(t)
-			if err := tc.call(objects); err == nil {
+			if err := tc.call(t.Context(), objects); err == nil {
 				t.Fatal("misuse succeeded")
 			}
 			if len(access.requests) != 0 || session.lookups != 0 || session.finishes != 0 {

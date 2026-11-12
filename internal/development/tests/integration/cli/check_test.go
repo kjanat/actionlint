@@ -23,7 +23,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -147,8 +146,6 @@ func TestReportMayReplaceUnusedStdinFilename(t *testing.T) {
 
 func TestModernRendererAndUsageErrors(t *testing.T) {
 	t.Chdir(t.TempDir())
-	oldColor := color.NoColor
-	t.Cleanup(func() { color.NoColor = oldColor })
 	for _, format := range []string{"text", "oneline", "json", "jsonl", "github", "sarif"} {
 		var errout bytes.Buffer
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &errout}

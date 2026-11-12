@@ -15,11 +15,15 @@ func TestExecutableBitUnixColonPaths(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix colon paths cannot be represented on the Windows host")
 	}
-	root, git := executableFixture(t)
-	for _, name := range []string{"scripts/a:b.sh", "a:debug/bad.sh"} {
-		writeFixture(t, root, name, "#!/bin/sh\necho script\n")
-		git("add", "--", name)
-		git("update-index", "--chmod=-x", "--", name)
+	fixture := func(t *testing.T) string {
+		t.Helper()
+		root, git := executableFixture(t)
+		for _, name := range []string{"scripts/a:b.sh", "a:debug/bad.sh"} {
+			writeFixture(t, root, name, "#!/bin/sh\necho script\n")
+			git("add", "--", name)
+			git("update-index", "--chmod=-x", "--", name)
+		}
+		return root
 	}
 	for _, tc := range []struct{ name, checkout, step, want string }{
 		{"script", "", "run: ./scripts/a:b.sh", "scripts/a:b.sh"},
@@ -29,6 +33,7 @@ func TestExecutableBitUnixColonPaths(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			root := fixture(t)
 			workflow := `on: push
 jobs:
   test:
@@ -60,7 +65,6 @@ jobs:
 
 func TestExecutableBitRuntimeInputs(t *testing.T) {
 	t.Parallel()
-	root, _ := executableFixture(t)
 	for _, tc := range []struct {
 		name, workflow, job, checkout, step string
 		want                                bool
@@ -133,6 +137,7 @@ env: {GIT_EXEC_PATH: helpers}
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			root, _ := executableFixture(t)
 			indent := func(value, prefix string) string {
 				if value == "" {
 					return ""

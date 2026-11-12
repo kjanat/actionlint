@@ -154,12 +154,13 @@ func TestResolverRejectsInvalidTagChains(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name     string
-		target   func(string) (string, string)
+		target   func(*testing.T, string) (string, string)
 		expected string
 	}{
-		{"cycle", func(id string) (string, string) { return id, "tag" }, "cycle"},
-		{"type mismatch", func(string) (string, string) { return strings.Repeat("b", 40), "commit" }, "type does not match"},
-		{"depth limit", func(id string) (string, string) {
+		{"cycle", func(_ *testing.T, id string) (string, string) { return id, "tag" }, "cycle"},
+		{"type mismatch", func(*testing.T, string) (string, string) { return strings.Repeat("b", 40), "commit" }, "type does not match"},
+		{"depth limit", func(t *testing.T, id string) (string, string) {
+			t.Helper()
 			var n uint64
 			_, err := fmt.Sscanf(id, "%x", &n)
 			if err != nil {
@@ -190,7 +191,7 @@ func TestResolverRejectsInvalidTagChains(t *testing.T) {
 					if tc.name == "type mismatch" && id == strings.Repeat("b", 40) {
 						status, body = 404, ""
 					} else {
-						target, kind := tc.target(id)
+						target, kind := tc.target(t, id)
 						body = fmt.Sprintf(`{"sha":%q,"object":{"sha":%q,"type":%q}}`, id, target, kind)
 					}
 				default:

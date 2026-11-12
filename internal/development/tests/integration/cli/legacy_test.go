@@ -13,14 +13,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestCommandCompatibility(t *testing.T) {
-	oldColor := color.NoColor
-	t.Cleanup(func() { color.NoColor = oldColor })
-	color.NoColor = true
 	repoDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

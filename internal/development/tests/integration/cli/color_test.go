@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	"github.com/fatih/color"
 )
 
 func TestGitHubActionsColor(t *testing.T) {
@@ -40,9 +39,6 @@ func TestGitHubActionsColor(t *testing.T) {
 			for _, modern := range []bool{false, true} {
 				for _, help := range []bool{false, true} {
 					t.Run(fmt.Sprintf("modern=%t/help=%t", modern, help), func(t *testing.T) {
-						previous := color.NoColor
-						t.Cleanup(func() { color.NoColor = previous })
-						color.NoColor = true
 						args := append([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, tc.flags...)
 						if modern {
 							args = append(args, "check")
@@ -76,9 +72,6 @@ func TestGitHubActionsColor(t *testing.T) {
 func TestGitHubActionsPlainOutput(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("NO_COLOR", "")
-	previous := color.NoColor
-	t.Cleanup(func() { color.NoColor = previous })
-	color.NoColor = true
 	for _, args := range [][]string{
 		{"--version"},
 		{"version"},
@@ -112,9 +105,6 @@ func TestGitHubActionsOutputDestination(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("FORCE_HYPERLINKS", "")
-	previous := color.NoColor
-	t.Cleanup(func() { color.NoColor = previous })
-	color.NoColor = true
 	for _, args := range [][]string{{"--help"}, {"-"}, {"check", "--help"}, {"check", "--output-format=oneline", "-"}} {
 		for _, pipe := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/pipe=%t", strings.Join(args, " "), pipe), func(t *testing.T) {

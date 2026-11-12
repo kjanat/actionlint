@@ -208,6 +208,40 @@ func TestWorkspaceRel(t *testing.T) {
 	}
 }
 
+func TestWorkspaceRelThroughWorkspaceAlias(t *testing.T) {
+	t.Parallel()
+	workspace := resolved(t, t.TempDir())
+	outside := resolved(t, t.TempDir())
+	aliases := t.TempDir()
+	alias, other := filepath.Join(aliases, "workspace"), filepath.Join(aliases, "outside")
+	for target, link := range map[string]string{workspace: alias, outside: other} {
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("symlinks are unavailable: %v", err)
+		}
+	}
+	root := openRoot(t, workspace)
+	for _, tc := range []struct{ value, want string }{
+		{alias, "."},
+		{filepath.Join(alias, "results.json"), "results.json"},
+		{filepath.Join(alias, "missing", "results.json"), filepath.Join("missing", "results.json")},
+	} {
+		got, err := workspaceRel(workspace, tc.value, "output-file")
+		if err != nil || got != tc.want {
+			t.Errorf("%q: got %q, %v; want %q", tc.value, got, err, tc.want)
+		}
+	}
+	if got, err := resolveOutputFile(root, workspace, filepath.Join(alias, "results.json")); err != nil || got != "results.json" {
+		t.Errorf("output file through the workspace alias: %q, %v", got, err)
+	}
+	for _, value := range []string{filepath.Join(other, "results.json"), filepath.Join(alias, "..", "outside", "results.json")} {
+		_, err := workspaceRel(workspace, value, "output-file")
+		want := "Input 'output-file' must stay within the repository workspace"
+		if got := isInputError(t, err).Error(); got != want {
+			t.Errorf("%q: wanted %q but got %q", value, want, got)
+		}
+	}
+}
+
 func TestWorkingDirectory(t *testing.T) {
 	t.Parallel()
 	workspace := resolved(t, t.TempDir())

@@ -1777,7 +1777,7 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 				t.Run(input, func(t *testing.T) {
 					t.Parallel()
 					c := NewChecker(contextspec.DefaultExpressionScope(), nil)
-					c.vars = types
+					c.vars = maps.Clone(types)
 					names := make([]string, 0, len(types))
 					for name := range types {
 						names = append(names, name)

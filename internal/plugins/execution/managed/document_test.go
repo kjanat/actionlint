@@ -65,13 +65,9 @@ func (g *sourceProbeGuest) CheckDocument(_ context.Context, input checkinputs.In
 
 func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) {
 	t.Parallel()
-	workspace, outside := t.TempDir(), t.TempDir()
+	outside := t.TempDir()
 	secret := filepath.Join(outside, "secret.txt")
 	if err := os.WriteFile(secret, []byte("private-host-marker"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	alias := filepath.Join(workspace, "escape")
-	if err := os.Symlink(outside, alias); err != nil {
 		t.Fatal(err)
 	}
 	filesystemRoot := filepath.VolumeName(outside) + string(os.PathSeparator)
@@ -79,20 +75,30 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct{ name, directory, file string }{
-		{"absolute directory", outside, "secret.txt"},
-		{"filesystem root", filesystemRoot, filepath.ToSlash(rootFile)},
-		{"configured symlink", alias, "secret.txt"},
+	for _, tc := range []struct {
+		name      string
+		directory func(alias string) string
+		file      string
+	}{
+		{"absolute directory", func(string) string { return outside }, "secret.txt"},
+		{"filesystem root", func(string) string { return filesystemRoot }, filepath.ToSlash(rootFile)},
+		{"configured symlink", func(alias string) string { return alias }, "secret.txt"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			guest := &sourceProbeGuest{directory: tc.directory, file: tc.file}
+			workspace := t.TempDir()
+			alias := filepath.Join(workspace, "escape")
+			if err := os.Symlink(outside, alias); err != nil {
+				t.Fatal(err)
+			}
+			directory := tc.directory(alias)
+			guest := &sourceProbeGuest{directory: directory, file: tc.file}
 			registration, err := shellcheckRegistration(scripts.Selection{Command: "shellcheck"}).WithAnalyzer(guest)
 			if err != nil {
 				t.Fatal(err)
 			}
 			configPath := filepath.Join(workspace, "actionlint.yaml")
-			if err := os.WriteFile(configPath, []byte("tools: {shellcheck: {config: {external-sources: true, source-path: ["+strconv.Quote(tc.directory)+"]}}}"), 0o600); err != nil {
+			if err := os.WriteFile(configPath, []byte("tools: {shellcheck: {config: {external-sources: true, source-path: ["+strconv.Quote(directory)+"]}}}"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
@@ -115,21 +121,28 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 
 func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 	t.Parallel()
-	workspace := t.TempDir()
-	sources := filepath.Join(workspace, "sources")
-	if err := os.Mkdir(sources, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(sources, "value.txt"), []byte("workspace-source-marker"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	alias := filepath.Join(workspace, "alias")
-	if err := os.Symlink(sources, alias); err != nil {
-		t.Fatal(err)
-	}
-	for _, directory := range []string{"sources", alias} {
-		t.Run(directory, func(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		directory func(alias string) string
+	}{
+		{"relative directory", func(string) string { return "sources" }},
+		{"absolute symlink", func(alias string) string { return alias }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			workspace := t.TempDir()
+			sources := filepath.Join(workspace, "sources")
+			if err := os.Mkdir(sources, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(sources, "value.txt"), []byte("workspace-source-marker"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			alias := filepath.Join(workspace, "alias")
+			if err := os.Symlink(sources, alias); err != nil {
+				t.Fatal(err)
+			}
+			directory := tc.directory(alias)
 			guest := &sourceProbeGuest{directory: directory, file: "value.txt"}
 			registration, err := shellcheckRegistration(scripts.Selection{Command: "shellcheck"}).WithAnalyzer(guest)
 			if err != nil {

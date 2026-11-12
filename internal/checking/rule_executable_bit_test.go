@@ -17,16 +17,20 @@ import (
 
 func TestExecutableBitWorkflows(t *testing.T) {
 	t.Parallel()
-	root, git := executableFixture(t)
-	link := writeFixture(t, root, "link", "bad.sh")
-	object, err := gitclient.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	git("update-index", "--add", "--cacheinfo", "120000", strings.TrimSpace(string(object)), "link")
-	index, err := os.Stat(filepath.Join(root, ".git", "index"))
-	if err != nil {
-		t.Fatal(err)
+	fixture := func(t *testing.T) (string, os.FileInfo) {
+		t.Helper()
+		root, git := executableFixture(t)
+		link := writeFixture(t, root, "link", "bad.sh")
+		object, err := gitclient.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		git("update-index", "--add", "--cacheinfo", "120000", strings.TrimSpace(string(object)), "link")
+		index, err := os.Stat(filepath.Join(root, ".git", "index"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return root, index
 	}
 	for _, tc := range []struct {
 		name, runner, defaults, steps string
@@ -520,6 +524,7 @@ func TestExecutableBitWorkflows(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			root, index := fixture(t)
 			job := `on: push
 jobs:
   test:
@@ -575,9 +580,6 @@ jobs:
 
 func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
 	t.Parallel()
-	root, _ := executableFixture(t)
-	session := checking.Options{WorkingDir: root}
-
 	for _, tc := range []struct {
 		event string
 		want  bool
@@ -590,6 +592,8 @@ func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
 	} {
 		t.Run(tc.event, func(t *testing.T) {
 			t.Parallel()
+			root, _ := executableFixture(t)
+			session := checking.Options{WorkingDir: root}
 			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), "on: "+tc.event+`
 jobs:
   test:
@@ -612,9 +616,6 @@ jobs:
 
 func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 	t.Parallel()
-	root, _ := executableFixture(t)
-	session := checking.Options{WorkingDir: root}
-
 	for _, tc := range []struct {
 		env  string
 		want bool
@@ -635,6 +636,8 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 	} {
 		t.Run(tc.env, func(t *testing.T) {
 			t.Parallel()
+			root, _ := executableFixture(t)
+			session := checking.Options{WorkingDir: root}
 			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), "on: push\nenv: {"+tc.env+`}
 jobs:
   test:
@@ -681,9 +684,6 @@ jobs:
 
 func TestExecutableBitCheckout(t *testing.T) {
 	t.Parallel()
-	root, _ := executableFixture(t)
-	session := checking.Options{WorkingDir: root}
-
 	for _, tc := range []struct {
 		name, with, directory string
 		want                  bool
@@ -713,6 +713,8 @@ func TestExecutableBitCheckout(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			root, _ := executableFixture(t)
+			session := checking.Options{WorkingDir: root}
 			workflow := `on: push
 jobs:
   test:

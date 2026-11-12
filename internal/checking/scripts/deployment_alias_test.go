@@ -110,12 +110,19 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 		}
 		byCall[call.Site()] = want[i]
 	}
-	for name, adapter := range map[string]Analyzer{
-		"fact":   FactAnalyzer{Analyzer: invocationSourceAnalyzer{t: t, paths: byCall}},
-		"native": Tool{Runner: deploymentAliasTool{t: t, paths: want, content: content}},
+	for name, adapter := range map[string]func(*testing.T) Analyzer{
+		"fact": func(t *testing.T) Analyzer {
+			t.Helper()
+			return FactAnalyzer{Analyzer: invocationSourceAnalyzer{t: t, paths: byCall}}
+		},
+		"native": func(t *testing.T) Analyzer {
+			t.Helper()
+			return Tool{Runner: deploymentAliasTool{t: t, paths: want, content: content}}
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			adapter := adapter(t)
 			findings, err := adapter.AnalyzeScripts(t.Context(), batch)
 			if err != nil || len(findings) != len(want) {
 				t.Fatalf("alias findings: %v %v", findings, err)

@@ -13,13 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
-
-func init() {
-	color.NoColor = true
-}
 
 type testErrorWriter struct{}
 

@@ -23,14 +23,6 @@ import (
 func TestScriptDescriptorShellValidation(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
-	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
-	if err != nil {
-		t.Fatal(err)
-	}
-	original, err := liftRecord(value, "script descriptor")
-	if err != nil {
-		t.Fatal(err)
-	}
 	large := make([]wacogo.Val, 10000)
 	for i := range large {
 		large[i] = wacogo.ValString(fmt.Sprintf("shell-%d", i))
@@ -54,6 +46,14 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			described, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+			if err != nil {
+				t.Fatal(err)
+			}
+			original, err := liftRecord(described, "script descriptor")
+			if err != nil {
+				t.Fatal(err)
+			}
 			value := wacogo.NewValRecord(field("id", original.Field("id")), field("version", original.Field("version")),
 				field("name", original.Field("name")), field("engine", original.Field("engine")), field("engine-version", original.Field("engine-version")),
 				field("shells", wacogo.NewValListOf(tc.shells...)), field("rule", original.Field("rule")))
@@ -75,14 +75,6 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
-	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
-	if err != nil {
-		t.Fatal(err)
-	}
-	original, err := liftRecord(value, "script descriptor")
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, test := range []struct {
 		name  string
 		valid bool
@@ -99,6 +91,14 @@ func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+			described, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+			if err != nil {
+				t.Fatal(err)
+			}
+			original, err := liftRecord(described, "script descriptor")
+			if err != nil {
+				t.Fatal(err)
+			}
 			descriptor, err := scriptDescriptorWithRuleName(original, test.name)
 			if err != nil {
 				t.Fatal(err)
