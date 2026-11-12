@@ -47,6 +47,7 @@ func (p mirrorProvider) LookupWorkflow(context.Context, string) (workflows.Remot
 }
 
 func TestMetadataMirrorConfigurationSeparatesLookupCaches(t *testing.T) {
+	t.Parallel()
 	requests := &mirrorRequests{actions: map[references.MirrorAccess]int{}, workflows: map[references.MirrorAccess]int{}}
 	provider := mirrorProvider{requests: requests}
 	request := analysisRequest{WorkingDir: t.TempDir(), RemoteActions: provider, RemoteWorkflows: provider}

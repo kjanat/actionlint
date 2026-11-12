@@ -30,6 +30,7 @@ import (
 const shellcheckSchemaPath = "schemas/shellcheck/0.11.0.schema.json"
 
 func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
+	t.Parallel()
 	var root any
 	if err := json.Unmarshal(generatedSchema(t), &root); err != nil {
 		t.Fatal(err)

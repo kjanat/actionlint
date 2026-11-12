@@ -10,6 +10,7 @@ import (
 )
 
 func TestMetadataMirrorsRespectVisibility(t *testing.T) {
+	t.Parallel()
 	for _, policy := range []struct {
 		name   string
 		access references.MirrorAccess
@@ -26,6 +27,7 @@ func TestMetadataMirrorsRespectVisibility(t *testing.T) {
 		} {
 			for _, kind := range []string{"action", "workflow"} {
 				t.Run(policy.name+"/"+visibility.name+"/"+kind, func(t *testing.T) {
+					t.Parallel()
 					hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, rawText, ""), reply(http.StatusOK, jsDelivrYAML, actionSource))
 					if kind == "workflow" {
 						actionHandler := hosts.handle
@@ -67,8 +69,10 @@ func TestMetadataMirrorsRespectVisibility(t *testing.T) {
 }
 
 func TestOnlyAnonymousGitListingEstablishesPublicVisibility(t *testing.T) {
+	t.Parallel()
 	for _, token := range []string{"", "fixture-token"} {
 		t.Run("token="+token, func(t *testing.T) {
+			t.Parallel()
 			client, err := New(Options{Token: token, Transport: transport(reply(http.StatusOK, gitwire.ContentType, actionListing()))})
 			if err != nil {
 				t.Fatal(err)
@@ -84,8 +88,10 @@ func TestOnlyAnonymousGitListingEstablishesPublicVisibility(t *testing.T) {
 }
 
 func TestRawFailuresWithUnknownVisibilityUseREST(t *testing.T) {
+	t.Parallel()
 	for _, failure := range environmentFailures() {
 		t.Run(failure.name, func(t *testing.T) {
+			t.Parallel()
 			hosts := mirrorHosts(t, failure.respond, func(r *http.Request) (*http.Response, error) {
 				t.Fatalf("unknown repository disclosed to %s", r.URL)
 				return nil, nil
@@ -103,6 +109,7 @@ func TestRawFailuresWithUnknownVisibilityUseREST(t *testing.T) {
 }
 
 func TestRepositoryVisibilityComesFromGitHubResponses(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, field string
 		allowed     bool
@@ -112,6 +119,7 @@ func TestRepositoryVisibilityComesFromGitHubResponses(t *testing.T) {
 		{"omitted", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			client, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 				return respond(r, http.StatusOK, "application/json", `{"id":42,"full_name":"example/action"`+tc.field+`}`), nil
 			})})
@@ -129,6 +137,7 @@ func TestRepositoryVisibilityComesFromGitHubResponses(t *testing.T) {
 }
 
 func TestPrivateRepositoryCannotBeReclassifiedByAnonymousSuccess(t *testing.T) {
+	t.Parallel()
 	client, err := New(Options{Mirrors: references.AllowUnknownMirrors})
 	if err != nil {
 		t.Fatal(err)
