@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -60,6 +62,26 @@ func TestDefaultOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
 	manifest, err := client.Lookup(t.Context(), request)
 	if err != nil || !manifest.Available() || manifest.Content() != actionSource || manifest.Identity().RepositoryID() != 42 || requests != 4 {
 		t.Fatalf("manifest=%v error=%v requests=%d", manifest, err, requests)
+	}
+	online, err := New(Options{CacheDir: cache, Resolver: func() references.Resolver {
+		t.Fatal("cached commit reached the resolver")
+		return nil
+	}, Transport: transport(func(r *http.Request) (*http.Response, error) {
+		t.Fatalf("cached commit made a network request: %s", r.URL)
+		return nil, errors.New("unexpected network request")
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, tracker := accounting.TrackRequests(t.Context())
+	for range 2 {
+		cached, err := online.Lookup(ctx, request)
+		if err != nil || !cached.Available() || cached.Content() != actionSource || cached.Identity() != manifest.Identity() {
+			t.Fatalf("cached=%v error=%v", cached, err)
+		}
+	}
+	if requests := tracker.Statistics().Requests; len(requests) != 0 {
+		t.Fatalf("warm-cache requests: %+v", requests)
 	}
 	offline, err := New(Options{Mode: Offline, CacheDir: cache, Transport: transport(func(*http.Request) (*http.Response, error) {
 		t.Fatal("offline network")

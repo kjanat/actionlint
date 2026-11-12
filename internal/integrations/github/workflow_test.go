@@ -50,6 +50,10 @@ func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
 	if err != nil || !file.Available() || file.Commit() != sha || file.Content() != source || resolutions != 1 || requests != 4 {
 		t.Fatalf("file=%+v error=%v resolutions=%d requests=%d", file, err, resolutions, requests)
 	}
+	warmOnline, err := client.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yaml@"+sha)
+	if err != nil || !warmOnline.Available() || warmOnline.Content() != source || resolutions != 1 || requests != 4 {
+		t.Fatalf("warm online=%+v error=%v resolutions=%d requests=%d", warmOnline, err, resolutions, requests)
+	}
 	offline, err := New(Options{Mode: Offline, CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("offline request %s", r.URL)
 		return nil, context.Canceled

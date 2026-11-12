@@ -114,13 +114,19 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 		if !fullSHA1(ref.Ref()) {
 			return unavailableFile(availability.Offline()), nil
 		}
-		return g.offline(ctx, ref, filenames)
+		return g.cachedFile(ctx, ref, filenames)
 	}
 	if fullSHA256(ref.Ref()) {
 		return unavailableFile(availability.UnsupportedObjectFormat()), nil
 	}
 	if !fullSHA1(ref.Ref()) && g.resolver == nil {
 		return unavailableFile(availability.ResolverNotConfigured()), nil
+	}
+	if fullSHA1(ref.Ref()) {
+		cached, err := g.cachedFile(ctx, ref, filenames)
+		if err != nil || cached.Available() {
+			return cached, err
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -410,7 +416,7 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, id uint64, c
 	return record, true, nil
 }
 
-func (g *GitHub) offline(ctx context.Context, ref actions.Reference, filenames []string) (repositoryFile, error) {
+func (g *GitHub) cachedFile(ctx context.Context, ref actions.Reference, filenames []string) (repositoryFile, error) {
 	if g.cacheDir == "" {
 		return unavailableFile(availability.CacheMiss()), nil
 	}
