@@ -29,7 +29,10 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 		t.Fatal(err)
 	}
 	nativeCalls := 0
-	r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func() (tools.Runner, error) {
+	r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func(selected *config.Config) (tools.Runner, error) {
+		if selected != invalid {
+			t.Fatal("fallback initialized without the declined scope configuration")
+		}
 		nativeCalls++
 		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: shellcheckManifest, Programs: bundled.Program, Selection: scripts.Selection{Process: &processconfig.Options{Executable: &executable}}})
 		if err != nil {
@@ -52,7 +55,7 @@ func TestDocumentPluginScopesOnlyNegotiationAndDisable(t *testing.T) {
 	for _, cfg := range []*config.Config{nil, disabled} {
 		failure := errors.New("configuration rejected")
 		guest := &partialGuest{failAt: 0, failure: failure}
-		r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func() (tools.Runner, error) {
+		r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func(*config.Config) (tools.Runner, error) {
 			t.Fatal("failed or disabled negotiation reached native fallback")
 			return nil, nil
 		}}

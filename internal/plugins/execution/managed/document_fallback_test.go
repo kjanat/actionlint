@@ -82,7 +82,10 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 	batch.Scripts[1].Config = cfg
 	guest := &fallbackGuest{}
 	nativeCalls := 0
-	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.Input{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func() (tools.Runner, error) {
+	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: tools.Context{Document: checkinputs.Input{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *config.Config) (tools.Runner, error) {
+		if selected != cfg {
+			t.Fatal("fallback initialized with the workflow configuration instead of the declined script configuration")
+		}
 		return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
 			nativeCalls++
 			if len(selected.Scopes) != 0 || selected.CallGraph != graph || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {

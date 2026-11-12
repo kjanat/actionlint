@@ -112,11 +112,13 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	}
 	next.Required = func(tools.Context) bool { return true }
 	next.Build = func(c tools.Context) (tools.Runner, error) {
-		return documentRunner{documentRoute: route, guest: guest, integrator: integrator, context: c, native: func() (tools.Runner, error) {
+		return documentRunner{documentRoute: route, guest: guest, integrator: integrator, context: c, native: func(cfg *config.Config) (tools.Runner, error) {
 			if sel.ManagedOnly {
 				return nil, errors.New("plugin declined configuration; native fallback is not enabled")
 			}
-			return base.Build(c)
+			fallback := c
+			fallback.Config = cfg
+			return base.Build(fallback)
 		}}, nil
 	}
 	return next, nil
@@ -231,7 +233,7 @@ type documentRunner struct {
 	guest      checkinputs.Checker
 	integrator checkinputs.ToolIntegrator
 	context    tools.Context
-	native     func() (tools.Runner, error)
+	native     func(*config.Config) (tools.Runner, error)
 }
 
 func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -325,7 +327,13 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 		}
 	}
 	if len(nativeIndices) != 0 || len(nativeBatch.Scopes) != 0 {
-		native, err := r.native()
+		var cfg *config.Config
+		if len(nativeBatch.Scripts) != 0 {
+			cfg = nativeBatch.Scripts[0].Config
+		} else {
+			cfg = nativeBatch.Scopes[0].Config
+		}
+		native, err := r.native(cfg)
 		if err != nil {
 			return findings, errors.Join(failure, err)
 		}

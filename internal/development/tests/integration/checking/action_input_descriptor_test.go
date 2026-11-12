@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -227,17 +226,15 @@ func (b *selectedInputBackend) ScriptDescriptor() checkinputs.ScriptEngineDescri
 }
 
 func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	for _, mode := range []string{"caller-disabled", "failed-optional", "built"} {
 		for _, failure := range []string{"missing", "conflicting"} {
 			t.Run(mode+"/"+failure, func(t *testing.T) {
-				if _, err := exec.LookPath("shellcheck"); err != nil && mode != "failed-optional" {
-					t.Skip("ShellCheck required")
-				}
 				root := t.TempDir()
 				enabled := mode != "caller-disabled"
 				files := map[string]string{
 					".git/HEAD":               "ref: refs/heads/master\n",
-					".github/actionlint.yaml": fmt.Sprintf("tools:\n  shellcheck:\n    enabled: %t\noverrides:\n  - includes: [nested/**]\n    tools:\n      shellcheck:\n        enabled: true\n        backend:\n          wasm:\n            path: nested.wasm\n", enabled),
+					".github/actionlint.yaml": fmt.Sprintf("tools:\n  shellcheck:\n    enabled: %t\n    backend:\n      wasm: {path: default.wasm}\noverrides:\n  - includes: [nested/**]\n    tools:\n      shellcheck:\n        enabled: true\n        backend:\n          wasm:\n            path: nested.wasm\n", enabled),
 					"workflow.yml":            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(1)\n        shell: python\n      - uses: ./nested\n",
 					"nested/action.yml":       "name: nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v9\n      with:\n        script: console.log(1);\n",
 				}
@@ -261,7 +258,10 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					shell.Required = func(tools.Context) bool { return false }
 				}
 				loads := 0
-				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+					if filepath.Base(path) == "default.wasm" {
+						return &inputReplacementBackend{}, nil
+					}
 					loads++
 					if failure == "missing" {
 						return nil, errors.New("override module missing")
