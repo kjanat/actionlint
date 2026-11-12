@@ -61,27 +61,84 @@ func gitAndRawHosts(t *testing.T, files map[string]string) *recorder {
 }
 
 func TestFullSHACacheHitMakesNoRequests(t *testing.T) {
-	cache := t.TempDir()
-	hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
-	cold, err := New(Options{CacheDir: cache, Transport: hosts})
-	if err != nil {
-		t.Fatal(err)
+	for _, source := range []string{"raw", "REST"} {
+		t.Run(source, func(t *testing.T) {
+			cache := t.TempDir()
+			hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
+			if source == "REST" {
+				hosts = &recorder{handle: func(r *http.Request) (*http.Response, error) { return restFallback(t, r) }}
+			}
+			cold, err := New(Options{CacheDir: cache, Transport: hosts})
+			if err != nil {
+				t.Fatal(err)
+			}
+			original, err := cold.Lookup(t.Context(), ref(t, "example/action@"+sha))
+			if err != nil || !original.Available() {
+				t.Fatalf("cold=%v,%v", original, err)
+			}
+			if original.Identity().RepositoryID().IsZero() != (source == "raw") {
+				t.Fatalf("%s acquisition returned repository ID %v", source, original.Identity().RepositoryID())
+			}
+			warm, err := New(Options{CacheDir: cache, Resolver: func() references.Resolver {
+				t.Fatal("warm cache called the resolver factory")
+				return nil
+			}, Transport: transport(func(r *http.Request) (*http.Response, error) {
+				t.Fatalf("warm cache used the network: %s", r.URL)
+				return nil, nil
+			})})
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, tracker := accounting.TrackRequests(t.Context())
+			for range 2 {
+				for _, spec := range []string{"example/action@" + sha, "example/action@" + strings.ToUpper(sha)} {
+					manifest, err := warm.Lookup(ctx, ref(t, spec))
+					if err != nil || !manifest.Available() || manifest.Content() != original.Content() || manifest.Filename() != original.Filename() || manifest.Identity() != original.Identity() || manifest.Selection().ObservedAt() != original.Selection().ObservedAt() || !manifest.Selection().Route().Object() || manifest.Selection().Object() != sha {
+						t.Fatalf("%s: cached=%+v error=%v, original=%+v", spec, manifest, err, original)
+					}
+				}
+			}
+			canceled, cancel := context.WithCancel(ctx)
+			cancel()
+			for _, object := range []string{sha, branchTip} {
+				if _, err := warm.Lookup(canceled, ref(t, "example/action@"+object)); !errors.Is(err, context.Canceled) {
+					t.Errorf("canceled lookup for %s: error=%v, want context.Canceled", object, err)
+				}
+			}
+			if requests := tracker.Statistics().Requests; len(requests) != 0 {
+				t.Fatalf("warm-cache request accounting: %+v", requests)
+			}
+		})
 	}
-	if manifest, err := cold.Lookup(t.Context(), ref(t, "example/action@"+sha)); err != nil || !manifest.Available() {
-		t.Fatalf("cold=%v,%v", manifest, err)
-	}
-	warm, err := New(Options{CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
-		t.Fatalf("warm cache used the network: %s", r.URL)
-		return nil, nil
-	})})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, spec := range []string{"example/action@" + sha, "example/action@" + strings.ToUpper(sha)} {
-		manifest, err := warm.Lookup(t.Context(), ref(t, spec))
-		if err != nil || !manifest.Available() || manifest.Content() != actionSource || !manifest.Selection().Route().Object() || manifest.Selection().Object() != sha {
-			t.Fatalf("%s=%v,%v", spec, manifest, err)
-		}
+}
+
+func TestOnlineRepairsInvalidMetadataCache(t *testing.T) {
+	for name, record := range map[string]string{
+		"previous version": cacheRecordJSON(1, `"repository_id":42,`, actionSource, digest(actionSource)),
+		"tampered content": cacheRecordJSON(2, "", "tampered", digest(actionSource)),
+		"unparseable":      `{"version":2,"content":`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
+			client, err := New(Options{CacheDir: t.TempDir(), Transport: hosts})
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := ref(t, "example/action@"+sha)
+			bucket := client.bucket(request, sha)
+			if err := os.MkdirAll(bucket, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(bucket, cacheFilename), []byte(record), 0600); err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				manifest, err := client.Lookup(t.Context(), request)
+				if err != nil || !manifest.Available() || manifest.Content() != actionSource || len(hosts.recorded()) != 1 {
+					t.Fatalf("manifest=%+v error=%v requests=%v, want original content and one raw request", manifest, err, hosts.recorded())
+				}
+			}
+		})
 	}
 }
 
@@ -179,22 +236,36 @@ func TestInvalidRepositoryNamesMakeNoRequests(t *testing.T) {
 	}
 }
 
-func TestRefListingFreshPerWithResolver(t *testing.T) {
-	hosts := gitAndRawHosts(t, map[string]string{"/example/action/" + sha + "/action.yml": actionSource})
-	base, err := New(Options{Transport: hosts})
+func TestNewAnalysisSeesMovedBranchWithCachedManifest(t *testing.T) {
+	tip := sha
+	updated := strings.Replace(actionSource, "name: test", "name: updated", 1)
+	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Host + r.URL.Path {
+		case "github.com/example/action.git/info/refs":
+			return respond(r, http.StatusOK, gitwire.ContentType, listing(tip, gitwire.Ref{Name: "refs/heads/main", Object: tip})), nil
+		case "raw.githubusercontent.com/example/action/" + sha + "/action.yml":
+			return respond(r, http.StatusOK, rawText, actionSource), nil
+		case "raw.githubusercontent.com/example/action/" + branchTip + "/action.yml":
+			return respond(r, http.StatusOK, rawText, updated), nil
+		}
+		t.Fatalf("unexpected request %s", r.URL)
+		return nil, nil
+	}}
+	base, err := New(Options{CacheDir: t.TempDir(), Transport: hosts})
 	if err != nil {
 		t.Fatal(err)
 	}
 	resolver := repository.Bind(&listingResolver{}, base)
-	for analysis := range 2 {
+	for analysis, expected := range []struct{ commit, content string }{{sha, actionSource}, {branchTip, updated}} {
+		tip = expected.commit
 		provider := base.WithResolver(resolver)
 		for range 2 {
-			if manifest, err := provider.Lookup(t.Context(), ref(t, "example/action@v1")); err != nil || !manifest.Available() {
+			if manifest, err := provider.Lookup(t.Context(), ref(t, "example/action@main")); err != nil || !manifest.Available() || manifest.Identity().Commit() != expected.commit || manifest.Content() != expected.content || manifest.Selection().Route().Reference() != "refs/heads/main" {
 				t.Fatalf("analysis %d: %v,%v", analysis, manifest, err)
 			}
 		}
-		if hosts.count("github.com") != analysis+1 {
-			t.Fatalf("analysis %d listings: %v", analysis, hosts.recorded())
+		if hosts.count("github.com") != analysis+1 || hosts.count("raw.githubusercontent.com") != analysis+1 || len(hosts.recorded()) != 2*(analysis+1) {
+			t.Fatalf("analysis %d: requests=%v, want one listing and one file per analysis", analysis, hosts.recorded())
 		}
 	}
 }
