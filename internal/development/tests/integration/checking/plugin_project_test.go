@@ -17,10 +17,11 @@ import (
 )
 
 func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +30,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	}
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
-	sources, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil || len(sources.Paths) != 0 || len(registry.Requests()) != requests {
 		t.Fatalf("undeclared plugin activated: %+v %v", sources, err)
 	}
@@ -79,7 +80,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +91,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

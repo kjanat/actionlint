@@ -28,8 +28,8 @@ type editorSession struct {
 	sources plugininstall.Sources
 }
 
-func newEditorSession(ctx context.Context, options checking.Options, paths []string) (*editorSession, error) {
-	sources, err := plugininstall.SourcesFromArguments(paths)
+func newEditorSession(ctx context.Context, options checking.Options, paths []string, acquisition plugininstall.Acquisition) (*editorSession, error) {
+	sources, err := plugininstall.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 	}
 	engines := &editorEngines{
 		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]checkinputs.ScriptBackend),
-		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug,
+		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
 	}
 	options.LoadScriptEngine = engines.load
 	return &editorSession{options: options, plugins: plugins, engines: engines, sources: sources}, nil
@@ -77,7 +77,7 @@ func checkEditorPluginStatuses(ctx context.Context, sources plugininstall.Source
 	}
 	if err := sources.Releases.CheckStatuses(ctx, plugininstall.StatusOptions{Warning: func(message string) {
 		_, _ = fmt.Fprintln(log, "warning:", message)
-	}}); err != nil {
+	}, Acquisition: sources.Acquisition}); err != nil {
 		return &pluginexec.LoadError{Err: err}
 	}
 	return nil
@@ -94,11 +94,12 @@ type editorEngineIdentity struct {
 }
 
 type editorEngines struct {
-	gate       chan struct{}
-	loaded     map[editorEngineIdentity]checkinputs.ScriptBackend
-	customLoad func(context.Context, string) (checkinputs.ScriptBackend, error)
-	log        io.Writer
-	debug      bool
+	gate        chan struct{}
+	loaded      map[editorEngineIdentity]checkinputs.ScriptBackend
+	customLoad  func(context.Context, string) (checkinputs.ScriptBackend, error)
+	log         io.Writer
+	debug       bool
+	acquisition plugininstall.Acquisition
 }
 
 func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.ScriptBackend, error) {
@@ -124,7 +125,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 		if err := pluginartifact.RequireRemotePin(source); err != nil {
 			return nil, err
 		}
-		artifact, resolveErr := pluginartifact.Resolve(ctx, source, plugininstall.DefaultArtifactOptions())
+		artifact, resolveErr := pluginartifact.Resolve(ctx, source, s.acquisition.ArtifactOptions())
 		if resolveErr != nil {
 			return nil, resolveErr
 		}
@@ -135,7 +136,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 		if existing, ok := s.loaded[identity]; ok {
 			return borrowEditorEngine(existing), nil
 		}
-		engine, loadErr := pluginexec.LoadScriptArtifact(ctx, artifact, checking.BuiltinRuleNames(), s.log, s.debug)
+		engine, loadErr := pluginexec.LoadScriptArtifact(ctx, artifact, s.acquisition, checking.BuiltinRuleNames(), s.log, s.debug)
 		if loadErr != nil {
 			return nil, loadErr
 		}

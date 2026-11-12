@@ -57,8 +57,8 @@ func WritePath(out io.Writer, req PathOptions) error {
 	return err
 }
 
-func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions) error {
-	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, false)
+func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition plugininstall.Acquisition) error {
+	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if err != nil {
 		return err
 	}
@@ -89,8 +89,8 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions) er
 // WriteSchema writes the configuration JSON schema to out. Beyond the
 // published actionlint.schema.json, it describes tools.<name> for every tool
 // provider that the --plugin flags or the selected configuration install.
-func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions) error {
-	manifests, err := checking.InstalledProviders(ctx, req.Config, req.Plugins)
+func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition plugininstall.Acquisition) error {
+	manifests, err := checking.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
 	if err != nil {
 		return err
 	}
@@ -102,8 +102,8 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions) error {
 	return err
 }
 
-func WriteShow(ctx context.Context, out io.Writer, req ShowOptions) error {
-	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, req.Origin)
+func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition plugininstall.Acquisition) error {
+	inspection, err := checking.InspectConfig(ctx, req.Config, req.Plugins, req.Origin, acquisition)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions) error {
 	return errors.Join(err, encoder.Close())
 }
 
-func Migrate(ctx context.Context, streams commandstreams.Streams, req MigrateOptions) (int, error) {
+func Migrate(ctx context.Context, streams commandstreams.Streams, req MigrateOptions, acquisition plugininstall.Acquisition) (int, error) {
 	path, err := repoconfig.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err
@@ -129,9 +129,10 @@ func Migrate(ctx context.Context, streams commandstreams.Streams, req MigrateOpt
 		return 0, errors.New("config migrate requires a selected config file; use --config PATH")
 	}
 	migration, err := plugininstall.PrepareConfigurationMigration(ctx, path, plugininstall.DefaultPluginOptions{
-		RuleSet: checking.ConfigurationRules(),
-		Tools:   registry.IDs(),
-		Warning: func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },
+		RuleSet:     checking.ConfigurationRules(),
+		Tools:       registry.IDs(),
+		Warning:     func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },
+		Acquisition: acquisition,
 	})
 	if err != nil {
 		return 0, err

@@ -19,6 +19,7 @@ import (
 	configaddress "actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -532,7 +533,7 @@ func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string
 }
 
 func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*Loaded, error) {
-	reader := configsource.New(ctx, readFile)
+	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
 	warningsByFile := map[string][]Warning{}
 	var bindingSources []bindingSource
 	documents := map[string]any{}

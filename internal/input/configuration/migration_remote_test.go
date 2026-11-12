@@ -9,10 +9,11 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 func TestMigrationRemoteDependencySnapshot(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	path := filepath.Join(files.PhysicalPath(t.TempDir()), "actionlint.yaml")
 	remote := fixtureregistry.FixtureRegistryURL + "base.yaml"
@@ -22,7 +23,7 @@ func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 	}
 	body := []byte("policy: {require-commit-hash: true}")
 	registry.SetFile(remote, body)
-	plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path)
+	plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, registry.Connections())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestMigrationRemoteDependencySnapshot(t *testing.T) {
 
 func TestMigrationRemoteLeafReadOnly(t *testing.T) {
 	t.Parallel()
-	_, err := checking.ConfigurationRules().PrepareMigration(t.Context(), "https://example.test/actionlint.yaml")
+	_, err := checking.ConfigurationRules().PrepareMigration(t.Context(), "https://example.test/actionlint.yaml", acquisitionhttp.Connections{})
 	if err == nil || !strings.Contains(err.Error(), "read-only") {
 		t.Fatalf("remote leaf error = %v", err)
 	}

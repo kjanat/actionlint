@@ -13,6 +13,7 @@ import (
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
@@ -104,7 +105,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				"INPUT_FILES": ".github/workflows/ci.yml",
 			}
 			lookup := func(key string) string { return env[key] }
-			plan, err := provisioningRequest(lookup)
+			plan, err := provisioningRequest(lookup, plugininstall.Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}

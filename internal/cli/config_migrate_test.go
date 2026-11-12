@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestConfigMigrationCommand(t *testing.T) {
@@ -19,7 +21,7 @@ func TestConfigMigrationCommand(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	preview := pluginCommandTest(t, 0, "config", "migrate", "--config", path)
+	preview := pluginCommandTest(t, plugininstall.Acquisition{}, 0, "config", "migrate", "--config", path)
 	if !strings.Contains(preview, "repository") || !strings.Contains(preview, "variables") || !strings.Contains(preview, "presets and --strict") {
 		t.Fatal(preview)
 	}
@@ -27,10 +29,10 @@ func TestConfigMigrationCommand(t *testing.T) {
 	if !bytes.Equal(current, original) {
 		t.Fatal("preview wrote config")
 	}
-	pluginCommandTest(t, 1, "config", "migrate", "--config", path, "--check")
-	pluginCommandTest(t, 0, "config", "migrate", "--config", path, "--write")
-	pluginCommandTest(t, 0, "config", "migrate", "--config", path, "--check")
-	pluginCommandTest(t, 2, "config", "migrate", "--config", path, "--check", "--write")
+	pluginCommandTest(t, plugininstall.Acquisition{}, 1, "config", "migrate", "--config", path, "--check")
+	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "config", "migrate", "--config", path, "--write")
+	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "config", "migrate", "--config", path, "--check")
+	pluginCommandTest(t, plugininstall.Acquisition{}, 2, "config", "migrate", "--config", path, "--check", "--write")
 }
 
 func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {

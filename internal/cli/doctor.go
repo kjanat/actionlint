@@ -16,6 +16,7 @@ import (
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
@@ -29,7 +30,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
+func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition plugininstall.Acquisition) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -37,7 +38,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if err != nil {
 		return err
 	}
-	config, configErr := checking.InspectConfig(ctx, req.Config, req.Plugins, false)
+	config, configErr := checking.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}

@@ -13,6 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -21,21 +23,15 @@ type actionMetadataTransport func(*http.Request) (*http.Response, error)
 func (f actionMetadataTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("HOME", cache)
 	t.Setenv("GH_TOKEN", "fixture-secret")
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
 	requests := []string{}
-	original := http.DefaultTransport
-	http.DefaultTransport = actionMetadataFixture(t, sha, "fixture-secret", &requests)
-	t.Cleanup(func() { http.DefaultTransport = original })
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "fixture-secret", &requests)}}
 	for _, mode := range []string{"default", "online", "offline"} {
 		before := len(requests)
 		var out, log bytes.Buffer
-		command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + sha + ", with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log}
+		command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + sha + ", with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 		args := []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "-"}
 		if mode != "default" {
 			args = append(args, "--action-metadata="+mode)
@@ -143,19 +139,13 @@ func assertMetadataRequests(t *testing.T, requests []string, want map[string]int
 }
 
 func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
-	cache := t.TempDir()
-	for _, name := range []string{"LOCALAPPDATA", "XDG_CACHE_HOME", "HOME"} {
-		t.Setenv(name, cache)
-	}
 	t.Setenv("GH_TOKEN", "")
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
 	var requests []string
-	original := http.DefaultTransport
-	http.DefaultTransport = actionMetadataFixture(t, sha, "", &requests)
-	t.Cleanup(func() { http.DefaultTransport = original })
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 	var out, log bytes.Buffer
-	command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1, with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log}
+	command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1, with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output=json", "--summary=false", "--network-stats", "-"})
 	if code != 1 {
 		t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)

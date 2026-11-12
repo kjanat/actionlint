@@ -32,6 +32,7 @@ type Selection struct {
 	Overlays   []config.Overlay
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
+	Acquisition               Acquisition
 }
 
 // WithTools returns a copy of selection that stores the tool ids
@@ -65,7 +66,8 @@ type Sources struct {
 	// SkippedTools lists disabled tool ids that matched a selected plugin.
 	SkippedTools []string
 	// Configured identifies configuration-selected providers that require process opt-in.
-	Configured bool
+	Configured  bool
+	Acquisition Acquisition
 }
 
 func (s Selection) Resolve(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
@@ -110,6 +112,7 @@ func (s Selection) selectSources(ctx context.Context, directory string, input in
 		return Sources{}, err
 	}
 	selected.DisabledTools, selected.NamedTools = slices.Clone(s.DisabledTools), slices.Clone(s.NamedTools)
+	selected.Acquisition = s.Acquisition
 	selected.dropDisabledPins()
 	return selected, nil
 }
@@ -119,7 +122,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		if s.LockFile != "" {
 			return Sources{}, errors.New("--plugin and --plugin-lock cannot be combined")
 		}
-		return SourcesFromArguments(s.Paths)
+		return SourcesFromArguments(s.Paths, s.Acquisition)
 	}
 	if s.Disabled && s.LockFile == "" {
 		return Sources{}, nil
@@ -139,7 +142,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		return selected, err
 	}
 	if s.ConfigFile != "" {
-		project, err := OpenForSelection(ctx, s.RuleSet, directory, s.ConfigFile, mode)
+		project, err := OpenForSelection(ctx, s.RuleSet, s.Acquisition, directory, s.ConfigFile, mode)
 		if err != nil {
 			return Sources{}, err
 		}
@@ -185,7 +188,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		if root == "" {
 			continue
 		}
-		project, err := OpenForSelection(ctx, s.RuleSet, root, "", mode)
+		project, err := OpenForSelection(ctx, s.RuleSet, s.Acquisition, root, "", mode)
 		if err != nil {
 			return Sources{}, err
 		}
@@ -334,7 +337,7 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 	if s.Releases == nil {
 		return nil
 	}
-	if err := s.Releases.CheckStatuses(ctx, StatusOptions{}); err != nil {
+	if err := s.Releases.CheckStatuses(ctx, StatusOptions{Acquisition: s.Acquisition}); err != nil {
 		return err
 	}
 	artifacts := make(map[string]*pluginartifact.Artifact, len(s.Releases.Plugins))
@@ -380,7 +383,7 @@ func (s *Sources) ValidateScope(ctx context.Context, rules config.RuleSet, paths
 			if root == "" {
 				continue
 			}
-			project, err := OpenForSelection(ctx, rules, root, "", configplugins.CompleteConfiguration)
+			project, err := OpenForSelection(ctx, rules, s.Acquisition, root, "", configplugins.CompleteConfiguration)
 			if err != nil {
 				return err
 			}

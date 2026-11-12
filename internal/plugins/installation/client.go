@@ -51,7 +51,7 @@ func registryURL(raw string) (*url.URL, error) {
 
 // New constructs a client for an endpoint explicitly selected by its caller.
 // Repository declarations use NewWithGrant with invocation-owned authority.
-func New(raw string) (*Client, error) {
+func New(raw string, acquisition Acquisition) (*Client, error) {
 	u, err := registryURL(raw)
 	if err != nil {
 		return nil, err
@@ -63,24 +63,25 @@ func New(raw string) (*Client, error) {
 			return nil, err
 		}
 	}
-	return newClient(u, grant)
+	return newClient(u, grant, StatusOptions{Acquisition: acquisition})
 }
 
 // NewWithGrant constructs a registry client without deriving private-network
-// authority from raw. A zero grant permits only public destination addresses.
-func NewWithGrant(raw string, grant acquisitionhttp.Grant) (*Client, error) {
+// authority from raw. A zero options.Network grant permits only public
+// destination addresses.
+func NewWithGrant(raw string, options StatusOptions) (*Client, error) {
 	u, err := registryURL(raw)
 	if err != nil {
 		return nil, err
 	}
-	return newClient(u, grant)
+	return newClient(u, options.Network, options)
 }
 
-func newClient(u *url.URL, grant acquisitionhttp.Grant) (*Client, error) {
-	c := &Client{base: u}
+func newClient(u *url.URL, grant acquisitionhttp.Grant, options StatusOptions) (*Client, error) {
+	c := &Client{StatusOptions: options, base: u}
 	var transport http.RoundTripper
 	if u.Scheme != "file" {
-		checked, err := acquisitionhttp.Transport(u, grant)
+		checked, err := acquisitionhttp.Transport(u, grant, options.Acquisition.Connections)
 		if err != nil {
 			return nil, err
 		}

@@ -30,6 +30,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
@@ -162,7 +163,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 				byAlias[path] = index
 			}
 		}
-		backing := configsource.New(ctx, options.ReadFile)
+		backing := configsource.New(ctx, options.ReadFile, acquisitionhttp.Connections{})
 		selectionReader = func(path string) ([]byte, error) {
 			if address.Remote(path) {
 				return backing.ReadFile(path)

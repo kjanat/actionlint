@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 const pythonWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
@@ -24,8 +25,12 @@ func writeEngineConfig(t *testing.T, module string) string {
 
 // The repository backend applies to the default Ruff selection, so these runs omit --ruff.
 func runWithDefaultRuff(input string, args ...string) commandTranscript {
+	return runWithDefaultRuffAndAcquisition(plugininstall.Acquisition{}, input, args...)
+}
+
+func runWithDefaultRuffAndAcquisition(acquisition plugininstall.Acquisition, input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
-	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
+	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout, Acquisition: acquisition}
 	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-color", "check", "--summary=false", "--output-format=text"}, args...))
 	return commandTranscript{status, out.String(), errout.String()}
 }

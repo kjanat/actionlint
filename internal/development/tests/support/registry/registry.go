@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"golang.org/x/net/dns/dnsmessage"
 )
@@ -49,13 +49,15 @@ type PluginPublisher struct {
 // Every method takes the lock that RoundTrip takes, so tests can change files
 // and the offline flag while the code under test is making requests.
 type PluginRegistry struct {
-	mu        sync.Mutex
-	files     map[string][]byte
-	pending   map[string][][]byte
-	requests  []string
-	versions  []string
-	publisher PluginPublisher
-	offline   bool
+	mu           sync.Mutex
+	files        map[string][]byte
+	pending      map[string][][]byte
+	requests     []string
+	versions     []string
+	publisher    PluginPublisher
+	offline      bool
+	connections  acquisitionhttp.Connections
+	userCacheDir string
 }
 
 const (
@@ -65,26 +67,25 @@ const (
 	emptyStatuses      = `{"schema_version":1,"releases":[]}`
 )
 
-// NewPluginRegistry installs a registry for FixturePluginName at
-// FixtureRegistryURL as http.DefaultTransport until the test ends.
+// NewPluginRegistry serves a registry for FixturePluginName at
+// FixtureRegistryURL through Connections until the test ends.
 func NewPluginRegistry(t *testing.T) *PluginRegistry {
 	t.Helper()
-	fixtureenvironment.IsolateUserCache(t)
 	r := &PluginRegistry{
-		files:     map[string][]byte{FixtureRegistryURL + "statuses.json": []byte(emptyStatuses)},
-		pending:   make(map[string][][]byte),
-		publisher: PluginPublisher{PluginID: "no-sudo", BaseURL: FixtureRegistryURL, Name: FixturePluginName, RepositoryID: 10},
+		files:        map[string][]byte{FixtureRegistryURL + "statuses.json": []byte(emptyStatuses)},
+		pending:      make(map[string][][]byte),
+		publisher:    PluginPublisher{PluginID: "no-sudo", BaseURL: FixtureRegistryURL, Name: FixturePluginName, RepositoryID: 10},
+		userCacheDir: t.TempDir(),
 	}
-	previousTransport, previousResolver := http.DefaultTransport, net.DefaultResolver
 	transport := r.transport(t)
-	http.DefaultTransport = transport
-	net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: fixtureDNS}
-	t.Cleanup(func() {
-		transport.CloseIdleConnections()
-		http.DefaultTransport, net.DefaultResolver = previousTransport, previousResolver
-	})
+	r.connections = acquisitionhttp.Connections{Transport: transport, Resolver: &net.Resolver{PreferGo: true, Dial: fixtureDNS}}
+	t.Cleanup(transport.CloseIdleConnections)
 	return r
 }
+
+func (r *PluginRegistry) Connections() acquisitionhttp.Connections { return r.connections }
+
+func (r *PluginRegistry) UserCacheDir() string { return r.userCacheDir }
 
 // transport exercises the standard HTTP client's DNS, pinning, TLS and Host
 // handling. Only in-memory connections are opened. A fixed-seed Ed25519 CA

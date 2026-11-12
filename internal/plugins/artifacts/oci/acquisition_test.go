@@ -22,18 +22,17 @@ func (f acquisitionResponse) RoundTrip(request *http.Request) (*http.Response, e
 }
 
 func TestAutomaticOCIInitialAndPinNeverDialPrivate(t *testing.T) {
-	previous := http.DefaultTransport
+	t.Parallel()
 	dials := 0
-	http.DefaultTransport = &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+	connections := acquisitionhttp.Connections{Transport: &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 		dials++
 		return nil, errors.New("unexpected private connection")
-	}}
-	t.Cleanup(func() { http.DefaultTransport = previous })
+	}}}
 	source := "oci://127.0.0.1:8443/actionlint/provider@sha256:" + strings.Repeat("a", 64)
-	if _, err := artifacts.Resolve(t.Context(), source, artifacts.Options{PullOCI: Pull}); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
+	if _, err := artifacts.Resolve(t.Context(), source, artifacts.Options{PullOCI: Pull, Connections: connections}); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
 		t.Fatalf("private automatic OCI pull: %v", err)
 	}
-	if _, err := Pin(t.Context(), "oci://127.0.0.1:8443/actionlint/provider:v1", artifacts.Options{}); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
+	if _, err := Pin(t.Context(), "oci://127.0.0.1:8443/actionlint/provider:v1", artifacts.Options{Connections: connections}); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
 		t.Fatalf("private automatic OCI tag resolution: %v", err)
 	}
 	if dials != 0 {
@@ -42,6 +41,7 @@ func TestAutomaticOCIInitialAndPinNeverDialPrivate(t *testing.T) {
 }
 
 func TestOCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority(t *testing.T) {
+	t.Parallel()
 	const initial = "oci://127.0.0.1:8443/actionlint/provider@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	ref, err := artifacts.ParseOCI(initial)
 	if err != nil {
@@ -51,12 +51,11 @@ func TestOCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	previous := http.DefaultTransport
-	t.Cleanup(func() { http.DefaultTransport = previous })
 	for _, mode := range []string{"token", "blob"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			calls := 0
-			http.DefaultTransport = acquisitionResponse(func(request *http.Request) (*http.Response, error) {
+			transport := acquisitionResponse(func(request *http.Request) (*http.Response, error) {
 				calls++
 				if request.URL.Host != "127.0.0.1:8443" {
 					t.Fatal("server-selected authority reached opaque transport")
@@ -71,7 +70,7 @@ func TestOCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority(t *testing.T) 
 				}
 				return &http.Response{StatusCode: status, Header: header, Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
 			})
-			repo, err := repository(ref, artifacts.Options{Network: grant})
+			repo, err := repository(ref, artifacts.Options{Network: grant, Connections: acquisitionhttp.Connections{Transport: transport}})
 			if err != nil {
 				t.Fatal(err)
 			}

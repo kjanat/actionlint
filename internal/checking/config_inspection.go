@@ -21,7 +21,7 @@ import (
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool) (inspection config.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection config.Inspection, err error) {
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
@@ -34,7 +34,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	if err != nil {
 		return inspection, err
 	}
-	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return inspection, err
 	}
@@ -72,12 +72,12 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection config.Selection, paths []string) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection config.Selection, paths []string, acquisition plugininstall.Acquisition) ([]pluginmanifests.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return nil, err
 	}

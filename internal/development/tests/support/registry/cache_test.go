@@ -1,32 +1,34 @@
 package registry
 
 import (
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestPluginRegistryIsolatesUserCache(t *testing.T) {
-	blocked := filepath.Join(t.TempDir(), "unwritable-cache-parent")
-	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
-		t.Fatal(err)
+func TestPluginRegistrySuppliesPrivateCacheAndLeavesProcessDefaults(t *testing.T) {
+	t.Parallel()
+	transport, resolver := http.DefaultTransport, net.DefaultResolver
+	first, second := NewPluginRegistry(t), NewPluginRegistry(t)
+	if http.DefaultTransport != transport || net.DefaultResolver != resolver {
+		t.Fatal("registry fixture replaced the process HTTP transport or DNS resolver")
 	}
-	t.Setenv("XDG_CACHE_HOME", blocked)
-	t.Setenv("LOCALAPPDATA", blocked)
-	t.Setenv("HOME", blocked)
-	t.Run("registry", func(t *testing.T) {
-		NewPluginRegistry(t)
-		cache, err := os.UserCacheDir()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.MkdirAll(filepath.Join(cache, "actionlint", "artifacts"), 0o700); err != nil {
-			t.Fatalf("registry fixture inherited unwritable user cache: %v", err)
-		}
-	})
-	for _, name := range []string{"XDG_CACHE_HOME", "LOCALAPPDATA", "HOME"} {
-		if got := os.Getenv(name); got != blocked {
-			t.Fatalf("fixture leaked %s=%q", name, got)
-		}
+	if first.Connections().Transport == nil || first.Connections().Resolver == nil {
+		t.Fatalf("registry fixture connections = %+v", first.Connections())
+	}
+	if first.UserCacheDir() == second.UserCacheDir() {
+		t.Fatalf("registries share cache directory %s", first.UserCacheDir())
+	}
+	if user, err := os.UserCacheDir(); err == nil && first.UserCacheDir() == user {
+		t.Fatalf("registry fixture cache is the user cache %s", user)
+	}
+	entries, err := os.ReadDir(first.UserCacheDir())
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("registry fixture cache is not fresh: %v %v", entries, err)
+	}
+	if err := os.MkdirAll(filepath.Join(first.UserCacheDir(), "actionlint", "artifacts"), 0o700); err != nil {
+		t.Fatalf("registry fixture cache is not writable: %v", err)
 	}
 }

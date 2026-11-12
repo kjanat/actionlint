@@ -16,6 +16,7 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 // Source associates the displayed path with the file read for analysis.
@@ -82,7 +83,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	if opts.Config != nil && opts.ConfigFile != "" {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
-	a := &Session{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
+	a := &Session{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile, acquisitionhttp.Connections{}).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	a.defaultConfigProvenance = opts.ConfigProvenance
 	a.noIgnore = opts.NoIgnore
 	if a.log == nil {

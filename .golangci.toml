@@ -153,10 +153,10 @@ path    = '^internal/(checking/inputs/input_selection_cost|input/source/capture/
 text    = "(Function|test) Test(SelectedInvocationValidationAllocationBound|VerifyHandleRejectsForeignAndQuarantinedEvidence|SemanticAccessorsDoNotCopySourceBytes|WorkflowAdmissionDoesNotGrowWithAliasExpansion) missing"
 linters = ["paralleltest"]
 
-# These tests replace a process-wide variable: exprfunctions.Builtins or http.DefaultTransport.
+# This test replaces a process-wide variable: exprfunctions.Builtins.
 [[linters.exclusions.rules]]
-path    = '^internal/(checking/expressions/expr_interpolation_review|plugins/artifacts/candidate|plugins/artifacts/redirect_transport|plugins/artifacts/oci/acquisition)_test\.go$'
-text    = "(Function|test) Test(ExpressionPreservesCallFacts|CandidateCacheResolution|DownloadAutomaticPrivateInitialIsRejected|DownloadExplicitGrantPreservesInitialAndConfinesRedirect|AutomaticOCIInitialAndPinNeverDialPrivate|OCIGrantCannotAuthorizeTokenRealmOrBlobRedirectAuthority) missing"
+path    = '^internal/checking/expressions/expr_interpolation_review_test\.go$'
+text    = "(Function|test) TestExpressionPreservesCallFacts missing"
 linters = ["paralleltest"]
 
 [formatters]

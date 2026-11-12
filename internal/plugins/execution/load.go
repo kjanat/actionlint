@@ -39,7 +39,8 @@ type Loaded struct {
 	SkippedTools []string
 	// ToolIDs lists names that --no-tool can disable: lock pin names and aliases,
 	// and engine and rule names from loaded plugin metadata.
-	ToolIDs []string
+	ToolIDs     []string
+	Acquisition plugininstall.Acquisition
 }
 
 // SelectedProvider records the files and execution authority of one selected process plugin.
@@ -54,7 +55,7 @@ type ScriptEngineRegistration struct {
 }
 
 func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
-	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools)}
+	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition}
 	if sources.Releases != nil {
 		for _, pin := range sources.Releases.Plugins {
 			loaded.ToolIDs = append(loaded.ToolIDs, pin.Name)
@@ -118,7 +119,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 			loaded.ToolIDs = append(loaded.ToolIDs, ids...)
 		}
 		if artifact.Info.Kind == pluginartifact.Core {
-			engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: corewasm.DefaultCacheDir()})
+			engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: sources.Acquisition.CompiledModuleCacheDir()})
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}

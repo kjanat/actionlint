@@ -51,7 +51,7 @@ func localCandidate(t *testing.T) (string, *plugininstall.Client) {
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path
 	}
-	client, err := plugininstall.New(u.String())
+	client, err := plugininstall.New(u.String(), fixtureAcquisition(network))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func localCandidate(t *testing.T) (string, *plugininstall.Client) {
 }
 
 func TestCandidateRejectsInconsistentDeclarations(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, tc := range []struct{ name, file, before, after string }{
 		{"catalogue alias", "index.json", `"plugin_id":"no-sudo"`, `"aliases":["shellcheck"],"plugin_id":"no-sudo"`},
 		{"catalogue null plugins", "index.json", `[{"name":"github.com/publisher/plugin","plugin_id":"no-sudo","manifest":"plugins/no-sudo/index.json"}]`, `null`},
@@ -90,7 +90,7 @@ func TestCandidateRejectsInconsistentDeclarations(t *testing.T) {
 		{"unknown record field", candidateRecordPath, `"source":"candidate"`, `"source":"candidate","owner_id":42`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			root, client := localCandidate(t)
 			file := filepath.Join(root, filepath.FromSlash(tc.file))
 			data, err := os.ReadFile(file)
@@ -112,7 +112,7 @@ func TestCandidateRejectsInconsistentDeclarations(t *testing.T) {
 }
 
 func TestCandidateSearchFiltersNamesAndIDsInNameOrder(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	root, client := localCandidate(t)
 	catalog := plugininstall.Catalog{SchemaVersion: 1, Source: "candidate", Plugins: []plugininstall.CatalogPlugin{
 		{Name: "github.com/zeta/plugin", PluginID: "runner-zeta", Manifest: "plugins/zeta/index.json"},
@@ -156,10 +156,10 @@ func TestCandidateSearchFiltersNamesAndIDsInNameOrder(t *testing.T) {
 }
 
 func TestCandidateBoundsAndStrictJSON(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, name := range []string{"index.json", candidateManifestPath, candidateRecordPath} {
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			root, client := localCandidate(t)
 			file := filepath.Join(root, filepath.FromSlash(name))
 			data, err := os.ReadFile(file)
@@ -200,10 +200,10 @@ func TestCandidateBoundsAndStrictJSON(t *testing.T) {
 }
 
 func TestCandidateJSONSymlinkConfinement(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, name := range []string{"index.json", candidateManifestPath, candidateRecordPath} {
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			root, client := localCandidate(t)
 			file := filepath.Join(root, filepath.FromSlash(name))
 			inside := file + ".target"
@@ -234,7 +234,7 @@ func TestCandidateJSONSymlinkConfinement(t *testing.T) {
 }
 
 func TestCandidateCancellationAndMissingSelection(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	_, client := localCandidate(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

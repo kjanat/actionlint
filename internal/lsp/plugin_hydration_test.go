@@ -13,14 +13,15 @@ import (
 )
 
 func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	module, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,11 +40,11 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.ResetRequests()
-	sources, err := (plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(filepath.Join(plugininstall.DefaultArtifactOptions().CacheDir, pin.SHA256)); err != nil {
+	if err := os.Remove(filepath.Join(acquisition.ArtifactOptions().CacheDir, pin.SHA256)); err != nil {
 		t.Fatal(err)
 	}
 	// Remove the remote bytes: every later consumer must use the verified snapshot.

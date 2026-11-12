@@ -18,7 +18,7 @@ import (
 )
 
 func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	parent := t.TempDir()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	for _, name := range []string{"first", "second"} {
@@ -45,7 +45,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		fixturefiles.WriteText(t, filepath.Join(root, ".github", "workflows", "ci.yml"), ociProviderInput)
 	}
 	for _, paths := range [][]string{{parent}, {filepath.Join(parent, "*"), parent}} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, plugininstall.Selection{RuleSet: checking.ConfigurationRules()})
+		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,4 +67,8 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 			t.Fatalf("plugins missing or ran in other repositories: %v", counts)
 		}
 	}
+}
+
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) plugininstall.Acquisition {
+	return plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

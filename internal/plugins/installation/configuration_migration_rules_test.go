@@ -19,10 +19,8 @@ import (
 )
 
 func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("HOME", cache)
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Parallel()
+	acquisition := Acquisition{UserCacheDir: t.TempDir()}
 	manifest := manifests.Manifest{
 		SchemaVersion: 1, ID: "migration-fixture", Version: "1.0.0", Role: manifests.RoleDocument,
 		Scope: manifests.ScopeSource, Transport: manifests.TransportProcess, Preparation: "generic",
@@ -36,7 +34,7 @@ func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	}
 	sum := sha256.Sum256(data)
 	digest := hex.EncodeToString(sum[:])
-	if err := (artifacts.Store{Dir: DefaultArtifactOptions().CacheDir}).Publish(t.Context(), digest, data); err != nil {
+	if err := (artifacts.Store{Dir: acquisition.ArtifactOptions().CacheDir}).Publish(t.Context(), digest, data); err != nil {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
@@ -45,7 +43,7 @@ func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	migration, err := PrepareConfigurationMigration(t.Context(), path, DefaultPluginOptions{})
+	migration, err := PrepareConfigurationMigration(t.Context(), path, DefaultPluginOptions{Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestPluginMutationsWithoutDependenciesPreserveProject(t *testing.T) {
@@ -28,7 +30,7 @@ func TestPluginMutationsWithoutDependenciesPreserveProject(t *testing.T) {
 				}
 			}
 			for _, operation := range []string{"update", "install"} {
-				output := pluginCommandTest(t, 0, "plugin", operation)
+				output := pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", operation)
 				if !strings.Contains(output, "No plugins installed.") {
 					t.Fatal(output)
 				}
@@ -63,8 +65,8 @@ func TestPluginMutationsPreserveEmptyLock(t *testing.T) {
 	if err := os.WriteFile(lock, content, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "update", "--plugin-lock", lock)
-	pluginCommandTest(t, 0, "plugin", "install", "--plugin-lock", lock)
+	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", "update", "--plugin-lock", lock)
+	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", "install", "--plugin-lock", lock)
 	got, err := os.ReadFile(lock)
 	if err != nil || !bytes.Equal(got, content) {
 		t.Fatalf("empty plugin management rewrote lock: %q, %v", got, err)
@@ -81,7 +83,7 @@ func TestPluginInstallMissingExplicitPathsPreservesProject(t *testing.T) {
 			t.Chdir(t.TempDir())
 			t.Setenv("ACTIONLINT_CONFIG", "")
 			t.Setenv("ACTIONLINT_NO_CONFIG", "")
-			pluginCommandTest(t, 0, "plugin", "install", flag, filepath.Join("missing", "project.yaml"))
+			pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", "install", flag, filepath.Join("missing", "project.yaml"))
 			entries, err := os.ReadDir(".")
 			if err != nil || len(entries) != 0 {
 				t.Fatalf("empty install created files: %v, %v", entries, err)

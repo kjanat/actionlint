@@ -49,7 +49,7 @@ type RegistryRequest struct {
 	JSON      bool
 }
 
-func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryRequest) (int, error) {
+func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryRequest, acquisition plugininstall.Acquisition) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
 		name = r.Paths[0]
@@ -59,7 +59,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 		registry = plugininstall.DefaultURL
 	}
 	if r.Operation == Search || r.Operation == Versions {
-		return 0, r.discover(ctx, streams, registry, name)
+		return 0, r.discover(ctx, streams, registry, name, acquisition)
 	}
 	if r.Config.Disabled {
 		return 0, commandargs.UsageError{Cause: errors.New("plugin management requires configuration; remove --no-config")}
@@ -71,7 +71,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 	if err != nil {
 		return 0, err
 	}
-	project, err := plugininstall.OpenProject(ctx, checking.ConfigurationRules(), cwd, r.LockFile, r.Config.Path)
+	project, err := plugininstall.OpenProject(ctx, checking.ConfigurationRules(), acquisition, cwd, r.LockFile, r.Config.Path)
 	if err != nil {
 		return 0, err
 	}
@@ -116,7 +116,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 		if err := selected.RefreshStatuses(ctx, project.StatusOptions); err != nil {
 			return 0, err
 		}
-		if err := plugininstall.Sync(ctx, selected); err != nil {
+		if err := plugininstall.Sync(ctx, selected, acquisition); err != nil {
 			return 0, err
 		}
 		if err := project.SyncDirect(ctx); err != nil {
@@ -128,7 +128,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 			return 0, err
 		}
 	case Search, Versions:
-		return 0, r.discover(ctx, streams, registry, name)
+		return 0, r.discover(ctx, streams, registry, name, acquisition)
 	default:
 		return 0, fmt.Errorf("unsupported plugin operation %q", r.Operation)
 	}
@@ -228,7 +228,7 @@ func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Pro
 	}
 	if name != "" {
 		// The declaration records the digest an oci:// tag names now.
-		name, err = plugininstall.PinSource(ctx, name)
+		name, err = plugininstall.PinSource(ctx, name, project.StatusOptions.Acquisition)
 		if err != nil {
 			return err
 		}
@@ -360,7 +360,7 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 			if ref.DirectSource() != "" || registry != "" && !plugininstall.SameRegistry(ref.Registry(), registry) {
 				continue
 			}
-			client, err := plugininstall.NewWithGrant(ref.Registry(), project.StatusOptions.Network)
+			client, err := plugininstall.NewWithGrant(ref.Registry(), plugininstall.StatusOptions{Network: project.StatusOptions.Network, Acquisition: project.StatusOptions.Acquisition})
 			if err != nil {
 				return -1, err
 			}
@@ -383,8 +383,8 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 	return index, nil
 }
 
-func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.Streams, registry, name string) error {
-	client, err := plugininstall.New(registry)
+func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.Streams, registry, name string, acquisition plugininstall.Acquisition) error {
+	client, err := plugininstall.New(registry, acquisition)
 	if err != nil {
 		return commandargs.UsageError{Cause: err}
 	}

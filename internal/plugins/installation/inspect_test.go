@@ -14,7 +14,7 @@ func TestPinSourceLeavesLocalAndPinnedSourcesUnchanged(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			got, err := PinSource(t.Context(), source)
+			got, err := PinSource(t.Context(), source, Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}

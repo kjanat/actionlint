@@ -30,7 +30,7 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	plugins, err := c.pluginSelection().Resolve(ctx, cwd, inputmodel.Request{Kind: inputmodel.Repository})
+	plugins, err := c.pluginSelection(streams.Acquisition).Resolve(ctx, cwd, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return 0, err
 	}
@@ -42,7 +42,7 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if c.ResolverCommand != "" {
 		provider = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 	}
-	metadata, err := c.actionMetadata()
+	metadata, err := c.actionMetadata(streams.Acquisition)
 	if err != nil {
 		return 0, err
 	}

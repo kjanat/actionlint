@@ -18,7 +18,7 @@ func TestEnvironmentOptionsModesAndCredentials(t *testing.T) {
 		{Off, "primary", "fallback", ""},
 	} {
 		env := map[string]string{"GH_TOKEN": tc.gh, "GITHUB_TOKEN": tc.github}
-		options := EnvironmentOptions(tc.mode, func(key string) string { return env[key] })
+		options := EnvironmentOptions(tc.mode, func(key string) string { return env[key] }, "")
 		mode := tc.mode
 		if mode == "" {
 			mode = Online
@@ -31,7 +31,11 @@ func TestEnvironmentOptionsModesAndCredentials(t *testing.T) {
 	if cache, err := os.UserCacheDir(); err == nil {
 		want = filepath.Join(cache, "actionlint", "action-metadata", "v2")
 	}
-	if options := EnvironmentOptions(Online, func(string) string { return "" }); options.CacheDir != want {
+	if options := EnvironmentOptions(Online, func(string) string { return "" }, ""); options.CacheDir != want {
 		t.Fatalf("cache directory = %q, want %q", options.CacheDir, want)
+	}
+	selected := t.TempDir()
+	if options := EnvironmentOptions(Online, func(string) string { return "" }, selected); options.CacheDir != filepath.Join(selected, "actionlint", "action-metadata", "v2") {
+		t.Fatalf("selected cache directory = %q", options.CacheDir)
 	}
 }
