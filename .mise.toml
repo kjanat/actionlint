@@ -45,7 +45,7 @@ pandoc                     = {
   version                               = "3.13",
   platforms.windows-arm64.asset_pattern = "pandoc-{{ version }}-windows-x86_64.zip",
 }
-kprint                     = { version = "0.60.6", depends = ["bun"] }
+kprint                     = { version = "0.61.0", depends = ["bun"] }
 "npm:runner-run"           = { version = "0.28.0", depends = ["bun"] }
 typescript                 = "7.0.2"
 biome                      = {
@@ -80,7 +80,7 @@ typescript    = "github:microsoft/TypeScript"
 biome         = "github:biomejs/biome"
 markscribe    = "github:charmbracelet/markscribe"
 shellcheck    = "github:koalaman/shellcheck"
-rshellcheck   = "github:kjanat/shellcheck-rs"
+rshellcheck   = "github:kjanat/shellcheck-rs"                                # cargo:rshellcheck
 
 [settings]
 lockfile_platforms                  = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64", "windows-arm64"]

@@ -1,7 +1,13 @@
 # actionlint
 
+[![CI Status][ci-badge]][ci]
+[![Latest release][release-badge]][releases]
+[![NPM Version][npm-badge]][npm-package]
+[![PyPI version][pypi-badge]][pypi-package]
+[![pkg.pr.new][preview-badge]][previews]
 [![Docker latest][docker-badge]][docker-latest]
 [![Docker nightly][docker-nightly-badge]][docker-nightly]
+[![Sponsor this project][sponsor-badge]][sponsor]
 
 **Catch the broken workflow before the runner does.**
 
@@ -76,7 +82,8 @@ Build an action's inputs with `${{ insert }}`:
 
 ```yaml
 with:
-  ${{ insert }}: ${{ fromJSON('{"fetch-depth": 0, "persist-credentials": false}') }}
+  ${{ insert }}: >-
+    ${{ fromJSON('{"fetch-depth": 0, "persist-credentials": false}') }}
 ```
 
 actionlint checks the inserted input names and values, even when you build them from matrix expressions. You can insert environment variables into `env:` the same way.
@@ -120,6 +127,9 @@ actionlint resolves the matrix and reports the loose JSON as information. That w
 
 actionlint still catches its mistakes. `if: ${{ format('{0}', false) }}` produces the string `"false"`, so the job runs. And `${{ github.workspace }}` inside a TOML string can break the Rust script's dependency declaration if the path contains an apostrophe.
 
+<details>
+<summary>Build action inputs with JSON comments, unquoted keys, and trailing commas</summary>
+
 The [kp2bw Windows workflow](internal/development/tests/integration/workflow/testdata/repositories/kp2bw-windows-bw-cmd.yml) builds action inputs for npm, Bun, Bitwarden, and Vaultwarden in one expression. Yes, `fromjsOn()` works too:
 
 ```yaml
@@ -136,6 +146,8 @@ steps:
 ```
 
 actionlint checks all four combinations. It computes `install_args` for each one, including the extra `bun` for Bun, and checks the resulting action inputs.
+
+</details>
 
 The [shellcheck-rs wiki fixture](internal/development/tests/integration/workflow/testdata/repositories/shellcheck-wiki.yml) also uses `${{ insert }}` in `env:`, expression-valued `with:` mappings, and YAML aliases for action references. The [expression behavior guide](docs/expression-behavior.md) explains the runner comparisons behind these checks, including why `'017' == 17` and `fromJSON('017') == 15` can both be true.
 
@@ -321,3 +333,16 @@ actionlint uses the [MIT license](LICENSE.txt). The [identity artwork](docs/asse
 [docker-latest]: https://hub.docker.com/r/kjanat/actionlint/tags?name=latest
 [docker-nightly-badge]: https://img.shields.io/badge/Docker-nightly-black?logo=docker&logoColor=white&labelColor=2496ED
 [docker-nightly]: https://hub.docker.com/r/kjanat/actionlint/tags?name=nightly
+[ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
+[ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml
+[npm-badge]: https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black
+[npm-package]: https://npm.im/@kjanat/actionlint
+[preview-badge]: https://pkg.pr.new/badge/kjanat/actionlint
+[previews]: https://pkg.pr.new/~/kjanat/actionlint
+[release-badge]: https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black
+[releases]: https://github.com/kjanat/actionlint/releases
+[sponsor-badge]: https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white
+[sponsor]: https://github.com/sponsors/kjanat
+
+[pypi-badge]: https://img.shields.io/pypi/v/actionlint-kjanat?logo=python&logoColor=white&labelColor=3776AB&color=black
+[pypi-package]: https://pypi.org/project/actionlint-kjanat/
