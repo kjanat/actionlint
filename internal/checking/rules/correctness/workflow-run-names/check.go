@@ -1,0 +1,77 @@
+// Package workflownames checks workflow_run filters against known workflow names.
+package workflownames
+
+import (
+	"fmt"
+
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+
+	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/results"
+)
+
+// WorkflowRunFilters returns declared producer-name filters without loading an inventory.
+func WorkflowRunFilters(w workflowdecl.WorkflowView) []workflowdecl.StringView {
+	var references []workflowdecl.StringView
+	for event := range w.On() {
+		if hook, ok := event.WebhookEvent(); ok && hook.Hook().Value() == "workflow_run" {
+			for reference := range hook.Workflows() {
+				references = append(references, reference)
+			}
+		}
+	}
+
+	return references
+}
+
+// Check verifies name filters against a complete repository inventory.
+// Unknown expressions and incomplete inventories cannot establish missing producers.
+func Check(n namemodel.Inventory, references []workflowdecl.StringView) []results.Diagnostic {
+	var findings []results.Diagnostic
+	if len(references) == 0 {
+		return findings
+	}
+	report := func(pos *workflowlang.Pos, format string, args ...any) {
+		findings = append(findings, results.Diagnostic{Rule: "workflow-run-names", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}})
+	}
+	if !n.Complete() {
+		return findings
+	}
+	var patterns []string
+	allKnown, missing := true, false
+	for _, ref := range references {
+		if !ref.Present() {
+			allKnown = false
+			continue
+		}
+		value := ref.Value()
+		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
+			value = *literal
+		} else if ref.ContainsExpression() {
+			allKnown = false
+			continue
+		}
+		patterns = append(patterns, value)
+		if n.Missing(value) {
+			missing = true
+			report(namePosition(ref), "workflow_run references workflow pattern %q, but no workflow name matches it in this repository", value)
+		}
+	}
+	if allKnown && !missing && n.ExcludesAll(patterns) {
+		report(namePosition(references[0]), "workflow_run workflow-name filters exclude every matching workflow in this repository")
+	}
+	return findings
+}
+
+func namePosition(value workflowdecl.StringView) *workflowlang.Pos {
+	position, present := value.Pos()
+	if !present {
+		return nil
+	}
+	return &position
+}

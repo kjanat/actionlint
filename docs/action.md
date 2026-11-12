@@ -23,7 +23,48 @@ jobs:
 
 This discovers workflows, reports findings as annotations, and writes a compact
 job summary. Findings fail the step. Pin a **published release commit SHA** or
-normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
+a `vX.Y.Z` tag to use a fixed version; major and minor tags move.
+
+## Permissions
+
+The quick start grants `contents: read` for [checkout](https://github.com/actions/checkout#recommended-permissions).
+Once files are available locally, ordinary analysis and reporting need no
+`GITHUB_TOKEN` permissions. Choose permissions for the features you enable:
+
+| Feature or input                                                             | Required access                                                                                                                                              |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Analysis, configuration, `files`, `ignore`, `disable-tools`, `fail-on-error` | Local checkout access; no additional token permissions.                                                                                                      |
+| `version`, `version-file`, `install-only`, `add-actionlint-to-path`          | No token permissions. Published binaries and checksums are downloaded publicly.                                                                              |
+| `annotations`, `format: github`                                              | No token permissions. Annotations use runner commands; `checks: write` is unnecessary.                                                                       |
+| `summary`, `summary-title`                                                   | No token permissions. Summaries are written to the runner's summary file.                                                                                    |
+| `format`, `output-file`, `result-file`, `sarif: true`                        | No token permissions. These produce local reports; `sarif: true` does not upload to code scanning.                                                           |
+| `plugin-cache: true`                                                         | Runner-provided cache credentials; no `actions: write` grant. See [cache access](#cache-access).                                                             |
+| `review: true`                                                               | `pull-requests: write` on the PR's repository, plus read access to the PR head's source content. See [PR reviews](#optional-pr-review).                      |
+| Upload reports with `actions/upload-artifact` in a later step                | Runner-provided artifact credentials; no `actions: write` grant.                                                                                             |
+| Upload SARIF to code scanning in a later step                                | `security-events: write`; GitHub's upload example also requires `actions: read` in private repositories. See [SARIF upload](#upload-sarif-to-code-scanning). |
+
+Set [workflow or job permissions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions)
+explicitly. Listing permissions sets unlisted scopes to `none`; add only the
+scopes needed by other steps in the same job. If files are provisioned without
+authenticated checkout and reviews are off, actionlint can run with `permissions: {}`.
+
+The `token` input defaults to `${{ github.token }}` and is used only for PR reviews.
+For a custom GitHub App or fine-grained personal access token, grant
+[Pull requests: write](https://docs.github.com/en/rest/pulls/reviews#create-a-review-for-a-pull-request)
+on the PR's repository and
+[Contents: read](https://docs.github.com/en/rest/repos/contents#get-repository-content)
+where access to private PR-head content is needed. The reporter reads that content
+to verify each finding before posting. Job `permissions` controls `GITHUB_TOKEN`;
+it does not change the permissions of a custom token.
+
+### Cache access
+
+`plugin-cache` uses GitHub's cache service through `@actions/cache`, independently
+of the review token. Where supported, [`cache-mode`](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#controlling-cache-access-with-cache-mode)
+controls restore/save access. Read-only cache access still permits restores;
+cache service failures produce warnings and analysis continues. `plugin-cache: false`
+disables the shared cache. Downloading public plugin artifacts does not require a
+`packages: read` grant; private sources need their own supported credentials.
 
 ## Install without running analysis
 
@@ -40,7 +81,7 @@ normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
 `install-only` exports the selected binary for later steps without reading workflows
 or lint configuration. Keep `add-actionlint-to-path: true`
 (the default). Analysis and reporting inputs do not apply in this mode. This installs only the actionlint binary:
-`shellcheck` and `ruff` do not install plugins or native executables in install-only mode. Provision native tools
+Bundled tools such as ShellCheck and Ruff get no plugins or native executables in install-only mode. Provision native tools
 separately if later steps need them; configure and pin Wasm plugins for later actionlint checks.
 
 Use `version-file: .tool-versions` instead of `version` to read a checked-in pin:
@@ -124,15 +165,15 @@ tool option preserves its neighbors; lists and scalars replace so removals are
 unambiguous. These examples start with expression-reference `options.variables: [DEPLOY_ENV]` and
 `tools.shellcheck.config: {disable: [SC2086], enable: [all]}`:
 
-| Overlay                                                  | Effect                                                          |
-| -------------------------------------------------------- | --------------------------------------------------------------- |
-| Omitted or blank input                                   | Inherit the file.                                               |
-| `config: '{}'`                                           | Keep inherited settings.                                        |
-| `config: 'null'`                                         | Reset the complete config to defaults.                          |
-| `config: 'tools: {shellcheck: false}'`                   | Disable ShellCheck, retaining its settings for a later overlay. |
-| `config: 'tools: {shellcheck: {config: {disable: []}}}'` | Clear disabled codes; retain `enable: [all]`.                   |
-| `config: 'tools: {shellcheck: {config: .shellcheckrc}}'` | Replace the inline directive map with an rc path.               |
-| `config: 'tools: {shellcheck: {config: null}}'`          | Clear rc/inline configuration.                                  |
+| Overlay                                                  | Effect                                            |
+| -------------------------------------------------------- | ------------------------------------------------- |
+| Omitted or blank input                                   | Inherit the file.                                 |
+| `config: '{}'`                                           | Keep inherited settings.                          |
+| `config: 'null'`                                         | Reset the complete config to defaults.            |
+| `config: 'tools: {shellcheck: false}'`                   | Set only ShellCheck's enabled flag to false.      |
+| `config: 'tools: {shellcheck: {config: {disable: []}}}'` | Clear the disabled-code list.                     |
+| `config: 'tools: {shellcheck: {config: .shellcheckrc}}'` | Replace the inline directive map with an rc path. |
+| `config: 'tools: {shellcheck: {config: null}}'`          | Clear rc/inline configuration.                    |
 
 An empty map inherits **a map**. Switching between an rc string and an inline
 mapping replaces the old form; `{}` after an rc string selects an empty mapping.
@@ -140,8 +181,8 @@ Unknown inline keys fail with their location. Historically ignored file keys war
 For `lint.rules.correctness.expression-reference.options.variables`, `[]` allows
 no configured variables; `null` restores the default of no variable-name checking.
 
-`shellcheck: false` disables ShellCheck. The deprecated `pyflakes` input is ignored. The default
-`shellcheck: true` permits the tool; it does not override `tools.shellcheck: false`.
+`disable-tools: shellcheck` disables ShellCheck. Leaving ShellCheck out of
+`disable-tools` permits the tool; it does not override `tools.shellcheck: false`.
 Configure plugin options in `tools.shellcheck.config`; see [plugin configuration](plugins.md).
 
 ### Path bases
@@ -177,7 +218,7 @@ first; a checked-in config file avoids escaping nested expressions.
 | SARIF file                | `sarif: true`; `report-sarif` output.                                   |
 | PR comments               | `review: true`, opt-in.                                                 |
 
-Explicit annotations off preserves the serialized `output` value. Fatal errors
+Turning annotations off does not change the serialized `output` value. Fatal errors
 still report a step error. Multiple destinations share one analysis.
 
 Finding annotations include the diagnostic message followed by a numbered source
@@ -195,13 +236,11 @@ excerpts, caret ranges and two surrounding lines on either side when the source 
 Documentation URLs appear on their own line. Source locations link to the
 run's commit only when the checkout matches its repository and revision and the file
 matches the committed content, allowing LF/CRLF line-ending conversion. Other content changes,
-generated, external and nested-checkout files remain plain text. Repository-defined Git filters are not run.
+generated, external and nested-checkout files have plain-text locations. Repository-defined Git filters are not run.
 Locations respect `working-directory`.
-Findings remain visible without expanding a details section. Incomplete analysis
-is identified separately from lint findings. For multiple invocations in one job,
+The summary displays findings and identifies incomplete analysis. For multiple invocations in one job,
 set `summary-title: Production workflows` to add a small report label. Summaries have no title by default.
 Clean runs, empty selections and failures include a short status message in the summary and text log.
-JSON, JSON Lines and SARIF console output remain machine-readable.
 
 Save reports even when findings fail the lint step:
 
@@ -236,16 +275,47 @@ Save reports even when findings fail the lint step:
 CLI `check --json`, Action `format: json`, and `result-file` share this contract.
 JSON Lines uses the same diagnostic objects with `schema_version` on each record.
 See [the result contract](results.md) for TypeScript types, schema evolution, and
-migration from the previous Action diagnostic array. Full workflow/job/step
-inventories remain separate work (kjanat/actionlint#189).
+migration from the previous Action diagnostic array.
 
 Files use unique absolute paths and survive for later steps in the **same job**.
 Upload them for use elsewhere. A result is attempted for setup/input failures too;
 failure to create/write files can prevent that output. Missing output is never
-evidence of a clean run. Incomplete results retain known diagnostics; `file_count`
+evidence of a clean run. Incomplete results include collected diagnostics; `file_count`
 may be null. SARIF is exposed only for completed analysis. `fail-on-error: false`
 allows a step with findings to pass while preserving the recorded analysis outcome.
 Match findings by path, location and rule; array indexes can change between runs.
+
+### Upload SARIF to code scanning
+
+`sarif: true` creates the file exposed by `report-sarif`. To publish it to GitHub
+code scanning, add a separate uploader and its
+[required permissions](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/integrate-with-existing-tools/upload-sarif-file):
+
+```yaml
+name: Scan workflows
+on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write
+  actions: read # Required by the uploader for private repositories.
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: kjanat/actionlint@v2
+        id: lint
+        with: { sarif: true }
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.lint.outputs.report-sarif != ''
+        with:
+          sarif_file: ${{ steps.lint.outputs.report-sarif }}
+```
+
+Code scanning must be available and enabled for the repository. Its uploader
+handles event-specific restrictions, including pull requests from forks;
+the Action's `token` input is not passed to the uploader.
 
 ### Optional PR review
 
@@ -265,9 +335,14 @@ jobs:
 
 Reviews group findings on changed lines and add applicable suggestions. Reruns
 deduplicate existing comments. Missing PR context, unchanged lines, mismatched
-source, limits and permission errors produce concise feedback; analysis files
-remain available. Use the ordinary `pull_request` event; fork PR tokens may lack
-write permission. Review failure is advisory and leaves the analysis outcome intact.
+source, limits and permission errors produce feedback. Use the ordinary `pull_request`
+event. Fork and Dependabot PRs normally receive a read-only `GITHUB_TOKEN`, and
+secrets are restricted; writing `pull-requests: write` in the workflow cannot
+override those restrictions. Annotations and summaries still work when review
+posting is unavailable. Review failure is advisory and leaves the analysis outcome intact.
+Keep untrusted PR analysis on `pull_request`; do not switch to `pull_request_target`
+and execute PR-controlled code to obtain a write token. See
+[GitHub's fork permission rules](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#changing-the-permissions-in-a-forked-repository).
 
 ## Plugins and binary installation
 
@@ -275,18 +350,21 @@ Each invocation downloads the selected actionlint binary, verifies its checksum,
 and executes it. `add-actionlint-to-path` makes that binary available in later
 steps. `install-only: true` performs only this installation.
 
-Declare ShellCheck and Ruff Wasm plugins in the project's `plugins` list and
-commit the generated lockfile. The Action uses the same pinned artifacts as the
-CLI. `shellcheck: false` or `ruff: false` disables the corresponding checks;
-`true` permits configured checks. Plugin options belong in project configuration.
+Declare exact ShellCheck and Ruff Wasm plugin versions in the project's `plugins` list and
+commit that configuration. The Action resolves the same immutable registry releases as the
+CLI. `disable-tools` lists tool ids to turn off, such as `shellcheck` or `ruff`;
+those tools run neither natively nor as plugins, and a selected plugin whose name or
+alias is a listed id is not downloaded. An id that names no bundled tool and no
+plugin fails with the list of valid ids. Plugin options belong in project configuration.
 See [installing and configuring plugins](plugins.md).
 
 `plugin-cache: true` restores and saves pinned Wasm artifacts through GitHub
 Actions cache. The Action reads the plugin plan before restoring the cache;
 analysis then hydrates missing artifacts and verifies their digests. The cache
-never contains plugin declarations, lockfiles, or the actionlint executable.
-After automatic config migration, a second read-only plan includes any newly
-locked defaults when saving the cache.
+contains only selected digest-addressed artifact bytes; registry authority records,
+plugin declarations and the actionlint executable are excluded. OCI planning may
+fetch manifests to enumerate this host's blobs, but never downloads executable layers.
+Checking does not migrate configuration on disk.
 
 Node 24 support is required from the runner. Linux, macOS and Windows x64/arm64
 are supported where the selected release supplies an asset. Binary downloads
@@ -296,36 +374,36 @@ require network access, including reruns. HTTP(S) proxy settings are honored.
 
 All inputs are optional. Booleans accept `true`/`false`.
 
-| Input                    | Default        | Meaning                                                                                                                               |
-| ------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `version`                | Action release | Exact binary release; overrides `version-file`.                                                                                       |
-| `version-file`           | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
-| `install-only`           | `false`        | Install actionlint on PATH without analysis or reporting.                                                                             |
-| `plugin-cache`           | `true`         | Restore and save digest-verified plugin artifacts.                                                                                    |
-| `files`                  | discover       | Literal newline-separated workflow paths.                                                                                             |
-| `format`                 | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
-| `ignore`                 | empty          | Newline-separated regular expressions.                                                                                                |
-| `config-file`            | discover       | Explicit config file.                                                                                                                 |
-| `config`                 | inherit        | Inline YAML/JSON overlay.                                                                                                             |
-| `working-directory`      | `.`            | Analysis directory.                                                                                                                   |
-| `shellcheck`             | `true`         | Permit the configured ShellCheck Wasm checks.                                                                                         |
-| `ruff`                   | `true`         | Permit the configured Ruff Wasm checks.                                                                                               |
-| `add-actionlint-to-path` | `true`         | Export actionlint for later steps.                                                                                                    |
-| `output-file`            | empty          | Workspace-relative legacy-format report.                                                                                              |
-| `fail-on-error`          | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
-| `annotations`            | `auto`         | Finding annotation control.                                                                                                           |
-| `summary`                | `true`         | Compact job summary.                                                                                                                  |
-| `summary-title`          | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
-| `sarif`                  | `false`        | Write additional SARIF file.                                                                                                          |
-| `review`                 | `false`        | Advisory PR review posting.                                                                                                           |
-| `token`                  | `github.token` | Used only by the review reporter.                                                                                                     |
+| Input                            | Default        | Meaning                                                                                                                               |
+| -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                        | Action release | Exact binary release; overrides `version-file`.                                                                                       |
+| `version-file`                   | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
+| `install-only`                   | `false`        | Install actionlint on PATH without analysis or reporting.                                                                             |
+| `plugin-cache`                   | `true`         | Restore and save digest-verified plugin artifacts.                                                                                    |
+| `files`                          | discover       | Literal newline-separated workflow paths.                                                                                             |
+| `format`                         | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
+| `ignore`                         | empty          | Newline-separated regular expressions.                                                                                                |
+| `config-file`                    | discover       | Explicit config file.                                                                                                                 |
+| `config`                         | inherit        | Inline YAML/JSON overlay.                                                                                                             |
+| `working-directory`              | `.`            | Analysis directory.                                                                                                                   |
+| `disable-tools`                  | empty          | Tool ids to turn off, separated by newlines or commas, such as `shellcheck` or `ruff`.                                                |
+| `shellcheck`, `ruff`, `pyflakes` | none           | Ignored. List the tool id in `disable-tools` to turn a tool off.                                                                      |
+| `add-actionlint-to-path`         | `true`         | Export actionlint for later steps.                                                                                                    |
+| `output-file`                    | empty          | Workspace-relative legacy-format report.                                                                                              |
+| `fail-on-error`                  | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
+| `annotations`                    | `auto`         | Finding annotation control.                                                                                                           |
+| `summary`                        | `true`         | Compact job summary.                                                                                                                  |
+| `summary-title`                  | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
+| `sarif`                          | `false`        | Write additional SARIF file.                                                                                                          |
+| `review`                         | `false`        | Advisory PR review posting; requires `pull-requests: write` and PR-head source read access. See [permissions](#permissions).          |
+| `token`                          | `github.token` | Review reporter token; custom tokens need access to the PR repository and its head source. See [permissions](#permissions).           |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `version`        | Installed binary version, without the `v` prefix.                                                                       |
 | `exit-code`      | Exit status: 0 successful setup/clean analysis, 1 findings, 2 invalid input, 3 failure.                                 |
 | `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                                                              |
-| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`.                                     |
+| `problems-found` | Whether analysis completed with findings. See `result-file` for partial results.                                        |
 | `problem-count`  | Count, or empty when analysis did not complete.                                                                         |
 | `output`         | Selected serialization; JSON uses the same result as `result-file`, including failures. Prefer files for large reports. |
 | `output-file`    | Workspace-relative requested path, or empty.                                                                            |
@@ -334,7 +412,9 @@ All inputs are optional. Booleans accept `true`/`false`.
 
 ## Migration and troubleshooting
 
-The deprecated `pyflakes` input is ignored; use a configured Ruff plugin.
+The inputs `shellcheck`, `ruff` and `pyflakes` are ignored. GitHub shows their
+deprecation message when a workflow sets them. To turn a tool off, list its id in
+`disable-tools`, for example `disable-tools: shellcheck`.
 **JSON and JSON Lines change shape**:
 JSON now returns the versioned result object instead of a diagnostic array; JSON
 Lines uses versioned canonical diagnostics. Update consumers using the
@@ -343,10 +423,9 @@ the default; there is no separate legacy JSON mode. Coordinate affected consumer
 before promoting moving Action tags.
 
 New defaults add a compact summary and actionlint PATH export; turn either off when
-unwanted. JavaScript removes Docker's Linux/daemon requirement. Existing immutable
-Docker releases and digest pins remain untouched. Compatibility images continue
+unwanted. JavaScript removes Docker's Linux/daemon requirement. Compatibility images are published
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin
-wrapper around the ordinary binary. [Release maintainers](../tools/release/bump-version/README.md)
+wrapper around the ordinary binary. [Release maintainers](../tools/release/README.md)
 prepare, inspect and promote the same tested candidate.
 
 | Symptom                    | Check                                                                                                |

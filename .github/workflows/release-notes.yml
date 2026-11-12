@@ -28,7 +28,7 @@ jobs:
     concurrency: { group: release-notes, cancel-in-progress: false, queue: max }
     permissions: { contents: read, id-token: write }
     steps:
-      - uses: &BeepboopToken kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+      - uses: &BeepboopToken kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
         id: beepboop
         with: { permission-contents: write }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -36,8 +36,8 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'refs/heads/master' || github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, package-manager-cache: false }
       - name: Update every release whose notes file changed
         env:
           GH_TOKEN: ${{ steps.beepboop.outputs.token }}
@@ -70,7 +70,7 @@ jobs:
           for file in "${files[@]}"; do
             tag="$(basename "${file}" .md)"
             [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-            go run ./tools/release/bump-version -notes "${tag}" > "${RUNNER_TEMP}/${tag}.md"
+            node tools/release/release-candidate.mjs notes --version "${tag}" > "${RUNNER_TEMP}/${tag}.md"
             tags+=("${tag}")
           done
           for tag in "${tags[@]}"; do

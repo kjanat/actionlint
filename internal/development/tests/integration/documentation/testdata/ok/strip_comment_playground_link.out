@@ -1,0 +1,31 @@
+<a id="hello"></a>
+## Hello
+
+Example input:
+
+```yaml
+# This line is not included
+on: push
+jobs:
+  test:
+    # This line is not included
+    runs-on: ubuntu-latest
+    steps:
+      # This line is not included
+      - run: echo ${{ unknown }}
+# This line is not included
+permissions: {}
+```
+
+Output:
+
+```
+test.yaml:9:23: unknown-variable: undefined variable "unknown". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
+  |
+9 |       - run: echo ${{ unknown }}
+  |                       ^~~~~~~
+```
+
+[Playground](https://kjanat.github.io/actionlint/#eNokyr0NwzAMROFeU1yRVgtwmzggYOeHFHwkUgjaPWBcveJ7boKR3NvTN0oDQhlV4ExjL88tLbK/72V/YujgdQG9ToE+dsdtTqS9zL+GtdrQ83OQhxsFc/0GAE0uIzU=)
+
+This is minimal test case.

@@ -5,7 +5,9 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+
+	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
 func parseColorMode(mode string) (render.Color, error) {
@@ -28,7 +30,7 @@ func (a *commandApp) prepareColor() error {
 	if a.set["modern-color"] {
 		color, err := parseColorMode(a.opts.colorMode)
 		if err != nil {
-			return commandUsageError{err}
+			return commandargs.UsageError{Cause: err}
 		}
 		a.inv.Render.Color = color
 	}
@@ -51,7 +53,7 @@ func githubActionsColor(out io.Writer) bool {
 	return true
 }
 
-func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
+func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format render.Format) {
 	if r.Color != render.ColorAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
 		return
 	}
@@ -59,7 +61,10 @@ func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
 	if r.Template != "" || !githubActionsColor(out) {
 		return
 	}
-	if r.Format == "" || r.Format == render.FormatText || r.Format == render.FormatOneline {
+	switch format {
+	case "", render.FormatText, render.FormatPretty, render.FormatOneline:
 		r.Color = render.ColorAlways
+	case render.FormatGCC, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub:
+		// Machine-readable formats stay uncolored.
 	}
 }

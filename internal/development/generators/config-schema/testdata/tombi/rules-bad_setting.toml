@@ -1,0 +1,5 @@
+[lint]
+[lint.rules]
+[lint.rules.security]
+[lint.rules.security.unpinned-reference]
+[lint.rules.security.unpinned-reference.options]

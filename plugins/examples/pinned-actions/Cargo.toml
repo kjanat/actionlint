@@ -1,0 +1,20 @@
+[package]
+name              = "actionlint-example-pinned-actions"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name       = "pinned_actions"
+
+[[bin]]
+name              = "package-pinned-actions"
+path              = "src/bin/package.rs"
+required-features = ["package"]
+
+[dependencies]
+actionlint-extension-api = { path = "../../sdk/rust" }
+
+[features]
+package = ["actionlint-extension-api/package"]

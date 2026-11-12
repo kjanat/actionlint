@@ -1,16 +1,19 @@
 # Historical package layout proposal
 
-This document records the dependency measurements and proposal at `2f85e20`. The implemented boundaries and their
-limitations are described in [Analysis contracts and library boundaries](analysis-contracts.md). The measurements below
-are historical; they do not describe the current repository layout.
+This document records the dependency measurements and package proposal from
+`2f85e20`. The measurements are historical. They do not describe the current
+repository layout. See [Analysis contracts and library boundaries](analysis-contracts.md)
+for the implemented boundaries and their limitations.
 
 ## How the graph was measured
 
-Load the root package with `golang.org/x/tools/go/packages` in a mode that includes `NeedSyntax`, `NeedTypes` and
-`NeedTypesInfo`. Assign every top-level declaration, struct field and interface method to its source file, then
-attribute every `types.Object` in `TypesInfo.Uses` to the file holding the declaration that encloses the use. Exclude
-`_test.go` files, and split `error.go` at symbol level into the `Error` value object and the `ErrorFormatter` side.
-Without that split the `{ErrorFormatter, command, linter}` cycle is smeared across three apparent ones.
+Load the root package with `golang.org/x/tools/go/packages` using a mode that
+includes `NeedSyntax`, `NeedTypes` and `NeedTypesInfo`. Assign each top-level
+declaration, struct field and interface method to its source file. Then attribute
+each `types.Object` in `TypesInfo.Uses` to the file containing the declaration
+that encloses the use. Exclude `_test.go` files. Split `error.go` by symbol into
+the `Error` value object and the `ErrorFormatter` side. Without this split, the
+`{ErrorFormatter, command, linter}` cycle appears to be three separate cycles.
 
 Every figure below was measured at commit [`kjanat/actionlint@2f85e20`]. Section [Reproducing the measurements]
 gives a command for each claim.
@@ -40,15 +43,19 @@ Three files declare no exported top-level symbol: `process.go` (171 lines), `quo
 
 ### Test coupling
 
-34 of the 36 test files are white-box `package actionlint`. Only `example_test.go` and `example_your_own_rule_test.go`
-are `package actionlint_test`.
+Thirty-four of the 36 test files use the white-box package `actionlint`. Only
+`example_test.go` and `example_your_own_rule_test.go` use `package actionlint_test`.
 
-The production graph below deliberately excludes tests, but the move cannot defer them. A separate type-based pass over
-the test variant finds multiple private symbols used across proposed package boundaries. `error_test.go` tests both the
-diagnostic value and the root formatter and must split. The parsing cases in `rule_required_actions_test.go` must become
-external `package rule_test` tests: leaving them white-box and importing the root for `Parse` creates
-`rule -> root -> rule`. Its helper-only cases move to `internal` or stay as white-box `rule` tests as appropriate. The
-other cross-boundary cases must be rewritten against the public APIs in the same phase as their production files.
+The production graph below excludes tests, but the package move must account for
+them. A separate type-based pass over the test variant found private symbols used
+across proposed package boundaries. `error_test.go` tests both the diagnostic
+value and the root formatter, so it must split. The parsing cases in
+`rule_required_actions_test.go` must become external `package rule_test` tests.
+If they remain white-box and import the root package for `Parse`, they create the
+cycle `rule -> root -> rule`. Keep tests for unexported helpers in the package
+that owns each helper: `internal` if the helper moves there, or `rule` if it is
+implemented there. Rewrite the remaining cross-boundary tests against public
+APIs in the same phase as their production files.
 
 ### Measured dependency graph
 
@@ -138,11 +145,13 @@ is no separate `pos` package.**
 
 ### Why `Pos` stays in `ast`
 
-`Pos` is a two-field struct at `ast.go:14-19` with two methods, `String` at `ast.go:134` and `IsBefore` at
-`ast.go:139`. Its only helper is `byteOffsetAtColumn` at `ast.go:117`, called from `scriptSource.lookup` at `ast.go:93`,
-from `parse.go:162`, and from `Error.getEndColumn` and `Error.getIndicator` at `error.go:141,164,172`. A dedicated `pos`
-package would hold six lines of struct, two methods and one helper, and every package that imports `ast` would import
-it as well. No boundary in the layout below needs it.
+`Pos` is a two-field struct at `ast.go:14-19`. It has two methods: `String` at
+`ast.go:134` and `IsBefore` at `ast.go:139`. Its only helper,
+`byteOffsetAtColumn` at `ast.go:117`, is called from `scriptSource.lookup` at
+`ast.go:93`, `parse.go:162`, and `Error.getEndColumn` and `Error.getIndicator` at
+`error.go:141,164,172`. A separate `pos` package would contain a six-line
+struct, two methods and one helper. Every package importing `ast` would also
+need to import `pos`. The proposed layout needs no such boundary.
 
 `ast.go` and `pass.go` reference `ExprNode`, `ExprType` and `ExprError` zero times, so the AST and the expression tree
 do not form a cycle. `ast` has zero outgoing edges. It is already a leaf and stays one.
@@ -163,7 +172,7 @@ two constructors, and `byteOffsetAtColumn` in the two indicator helpers. Nothing
    symbols from that side of `error.go` (`Error` and its fields plus `ErrorTemplateFields`) and zero AST nodes.
    `playground` uses seven and zero. Both name the type explicitly, at `cmd/actionlint-action/lint.go:84`
    (`[]*actionlint.Error`), `cmd/actionlint-action/render.go:12` (`= actionlint.ErrorTemplateFields`) and
-   `playground/main.go:20` (`*actionlint.Error`). Putting `Error` in `ast` makes all three read `*ast.Error` and
+   `applications/playground/main.go:20` (`*actionlint.Error`). Putting `Error` in `ast` makes all three read `*ast.Error` and
    `ast.ErrorTemplateFields` in programs that never touch a workflow node.
 3. **It would put the whole AST behind `project`.** The diagnostic dependency of `config.go` is exactly two symbols,
    `Error` and `Error.Message`. With `Error` in `ast`, the configuration package imports the workflow syntax tree for
@@ -174,9 +183,10 @@ and nothing else.
 
 ### Why `ErrorFormatter` stays in the root
 
-`NewErrorFormatter` at `error.go:302` needs `getCommandVersion` from `command.go`, and `ErrorFormatter.RegisterRule` at
-`error.go:340` takes the `Rule` interface and reads `Rule.Name` and `Rule.Description`. That is the one cycle in the
-graph that matters, and it disappears when `ErrorFormatter` stays with `linter.go` and `command.go`.
+`NewErrorFormatter` at `error.go:302` uses `getCommandVersion` from
+`command.go`. `ErrorFormatter.RegisterRule` at `error.go:340` accepts the `Rule`
+interface and reads `Rule.Name` and `Rule.Description`. Keeping `ErrorFormatter`
+with `linter.go` and `command.go` removes the relevant cycle.
 
 ### Where the split runs through `error.go`
 
@@ -396,8 +406,9 @@ import goes unnoticed until release.
 
 ## API breakage and what aliases can carry
 
-The module is published on the Go module proxy, and a version the proxy has served is immutable there, so the flat
-API is a published contract regardless of whether any dependent is known.
+The Go module proxy has published this module, and it treats each served version
+as immutable. The flat API is therefore a published contract even if no
+dependents are known.
 [`@v/list`] lists every released version, and
 [`@latest`] names the newest one together with the commit
 hash it was cut from, for anyone pinning to an exact revision:
@@ -407,9 +418,9 @@ hash it was cut from, for anyone pinning to an exact revision:
 
 The module path itself resolves through a `go-import` meta element on the Pages site.
 
-Against that, `docs/api.md:49-52` and `doc.go:17-21` both state that the version number belongs to the command line
-tool, that the library does not follow semantic versioning, and that any patch bump may introduce breaking changes.
-Whoever runs phase 11 decides which of the two facts governs.
+However, `docs/api.md:49-52` and `doc.go:17-21` say that the version belongs to
+the command-line tool, the library does not follow semantic versioning, and any
+patch release may introduce breaking changes. Phase 11 must resolve this conflict.
 
 If an alias layer is wanted, these are the Go rules, each verified in a throwaway module:
 
@@ -534,17 +545,17 @@ the top of the table carry the proof, and each is one `rg` away.
 [latest-commit]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
 [latest-version]: https://proxy.golang.org/actionlint.kjanat.dev/@latest
 
-## Shared configuration internals
+## Historical configuration follow-up
 
-The configuration implementation now separates public API types from reusable
-implementation machinery:
+The proposal was later followed by a configuration split with these packages:
 
-- `internal/configtree`: YAML alias expansion, structural merging, local
+- `internal/input/configurationtree`: YAML alias expansion, structural merging, local
   `extends` loading, dependency tracking, and cycle detection.
-- `internal/filefilter`: feature-independent include/exclude glob selection.
+- `internal/input/selection`: feature-independent include/exclude glob selection.
 - `internal/lintconfig`: rule levels, presets, groups, and typed-option decoding.
 
-The root package retains public configuration aliases and adapters that connect
-these internals to the rule catalog and analysis engine. File selection can be
-reused by future formatter and language-server frontends without moving lint
-rules into those components. Neither frontend is implemented by this change.
+At that point, the root package retained public configuration aliases and adapters
+connecting these packages to the rule catalog and analysis engine. File selection
+could be reused by future formatter and language-server frontends. Neither frontend
+was implemented by that change. For current package ownership, see
+[Analysis contracts](analysis-contracts.md).

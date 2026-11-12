@@ -22,6 +22,15 @@ The `winget` job of the release workflow runs this after the release is publishe
 
 ## Executable validation
 
-`kjanat.actionlint` is a ZIP containing a portable CLI, not an executable installer. Running `actionlint` with no arguments outside a Git repository exits 3 because there are no workflows to lint. That exit code is not an installation success code: `InstallerSuccessCodes` applies to installer processes, not to an installed application's own command-line behavior. Do not declare it for this package.
+`kjanat.actionlint` distributes the portable CLI as a ZIP. Outside a Git
+repository, running `actionlint` without arguments prints help and exits 0.
+Inside a repository, it runs the default check. Running `actionlint check`
+explicitly exits 3 when there is nothing to analyze.
 
-The manifest instead supplies `InstallationMetadata.Files` with `FileType: launch` and `InvocationParameter: -version`, which lets tools invoke the installed `actionlint.exe` successfully without requiring a repository. This metadata does not guarantee that the WinGet automated executable probe uses those arguments. If it still reports `Validation-Executable-Error` after successful installation and a working `actionlint -version`, the remaining check requires administrator review; do not change the CLI's normal exit codes just to satisfy the probe.
+Do not set `InstallerSuccessCodes` in this package's manifest. It lists successful exit codes for an installer process. This package is installed by extracting the ZIP.
+
+The manifest supplies `InstallationMetadata.Files` with `FileType: launch` and
+`InvocationParameter: -version`. Both the version command and a launch without
+arguments succeed outside a repository. The latter no longer fails because
+there is nothing to analyze. Hosted WinGet validation must still confirm that
+the published package is accepted.

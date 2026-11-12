@@ -1,0 +1,15 @@
+extends=["first.toml", "second.toml"]
+[repository]
+secrets=["MAIN"]
+[[overrides]]
+includes=["a.yml"]
+[overrides.repository]
+runners=["override-first"]
+[overrides.local-actions]
+"./dist"="./override-first"
+[[overrides]]
+includes=["a.yml"]
+[overrides.repository]
+runners=["override-last"]
+[overrides.local-actions]
+"$/dist"="./override-last"

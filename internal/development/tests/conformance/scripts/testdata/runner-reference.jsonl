@@ -1,0 +1,12 @@
+{"input":"::notice:Up to date","parsed":false,"command":null,"data":null}
+{"input":"::error:msg","parsed":false,"command":null,"data":null}
+{"input":"::warning single-colon","parsed":false,"command":null,"data":null}
+{"input":"::group unterminated","parsed":false,"command":null,"data":null}
+{"input":"::notic::msg","parsed":false,"command":null,"data":null}
+{"input":"::notice::Up to date","parsed":true,"command":"notice","data":"Up to date"}
+{"input":"::NOTICE::ok","parsed":true,"command":"NOTICE","data":"ok"}
+{"input":"  ::warning file=a,line=2::msg","parsed":true,"command":"warning","data":"msg"}
+{"input":"[System.IO.Path]::GetTempPath()","parsed":false,"command":null,"data":null}
+{"input":"example ::notic::msg","parsed":false,"command":null,"data":null}
+{"input":"::debug ignored-property::ok","parsed":true,"command":"debug","data":"ok"}
+{"input":"::add-matcher::matcher.json","parsed":true,"command":"add-matcher","data":"matcher.json"}

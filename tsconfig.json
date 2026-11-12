@@ -12,9 +12,21 @@
     "types": ["node"],
     "allowImportingTsExtensions": true
   },
-  "include": ["**/*", ".github/ci/*.mjs"],
-  "exclude": ["node_modules", "packages", "playground", "testdata", "github-docs"],
+  "include": ["**/*"],
+  "exclude": [
+    "node_modules",
+    "libraries",
+    "applications/github-action",
+    "plugins/sdk/typescript",
+    "applications/playground",
+    "**/testdata/**",
+    "**/dist/**",
+    "github-docs",
+    "plugins/examples/external-linters",
+    "plugins/examples/**/actionlint.js",
+    "plugins/examples/**/actionlint.mjs"
+  ],
   "references": [
-    { "path": "./playground/tsconfig.json" }
+    { "path": "./applications/playground/tsconfig.json" }
   ]
 }

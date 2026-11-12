@@ -1,6 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
+#:tombi toml-version = "v1.1.0"
 
-min_version   = { soft = "2026.10.13" }
+min_version   = { soft = "2026.11.3" }
 monorepo_root = true
 
 [wrappers.actionlint]
@@ -8,81 +9,251 @@ command = "go"
 args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
+[wrappers.poutine]
+command = "docker"
+args    = ["run", "-qt", "--rm", "--pull=always", "-eGH_TOKEN", "ghcr.io/boostsecurityio/poutine:latest"]
+env     = { GH_TOKEN = "{{ exec(command='gh auth token') | default(value='') }}" }
+
+[wrappers.modernize]
+command = "go"
+args    = ["run", "golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest"]
+
 [tools]
-npm                                      = "12.2.0"
-go                                       = { prefix = "1.27" }
-node                                     = { prefix = "26" }
-shellcheck                               = { prefix = "0.11" }
-rshellcheck                              = { version = "latest" }
-ruff                                     = "0.17.0"
-tinygo                                   = { prefix = "0.43" }
-"github:charmbracelet/markscribe".prefix = "0.8"
-"github:jgm/pandoc".prefix               = "3"
-"github:kjanat/runner".prefix            = "0.28"
-"github:microsoft/TypeScript".prefix     = "7"
-"github:tombi-toml/tombi".prefix         = "1.8"
-"github:biomejs/biome"                   = { prefix = "2", version_prefix = "@biomejs/biome@" }
-
-[tools."golangci-lint"]
-prefix  = "2"
-depends = ["go"]
-
-[tools."github:kjanat/actionlint"]
-version = "latest"
-depends = ["rshellcheck"]
-
-[tools."github:rhysd/actionlint"]
-version = "latest"
-depends = ["rshellcheck"]
-
-[tools."github:kjanat/dprint"]
-version = "0.59.0-kjanat"
-depends = ["tombi", "go"]
+jq                         = "1.8.2"
+bun                        = "1.4.4"
+npm                        = { version = "12.2.0", depends = ["bun"] }
+go                         = "1.27.4"
+node                       = "26"
+shellcheck                 = "0.11.0"
+rshellcheck                = {
+  version_prefix = "rshellcheck-v",
+  version        = "1.1.0",
+  matching_regex = '^rshellcheck-[0-9].*-(?:aarch64|x86_64|armv7|i686)-.+\.(?:tar\.gz|zip)$'
+}
+grype                      = "0.121.1"
+ruff                       = "0.17.0"
+syft                       = "1.56.0"
+tinygo                     = "0.43.0"
+wasm-tools                 = "1.263.0"
+wit-bindgen                = "0.63.0"
+uv                         = "0.13.7"
+yamllint                   = { version = "1.38.0", depends = ["uv"] }
+zizmor                     = "1.31.1"
+tombi                      = "1.11.1"
+markscribe                 = "0.8.1"
+pandoc                     = {
+  version                               = "3.13",
+  platforms.windows-arm64.asset_pattern = "pandoc-{{ version }}-windows-x86_64.zip",
+}
+kprint                     = { version = "0.60.6", depends = ["bun"] }
+"npm:runner-run"           = { version = "0.28.0", depends = ["bun"] }
+typescript                 = "7.0.2"
+biome                      = {
+  version        = "2.6.6",
+  version_prefix = "@biomejs/biome@",
+}
+rust                       = {
+  version    = "latest",
+  components = ["clippy", "rustfmt"],
+  targets    = ["wasm32-unknown-unknown", "wasm32-wasip2"]
+}
+"golangci-lint"            = { version = "2.15.0", depends = ["go"] }
+"github:kjanat/actionlint" = { version = "latest", depends = ["github:kjanat/shellcheck-rs"] }
+"github:rhysd/actionlint"  = { version = "latest", depends = ["github:kjanat/shellcheck-rs"] }
+wasi-sdk                   = {
+  version        = "34",
+  version_prefix = "wasi-sdk-",
+  filter_bins    = ["wasm32-wasip2-clang", "wasm32-wasip2-clang++"],
+  platforms      = {
+    windows-x64   = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] },
+    windows-arm64 = { filter_bins = ["wasm32-wasip2-clang.exe", "wasm32-wasip2-clang++.exe"] }
+  }
+}
 
 [tool_alias]
-tombi       = "github:tombi-toml/tombi"
-shellcheck  = "github:koalaman/shellcheck"
-rshellcheck = "github:kjanat/shellcheck-rs"
+golangci-lint = "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
+wit-bindgen   = "github:bytecodealliance/wit-bindgen"
+wasi-sdk      = "github:WebAssembly/wasi-sdk"
+pandoc        = "github:jgm/pandoc"
+kprint        = "npm:@kprint/kprint"
+typescript    = "github:microsoft/TypeScript"
+biome         = "github:biomejs/biome"
+markscribe    = "github:charmbracelet/markscribe"
+shellcheck    = "github:koalaman/shellcheck"
+rshellcheck   = "github:kjanat/shellcheck-rs"
 
 [settings]
+lockfile_platforms                  = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64", "windows-arm64"]
+npm.package_manager                 = "bun"
 experimental                        = true
-idiomatic_version_file_enable_tools = ["go", "node"]
+idiomatic_version_file_enable_tools = ["go", "node", "bun", "rust"]
 minimum_release_age                 = "0s"
+minimum_release_age_excludes        = [
+  "npm:@kjanat/*",
+  "npm:@kprint/*",
+  "github:kjanat/*",
+  "github:koalaman/shellcheck",
+  "github:microsoft/TypeScript"
+]
 
 [env]
-_.path       = ["{{config_root}}/node_modules/.bin"]
-GOFLAGS      = "-buildvcs=true"
-VOLTA_BYPASS = 1
+_.path        = [
+  {
+    path  = "{% if 'npm:runner-run' in tools %}{{ tools['npm:runner-run'].path }}/node_modules/@runner-run/{{ os(macos='darwin', windows='win32') }}-{{ arch() }}{% if os() == 'linux' %}-{{ libc() }}{% elif os() == 'windows' %}-msvc{% endif %}/bin{% else %}{{config_root}}/node_modules/.bin{% endif %}",
+    tools = true
+  },
+  "{{config_root}}/node_modules/.bin",
+]
+GOFLAGS       = "-buildvcs=true"
+VOLTA_BYPASS  = 1
+WASI_SDK_PATH = { value = "{% if 'wasi-sdk' in tools %}{{ tools['wasi-sdk'].path }}{% endif %}", tools = true }
 
 [deps]
-[deps.npm]
+[deps.bun]
 auto = false
-run  = "npm i --no-fund --no-audit --ignore-scripts"
+run  = "bun i"
 
 [deps.go]
 auto = false
 run  = "go mod tidy -diff"
 
-[tasks]
-[tasks.format]
-alias       = ["f", "fmt"]
-description = "Format code"
-run         = "dprint fmt"
-tools       = { tombi = { prefix = "1.8" } }
+[task_config]
+includes = ["tasks.toml"]
+shell    = "{% if os() == 'windows' %}powershell.exe -NoProfile -ExecutionPolicy Bypass -Command{% else %}bash -e -c{% endif %}"
+
+[task_templates."go-test"]
+vars        = { test_flags = "" }
+run         = '''
+race="${RACE--race}"
+if [ "${NORACE:-}" = 1 ] || [ "${CLAUDECODE:-}" = 1 ]; then race=; fi
+if [ -n "$race" ]; then
+  if probe="$(go test "$race" -run '^$' -count=1 ./internal/input/discovery 2>&1)"; then
+    :
+  elif printf '%s\n' "$probe" | grep -Fq 'ThreadSanitizer: unsupported VMA range'; then
+    printf '%s\n' 'Race detector unavailable on this kernel; running tests without -race.'
+    race=
+  else
+    printf '%s\n' "$probe" >&2
+    exit 1
+  fi
+fi
+go test ${race:+$race} {{ vars.test_flags }} ./...
+
+'''
+run_windows = "go test {{ env.RACE | default(value='') }} {{ vars.test_flags }} ./..."
+
+[task_templates."plugin-contract"]
+sources = [
+  "plugins/protocol/wit/**/*.wit",
+  "internal/development/generators/plugin-contract/*.go",
+  "go.{mod,sum}",
+  "internal/plugins/execution/component/generate.go"
+]
+
+[task_templates."manual"]
+vars    = { suffix = "", flags = "" }
+sources = ["man/*.{md,lua,css}", "VERSION"]
+outputs = ["man/actionlint.1{{ vars.suffix }}"]
+run     = "{{ env.PANDOC | default(value='pandoc --standalone --from=markdown-smart --syntax-highlighting=none') }} --lua-filter=man/release-version.lua {{ vars.flags }} --output=man/actionlint.1{{ vars.suffix }} man/actionlint.1.md"
+
+[task_templates."rust-plugin"]
+depends = ["protocol:sdk"]
+vars    = {
+  target       = "wasm32-wasip2",
+  profile      = "wasm",
+  target_dir   = "target",
+  features     = "",
+  package      = "",
+  artifact     = "",
+  metadata     = "",
+  packager     = "",
+  fixture_root = "internal/plugins/execution/component/testdata/plugins"
+}
+sources = [
+  "Cargo.{toml,lock}",
+  "rust-toolchain.toml",
+  "plugins/sdk/rust/**",
+  "internal/plugins/execution/{component,module}/testdata/sources/**",
+  "plugins/examples/**/{Cargo.toml,*.rs,*.json,LICENSE*}",
+  "internal/development/tests/integration/plugins/package-fixture/*.go"
+]
+outputs = ["{{ vars.fixture_root }}/{{ vars.fixture }}.wasm"]
+run     = [
+  "cargo build --locked --profile {{ vars.profile }} --target {{ vars.target }} --target-dir \"{{ vars.target_dir }}\" {% if vars.package %}-p {{ vars.package }}{% else %}-p actionlint-example-{{ vars.example | default(value=vars.fixture) }}{% endif %}{% if vars.features %} --features {{ vars.features }}{% endif %}",
+  '''
+{% if vars.artifact %}{% set artifact = vars.artifact %}{% elif vars.package %}{% set artifact = vars.package | replace(from="-", to="_") %}{% else %}{% set artifact = vars.example | default(value=vars.fixture) | replace(from="-", to="_") %}{% endif %}
+{% set source = vars.target_dir ~ "/" ~ vars.target ~ "/" ~ vars.profile ~ "/" ~ artifact ~ ".wasm" %}
+{% set output = vars.fixture_root ~ "/" ~ vars.fixture ~ ".wasm" %}
+{% if vars.packager %}
+{% set distribution = vars.target_dir ~ "/plugin-packages/" ~ vars.fixture %}
+cargo run --locked -p {{ vars.package }} --features package --bin {{ vars.packager }} -- "{{ source }}" "{{ distribution }}"
+wasm-tools validate "{{ distribution }}/plugin.wasm"
+mise run fixture:copy "{{ distribution }}/plugin.wasm" "{{ output }}"
+{% elif vars.metadata %}go run ./internal/development/tests/integration/plugins/package-fixture "{{ source }}" "{{ vars.metadata }}" "{{ output }}"{% else %}mise run fixture:copy "{{ source }}" "{{ output }}"{% endif %}
+'''
+]
+
+[task_templates."script-plugin"]
+sources = ["plugins/protocol/wit/*.wit", "plugins/examples/{{ vars.fixture }}/**"]
+outputs = ["internal/plugins/execution/component/testdata/plugins/{{ vars.fixture }}.wasm"]
+run     = "bash plugins/examples/{{ vars.fixture }}/build.sh \"{{ config_root }}/internal/plugins/execution/component/testdata/plugins/{{ vars.fixture }}.wasm\""
+
+[vars]
+exe = "{% if os() == 'windows' %}.exe{% endif %}"
 
 [monorepo]
 config_roots = [
-  ".github/actions/comment-cop",
-  ".github/actions/setup-formatters",
-  ".github/actions/setup-pandoc",
-  ".github/actions/setup-runner",
-  ".github/actions/setup-shellcheck",
-  ".github/actions/setup-wasm-toolchain",
+  ".github/actions/*",
   ".github/ci",
-  "distribution/docker",
-  "internal/expression/probe",
-  "tools/action",
-  "tools/matcher",
-  "tools/release",
-  "tools/toolchain",
+  "applications/github-action/tests",
+  "distribution/*",
+  "internal/development/tests/conformance/expressions",
+  "tools/*",
+  "tools/generate/*",
 ]
+
+[monorepo.projects."go:actionlint.kjanat.dev/v2"]
+root        = "."
+depends_add = ["custom:plugin-protocol", "custom:configuration-schemas", "go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+
+[monorepo.projects."go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+root        = "plugins/sdk/go"
+depends_add = ["custom:plugin-protocol"]
+
+[monorepo.projects."go:example.com/actionlint-plugin-insecure-download"]
+root        = "plugins/examples/insecure-download"
+depends_add = ["go:actionlint.kjanat.dev/v2/plugins/sdk/go"]
+
+[monorepo.projects."custom:runner-host"]
+root = "internal/development/tests/conformance/wasm/runner-host"
+
+[monorepo.projects."custom:plugin-protocol"]
+root = "plugins/protocol"
+
+[monorepo.projects."custom:configuration-schemas"]
+root = "schemas"
+
+[monorepo.projects."custom:documentation"]
+root = "docs"
+
+[monorepo.projects."custom:maintenance"]
+root = "tools"
+
+[monorepo.projects."custom:distribution"]
+root        = "distribution"
+depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
+
+[monorepo.projects."node:actionlint-playground"]
+depends_add = ["go:actionlint.kjanat.dev/v2"]
+
+[monorepo.projects."node:actionlint-action"]
+depends_add = ["go:actionlint.kjanat.dev/v2"]
+
+[monorepo.projects."node:@kjanat/actionlint-npm"]
+depends_add = ["go:actionlint.kjanat.dev/v2", "custom:documentation"]
+
+[monorepo.projects."node:@kjanat-actionlint/plugin-sdk"]
+depends_add = ["custom:plugin-protocol"]
+
+[monorepo.projects."cargo:actionlint-extension-api"]
+depends_add = ["custom:plugin-protocol"]

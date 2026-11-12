@@ -1,0 +1,12 @@
+[[overrides]]
+includes = ['**']
+
+[overrides.lint]
+[overrides.lint.rules]
+[overrides.lint.rules.conventions]
+[overrides.lint.rules.conventions.job-timeout]
+level = 'on'
+
+[overrides.lint.rules.conventions.job-timeout.options]
+max-minutes = 10.0
+min-minutes = 100.0

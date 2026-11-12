@@ -1,0 +1,11 @@
+[lint]
+[lint.rules]
+[lint.rules.correctness]
+action = 'default'
+expression-reference = 'off'
+inline-suppression = 'on'
+unused-suppression = 'info'
+
+[lint.rules.suspicious]
+mixed-type-comparisons = 'error'
+string-conditions = 'warn'

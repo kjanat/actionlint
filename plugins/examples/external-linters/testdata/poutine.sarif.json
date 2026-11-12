@@ -1,0 +1,95 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/boostsecurityio/poutine",
+          "name": "poutine",
+          "organization": "boostsecurity",
+          "rules": [
+            {
+              "id": "injection",
+              "name": "Injection with Arbitrary External Contributor Input",
+              "shortDescription": {
+                "text": "Injection with Arbitrary External Contributor Input"
+              },
+              "fullDescription": {
+                "text": "The pipeline contains an injection into bash or JavaScript with an expression\nthat can contain user input. Prefer placing the expression in an environment variable\ninstead of interpolating it directly into a script."
+              },
+              "helpUri": "https://boostsecurityio.github.io/poutine/rules/injection",
+              "help": {
+                "text": "https://boostsecurityio.github.io/poutine/rules/injection",
+                "markdown": "## Description\n\nThe pipeline contains an injection into bash or JavaScript with an expression that can contain user input. Prefer placing the expression in an environment variable instead of interpolating it directly into a script.\n\n## Remediation\n\n### GitHub Actions\n\n#### Recommended\n\n```yaml\non:\n  pull_request_target:\n    branches: [main]\n    types: [opened, synchronize]\n\npermissions: {}\n\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    permissions:\n      pull-requests: write\n    steps:\n      - name: Validate pull request title and body\n        uses: actions/github-script@v60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1\n        env:\n          PR_TITLE: ${{ github.event.pull_request.title }}\n        with:\n          script: |\n            const { PR_TITLE } = process.env\n            github.rest.issues.createComment({\n                issue_number: context.issue.number,\n                owner: context.repo.owner,\n                repo: context.repo.repo,\n                body: `Your title (${PR_TITLE}) must match our expected format (\"BUG: Fix this now!!!\").`\n            })\n```\n\n#### Anti-Pattern\n\n```yaml\n# (1) Triggers on `pull_request_target`, no scoping to protected branch, no scoping to selected events\non: pull_request_target\n\npermissions: write-all # (2) Unnecessary permissions\n\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Debug\n        run: |\n          # (3) Bash injection\n          echo \"Title: ${{ github.event.pull_request.title }}\"\n          echo \"Body: ${{ github.event.pull_request.body }}\"\n      - name: Validate pull request title and body\n        uses: actions/github-script@v7 # (4) Missing pinning\n        with:\n          script: |\n            // (5) JavaScript injection\n            github.rest.issues.createComment({\n                issue_number: context.issue.number,\n                owner: context.repo.owner,\n                repo: context.repo.repo,\n                body: \"Your title (${{ github.event.pull_request.title}}) must match the expected format.\"\n            })\n```\n\n## Remediation\n\n### Pipeline as Code Tekton\n\n#### Anti-Pattern\n```yaml\napiVersion: tekton.dev/v1beta1\nkind: PipelineRun\nmetadata:\n  name: linters\n  annotations:\n    pipelinesascode.tekton.dev/on-event: \"[push, pull_request]\"\n    pipelinesascode.tekton.dev/on-target-branch: \"[*]\"\n    pipelinesascode.tekton.dev/task: \"[git-clone]\"\nspec:\n  params:\n    - name: repo_url\n      value: \"{{repo_url}}\"\n    - name: revision\n      value: \"{{revision}}\"\n  pipelineSpec:\n    params:\n      - name: repo_url\n      - name: revision\n    tasks:\n      - name: fetchit\n        displayName: \"Fetch git repository\"\n        params:\n          - name: url\n            value: $(params.repo_url)\n          - name: revision\n            value: $(params.revision)\n        taskRef:\n          name: git-clone\n        workspaces:\n          - name: output\n            workspace: source\n      - name: validate\n        displayName: \"Injecting body in script\"\n        runAfter:\n          - fetchit\n        taskSpec:\n          workspaces:\n            - name: source\n          steps:\n            - name: execute\n              image: some.registry/some-image\n              script: |\n                validate_pr \"{{body.pull_request.body}}\"\n...\n```\n\n## See Also\n- [Understanding the risk of script injections](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections)\n- [Good practices for mitigating script injection attacks](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#good-practices-for-mitigating-script-injection-attacks)"
+              }
+            }
+          ],
+          "semanticVersion": "1.1.6",
+          "supportedTaxonomies": [
+            {
+              "name": "boost/sast",
+              "index": 0,
+              "guid": "0c8bf036-487d-590a-8c22-c41f287b1560"
+            }
+          ]
+        }
+      },
+      "artifacts": [
+        {
+          "location": {
+            "uri": ".github/workflows/captured.yml"
+          },
+          "length": -1
+        }
+      ],
+      "results": [
+        {
+          "properties": {
+            "boost/confidence": "medium"
+          },
+          "ruleId": "injection",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "The pipeline contains an injection into bash or JavaScript with an expression\nthat can contain user input. Prefer placing the expression in an environment variable\ninstead of interpolating it directly into a script."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/captured.yml"
+                },
+                "region": {
+                  "startLine": 12,
+                  "endLine": 12
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d60fd9e145908e5b79484bdf054a2a0d98e8843752a1f6953c605b2bb45b1ac9"
+          }
+        }
+      ],
+      "taxonomies": [
+        {
+          "name": "boost/sast",
+          "organization": "boostsecurity",
+          "rules": [],
+          "version": "1.0.0"
+        }
+      ],
+      "versionControlProvenance": [
+        {
+          "branch": "local",
+          "repositoryUri": "https://localrepo//local",
+          "revisionId": ""
+        }
+      ],
+      "properties": {
+        "purl": "pkg:localrepo/localrepo/local?repository_url=%2Fmnt%2Fc%2FUsers%2Fkjanat%2FProjects%2Factionlint%2F.worktrees%2Fgo-v2%2Fexamples%2Fplugins%2Fexternal-linters%2Ftestdata%2Fpoutine"
+      }
+    }
+  ]
+}

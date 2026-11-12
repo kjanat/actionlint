@@ -96,7 +96,6 @@ func outputExistsError(path string) error {
 	return fmt.Errorf("output file %q already exists; use --yes to replace it", path)
 }
 
-// Confirmation uses stderr so report output remains usable by other programs.
 func confirmOverwrite(streams Command, path string) (bool, error) {
 	if _, err := fmt.Fprintf(streams.Stderr, "%q already exists. Overwrite? [y/N] ", path); err != nil {
 		return false, err

@@ -1,0 +1,40 @@
+[
+  {
+    "cell": null,
+    "code": "invalid-syntax",
+    "end_location": {
+      "column": 8,
+      "row": 1
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": null,
+    "location": {
+      "column": 7,
+      "row": 1
+    },
+    "message": "Expected a parameter or the end of the parameter list",
+    "name": "invalid-syntax",
+    "noqa_row": null,
+    "severity": "error",
+    "url": null
+  },
+  {
+    "cell": null,
+    "code": "invalid-syntax",
+    "end_location": {
+      "column": 1,
+      "row": 2
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": null,
+    "location": {
+      "column": 8,
+      "row": 1
+    },
+    "message": "Expected `)`, found newline",
+    "name": "invalid-syntax",
+    "noqa_row": null,
+    "severity": "error",
+    "url": null
+  }
+]

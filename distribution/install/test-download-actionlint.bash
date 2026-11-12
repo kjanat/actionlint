@@ -60,6 +60,11 @@ download latest
 check_latest_version "${executable}"
 rm -f "${executable}"
 
+# No arguments
+download
+check_latest_version "${executable}"
+rm -f "${executable}"
+
 # Specify only version
 download '1.8.0'
 out="$("${executable}" -version | head -n 1)"

@@ -1,44 +1,66 @@
 # Configuration
 
-Configuration is optional. Put `actionlint.yaml`, `actionlint.yml`, `actionlint.json` or
+Configuration is optional. Put `actionlint.yaml`, `actionlint.yml`, `actionlint.json`, `actionlint.jsonc` or
 `actionlint.toml` in `.github/`, or select a file with `actionlint --config path/to/actionlint.toml`.
 actionlint reads the first of those names that exists. The CLI and GitHub Action use the same
 settings.
 
+We recommend TOML with [Tombi](https://github.com/tombi-toml/tombi) for editor
+completion and validation. Create `.github/actionlint.toml` with
+`actionlint config init --toml`.
+
+YAML, JSON and JSONC are also supported. Choose the format with `--json`,
+`--jsonc`, `--toml`, `--yaml` or `--yml`. Without a format flag, `config init` writes YAML.
+Both `.json` and `.jsonc` accept comments and trailing commas. `--json` generates
+ordinary JSON, while `--jsonc` includes commented rule examples.
+
 ## Configuration file
 
 ```yaml
-# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
+repository:
+  runners: [linux.2xlarge, windows-latest-xl]
+  variables: { DEFAULT_RUNNER: null, ENVIRONMENT_STAGE: "production" }
+  secrets: [DEPLOY_TOKEN]
+  default-workflow-permissions: read
 lint:
-  rules:
-    correctness:
-      runner-label:
-        level: default
-        options: { labels: [linux.2xlarge, windows-latest-xl] }
-      expression-reference:
-        level: default
-        options:
-          variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
-          secrets: [DEPLOY_TOKEN]
-      workflow-call:
-        level: default
-        options: { default-permissions: restricted }
   message-ignores:
     ".github/workflows/**/*.{yml,yaml}":
-      - "shellcheck reported issue in this script: SC2086:.+"
+      - "SC2086:"
 ```
 
-| Key                                                                | Purpose                                                                                                                                                        |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins`                                                          | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
-| `lint.rules.correctness.runner-label.options.labels`               | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                               |
-| `lint.rules.correctness.expression-reference.options.variables`    | Allowed `vars` names. Omitted or `null` disables checking; `[]` allows none.                                                                                   |
-| `lint.rules.correctness.expression-reference.options.secrets`      | Allowed secret names, case-insensitive. Omitted or `null` disables checking; `[]` allows only built-in and declared `workflow_call` secrets.                   |
-| `lint.rules.correctness.workflow-call.options.default-permissions` | Assumed repository token default: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`.                                                |
-| `lint.message-ignores`                                             | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                              |
+| Key                                       | Purpose                                                                                                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `plugins`                                 | Exact registry releases, such as `owner/repo@v1.2.3`, or digest-pinned direct artifacts. No project lockfile is required. See [Plugins](plugins.md#install-from-the-registry). |
+| `repository.runners`                      | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                                               |
+| `repository.variables`                    | Available variable names mapped to optional string values. A null value keeps its name known. An empty mapping permits none.                                                   |
+| `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                                                            |
+| `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                                      |
+| `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                                             |
+| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to regular expressions matching messages or `CODE: message`.                                                            |
 
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
+
+Repository facts do not set rule severity. Configure them under `repository`.
+Omit a field to use host-detected information; set it to `null` to mark that fact
+unknown. A configured value replaces the host value after configuration
+inheritance and file selection. Each field replaces the whole fact, including all
+variable or environment mappings.
+
+If the default token permission is unknown, actionlint skips only permission
+comparisons that require that default. It still checks explicit workflow and job
+permissions and reusable-workflow arguments. For expression-reference checks in
+a job with a statically named environment, actionlint combines repository and
+environment variable and secret names. If the environment is dynamic or its facts
+are unavailable, actionlint cannot validate those environment names. Host
+integrations receive configured variable values, but expression checking does not
+yet use those values as literals.
+
+If actionlint does not know the configured runner labels, it cannot reject a
+custom label as unknown. It still checks compatibility with built-in labels. Set
+`repository.runners: []` to accept only built-in labels, or list every additional
+label that workflows may use.
 
 ### JSON and TOML
 
@@ -46,38 +68,39 @@ The same keys apply in every format, and `extends` entries may name files of any
 file may carry a top-level `$schema` key. TOML editors take the schema from a `#:schema` comment:
 
 ```toml
-#:schema ../node_modules/@kjanat/actionlint/actionlint.schema.json
+#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
 
-[lint.rules.correctness.runner-label]
-level = "default"
+[repository]
+runners                      = ["linux.2xlarge", "windows-latest-xl"]
+secrets                      = ["DEPLOY_TOKEN"]
+default-workflow-permissions = "read"
 
-[lint.rules.correctness.runner-label.options]
-labels = ["linux.2xlarge", "windows-latest-xl"]
-
-[lint.rules.correctness.expression-reference]
-level = "default"
-
-[lint.rules.correctness.expression-reference.options]
-variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
-secrets   = ["DEPLOY_TOKEN"]
+[repository.variables]
+ENVIRONMENT_STAGE = "production"
 
 [lint.message-ignores]
-".github/workflows/**/*.{yml,yaml}" = ["shellcheck reported issue in this script: SC2086:.+"]
+".github/workflows/**/*.{yml,yaml}" = [
+  "shellcheck reported issue in this script: SC2086:.+"
+]
 ```
 
 Errors and warnings name the line and column in the file as written.
 
-The [schema](../actionlint.schema.json) provides editor completion and validation.
+Tombi reads the schema directive for completion and validation. The schema selects
+TOML 1.1 and labels keys such as rule names and environment names in completion
+suggestions. Deprecated rule names produce a message naming their replacement.
+
+The [v2 schema](https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json) provides editor completion and validation.
 The YAML language service completes quoted property names after a prefix is
 entered. YAML LS 2.0.0 omits completions for empty quoted keys, and accepting its
 suggestions inside empty quoted values leaves a trailing quote. Remove the quotes
 or enter a prefix before completing these entries. YAML uses nested mappings: `lint.rules.security` is a literal key, not a nested path.
 Use TOML when dotted property paths are preferred.
-An installed npm package also supplies it at
-`../node_modules/@kjanat/actionlint/actionlint.schema.json` from a `.github/` config;
-see [schema distribution](../distribution/npm/facade/README.md#configuration-schema).
-Without an installed package, select a matching published version from that guide.
-Use a source-commit schema when trying unreleased settings; `HEAD` changes with development.
+Use `https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json` to follow
+v2, or `https://cdn.jsdelivr.net/gh/kjanat/actionlint@2.0.0/actionlint.schema.json`
+for an exact release. V1 configurations can use `@1` or an exact version such as
+`@1.17.0`. Match the schema's major version to the installed actionlint version.
+For unreleased settings, replace the version with the source commit you are testing.
 The full editor experience works in a real config file. YAML inside the Action
 `config` string is validated at runtime; editors generally see only a string.
 The schema rejects unknown keys. Runtime parsing warns about ignored keys at the
@@ -87,41 +110,81 @@ validity is checked when actionlint loads the file.
 
 ## Extending configuration
 
-Use `extends` to share local configuration files:
+Use `extends` to share local files or HTTPS configuration:
 
 ```yaml
-extends: [../config/actionlint-base.yml, ../config/team.yml]
+extends:
+  - https://example.org/actionlint/base.yml
+  - ../config/team.yml
 files:
   includes: [".github/workflows/**/*.{yml,yaml}"]
   excludes: [".github/workflows/generated/**"]
 ```
 
-Each path resolves relative to the file declaring it. Bases are applied in order,
+Replace the example URL with your hosted configuration. Relative references resolve
+against the declaring file's directory or HTTPS URL. Bases are applied in order,
 then the declaring file wins. Maps merge recursively; arrays and scalar values
 replace earlier values. `null` resets the selected setting. Inherited ShellCheck
-rc paths retain the directory of their declaring configuration.
+rc paths resolve relative to the configuration that declares them.
 
-Only local files are supported: no remote downloads, package resolution, or
-commands. Missing bases, cycles, invalid base settings, and chains deeper than
-32 levels are errors. `config.Load` and file-based CLI configuration resolve
-inheritance. In-memory `config.Parse` and inline Action overlays cannot resolve
-`extends`; select a configuration file instead.
+Remote files may extend other HTTPS configurations. Downloads require HTTPS and
+public destination addresses, reject credentials and redirects, and have a
+30-second timeout and 4 MiB limit per document. DNS answers are checked and pinned
+before connecting; a configuration declaration cannot authorize private network
+access. Use the final URL directly so relative references retain their origin.
+Remote configuration cannot extend local files or select a `file://` plugin
+registry. Relative filesystem paths for native tool executables, modules and rc
+files, including `${{ configdir }}`, require a local configuration; repository
+paths such as `local-actions` still resolve against the analyzed repository.
+
+Missing bases, cycles, invalid settings, and chains deeper than 32 levels are
+errors. File-based configuration resolves inheritance. Inline Action
+overlays cannot resolve `extends`; select a configuration file instead. Explicit
+migration rewrites the selected local file and checks inherited remote bytes again
+before writing; it does not rewrite hosted configurations.
+
+## CLI reporting defaults
+
+Set `output` to choose default reporting options for checks. Command-line flags
+override environment settings, which override the configuration.
+
+```yaml
+output:
+  formats: [github, pretty]
+  log-level: info
+  summary: true
+  network-stats: false
+  quiet: false
+lint:
+  experimental: true
+```
+
+`formats` accepts `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif`, and `github`. `log-level` accepts `info`, `debug`, and `none`. Omitted settings use CLI defaults. `lint.experimental` enables nursery rules and follows the same selection rules as `--experimental`.
+
+An explicit `--config` supplies reporting defaults. Otherwise actionlint reads
+them from the repository containing the current directory, including a directory
+selected with `-C`. These defaults apply once to the entire command. When checking
+several repositories, each repository supplies its own lint settings, but its
+`output` section does not change the command's output. `--no-config` disables
+configured reporting too.
 
 ## File selection
 
-Top-level `files` controls which input files are analyzed, independently of lint
-rule settings. Patterns are repository-relative doublestar globs using `/`; when
-there is no repository, they are relative to the working directory. They filter
-selected inputs and do not discover additional files. Inside a Git repository,
-discovery honours Git's ignore rules, and `files.excludes` remains the explicit
-override.
+Top-level `files` controls which files are analyzed, independently of lint rule
+settings. Patterns are doublestar globs using `/`, relative to the repository
+root or, outside a repository, the working directory. These patterns filter the
+selected files; they do not discover more files. Discovery inside a Git repository
+also honours Git's ignore rules. Use `files.excludes` to exclude files explicitly.
 
-Omitted or `null` `includes` selects every input; `includes: []` selects none.
+Omitted or `null` `includes` selects every file; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
-order. A negative-only include list selects nothing. Excluded input files are
-not read or linted, even when explicitly passed on the command line. Referenced
-actions, reusable workflows, and shell sources can still be read as dependencies
-of included workflows. File selection does not restrict dependency reads.
+order. A negative-only include list selects nothing during discovery. Directories
+and glob matches respect these filters. A literally named file is checked even
+when excluded. Use `--no-ignore` to scan directories or glob matches without
+applying Git ignore rules or these configuration filters.
+Referenced actions, reusable workflows, and shell sources can still be
+read as dependencies of included workflows. File selection does not restrict
+dependency reads.
 
 Use `overrides` to change settings for selected files without excluding them:
 
@@ -131,8 +194,8 @@ overrides:
     excludes: [".github/workflows/release-preview.yml"]
     lint:
       rules:
-        policy:
-          require-commit-hash: error
+        security:
+          unpinned-reference: error
   - includes: [".github/workflows/legacy*.yml"]
     tools:
       shellcheck:
@@ -142,19 +205,18 @@ overrides:
 
 Matching overrides merge in order, with later settings winning. Each entry needs
 at least one positive include pattern; exclusions affect that entry only.
-Each entry can overlay `lint` and `tools`. Tool settings merge independently of
-rule settings, retaining inherited options that the override leaves unspecified.
+Each entry can overlay `lint` and `tools`. Tool and rule settings merge independently;
+omitted options inherit their values.
 External tool provisioning uses each selected file's effective settings.
 
 ## Lint rules
 
-The `lint` section owns analysis settings. Rules are grouped by concern:
-`correctness`, `suspicious`, `security`, `policy`, and `external`. The separate
-`nursery` group is reserved for rules under development. Optional stable rules
-belong to their concern groups. The shared
-configuration resolver is used by analysis frontends. Top-level `overrides` provide
-file scopes that can also host future formatter settings. Formatting and LSP
-options are not implemented yet; do not add placeholder keys for them.
+The `lint` section controls rule selection and severity. Rules belong to
+`correctness`, `suspicious`, `security`, or `conventions`. Registering a stable
+plugin selects its rule by default; the recommended preset selects rules marked
+recommended. Nursery rules are under development. The CLI, Action, and language
+server use the same configuration resolver. `overrides` selects files and applies
+per-file lint and tool settings. This version has no formatting or LSP settings.
 
 ```yaml
 lint:
@@ -165,17 +227,17 @@ lint:
       deprecated-commands: warn
     suspicious:
       case-insensitive-conditions: off
-    policy:
-      require-job-timeout:
+    conventions:
+      job-timeout:
         level: error
         options: { max-minutes: 30 }
 ```
 
-Every catalog rule accepts `off`, `on` (retain its native severity), `info`, `warn`,
+Every catalog rule accepts `off`, `on` (use its native severity), `info`, `warn`,
 or `error`. Use `default` to reset a rule or group override to the applicable
 preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule's options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
 the rule supports them. Unknown groups, rules, levels and option keys are rejected.
-For example, `require-permissions` accepts `{scope: job}`; `require-job-timeout`
+For example, `missing-permissions` accepts `{require-at: every-job}`; `job-timeout`
 accepts timeout bounds. The generated schema describes each rule's own options.
 `actionlint rules --json` exposes each rule's concern, recommended status and
 maturity (`stable` or `nursery`) from the same catalog.
@@ -183,15 +245,18 @@ maturity (`stable` or `nursery`) from the same catalog.
 Global and group `preset` values are `recommended`, `all` (all stable rules), and
 `none`. A group also accepts a level shorthand, e.g. `correctness: warn`, or
 `{level: warn, if-cond: error}`. Stable non-recommended rules are included
-by `all` or their group level, but not by `recommended`. Nursery rules need
-an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
-suppresses all lint diagnostics. Configuration, I/O and other operational errors remain fatal.
+by `all` or their group level, but not by `recommended`. Nursery rules need an
+explicit rule enable or `--experimental`; group and broad presets do not select
+them. `lint.enabled: false`
+suppresses all lint diagnostics. Operational errors fail the analysis independently of rule levels.
 
 Resolution order is: rule defaults, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
 lists. File overrides are merged before that resolution. `--experimental=false`
-is an explicit exclusion of nursery rules only. `--strict` selects all stable
-rules but respects group and individual exceptions. Legacy `policy` settings
+is a hard exclusion of nursery rules. `--strict` enables stable `correctness`,
+`security` and `suspicious` rules, with group and individual exceptions.
+It does not enable additional `conventions` rules. Use an individual setting or
+`preset: all` to select those. Legacy `policy` settings
 are migrated to explicit levels, so explicit disables now survive presets and
 `--strict`. Conflicting old and current values in one document are errors.
 Cache safety checks belong to security, with cache-operation under correctness.
@@ -228,16 +293,30 @@ lint:
 | `mixed-type-matrix-filters`   | Different scalar kinds in literal matrix include/exclude filters, including nested values. Boolean, number, null and string are distinct; all YAML numeric forms share one kind. |
 
 Unknown dynamic axes with boolean/numeric filters are also examined. Dynamic
-filter entries and wholly dynamic matrices remain outside that check's scope.
+filter entries and wholly dynamic matrices cannot be checked statically.
 See [expression behavior](expression-behavior.md) for evidence and limitations.
+
+### Empty declarations
+
+The following recommended rules under `lint.rules.suspicious` warn about
+declarations that GitHub accepts but that do nothing.
+
+| Rule             | What it examines                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| `empty-triggers` | An empty `on:` section (`on:`, `on: []` or `on: {}`). No event starts the workflow. |
+| `empty-job`      | A job without steps, or with `steps: []`. Reusable workflow calls are exempt.       |
+| `empty-run`      | A run step whose script is empty.                                                   |
+
+The related `numeric-values` rule belongs to `correctness`. It reports a
+fractional `max-parallel`, which GitHub truncates toward zero (`1.5` runs as `1`),
+and a `max-parallel` that is not greater than zero.
 
 ### Nursery
 
-`lint.rules.nursery` is reserved for rules under development. It uses the same
-levels, presets and individual settings as other groups. Global `preset: all`
-and `--strict` exclude it; `nursery: {preset: all}` or `--experimental`
-selects it. `--experimental=false` disables only nursery rules, never stable
-rules. There are currently no nursery rules, so the flag currently adds none.
+Nursery rules are experimental. They use the same categories as stable rules.
+Global and category presets and `--strict` exclude nursery rules.
+Select one by setting its rule level or use `--experimental`. Use
+`--experimental=false` to disable all nursery rules. For example, `join-literal` is a nursery rule.
 The former unreleased `lint.rules.experimental` section is rejected; configure
 the four stable checks under `suspicious` instead.
 
@@ -264,8 +343,8 @@ An entry needs at least one positive pattern. Any matching `!` exclusion wins
 within that entry, independent of order. Absolute paths and parent traversal are rejected.
 All matching entries apply in order; later values win. Mappings merge, lists
 replace, omitted fields inherit, and `null` resets a section to its defaults.
-Group and rule level shorthands retain their level when overlaid by a partial
-mapping. Rule object settings require `level`; omitted option keys inherit.
+Partial mappings override individual options of group and rule shorthands.
+Rule object settings require `level`; omitted option keys inherit.
 Each file gets its own effective configuration, without changing other files.
 
 ## Ruff
@@ -275,10 +354,10 @@ custom command beginning with either interpreter, including workflow/job shell
 defaults and local composite actions. New configurations and eligible legacy
 migrations declare the `ruff` Wasm plugin; normal checking loads its exact pinned
 artifact. See [plugin installation](plugins.md#install-from-the-registry).
-`--no-ruff` disables Ruff. Native execution remains available: a bare `--ruff`
-explicitly selects `ruff` on `PATH`, `--ruff=/path/to/ruff` selects a binary, and
-`--ruff='python -m ruff'` uses a Python module launcher. Without a selected plugin
-or explicit backend, the CLI retains optional `PATH` discovery and skips Ruff
+`--no-tool ruff` disables Ruff. A bare `--tool ruff`
+explicitly selects `ruff` on `PATH`, `--tool ruff=/path/to/ruff` selects a binary, and
+`--tool ruff='python -m ruff'` uses a Python module launcher. Without a selected plugin
+or explicit backend, the CLI searches `PATH` and skips Ruff
 when unavailable. It never executes the Python scripts being checked.
 
 ```yaml
@@ -296,12 +375,15 @@ lint:
       ruff: error
 ```
 
-Ruff uses its own default rule selection. `config` accepts Ruff's native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
+Ruff validates `config` using its native options, including nested `lint` settings and rule-specific options. Omission or null selects the engine's default for an option.
 
-The legacy flat `select` and `ignore` accept Ruff codes or prefixes. The selected
+The legacy flat `target-version`, `select` and `ignore` keys are shorthands for
+`config.target-version`, `config.lint.select` and `config.lint.ignore`. `select` and `ignore`
+accept Ruff codes or prefixes. The selected
 engine validates them, including preview selectors when `config.preview` is enabled.
 Lists replace inherited lists. Flat `select` and `ignore` replace the corresponding lists in
 `config.lint`. For Python targets, `config.target-version` takes precedence over the flat setting.
+Ruff's own top-level `config.select` and `config.ignore` stay native Ruff options.
 `select: []` selects no lint rules (Python syntax errors can still be reported).
 If no target is configured, actionlint infers it from a versioned interpreter such as
 `python3.9`. The selected engine checks whether it supports that version. Without a
@@ -311,7 +393,7 @@ Following [Astral's actionlint integration](https://github.com/astral-sh/actionl
 Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,
 automatic fixes, or `noqa` exemptions. Use actionlint rule levels, per-file
 overrides, and YAML suppressions for exceptions. Ruff codes such
-as `F821` are retained in structured output. Literal/plain scripts use the shared
+as `F821` appear in structured output. Literal/plain scripts use the shared
 YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
 Inline YAML suppressions target the diagnostic's reported line. A directive on
 the YAML block header covers the script body.
@@ -323,18 +405,35 @@ actionlint's workflow checks still run. Templates inside strings and comments
 continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
 
-The Go library opts in with `analysis.Options.Ruff`, selecting either a
-`Process` or an `analyzer.ScriptBackend`; a zero `analysis.Tool` disables it.
-See [the library API](api.md#script-engine-backends) for cancellation, configuration
-and backend lifetime requirements.
-The GitHub Action's `ruff` input defaults to `true`.
-It enables the configured Ruff plugin; the Action does not install native Ruff
+The GitHub Action runs Ruff unless its `disable-tools` input lists `ruff`.
+It uses the configured Ruff plugin; the Action does not install native Ruff
 or add it to `PATH`. The default `plugin-cache: true` restores and saves the
 selected Wasm artifact bytes, keyed by operating system and exact digests.
 Restored bytes are verified before execution. See [Action caching](plugins.md#github-action-caching).
 The browser playground cannot run external tools.
 
 ## Tool execution backends
+
+Each `tools` key is the rule name of a tool provider: the bundled `ruff` and
+`shellcheck`, or a tool provider a plugin registers. Other names, including those of
+plugin document analyzers, are rejected. Every
+entry accepts `enabled`, `backend` and `config`, and `true` or `false` as a shorthand
+for `enabled`. Each provider's schema validates inline `config` settings; a
+string `config` selects a configuration file and is accepted only by tools that
+read one, such as ShellCheck.
+
+The published schema knows only the bundled providers, so it accepts any mapping as
+the `config` of a provider a plugin installs. `actionlint config schema` prints the
+schema with a `tools.<name>` entry for each tool provider manifest that `--plugin`
+or the configuration's `plugins` installs, validated by the manifest's
+`config_schema`. Save it and point the editor directive at the copy. It reads the
+manifests without running a plugin or downloading an executable.
+
+Providers can declare shorthand keys beside `config`. These keys follow the
+provider's `config_shorthands` definitions, including which value takes precedence
+when both forms are present. They work in root settings, inherited configuration
+and file overrides. `actionlint config schema` includes the installed providers'
+shorthand keys for editor completion and validation.
 
 Engine configuration and execution are separate. `tools.<name>.config` configures
 checks; `tools.<name>.backend` selects how the engine runs. `process` invokes a native
@@ -370,7 +469,7 @@ file, including inherited files and file overrides; inline configs use the analy
 working directory. Bare names use `PATH`. Arguments are literal launcher arguments
 prepended to the engine invocation; they are never shell source. Environment entries
 affect the child only. Explicit CLI, environment or library invocation settings take
-precedence over repository process settings. An explicit disable remains disabled.
+precedence over repository process settings.
 
 Repository-selected native executables require `--allow-config-processes`. Enable
 this flag only for trusted configuration, including its inherited files and file
@@ -383,25 +482,27 @@ interface or a core module implementing the version 1 JSON ABI. A document-only
 analyzer, such as the official ShellCheck component, belongs in root `plugins`,
 not `tools.shellcheck.backend.wasm`. Artifacts can be raw or gzip-compressed.
 Local paths resolve from the declaring configuration file; remote execution
-requires a `#sha256=` pin covering the downloaded bytes, including compression.
+requires a `#sha256=` pin covering the downloaded bytes, including compression,
+or an `oci://<host>/<repository>@sha256:<hex>` reference to an image with an
+`application/wasm` layer.
 
 actionlint validates exports and metadata before registering the engine. Component
 calls default to 64 MiB of guest memory and a 10-second limit; core calls default
 to 256 MiB and 10 seconds. Traps and exceeded limits fail that document's analysis.
 Core engines cache compiled code under the user cache directory in
 `actionlint/wazero`; downloaded artifacts use the separate verified artifact cache.
-An explicit `--ruff` command, including an empty one, takes precedence over a
+An explicit `--tool ruff` command, including `--tool ruff=false`, takes precedence over a
 configured `tools.ruff.backend.wasm`. Selecting a Ruff plugin and an explicit
 competing command/backend is rejected; select one execution source.
-See [script engines](plugins.md#script-engines) for lifecycle and Go APIs.
+See [script engines](plugins.md#script-engines) for their interfaces and execution limits.
 
 The pinning rule supports scoped exceptions without suppressing other action checks:
 
 ```yaml
 lint:
   rules:
-    policy:
-      require-commit-hash:
+    security:
+      unpinned-reference:
         level: true
         options:
           exclude: ["my-org/*"]
@@ -409,7 +510,7 @@ lint:
 
 Patterns without `@` match the repository or complete action path; repository
 matches also cover sub-actions and reusable workflows. Patterns containing `@`
-match the complete reference including its ref. Docker references retain `docker://`.
+match the complete reference including its ref. Include `docker://` when matching container references.
 
 ## Additional correctness checks
 
@@ -422,8 +523,8 @@ workflow values, including `if:` conditions.
 of workflows directly inside the repository's `.github/workflows` directory.
 It accepts GitHub's workflow-name filter patterns and escaped special characters.
 Negative patterns exclude names and do not require a matching producer.
-Unnamed workflows use their repository-relative file path. Producer workflows
-remain available for name resolution even when excluded from lint inputs. The
+Unnamed workflows use their repository-relative file path. Name resolution also
+reads workflows excluded from lint inputs. The
 check needs repository context and skips name matching if a workflow cannot be
 read or parsed reliably. It does not query GitHub or inspect other branches.
 
@@ -450,15 +551,15 @@ tools:
 `tools: {shellcheck: false}` disables ShellCheck; `true` enables it. The default is
 enabled for the selected plugin or available native executable. New configurations
 and eligible legacy migrations select the official ShellCheck Wasm plugin. This
-boolean alone does not install a dependency or override an empty CLI ShellCheck
-command or the Action's `shellcheck: false` input.
+boolean alone does not install a dependency or override `--no-tool shellcheck`
+or the Action's `disable-tools: shellcheck` input.
 
 The official registry plugin accepts individual disabled codes and optional check
 names through these settings. Explicit rc files, disabled-code ranges or `all`
-retain native execution; provide that executable yourself. Source access and
+require a native ShellCheck executable. Source access and
 search paths work through the component's read-only host grants described below.
 To select a native process explicitly, use `tools.shellcheck.backend.process` or
-`--shellcheck=/path/to/shellcheck`.
+`--tool shellcheck=/path/to/shellcheck`.
 
 `config` accepts the inline settings below, an rc-file path, or a directory in
 which `.shellcheckrc`, then `shellcheckrc`, is searched. Rc discovery is otherwise
@@ -537,8 +638,8 @@ Dialect precedence, highest first:
 3. Application settings, then inline `config.shell`.
 4. The workflow's resolved shell, ahead of any shebang.
 
-Native [directives][shellcheck-directives] retain their scope, and diagnostics map
-back to YAML positions. Template options before `{0}` contribute startup settings;
+Diagnostics from native [directives][shellcheck-directives] map to YAML positions.
+Template options before `{0}` contribute startup settings;
 later options override earlier ones, while script arguments after `{0}` do not.
 Unknown options leave startup assumptions unset. Changing the inferred dialect
 discards those assumptions. Final option states are normalized because ShellCheck
@@ -555,8 +656,8 @@ literal, so use absolute paths for wrapper-owned files elsewhere.
 
 For a native process, available parent directories, symlink targets and absolute paths with compatible
 host/runner syntax can be analyzed, including outside the repository. Dynamic,
-missing or unrepresentable working directories disable source following while
-retaining analysis of the embedded script. `SCRIPTDIR` does not mean the YAML
+missing or unrepresentable working directories limit analysis to the embedded
+script. `SCRIPTDIR` does not mean the YAML
 directory: embedded scripts reach ShellCheck through stdin. Paths refer to
 actionlint's local filesystem; job containers and their mounts are not recreated.
 
@@ -569,9 +670,9 @@ including Windows paths. Missing search directories are ignored and recorded as
 dependencies. Symlinks cannot escape a granted root. Files are snapshotted on first
 read; subsequent reads and sourced diagnostic snippets use the same bytes.
 
-All successful Wasm source reads, including clean and transitively sourced files,
-enter analysis inputs. Metadata lookups also enter the dependency list, so creating
-an earlier search candidate changes the observed inputs. One invocation allows
+actionlint records every file read successfully by Wasm, including files with no
+findings and files sourced indirectly. It also records metadata lookups, so creating
+a file earlier in the search path changes the recorded dependencies. One invocation allows
 8 MiB of source bytes, 256 source files, 4096 lookups and 32 configured search
 directories; exceeding a limit makes analysis incomplete even if the guest ignores
 the read error. Source snapshots come from disk; unsaved source-file buffers are
@@ -593,9 +694,9 @@ defaults. Relative composite working directories start at the workspace root;
 
 The three cache checks below default to enabled. Cache safety checks belong to
 `lint.rules.security`; `cache-operation` belongs to `lint.rules.correctness`.
-Other policies are opt-in under `lint.rules.policy`. Omitted rules and `level: default`
+Other policy checks use their semantic category. Omitted rules and `level: default`
 keep defaults; `level: off` explicitly disables a rule, including under `--strict`.
-Policy names also identify their diagnostics.
+Each policy name is also its diagnostic ID.
 
 ### cache-call-unrestricted
 
@@ -624,8 +725,9 @@ Disable with `lint: {rules: {correctness: {cache-operation: off}}}`.
 ### cache-write-untrusted
 
 Reports explicit `write` or `write-only` cache grants on low-trust triggers using
-default-branch caches. Only declarations are checked; `if` guards and cache
-contents are ignored.
+default-branch caches. The check excludes an event when a job's `if` condition
+is provably false for that event. Unknown conditions remain reachable; cache
+contents are not inspected.
 Use `read` or `none`, or document a reviewed [inline exception](#inline-diagnostic-suppressions).
 Ordinary `pull_request`, review events, `merge_group`, trusted write-default events
 such as `push`, and standalone `workflow_call` do not trigger this policy.
@@ -651,7 +753,6 @@ metadata, inputs and outputs. Both paths are relative to the repository root;
 known checkout paths are accounted for when resolving `uses`. Each mapping resolves
 once to an actual source directory. Per-file overrides can provide different
 `local-actions` mappings for different workflows.
-Build tests remain responsible for checking the generation step and its output.
 Missing action sources and invalid source entrypoints are errors.
 
 Local action lookup checks `action.yml`, `action.yaml`, `Dockerfile`, then `dockerfile`, in that order.
@@ -687,8 +788,8 @@ still matches the reported file. Ignoring one job does not hide findings from
 another job that calls the same action.
 
 With `extends`, an omitted `ignores` keeps inherited entries. A supplied list
-replaces them; `ignores: []` clears them. The `disallow-suppressions` policy also
-applies to these entries. An ignore targeting `disallow-suppressions` is rejected.
+replaces them; `ignores: []` clears them. The `forbidden-suppression` policy also
+applies to these entries. An ignore targeting `forbidden-suppression` is rejected.
 
 ### Inline diagnostic suppressions
 
@@ -697,9 +798,24 @@ cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed default-
 ```
 
 Or place `# actionlint:ignore-next-line RULE -- reason` immediately before the
-reported line. The ` -- reason` suffix is optional. Comma-separated selectors accept
+reported line. `actionlint-ignore-next-line` and `ignore-next-line` work too. The `-- reason` suffix is
+optional. These trailing comment spellings are equivalent:
+
+```yaml
+- run: echo ok # actionlint:ignore expression,shellcheck
+- run: echo ok # actionlint-ignore expression shellcheck
+- run: echo ok # ignore expression shellcheck
+- run: echo ok # ignore[expression, shellcheck]
+```
+
+Every spelling accepts commas, spaces, tabs, or a mix between rule IDs. Supply at
+least one rule; an empty list does not ignore everything. Selectors accept
 any diagnostic rule ID listed by `actionlint rules`, including `expression`,
 `syntax-check`, `shellcheck`, `if-cond` and the suspicious rules.
+The previous IDs `require-commit-hash`, `require-job-timeout`,
+`require-action-metadata` and `disallow-suppressions`
+are accepted as aliases in configured and inline suppressions. Findings use
+the current IDs shown by `actionlint rules`.
 Exceptions apply to the reported physical line. A directive on a YAML block scalar
 header (`run: |` or `run: >`) covers its body as well. A preceding
 `actionlint:ignore-next-line` directive can also target that header. Blank lines or
@@ -719,24 +835,23 @@ sourced scripts do not create actionlint suppression directives.
 Malformed attached directives report `inline-suppression`. Only attached YAML
 comments create directives. Directives in local composite YAML are scoped to that
 file. CLI, rule-ID and path ignores apply afterwards. Suppression
-changes lint output. GitHub's cache permissions stay unchanged; remaining findings
-exit with 1.
+changes lint output. A check with unsuppressed findings exits with 1.
 
 Suppressions apply to errors and warnings alike. To suppress a rule for a whole
 file, use `lint.rules.disable` in an [override](#per-file-overrides). This also works
 for malformed YAML where parsing cannot attach inline comments. Configuration,
-I/O and tool-launch failures remain operational errors and cannot be suppressed.
+I/O and tool-launch failures cannot be suppressed.
 
-### disallow-suppressions
+### forbidden-suppression
 
-`lint.rules.policy.disallow-suppressions: on` prohibits inline and configured exceptions.
+`lint.rules.conventions.forbidden-suppression: on` prohibits inline and configured exceptions.
 To select rules and output:
 
 ```yaml
 lint:
   rules:
-    policy:
-      disallow-suppressions:
+    conventions:
+      forbidden-suppression:
         level: on
         options:
           rules: [cache-call-unrestricted, cache-write-untrusted]
@@ -745,9 +860,9 @@ lint:
 
 | `report`        | Prohibited directive | Original finding |
 | --------------- | -------------------- | ---------------- |
-| `all` (default) | Reported             | Retained         |
+| `all` (default) | Reported             | Reported         |
 | `suppression`   | Reported             | Suppressed       |
-| `violation`     | Not reported         | Retained         |
+| `violation`     | Not reported         | Reported         |
 
 `on` without options selects all supported diagnostic rules; explicit `options.rules` must be nonempty.
 Omission or `off` permits exceptions. The policy cannot exempt itself,
@@ -755,22 +870,22 @@ enable a disabled rule or override CLI/path ignores. `all` and `suppression` rep
 prohibited inline directives even when no underlying finding exists. Configured
 exceptions are reported when they match a finding.
 
-### require-commit-hash
+### unpinned-reference
 
-`lint.rules.policy.require-commit-hash: on` requires 40- or 64-digit hexadecimal refs for
+`lint.rules.security.unpinned-reference: on` requires 40- or 64-digit hexadecimal refs for
 actions/reusable workflows and digests for `docker://` images. Local `./` and `$/`
 references and unresolved expressions are skipped.
 
-### require-job-timeout
+### job-timeout
 
-`lint.rules.policy.require-job-timeout: on` requires `timeout-minutes` on jobs running
+`lint.rules.conventions.job-timeout: on` requires `timeout-minutes` on jobs running
 steps. Reusable-call jobs are excluded. Optional inclusive bounds:
 
 ```yaml
 lint:
   rules:
-    policy:
-      require-job-timeout:
+    conventions:
+      job-timeout:
         level: on
         options: { min-minutes: 5, max-minutes: 60 }
 ```
@@ -778,29 +893,22 @@ lint:
 Either bound may be omitted; both must be finite and positive, with minimum no
 greater than maximum. Omitted options require the key only. Expression values are not compared.
 
-### require-permissions
+### missing-permissions
 
-`lint.rules.policy.require-permissions: on` requires workflow-level `permissions`.
-Use `{level: on, options: {scope: job}}` to require it on every job,
-including reusable calls. Empty mappings, named scopes, `read-all` and `write-all`
-all satisfy the check. This policy only requires a declaration; it does not assess
-least privilege.
+The recommended `security.missing-permissions` rule reports missing token permission declarations as errors. By default, a workflow-level `permissions` declaration or a declaration on every job satisfies the rule. The default skips workflows triggered only by `workflow_call`.
 
-### required-actions
+Set `options.require-at` to `workflow` to require `permissions` on the workflow, or to `every-job` to require it on every job. Setting `[workflow, every-job]` requires it on the workflow and on every job. These requirements also apply to workflows triggered only by `workflow_call`. Omit `require-at` for the default behavior. An empty array is invalid. Set the rule to `off` to disable it.
 
 ```yaml
 lint:
   rules:
-    policy:
-      required-actions:
-        level: on
-        options: { actions: [actions/checkout, "my-org/security-scan@v2*"] }
+    security:
+      missing-permissions:
+        level: error
+        options: { require-at: every-job }
 ```
 
-Patterns match action names case-insensitively and refs case-sensitively; `*` does
-not cross `/`. Omitting `@ref` accepts any ref. Search is limited to steps declared
-directly in the workflow. Workflows containing unresolved `uses`
-expressions or only reusable-call jobs are skipped.
+Empty mappings, named scopes, `read-all`, and `write-all` satisfy the rule. The rule requires a declaration; it does not determine which permissions a job needs.
 
 ## Generate the initial configuration
 
@@ -812,7 +920,7 @@ This writes `.github/actionlint.yaml` with the editor schema directive.
 
 ---
 
-[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [pat]: https://pkg.go.dev/path#Match
 [doublestar]: https://github.com/bmatcuk/doublestar

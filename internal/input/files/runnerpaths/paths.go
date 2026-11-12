@@ -1,0 +1,65 @@
+// Package runnerpaths resolves runner paths against the local input filesystem.
+package runnerpaths
+
+import (
+	"os"
+	"path/filepath"
+
+	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+)
+
+// ResolveDirectory finds an existing local directory for the runner directory.
+// Case-insensitive checkout lookup records directory listings through reader.
+func ResolveDirectory(paths execution.Paths, directory execution.Directory, reader *files.Reader) execution.Directory {
+	unknown := execution.Directory{Kind: execution.DirectoryUnknown, Path: paths.Analysis}
+	if directory.Kind == execution.DirectoryUnknown {
+		return unknown
+	}
+	paths = paths.DirectoryOrigin(directory)
+	local, ok := AnalysisPath(paths, directory.Path, reader)
+	if !ok {
+		return unknown
+	}
+	local, err := filepath.EvalSymlinks(local)
+	if err != nil {
+		return unknown
+	}
+	info, err := os.Stat(local)
+	if err != nil || !info.IsDir() {
+		return unknown
+	}
+	return execution.Directory{Kind: execution.DirectoryKnown, Path: local}
+}
+
+// AnalysisPath resolves available files, including those outside the indexed
+// repository. Case-insensitive checkouts are canonicalized through reader.
+func AnalysisPath(paths execution.Paths, value string, reader *files.Reader) (string, bool) {
+	relativePath, known := execution.LocalDirectoryPath(value, paths.Platform)
+	if !known {
+		return "", false
+	}
+	if filepath.IsAbs(relativePath) {
+		return relativePath, true
+	}
+	local, known := paths.AnalysisPath(value)
+	if !known {
+		return "", false
+	}
+	caseInsensitive := paths.CaseInsensitive
+	if placement := paths.Placements.Matching(relativePath); placement.Present() {
+		caseInsensitive = placement.Details().CaseInsensitive
+	}
+	relativePath, err := filepath.Rel(paths.Workspace, local)
+	if err != nil {
+		return "", false
+	}
+	if caseInsensitive && filepath.IsLocal(relativePath) {
+		canonical, known := caseInsensitiveRepositoryPath(paths.Workspace, filepath.ToSlash(relativePath), reader)
+		if !known {
+			return "", false
+		}
+		local = filepath.Join(paths.Workspace, filepath.FromSlash(canonical))
+	}
+	return local, true
+}

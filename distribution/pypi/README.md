@@ -1,6 +1,9 @@
 # PyPI wheels
 
-This package builds the wheels that publish a release to PyPI as [`actionlint-kjanat`](https://pypi.org/project/actionlint-kjanat/). Each wheel carries the release binary of one platform and installs the `actionlint` console script. Installing a wheel compiles nothing.
+This package builds the wheels published to PyPI as
+[`actionlint-kjanat`](https://pypi.org/project/actionlint-kjanat/). Each wheel
+contains the release binary for one platform and installs the `actionlint`
+console script. Installation does not compile source code.
 
 Edit [`PACKAGE_README.md`](PACKAGE_README.md) to change the description shown on
 PyPI. The wheel builder replaces `{{version}}` in its links with the release
@@ -21,7 +24,16 @@ distribution/pypi/
 node distribution/pypi/src/cli.ts build --version "${version}" --assets release --out distribution/pypi/dist
 ```
 
-`--assets` is a directory with the GoReleaser checksums file `actionlint_<version>_checksums.txt` and the release archives. The builder checks the SHA-256 of every archive against that file, takes `actionlint` or `actionlint.exe` and `LICENSE.txt` from it, and writes one wheel per platform tag to `--out`, creating the directory if needed. It refuses to overwrite a wheel. `--version` is the stable `MAJOR.MINOR.PATCH` release version and becomes the wheel version. The builder runs on Node 24 or later after `npm ci` in the repository root. `node distribution/pypi/src/cli.ts build --help` lists the flags.
+Set `--assets` to a directory containing the release archives and GoReleaser's
+`actionlint_<version>_checksums.txt` file. The builder checks each archive's
+SHA-256 against that file, then extracts `actionlint` or `actionlint.exe` and
+`LICENSE.txt`. It writes one wheel per platform tag to `--out`, creating that
+directory if needed, and refuses to overwrite an existing wheel.
+
+Set `--version` to the stable `MAJOR.MINOR.PATCH` release version. This also
+becomes the wheel version. The builder requires Node 24 or later. Run
+`bun install --frozen-lockfile` from the repository root before building. Use
+`node distribution/pypi/src/cli.ts build --help` to list the flags.
 
 Use `--build 1` when correcting the packaging of an already published version.
 This adds the wheel build number to the filename and `WHEEL` metadata. It does
@@ -50,7 +62,19 @@ node distribution/pypi/src/cli.ts build --version "${version}" --assets release 
 | `windows_amd64` | `win_amd64`                                       |
 | `windows_arm64` | `win_arm64`                                       |
 
-Every wheel is tagged `py3-none-<platform>`. The builder reads the minimum macOS version of each darwin binary from its `LC_BUILD_VERSION` load command for platform 1, macOS, or from `LC_VERSION_MIN_MACOSX` when that is absent, and the version becomes the macOS tag. It skips `LC_BUILD_VERSION` commands for other platforms. It rejects a darwin binary with neither command, and one whose only `LC_BUILD_VERSION` names another platform. pip matches macOS 11 and later only through `macosx_<major>_0` tags, and the builder rejects a minimum such as 13.3. The Linux binaries are static, so the glibc and musl wheels of one architecture carry the same files. PyPI accepts no FreeBSD wheels, and the FreeBSD archives stay on GitHub releases. The release publishes wheels and no source distribution. pip on a platform without a wheel reports that no matching distribution exists.
+Every wheel is tagged `py3-none-<platform>`. For each Darwin binary, the builder
+reads the minimum macOS version from its `LC_BUILD_VERSION` load command for
+platform 1 (macOS). If that command is absent, it uses `LC_VERSION_MIN_MACOSX`.
+The version becomes the macOS wheel tag. The builder skips `LC_BUILD_VERSION`
+commands for other platforms and rejects a binary with no macOS version command.
+pip matches macOS 11 and later only through `macosx_<major>_0` tags, so the
+builder rejects a minimum such as 13.3.
+
+The Linux binaries are static, so the glibc and musl wheels for an architecture
+contain the same files. PyPI accepts no FreeBSD wheels; download those archives
+from GitHub releases. Releases publish wheels without a source
+distribution. On a platform without a matching wheel, pip reports that no
+matching distribution exists.
 
 A wheel holds the `actionlint_kjanat` package with the launcher and `bin/actionlint` (`bin/actionlint.exe` on Windows), and a `.dist-info` directory with `METADATA`, `WHEEL`, `entry_points.txt`, `licenses/LICENSE.txt` and `RECORD`. Both console scripts, `actionlint` and `actionlint-kjanat`, call `actionlint_kjanat:main`. On POSIX systems `main` replaces the Python process with the binary through `os.execv`. On Windows it runs the binary as a child process and exits with its exit code.
 

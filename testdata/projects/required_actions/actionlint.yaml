@@ -1,4 +1,0 @@
-policy:
-  required-actions:
-    - actions/checkout
-    - my-org/scan@v2

@@ -1,0 +1,16 @@
+on: push
+
+defaults:
+  run:
+    shell: ${{ 'sh {0}' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: ${{ 'sh {0}' }}
+    steps:
+      - run: echo hi
+        shell: ${{ 'sh {0}' }}
+permissions: {}

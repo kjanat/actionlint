@@ -16,7 +16,7 @@ before:
 builds:
   - <<: &build_defaults
       main: ./cmd/actionlint
-      ldflags: -s -w -X {{ .ModulePath }}/internal/buildinfo.ReleaseVersion={{ .Version }} -X "{{ .ModulePath }}/internal/buildinfo.InstallOrigin={{ trimsuffix .GitURL ".git" }}/releases/tag/{{ .Tag }}"
+      ldflags: -s -w -X {{ .ModulePath }}/internal/integrations/buildinfo.ReleaseVersion={{ .Version }} -X "{{ .ModulePath }}/internal/integrations/buildinfo.InstallOrigin={{ trimsuffix .GitURL ".git" }}/{{ if .IsSnapshot }}tree/{{ .FullCommit }}{{ else }}releases/tag/{{ .Tag }}{{ end }}"
       env:
         - CGO_ENABLED=0
     id: macos
@@ -212,7 +212,7 @@ aur_sources:
       export CGO_LDFLAGS="${LDFLAGS}"
       export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
       go build -o build/actionlint \
-        -ldflags "-linkmode=external -X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=${pkgver} -X actionlint.kjanat.dev/v2/internal/buildinfo.InstallOrigin=https://aur.archlinux.org/packages/${pkgname}" \
+        -ldflags "-linkmode=external -X actionlint.kjanat.dev/v2/internal/integrations/buildinfo.ReleaseVersion=${pkgver} -X actionlint.kjanat.dev/v2/internal/integrations/buildinfo.InstallOrigin=https://aur.archlinux.org/packages/${pkgname}" \
         ./cmd/actionlint
     package: |-
       cd "actionlint-${pkgver}"

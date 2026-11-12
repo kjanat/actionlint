@@ -1,0 +1,6 @@
+package kjanat:actionlint@0.2.0;
+
+world reference-resolver-plugin {
+    import kjanat:actionlint-resolver/repository-objects@0.1.0;
+    export kjanat:actionlint-resolver/reference-resolver@0.1.0;
+}

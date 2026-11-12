@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.conventions]
+[lint.rules.conventions.forbidden-suppression]
+level = 'on'
+
+[lint.rules.conventions.forbidden-suppression.options]
+rules = ['imaginary-rule']

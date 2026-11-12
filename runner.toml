@@ -17,3 +17,6 @@ timing   = true
 
 [tasks.build]
 env = { SKIP_GO_GENERATE = "1" }
+
+[tasks.actionlint]
+source = "go"

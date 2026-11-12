@@ -1,8 +1,12 @@
 # Upstream conformance tests
 
-The conformance job runs reference-project fixtures through actionlint's Go implementation. It compares the recorded
-contracts and keeps score of reviewed differences. Reference expectations can reflect missing features or validation.
-Assessments use implementation or runtime evidence to explain each difference.
+The conformance job runs reference-project fixtures through actionlint's Go implementation and compares the results
+with the recorded expectations. Reference expectations can reflect missing features or validation. Assessments use
+implementation or runtime evidence to explain reviewed differences.
+
+Workflow fixtures run with recommended correctness and suspicious checks to match
+the upstream parser's scope. Security rules and project conventions have their
+own tests under `internal/checking/rules/`.
 
 For live GitHub expression evaluation, coercion and `fromJSON()` behavior, see the separate
 [expression reference and reproduction workflow](expression-behavior.md).
@@ -20,24 +24,29 @@ GitHub's language server lives in `actions/languageservices`. Its shared express
 designed for use across languages. We also import the language-service tests for service container commands and YAML
 anchors. The runner fixtures come from `ActionManifestManagerL0.cs` and `ExpressionParserL0.cs`.
 
-SchemaStore and YAML Test Suite provide additional comparisons. They do not define GitHub's runtime behavior. In
-particular, a schema-valid example can still contain undefined context properties, incomplete jobs, or retired actions.
+SchemaStore labels say whether its schema accepts each example. The agreement count shows how often actionlint
+gives the same answer. That count does not establish correct type checking or GitHub acceptance: an example can
+pass the schema while containing undefined context properties, incomplete jobs or retired actions.
+
+The YAML Test Suite checks whether the parser accepts a YAML stream. Use separate runner comparisons to check
+runtime behavior.
 
 ## Run locally
 
 ```sh
-go run ./internal/conformance/fetch
-go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
+go run ./internal/development/tests/conformance/fetch
+go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/development/tests/conformance
 ```
 
 `make conformance` runs both commands. The harness, adapters, assessment logic, and baselines live together in
-[`internal/conformance/`](../internal/conformance/). The harness uses the public actionlint APIs from an external test
-package. Ordinary `go test ./...` does not fetch or require these archives.
+[`internal/development/tests/conformance/`](../internal/development/tests/conformance/). The harness uses
+actionlint's internal checking and parsing packages from an external test package.
+Ordinary `go test ./...` does not fetch or require these archives.
 
 Relative archive and report paths are resolved from the repository root, including when the tests run from the
-`internal/conformance` package directory.
+`internal/development/tests/conformance` package directory.
 
-The fetch command downloads the revisions in [`sources.json`](../internal/conformance/sources.json) and verifies their
+The fetch command downloads the revisions in [`sources.json`](../internal/development/tests/conformance/sources.json) and verifies their
 SHA-256 digests. Archives live in `.cache/conformance/`, outside Git. Tests read them without extracting or executing
 upstream code. A missing or corrupt archive fails the test. Once the archives and Go dependencies are cached, the tests
 run offline; no GitHub token, JavaScript runtime, .NET SDK, ShellCheck, or Ruff is needed.
@@ -60,8 +69,7 @@ score. The summary keeps reference comparison counts and reviewed assessments in
 The summary also includes a collapsible assessment inventory: group counts per category, then each group's index in
 `assessments.json`, case count, review status, finding scope, and rationale. Mixed groups list each finding separately.
 Pass `-v` to `go test` to print the same inventory after all test results, followed by the final comparison totals.
-Stale and resolved reviews remain visible with their status; only current reviews contribute to the scored case and
-finding counts.
+Only current reviews contribute to scored case and finding counts.
 
 ## What the assertions mean
 
@@ -71,15 +79,15 @@ finding counts.
 - **Workflow reader:** lint the original caller text with external tools disabled and an empty configuration. Extra
   lint findings count as differences. Remote reusable workflow bodies supplied to GitHub's mock file provider are
   not resolved by actionlint; the resulting differences are recorded explicitly. Expanded workflow objects and
-  repository-specific limits are not compared. Fixture `skip` metadata is retained as `reference_skips` in the JSON
-  report. A shared fixture skipped by TypeScript does not establish TypeScript support; actionlint still runs it.
+  repository-specific limits are not compared. The JSON report records fixture skips as `reference_skips`.
+  A shared fixture skipped by TypeScript does not establish TypeScript support; actionlint still runs it.
 - **Language service:** preserve the selected upstream assertions. The container tests check diagnostics mentioning
   `command` or `entrypoint`; the circular-alias case checks completion without a panic or hang. Other selected cases
   compare acceptance. Test blocks and assertions are read from the pinned TypeScript sources; unsupported changes to
   their shape fail the adapter.
 - **Action manifests:** parse and validate metadata. Empty companion files satisfy the file-existence checks which
   the runner's manifest-parser fixtures do not exercise. Scripts and containers are never executed. Runtime
-  deprecation diagnostics remain visible as additional lint findings.
+  deprecation produces additional lint findings.
 - **YAML:** decode every document in each stream and compare success with the upstream `error` marker. The assertion
   covers stream acceptance. Event sequences, scalar resolution, and GitHub's more restrictive YAML rules are outside
   its scope.
@@ -92,12 +100,12 @@ report an error. They may report different errors; existing actionlint tests che
 
 Three distinct records serve different purposes:
 
-- [`differences.json`](../internal/conformance/testdata/differences.json) is the diagnostic regression baseline: an exact map
+- [`differences.json`](../internal/development/tests/conformance/testdata/differences.json) is the diagnostic regression baseline: an exact map
   of case IDs to actionlint diagnostics. It contains no explanations or classifications. Every case still runs.
   CI fails when a new difference appears, diagnostics change, a difference resolves, or a baseline case disappears.
 - The generated observation report records what was compared and what happened, including every agreement.
   It is written before assessments are loaded, so a malformed review does not prevent observation output.
-- [`assessments.json`](../internal/conformance/testdata/assessments.json) contains reviewed interpretations. A group maps exact
+- [`assessments.json`](../internal/development/tests/conformance/testdata/assessments.json) contains reviewed interpretations. A group maps exact
   case IDs to observation fingerprints and lists one or more findings, each with a category, scope, rationale, and
   evidence references. This file has no diagnostic regression expectations.
 
@@ -124,15 +132,15 @@ unknown case IDs, and invalid diagnostic indices are rejected.
 
 Each review is bound to a SHA-256 fingerprint of the pinned source metadata and the observation, including the input
 hash, reference expectations, diagnostics, comparison contract, and skip metadata. Changed evidence makes the review
-`stale`. Stale and missing reviews remain visible but contribute no category counts. A reviewed case that now agrees
+`stale`. Stale and missing reviews contribute no category counts. A reviewed case that now agrees
 is marked `resolved` and also contributes no category counts. These statuses are separate from `unassessed`, which is
 an explicit unresolved judgment on a current observation. Staleness alone does not fail the test; baseline changes
 still fail independently and must be reviewed.
 
 The assessment report counts **distinct cases per category** and **findings per category** separately. A case with two
 findings in one category counts once in that category's case column and twice in its findings column. A case spanning
-two categories appears in both rows, so category totals are not additive fixture counts. The observation table remains
-an exclusive count of agreements and differences. Reclassifying a review cannot change observations or weaken the
+two categories appears in both rows, so category totals are not additive fixture counts. The observation table counts
+agreements and differences exclusively. Reclassifying a review cannot change observations or weaken the
 regression assertions. Strict mode still fails on every acceptance difference.
 
 For example, the shared `actions/languageservices` reader fixture `insert.yml` uses a working mapping insertion and
@@ -141,11 +149,10 @@ reference in the fixture. Its `reference-gap` assessment records the reference s
 output is not evidence that the TypeScript reader supports insertion. A removed diagnostic still requires review of
 its recorded expectation.
 
-For the whitespace fixture, the lexer compatibility issue and retired-action diagnostic are separate findings.
 The checked-in [service and runner probe results](expression-results/2026-09-14.md) establish support for the nonfinite
 expression literals and several numeric spellings. Reference-only limits and nonfinite timeout validity are not
-treated as proven GitHub runtime defects. Negative hexadecimal expressions and nonfinite workflow timeouts retain
-explicit unresolved assessments. See the generated reports for current counts.
+treated as proven GitHub runtime defects. Assessments record unresolved validity questions for negative hexadecimal
+expressions and nonfinite workflow timeouts. See the generated reports for current counts.
 
 For composite outputs, the pinned runner schema permits an omitted `value`, and
 [`CompositeActionHandler.ProcessOutputs()`](https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Runner.Worker/Handlers/CompositeActionHandler.cs#L183)
@@ -153,8 +160,8 @@ sets an output only when that key exists. SchemaStore's stricter requirement is 
 For expression whitespace, the
 [runner lexer](https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Sdk/DTExpressions2/Expressions2/Tokens/LexicalAnalyzer.cs#L19)
 uses `Char.IsWhiteSpace`, which includes U+00A0; actionlint's four-character whitespace set does not. That is an
-actionlint compatibility gap against the runner implementation. The shared whitespace fixture skips TypeScript,
-and its retired-action finding is independent of that gap.
+actionlint compatibility gap against the runner implementation. The shared whitespace fixture skips TypeScript.
+Action lifecycle findings require fetched action metadata, which this adapter does not provide.
 
 Examples worth investigating include bracket wildcards, numeric expression spellings, expression depth limits,
 Docker `pre-if`/`post-if`, Docker environment contexts, action output metadata, and reserved job ID prefixes. An
@@ -165,7 +172,7 @@ When fixing a difference, add a focused actionlint regression test and review th
 baseline entry and its assessment; for an intentional diagnostic change, update the baseline text and review each
 finding against the new observation before copying its fingerprint into the assessment file. Fingerprints are never
 refreshed automatically. Changing only a judgment or its rationale requires no baseline or observation edit. Use strict
-mode to inspect the remaining acceptance disagreements.
+mode to inspect acceptance disagreements.
 
 ## Updating the sources
 
@@ -181,5 +188,5 @@ requires the recorded fixture counts to match the imported corpus. Review count 
 and update this document when the selected contracts change. Source revision changes make the affected assessments
 stale, even when diagnostics happen to stay the same. Review their evidence before updating their fingerprints.
 
-The upstream projects retain authorship of their fixtures. The cache keeps their archives unmodified, including any
-license notices they contain; fixture source text is not copied into this repository or release packages.
+The cache stores upstream archives unmodified, including their license notices. Fixture source text is not copied into
+this repository or release packages.

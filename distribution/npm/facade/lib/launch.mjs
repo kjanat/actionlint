@@ -18,8 +18,8 @@ export default function launch(name) {
 			windowsHide: false,
 		});
 		if (result.error) throw result.error;
-		// Re-raise the child's signal on ourselves; `set -e`, traps and Ctrl+C
-		// chaining read WIFSIGNALED / 128 + N. POSIX only, Windows falls through.
+		// On POSIX, re-raise the child's signal so shells and traps see the same termination.
+		// Windows uses the exit status below.
 		if (result.signal && process.platform !== 'win32') {
 			process.removeAllListeners(result.signal);
 			process.kill(process.pid, result.signal);

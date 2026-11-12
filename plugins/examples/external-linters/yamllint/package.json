@@ -1,0 +1,23 @@
+{
+  "name": "@kjanat-actionlint/plugin-yamllint",
+  "version": "0.1.0-plugins.1",
+  "type": "module",
+  "exports": {
+    "./actionlint": "./actionlint.js"
+  },
+  "bin": {
+    "actionlint-plugin-yamllint": "./actionlint.js"
+  },
+  "files": [
+    "/actionlint.plugin.ts",
+    "/actionlint.js",
+    "/installation.ts",
+    "/actionlint-provider.json"
+  ],
+  "scripts": {
+    "pack": "actionlint-plugin pack actionlint.plugin.ts"
+  },
+  "devDependencies": {
+    "@kjanat-actionlint/plugin-sdk": "workspace:*"
+  }
+}

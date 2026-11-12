@@ -1,0 +1,20 @@
+[package]
+name              = "actionlint-example-source-annotations"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name       = "source_annotations"
+
+[[bin]]
+name              = "package-source-annotations"
+path              = "src/bin/package.rs"
+required-features = ["package"]
+
+[dependencies]
+actionlint-extension-api = { path = "../../sdk/rust", features = ["source-annotations"] }
+
+[features]
+package = ["actionlint-extension-api/package"]

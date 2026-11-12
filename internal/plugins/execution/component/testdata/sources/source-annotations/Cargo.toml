@@ -1,0 +1,12 @@
+[package]
+name              = "actionlint-fixture-source-annotations"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib"]
+name       = "source_annotations_fixture"
+
+[dependencies]
+actionlint-extension-api = { path = "../../../../../../../plugins/sdk/rust", features = ["source-annotations"] }

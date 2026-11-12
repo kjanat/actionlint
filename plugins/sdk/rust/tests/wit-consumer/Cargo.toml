@@ -1,0 +1,20 @@
+[package]
+name    = "wit-consumer-test"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+actionlint-extension-api = { path = "../.." }
+wit-bindgen              = "0.63"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+actionlint-extension-api = { path = "../..", features = ["package"] }
+
+[features]
+template = []
+v03      = []

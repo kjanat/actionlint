@@ -12,6 +12,7 @@ env: { TAG: "${{ github.event.release.tag_name }}" }
 
 jobs:
   verify:
+    if: ${{ !github.event.release.prerelease }}
     name: Verify published candidate
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -174,7 +175,7 @@ jobs:
     permissions: { contents: read, id-token: write }
     steps:
       - &BeepboopIssues
-        uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
         id: beepboop
         with: { permission-contents: read, permission-issues: write }
       - uses: *Checkout
@@ -183,7 +184,8 @@ jobs:
         with: *Node24
       - uses: *Download
         with: { name: verified-release, path: .release-assets }
-      - run: npm ci --ignore-scripts
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - run: bun install --frozen-lockfile --ignore-scripts
       - name: Generate the manifests from the published release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -231,7 +233,7 @@ jobs:
         with: { name: verified-release, path: "${{ runner.temp }}/release-assets" }
       - name: Install the OCI image copier
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends skopeo
-      - uses: &DockerLogin docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: &DockerLogin docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with: { registry: ghcr.io, username: "${{ github.repository_owner }}", password: "${{ github.token }}" }
       - uses: *DockerLogin
         with: { username: "${{ github.repository_owner }}", password: "${{ secrets.DOCKERHUB_TOKEN }}" }
@@ -319,7 +321,7 @@ jobs:
           mkdir .published-action-test
           sed -e "s|OWNER/REPO@RELEASE_TAG|${GITHUB_REPOSITORY}@v${VERSION}|g" \
             -e "s|OWNER/REPO@COMMIT_SHA|${GITHUB_REPOSITORY}@${CANDIDATE}|g" \
-            tools/action/testdata/published-action/action.yml > .published-action-test/action.yml
+            applications/github-action/tests/testdata/published-action/action.yml > .published-action-test/action.yml
       - name: Resolve both published references through the runner
         # The prepared composite contains literal external uses references.
         uses: ./.published-action-test
@@ -334,7 +336,7 @@ jobs:
     timeout-minutes: 10
     permissions: { contents: read, id-token: write }
     steps:
-      - uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+      - uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
         id: beepboop
         with: { permission-contents: write }
       - uses: *Checkout

@@ -1,2 +1,0 @@
-test.yaml:7:15: the runtime or service used by "actions/download-artifact@v3-node20" action is retired on GitHub.com. update the action's version to fix this issue [action]
-test.yaml:13:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]

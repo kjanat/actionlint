@@ -1,0 +1,85 @@
+package kjanat:actionlint@0.2.0;
+
+/// A snippet engine. The host owns shell selection, expression masking, source
+/// mapping, suppression and scheduling. No document or filesystem access is implied.
+interface script-engine {
+    /// One-based Unicode scalar coordinates; range ends are exclusive.
+    record position {
+        row: u32,
+        column: u32,
+    }
+
+    enum severity {
+        info,
+        warning,
+        error,
+        fatal,
+    }
+
+    record diagnostic {
+        filename: string,
+        code: string,
+        name: string,
+        message: string,
+        severity: severity,
+        location: position,
+        end-location: position,
+        url: option<string>,
+    }
+
+    /// Source is already sanitized. Filename is virtual. Config is a JSON object
+    /// containing only engine options, with no inherited environment or files.
+    record request {
+        source: string,
+        filename: string,
+        config: string,
+    }
+
+    /// Findings remain valid when analysis is incomplete.
+    record outcome {
+        diagnostics: list<diagnostic>,
+        error: option<string>,
+    }
+
+    record example {
+        description: string,
+        before: string,
+        after: string,
+    }
+
+    record rule-descriptor {
+        name: string,
+        description: string,
+        category: string,
+        subcategory: string,
+        maturity: string,
+        provider: string,
+        recommended: bool,
+        explanation: string,
+        help: string,
+        documentation-url: string,
+        options-schema: string,
+        examples: list<example>,
+    }
+
+    /// ID/version identify the plugin; engine/engine-version identify its embedded
+    /// analyzer. Rule name equals engine; provider equals ID. Shells are canonical
+    /// host shell names. This interface returns diagnostics, without fix edits.
+    record descriptor {
+        id: string,
+        version: string,
+        name: string,
+        engine: string,
+        engine-version: string,
+        shells: list<string>,
+        rule: rule-descriptor,
+    }
+
+    describe: func() -> descriptor;
+    validate-config: func(config: string) -> result<_, string>;
+    check: func(request: request) -> outcome;
+}
+
+world script-engine-plugin {
+    export script-engine;
+}

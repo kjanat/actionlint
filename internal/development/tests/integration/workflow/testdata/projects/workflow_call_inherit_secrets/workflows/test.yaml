@@ -1,0 +1,7 @@
+on: push
+
+jobs:
+  caller:
+    uses: ./workflows/reusable.yaml
+    secrets: inherit
+permissions: {}

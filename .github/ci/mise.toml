@@ -1,3 +1,7 @@
 [tasks.test]
-description = "Test CI path selection and commit trailers"
-run         = "node --test plan.test.mjs"
+description = "Test CI dependency selection, commit trailers and protocol synchronization"
+run         = "bun test --timeout 30000"
+
+[tasks.typecheck]
+description = "Typecheck the Bun CI selector"
+run         = "bun x --no-install --package @typescript/native tsc --noEmit -p tsconfig.json"

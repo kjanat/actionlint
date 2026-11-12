@@ -1,0 +1,47 @@
+package kjanat:actionlint@0.2.0;
+
+world environment-plugin {
+    include plugin;
+    import kjanat:actionlint-script/environments@0.3.0;
+}
+
+world environment-annotated-plugin {
+    include annotated-plugin;
+    import kjanat:actionlint-script/environments@0.3.0;
+}
+
+world environment-managed-plugin {
+    include managed-plugin;
+    import kjanat:actionlint-script/environments@0.3.0;
+}
+
+world environment-script-engine-plugin {
+    import kjanat:actionlint-script/environments@0.3.0;
+    export kjanat:actionlint/script-engine@0.3.0;
+}
+
+world environment-template-script-engine-plugin {
+    import kjanat:actionlint-script/environments@0.3.0;
+    export kjanat:actionlint/script-engine@0.3.0;
+    export kjanat:actionlint/template-effects@0.3.0;
+}
+
+world shell-plugin {
+    include plugin;
+    import kjanat:actionlint-script/shell-script-inputs@0.3.0;
+}
+
+world annotated-shell-plugin {
+    include annotated-plugin;
+    import kjanat:actionlint-script/shell-script-inputs@0.3.0;
+}
+
+world environment-shell-plugin {
+    include shell-plugin;
+    import kjanat:actionlint-script/environments@0.3.0;
+}
+
+world environment-annotated-shell-plugin {
+    include annotated-shell-plugin;
+    import kjanat:actionlint-script/environments@0.3.0;
+}

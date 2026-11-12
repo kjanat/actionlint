@@ -1,0 +1,3 @@
+[tools.ruff.backend]
+process = { executable = 'ruff' }
+wasm = { path = 'engine.wasm' }

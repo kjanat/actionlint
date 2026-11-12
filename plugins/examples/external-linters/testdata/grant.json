@@ -1,0 +1,79 @@
+{
+  "tool": "grant",
+  "version": "0.6.8",
+  "run": {
+    "argv": [
+      "grant",
+      "check",
+      "-c",
+      "testdata/grant-policy.yaml",
+      "testdata/syft.sbom.json"
+    ],
+    "policy": {
+      "rules": {
+        "allow": [],
+        "ignorePackages": null
+      },
+      "requireLicense": true,
+      "requireKnownLicense": false
+    },
+    "targets": [
+      {
+        "source": {
+          "type": "file",
+          "ref": "testdata/syft.sbom.json"
+        },
+        "evaluation": {
+          "status": "noncompliant",
+          "summary": {
+            "packages": {
+              "cataloged": 1,
+              "total": 1,
+              "allowed": 0,
+              "denied": 1,
+              "ignored": 0,
+              "unlicensed": 0
+            },
+            "licenses": {
+              "unique": 1,
+              "allowed": 0,
+              "denied": 1,
+              "nonSPDX": 0
+            }
+          },
+          "findings": {
+            "packages": [
+              {
+                "id": "npm:sample-denied-package@1.2.3",
+                "name": "sample-denied-package",
+                "type": "npm",
+                "version": "1.2.3",
+                "decision": "deny",
+                "licenses": [
+                  {
+                    "id": "GPL-3.0-only",
+                    "isDeprecatedLicenseId": false,
+                    "isOsiApproved": true,
+                    "detailsUrl": "https://spdx.org/licenses/GPL-3.0-only.json",
+                    "reference": "https://spdx.org/licenses/GPL-3.0-only.html",
+                    "seeAlso": [
+                      "https://www.gnu.org/licenses/gpl-3.0-standalone.html",
+                      "https://opensource.org/licenses/GPL-3.0"
+                    ],
+                    "evidence": [
+                      "/package-lock.json"
+                    ],
+                    "riskCategory": "Strong Copyleft (High Risk)"
+                  }
+                ],
+                "locations": [
+                  "/package-lock.json"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

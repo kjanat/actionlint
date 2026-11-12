@@ -1,0 +1,11 @@
+[[overrides]]
+includes = ['**']
+
+[overrides.lint]
+[overrides.lint.rules]
+[overrides.lint.rules.security]
+[overrides.lint.rules.security.missing-permissions]
+level = 'on'
+
+[overrides.lint.rules.security.missing-permissions.options]
+require-at = 'every-job'

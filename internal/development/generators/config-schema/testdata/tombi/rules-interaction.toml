@@ -1,0 +1,37 @@
+[lint]
+enabled = true
+experimental = true
+
+[lint.rules]
+disable = ['shellcheck']
+preset = 'none'
+suspicious = 'all'
+
+[lint.rules.conventions]
+[lint.rules.conventions.job-timeout]
+level = 'on'
+
+[lint.rules.conventions.job-timeout.options]
+max-minutes = 30.0
+min-minutes = 5.0
+
+[lint.rules.correctness]
+action = 'error'
+level = 'warn'
+
+[lint.rules.security]
+[lint.rules.security.unpinned-reference]
+level = 'warn'
+
+[lint.rules.security.unpinned-reference.options]
+exclude = ['org/*']
+
+[[overrides]]
+includes = ['**/*.yml']
+
+[overrides.lint]
+experimental = false
+
+[overrides.lint.rules]
+[overrides.lint.rules.security]
+unpinned-reference = 'off'

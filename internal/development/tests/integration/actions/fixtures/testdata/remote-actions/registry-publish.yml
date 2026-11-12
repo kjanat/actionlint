@@ -1,0 +1,107 @@
+# source: https://github.com/kjanat/actionlint-registry/blob/858581ed50a64f63cc1e866091ad7a14d3d4cf33/publish/action.yml
+# uses: kjanat/actionlint-registry/publish@master
+# repository-id: 1424600475
+# ref: refs/heads/master
+---
+name: Publish actionlint plugin
+description: Verify and upload tested package bytes, submit with OIDC, and wait for registry publication.
+inputs:
+  directory:
+    description: Directory containing the candidate package and SHA256SUMS.
+    default: artifacts
+  asset:
+    description: Wasm filename within the package.
+    default: plugin.wasm
+  sha256:
+    description: SHA-256 from the successful candidate check.
+    required: true
+  candidate-receipt:
+    description: Successful shared candidate check receipt for these exact package bytes.
+    required: true
+  actionlint:
+    description: Host executable used by the candidate check.
+    required: true
+  fixture:
+    description: Behavioral fixture used by the candidate check.
+    required: true
+  repository:
+    description: Public repository containing the release tag.
+    default: ${{ github.repository }}
+  tag:
+    description: Existing release tag matching the calling workflow's OIDC identity.
+    default: ${{ github.ref_name }}
+  kind:
+    description: Plugin format, core or component.
+    default: component
+  notes-file:
+    description: Optional UTF-8 release notes file.
+    default: ""
+  receipt:
+    description: Destination for publication status and validator links, including failures.
+    default: publication.json
+  timeout-seconds:
+    description: Maximum time to wait for publication, including transient HTTP retries.
+    default: "1800"
+  github-token:
+    description: GitHub token with contents write permission. The job also needs id-token write.
+    default: ${{ github.token }}
+outputs:
+  submission-id:
+    description: Registry submission identifier.
+    value: ${{ steps.publish.outputs.submission-id }}
+  submission-status:
+    description: Published after admission and catalogue delivery succeed.
+    value: ${{ steps.publish.outputs.submission-status }}
+  sha256:
+    description: Verified Wasm digest.
+    value: ${{ steps.publish.outputs.sha256 }}
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      with:
+        bun-version-file: ${{ github.action_path }}/../.tool-versions
+        no-cache: true
+    - name: Install registry tooling
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: bun install --cwd "$ACTION_PATH/.." --frozen-lockfile --filter @kjanat-actionlint/registry-tools
+    - name: Publish verified package and wait for admission
+      id: publish
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        PACKAGE_DIRECTORY: ${{ inputs.directory }}
+        PLUGIN_ASSET: ${{ inputs.asset }}
+        PLUGIN_SHA256: ${{ inputs.sha256 }}
+        CANDIDATE_RECEIPT: ${{ inputs.candidate-receipt }}
+        ACTIONLINT: ${{ inputs.actionlint }}
+        FIXTURE: ${{ inputs.fixture }}
+        PLUGIN_REPOSITORY: ${{ inputs.repository }}
+        PLUGIN_TAG: ${{ inputs.tag }}
+        PLUGIN_KIND: ${{ inputs.kind }}
+        NOTES_FILE: ${{ inputs.notes-file }}
+        RECEIPT: ${{ inputs.receipt }}
+        TIMEOUT: ${{ inputs.timeout-seconds }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        args=()
+        if [[ -n "$NOTES_FILE" ]]; then args+=(--notes-file "$NOTES_FILE"); fi
+        bun "$ACTION_PATH/../scripts/cli.ts" publish \
+          --directory "$PACKAGE_DIRECTORY" --asset "$PLUGIN_ASSET" --sha256 "$PLUGIN_SHA256" \
+          --candidate-receipt "$CANDIDATE_RECEIPT" \
+          --actionlint "$ACTIONLINT" --fixture "$FIXTURE" \
+          --repository "$PLUGIN_REPOSITORY" --tag "$PLUGIN_TAG" --kind "$PLUGIN_KIND" \
+          --receipt "$RECEIPT" --timeout-seconds "$TIMEOUT" "${args[@]}"
+    - name: Verify published installation and offline behavior
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        ACTIONLINT: ${{ inputs.actionlint }}
+        FIXTURE: ${{ inputs.fixture }}
+        CANDIDATE_RECEIPT: ${{ inputs.candidate-receipt }}
+        RELEASE_TAG: ${{ inputs.tag }}
+      run: bash "$ACTION_PATH/../scripts/validate.sh" bun "$ACTION_PATH/../scripts/cli.ts" verify-installation
+        --actionlint "$ACTIONLINT" --fixture "$FIXTURE"
+        --receipt "$CANDIDATE_RECEIPT" --tag "$RELEASE_TAG" --report installation.json

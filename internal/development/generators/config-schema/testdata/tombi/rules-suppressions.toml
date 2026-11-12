@@ -1,0 +1,16 @@
+[[ignores]]
+file = '**/*.yml'
+job = 'build'
+reason = 'reviewed'
+rule = 'action'
+step = 'run'
+
+[lint]
+[lint.rules]
+[lint.rules.conventions]
+[lint.rules.conventions.forbidden-suppression]
+level = 'warn'
+
+[lint.rules.conventions.forbidden-suppression.options]
+report = 'all'
+rules = ['action']

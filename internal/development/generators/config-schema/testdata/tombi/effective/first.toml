@@ -1,0 +1,13 @@
+[repository]
+runners=["first"]
+secrets=["ONE"]
+[repository.variables]
+FIRST="1"
+[repository.environments.prod]
+secrets=["BASE"]
+[repository.environments.prod.variables]
+REGION="west"
+[local-actions]
+"./dist"="./first"
+[files]
+includes=["**/*.yml"]

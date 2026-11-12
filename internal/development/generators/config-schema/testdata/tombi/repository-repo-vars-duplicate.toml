@@ -1,0 +1,4 @@
+#:tombi toml-version = "v1.1.0"
+[repository.variables]
+FOO="one"
+foo="two"

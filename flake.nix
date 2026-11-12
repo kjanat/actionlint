@@ -1,11 +1,19 @@
 {
   description = "GitHub Actions workflow linter";
 
-  # Pin the required Go toolchain update until it reaches nixpkgs-unstable.
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/e666c2b24f9fbf7274b4d5caadc1f54cfb0c3dbb";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  # Use the Go 1.27.4 recipe with the cached dependencies from nixpkgs-unstable.
+  inputs.nixpkgs-go = {
+    url = "github:NixOS/nixpkgs/6f0c298a612204a69074aee91d87dc397d767d3e";
+    flake = false;
+  };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      nixpkgs-go,
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -25,23 +33,18 @@
       goFor =
         pkgs:
         let
-          go = pkgs.${"go_${goMajor}_${goMinor}"};
+          go = pkgs.callPackage (nixpkgs-go + "/pkgs/development/compilers/go/${goMajor}.${goMinor}.nix") { };
         in
         assert go.version == goVersion;
         go;
-      goBuilderFor =
-        pkgs:
-        assert (goFor pkgs).version == goVersion;
-        pkgs.${"buildGo${goMajor}${goMinor}Module"};
-      ruffFor = pkgs: pkgs.callPackage ./nix/ruff.nix { };
-      version = "2.0.0";
+      goBuilderFor = pkgs: pkgs.buildGoModule.override { go = goFor pkgs; };
+      version = nixpkgs.lib.trim (builtins.readFile ./VERSION);
     in
     {
       packages = forAllSystems (pkgs: rec {
-        actionlint = pkgs.callPackage ./nix/package.nix {
+        actionlint = pkgs.callPackage ./distribution/nix/package.nix {
           src = self;
           buildGoModule = goBuilderFor pkgs;
-          ruff = ruffFor pkgs;
           inherit version;
         };
         default = actionlint;
@@ -49,10 +52,10 @@
 
       checks = forAllSystems (pkgs: {
         package = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
-        integration = pkgs.callPackage ./nix/check.nix {
+        integration = pkgs.callPackage ./distribution/nix/check.nix {
           actionlint = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
         };
-        completion = pkgs.callPackage ./nix/completion.nix {
+        completion = pkgs.callPackage ./distribution/nix/completion.nix {
           actionlint = self.packages.${pkgs.stdenv.hostPlatform.system}.actionlint;
         };
       });
@@ -64,12 +67,10 @@
             git
             bash
             bash-completion
+            mise
             zsh
             fish
-            gnumake
             pandoc
-            shellcheck
-            (ruffFor pkgs)
             nixfmt
           ];
           GOTOOLCHAIN = "local";

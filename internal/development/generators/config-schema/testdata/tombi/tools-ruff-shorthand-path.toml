@@ -1,0 +1,3 @@
+[tools.ruff]
+config = 'ruff.toml'
+select = ['F']

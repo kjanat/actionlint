@@ -1,38 +1,43 @@
 name: Pages
+env: { MISE_CACHE_DIR: "${{ github.workspace }}-mise/cache", MISE_LOCKED: "1", MISE_TASK_RUN_AUTO_INSTALL: "false" }
 
 on:
   push:
     branches: [master]
     paths:
       - "*.go"
+      - ".github/workflows/pages.yml"
+      - ".mise.toml"
+      - ".node-version"
+      - ".tool-versions"
+      - "tasks.toml"
       - "analysis/**"
       - "analyzer/**"
+      - "bun.lock"
+      - "cmd/**"
       - "config/**"
       - "diagnostic/**"
       - "document/**"
-      - "runner/**"
-      - "syntax/**"
       - "go.mod"
       - "go.sum"
-      - "internal/config/config_default.yaml"
-      - "cmd/**"
       - "internal/**"
-      - "playground/**"
+      - "internal/input/configuration/config_default.yaml"
       - "man/**"
-      - "packages/changelog-feed/**"
-      - "!cmd/**"
-      - "!internal/cli/**"
-      - "!internal/githubaction/**"
-      - "!**/*_test.go"
       - "package.json"
-      - "package-lock.json"
-      - ".node-version"
-      - ".tool-versions"
-      - ".mise.toml"
-      - "tsconfig.json"
-      - "Makefile"
-      - ".github/workflows/pages.yml"
+      - "libraries/github-changelog/**"
+      - "libraries/browser-lsp/**"
+      - "applications/playground/**"
+      - "runner/**"
+      - "syntax/**"
+      - "tasks.toml"
       - "tools/toolchain/update-go-toolchain.mjs"
+      - "tsconfig.json"
+      # Later patterns exclude files, then include the browser command and manual source.
+      - "!cmd/**"
+      - "cmd/actionlint-lsp-wasm/**"
+      - "!internal/cli/**"
+      - "!internal/cli/action/**"
+      - "!**/*_test.go"
       - "!**/*.md"
       - "man/actionlint.1.md"
   workflow_run: { workflows: [Release], types: [completed] }
@@ -51,6 +56,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'release' &&
       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -58,20 +64,23 @@ jobs:
           fetch-depth: 0
           ref: "${{ github.event_name == 'workflow_run' && github.event.repository.default_branch || github.sha }}"
       - name: Install project tools
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}-mise"
           cache: true
-          auto_update: true
-          install_args: go node npm
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
+          monorepo: false
           add_shims_to_path: false
-        env: { MISE_ENABLE_TOOLS: "go,node,npm" }
-      - uses: $/.github/actions/setup-runner
-      - uses: $/.github/actions/setup-pandoc
+        env: { MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run" }
       - parallel:
           - name: Install JavaScript dependencies
-            run: runner install --pm npm --no-tools --frozen
+            run: runner install --pm bun --no-tools --frozen
           - name: Build command manual
-            run: run make:man
+            run: mise run man
+      - name: Install browser test runtime
+        working-directory: libraries/browser-lsp
+        run: bunx playwright install --with-deps chromium
       - name: Build and test playground
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
@@ -79,8 +88,9 @@ jobs:
             export ACTIONLINT_LATEST_RELEASE="${latest_release}"
           fi
           run -s actionlint-playground:build actionlint-playground:test
+          run -s @kjanat-actionlint/language-server:test actionlint-playground:test:browser
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with: { path: playground/dist }
+        with: { path: applications/playground/dist }
 
   deploy:
     needs: build

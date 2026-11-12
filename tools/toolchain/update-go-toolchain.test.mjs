@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { updateToolchain } from './update-go-toolchain.mjs';
 
@@ -34,20 +34,34 @@ function fixture(
 	/** @type {Record<string, string>} */
 	const files = {
 		'go.mod': 'module test\n\ngo 1.26.0\n\ntoolchain go1.98.2\n',
-		Dockerfile: 'ARG GOLANG_VER=1.98.2\n# Keep other settings\n',
+		'.mise.toml': '[tools]\ngo   = "1.98.2"\nnode = "26"\n',
+		'distribution/docker/Dockerfile': 'ARG GOLANG_VER=1.98.2\n# Keep other settings\n',
 		'CONTRIBUTING.md': 'docker build --build-arg GOLANG_VER=1.98.2 .\n',
 		'flake.nix': `inputs.nixpkgs.url = "github:NixOS/nixpkgs/${oldRevision}";\n# Keep other settings\n`,
 		'flake.lock': JSON.stringify({ nodes: { nixpkgs: { locked: { rev: oldRevision } } } }),
 	};
-	for (const [name, content] of Object.entries(files)) writeFileSync(join(root, name), content);
+	for (const [name, content] of Object.entries(files)) {
+		mkdirSync(dirname(join(root, name)), { recursive: true });
+		writeFileSync(join(root, name), content);
+	}
 	/** @type {string[][]} */
 	const calls = [];
 	const run = (/** @type {string} */ command, /** @type {string[]} */ args) => {
 		calls.push([command, ...args]);
 		if (command === 'gh') {
-			if (args[1].includes('/commits?')) return newRevision;
-			if (missingFamily && args[1].includes(oldRevision)) throw new Error('HTTP 404: compiler family absent');
-			const matches = available && (currentMatches || args[1].includes(newRevision));
+			assert.equal(args[0], 'api');
+			assert.match(args[1], /^repos\/NixOS\/nixpkgs\/commits\?/);
+			return newRevision;
+		}
+		if (command === 'curl') {
+			const url = args.at(-1);
+			assert.ok(typeof url === 'string');
+			assert.match(
+				url,
+				/^https:\/\/raw\.githubusercontent\.com\/NixOS\/nixpkgs\/[a-f0-9]{40}\/pkgs\/development\/compilers\/go\/1\.99\.nix$/,
+			);
+			if (missingFamily && url.includes(oldRevision)) throw new Error('HTTP 404: compiler family absent');
+			const matches = available && (currentMatches || url.includes(newRevision));
 			return `version = "${matches ? '1.99.3' : '1.98.2'}";`;
 		}
 		assert.equal(command, 'nix');
@@ -69,7 +83,8 @@ test('updates every toolchain surface after verifying all platform compilers', t
 	const f = fixture(t);
 	assert.equal(updateToolchain('go1.99.3', f), newRevision);
 	assert.match(readFileSync(join(f.root, 'go.mod'), 'utf8'), /go 1\.26\.0\n\ntoolchain go1\.99\.3/);
-	assert.match(readFileSync(join(f.root, 'Dockerfile'), 'utf8'), /GOLANG_VER=1\.99\.3/);
+	assert.equal(readFileSync(join(f.root, '.mise.toml'), 'utf8'), f.files['.mise.toml'].replace('1.98.2', '1.99.3'));
+	assert.match(readFileSync(join(f.root, 'distribution/docker/Dockerfile'), 'utf8'), /GOLANG_VER=1\.99\.3/);
 	assert.match(readFileSync(join(f.root, 'CONTRIBUTING.md'), 'utf8'), /GOLANG_VER=1\.99\.3/);
 	assert.equal(readFileSync(join(f.root, 'flake.nix'), 'utf8'), f.files['flake.nix'].replace(oldRevision, newRevision));
 	const evals = f.calls.filter(call => call[0] === 'nix' && call[1] === 'eval');
@@ -121,28 +136,26 @@ for (
 	});
 }
 
-test('mise Go and Node release constraints include the repository versions', () => {
+test('mise matches the repository Go pin and Node release family with Bun enabled', () => {
 	const config = readFileSync(new URL('../../.mise.toml', import.meta.url), 'utf8');
-	assert.match(config, /idiomatic_version_file_enable_tools\s*=\s*\["go", "node"\]/);
+	const idiomatic = config.match(/^idiomatic_version_file_enable_tools\s*=\s*\[([^\]]*)\]/m)?.[1];
+	assert.ok(idiomatic, 'mise must enable idiomatic version files');
+	for (const tool of ['go', 'node', 'bun']) assert.ok(idiomatic.includes(`"${tool}"`), `mise must enable ${tool}`);
 	const tools = config.split('[tools]\n')[1].split('\n[')[0];
 	const go = readFileSync(new URL('../../go.mod', import.meta.url), 'utf8').match(/^toolchain go(\d+\.\d+\.\d+)$/m)
 		?.[1];
+	assert.ok(go, 'go.mod must declare the preferred toolchain');
+	assert.equal(tools.match(/^go\s*=\s*"(\d+\.\d+\.\d+)"$/m)?.[1], go, 'mise must use the preferred Go toolchain');
 	const node = readFileSync(new URL('../../.node-version', import.meta.url), 'utf8').trim().replace(/^v/, '');
-	for (const [tool, version] of [['go', go], ['node', node]]) {
-		const prefix = tools.match(new RegExp(`^${tool}\\s*=\\s*\\{\\s*prefix\\s*=\\s*"(\\d+(?:\\.\\d+)*)"\\s*\\}`, 'm'))
-			?.[1];
-		assert.ok(prefix, `mise ${tool} must retain its release-family constraint`);
-		assert.ok(
-			version === prefix || version?.startsWith(`${prefix}.`),
-			`mise ${tool} prefix ${prefix} excludes ${version}`,
-		);
-	}
+	const prefix = tools.match(/^node\s*=\s*"(\d+(?:\.\d+)*)"$/m)?.[1];
+	assert.ok(prefix, 'mise must declare its Node release family');
+	assert.ok(node === prefix || node.startsWith(`${prefix}.`), `mise Node ${prefix} excludes ${node}`);
 });
 
 test('a partial replacement write restores all files', t => {
 	const f = fixture(t);
 	const write = (/** @type {string} */ path, /** @type {string} */ content) => {
-		if (path === join(f.root, 'Dockerfile') && content.includes('1.99.3')) {
+		if (path === join(f.root, 'distribution/docker/Dockerfile') && content.includes('1.99.3')) {
 			writeFileSync(path, 'partial write');
 			throw new Error('replacement write failed');
 		}
@@ -158,7 +171,7 @@ test('a partial replacement write restores all files', t => {
 test('incomplete rollback identifies every failed restoration and keeps restoring other files', t => {
 	const f = fixture(t, { checkFails: true });
 	const write = (/** @type {string} */ path, /** @type {string} */ content) => {
-		for (const name of ['Dockerfile', 'flake.nix']) {
+		for (const name of ['distribution/docker/Dockerfile', 'flake.nix']) {
 			if (path === join(f.root, name) && content === f.files[name]) throw new Error('write denied');
 		}
 		writeFileSync(path, content);
@@ -168,11 +181,11 @@ test('incomplete rollback identifies every failed restoration and keeps restorin
 		assert.match(error.message, /rollback was incomplete/);
 		assert.equal(error.errors.length, 3);
 		assert.equal(error.errors[0].message, 'flake validation failed');
-		assert.match(error.errors[1].message, /Could not restore Dockerfile: write denied/);
+		assert.match(error.errors[1].message, /Could not restore distribution\/docker\/Dockerfile: write denied/);
 		assert.match(error.errors[2].message, /Could not restore flake.nix: write denied/);
 		return true;
 	});
-	for (const name of ['go.mod', 'CONTRIBUTING.md', 'flake.lock']) {
+	for (const name of ['go.mod', '.mise.toml', 'CONTRIBUTING.md', 'flake.lock']) {
 		assert.deepEqual(readFileSync(join(f.root, name)), Buffer.from(f.files[name]));
 	}
 });
@@ -182,7 +195,7 @@ test('CLI failure reporting writes the original and all rollback errors to stder
 import { reportFailure } from ${JSON.stringify(import.meta.resolve('./update-go-toolchain.mjs'))};
 reportFailure(new AggregateError([
   new Error('flake validation failed'),
-  new Error('Could not restore Dockerfile: write denied'),
+  new Error('Could not restore distribution/docker/Dockerfile: write denied'),
   new Error('Could not restore flake.lock: resource busy'),
 ], 'Toolchain update failed and rollback was incomplete'));
 `;
@@ -194,7 +207,7 @@ reportFailure(new AggregateError([
 		[
 			'Toolchain update failed and rollback was incomplete',
 			'flake validation failed',
-			'Could not restore Dockerfile: write denied',
+			'Could not restore distribution/docker/Dockerfile: write denied',
 			'Could not restore flake.lock: resource busy',
 			'',
 		].join('\n'),
@@ -222,7 +235,10 @@ test('upkeep publishes all synchronized files and validates before creating the 
 	const workflow = readFileSync(new URL('../../.github/workflows/upkeep.yml', import.meta.url), 'utf8');
 	const job = workflow.split('  go-toolchain:\n')[1].split('  shellcheck:\n')[0];
 	assert.match(job, /node tools\/toolchain\/update-go-toolchain\.mjs "\$\{version\}"/);
-	assert.match(job, /add-paths: \|\n\s+go\.mod\n\s+Dockerfile\n\s+CONTRIBUTING\.md\n\s+flake\.nix\n\s+flake\.lock/);
+	assert.match(
+		job,
+		/add-paths: \|\n\s+go\.mod\n\s+\.mise\.toml\n\s+distribution\/docker\/Dockerfile\n\s+CONTRIBUTING\.md\n\s+flake\.nix\n\s+flake\.lock/,
+	);
 	assert.ok(
 		job.indexOf('node tools/toolchain/update-go-toolchain.mjs') < job.indexOf('peter-evans/create-pull-request'),
 	);

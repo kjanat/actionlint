@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/runner"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	"github.com/spf13/pflag"
 )
 
@@ -51,15 +51,14 @@ func (c checkInvocation) runners() (runner.Options, error) {
 		return options, fmt.Errorf("runner snapshot: %w", err)
 	}
 	content := string(snapshot.Content)
-	switch snapshot.Content.Kind() {
-	case '"':
+	kind := snapshot.Content.Kind()
+	if kind == jsontext.KindString {
 		if err := jsonv2.Unmarshal(snapshot.Content, &content); err != nil {
 			return options, fmt.Errorf("runner snapshot content: %w", err)
 		}
-	case 'n':
+	}
+	if kind == jsontext.KindNull {
 		content = ""
-	default:
-		content = string(snapshot.Content)
 	}
 	options.Snapshot = runner.Snapshot{
 		Content: content, Scope: snapshot.Scope, ObtainedAt: snapshot.ObtainedAt,

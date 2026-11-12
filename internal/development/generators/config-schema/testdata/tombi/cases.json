@@ -1,0 +1,1518 @@
+[
+  {
+    "name": "rules-interaction",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "valid mixed categories and override"
+  },
+  {
+    "name": "rules-groups",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "four category scalar group forms"
+  },
+  {
+    "name": "rules-presets",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "global and category presets with explicit levels"
+  },
+  {
+    "name": "rules-levels",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "all scalar levels and rule object level"
+  },
+  {
+    "name": "rules-alias",
+    "model": true,
+    "schema": true,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "Deprecated rule aliases are accepted, with a Tombi warning."
+  },
+  {
+    "name": "rules-legacy",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "legacy policy group is migration input"
+  },
+  {
+    "name": "rules-timeout",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "timeout options"
+  },
+  {
+    "name": "rules-suppressions",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "suppression options and ignore selectors"
+  },
+  {
+    "name": "rules-bad_timeout",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "minimum exceeds maximum"
+  },
+  {
+    "name": "rules-bad_timeout_field",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "unknown option"
+  },
+  {
+    "name": "rules-bad_pin_glob",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "malformed glob"
+  },
+  {
+    "name": "rules-bad_suppress_report",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "report enum"
+  },
+  {
+    "name": "rules-bad_suppress_empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "rules list must be nonempty"
+  },
+  {
+    "name": "rules-bad_suppress_name",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "unknown suppressible rule"
+  },
+  {
+    "name": "rules-bad_options",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "rule does not accept options"
+  },
+  {
+    "name": "rules-bad_option_scalar",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "options must be object"
+  },
+  {
+    "name": "rules-bad_level",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "invalid level"
+  },
+  {
+    "name": "rules-bad_setting",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "object requires level"
+  },
+  {
+    "name": "rules-bad_preset",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "invalid preset"
+  },
+  {
+    "name": "rules-bad_category",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "known rule in wrong category"
+  },
+  {
+    "name": "rules-bad_group",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "group cannot be array"
+  },
+  {
+    "name": "rules-bad_enabled",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "enabled is boolean"
+  },
+  {
+    "name": "rules-bad_experimental",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "experimental is boolean"
+  },
+  {
+    "name": "rules-disable",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "known IDs in disable list"
+  },
+  {
+    "name": "rules-bad_disable",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "disable entries are strings"
+  },
+  {
+    "name": "rules-bad_ignore",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "ignore requires selector"
+  },
+  {
+    "name": "rules-bad_ignore_empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "ignore selector must be nonempty"
+  },
+  {
+    "name": "rules-bad_ignore_forbidden",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "rules-override_options",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "options in overrides"
+  },
+  {
+    "name": "rules-override_bad_options",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "invalid override options must be checked"
+  },
+  {
+    "name": "rules-unknown_plugin",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "unregistered plugin fails resolution; structural schemas allow future registered plugins"
+  },
+  {
+    "name": "rules-removed_rule",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "required-actions was removed"
+  },
+  {
+    "name": "rules-permissions_omitted",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "omitted require-at"
+  },
+  {
+    "name": "rules-permissions_string",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "string location"
+  },
+  {
+    "name": "rules-permissions_array",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "nonempty location array"
+  },
+  {
+    "name": "rules-permissions_empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "empty location array"
+  },
+  {
+    "name": "rules-permissions_unknown",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "unknown location"
+  },
+  {
+    "name": "rules-permissions_override_string",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "string location in override"
+  },
+  {
+    "name": "rules-permissions_override_array",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "nonempty location array in override"
+  },
+  {
+    "name": "rules-permissions_override_omitted",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "resolve_rules": true,
+    "reason": "omitted require-at in override"
+  },
+  {
+    "name": "rules-permissions_override_empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "resolve_rules": true,
+    "reason": "empty location array in override"
+  },
+  {
+    "name": "tools-file-path",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-empty-path",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-newline-path",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-inline-valid",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-inline-process-invalid",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "tools-file-inline-common-invalid",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "tools-file-override-path",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-override-process-invalid",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "tools-file-backend-empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-backend-both",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-backend-wasm-valid",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-file-override-backend-empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-process-default",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-process-nul",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-arg-nul",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-env-bad-name",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-env-bad-value",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-args-bad-type",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-wasm-nul",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-wasm-missing",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-wasm-unknown",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-override-process",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-override-wasm-bad",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-plugin-alias",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-plugin-map",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-plugin-duplicate",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-plugin-invalid",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-plugin-empty-version",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-switch-true",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-switch-false",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-bad-switch",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-empty",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-enabled-bad",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-extra",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-ruff-inline",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-ruff-invalid",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-ruff-unknown",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Unknown Ruff settings are deferred to the Ruff engine."
+  },
+  {
+    "name": "tools-ruff-shorthand",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-ruff-shorthand-path",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-ruff-path",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-shellcheck-path",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-shellcheck-invalid",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-process",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-wasm",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-both",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-wasm-empty",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-backend-process-unknown",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-override-valid",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-override-invalid",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "specialized": false,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-unknown-tool",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "specialized": false,
+    "reason": "The generic schema allows provider names that decoding checks against the registered providers."
+  },
+  {
+    "name": "tools-installed-good",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-installed-bad",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "tools-installed-path",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "tools-installed-override-bad",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "tools-installed-rule-good",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "specialized": true,
+    "reason": "Tool configuration structure."
+  },
+  {
+    "name": "tools-installed-rule-bad",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "specialized": true,
+    "reason": "Provider-specific validation is deferred during decoding."
+  },
+  {
+    "name": "repository-empty-json",
+    "extension": ".json",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-extends-array-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-extends-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-extends-wrong",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-files-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-files-excludes-invalid",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-files-includes-scalar",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-files-invalid",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-files-pattern",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-files-unknown",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-files-wrong",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-all-selectors",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-blank-job",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-blank-step",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-blank-uses",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-forbidden",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-ignore-invalid-file",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-ignore-job",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-step",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-unknown",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignore-uses",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignores-empty-reason",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignores-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignores-missing-selector",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-ignores-valid",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-inline-toml11",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-legacy-facts",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Legacy configuration is accepted for migration but omitted from the current schema."
+  },
+  {
+    "name": "repository-legacy-paths",
+    "extension": ".toml",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "reason": "Legacy configuration is accepted for migration but omitted from the current schema."
+  },
+  {
+    "name": "repository-legacy-policy",
+    "extension": ".toml",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "reason": "Legacy configuration is accepted for migration but omitted from the current schema."
+  },
+  {
+    "name": "repository-legacy-typo",
+    "extension": ".toml",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "reason": "Legacy configuration is accepted for migration but omitted from the current schema."
+  },
+  {
+    "name": "repository-legacy-valid-facts",
+    "extension": ".toml",
+    "model": true,
+    "schema": false,
+    "tombi": false,
+    "reason": "Legacy configuration is accepted for migration but omitted from the current schema."
+  },
+  {
+    "name": "repository-local-bad-value",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-local-duplicate",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-local-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-local-invalid",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-local-valid",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-local-value-type",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-null-nested",
+    "extension": ".json",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-null-root",
+    "extension": ".json",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-formats-all",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-invalid",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-log-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-log-info",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-log-none",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-network-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-quiet-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-summary-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-unknown",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-output-valid",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-excludes-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-override-includes-empty",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-local-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-override-negative",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-override-no-includes",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-repo-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-unknown",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-valid",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-override-wrong",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-env-duplicate",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-repo-env-empty",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-env-secrets-invalid",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-repo-env-unknown",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-env-vars-invalid",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-env-wrong",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-full",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-permissions-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-runner-bad",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-repo-runners-blank",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-repo-runners-duplicate",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-repo-secret-blank",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-repo-secret-duplicate",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-repo-secrets-wrong",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-variables-wrong",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "repository-repo-vars-blank",
+    "extension": ".toml",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-repo-vars-duplicate",
+    "extension": ".toml",
+    "model": false,
+    "schema": true,
+    "tombi": true,
+    "reason": "Semantic validation is deferred beyond the schema."
+  },
+  {
+    "name": "repository-repo-write",
+    "extension": ".toml",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "Repository configuration structure."
+  },
+  {
+    "name": "tools-json-backend-process-null",
+    "extension": ".json",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "A null transport is absent when selecting a backend."
+  },
+  {
+    "name": "tools-json-backend-wasm-null",
+    "extension": ".json",
+    "model": true,
+    "schema": true,
+    "tombi": true,
+    "reason": "A null transport is absent when selecting a backend."
+  },
+  {
+    "name": "tools-json-backend-both-null",
+    "extension": ".json",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "A null transport is absent when selecting a backend."
+  },
+  {
+    "name": "repository-env-name-blank",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-local-key-expression",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-local-value-expression",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-local-key-backslash",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "The model and schema reject this invalid configuration."
+  },
+  {
+    "name": "repository-json-root-array",
+    "extension": ".json",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "A configuration document must be an object."
+  },
+  {
+    "name": "repository-json-root-string",
+    "extension": ".json",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "A configuration document must be an object."
+  },
+  {
+    "name": "repository-json-root-number",
+    "extension": ".json",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "A configuration document must be an object."
+  },
+  {
+    "name": "repository-json-root-boolean",
+    "extension": ".json",
+    "model": false,
+    "schema": false,
+    "tombi": false,
+    "reason": "A configuration document must be an object."
+  },
+  {
+    "name": "repository-json-root-null",
+    "extension": ".json",
+    "model": true,
+    "schema": true,
+    "tombi": false,
+    "reason": "A null root selects default configuration."
+  }
+]

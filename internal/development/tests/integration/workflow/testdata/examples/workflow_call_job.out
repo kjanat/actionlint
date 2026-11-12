@@ -1,0 +1,5 @@
+test.yaml:3:3: job "call1" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]
+test.yaml:5:3: job "call2" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]
+test.yaml:9:3: job "call3" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]
+test.yaml:13:3: job "call4" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]
+test.yaml:28:3: job "call6" does not declare token permissions; add "permissions" on this job or the workflow, or use "permissions: {}" to grant none [missing-permissions]

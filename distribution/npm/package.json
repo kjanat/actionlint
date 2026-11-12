@@ -1,0 +1,20 @@
+{
+  "name": "@kjanat/actionlint-npm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Build npm packages from verified actionlint release archives",
+  "type": "module",
+  "imports": {
+    "#*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "node src/cli.ts build",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc-rs --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@kjanat/dreamcli": "catalog:",
+    "@zip.js/zip.js": "^2.24.0",
+    "tar-stream": "^3.2.2"
+  }
+}

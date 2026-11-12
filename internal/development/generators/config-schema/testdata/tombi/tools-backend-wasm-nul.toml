@@ -1,0 +1,2 @@
+[tools.ruff.backend.wasm]
+path = "a\u0000b"
