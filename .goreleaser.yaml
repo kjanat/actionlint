@@ -3,6 +3,9 @@
 version: 2
 project_name: actionlint
 
+snapshot:
+  version_template: '{{ trim (mustReadFile "VERSION") }}-SNAPSHOT-{{ .ShortCommit }}'
+
 release:
   draft: true
   prerelease: "false"

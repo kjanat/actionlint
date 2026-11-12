@@ -33,7 +33,7 @@ async function archive(format: ArchiveFormat, files: ReadonlyMap<string, Buffer>
 	return gzipSync(await readBounded(tar, 'tar fixture'));
 }
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, version = '3.2.1') {
 	const root = await mkdtemp(join(tmpdir(), 'actionlint-npm-'));
 	t.after(() => rm(root, { recursive: true, force: true }));
 	const npmDir = join(root, 'distribution/npm');
@@ -46,7 +46,7 @@ async function fixture(t: TestContext) {
 		await cp(join(sourceRoot, name), join(root, name), { recursive: true });
 	}
 	const options: BuildOptions = {
-		version: '3.2.1',
+		version,
 		repository: '',
 		token: '',
 		repoRoot: root,
@@ -89,7 +89,8 @@ async function manifest(path: string): Promise<Record<string, unknown>> {
 }
 
 test('preview packages include only essential platforms and their archived manual', async t => {
-	const f = await fixture(t);
+	const version = '2.0.0-SNAPSHOT-9981ea76';
+	const f = await fixture(t, version);
 	const configured = await manifest(join(f.options.npmDir, 'targets.json'));
 	assert.ok(Array.isArray(configured.targets));
 	const preview = {
@@ -109,6 +110,11 @@ test('preview packages include only essential platforms and their archived manua
 		'win32-x64',
 	]);
 	const facade = await manifest(join(f.options.outDir, 'facade/package.json'));
+	assert.equal(facade.version, version);
+	assert.deepEqual(
+		Object.values(jsonObject(facade.optionalDependencies, 'optionalDependencies')),
+		essential.map(() => version),
+	);
 	assert.deepEqual(
 		Object.keys(jsonObject(facade.optionalDependencies, 'optionalDependencies')),
 		essential.map(target => packageName(f.targets, target)),
