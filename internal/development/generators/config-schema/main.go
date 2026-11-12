@@ -394,7 +394,7 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	for _, file := range []string{"config.go", "lint.go", "reporting.go", "network.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
+	for _, file := range []string{"config.go", "lint.go", "reporting.go", "network.go", "network_policy.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "input", "configuration", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
@@ -482,12 +482,35 @@ func main() {
 		err = genfile.Write(context.Background(), "actionlint.schema.json", b, false)
 	}
 	if err == nil {
+		var policy []byte
+		policy, err = generateNetworkPolicy()
+		if err == nil {
+			err = os.MkdirAll("schemas/policy", 0o755)
+		}
+		if err == nil {
+			err = genfile.Write(context.Background(), "schemas/policy/network.schema.json", policy, false)
+		}
+	}
+	if err == nil {
 		err = writeEmbeddedSchemas()
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func generateNetworkPolicy() ([]byte, error) {
+	r, err := documentedReflector()
+	if err != nil {
+		return nil, err
+	}
+	s := r.Reflect(actionlint.NetworkPolicyFile{})
+	s.ID = ""
+	s.Title = "actionlint network policy"
+	s.PatternProperties = map[string]*jsonschema.Schema{`^\$schema$`: {Type: "string"}}
+	s.Extras = map[string]any{"x-tombi-toml-version": "v1.1.0", "x-tombi-table-keys-order": map[string]string{"properties": "schema"}}
+	return encodeSchema(s)
 }
 
 func writeEmbeddedSchemas() error {

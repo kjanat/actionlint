@@ -18,7 +18,7 @@ func TestInspectionUsesToolReplacementRegistration(t *testing.T) {
 	}
 	descriptor := rule.Descriptor{Name: "shellcheck", Category: "security", Provider: "replacement", Maturity: "stable", OptionsSchema: []byte(`{"type":"object","properties":{"mode":{"enum":["safe"]}},"additionalProperties":false}`)}
 	for _, replaces := range []string{"shellcheck", "", "ruff"} {
-		_, err := rules.InspectContextWithRegistrations(t.Context(), Selection{Path: path}, true, nil, RuleRegistration{Descriptor: descriptor, Scope: rule.SourceConfiguration, ReplacesTool: replaces})
+		_, err := rules.InspectContextWithRegistrations(t.Context(), Selection{Path: path}, true, nil, nil, RuleRegistration{Descriptor: descriptor, Scope: rule.SourceConfiguration, ReplacesTool: replaces})
 		if replaces == "shellcheck" && err != nil || replaces != "shellcheck" && (err == nil || !strings.Contains(err.Error(), "conflicts")) {
 			t.Fatalf("replacement=%q inspection error=%v", replaces, err)
 		}
@@ -26,7 +26,7 @@ func TestInspectionUsesToolReplacementRegistration(t *testing.T) {
 	if err := os.WriteFile(path, []byte("lint: {rules: {security: {shellcheck: {level: on, options: {mode: unsafe}}}}}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := rules.InspectContextWithRegistrations(t.Context(), Selection{Path: path}, false, nil, RuleRegistration{Descriptor: descriptor, Scope: rule.SourceConfiguration, ReplacesTool: "shellcheck"}); err == nil || !strings.Contains(err.Error(), "options") {
+	if _, err := rules.InspectContextWithRegistrations(t.Context(), Selection{Path: path}, false, nil, nil, RuleRegistration{Descriptor: descriptor, Scope: rule.SourceConfiguration, ReplacesTool: "shellcheck"}); err == nil || !strings.Contains(err.Error(), "options") {
 		t.Fatalf("invalid replacement options were accepted: %v", err)
 	}
 }

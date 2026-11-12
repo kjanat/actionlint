@@ -82,9 +82,11 @@ func TestPermissionLocationsDoNotSuggestBothAsDefault(t *testing.T) {
 }
 
 var (
-	repositoryRoot   string
-	generatedRoot    []byte
-	errGeneratedRoot error
+	repositoryRoot     string
+	generatedRoot      []byte
+	errGeneratedRoot   error
+	generatedPolicy    []byte
+	errGeneratedPolicy error
 )
 
 func TestMain(m *testing.M) {
@@ -97,6 +99,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	generatedRoot, errGeneratedRoot = generate()
+	generatedPolicy, errGeneratedPolicy = generateNetworkPolicy()
 	if err := os.Chdir(packageDirectory); err != nil {
 		panic(err)
 	}

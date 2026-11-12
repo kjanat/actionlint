@@ -19,7 +19,7 @@ type Inspection struct {
 	Warnings []Warning         `json:"warnings,omitempty" yaml:"warnings,omitempty"`
 }
 
-// Origin identifies a default, configuration file value, or Action input.
+// Origin identifies the default, project file, policy file or Action input that supplied a setting.
 type Origin struct {
 	File   string `json:"file,omitempty" yaml:"file,omitempty"`
 	Source string `json:"source" yaml:"source"`
