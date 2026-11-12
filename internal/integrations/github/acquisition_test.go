@@ -34,6 +34,7 @@ func actionListing() string {
 	return listing(branchTip,
 		gitwire.Ref{Name: "refs/heads/main", Object: branchTip},
 		gitwire.Ref{Name: "refs/heads/release", Object: branchTip},
+		gitwire.Ref{Name: "refs/heads/tag-target", Object: sha},
 		gitwire.Ref{Name: "refs/tags/v1", Object: tagObject, Peeled: sha},
 		gitwire.Ref{Name: "refs/tags/v2", Object: sha},
 	)
@@ -210,7 +211,7 @@ func TestParseRefAdvertisement(t *testing.T) {
 	if parsed.refs["HEAD"] != branchTip || parsed.refs["refs/tags/v1"] != tagObject || parsed.refs["refs/pull/1/head"] != sha || len(parsed.refs) != 4 {
 		t.Fatalf("refs=%v", parsed.refs)
 	}
-	if parsed.objects[tagObject] != (repository.PeeledTag{Commit: sha}) || parsed.objects[sha] != (repository.Commit{}) || parsed.objects[branchTip] != (repository.Commit{}) || len(parsed.digest) != 64 {
+	if parsed.objects[tagObject] != nil || parsed.objects[sha] != nil || parsed.objects[branchTip] != (repository.Commit{}) || len(parsed.digest) != 64 {
 		t.Fatalf("objects=%v digest=%s", parsed.objects, parsed.digest)
 	}
 	empty, err := parseRefAdvertisement(gitwire.RefAdvertisement("", ""))
@@ -282,9 +283,6 @@ func TestListingSessionFinishMakesNoRequests(t *testing.T) {
 	}
 	if object, found, err := session.Object(t.Context(), strings.ToUpper(tagObject)); err != nil || !found || object != (repository.PeeledTag{Commit: sha}) {
 		t.Fatalf("tag object=%v,%t,%v", object, found, err)
-	}
-	if _, found, err := session.Object(t.Context(), strings.Repeat("d", 40)); err != nil || found {
-		t.Fatalf("unknown object=%t,%v", found, err)
 	}
 	for _, id := range []string{strings.Repeat("a", 64), "abc"} {
 		if _, _, err := session.Object(t.Context(), id); err == nil {
@@ -518,6 +516,56 @@ func TestMissingSHAWithUnavailableListingFallsBackToAPI(t *testing.T) {
 	manifest, err := client.Lookup(t.Context(), ref(t, "example/action@"+sha))
 	if err != nil || !manifest.Available() || manifest.Identity().RepositoryID() != knownRepositoryID(t, 42) || hosts.count("raw.githubusercontent.com") != 2 || hosts.count("github.com") != 1 || hosts.count("api.github.com") != 4 {
 		t.Fatalf("manifest=%v,%v requests=%v", manifest, err, hosts.recorded())
+	}
+}
+
+func TestRESTTagObjectCacheSupportsBothObjectAndCommit(t *testing.T) {
+	for _, warmCommit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("warm_commit=%t", warmCommit), func(t *testing.T) {
+			cache := t.TempDir()
+			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
+				switch r.URL.Host {
+				case "raw.githubusercontent.com":
+					return respond(r, http.StatusNotFound, rawText, ""), nil
+				case "github.com":
+					return respond(r, http.StatusServiceUnavailable, "", ""), nil
+				}
+				return restFallback(t, r)
+			}}
+			client, err := New(Options{CacheDir: cache, Transport: hosts, Resolver: func() references.Resolver {
+				return resolveFunc(func(_ context.Context, request references.Request) (references.Result, error) {
+					return references.Result{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(t, 42), Commit: sha, SelectedObject: request.Ref, ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+				})
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if warmCommit {
+				manifest, err := client.Lookup(t.Context(), ref(t, "example/action@"+sha))
+				if err != nil || !manifest.Available() {
+					t.Fatalf("warm commit=%v error=%v", manifest, err)
+				}
+			}
+			manifest, err := client.Lookup(t.Context(), ref(t, "example/action@"+tagObject))
+			if err != nil || !manifest.Available() || manifest.Identity().Commit() != sha {
+				t.Fatalf("tag=%v error=%v", manifest, err)
+			}
+			for _, mode := range []Mode{Online, Offline} {
+				cached, err := New(Options{Mode: mode, CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
+					t.Errorf("cached lookup sent %s", r.URL)
+					return nil, errors.New("unexpected network request")
+				})})
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, object := range []string{tagObject, sha} {
+					hit, err := cached.Lookup(t.Context(), ref(t, "example/action@"+object))
+					if err != nil || !hit.Available() || hit.Identity().Commit() != sha || hit.Selection().Object() != object {
+						t.Errorf("mode=%v object=%s: cached=%v error=%v", mode, object, hit, err)
+					}
+				}
+			}
+		})
 	}
 }
 

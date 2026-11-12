@@ -43,8 +43,9 @@ Online mode acquires each manifest in this order:
 2. A named reference, such as a tag or branch, reads the repository's Git
    reference list from `https://github.com/OWNER/REPO.git/info/refs?service=git-upload-pack`.
    Each repository is listed once per analysis, and every lookup of that
-   repository uses the same list. The list includes the commit of each
-   annotated tag. Commitish selects the reference from it.
+   repository uses the same list. Commitish selects the reference from it.
+   A tag can point to a commit, tree or blob. If its target is not also a
+   branch tip, actionlint checks the object type through the GitHub API.
 3. Actionlint uses a cached manifest for the selected commit when one exists.
    Otherwise it requests `action.yml` at the commit and action directory from
    `https://raw.githubusercontent.com/OWNER/REPO/COMMIT/DIRECTORY/`. It tries
@@ -72,20 +73,21 @@ not consume `api.github.com` quota. A lookup of a full SHA-1 reference makes no
 request when the cache has the manifest and one request to the raw file host
 otherwise. A lookup of a tag or branch makes one reference-list request per
 repository, then one raw file request per distinct commit and action directory.
+Tags whose target type needs verification also make API requests.
 Actionlint requests files from jsDelivr only after the raw file host fails.
 Use `--network-stats` to see the requests of an analysis by host and kind.
 
 jsDelivr requests always name a full commit hash, never a tag or branch. The
 raw file host also answers `404` for a private repository that the token cannot
-read. After any raw file `404`, actionlint sends no request to jsDelivr, and the
-repository name stays with GitHub.
+read. After any raw file `404`, actionlint sends no request to jsDelivr. If a
+later attempt fails, for example with `503`, actionlint can try the GitHub API.
 
-A missing repository, reference or manifest is a definite answer and does not
-use jsDelivr or the REST API. The raw file host serves files only at commits. When neither
-manifest exists at a full SHA-1 reference, actionlint reads the repository's
-Git reference list. If the reference names an annotated tag object in that list,
-Commitish selects the tag's commit and actionlint requests the manifest at that
-commit. Otherwise the lookup records `not-found-or-inaccessible`.
+The raw file host serves files only at commits. When neither manifest exists at
+a full SHA-1 reference, actionlint reads the repository's Git reference list.
+If the reference names an annotated tag object in that list, Commitish selects
+the tag's commit and actionlint requests the manifest at that commit. If the
+list contains no such tag, the lookup records `not-found-or-inaccessible`.
+If the reference-list request fails, actionlint can try the GitHub API.
 
 With a token, Git requests use HTTP Basic authentication as `x-access-token`,
 and raw file and REST requests send it as a bearer token. GitHub's raw file host
@@ -136,7 +138,9 @@ recorded identity and observation time.
 
 Commitish runs inside actionlint as a WebAssembly component. It asks actionlint
 for exact references and Git objects. Actionlint answers from the repository's
-Git reference list, which it reads once before resolution. When the REST API
+Git reference list, which it reads once before resolution. For objects whose
+type the list does not establish, actionlint fetches the object from the API.
+When the REST API
 fallback is in use, actionlint fetches each reference and object from the API,
 verifies the repository identity and rechecks the observed references before
 accepting the result. Credentials and HTTP responses stay in actionlint.

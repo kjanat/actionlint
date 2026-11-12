@@ -20,7 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
@@ -166,13 +165,7 @@ func (g *GitHub) lookupCommitFile(ctx context.Context, ref actions.Reference, ki
 	if err != nil || file.Available() || file.missing.Reason() != availability.InaccessibleReason || g.resolver == nil {
 		return file, err
 	}
-	file, err = g.lookupTagObjectFile(ctx, ref, kind, filenames, commit, file)
-	if err == nil && file.Available() && file.Identity().Commit() != commit {
-		if err := g.store(ctx, file, commit); err != nil && ctx.Err() != nil {
-			return repositoryFile{}, ctx.Err()
-		}
-	}
-	return file, err
+	return g.lookupTagObjectFile(ctx, ref, kind, filenames, commit, file)
 }
 
 // raw.githubusercontent.com serves files only at commit IDs, while GitHub runs
@@ -182,10 +175,10 @@ func (g *GitHub) lookupTagObjectFile(ctx context.Context, ref actions.Reference,
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
-	if _, tag := listing.objects[object].(repository.PeeledTag); !tag {
+	if _, tag := listing.peeled[object]; !tag {
 		return inaccessible, nil
 	}
-	return g.resolveListedFile(ctx, ref, kind, filenames, listing)
+	return g.resolveListedFile(context.WithValue(ctx, rawNotFoundKey{}, true), ref, kind, filenames, listing)
 }
 
 func (g *GitHub) lookupNamedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string) (repositoryFile, error) {
@@ -215,6 +208,9 @@ func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, k
 			return unavailableFile(availability.Failed()), nil
 		}
 		file.filename, file.content = record.Filename, record.Content
+		if err := g.storeTagObject(ctx, file); err != nil && ctx.Err() != nil {
+			return repositoryFile{}, ctx.Err()
+		}
 		return file, nil
 	}
 	return g.fetchSelectedFile(ctx, ref, kind, filenames, commit, object, route, resolved.ObservedAt)
@@ -263,7 +259,7 @@ func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, k
 		return unavailableFile(availability.Failed()), nil
 	}
 	file.filename, file.content = filename, content
-	if err := g.store(ctx, file, ""); err != nil && ctx.Err() != nil {
+	if err := g.store(ctx, file); err != nil && ctx.Err() != nil {
 		return repositoryFile{}, ctx.Err()
 	}
 	return file, nil
@@ -308,6 +304,9 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 	}
 	if cached, exists, cacheErr := g.cached(ctx, ref, repoID, commit, filenames); cacheErr == nil && exists {
 		file.filename, file.content = cached.Filename, cached.Content
+		if err := g.storeTagObject(ctx, file); err != nil && ctx.Err() != nil {
+			return repositoryFile{}, ctx.Err()
+		}
 		return file, nil
 	}
 	if session := accounting.RequestTrackerFromContext(ctx); session != nil {
@@ -348,7 +347,7 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 		return unavailableFile(availability.Failed()), nil
 	}
 	file.filename, file.content = filename, string(content)
-	if err := g.store(ctx, file, ""); err != nil {
+	if err := g.store(ctx, file); err != nil {
 		if ctx.Err() != nil {
 			return repositoryFile{}, ctx.Err()
 		}
@@ -600,7 +599,20 @@ func cachedRepositoryFile(ref actions.Reference, record cacheRecord) (repository
 	return repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: record.ObservedAt, filename: record.Filename, content: record.Content}, true
 }
 
-func (g *GitHub) store(ctx context.Context, manifest repositoryFile, tagObject string) error {
+func (g *GitHub) store(ctx context.Context, manifest repositoryFile) error {
+	err := g.storeAt(ctx, manifest, "")
+	return errors.Join(err, g.storeTagObject(ctx, manifest))
+}
+
+func (g *GitHub) storeTagObject(ctx context.Context, manifest repositoryFile) error {
+	requested := strings.ToLower(manifest.reference.Ref())
+	if fullSHA1(requested) && requested != manifest.Identity().Commit() {
+		return g.storeAt(ctx, manifest, requested)
+	}
+	return nil
+}
+
+func (g *GitHub) storeAt(ctx context.Context, manifest repositoryFile, tagObject string) error {
 	if g.cacheDir == "" {
 		return nil
 	}

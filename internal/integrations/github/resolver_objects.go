@@ -48,7 +48,7 @@ func (g *GitHub) Open(ctx context.Context, request references.Request) (reposito
 		return nil, errors.New("invalid GitHub repository request")
 	}
 	if listing := refListingFromContext(ctx); listing != nil && strings.EqualFold(listing.repository, request.Repository) {
-		return newListingSession(listing, request), nil
+		return newListingSession(g, listing, request), nil
 	}
 	s := &resolverRepository{g: g, base: "https://api.github.com/repos/" + url.PathEscape(owner) + "/" + url.PathEscape(name), refs: make(map[string]refObservation)}
 	repo, err := s.readRepository(ctx)

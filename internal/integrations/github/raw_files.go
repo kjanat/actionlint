@@ -45,6 +45,8 @@ type exchanged struct {
 	body   []byte
 }
 
+type rawNotFoundKey struct{}
+
 func (g *GitHub) exchange(ctx context.Context, request *http.Request, limit int) (exchanged, error) {
 	if err := references.WaitOutsideLookupBudget(ctx, func() error { return g.requests.Acquire(ctx, 1) }); err != nil {
 		return exchanged{}, err
@@ -69,9 +71,10 @@ func (g *GitHub) fetchRawFile(ctx context.Context, ref actions.Reference, commit
 		return "", "", &reason, nil
 	}
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: kind + "-metadata", Priority: accounting.Enrichment, RequestKind: accounting.HTTP})
-	filename, content, missing, err := g.fetchRawHostFile(ctx, ref, commit, filenames)
-	if !errors.Is(err, errEnvironment) || !fullSHA1(commit) {
-		return filename, content, missing, err
+	raw, err := g.fetchRawHostFile(ctx, ref, commit, filenames)
+	priorNotFound, _ := ctx.Value(rawNotFoundKey{}).(bool)
+	if !errors.Is(err, errEnvironment) || raw.notFound || priorNotFound || !fullSHA1(commit) {
+		return raw.filename, raw.content, raw.missing, err
 	}
 	filename, content, found, cdnErr := g.fetchJSDelivrFile(ctx, ref, commit, filenames)
 	switch {
@@ -85,22 +88,35 @@ func (g *GitHub) fetchRawFile(ctx context.Context, ref actions.Reference, commit
 	return filename, content, nil, nil
 }
 
-func (g *GitHub) fetchRawHostFile(ctx context.Context, ref actions.Reference, commit string, filenames []string) (string, string, *availability.Unavailability, error) {
+type rawFileLookup struct {
+	filename, content string
+	missing           *availability.Unavailability
+	notFound          bool
+}
+
+func (g *GitHub) fetchRawHostFile(ctx context.Context, ref actions.Reference, commit string, filenames []string) (rawFileLookup, error) {
+	var result rawFileLookup
 	for _, filename := range filenames {
 		address := rawFileURL(ref, commit, filename)
 		content, found, missing, err := g.rawRequest(ctx, address, g.token != "")
-		if err == nil && missing == nil && !found && g.token != "" {
-			content, found, missing, err = g.rawRequest(ctx, address, false)
+		if err == nil && missing == nil && !found {
+			result.notFound = true
+			if g.token != "" {
+				content, found, missing, err = g.rawRequest(ctx, address, false)
+			}
 		}
 		if err != nil || missing != nil {
-			return "", "", missing, err
+			result.missing = missing
+			return result, err
 		}
 		if found {
-			return filename, content, nil, nil
+			result.filename, result.content = filename, content
+			return result, nil
 		}
 	}
 	reason := availability.Inaccessible()
-	return "", "", &reason, nil
+	result.missing = &reason
+	return result, nil
 }
 
 func (g *GitHub) fetchJSDelivrFile(ctx context.Context, ref actions.Reference, commit string, filenames []string) (string, string, bool, error) {

@@ -39,6 +39,7 @@ type refListing struct {
 	digest     string
 	refs       map[string]string
 	objects    map[string]repository.Object
+	peeled     map[string]string
 }
 
 func splitRepository(name string) (string, string, bool) {
@@ -218,20 +219,21 @@ func parseRefAdvertisement(body []byte) (*refListing, error) {
 		return nil, fmt.Errorf("%w: data after the final flush", errInvalidRefAdvertisement)
 	}
 	objects := make(map[string]repository.Object, len(refs)+len(peeled))
+	for name, id := range refs {
+		if name == "HEAD" || strings.HasPrefix(name, "refs/heads/") {
+			objects[id] = repository.Commit{}
+		}
+	}
 	for tag, commit := range peeled {
 		if _, isTag := peeled[commit]; isTag {
 			return nil, fmt.Errorf("%w: peeled object is a tag", errInvalidRefAdvertisement)
 		}
-		objects[tag] = repository.PeeledTag{Commit: commit}
-		objects[commit] = repository.Commit{}
-	}
-	for _, id := range refs {
-		if _, known := objects[id]; !known {
-			objects[id] = repository.Commit{}
+		if _, known := objects[commit]; known {
+			objects[tag] = repository.PeeledTag{Commit: commit}
 		}
 	}
 	sum := sha256.Sum256(body)
-	return &refListing{refs: refs, objects: objects, digest: hex.EncodeToString(sum[:])}, nil
+	return &refListing{refs: refs, objects: objects, peeled: peeled, digest: hex.EncodeToString(sum[:])}, nil
 }
 
 type refListings struct {
@@ -304,10 +306,13 @@ type listingSession struct {
 	name     string
 	log      []string
 	finished bool
+	github   *GitHub
+	request  references.Request
+	verified repository.Session
 }
 
-func newListingSession(listing *refListing, request references.Request) *listingSession {
-	return &listingSession{listing: listing, name: request.Repository, log: []string{"listing sha256:" + listing.digest}}
+func newListingSession(github *GitHub, listing *refListing, request references.Request) *listingSession {
+	return &listingSession{github: github, request: request, listing: listing, name: request.Repository, log: []string{"listing sha256:" + listing.digest}}
 }
 
 func (s *listingSession) Repository() repository.Identity {
@@ -345,7 +350,30 @@ func (s *listingSession) Object(ctx context.Context, id string) (repository.Obje
 	id = strings.ToLower(id)
 	object, found := s.listing.objects[id]
 	s.log = append(s.log, "object "+id)
-	return object, found, nil
+	if found {
+		return object, true, nil
+	}
+	if s.verified == nil {
+		ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "resolver", Priority: accounting.Enrichment, RequestKind: accounting.REST, QuotaPool: "core"})
+		request, err := s.github.request(ctx, "https://api.github.com/repos/"+s.name, false)
+		if err != nil {
+			return nil, false, err
+		}
+		if tracker := accounting.RequestTrackerFromContext(ctx); tracker != nil {
+			if err := tracker.LoadGitHubRateLimits(ctx, s.github.client, request); err != nil {
+				return nil, false, err
+			}
+			if err := tracker.CheckBatchQuota(request, 1); err != nil {
+				return nil, false, err
+			}
+		}
+		session, err := s.github.Open(withRefListing(ctx, nil), s.request)
+		if err != nil {
+			return nil, false, err
+		}
+		s.verified = session
+	}
+	return s.verified.Object(ctx, id)
 }
 
 func (s *listingSession) Finish(ctx context.Context) (json.RawMessage, error) {
@@ -356,6 +384,13 @@ func (s *listingSession) Finish(ctx context.Context) (json.RawMessage, error) {
 		return nil, err
 	}
 	s.finished = true
+	if s.verified != nil {
+		log, err := s.verified.Finish(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.log = append(s.log, string(log))
+	}
 	return json.Marshal(struct {
 		Host         string   `json:"host"`
 		Observations []string `json:"observations"`

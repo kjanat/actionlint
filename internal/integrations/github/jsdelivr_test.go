@@ -101,6 +101,43 @@ func TestRawNotFoundNeverReachesJSDelivr(t *testing.T) {
 	}
 }
 
+func TestRawNotFoundBeforeFailureSkipsJSDelivr(t *testing.T) {
+	for _, token := range []string{"", "fixture-token"} {
+		t.Run("token="+token, func(t *testing.T) {
+			requests := 0
+			hosts := mirrorHosts(t, func(r *http.Request) (*http.Response, error) {
+				requests++
+				if requests == 1 {
+					return respond(r, http.StatusNotFound, rawText, ""), nil
+				}
+				return respond(r, http.StatusServiceUnavailable, rawText, ""), nil
+			}, reply(http.StatusOK, jsDelivrYAML, actionSource))
+			client, err := New(Options{Token: token, Transport: hosts})
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifest, err := client.Lookup(t.Context(), ref(t, "example/action@"+sha))
+			if err != nil || !manifest.Available() || hosts.count("cdn.jsdelivr.net") != 0 || hosts.count("api.github.com") == 0 {
+				t.Fatalf("lookup=%v,%v; after a raw 404 only GitHub may be contacted, requests=%v", manifest, err, hosts.recorded())
+			}
+		})
+	}
+}
+
+func TestTagObjectNotFoundPreventsCDNFallbackAtItsCommit(t *testing.T) {
+	hosts := mirrorHosts(t, func(r *http.Request) (*http.Response, error) {
+		if strings.Contains(r.URL.Path, tagObject) {
+			return respond(r, http.StatusNotFound, rawText, ""), nil
+		}
+		return respond(r, http.StatusServiceUnavailable, rawText, ""), nil
+	}, reply(http.StatusOK, jsDelivrYAML, actionSource))
+	client := newListingClient(t, Options{Transport: hosts}, &listingResolver{})
+	file, err := client.lookupCommitFile(t.Context(), ref(t, "example/action@"+tagObject), "action", []string{"action.yml", "action.yaml"})
+	if file.Available() || !errors.Is(err, errEnvironment) || hosts.count("cdn.jsdelivr.net") != 0 || hosts.count("raw.githubusercontent.com") != 3 {
+		t.Fatalf("lookup=%v,%v requests=%v", file, err, hosts.recorded())
+	}
+}
+
 func TestJSDelivrFileIsCachedWithoutRepositoryID(t *testing.T) {
 	cache := t.TempDir()
 	hosts := mirrorHosts(t, reply(http.StatusServiceUnavailable, "", ""), reply(http.StatusOK, jsDelivrYAML, actionSource))
@@ -288,11 +325,12 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			hosts := mirrorHosts(t, func(r *http.Request) (*http.Response, error) {
 				time.Sleep(10 * time.Second)
-				if strings.HasSuffix(r.URL.Path, "/action.yml") {
-					return respond(r, http.StatusNotFound, rawText, "404: Not Found"), nil
-				}
 				return respond(r, http.StatusServiceUnavailable, "", ""), nil
 			}, func(r *http.Request) (*http.Response, error) {
+				if strings.HasSuffix(r.URL.Path, "/action.yml") {
+					time.Sleep(10 * time.Second)
+					return respond(r, http.StatusNotFound, jsDelivrYAML, ""), nil
+				}
 				<-r.Context().Done()
 				return nil, r.Context().Err()
 			})
@@ -302,7 +340,7 @@ func TestJSDelivrUsesRawRequestLimits(t *testing.T) {
 			}
 			start := time.Now()
 			manifest, err := client.Lookup(t.Context(), ref(t, "example/action@"+sha))
-			if err != nil || manifest.Reason() != availability.FailedReason || time.Since(start) != lookupBudget || hosts.count("cdn.jsdelivr.net") != 1 || hosts.count("api.github.com") != 0 {
+			if err != nil || manifest.Reason() != availability.FailedReason || time.Since(start) != lookupBudget || hosts.count("cdn.jsdelivr.net") != 2 || hosts.count("api.github.com") != 0 {
 				t.Fatalf("manifest=%v,%v after %s requests=%v", manifest, err, time.Since(start), hosts.recorded())
 			}
 		})

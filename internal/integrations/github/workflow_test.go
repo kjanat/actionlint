@@ -2,11 +2,13 @@ package github
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -28,6 +30,22 @@ func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
 	file, err := client.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yaml@v1")
 	if err != nil || !file.Available() || file.Commit() != sha || file.Content() != source || resolver.resolutions() != 1 || len(hosts.recorded()) != 2 || hosts.count("github.com") != 1 {
 		t.Fatalf("file=%+v error=%v resolutions=%d requests=%v", file, err, resolver.resolutions(), hosts.recorded())
+	}
+	warmOnline, err := New(Options{CacheDir: cache, Resolver: func() references.Resolver {
+		t.Fatal("cached workflow reached the resolver")
+		return nil
+	}, Transport: transport(func(r *http.Request) (*http.Response, error) {
+		t.Errorf("cached workflow made a network request: %s", r.URL)
+		return nil, errors.New("unexpected network request")
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		cached, err := warmOnline.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yaml@"+sha)
+		if err != nil || !cached.Available() || cached.Commit() != sha || cached.Content() != source {
+			t.Fatalf("warm online workflow=%+v error=%v", cached, err)
+		}
 	}
 	offline, err := New(Options{Mode: Offline, CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
 		t.Fatalf("offline request %s", r.URL)
