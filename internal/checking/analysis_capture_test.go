@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
@@ -33,36 +34,38 @@ import (
 
 func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
 	t.Parallel()
-	lifetime, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	started := make(chan struct{})
-	store, err := capture.New(lifetime, nil, func(ctx context.Context, _ string) ([]byte, error) {
-		close(started)
-		<-ctx.Done()
-		return nil, ctx.Err()
+	synctest.Test(t, func(t *testing.T) {
+		lifetime, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		started := make(chan struct{})
+		store, err := capture.New(lifetime, nil, func(ctx context.Context, _ string) ([]byte, error) {
+			close(started)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		capturefixture.CloseCaptures(t, store)
+		returned := make(chan error, 1)
+		go func() {
+			_, err := store.Read(t.Context(), filepath.Join(t.TempDir(), "pending.yml"), source.YAML)
+			returned <- err
+		}()
+		<-started
+		sealed, err := joinSourceCaptures(t.Context(), store, cancel, 5*time.Millisecond, false)
+		_, failedJoin := errors.AsType[*capture.JoinError](err)
+		if !sealed || !failedJoin || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("join did not report the interrupted first attempt: sealed=%t error=%v", sealed, err)
+		}
+		if err := <-returned; !errors.Is(err, context.Canceled) {
+			t.Fatalf("retry did not cancel backing IO: %v", err)
+		}
+		rows, err := store.Sources()
+		if err != nil || len(rows) != 1 || rows[0].State != capture.Failed || !errors.Is(rows[0].Error, context.Canceled) {
+			t.Fatalf("retry returned before sealing cancelled capture: %#v, %v", rows, err)
+		}
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	capturefixture.CloseCaptures(t, store)
-	returned := make(chan error, 1)
-	go func() {
-		_, err := store.Read(t.Context(), filepath.Join(t.TempDir(), "pending.yml"), source.YAML)
-		returned <- err
-	}()
-	<-started
-	sealed, err := joinSourceCaptures(t.Context(), store, cancel, 5*time.Millisecond, false)
-	_, failedJoin := errors.AsType[*capture.JoinError](err)
-	if !sealed || !failedJoin || !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("join did not report the interrupted first attempt: sealed=%t error=%v", sealed, err)
-	}
-	if err := <-returned; !errors.Is(err, context.Canceled) {
-		t.Fatalf("retry did not cancel backing IO: %v", err)
-	}
-	rows, err := store.Sources()
-	if err != nil || len(rows) != 1 || rows[0].State != capture.Failed || !errors.Is(rows[0].Error, context.Canceled) {
-		t.Fatalf("retry returned before sealing cancelled capture: %#v, %v", rows, err)
-	}
 }
 
 func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {

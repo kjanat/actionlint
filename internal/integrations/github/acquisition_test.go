@@ -608,8 +608,10 @@ func TestMissingSHAWithUnavailableListingFallsBackToAPI(t *testing.T) {
 }
 
 func TestRESTTagObjectCacheSupportsBothObjectAndCommit(t *testing.T) {
+	t.Parallel()
 	for _, warmCommit := range []bool{false, true} {
 		t.Run(fmt.Sprintf("warm_commit=%t", warmCommit), func(t *testing.T) {
+			t.Parallel()
 			cache := t.TempDir()
 			hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 				switch r.URL.Host {

@@ -105,8 +105,10 @@ func TestRawNotFoundNeverReachesJSDelivr(t *testing.T) {
 }
 
 func TestRawNotFoundBeforeFailureSkipsJSDelivr(t *testing.T) {
+	t.Parallel()
 	for _, token := range []string{"", "fixture-token"} {
 		t.Run("token="+token, func(t *testing.T) {
+			t.Parallel()
 			requests := 0
 			hosts := mirrorHosts(t, func(r *http.Request) (*http.Response, error) {
 				requests++
@@ -128,6 +130,7 @@ func TestRawNotFoundBeforeFailureSkipsJSDelivr(t *testing.T) {
 }
 
 func TestTagObjectNotFoundPreventsCDNFallbackAtItsCommit(t *testing.T) {
+	t.Parallel()
 	hosts := mirrorHosts(t, func(r *http.Request) (*http.Response, error) {
 		if strings.Contains(r.URL.Path, tagObject) {
 			return respond(r, http.StatusNotFound, rawText, ""), nil
