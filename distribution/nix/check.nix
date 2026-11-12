@@ -1,11 +1,22 @@
 {
   runCommand,
+  fetchurl,
   gitMinimal,
   jq,
   bash,
   actionlint,
 }:
 
+let
+  shellcheck = fetchurl {
+    url = "https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.3.1/plugin.wasm";
+    sha256 = "6c5ec0746a001b468283442ee7ddcacf5fa31bafc0ebe91ed2b4c9f05e71af31";
+  };
+  ruff = fetchurl {
+    url = "https://github.com/kjanat/actionlint-plugin-ruff/releases/download/v0.3.0/plugin.component.wasm";
+    sha256 = "b034362a59c097a4f85027941b4f902059668d1a087049d8704e365d265bc4e9";
+  };
+in
 runCommand "actionlint-nix-integration"
   {
     nativeBuildInputs = [
@@ -55,24 +66,17 @@ runCommand "actionlint-nix-integration"
     mkdir -p project/.github/workflows
     cp ${./integration.yml} project/.github/workflows/check.yml
     cd project
-    cat > .github/actionlint.yaml <<'YAML'
-    plugins: []
-    tools:
-      shellcheck:
-        backend: {process: {executable: shellcheck}}
-      ruff:
-        backend: {process: {executable: ruff}}
-    YAML
-    ${actionlint}/bin/actionlint config validate
-
     set +e
-    PATH= ${actionlint}/bin/actionlint --allow-config-processes -no-color -oneline > diagnostics.txt 2>&1
+    PATH= ${actionlint}/bin/actionlint check --no-config \
+      --plugin ${shellcheck} --plugin ${ruff} \
+      --json .github/workflows/check.yml > diagnostics.json 2> diagnostics.stderr
     status=$?
     set -e
     if ! test "$status" -eq 1 ||
-      ! grep -F 'SC2086' diagnostics.txt ||
-      ! grep -F 'F821' diagnostics.txt; then
-      cat diagnostics.txt >&2
+      ! jq -e '.completed and .exit_code == 1
+        and any(.diagnostics[]; .rule == "shellcheck" and .code == "SC2086")
+        and any(.diagnostics[]; .rule == "ruff" and .code == "F821")' diagnostics.json; then
+      cat diagnostics.json diagnostics.stderr >&2
       exit 1
     fi
 

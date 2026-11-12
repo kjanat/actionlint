@@ -6,8 +6,6 @@
   gitMinimal,
   bash,
   pandoc,
-  shellcheck,
-  ruff,
   src,
   version,
 }:
@@ -37,8 +35,6 @@ buildGoModule {
   nativeCheckInputs = [
     gitMinimal
     bash
-    shellcheck
-    ruff
   ];
 
   checkPhase = ''
@@ -61,12 +57,7 @@ buildGoModule {
       --fish <("$out/bin/actionlint" -completion fish)
     install -Dm644 actionlint.schema.json "$out/share/actionlint/actionlint.schema.json"
     cp -r schemas "$out/share/actionlint/"
-    wrapProgram "$out/bin/actionlint" --prefix PATH : ${
-      lib.makeBinPath [
-        shellcheck
-        ruff
-      ]
-    } --suffix PATH : ${lib.makeBinPath [ gitMinimal ]}
+    wrapProgram "$out/bin/actionlint" --suffix PATH : ${lib.makeBinPath [ gitMinimal ]}
   '';
 
   passthru = { inherit completionTests; };
