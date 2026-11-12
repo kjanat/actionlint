@@ -166,7 +166,7 @@ func (g *GitHub) lookupCommitFile(ctx context.Context, ref actions.Reference, ki
 			return file, nil
 		}
 	}
-	file, err := g.fetchSelectedFile(ctx, ref, kind, filenames, commit, commit, actions.ObjectRoute(), time.Now().UTC().Format(time.RFC3339Nano))
+	file, err := g.fetchSelectedFile(ctx, ref, kind, filenames, repositoryid.ID{}, commit, commit, actions.ObjectRoute(), time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil || file.Available() || file.missing.Reason() != availability.InaccessibleReason || g.resolver == nil {
 		return file, err
 	}
@@ -203,22 +203,26 @@ func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, k
 	if missing != nil {
 		return unavailableFile(*missing), nil
 	}
-	record, exists, err := g.cached(ctx, ref, repositoryid.ID{}, commit, filenames)
+	record, exists, err := g.cached(ctx, ref, resolved.RepositoryID, commit, filenames)
 	if err != nil && ctx.Err() != nil {
 		return repositoryFile{}, ctx.Err()
 	}
 	if exists {
-		file, valid := selectedFile(ref, ref.Repository(), kind, record.RepositoryID, commit, object, route, resolved.ObservedAt)
+		id := resolved.RepositoryID
+		if id.IsZero() {
+			id = record.RepositoryID
+		}
+		file, valid := selectedFile(ref, ref.Repository(), kind, id, commit, object, route, resolved.ObservedAt)
 		if !valid {
 			return unavailableFile(availability.Failed()), nil
 		}
 		file.filename, file.content = record.Filename, record.Content
-		if err := g.storeTagObject(ctx, file); err != nil && ctx.Err() != nil {
+		if err := g.store(ctx, file); err != nil && ctx.Err() != nil {
 			return repositoryFile{}, ctx.Err()
 		}
 		return file, nil
 	}
-	return g.fetchSelectedFile(ctx, ref, kind, filenames, commit, object, route, resolved.ObservedAt)
+	return g.fetchSelectedFile(ctx, ref, kind, filenames, resolved.RepositoryID, commit, object, route, resolved.ObservedAt)
 }
 
 func selectResolution(ref actions.Reference, kind string, resolved references.Result, learned repositoryid.ID) (string, string, actions.Route, *availability.Unavailability) {
@@ -254,12 +258,12 @@ func selectedFile(ref actions.Reference, repository, kind string, id repositoryi
 	return repositoryFile{}, false
 }
 
-func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, commit, object string, route actions.Route, observed string) (repositoryFile, error) {
+func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, id repositoryid.ID, commit, object string, route actions.Route, observed string) (repositoryFile, error) {
 	filename, content, missing, err := g.fetchRawFile(ctx, ref, commit, kind, filenames)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
-	file, valid := selectedFile(ref, ref.Repository(), kind, repositoryid.ID{}, commit, object, route, observed)
+	file, valid := selectedFile(ref, ref.Repository(), kind, id, commit, object, route, observed)
 	if !valid {
 		return unavailableFile(availability.Failed()), nil
 	}
