@@ -42,26 +42,21 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 	exit
 fi
 
-# Default value is updated manually on release
-version="2.0.0"
-if [[ -n "$1" ]]; then
-	if [[ "$1" == 'latest' || "$1" == 'LATEST' ]]; then
-		latest_url="$(curl --fail --silent --show-error --location --head --output /dev/null --write-out '%{url_effective}' https://github.com/kjanat/actionlint/releases/latest)"
-		version="${latest_url##*/v}"
-		if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-			echo "Could not determine the latest version from '${latest_url}'" >&2
-			exit 1
-		fi
-	else
-		if [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-			version="$1"
-		else
-			echo "Given version '$1' does not match to regex '^[0-9]+\.[0-9]+\.[0-9]+$' nor equal to 'latest'" >&2
-			echo >&2
-			usage
-			exit 1
-		fi
+requested="${1:-latest}"
+if [[ "${requested}" == 'latest' || "${requested}" == 'LATEST' ]]; then
+	latest_url="$(curl --fail --silent --show-error --location --head --output /dev/null --write-out '%{url_effective}' https://github.com/kjanat/actionlint/releases/latest)"
+	version="${latest_url##*/v}"
+	if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		echo "Could not determine the latest version from '${latest_url}'" >&2
+		exit 1
 	fi
+elif [[ "${requested}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+	version="${requested}"
+else
+	echo "Given version '${requested}' does not match to regex '^[0-9]+\.[0-9]+\.[0-9]+$' nor equal to 'latest'" >&2
+	echo >&2
+	usage
+	exit 1
 fi
 
 target_dir="$(pwd)"
@@ -150,11 +145,11 @@ installed_version="$("${exe}" -version)"
 echo "Done: ${installed_version}"
 
 if [[ -n "${GITHUB_ACTION}" ]]; then
-	# On GitHub Actions, set executable path to output
+	# On GitHub Actions, write the executable path to the step output.
 	if [[ -n "${GITHUB_OUTPUT}" ]]; then
 		echo "executable=${exe}" >>"${GITHUB_OUTPUT}"
 	else
-		# GitHub Enterprise instance may not introduce the new set-output command yet (see #240)
+		# Older GitHub Enterprise instances may not support the output file (see #240).
 		echo "::set-output name=executable::${exe}"
 	fi
 fi

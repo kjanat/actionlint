@@ -1,0 +1,23 @@
+{
+  "name": "@kjanat-actionlint/plugin-psscriptanalyzer",
+  "version": "0.1.0-plugins.1",
+  "description": "PSScriptAnalyzer process manifest and jq adapter for actionlint",
+  "type": "module",
+  "files": [
+    "/actionlint-provider.json",
+    "/actionlint.plugin.ts",
+    "/output.jq",
+    "/manifest.test.ts",
+    "/installation.ts",
+    "/workflow.yml",
+    "/testdata/alias.json"
+  ],
+  "scripts": {
+    "validate": "actionlint-plugin validate",
+    "test": "bun test",
+    "pack": "actionlint-plugin pack"
+  },
+  "devDependencies": {
+    "@kjanat-actionlint/plugin-sdk": "workspace:*"
+  }
+}

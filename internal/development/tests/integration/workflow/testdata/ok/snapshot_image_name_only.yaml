@@ -1,0 +1,9 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    snapshot: my-custom-image
+    steps:
+      - run: echo hello
+permissions: {}

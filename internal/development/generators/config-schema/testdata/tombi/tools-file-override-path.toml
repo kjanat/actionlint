@@ -1,0 +1,4 @@
+[[overrides]]
+includes = ['*.yml']
+[overrides.tools.file-tool]
+config = 'filetool.toml'

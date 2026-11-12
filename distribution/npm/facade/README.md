@@ -1,12 +1,12 @@
 # @kjanat/actionlint
 
 [![NPM Version](https://img.shields.io/npm/v/@kjanat/actionlint?logo=npm&labelColor=CB3837&color=black)](https://npm.im/@kjanat/actionlint)
+[![pkg.pr.new](https://pkg.pr.new/badge/kjanat/actionlint)](https://pkg.pr.new/~/kjanat/actionlint)
 
-Static checker for GitHub Actions workflow files, distributed as a prebuilt binary.
-
-This is the npm distribution of [`kjanat/actionlint`](https://github.com/kjanat/actionlint), a fork of
-[rhysd/actionlint](https://github.com/rhysd/actionlint). Installing it puts an `actionlint` executable on your `PATH`; no
-Go toolchain is needed.
+Check GitHub Actions workflows, action manifests and embedded scripts with
+[`kjanat/actionlint`](https://github.com/kjanat/actionlint), a fork of
+[rhysd/actionlint](https://github.com/rhysd/actionlint). This package installs the
+`actionlint` command without requiring Go.
 
 ## Install
 
@@ -22,10 +22,10 @@ npx @kjanat/actionlint
 
 ## Usage
 
-After installing it as a development dependency, run it in the project and it finds the workflows itself:
+Run this command from your Git repository to check its workflows and actions:
 
 ```sh
-npx actionlint
+npx actionlint check
 ```
 
 As a package script:
@@ -33,128 +33,142 @@ As a package script:
 ```json
 {
   "scripts": {
-    "lint:workflows": "actionlint"
+    "lint:workflows": "actionlint check"
   }
 }
 ```
 
-`actionlint` exits `0` when it finds nothing, `1` when it reports problems, and `2` or `3` on a usage error or a fatal
-error. Those statuses are forwarded verbatim, so it drops into CI unchanged.
+`actionlint` exits `0` when checks finish without findings, `1` when they report
+problems, `2` for a usage error and `3` when checking cannot complete. CI can use
+these exit codes to fail a check.
 
 See the [usage documentation](https://github.com/kjanat/actionlint/blob/master/docs/usage.md) for the full command line,
 and [the checks list](https://github.com/kjanat/actionlint/blob/master/docs/checks.md) for what it looks for.
 
-The manual page ships in the package as `man/actionlint.1`. npm registered man pages with the system `man` program up to
-v11; from v12 it no longer does, so on a current npm read it directly:
+If your system has the `man` command, read the included manual with:
 
 ```sh
 man ./node_modules/@kjanat/actionlint/man/actionlint.1
 ```
 
+### Pre-commit hooks
+
+With [Husky](https://typicode.github.io/husky/get-started.html), check the whole repository before each commit:
+
+```sh
+npm install --save-dev husky
+npx husky init
+```
+
+Set `.husky/pre-commit` to:
+
+```sh
+npm run lint:workflows
+```
+
+This uses the package script above and checks working-tree files, including unstaged changes.
+
+To check only staged workflows and action manifests, install
+[lint-staged](https://github.com/lint-staged/lint-staged):
+
+```sh
+npm install --save-dev lint-staged
+```
+
+Add to `package.json`:
+
+```json
+{
+  "lint-staged": {
+    ".github/workflows/*.{yml,yaml}": "actionlint check --",
+    "**/action.{yml,yaml}": "actionlint check --"
+  }
+}
+```
+
+Replace `.husky/pre-commit` with:
+
+```sh
+npx lint-staged
+```
+
+This does not recheck every workflow that calls a changed action. Run the full check in CI too.
+
 ### Configuration schema
 
-The package includes `actionlint.schema.json` for completion and validation in configuration editors. For a config at
-`.github/actionlint.yaml`, use the installed copy with:
+Use the npm package's schema through jsDelivr:
 
 ```yaml
-# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint@2/actionlint.schema.json
 ```
 
-ShellCheck directives and Ruff options reference their versioned definitions in
-`schemas/shellcheck/` and `schemas/ruff/` relative to the main schema. The package
-includes these files, so local schema validation can run offline. A versioned CDN
-URL uses the schemas from the same npm release.
+Match the installed major version (`@1` or `@2`), pin a release (`@1.17.0`), or omit the version to follow the latest release.
 
-<details>
-<summary>CDN URLs for the JSON schema</summary>
+### Shell and Python checks
 
-These URLs require an npm release containing the schema:
+For a new project, install the default ShellCheck and Ruff plugins:
 
-jsDelivr:
-
-```text
-https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
+```sh
+npx actionlint config init
 ```
 
-esm.sh:
+These plugins check scripts in workflow steps without requiring native ShellCheck,
+Ruff or Python executables. For an existing configuration, follow the
+[configuration migration guide](https://github.com/kjanat/actionlint/blob/master/docs/config-migration.md).
 
-```text
-https://esm.sh/@kjanat/actionlint/actionlint.schema.json
+## Preview builds
+
+Run a pull request preview, say PR 343, without installing it in your project:
+
+```sh
+npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@343 check
+# Or use a commit SHA:
+npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<commit-sha>' check
+# Or use a branch name:
+npx 'https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@<branch-name>' check
 ```
 
-UNPKG:
+Replace `343` with the pull request number or commit SHA.
 
-```text
-https://unpkg.com/@kjanat/actionlint/actionlint.schema.json
-```
+Previews support macOS, Linux and Windows on x64 and ARM64.
 
-For example, use jsDelivr in an editor's schema directive:
+## Supported platforms
 
-```yaml
-# yaml-language-server: $schema=https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json
-```
+Your package manager installs the binary for your operating system and CPU:
 
-Unversioned URLs follow the latest npm release. Insert `@<version>` after `@kjanat/actionlint` to select the schema for
-a specific release that includes it.
+| Operating system | CPU architectures                       |
+| ---------------- | --------------------------------------- |
+| macOS            | Apple silicon, Intel x64                |
+| Linux            | x64, ARM64, 32-bit x86, ARMv6 and ARMv7 |
+| Windows          | x64, ARM64, 32-bit x86                  |
+| FreeBSD          | x64, 32-bit x86                         |
 
-</details>
+Linux builds support both glibc and musl, including Alpine Linux.
 
-### ShellCheck
-
-`actionlint` checks shell scripts inside `run:` steps with [ShellCheck][shellcheck]
-when it is on your `PATH`. ShellCheck is not bundled here; install it separately to enable these checks.
-
-## How this package is put together
-
-This package contains no binary itself. It declares one `optionalDependencies` entry per platform, each published
-under the `@kjanat-actionlint` scope so the binaries stay out of the `@kjanat` namespace:
-
-| Package                                      | Runs on               |
-| -------------------------------------------- | --------------------- |
-| `@kjanat-actionlint/actionlint-darwin-arm64` | macOS Apple silicon   |
-| `@kjanat-actionlint/actionlint-darwin-x64`   | macOS Intel           |
-| `@kjanat-actionlint/actionlint-freebsd-ia32` | FreeBSD 32-bit x86    |
-| `@kjanat-actionlint/actionlint-freebsd-x64`  | FreeBSD x86-64        |
-| `@kjanat-actionlint/actionlint-linux-arm64`  | Linux ARM64           |
-| `@kjanat-actionlint/actionlint-linux-arm`    | Linux ARMv6 and ARMv7 |
-| `@kjanat-actionlint/actionlint-linux-ia32`   | Linux 32-bit x86      |
-| `@kjanat-actionlint/actionlint-linux-x64`    | Linux x86-64          |
-| `@kjanat-actionlint/actionlint-win32-arm64`  | Windows ARM64         |
-| `@kjanat-actionlint/actionlint-win32-ia32`   | Windows 32-bit x86    |
-| `@kjanat-actionlint/actionlint-win32-x64`    | Windows x86-64        |
-
-Each declares `os` and `cpu`, so your package manager downloads only the one matching your machine and skips the rest.
-The `actionlint` command here is a small launcher that resolves that package and execs the binary inside it.
-
-There is no separate musl build: the binaries are statically linked, so the `linux-*` packages run on Alpine and on
-glibc distributions alike.
-
-The binaries are the same ones attached to the [GitHub release][releases]; each archive is verified against the
-release's published checksums before being repackaged.
+## Troubleshooting
 
 ### If the binary is not found
 
 The launcher fails with an explanation, but the usual cause is a package manager that skipped optional dependencies.
 Reinstall without `--no-optional` or `--omit=optional`.
 
-Using Bun with `minimumReleaseAge`? Add `@kjanat-actionlint/*` to `minimumReleaseAgeExcludes` alongside
-`@kjanat/actionlint`. A fresh release otherwise installs the facade while its binaries are still age-gated.
+## JSON output
 
-## Analysis results
+To read findings from another program:
 
-CLI `check --json` and the GitHub Action emit the same versioned result contract.
-This package ships the schema and types supported by its matching binary:
+```sh
+npx actionlint check --json
+```
+
+TypeScript types are included:
 
 ```typescript
 import type { CheckResult, DiagnosticRecord } from '@kjanat/actionlint/result';
 ```
 
-`@kjanat/actionlint/result.schema.json` exports the result schema;
-`@kjanat/actionlint/schemas/results/v1.schema.json` selects its contract version.
-`CheckResult` describes a complete result, including failed analysis;
-`DiagnosticRecord` describes one JSONL record. Types do not validate untrusted JSON.
-See [the result contract](https://github.com/kjanat/actionlint/blob/master/docs/results.md)
-for compatibility and migration details.
+`CheckResult` describes JSON output; `DiagnosticRecord` describes one JSONL record.
+For runtime validation, use `@kjanat/actionlint/result.schema.json`.
+See the [output fields](https://github.com/kjanat/actionlint/blob/master/docs/results.md).
 
 ## Other ways to install
 
@@ -163,7 +177,4 @@ Homebrew, Arch (AUR), Scoop, Docker, a download script, and `go install` are all
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
-
-[releases]: https://github.com/kjanat/actionlint/releases
-[shellcheck]: https://www.shellcheck.net/
+MIT. See [LICENSE.txt](./LICENSE.txt).

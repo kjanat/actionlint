@@ -1,5 +1,5 @@
 {
-  "$schema": "./node_modules/biome/configuration_schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!!**/testdata", "!internal/webhook/payload/catalogue.json"]
+    "includes": ["**", "!!**/*.{yml,yaml}", "!!**/testdata", "!internal/model/contexts/events/payload/catalogue.json"]
   },
   "formatter": {
     "enabled": false,
@@ -22,7 +22,10 @@
         "useLiteralKeys": "off"
       },
       "suspicious": {
-        "noControlCharactersInRegex": "off"
+        "noControlCharactersInRegex": "off",
+        "noTemplateCurlyInString": "off"
+      },
+      "style": {
       }
     },
     "domains": {
@@ -33,13 +36,17 @@
   },
   "overrides": [
     {
-      "includes": ["internal/webhook/payload/catalogue.json"],
+      "includes": ["internal/model/contexts/events/payload/catalogue.json"],
       "files": {
         "maxSize": 3145728
       }
     },
     {
-      "includes": ["playground/src/test.ts", "playground/src/**/*.test.ts", "playground/src/**/*.spec.ts"],
+      "includes": [
+        "applications/playground/src/test.ts",
+        "applications/playground/src/**/*.test.ts",
+        "applications/playground/src/**/*.spec.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {

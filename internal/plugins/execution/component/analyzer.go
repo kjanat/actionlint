@@ -1,0 +1,91 @@
+package component
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"github.com/kjanat/wacogo"
+)
+
+func (p *Plugin) HasAnalyzer() bool { return p.analyzerDescriptor != nil }
+
+func (p *Plugin) loadAnalyzer(ctx context.Context) error {
+	descriptor, err := p.describe(ctx)
+	if err != nil {
+		return err
+	}
+	if descriptor.Name == "" {
+		return errors.New("plugin describes itself with an empty name")
+	}
+	if err := validateSuppressionRuleName(p.reservedRules, descriptor.Name); err != nil {
+		return err
+	}
+	p.analyzerDescriptor = &descriptor
+	return nil
+}
+
+// Descriptor returns the identity the plugin declared when it was loaded.
+func (p *Plugin) Descriptor() checkinputs.Descriptor {
+	if p.analyzerDescriptor == nil {
+		return checkinputs.Descriptor{}
+	}
+	descriptor := *p.analyzerDescriptor
+	descriptor.Descriptor = descriptor.Clone()
+	descriptor.InvocationDefinitions = commands.CloneDefinitions(descriptor.InvocationDefinitions)
+	return descriptor
+}
+
+// CheckDocument runs the plugin on one document in a fresh instance. A trap, an
+// exit, an exceeded limit or a refused call is returned as an error.
+func (p *Plugin) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+	if !p.HasAnalyzer() {
+		return nil, errors.New("component does not implement the analyzer role")
+	}
+	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
+	ctx = context.WithValue(ctx, sourceRootsKey{}, input.SourceRoots)
+	if err := input.ValidateInvocations(); err != nil {
+		return nil, err
+	}
+	ctx = context.WithValue(ctx, invocationGraphKey{}, input.CallGraph)
+	ctx = context.WithValue(ctx, environmentContextKey{}, documentEnvironments(input))
+	ctx = context.WithValue(ctx, shellScriptInputsKey{}, newShellScriptInputScope(input))
+	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
+	value, err := p.callAnalyzer(ctx, "analyze", lowerInput(input))
+	if err != nil {
+		return nil, err
+	}
+	diagnostics, err := liftAnalysisForInput(value, &input)
+	valid := diagnostics[:0]
+	for _, finding := range diagnostics {
+		if finding.Rule != "" && finding.Rule != p.analyzerDescriptor.Name {
+			err = errors.Join(err, fmt.Errorf("undeclared diagnostic rule %q; use code for plugin-specific check identifiers", finding.Rule))
+			continue
+		}
+		valid = append(valid, finding)
+	}
+	if err != nil {
+		return valid, p.failure(ctx, err)
+	}
+	return valid, nil
+}
+
+func (p *Plugin) describe(ctx context.Context) (checkinputs.Descriptor, error) {
+	value, err := p.callAnalyzer(ctx, "describe")
+	if err != nil {
+		return checkinputs.Descriptor{}, err
+	}
+	descriptor, err := liftDescriptor(value)
+	if err != nil {
+		return checkinputs.Descriptor{}, p.failure(ctx, err)
+	}
+	return descriptor, nil
+}
+
+func (p *Plugin) callAnalyzer(ctx context.Context, name string, args ...wacogo.Val) (wacogo.Val, error) {
+	return p.callInterface(ctx, AnalyzerInterface, name, args...)
+}

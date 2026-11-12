@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/lsp"
 )
 
 type lspTestMessage struct {
@@ -29,7 +29,7 @@ type lspTestMessage struct {
 func TestLSPRepositoryProcessOptIn(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	for _, name := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, name := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(name, "")
 		if err := os.Unsetenv(name); err != nil {
 			t.Fatal(err)
@@ -56,7 +56,7 @@ func TestLSPRepositoryProcessOptIn(t *testing.T) {
 			}
 			var stderr bytes.Buffer
 			command := Command{Stdin: server, Stdout: server, Stderr: &stderr}
-			args := []string{"actionlint", "lsp", "--config=actionlint.yaml", "--no-shellcheck"}
+			args := []string{"actionlint", "lsp", "--config=actionlint.yaml", "--no-tool=shellcheck"}
 			if allow {
 				args = append(args, "--allow-config-processes")
 			}
@@ -104,8 +104,8 @@ func TestLSPRepositoryProcessOptIn(t *testing.T) {
 			send("initialize", json.RawMessage(`1`), json.RawMessage(`{}`))
 			receive()
 			params, err := json.Marshal(struct {
-				Document langserver.Document `json:"textDocument"`
-			}{langserver.Document{URI: langserver.FileURI(filepath.Join(root, "ci.yml")), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"}})
+				Document lsp.Document `json:"textDocument"`
+			}{lsp.Document{URI: lsp.FileURI(filepath.Join(root, "ci.yml")), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(1)\n"}})
 			if err != nil {
 				t.Fatal(err)
 			}

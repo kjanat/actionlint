@@ -1,0 +1,27 @@
+# source: https://github.com/kjanat/actup/blob/e9f30860217f74d20868bc0a2b5e1c6846934076/.github/workflows/autofix.yml
+# covers: whitespace-sensitive flow null, parallel actions, expression-valued error policy
+---
+name: autofix.ci
+run-name: ${{ format('autofix {0}', github.ref_name) }}
+# without space, github thinks the comma is the value
+# pretty-yaml-ignore
+on: { pull_request: , push: { branches: [master] } }
+permissions: { contents: read }
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - parallel:
+          - run: rustup toolchain install
+          - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+          - uses: tombi-toml/setup-tombi@dbb85e6c7616772f590af0db4a7c455dfe61fec7 # v1.8.9
+          - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - parallel:
+          - name: Clippy fix
+            run: cargo clippy --fix --allow-dirty --allow-staged --workspace --all-features
+          - name: Format with dprint
+            run: dprint fmt --allow-no-files --diff --excludes .github --fail-on-change
+            continue-on-error: ${{ github.event.pull_request.stack == null }}
+      - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4

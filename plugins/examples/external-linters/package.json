@@ -1,0 +1,13 @@
+{
+  "name": "@kjanat-actionlint/external-linter-examples",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "run -q @typescript/native --noEmit"
+  },
+  "devDependencies": {
+    "@kjanat-actionlint/plugin-sdk": "workspace:*",
+    "@types/bun": "latest"
+  }
+}

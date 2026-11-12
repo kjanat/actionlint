@@ -1,0 +1,61 @@
+# source: https://github.com/kjanat/shellcheck-rs/blob/945d2e5779d848998a93a9494f70241c03db4550/.github/workflows/wiki.yml
+# covers: expression-valued input mappings, env insertion, scalar aliases, implicit flow mappings
+# This branch holds the GitHub wiki's pages in the wiki repository's own layout:
+# Home.md, _Sidebar.md, _Footer.md, the numbered page folders and tools/.
+#
+# Every push to it is mirrored into `<repo>.wiki.git`, so the wiki is edited through ordinary branches and pull requests.
+# The mirror is one way: a page edited in the wiki UI is overwritten by the next push here.
+---
+name: Wiki
+
+on:
+  push: { branches: [wiki] }
+  workflow_dispatch: null
+permissions: {}
+concurrency: { group: wiki, cancel-in-progress: false }
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: read, pull-requests: write }
+    steps: [uses: actions/checkout@v7, uses: kjanat/actionlint@v1]
+
+  publish:
+    name: Mirror into the wiki repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: write }
+    environment: { name: wiki, url: "${{ github.server_url }}/${{ github.repository }}/wiki" }
+    env:
+      src: ${{ fromJSON(vars.REPO).path }}
+      dst: ${{ fromJSON(vars.WIKI).path }}
+      ${{ insert }}: ${{ fromJSON(vars.GIT) }}
+    defaults: { run: { working-directory: "${{ fromJSON(vars.WIKI).path }}" } }
+    steps:
+      - name: Checkout the wiki branch
+        uses: &A actions/checkout@v7
+        with: ${{ fromJSON(vars.REPO) }}
+
+      - name: Clone the wiki repository
+        uses: *A
+        with: ${{ fromJSON(vars.WIKI) }}
+
+      - name: Replace the wiki's content with the branch's
+        working-directory: ${{ github.workspace }}
+        run: rsync --archive --delete
+          --exclude .git --exclude .github
+          "./${src}/" "./${dst}/"
+
+      - name: Stage every change
+        run: git add --all
+
+      - name: Check for changes
+        id: changes
+        run: git diff --cached --exit-code
+        continue-on-error: true
+
+      - name: Commit and push when anything changed
+        if: steps.changes.outcome == 'failure'
+        env: { m: "Mirror wiki branch at ${{ github.sha }}" }
+        run: git commit -m "${m}" && git push

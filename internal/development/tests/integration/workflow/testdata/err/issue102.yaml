@@ -1,0 +1,10 @@
+on: push
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        with:
+          info: test
+permissions: {}

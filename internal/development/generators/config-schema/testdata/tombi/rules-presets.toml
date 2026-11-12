@@ -1,0 +1,13 @@
+[lint]
+[lint.rules]
+preset = 'all'
+
+[lint.rules.correctness]
+action = true
+preset = 'recommended'
+
+[lint.rules.security]
+preset = 'none'
+
+[lint.rules.security.unpinned-reference]
+level = 'error'

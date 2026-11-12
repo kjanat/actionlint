@@ -156,8 +156,9 @@ export function parseManifest(value) {
 /** @param {string} root @param {string} directory @param {string} version */
 export async function prepareCandidate(root, directory, version) {
 	versionValue(version);
-	if (git(root, 'status', '--porcelain', '--untracked-files=all')) {
-		throw new Error('Prepare requires a clean source checkout');
+	const changes = git(root, 'status', '--porcelain', '--untracked-files=all');
+	if (changes) {
+		throw new Error(`Prepare requires a clean source checkout:\n${changes}`);
 	}
 	const source = git(root, 'rev-parse', 'HEAD');
 	await prepareRelease(root, directory, version);
@@ -524,7 +525,9 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
 			if (!value) throw new Error(`${name} is required`);
 			return value;
 		};
-		if (operation === 'prepare') {
+		if (operation === 'notes') {
+			process.stdout.write(await releaseNotes(sourceRoot, required('--version')));
+		} else if (operation === 'prepare') {
 			const metadata = await prepareCandidate(sourceRoot, resolve(required('--out-dir')), required('--version'));
 			if (process.env.GITHUB_OUTPUT) {
 				await appendFile(
@@ -555,7 +558,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
 				),
 			);
 		} else {
-			throw new Error('Usage: release-candidate.mjs prepare|manifest|verify|promote [options]');
+			throw new Error('Usage: release-candidate.mjs notes|prepare|manifest|verify|promote [options]');
 		}
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : String(error));

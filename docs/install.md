@@ -12,7 +12,7 @@ npm and PyPI packages need `git` on `PATH`; on macOS the Xcode Command Line Tool
 In v2, ShellCheck and Ruff run as project-managed Wasm plugins. Standalone archives, Go installs, and npm and
 PyPI packages contain the actionlint host. Run `actionlint config init` for a new project, or follow
 [configuration migration](config-migration.md) for an existing one, to install and pin the default plugins.
-Commit the configuration and adjacent `actionlint.plugins.lock.json`; native script-linter executables are not
+Commit the configuration with its exact plugin versions; no project lockfile is required. Native script-linter executables are not
 required for these plugins. See [plugin installation](plugins.md#install-from-the-registry).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package
@@ -163,8 +163,8 @@ Wheels cover macOS (x86_64, arm64), Linux with glibc or musl (i686, x86_64, 32-b
 
 ### Prebuilt binaries
 
-Download an archive file from [the releases page][releases] for your platform, unarchive it and put the executable file to a
-directory in `$PATH`.
+Download an archive for your platform from [the releases page][releases], extract it, and put the executable in a
+directory on `$PATH`.
 
 Release archives are available for:
 
@@ -179,7 +179,7 @@ The release matrix builds all these targets, but native CI tests do not cover:
 - Windows i386
 - FreeBSD i386, x86_64
 
-To install these binaries [`gh`][gh] command is useful. The following command is an example for x86_64 Linux.
+You can install these binaries with [`gh`][gh]. The following example is for x86_64 Linux.
 
 ```sh
 gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v2.0.0
@@ -201,23 +201,23 @@ To install `actionlint` executable with one command, [the download script](../di
 
 The examples pin the script to a commit. The separate version argument selects the binary release; `latest` resolves
 the newest release. Update the script pin when adopting script changes, independently of the binary version.
-It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` to resolve the
-newest release, or omit the argument to use the default version recorded in the script:
+It downloads `actionlint.exe` on Windows and `actionlint` on other supported platforms. Pass `latest` or omit the argument
+to download the newest release:
 
 ```sh
 bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) latest
 ```
 
-When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
+To install a specific version of actionlint, pass the version as the first argument. The following
 example installs v2.0.0.
 
 ```sh
 bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
 ```
 
-This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
-the downloaded binary to some other directory, please give the directory path to the 2nd command line argument. The following
-example installs the latest version to `~/.local/bin`. The destination must already exist and be on your `PATH`:
+The script downloads `actionlint` (or `actionlint.exe` on Windows) to the current working directory. To use another
+directory, pass its path as the second argument. The following example installs the latest version to `~/.local/bin`.
+The destination must already exist and be on your `PATH`:
 
 ```sh
 mkdir -p "${HOME}/.local/bin"
@@ -236,6 +236,11 @@ For the usage of actionlint on GitHub Actions, see [the usage document](usage.md
 
 The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjanat/actionlint`. See
 [Docker usage](usage.md#docker) for running the linter with a mounted repository.
+
+For a preview, use `:pr-343` or `:branch-go-identity-model` from either registry.
+These Linux amd64 and arm64 images are built for pull requests from this repository
+and branch pushes. Branch names use Docker-safe tags; for example, `feature/cache`
+becomes `branch-feature-cache`. OCI labels identify the source commit and build.
 
 Development images are available from both registries as `:nightly`, `:nightly-<git-describe>`
 and `:sha-<full-commit-SHA>` for Linux amd64 and arm64. They are published after successful
@@ -407,10 +412,10 @@ installation for later steps in the same job:
 ```
 
 `install-only` exports only the actionlint binary. It does not read project configuration, install plugins, or
-provide native `shellcheck` and `ruff` executables. The `shellcheck` and `ruff` inputs control Wasm checks during
-analysis; they do not install those tools on `PATH`. Provision native executables separately if later steps need them.
+provide native `shellcheck` and `ruff` executables. The `shellcheck` and `ruff` inputs are ignored; use
+`disable-tools` to turn either tool off during analysis. Provision native executables separately if later steps need them.
 For later actionlint checks, install and pin the project's plugins using the commands above.
-Existing immutable releases retain their original implementation. Pin a published release commit SHA or a specific
+Pin a published release commit SHA or a specific
 release tag for reproducible setup. See the [Action installation guide](action.md#install-without-running-analysis)
 for version selection and prerequisites.
 
@@ -481,7 +486,7 @@ Until it is merged, use one of the [project-maintained distributions](#project-m
 
 ---
 
-[Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Usage](usage.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
 [Go]: https://go.dev/
 [actionlint-kjanat-bin]: https://aur.archlinux.org/packages/actionlint-kjanat-bin "AUR package for kjanat/actionlint (binary)"

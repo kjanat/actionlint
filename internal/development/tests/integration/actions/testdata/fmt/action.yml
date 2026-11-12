@@ -1,0 +1,24 @@
+# source: https://github.com/kjanat/actions/blob/147fdfd0e40bd54ce05cd9d9d1d8d8e22b241469/action.yml
+# The upstream suppression is removed so this fixture exercises the proof.
+name: kprint fmt
+description: format yo' shit
+branding:
+  icon: umbrella
+  color: green
+inputs:
+  autofix:
+    description: "autofix.ci compatible (does not fmt .github)"
+    default: true
+  version:
+    description: "version of npm:@kjanat/fmt to run"
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - id: greet
+      shell: bash
+      env:
+        cmd: "--allow-no-files --diff ${{ case(inputs.autofix == 'true', '--excludes .github', '') }}"
+        pkg: "${{ format('@kjanat/fmt@{0}', inputs.version) }}"
+      run: npx -y "${pkg}" ${{ env.cmd }}

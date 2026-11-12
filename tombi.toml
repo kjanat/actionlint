@@ -7,8 +7,8 @@
 toml-version = "v1.0.0"
 
 [files]
-include              = ["**/*.toml", "**/.*.toml"]
-exclude              = ["**/fixtures", "**/.cache/**/*.toml"]
+include              = ["**/*.toml", "**/.*.toml", ".github/**/*.toml"]
+exclude              = ["**/fixtures", "**/testdata", "**/.cache/**/*.toml"]
 respect-ignore-files = true
 
 [format]
@@ -99,6 +99,7 @@ include = [".codex/config.toml", "**/.codex/config.toml"]
 
 # Mise
 [[schemas]]
+toml-version = "v1.1.0"
 path         = "https://mise.jdx.dev/schema/mise.json"
 include      = ["mise.toml", ".mise.toml"]
 format.rules = {
@@ -109,3 +110,7 @@ format.rules = {
 [[schemas]]
 path    = "https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json"
 include = [".golangci.toml"]
+
+[[schemas]]
+path    = "actionlint.schema.json"
+include = [".github/actionlint.toml"]

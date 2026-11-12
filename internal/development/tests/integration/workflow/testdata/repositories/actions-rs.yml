@@ -1,0 +1,82 @@
+# source: https://github.com/kjanat/actions-rs/blob/b74cdf4aeae669f371b9ea898b1949bf4b9ffe72/.github/workflows/ci.yml
+# covers: nested JSON expressions, wildcard projections, parallel aliases, Cargo script frontmatter
+---
+name: CI
+run-name: "${{ join(fromJSON(format('[{0},{1}]', toJSON(github.event.head_commit.timestamp || github.event.pull_request.updated_at || github.event.repository.updated_at), toJSON(join(github.event.*.updated_at, ' / ')))), ' / ') }}"
+
+on:
+  push: { branches: [master] }
+  pull_request:
+  workflow_dispatch:
+
+permissions: { contents: read }
+defaults: { run: { shell: bash } }
+
+jobs:
+  check:
+    runs-on: &UBUNTU ubuntu-latest
+    if: 1
+    steps:
+      - parallel:
+          - &GIT { uses: actions/checkout@v7 }
+          - &RUN { uses: kjanat/runner@master }
+      - &RST { uses: dtolnay/rust-toolchain@nightly, with: { components: "clippy, rustfmt" } }
+      - run: run -sk fmt-check test-all clippy-strict
+
+  docs-check:
+    runs-on: *UBUNTU
+    if: ${{ format('{0}', false) }}
+    steps: [{ parallel: [*GIT, *RUN, *RST] }, { run: rustup run nightly -- run -s doc-nightly doc-test }]
+
+  round-trip:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: |-
+        ${{
+          FrOmJsOn(
+            tOjSoN(
+              fRoMjSoN(
+                '{
+                  // load-bearing newline
+                  os:
+                  [
+                    ''ubuntu-latest'',
+                    "windows-latest"
+                    ,''macos-latest'',
+                  ],
+                  octal: [010], hex: ["0xFF"]
+                  /*,array_hole: [,]*/ , empty_string: [""]
+                  ,null_value: [null],undefined_value: ["undefined"],
+                  not_a_number: ["NaN"], positive_infinity: ["Infinity"]
+                  ,constructor: ["new Date()"],
+                }
+                this trailing sentence is apparently fine'
+              )
+            )
+          )
+        }}
+    defaults: { run: { shell: "actions-shell cargo-script {0}" } }
+    steps:
+      - parallel: [*GIT, *RST, { uses: kjanat/actions-shells@v0 }]
+      - id: emit
+        run: |
+          ---
+          package.edition = "2024"
+          dependencies.actions-rs.path = '${{ github.workspace }}'
+          ---
+          fn main() -> Result<(), actions_rs::Error> {
+              actions_rs::output::set_output("answer", "42\nwith newline")?;
+              actions_rs::output::export_var("DEMO_FLAG", true)?;
+              actions_rs::output::add_path("/booga")
+          }
+      - env: { INPUT_ANSWER: "${{ steps.emit.outputs.answer }}" }
+        run: |
+          ---
+          package.edition = "2024"
+          dependencies.actions-rs.path = '${{ github.workspace }}'
+          ---
+          fn main() {
+              assert_eq!(actions_rs::input::input_required("answer").unwrap(), "42\nwith newline");
+              assert_eq!(std::env::var("DEMO_FLAG").unwrap(), "true");
+              assert!(std::env::var("PATH").unwrap().contains("booga"));
+          }

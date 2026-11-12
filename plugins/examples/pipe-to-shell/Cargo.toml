@@ -1,0 +1,21 @@
+[package]
+name              = "actionlint-example-pipe-to-shell"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name       = "pipe_to_shell"
+
+[[bin]]
+name              = "package-pipe-to-shell"
+path              = "src/bin/package.rs"
+required-features = ["package"]
+
+[dependencies]
+actionlint-extension-api = { path = "../../sdk/rust" }
+wit-bindgen.workspace    = true
+
+[features]
+package = ["actionlint-extension-api/package"]

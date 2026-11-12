@@ -1,0 +1,75 @@
+<a id="hello"></a>
+## Hello
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ unknown }}
+permissions: {}
+```
+
+Output:
+
+```
+test.yaml:6:23: unknown-variable: undefined variable "unknown". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
+  |
+6 |       - run: echo ${{ unknown }}
+  |                       ^~~~~~~
+```
+
+[Playground](https://kjanat.github.io/actionlint/#eNokyr0NwzAMROFeU1yRVgtwmzggYOeHFHwkUgjaPWBcveJ7boKR3NvTN0oDQhlV4ExjL88tLbK/72V/YujgdQG9ToE+dsdtTqS9zL+GtdrQ83OQhxsFc/0GAE0uIzU=)
+
+This is the first example.
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ unknown }}
+permissions: {}
+```
+
+Output:
+<!-- Skip update output -->
+
+```
+This section will not be generated
+```
+
+[Playground](https://kjanat.github.io/actionlint/#eNokyr0NwzAMROFeU1yRVgtwmzggYOeHFHwkUgjaPWBcveJ7boKR3NvTN0oDQhlV4ExjL88tLbK/72V/YujgdQG9ToE+dsdtTqS9zL+GtdrQ83OQhxsFc/0GAE0uIzU=)
+
+This is the second example.
+
+Example input:
+
+```yaml
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ unknown }}
+permissions: {}
+```
+
+Output:
+
+```
+test.yaml:6:23: unknown-variable: undefined variable "unknown". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
+  |
+6 |       - run: echo ${{ unknown }}
+  |                       ^~~~~~~
+```
+
+<!-- Skip playground link -->
+
+This is the third example.

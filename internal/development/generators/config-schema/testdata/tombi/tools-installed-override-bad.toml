@@ -1,0 +1,4 @@
+[[overrides]]
+includes = ['*.yml']
+[overrides.tools.local-tool.config]
+limit = 0

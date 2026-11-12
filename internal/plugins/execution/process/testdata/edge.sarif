@@ -1,0 +1,48 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "example",
+          "rules": [
+            { "id": "EX1", "name": "first-rule", "helpUri": "https://example.invalid/EX1" },
+            { "id": "EX2", "name": "second-rule" }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleIndex": 1,
+          "message": { "text": "rule found by index" },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "actionlint.sh" }, "region": { "startLine": 2 } } }]
+        },
+        {
+          "ruleId": "EX1",
+          "level": "note",
+          "message": { "text": "finding in a followed file" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "lib/common.sh" },
+                "region": { "startLine": 4, "startColumn": 3, "endLine": 4, "endColumn": 9 }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "EX1",
+          "message": { "text": "suppressed in source" },
+          "suppressions": [{ "kind": "inSource" }],
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "actionlint.sh" }, "region": { "startLine": 1 } } }]
+        },
+        {
+          "ruleId": "EX1",
+          "kind": "pass",
+          "message": { "text": "passed" },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "actionlint.sh" }, "region": { "startLine": 1 } } }]
+        }
+      ]
+    }
+  ]
+}

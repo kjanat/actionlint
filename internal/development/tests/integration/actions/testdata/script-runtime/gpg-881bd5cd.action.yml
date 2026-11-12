@@ -1,0 +1,26 @@
+---
+name: Check API Changes
+description: Check if the API has changed after running the code generation task
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-task
+    - uses: ./.github/actions/setup-bun
+    - uses: ./.github/actions/setup-go
+    - run: task generate:api
+    - name: Check for changes
+      shell: bash
+      run: |
+        PATCH="$(git diff --patch)"
+        CHANGED="$(git diff --stat-graph-width=40 --exit-code)";
+        EXIT_CODE=$?
+
+        if [[ "${EXIT_CODE}" -ne 0 ]]; then
+         	# shellcheck disable=SC2016
+          {
+            echo '::error::API generation resulted in changes. Please run `task generate:api` and commit the changes.'
+         	  printf '## Changed\n\n```text\n%s\n```\n\n<details open><summary><h2>Diff</h2></summary>\n\n```patch\n%s\n```\n\n</details>\n' \
+              "${CHANGED}" "${PATCH}" | tee -a "${GITHUB_STEP_SUMMARY}"
+          }
+         	exit "${EXIT_CODE}"
+        else echo "::notice:API is up to date"; exit 0; fi

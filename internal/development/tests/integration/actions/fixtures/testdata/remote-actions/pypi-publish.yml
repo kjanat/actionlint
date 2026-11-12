@@ -1,0 +1,182 @@
+# source: https://github.com/pypa/gh-action-pypi-publish/blob/7245906fb61fa33a13554f9d5fb856fe61758086/action.yml
+# uses: pypa/gh-action-pypi-publish@release/v1
+# repository-id: 178055147
+# ref: refs/heads/release/v1
+---
+name: pypi-publish
+description: Upload Python distribution packages to PyPI
+inputs:
+  user:
+    description: PyPI user
+    required: false
+    default: __token__
+  password:
+    description: Password for your PyPI user or an access token
+    required: false
+  repository-url:  # Canonical alias for `repository_url`
+    description: The repository URL to use
+    required: false
+  repository_url:  # DEPRECATED ALIAS; TODO: Remove in v3+
+    description: >-
+      [DEPRECATED]
+      The repository URL to use
+    deprecationMessage: >-
+      The inputs have been normalized to use kebab-case.
+      Use `repository-url` instead.
+    required: false
+    default: https://upload.pypi.org/legacy/
+  packages-dir:  # Canonical alias for `packages_dir`
+    description: The target directory for distribution
+    required: false
+    # default: dist  # TODO: uncomment once alias removed
+  packages_dir:  # DEPRECATED ALIAS; TODO: Remove in v3+
+    description: >-
+      [DEPRECATED]
+      The target directory for distribution
+    deprecationMessage: >-
+      The inputs have been normalized to use kebab-case.
+      Use `packages-dir` instead.
+    required: false
+    default: dist
+  verify-metadata:  # Canonical alias for `verify_metadata`
+    description: Check metadata before uploading
+    required: false
+    # default: 'true'  # TODO: uncomment once alias removed
+  verify_metadata:  # DEPRECATED ALIAS; TODO: Remove in v3+
+    description: >-
+      [DEPRECATED]
+      Check metadata before uploading
+    deprecationMessage: >-
+      The inputs have been normalized to use kebab-case.
+      Use `verify-metadata` instead.
+    required: false
+    default: 'true'
+  skip-existing:  # Canonical alias for `skip_existing`
+    description: >-
+      Do not fail if a Python package distribution
+      exists in the target package index
+    required: false
+    # default: 'false'  # TODO: uncomment once alias removed
+  skip_existing:  # DEPRECATED ALIAS; TODO: Remove in v3+
+    description: >-
+      [DEPRECATED]
+      Do not fail if a Python package distribution
+      exists in the target package index
+    deprecationMessage: >-
+      The inputs have been normalized to use kebab-case.
+      Use `skip-existing` instead.
+    required: false
+    default: 'false'
+  verbose:
+    description: Show verbose output.
+    required: false
+    default: 'true'
+  print-hash:  # Canonical alias for `print_hash`
+    description: Show hash values of files to be uploaded
+    required: false
+    # default: 'false'  # TODO: uncomment once alias removed
+  print_hash:  # DEPRECATED ALIAS; TODO: Remove in v3+
+    description: >-
+      [DEPRECATED]
+      Show hash values of files to be uploaded
+    deprecationMessage: >-
+      The inputs have been normalized to use kebab-case.
+      Use `print-hash` instead.
+    required: false
+    default: 'true'
+  attestations:
+    description: >-
+      Enable support for PEP 740 attestations.
+      Only works with PyPI and TestPyPI via Trusted Publishing.
+    required: false
+    default: 'true'
+branding:
+  color: yellow
+  icon: upload-cloud
+runs:
+  using: composite
+  steps:
+  - name: Fail-fast in unsupported environments
+    if: runner.os != 'Linux'
+    run: |
+      >&2 echo This action is only able to run under GNU/Linux environments
+      exit 1
+    shell: bash -eEuo pipefail {0}
+  - name: Reset path if needed
+    run: | # zizmor: ignore[github-env] PATH is not user-controlled
+      # Reset path if needed
+      # https://github.com/pypa/gh-action-pypi-publish/issues/112
+      if [[ $PATH != *"/usr/bin"* ]]; then
+        echo "\$PATH=$PATH. Resetting \$PATH for GitHub Actions."
+        PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        echo "PATH=$PATH" >>"$GITHUB_ENV"
+        echo "$PATH" >>"$GITHUB_PATH"
+        echo "\$PATH reset. \$PATH=$PATH"
+      fi
+    shell: bash
+  - name: Discover pre-installed Python
+    id: pre-installed-python
+    run: |
+      # 🔎 Discover pre-installed Python
+      echo "python-path=$(command -v python3 || :)" | tee -a "${GITHUB_OUTPUT}"
+    shell: bash
+  - name: Install Python 3
+    if: steps.pre-installed-python.outputs.python-path == ''
+    id: new-python
+    # yamllint disable-line rule:line-length
+    uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+    with:
+      python-version: 3.x
+  - name: Create Docker container action
+    run: |
+      # Create Docker container action
+      ${{
+        steps.pre-installed-python.outputs.python-path == ''
+        && steps.new-python.outputs.python-path
+        || steps.pre-installed-python.outputs.python-path
+      }} '${{ github.action_path }}/create-docker-action.py'
+    env:
+      # Set repo and ref from which to run Docker container action
+      # to handle cases in which `github.action_` context is not set
+      # https://github.com/actions/runner/issues/2473
+      REF: >-
+        ${{
+          github.action_ref
+          || github.event.pull_request.head.ref
+          || github.ref_name
+        }}
+      REPO: >-
+        ${{
+          github.action_repository
+          || github.event.pull_request.head.repo.full_name
+          || github.repository
+        }}
+      REPO_ID: >-
+        ${{
+          github.event.pull_request.base.repo.id
+          || github.repository_id
+        }}
+    shell: bash
+  - name: Run Docker container
+    # The generated trampoline action must exist in the allowlisted
+    # runner-defined working directory so it can be referenced by the
+    # relative path starting with `./`.
+    #
+    # This mutates the end-user's workspace slightly but uses a path
+    # that is unlikely to clash with somebody else's use.
+    #
+    # We cannot use randomized paths because the composite action
+    # syntax does not allow accessing variables in `uses:`. This
+    # means that we end up having to hardcode this path both here and
+    # in `create-docker-action.py`.
+    uses: ./.github/.tmp/.generated-actions/run-pypi-publish-in-docker-container
+    with:
+      user: ${{ inputs.user }}
+      password: ${{ inputs.password }}
+      repository-url: ${{ inputs.repository-url || inputs.repository_url }}
+      packages-dir: ${{ inputs.packages-dir || inputs.packages_dir }}
+      verify-metadata: ${{ inputs.verify-metadata || inputs.verify_metadata }}
+      skip-existing: ${{ inputs.skip-existing || inputs.skip_existing }}
+      verbose: ${{ inputs.verbose }}
+      print-hash: ${{ inputs.print-hash || inputs.print_hash }}
+      attestations: ${{ inputs.attestations }}

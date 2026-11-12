@@ -1,0 +1,17 @@
+[package]
+name              = "actionlint-fixture-managed-no-sudo"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+
+[lib]
+crate-type = ["cdylib"]
+name       = "managed_no_sudo"
+
+[dependencies]
+actionlint-extension-api = { path = "../../../../../../../plugins/sdk/rust" }
+wit-bindgen.workspace    = true
+
+[features]
+default                  = ["tool-integration-fixture"]
+tool-integration-fixture = ["actionlint-extension-api/tool-integration"]

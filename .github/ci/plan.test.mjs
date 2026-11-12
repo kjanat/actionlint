@@ -2,16 +2,149 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+	appendFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
 
-import { changedInputs, ciTrailers, matchesPaths, plan, selectJobs } from './plan.mjs';
+import { YAML } from 'bun';
+
+import { affectedProjects, changedInputs, ciTrailers, jobNames, plan, selectJobs } from './plan.mjs';
+
+const root = resolve(import.meta.dirname, '../..');
+
+test('mise follows workspace dependencies and isolates the standalone reference host', { timeout: 120000 }, t => {
+	const repo = repository(t);
+	const manifests = execFileSync('git', [
+		'ls-files',
+		'-z',
+		'--',
+		'Cargo.toml',
+		'package.json',
+		'.mise.toml',
+		'tasks.toml',
+		'**/Cargo.toml',
+		'**/package.json',
+		'**/mise.toml',
+	], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+	for (const file of manifests) {
+		if (!existsSync(join(root, file))) continue;
+		mkdirSync(dirname(join(repo.cwd, file)), { recursive: true });
+		writeFileSync(join(repo.cwd, file), readFileSync(join(root, file)));
+	}
+	const base = repo.commit('fixture.txt', 'Workspace manifests');
+	const names = jobNames('ci', root);
+	const conformance = jobNames('conformance', root);
+	const selected = (/** @type {string} */ file) => {
+		const head = repo.commit(file, `Change ${file}`);
+		const projects = affectedProjects(base, head, repo.cwd);
+		// Start the next scenario from the workspace-manifest commit.
+		repo.git(['checkout', '--quiet', '--detach', base]);
+		return { projects, jobs: selectJobs('ci', names, projects) };
+	};
+	for (const file of ['src/main.rs', 'Cargo.toml', 'Cargo.lock']) {
+		const { projects, jobs } = selected(`internal/development/tests/conformance/wasm/runner-host/${file}`);
+		assert.deepEqual(projects, ['custom:runner-host'], file);
+		assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['plugins'], file);
+		assert.equal(selectJobs('conformance', conformance, projects).conformance, true);
+	}
+	const sdk = selected('plugins/sdk/typescript/src/test-change.ts');
+	assert.ok(sdk.projects.includes('node:@kjanat-actionlint/plugin-yamllint'));
+	assert.ok(sdk.projects.includes('node:@kjanat-actionlint/plugin-grype'));
+	assert.equal(sdk.jobs.javascript, true);
+	assert.equal(sdk.jobs.plugins, true);
+	assert.equal(sdk.jobs.unit, false);
+	const rust = selected('plugins/sdk/rust/src/test_change.rs');
+	assert.ok(rust.projects.includes('cargo:actionlint-example-pinned-actions'));
+	assert.equal(rust.jobs.plugins, true);
+	assert.equal(rust.jobs.unit, false);
+	const protocol = selected('plugins/protocol/wit/test-change.wit');
+	for (const job of ['unit', 'race', 'nix', 'plugins', 'javascript', 'guest-modules']) {
+		assert.equal(protocol.jobs[job], true, job);
+	}
+	for (
+		const file of [
+			'internal/input/configuration/schema/assets/test-change.json',
+			'internal/plugins/execution/component/testdata/plugins/test-change.wasm',
+			'internal/checking/test_change.go',
+			'schemas/test-change.json',
+		]
+	) {
+		const { jobs } = selected(file);
+		for (const job of ['unit', 'race', 'nix', 'release', 'wasm', 'plugins', 'docker']) {
+			assert.equal(jobs[job], true, `${file}: ${job}`);
+		}
+	}
+	const browser = selected('libraries/browser-lsp/src/test-change.ts');
+	assert.equal(browser.jobs.wasm, true);
+	const action = selected('applications/github-action/tests/test-change.ts');
+	assert.equal(action.jobs.action, true);
+	assert.equal(action.jobs['action-tests'], true);
+	assert.equal(action.jobs.unit, false);
+	const docs = selected('docs/test-change.md');
+	assert.equal(docs.jobs.release, true);
+	assert.equal(docs.jobs.unit, false);
+	// Uncommitted files must not change a committed CI comparison.
+	const head = repo.commit('plugins/sdk/rust/src/test_change.rs', 'Rust SDK');
+	appendFileSync(join(repo.cwd, '.mise.toml'), '\n# unrelated local change\n');
+	writeFileSync(join(repo.cwd, 'untracked.go'), 'package main\n');
+	assert.equal(affectedProjects(base, head, repo.cwd).includes('go:actionlint.kjanat.dev/v2'), false);
+});
+
+test('unassigned projects run every check and optional trailers cannot skip required jobs', () => {
+	const names = ['unit', 'nix', 'plugins'];
+	assert.deepEqual(selectJobs('ci', names, ['custom:new-project']), { unit: true, nix: true, plugins: true });
+	assert.deepEqual(selectJobs('ci', names, ['custom:new-project'], { full: false, skip: ['nix'] }), {
+		unit: true,
+		nix: false,
+		plugins: true,
+	});
+	assert.deepEqual(selectJobs('ci', names, [], { full: true, skip: ['nix'] }), {
+		unit: true,
+		nix: true,
+		plugins: true,
+	});
+});
+
+test('a failed dependency query selects all checks and reports the failure', t => {
+	const repo = repository(t);
+	const head = repo.commit('source.go', 'Change source');
+	repo.event({ pull_request: { base: { sha: repo.base }, head: { sha: head } } });
+	const commands = commandEnvironment(repo.cwd);
+	assert.deepEqual(
+		plan({ ...repo.environment, ...commands, CI_PROFILE: 'test' }, repo.cwd, () => {
+			throw new Error('Broken workspace manifest');
+		}),
+		{ unit: true, nix: true },
+	);
+	assert.match(readFileSync(commands.GITHUB_STEP_SUMMARY, 'utf8'), /running every check/);
+});
 
 /** @param {import('node:test').TestContext} t */
 function repository(t) {
 	const cwd = mkdtempSync(join(tmpdir(), 'actionlint-ci-plan-'));
 	t.after(() => rmSync(cwd, { recursive: true, force: true }));
+	mkdirSync(join(cwd, '.github/ci'), { recursive: true });
+	mkdirSync(join(cwd, '.github/workflows'), { recursive: true });
+	writeFileSync(
+		join(cwd, '.github/workflows/test.yml'),
+		`jobs:
+  unit:
+    if: \u0024{{ fromJSON(needs.changes.outputs.jobs)['unit'] }}
+  nix:
+    if: \u0024{{ fromJSON(needs.changes.outputs.jobs)['nix'] }}
+`,
+	);
 	const git = (/** @type {string[]} */ args) =>
 		execFileSync('git', [
 			'-c',
@@ -55,29 +188,6 @@ function commandEnvironment(cwd) {
 	return environment;
 }
 
-test('paths are rooted, * does not cross directories, and ** does', () => {
-	assert.equal(matchesPaths('README.md', ['*.md']), true);
-	assert.equal(matchesPaths('docs/README.md', ['*.md']), false);
-	assert.equal(matchesPaths('docs/a/file.md', ['docs/*']), false);
-	assert.equal(matchesPaths('docs/a/file.md', ['docs/**']), true);
-	assert.equal(matchesPaths('index.js', ['**.js']), true);
-	assert.equal(matchesPaths('src/index.js', ['**.js']), true);
-	assert.equal(matchesPaths('README.md', ['**/README.md']), true);
-	assert.equal(matchesPaths('docs/README.md', ['**/README.md']), true);
-	assert.equal(matchesPaths('.github/workflows/ci.yml', ['.github/workflows/**']), true);
-	assert.throws(() => matchesPaths('page.js', ['*.jsx?']), /Unsupported/);
-});
-
-test('ordered exclusions and re-inclusions apply to each changed path independently', () => {
-	const patterns = ['*.md', '!README.md', 'README*'];
-	assert.equal(matchesPaths('README.md', patterns), true);
-	assert.equal(matchesPaths('README.doc', patterns), true);
-	assert.equal(matchesPaths('docs/hello.md', patterns), false);
-	const filters = { shared: [], jobs: { unit: ['**/*.go', '!testdata/**'] } };
-	assert.deepEqual(selectJobs(filters, ['testdata/fixture.go']), { unit: false });
-	assert.deepEqual(selectJobs(filters, ['testdata/fixture.go', 'internal/cli/check.go']), { unit: true });
-});
-
 test('only actual trailers control optional groups; full overrides skips', () => {
 	assert.deepEqual(ciTrailers('Mention CI-Skip: nix in the subject'), { full: false, skip: [] });
 	assert.deepEqual(ciTrailers('Subject\n\nCI-Skip: nix, conformance\nCI-Skip: expression-probe\n'), {
@@ -93,13 +203,18 @@ test('PR comparison uses the merge-base and latest head message, not the merge c
 	const repo = repository(t);
 	repo.git(['checkout', '--quiet', '-b', 'pr']);
 	repo.commit('internal/cli/check.go', 'First PR change\n\nCI-Skip: conformance');
-	const head = repo.commit('internal/integration/cli/check_test.go', 'Latest PR change\n\nCI-Skip: nix');
+	const head = repo.commit(
+		'internal/development/tests/integration/cli/check_test.go',
+		'Latest PR change\n\nCI-Skip: nix',
+	);
 	repo.git(['checkout', '--quiet', 'base']);
 	const base = repo.commit('unrelated.go', 'Base advanced');
 	repo.git(['merge', '--quiet', '--no-ff', 'pr', '-m', 'Synthetic merge\n\nCI: full']);
 	repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
 	assert.deepEqual(changedInputs(repo.environment, repo.cwd), {
-		paths: ['internal/cli/check.go', 'internal/integration/cli/check_test.go'],
+		paths: ['internal/cli/check.go', 'internal/development/tests/integration/cli/check_test.go'],
+		base: repo.base,
+		head,
 		trailers: { full: false, skip: ['nix'] },
 	});
 });
@@ -111,6 +226,8 @@ test('push comparison includes every pushed commit and ignores skip trailers', t
 	repo.event({ before: repo.base, after: head });
 	assert.deepEqual(changedInputs({ ...repo.environment, GITHUB_EVENT_NAME: 'push' }, repo.cwd), {
 		paths: ['first.go', 'second.go'],
+		base: repo.base,
+		head,
 		trailers: { full: false, skip: [] },
 	});
 });
@@ -132,7 +249,7 @@ test('missing history or invalid skip requests run all checks and explain the fa
 	const environment = {
 		...repo.environment,
 		...commands,
-		CI_FILTERS: JSON.stringify({ shared: [], jobs: { unit: ['**/*.go'], nix: ['nix/**'] } }),
+		CI_PROFILE: 'test',
 	};
 	for (const base of [repo.base, 'f'.repeat(40)]) {
 		repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
@@ -160,7 +277,7 @@ test('runner command files cannot escape through traversal, sibling prefixes or 
 					...repo.environment,
 					...commands,
 					GITHUB_EVENT_NAME: 'workflow_dispatch',
-					CI_FILTERS: JSON.stringify({ shared: [], jobs: { unit: ['**/*.go'] } }),
+					CI_PROFILE: 'test',
 					[name]: path,
 				}, repo.cwd), /runner command directory/);
 			assert.equal(readFileSync(outside, 'utf8'), 'unchanged');
@@ -172,181 +289,12 @@ test('manual and scheduled runs select all jobs', t => {
 	const repo = repository(t);
 	repo.event({});
 	for (const event of ['workflow_dispatch', 'schedule']) {
-		const { paths, trailers } = changedInputs({ ...repo.environment, GITHUB_EVENT_NAME: event }, repo.cwd);
-		assert.deepEqual(selectJobs({ shared: [], jobs: { nix: ['nix/**'], unit: ['**/*.go'] } }, paths, trailers), {
+		const { trailers } = changedInputs({ ...repo.environment, GITHUB_EVENT_NAME: event }, repo.cwd);
+		assert.deepEqual(selectJobs('test', ['nix', 'unit'], [], trailers), {
 			nix: true,
 			unit: true,
 		});
 	}
-});
-
-/** @param {string} workflow */
-function workflowFilters(workflow) {
-	const text = readFileSync(new URL(`../workflows/${workflow}.yml`, import.meta.url), 'utf8');
-	const scalar = text.match(/ {6}filters: \|\n((?: {8}.*\n)+)/)?.[1];
-	assert.ok(scalar, `${workflow} must declare its check inputs`);
-	return JSON.parse(scalar);
-}
-
-test('plugin sources and Cargo inputs select the plugin checks', () => {
-	const ci = workflowFilters('ci');
-	for (
-		const path of [
-			'Cargo.toml',
-			'Cargo.lock',
-			'rust-toolchain.toml',
-			'examples/plugins/pipe-to-shell.rs',
-			'crates/actionlint-extension-api/Cargo.toml',
-			'crates/actionlint-extension-api/build.rs',
-			'crates/actionlint-extension-api/src/lib.rs',
-			'crates/actionlint-extension-api/src/package.rs',
-			'crates/actionlint-extension-api/wit/analyzer.wit',
-			'crates/actionlint-extension-api/wit/source-annotations.wit',
-			'testdata/plugins/misbehave/src/lib.rs',
-			'testdata/runner-provider/snapshot.json',
-			'tools/runner-host/src/main.rs',
-			'tools/runner-host/Cargo.toml',
-			'tools/runner-host/Cargo.lock',
-			'tools/plugin-contract/main.go',
-			'tools/plugin-contract/go.mod',
-			'analysis/analysis.go',
-			'internal/application/analysis_document.go',
-			'internal/localapp/plugins.go',
-			'internal/localapp/plugins_test.go',
-		]
-	) {
-		assert.equal(selectJobs(ci, [path]).plugins, true, path);
-	}
-});
-
-test('runner sources select every Go consumer and provider tests select their test jobs', () => {
-	const ci = workflowFilters('ci');
-	const jobs = selectJobs(ci, ['runner/resolve.go']);
-	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), [
-		'unit',
-		'race',
-		'nix',
-		'wasm',
-		'release',
-		'lint',
-		'docker',
-		'action',
-		'plugins',
-	]);
-	const tests = selectJobs(ci, ['runner/resolve_test.go']);
-	assert.deepEqual(Object.keys(tests).filter(job => tests[job]), ['unit', 'race', 'nix', 'lint', 'plugins']);
-});
-
-test('test-only CLI changes select Go and Nix tests without release builds or unrelated suites', () => {
-	const jobs = selectJobs(workflowFilters('ci'), ['internal/integration/cli/usability_test.go']);
-	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'nix', 'lint']);
-	for (const workflow of ['codeql', 'conformance', 'expression-probe-tests', 'matcher']) {
-		assert.ok(
-			Object.values(selectJobs(workflowFilters(workflow), ['internal/integration/cli/usability_test.go'])).every(run =>
-				!run
-			),
-		);
-	}
-});
-
-test('Nix checks include test sources and fixtures used by its Go suite', () => {
-	const ci = workflowFilters('ci');
-	for (
-		const path of [
-			'internal/localapp/plugins_test.go',
-			'internal/plugins/core/testdata/engines/echo.wasm',
-			'tools/config/main_test.go',
-			'tools/config/testdata/example.yaml',
-			'fuzz/fuzz_test.go',
-			'testdata/ok/minimal.yaml',
-		]
-	) {
-		assert.equal(selectJobs(ci, [path]).nix, true, path);
-	}
-});
-
-test('action tests, probe results, mixed documentation and source changes select their owners', () => {
-	const ci = workflowFilters('ci');
-	const action = selectJobs(ci, ['packages/github-action/tests/reporters.test.ts']);
-	assert.deepEqual(Object.keys(action).filter(job => action[job]), ['javascript', 'action', 'action-tests']);
-	const documentation = selectJobs(ci, ['docs/usage.md']);
-	assert.deepEqual(Object.keys(documentation).filter(job => documentation[job]), ['release']);
-	assert.equal(selectJobs(ci, ['docs/usage.md', 'config.go']).unit, true);
-	assert.equal(
-		selectJobs(workflowFilters('expression-probe-tests'), [
-			'internal/expression/probe/results/run.json',
-		])['expression-probe'],
-		false,
-	);
-	assert.equal(selectJobs(workflowFilters('conformance'), ['internal/cli/check.go']).conformance, false);
-	assert.equal(selectJobs(workflowFilters('conformance'), ['rule_expression.go']).conformance, true);
-	for (
-		const file of [
-			'internal/conformance/conformance_test.go',
-			'internal/conformance/conformance_adapters_test.go',
-			'internal/conformance/conformance_score_test.go',
-			'internal/conformance/conformance_assessments_test.go',
-			'internal/conformance/testdata/assessments.json',
-			'internal/conformance/testdata/differences.json',
-		]
-	) {
-		assert.equal(selectJobs(workflowFilters('conformance'), [file]).conformance, true, file);
-	}
-	assert.equal(selectJobs(workflowFilters('matcher'), ['internal/cli/check.go']).matcher, true);
-	assert.equal(selectJobs(ci, ['internal/cli/check.go'])['action-tests'], false);
-	assert.equal(selectJobs(ci, ['Dockerfile'])['action-tests'], false);
-	assert.equal(selectJobs(ci, ['tools/action/check-action-outputs.mjs'])['action-tests'], true);
-	assert.equal(selectJobs(ci, ['tools/config/main.go']).unit, true);
-	assert.equal(selectJobs(ci, ['tools/config/main.go']).lint, true);
-	assert.equal(selectJobs(ci, ['internal/webhook/payload/generate/main.mts']).javascript, true);
-	assert.equal(selectJobs(ci, ['.github/workflows/upkeep.yml']).unit, true);
-	assert.ok(Object.values(selectJobs(ci, ['.github/workflows/ci.yml'])).every(Boolean));
-});
-
-test('Action smoke fixtures are re-included after the general testdata exclusion', () => {
-	const ci = workflowFilters('ci');
-	for (const path of ['testdata/ok/minimal.yaml', 'testdata/err/one_error.yaml']) {
-		assert.equal(selectJobs(ci, [path]).action, true, path);
-	}
-	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
-});
-
-test('Pandoc pins and installer select both consumers and installation regression tests', () => {
-	for (const path of ['.github/actions/setup-pandoc/SHA256SUMS', '.github/actions/setup-pandoc/setup.bash']) {
-		const jobs = selectJobs(workflowFilters('ci'), [path]);
-		assert.equal(jobs.javascript, true);
-		assert.equal(jobs.release, true);
-		assert.equal(jobs.wasm, true);
-	}
-	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
-	const wasm = workflow.split('\n  wasm:\n')[1]?.split(/\n {2}\S/)[0];
-	assert.ok(wasm);
-	assert.match(wasm, /uses: \$\/\.github\/actions\/setup-pandoc/);
-	assert.doesNotMatch(wasm, /install_args:.*github:jgm\/pandoc/);
-});
-
-test('runner cache metadata and code select the installation regression tests', () => {
-	for (const path of ['action.yml', 'setup.mjs', 'setup.test.mjs', 'mise.toml']) {
-		assert.equal(selectJobs(workflowFilters('ci'), [`.github/actions/setup-runner/${path}`]).javascript, true, path);
-	}
-});
-
-test('Wasm toolchain pins and installer select plugin and installation tests', () => {
-	for (const path of ['releases.json', 'setup.bash', 'action.yml', 'setup.test.mjs', 'mise.toml']) {
-		const jobs = selectJobs(workflowFilters('ci'), [`.github/actions/setup-wasm-toolchain/${path}`]);
-		assert.equal(jobs.javascript, true, path);
-		assert.equal(jobs.plugins, true, path);
-	}
-});
-
-test('release snapshots cover every archived documentation input', () => {
-	const ci = workflowFilters('ci');
-	for (
-		const path of ['README.md', 'LICENSE.txt', 'docs/usage.md', 'docs/releases/v1.18.0.md', 'docs/testdata/example.md']
-	) {
-		assert.equal(selectJobs(ci, [path]).release, true, path);
-	}
-	assert.equal(selectJobs(ci, ['CONTRIBUTING.md']).release, false);
 });
 
 test('Windows matrix jobs serialize setup to avoid shared event payload writes', () => {
@@ -359,102 +307,464 @@ test('Windows matrix jobs serialize setup to avoid shared event payload writes',
 	}
 });
 
-test('pinned formatter helper and workflow changes select installer tests', () => {
-	for (const name of ['action.yml', 'setup.bash', 'pins.tsv', 'mise.toml']) {
-		assert.equal(
-			selectJobs(workflowFilters('ci'), [`.github/actions/setup-formatters/${name}`]).javascript,
-			true,
-			name,
-		);
-	}
+test('documentation workflows install their tools through Runner and mise', () => {
 	const root = new URL('../../', import.meta.url);
 	const read = (/** @type {string} */ path) => readFileSync(new URL(path, root), 'utf8');
-	const autofix = read('.github/workflows/autofix.yml');
-	assert.match(autofix, /uses: \$\/\.github\/actions\/setup-formatters/);
-	assert.doesNotMatch(autofix, /install_args:.*(?:dprint|tombi)/);
-	assert.doesNotMatch(autofix, /uses: kjanat\/install-dprint/);
-	assert.match(read('dprint.toml'), /command\s*= "tombi format - --stdin-filename \{\{file_path\}\}"/);
-	assert.match(read('package.json'), /\/\/\.github\/actions\/setup-formatters:test/);
-	assert.match(read('.mise.toml'), /"\.github\/actions\/setup-formatters"/);
 	const pages = read('.github/workflows/pages.yml');
-	assert.match(pages, /uses: \$\/\.github\/actions\/setup-runner/);
-	assert.match(pages, /uses: \$\/\.github\/actions\/setup-pandoc/);
-	assert.doesNotMatch(pages, /install_args:.*(?:runner|pandoc)/);
+	assert.doesNotMatch(pages, /uses: kjanat\/runner@/);
+	assert.match(pages, /MISE_ENABLE_TOOLS: "go,node,npm,bun,pandoc,npm:runner-run"/);
 	const upkeep = read('.github/workflows/upkeep.yml');
-	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-formatters/);
-	assert.doesNotMatch(upkeep, /uses: kjanat\/install-dprint/);
-	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-shellcheck/);
-	assert.match(
-		upkeep,
-		/MISE_DISABLE_TOOLS: "shellcheck,github:koalaman\/shellcheck,rshellcheck,github:kjanat\/shellcheck-rs"/,
-	);
-	assert.doesNotMatch(upkeep, /install_args:.*koalaman\/shellcheck/);
+	assert.match(upkeep, /MISE_ENABLE_TOOLS: "node"/);
+	assert.doesNotMatch(upkeep, /github:(?:kjanat|rhysd)\/actionlint/);
+	assert.doesNotMatch(upkeep, /mise lock --bump/);
 });
 
-test('autofix bootstraps mise for README and installs Node.js only for tables', () => {
-	const workflow = readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8');
-	const steps = workflow.split(/\n {6}- /);
-	const bootstraps = steps.filter(step => /uses: jdx\/mise-action@/.test(step));
-	assert.equal(bootstraps.length, 1, 'README generation requires one explicit mise bootstrap');
+test('autofix installs the formatter and the tools required by selected generators', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8')));
+	const job = yamlMapping(yamlMapping(workflow.jobs).autofix);
+	assert.ok(Array.isArray(job.steps));
+	const steps = job.steps.map(yamlMapping);
+	const bootstraps = steps.filter(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@'));
+	assert.equal(bootstraps.length, 1);
 	const [bootstrap] = bootstraps;
 	assert.ok(bootstrap);
-	assert.match(bootstrap, /if: steps\.inputs\.outputs\.tables == 'true' \|\| steps\.inputs\.outputs\.readme == 'true'/);
-	assert.match(bootstrap, /install: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \}\}/);
-	assert.match(bootstrap, /env: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \}\}/);
-	assert.match(bootstrap, /add_shims_to_path: false/);
-	assert.match(
-		bootstrap,
-		/working_directory: \$\{\{ steps\.inputs\.outputs\.tables == 'true' && github\.workspace \|\| runner\.temp \}\}/,
+	assert.equal(bootstrap.if, undefined);
+	const options = yamlMapping(bootstrap.with);
+	assert.equal(options.install, true);
+	assert.equal(options.cache, true);
+	assert.equal(options.env, true);
+	assert.equal(options.add_shims_to_path, false);
+	assert.equal(options.working_directory, undefined);
+	const selection = yamlMapping(bootstrap.env).MISE_ENABLE_TOOLS;
+	assert.ok(typeof selection === 'string');
+	assert.match(selection, /^\$\{\{.*\}\}$/);
+	const selectedTools = (/** @type {boolean} */ tables, /** @type {boolean} */ readme) =>
+		String(runInNewContext(selection.slice(3, -2), {
+			steps: { inputs: { outputs: { tables: String(tables), readme: String(readme) } } },
+		})).split(',');
+	assert.deepEqual(selectedTools(false, false), ['kprint', 'bun']);
+	const allTools = ['kprint', 'node', 'npm', 'bun'];
+	for (const [tables, readme] of [[true, false], [false, true], [true, true]]) {
+		assert.deepEqual(selectedTools(tables, readme), allTools);
+	}
+	assert.equal(
+		steps.some(step =>
+			typeof step.uses === 'string' && /^(?:kjanat\/install-dprint|actions\/setup-node)@/.test(step.uses)
+		),
+		false,
 	);
-	assert.match(bootstrap, /mise_dir: \$\{\{ env\.ACTIONLINT_MISE_DIR \}\}/);
-	assert.match(bootstrap, /install_args: node npm/);
-	assert.match(bootstrap, /MISE_ENABLE_TOOLS: "node,npm"/);
-	assert.doesNotMatch(workflow, /uses: actions\/setup-node@/);
-	const readme = steps.findIndex(step => /id: readme\n/.test(step));
-	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');
+	const dependencies = steps.find(step => typeof step.run === 'string' && step.run.startsWith('bun install '));
+	assert.ok(dependencies);
+	assert.equal(dependencies.if, "steps.inputs.outputs.tables == 'true'");
+	const formatter = steps.find(step => step.id === 'format');
+	assert.ok(formatter && typeof formatter.run === 'string');
+	assert.match(formatter.run, /\bkprint fmt\b/);
+	for (const id of ['readme', 'tables', 'format']) {
+		assert.ok(steps.findIndex(step => step.id === id) > steps.indexOf(bootstrap), `${id} must follow mise setup`);
+	}
 });
 
-test('mise setup limits environment resolution to explicitly installed tools', () => {
+/** @param {unknown} value @returns {Generator<Record<string, unknown>>} */
+function* yamlObjects(value) {
+	if (Array.isArray(value)) {
+		for (const item of value) yield* yamlObjects(item);
+	} else if (value !== null && typeof value === 'object') {
+		/** @type {Record<string, unknown>} */
+		const fields = Object.fromEntries(Object.entries(value));
+		yield fields;
+		for (const item of Object.values(fields)) yield* yamlObjects(item);
+	}
+}
+
+/** @param {unknown} value */
+function yamlMapping(value) {
+	assert.ok(value !== null && typeof value === 'object' && !Array.isArray(value));
+	/** @type {Record<string, unknown>} */
+	const fields = Object.fromEntries(Object.entries(value));
+	return fields;
+}
+
+test('Runner uses the cached npm installation', () => {
 	const directory = new URL('../workflows/', import.meta.url);
 	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
-		const lines = readFileSync(new URL(name, directory), 'utf8').split('\n');
-		for (const [index, line] of lines.entries()) {
-			if (!/uses: (?:&SetupMise )?(?:jdx\/mise-action@|\*SetupMise)/.test(line)) continue;
-			if (/with: \*NodeTools/.test(line)) {
-				assert.match(line, /env: \*NodeToolsEnv/, `${name} shared Node.js setup must retain its tool scope`);
-				continue;
+		const source = readFileSync(new URL(name, directory), 'utf8');
+		assert.doesNotMatch(source, /uses: kjanat\/runner@/, name);
+		const workflow = yamlMapping(YAML.parse(source));
+		for (const [jobName, value] of Object.entries(yamlMapping(workflow.jobs))) {
+			const job = yamlMapping(value);
+			const callsRunner = [...yamlObjects(job)].some(step =>
+				typeof step.run === 'string' && /(?:^|[;\n])\s*(?:run|runner)\s/.test(step.run)
+			);
+			if (!callsRunner) continue;
+			const selected = String(yamlMapping(job.env).MISE_ENABLE_TOOLS ?? '').split(',');
+			assert.ok(selected.includes('npm:runner-run'), `${name}:${jobName}`);
+			assert.ok(selected.includes('bun'), `${name}:${jobName} installs npm tools with Bun`);
+		}
+	}
+});
+
+test('Comment Cop caches Git objects and runs only trusted base-branch code', () => {
+	const workflow = yamlMapping(
+		YAML.parse(readFileSync(new URL('../workflows/comment-cop.yml', import.meta.url), 'utf8')),
+	);
+	const job = yamlMapping(yamlMapping(workflow.jobs)['comment-cop']);
+	const steps = [...yamlObjects(job.steps)];
+	const checkout = steps.find(step => typeof step.uses === 'string' && step.uses.startsWith('actions/checkout@'));
+	assert.ok(checkout);
+	assert.equal(yamlMapping(checkout.with).ref, '${{ github.event.pull_request.base.sha }}');
+	assert.equal(yamlMapping(checkout.with)['persist-credentials'], false);
+	const setup = steps.find(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@'));
+	assert.ok(setup);
+	assert.equal(yamlMapping(setup.with).cache_save_post, true);
+	assert.equal(yamlMapping(setup.with).install, false);
+	assert.equal(yamlMapping(job.concurrency)['cancel-in-progress'], true);
+	assert.equal(yamlMapping(workflow.permissions).contents, 'read');
+});
+
+test('mise locks the CI tool artifacts and Python dependencies', () => {
+	const root = new URL('../../', import.meta.url);
+	const config = yamlMapping(Bun.TOML.parse(readFileSync(new URL('.mise.toml', root), 'utf8')));
+	const lock = yamlMapping(Bun.TOML.parse(readFileSync(new URL('mise.lock', root), 'utf8')));
+	const platforms = ['linux-x64', 'linux-arm64', 'macos-x64', 'macos-arm64', 'windows-x64', 'windows-arm64'];
+	assert.deepEqual(yamlMapping(config.settings).lockfile_platforms, platforms);
+	const configuredTools = yamlMapping(config.tools);
+	const lockedTools = yamlMapping(lock.tools);
+	assert.deepEqual(yamlMapping(configuredTools.npm).depends, ['bun']);
+
+	/** @param {string} name */
+	function entry(name) {
+		const configured = configuredTools[name];
+		const request = typeof configured === 'string' ? configured : yamlMapping(configured).version;
+		assert.equal(typeof request, 'string', `${name} version request`);
+		const entries = lockedTools[name];
+		assert.ok(Array.isArray(entries), `${name} lock entries`);
+		const match = entries.map(yamlMapping).find(item =>
+			Array.isArray(item.specifiers) && item.specifiers.includes(request)
+		);
+		assert.ok(match, `${name} must lock its configured version request`);
+		assert.equal(typeof match.version, 'string', `${name} locked version`);
+		return match;
+	}
+
+	for (
+		const [names, targets] of [
+			[['bun', 'node', 'go', 'shellcheck'], platforms],
+			[['pandoc', 'tinygo', 'wasi-sdk', 'wasm-tools', 'wit-bindgen', 'uv', 'zizmor'], ['linux-x64']],
+		]
+	) {
+		for (const name of names) {
+			const locked = entry(name);
+			for (const platform of targets) {
+				const artifact = yamlMapping(locked[`platforms.${platform}`]);
+				assert.match(String(artifact.url), /^https:\/\//, `${name} ${platform} URL`);
+				assert.match(String(artifact.checksum), /^sha256:[0-9a-f]{64}$/, `${name} ${platform} checksum`);
 			}
-			const indentation = line.indexOf('uses:');
-			const body = [];
-			for (const following of lines.slice(index + 1)) {
-				if (following.trim() && following.search(/\S/) < indentation) break;
-				body.push(following);
+		}
+	}
+	for (const name of ['kprint', 'npm', 'npm:runner-run']) {
+		assert.match(String(entry(name).backend), /^npm:/, `${name} uses the npm backend`);
+	}
+	const uv = yamlMapping(entry('yamllint').uv);
+	assert.ok(typeof uv.path === 'string');
+	assert.ok(uv.path.startsWith('.mise/locks/yamllint/'));
+	for (const file of ['pyproject.toml', 'uv.lock']) {
+		assert.ok(existsSync(new URL(`${uv.path}/${file}`, root)), `${file} must exist alongside the yamllint lock`);
+	}
+});
+
+test('mise setup is pinned, cached, and used once per job', () => {
+	/** @type {Record<string, string>} */
+	const expected = {
+		'unit-tests': 'node,npm,bun,shellcheck',
+		race: 'node,npm,bun,shellcheck',
+		wasm: 'go,node,npm,bun,pandoc,npm:runner-run',
+		javascript: 'go,node,npm,bun,npm:runner-run',
+		'release-snapshot': 'node,npm,bun,pandoc,npm:runner-run',
+		lint: 'bun,shellcheck,tombi,npm:runner-run',
+		plugins: 'bun,tinygo,wasi-sdk,kprint,wasm-tools,wit-bindgen',
+		action: 'node,npm,bun,shellcheck,npm:runner-run',
+	};
+	/** @type {Record<string, string>} */
+	const otherJobs = {
+		'autofix.yml:autofix': 'kprint,node,npm,bun',
+		'ci-changes.yml:changes': 'bun',
+		'expression-probe-tests.yml:test': 'node,npm,bun,npm:runner-run',
+		'npm-release.yml:build': 'bun',
+		'upkeep.yml:go-toolchain': 'bun,npm:runner-run',
+		'package-previews.yml:publish': 'bun,uv,yamllint,zizmor,npm:runner-run',
+		'changelog-release.yml:publish': 'bun,npm:runner-run',
+		'pages.yml:build': 'go,node,npm,bun,pandoc,npm:runner-run',
+		'release-prepare.yml:prepare': 'node,npm,bun,shellcheck,pandoc,npm:runner-run',
+		'upkeep.yml:readme': 'node',
+	};
+	const directory = new URL('../workflows/', import.meta.url);
+	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
+		const workflow = yamlMapping(YAML.parse(readFileSync(new URL(name, directory), 'utf8')));
+		for (const [jobName, job] of Object.entries(yamlMapping(workflow.jobs))) {
+			const setups = [...yamlObjects(job)].filter(step =>
+				typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@')
+			);
+			assert.ok(setups.length <= 1, `${name}:${jobName} must use one setup`);
+			if ((name === 'ci.yml' && jobName in expected) || `${name}:${jobName}` in otherJobs) {
+				assert.equal(setups.length, 1, `${name}:${jobName} must set up mise`);
 			}
-			const step = body.join('\n');
-			const args = /install_args: ([^,}\n]+)/.exec(step)?.[1];
-			if (args) {
-				const enabled = /MISE_ENABLE_TOOLS: "([^"]+)"/.exec(step)?.[1];
-				assert.equal(enabled, args.trim().replaceAll(/\s+/g, ','), `${name} selected tool environment`);
-				assert.match(step, /add_shims_to_path: false/, `${name} must export concrete tool paths`);
-			} else {
-				assert.match(step, /install: false/, `${name} bootstrap must not install configured tools`);
-				assert.match(step, /env: false/, `${name} bootstrap must not resolve the project environment`);
-				assert.match(step, /add_shims_to_path: false/, `${name} bootstrap must not shadow installed tools`);
-				assert.match(
-					step,
-					/working_directory: ["']?\$\{\{ runner\.temp \}\}/,
-					`${name} bootstrap must not list project tools`,
-				);
+			for (const step of setups) {
+				assert.equal(step.uses, 'jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b');
+				const options = yamlMapping(step.with);
+				assert.equal(options.version, '2026.11.4', `${name}:${jobName}`);
+				assert.equal(options.mise_dir, '${{ github.workspace }}-mise', `${name}:${jobName}`);
+				assert.equal(options.cache, true);
+				assert.equal(options.auto_update, undefined);
+				const cacheKey = String(options.cache_key);
+				assert.ok(cacheKey.startsWith('{{default}}-${{ github.workflow }}-${{ github.job }}-'));
+				assert.ok(cacheKey.includes('hashFiles('));
+				assert.ok(cacheKey.includes("'.mise/locks/**'"), `${name}:${jobName} must hash the tool locks`);
+				assert.ok(!String(workflow.name).includes(','), `${name} cache key must not contain commas`);
+				assert.equal(yamlMapping(workflow.env).MISE_CACHE_DIR, '${{ github.workspace }}-mise/cache');
+				assert.equal(yamlMapping(workflow.env).MISE_LOCKED, '1');
+				assert.equal(yamlMapping(workflow.env).MISE_TASK_RUN_AUTO_INSTALL, 'false');
+				assert.equal(options.install_args, undefined, `${name}:${jobName} must use the locked tool selection`);
+				assert.equal(options.add_shims_to_path, false);
+				assert.equal(options.monorepo, false, `${name}:${jobName} installs its selected root tools`);
+				if (name === 'ci.yml' && ['unit-tests', 'action'].includes(jobName)) {
+					const environment = yamlMapping(step.env);
+					assert.equal(environment.TEMP, '${{ runner.temp }}');
+					assert.equal(environment.TMP, '${{ runner.temp }}');
+					const jobEnvironment = yamlMapping(yamlMapping(job).env);
+					assert.equal(jobEnvironment.TEMP, undefined);
+					assert.equal(jobEnvironment.TMP, undefined);
+				}
+				if (options.install === false) {
+					assert.equal(options.env, false);
+					assert.equal(options.working_directory, '${{ runner.temp }}');
+				} else {
+					const selected = yamlMapping(yamlMapping(job).env).MISE_ENABLE_TOOLS;
+					assert.ok(typeof selected === 'string' && selected, `${name}:${jobName} must select tools`);
+					if (
+						!(name === 'autofix.yml' && jobName === 'autofix') && step.env
+						&& 'MISE_ENABLE_TOOLS' in yamlMapping(step.env)
+					) {
+						assert.equal(yamlMapping(step.env).MISE_ENABLE_TOOLS, selected);
+					}
+					if (name === 'ci.yml' && jobName in expected) assert.equal(selected, expected[jobName], jobName);
+					const key = `${name}:${jobName}`;
+					if (key in otherJobs) assert.equal(selected, otherJobs[key], key);
+				}
 			}
 		}
 	}
 });
 
-test('preview and npm builds select the go.mod toolchain', () => {
+test('preview selects the Go toolchain and npm assembly uses Node and Bun', () => {
 	const preview = readFileSync(new URL('../workflows/annotation-preview.yml', import.meta.url), 'utf8');
 	assert.match(preview, /GOTOOLCHAIN: local/);
 	assert.match(preview, /with: \{ go-version-file: go.mod \}\n\s*#[^\n]*\n\s*env: \{ GOTOOLCHAIN: auto \}/);
 	const npm = readFileSync(new URL('../workflows/npm-release.yml', import.meta.url), 'utf8');
-	assert.match(npm, /with: \{ go-version-file: go.mod \}/);
-	assert.doesNotMatch(npm, /env\.GO|GO: "1\.27"/);
+	assert.doesNotMatch(npm, /uses: actions\/setup-go@/);
+	assert.match(npm, /node-version-file: \.node-version/);
+	assert.match(npm, /MISE_ENABLE_TOOLS: "bun"/);
+	assert.match(npm, /bun install --filter @kjanat\/actionlint-npm --frozen-lockfile --ignore-scripts/);
+});
+
+test('expensive CI jobs wait for selected checks while unselected checks can be skipped', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	const checks = yamlMapping(jobs.checks);
+	assert.deepEqual(checks.needs, ['lint', 'javascript', 'go-guest-modules', 'rust-native']);
+	assert.equal(checks.if, '${{ !cancelled() }}');
+	const steps = checks.steps;
+	assert.ok(Array.isArray(steps));
+	assert.equal(yamlMapping(steps[0]).run, 'test "${CHECKS_PASSED}" = true');
+	assert.equal(
+		yamlMapping(yamlMapping(steps[0]).env).CHECKS_PASSED,
+		"${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}",
+	);
+	for (const name of checks.needs) {
+		assert.deepEqual(yamlMapping(jobs[name]).needs, 'changes', `${name} must run before the matrix`);
+	}
+	for (const name of ['unit-tests', 'race', 'nix', 'wasm', 'release-snapshot', 'plugins', 'docker', 'action']) {
+		const job = yamlMapping(jobs[name]);
+		assert.deepEqual(job.needs, ['changes', 'checks'], name);
+		assert.ok(typeof job.if === 'string');
+		assert.ok(job.if.startsWith("${{ !cancelled() && needs.checks.result == 'success'"), name);
+	}
+	const unit = yamlMapping(jobs['unit-tests']);
+	assert.deepEqual(yamlMapping(yamlMapping(unit.strategy).matrix).os, [
+		'ubuntu-26.04',
+		'ubuntu-26.04-arm',
+		'macos-latest',
+		'macos-26-intel',
+		'windows-2025-vs2026',
+		'windows-11-vs2026-arm',
+	]);
+	assert.ok(typeof unit['runs-on'] === 'string' && unit['runs-on'].endsWith("|| 'ubuntu-slim' }}"));
+});
+
+test('native Rust tests run once before component builds, with separate writable build caches', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	const native = yamlMapping(jobs['rust-native']);
+	const component = yamlMapping(jobs.plugins);
+	assert.equal(
+		native.if,
+		"${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}",
+	);
+	/** @param {Record<string, unknown>} job */
+	const commands = (job) => {
+		assert.ok(Array.isArray(job.steps));
+		return job.steps.map(step => yamlMapping(step)).flatMap(step => typeof step.run === 'string' ? [step.run] : []);
+	};
+	const early = commands(native);
+	const late = commands(component);
+	assert.ok(early.includes('mise run plugins-check-native'));
+	assert.ok(
+		early.includes(
+			'cargo check --locked --all-targets --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml',
+		),
+	);
+	assert.ok(!late.includes('mise run plugins-check-native'));
+	for (
+		const command of [
+			'cargo package --locked -p actionlint-extension-api --all-features',
+			'cargo build --locked --manifest-path internal/development/tests/conformance/wasm/runner-host/Cargo.toml',
+			'mise run --force plugins',
+		]
+	) assert.ok(late.includes(command), command);
+	assert.ok(late.some(command => command.includes('go test -count=1 -v ./internal/plugins/execution/component')));
+	/** @param {Record<string, unknown>} job */
+	const cache = job => {
+		assert.ok(Array.isArray(job.steps));
+		const step = job.steps.map(step => yamlMapping(step)).find(step =>
+			typeof step.uses === 'string' && step.uses.startsWith('actions/cache@')
+		);
+		assert.ok(step);
+		return yamlMapping(step.with);
+	};
+	assert.equal(cache(native).path, cache(component).path);
+	assert.notEqual(cache(native).key, cache(component).key);
+	const fallback = cache(component)['restore-keys'];
+	assert.ok(typeof fallback === 'string' && fallback.includes('cargo-native-'));
+});
+
+test('workflow lint with all ShellCheck checks runs before the matrix with both tools installed', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	const lint = yamlMapping(jobs.lint);
+	assert.ok(Array.isArray(lint.steps));
+	const steps = lint.steps.map(step => yamlMapping(step));
+	const validation = steps.findIndex(step =>
+		step.run === "go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'"
+	);
+	assert.ok(validation > 0);
+	assert.ok(steps.slice(0, validation).some(step => step.run === 'uv tool install ruff==0.17.0'));
+	const setup = steps.slice(0, validation).flatMap(step =>
+		Array.isArray(step.parallel) ? step.parallel.map(item => yamlMapping(item)) : [step]
+	);
+	const lintTools = yamlMapping(lint.env).MISE_ENABLE_TOOLS;
+	assert.ok(typeof lintTools === 'string');
+	assert.ok(lintTools.split(',').includes('shellcheck'));
+	assert.ok(lintTools.split(',').includes('tombi'));
+	assert.ok(setup.some(step => step.run === 'run test:config-schema'));
+	assert.ok(setup.some(step => typeof step.uses === 'string' && step.uses.startsWith('jdx/mise-action@')));
+	const action = yamlMapping(jobs.action);
+	assert.ok(Array.isArray(action.steps));
+	assert.ok(
+		!action.steps.some(step =>
+			yamlMapping(step).run === "go run ./cmd/actionlint --tool shellcheck='shellcheck -o all'"
+		),
+	);
+});
+
+test('artifact consumers require a successful producer and stop on cancellation', () => {
+	const workflow = yamlMapping(YAML.parse(readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8')));
+	const jobs = yamlMapping(workflow.jobs);
+	/** @type {Array<[string, boolean, boolean]>} */
+	const cases = [
+		['success', false, true],
+		['failure', false, false],
+		['skipped', false, false],
+		['cancelled', false, false],
+		['success', true, false],
+	];
+	for (const name of ['action-slim', 'package-previews', 'docker-previews']) {
+		const job = yamlMapping(jobs[name]);
+		assert.ok(typeof job.needs === 'string');
+		assert.ok(typeof job.if === 'string', `${name} needs an explicit status condition`);
+		const expression = job.if.replace(/^\$\{\{\s*|\s*\}\}$/g, '');
+		for (const [result, cancelledRun, expected] of cases) {
+			const enabled = runInNewContext(expression, {
+				cancelled: () => cancelledRun,
+				success: () => false,
+				needs: { [job.needs]: { result } },
+				github: {
+					repository: 'kjanat/actionlint',
+					event_name: 'pull_request',
+					event: { pull_request: { head: { repo: { full_name: 'kjanat/actionlint' } } } },
+				},
+			}, { timeout: 100 });
+			assert.equal(enabled, expected, `${name}: producer=${result}, cancelled=${cancelledRun}`);
+		}
+	}
+});
+
+test('preview consumers share the successful CI snapshot and cannot trigger separate builds', () => {
+	const read = (/** @type {string} */ name) =>
+		yamlMapping(YAML.parse(readFileSync(new URL(`../workflows/${name}.yml`, import.meta.url), 'utf8')));
+	const ci = read('ci');
+	const jobs = yamlMapping(ci.jobs);
+	const producer = yamlMapping(jobs['release-snapshot']);
+	assert.ok(Array.isArray(producer.steps));
+	const steps = producer.steps.map(step => yamlMapping(step));
+	const upload = steps.find(step => typeof step.uses === 'string' && step.uses.startsWith('actions/upload-artifact@'));
+	assert.ok(upload);
+	const artifact = yamlMapping(upload.with);
+	assert.ok(typeof artifact.path === 'string' && artifact.path.includes('dist/metadata.json'));
+	assert.equal(steps.filter(step => typeof step.uses === 'string' && step.uses.startsWith('goreleaser/')).length, 1);
+	assert.deepEqual(yamlMapping(ci.on).push, { branches: ['master'] });
+	assert.deepEqual(ci.permissions, { contents: 'read' });
+	for (const name of ['package-previews', 'docker-previews']) {
+		const caller = yamlMapping(jobs[name]);
+		assert.equal(caller.needs, 'release-snapshot', `${name} must wait for the same producer`);
+		assert.equal(caller.uses, `$/.github/workflows/${name}.yml`);
+		const workflow = read(name);
+		assert.deepEqual(Object.keys(yamlMapping(workflow.on)), ['workflow_call']);
+		const publish = yamlMapping(yamlMapping(workflow.jobs).publish);
+		assert.ok(Array.isArray(publish.steps));
+		const consumer = publish.steps.map(step => yamlMapping(step));
+		const download = consumer.find(step =>
+			typeof step.uses === 'string' && step.uses.startsWith('actions/download-artifact@')
+		);
+		assert.ok(download);
+		assert.equal(yamlMapping(download.with).name, artifact.name);
+		assert.equal(yamlMapping(download.with)['run-id'], undefined, 'Consume only this run, including fork PRs');
+		assert.ok(!JSON.stringify(consumer).includes('goreleaser/'));
+		assert.ok(!JSON.stringify(consumer).includes('go build'));
+	}
+	const docker = yamlMapping(jobs['docker-previews']);
+	assert.ok(typeof docker.if === 'string');
+	assert.match(docker.if, /github.repository == 'kjanat\/actionlint'/);
+	assert.match(docker.if, /github.event.pull_request.head.repo.full_name == github.repository/);
+	for (
+		const [repository, eventName, headRepository, expected] of [
+			['kjanat/actionlint', 'pull_request', 'contributor/actionlint', false],
+			['kjanat/actionlint', 'pull_request', 'kjanat/actionlint', true],
+			['kjanat/actionlint', 'push', undefined, true],
+			['contributor/actionlint', 'push', undefined, false],
+		]
+	) {
+		// This condition uses only operators shared by JavaScript and GitHub expressions.
+		const enabled = runInNewContext(docker.if, {
+			cancelled: () => false,
+			needs: { 'release-snapshot': { result: 'success' } },
+			github: {
+				repository,
+				event_name: eventName,
+				event: { pull_request: { head: { repo: { full_name: headRepository } } } },
+			},
+		}, { timeout: 100 });
+		assert.equal(enabled, expected, `${repository} ${eventName} ${headRepository}`);
+	}
+	assert.deepEqual(docker.permissions, { contents: 'read', packages: 'write' });
+	assert.deepEqual(yamlMapping(jobs['package-previews']).permissions, { contents: 'read' });
+	assert.equal(yamlMapping(jobs['package-previews']).secrets, undefined);
 });

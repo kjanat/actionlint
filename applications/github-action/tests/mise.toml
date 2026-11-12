@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test published GitHub Action output checks"
+run         = 'node --test "*.test.mjs"'

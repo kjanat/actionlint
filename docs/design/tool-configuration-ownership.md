@@ -18,23 +18,20 @@ component exposed a failure that the host's example plugins did not exercise.
 ## Decision
 
 The configuration package validates the host wrapper and preserves engine options.
-The Ruff adapter projects flat compatibility settings into the engine's JSON
-configuration. The selected engine owns selectors, Python targets, preview
-behavior, option validation and defaults. Missing options remain missing.
+The selected engine owns selectors, Python targets, preview behavior, option
+validation and defaults.
 
-Native TOML encoding, process restrictions and provisioning policy belong to
-`internal/tools/ruff`. The WebAssembly route receives JSON without passing through
-those process restrictions. Both routes retain the shared script scheduling,
-source mapping and diagnostic pipeline. Native registrations expose a configured
-backend loader; `internal/tools/adapters` and `internal/localapp` bind its advertised
-routes to the native runner. The application consumes the resulting registrations.
-Native adapters do not import the generic script-engine implementation.
+Bundled manifests and jq transforms under `internal/plugins/manifests/bundled`
+define native commands and output conversion. `internal/checking/scripts/registry`
+constructs registrations from those declarations. `internal/plugins/execution/scripts`
+selects the execution route, and `internal/plugins/execution/process` runs the
+manifest's process protocol. Both native and WebAssembly routes use shared script
+scheduling, source mapping and diagnostic processing.
 
 The editor schema describes the wrapper without a release-specific Ruff catalog.
-Engine metadata supplies engine-specific schemas. Published schema snapshots
-remain available for existing consumers.
+Engine metadata supplies engine-specific schemas.
 
-Component plugins use the canonical [`crates/actionlint-extension-api/wit/analyzer.wit`](../../crates/actionlint-extension-api/wit/analyzer.wit) contract. A matching
+Component plugins use the canonical [`plugins/protocol/wit/analyzer.wit`](../../plugins/protocol/wit/analyzer.wit) contract. A matching
 interface name alone does not establish compatibility when record definitions
 have changed. Changes to that contract require coordinated guest builds and
 versioning before release. Missing fields must not be silently defaulted.

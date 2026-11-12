@@ -1,0 +1,8 @@
+on: push
+permissions: {}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Explain the command.
+      - run: echo hello

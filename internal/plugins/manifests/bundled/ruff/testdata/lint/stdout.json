@@ -1,0 +1,285 @@
+[
+  {
+    "cell": null,
+    "code": "E401",
+    "end_location": {
+      "column": 15,
+      "row": 1
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "import os\nimport sys",
+          "end_location": {
+            "column": 15,
+            "row": 1
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Split imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Multiple imports on one line",
+    "name": "multiple-imports-on-one-line",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/multiple-imports-on-one-line"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 10,
+      "row": 1
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 2
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 8,
+      "row": 1
+    },
+    "message": "`os` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 15,
+      "row": 1
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 2
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Remove unused import"
+    },
+    "location": {
+      "column": 12,
+      "row": 1
+    },
+    "message": "`sys` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "F401",
+    "end_location": {
+      "column": 12,
+      "row": 2
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "",
+          "end_location": {
+            "column": 1,
+            "row": 3
+          },
+          "location": {
+            "column": 1,
+            "row": 2
+          }
+        }
+      ],
+      "message": "Remove unused import: `json`"
+    },
+    "location": {
+      "column": 8,
+      "row": 2
+    },
+    "message": "`json` imported but unused",
+    "name": "unused-import",
+    "noqa_row": 2,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-import"
+  },
+  {
+    "cell": null,
+    "code": "E501",
+    "end_location": {
+      "column": 140,
+      "row": 4
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": null,
+    "location": {
+      "column": 89,
+      "row": 4
+    },
+    "message": "Line too long (139 > 88)",
+    "name": "line-too-long",
+    "noqa_row": 4,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+  },
+  {
+    "cell": null,
+    "code": "UP031",
+    "end_location": {
+      "column": 32,
+      "row": 5
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "\"{}\".format(payload[\"name\"])",
+          "end_location": {
+            "column": 32,
+            "row": 5
+          },
+          "location": {
+            "column": 7,
+            "row": 5
+          }
+        }
+      ],
+      "message": "Replace with format specifiers"
+    },
+    "location": {
+      "column": 7,
+      "row": 5
+    },
+    "message": "Use format specifiers instead of percent format",
+    "name": "printf-string-formatting",
+    "noqa_row": 5,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/printf-string-formatting"
+  },
+  {
+    "cell": null,
+    "code": "E711",
+    "end_location": {
+      "column": 19,
+      "row": 6
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "payload is None",
+          "end_location": {
+            "column": 19,
+            "row": 6
+          },
+          "location": {
+            "column": 4,
+            "row": 6
+          }
+        }
+      ],
+      "message": "Replace with `cond is None`"
+    },
+    "location": {
+      "column": 15,
+      "row": 6
+    },
+    "message": "Comparison to `None` should be `cond is None`",
+    "name": "none-comparison",
+    "noqa_row": 6,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/none-comparison"
+  },
+  {
+    "cell": null,
+    "code": "F821",
+    "end_location": {
+      "column": 25,
+      "row": 7
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": null,
+    "location": {
+      "column": 11,
+      "row": 7
+    },
+    "message": "Undefined name `undefined_name`",
+    "name": "undefined-name",
+    "noqa_row": 7,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/undefined-name"
+  },
+  {
+    "cell": null,
+    "code": "B007",
+    "end_location": {
+      "column": 6,
+      "row": 8
+    },
+    "filename": "C:\\Users\\kjanat\\AppData\\Local\\Temp\\provider-capture\\actionlint.py",
+    "fix": {
+      "applicability": "unsafe",
+      "edits": [
+        {
+          "content": "_i",
+          "end_location": {
+            "column": 6,
+            "row": 8
+          },
+          "location": {
+            "column": 5,
+            "row": 8
+          }
+        }
+      ],
+      "message": "Rename unused `i` to `_i`"
+    },
+    "location": {
+      "column": 5,
+      "row": 8
+    },
+    "message": "Loop control variable `i` not used within loop body",
+    "name": "unused-loop-control-variable",
+    "noqa_row": 8,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unused-loop-control-variable"
+  }
+]

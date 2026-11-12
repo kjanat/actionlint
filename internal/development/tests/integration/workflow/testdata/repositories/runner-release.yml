@@ -1,0 +1,316 @@
+# source: https://github.com/kjanat/runner/blob/b32ea932a1813ae0be44e755c16df9f9f5ca86a4/.github/workflows/release.yml
+# covers: case(), job-output matrices, parallel groups, same-repository reusable workflows
+# Tag-push (v*) pipeline. Scripts: .github/scripts/<workflow>.sh <subcommand>.
+#
+#   verify (also PRs/master) ── one `runner install` chain: fmt, lint, test
+#     ├─ create-release ─────── draft GH release + notes
+#     │    ├─ man ───────────── release assets + attestation + artifact `man-pages`
+#     │    └─ upload-assets ─── per-target build matrix (needs: matrix);
+#     │                         release.sh package-asset|verify-asset → attest
+#     └─ matrix ─────────────── build matrix from packaging/npm/targets.json
+#   build-dist (needs: upload-assets, man)
+#     └─ release.sh download-archives → verify-checksums → build-npm-packages;
+#        smoke; artifact `dist` (tarred: keeps exec bits)
+#   publish-release (needs: build-dist) ── draft → published
+#     ├─ call-npm-release ──→ npm-release.yml: setup (npm.sh smoke|derive)
+#     │                        → per-package publish matrix → facade (npm.sh publish)
+#     ├─ call-aur-release ──→ aur-release.yml: aur.sh prepare → AUR push
+#     ├─ call-docker-release → docker-release.yml: docker.sh prepare|build|verify
+#     │                        → Docker Hub + GHCR multi-arch manifest
+#     └─ call-crates-release → crates-release.yml: `man-pages` artifact → cargo publish
+---
+name: release
+run-name: "${{ case(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'), format('release {0}', github.ref_name), github.event_name == 'pull_request', format('verify PR #{0}', github.event.pull_request.number), format('verify {0}', github.ref_name)) }}"
+on: { pull_request: null, push: { branches: [master], tags: [v*] } }
+permissions: { contents: read }
+env: { CARGO_TERM_COLOR: always }
+defaults: { run: { shell: "bash -euo pipefail {0}" } }
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MISE: '{"tools": {"node": "lts", "bun": "latest", "deno": "latest", "go": "latest", "poetry": "latest", "pipenv": "latest", "task": "latest", "pnpm": "latest", "yarn": "latest", "npm:turbo": "latest", "npm:nx": "latest"}}'
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { save-if: "${{ github.event_name != 'pull_request' }}" }
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+          key: fmt-tools-${{ runner.os }}-${{ hashFiles('.dprint.jsonc', 'rustfmt.toml', 'rust-toolchain.toml', '.cargo/config.toml') }}
+          restore-keys: fmt-tools-${{ runner.os }}-
+      - uses: taiki-e/install-action@v2
+        with: { tool: "just,uv,bacon,tombi,shellcheck,cargo-hack" }
+      - uses: $/.github/actions/setup-dprint
+      - run: |
+          mise_toml="$(yq -o toml -p json      <<<"${MISE}")"
+          mise_toml="$(dprint fmt --stdin toml <<<"${mise_toml}")"
+          printf 'MISE_TOML<<TOML\n%s\nTOML\n' "${mise_toml}" | tee -a "${GITHUB_ENV}"
+      - uses: jdx/mise-action@v5
+        with: { mise_toml: "${{ env.MISE_TOML }}" }
+      - uses: $/
+      - run: runner --pm bun install --frozen -sk fmt:check just:lint-sh cargo:lint just:lint-targets just:lint-features cargo:t typecheck test:facade
+
+  create-release:
+    name: create draft release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+
+      - name: create github release
+        uses: taiki-e/create-gh-release-action@v1
+        with: { token: "${{ github.token }}", changelog: CHANGELOG.md, draft: true, branch: master }
+
+      - name: append GitHub auto-generated notes
+        # release:published never fires for token-created releases, so we
+        # assemble the final body here.
+        env: { GH_TOKEN: "${{ github.token }}", RELEASE_TAG: "${{ github.ref_name }}" }
+        run: |
+          our_body="$(gh release view "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" --json body --jq .body)"
+          gen_body="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="${RELEASE_TAG}" --jq .body)"
+          combined="$(mktemp)"
+          printf '%s\n\n%s\n' "${our_body}" "${gen_body}" >"${combined}"
+          gh release edit "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" --notes-file "${combined}"
+          rm -f "${combined}"
+
+  man:
+    name: man pages
+    needs: [verify, create-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: write, id-token: write, attestations: write }
+    env: { GH_TOKEN: "${{ github.token }}", RELEASE_TAG: "${{ github.ref_name }}" }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo man --output packaging/man
+      - name: archive and upload to release
+        run: |
+          archive="runner-${RELEASE_TAG}-man.tar.gz"
+          tar -C packaging/man -czf "${archive}" .
+          sha256sum "${archive}" >"runner-${RELEASE_TAG}-man.sha256"
+          gh release upload "${RELEASE_TAG}" "${archive}" "runner-${RELEASE_TAG}-man.sha256" --clobber
+      - name: attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with: { subject-path: "runner-${{ env.RELEASE_TAG }}-man.tar.gz" }
+      - uses: actions/upload-artifact@v7
+        with: { name: man-pages, path: packaging/man/, if-no-files-found: error, retention-days: 14 }
+
+  matrix:
+    name: build matrix
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: read }
+    outputs: { include: "${{ steps.gen.outputs.include }}" }
+    steps:
+      - uses: actions/checkout@v7
+        with: { sparse-checkout: packaging/npm/targets.json, sparse-checkout-cone-mode: false, persist-credentials: false }
+
+      - id: gen
+        # `target: .rust` is mandatory; taiki-e and build-packages.ts both derive the asset filename `runner-<tag>-<rust>.tar.gz` from it.
+        # `vm`-typed targets need a dedicated job; filtered out here.
+        run: |
+          include=$(jq -c '[.targets[] | select(.build != "vm") | {
+            target: .rust,
+            runner: .runner,
+            "build-tool": .build,
+            experimental: (.experimental // false)
+          }]' packaging/npm/targets.json)
+          echo "include=${include}" >> "${GITHUB_OUTPUT}"
+
+  upload-assets:
+    name: build+upload ${{ matrix.target }}
+    needs: [matrix, create-release]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions: { contents: write, id-token: write, attestations: write }
+    strategy: { fail-fast: false, matrix: { include: "${{ fromJSON(needs.matrix.outputs.include) }}" } }
+    continue-on-error: ${{ matrix.experimental }}
+    env: { RELEASE_TAG: "${{ github.ref_name }}" }
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+
+      # Toolchain MUST land before setup-cross-toolchain-action (it calls rustup against whatever's active).
+      # Tier-3 floats on nightly because `experimental: true` + `continue-on-error` absorbs regressions.
+      - name: install stable rust
+        if: matrix.build-tool == 'cargo-cross-toolchain'
+        uses: dtolnay/rust-toolchain@stable
+        with: { targets: "${{ matrix.target }}" }
+
+      - name: install nightly rust (tier-3 build-std)
+        if: matrix.build-tool == 'cargo-build-std'
+        uses: dtolnay/rust-toolchain@nightly
+        with: { components: rust-src }
+
+      # Tier-2 BSD + tier-3: installs the cross C toolchain and exports CARGO_TARGET_*_LINKER so host cargo can link the target.
+      - name: setup cross toolchain
+        if: contains(fromJSON('["cargo-cross-toolchain", "cargo-build-std"]'), matrix.build-tool)
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with: { target: "${{ matrix.target }}" }
+
+      - name: build and upload binaries (taiki-e)
+        if: contains(fromJSON('["cargo", "cross", "cargo-cross-toolchain"]'), matrix.build-tool)
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          token: ${{ github.token }}
+          bin: runner,run
+          target: ${{ matrix.target }}
+          # Our `cargo-cross-toolchain` is host cargo with a pre-set linker.
+          build-tool: ${{ case(matrix.build-tool == 'cargo-cross-toolchain', 'cargo', matrix.build-tool) }}
+          archive: runner-$tag-$target
+          tar: all
+          zip: none
+          checksum: sha256
+          include: README.md,LICENSE
+          locked: true
+
+      # Android's linker only executes ET_DYN with /system/bin/linker64 as interpreter;
+      # guard the artifact against regressing into something Termux can't run.
+      - name: assert Android binaries are bionic-loadable
+        if: matrix.target == 'aarch64-linux-android'
+        env: { BIN_DIR: target/aarch64-linux-android/release }
+        run: |
+          for bin in runner run; do
+            path="${BIN_DIR}/${bin}"
+            test -x "${path}"
+            type="$(readelf -hW "${path}" | awk '$1 == "Type:" { print $2; exit }')"
+            test "${type}" = DYN || { echo "::error file=${path}::expected ELF ET_DYN, got ${type:-unknown}"; exit 1; }
+            readelf -lW "${path}" |
+              grep -Fq '[Requesting program interpreter: /system/bin/linker64]' || {
+                echo "::error file=${path}::missing Android /system/bin/linker64 interpreter"
+                exit 1
+              }
+          done
+
+      # Tier-3: build/archive/upload manually since upload-rust-binary-action can't inject `-Z build-std`.
+      - name: build (cargo + -Z build-std)
+        if: matrix.build-tool == 'cargo-build-std'
+        env: { TARGET: "${{ matrix.target }}" }
+        run: cargo +nightly build-std --target "${TARGET}"
+
+      - name: package and upload (cargo-build-std)
+        if: matrix.build-tool == 'cargo-build-std'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ matrix.target }}
+          BIN_DIR: ${{ github.workspace }}/target/${{ matrix.target }}/release
+        run: bash .github/scripts/release.sh package-asset
+
+      # A leg can report success while uploading nothing (observed: taiki-e action no-ops on windows-11-arm).
+      # Fail loudly here so the empty leg goes red at the source instead of ENOENT-ing later in build-dist.
+      - name: verify asset uploaded
+        env: { GH_TOKEN: "${{ github.token }}", TARGET: "${{ matrix.target }}" }
+        run: bash .github/scripts/release.sh verify-asset
+
+      - name: attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with: { subject-path: "runner-${{ env.RELEASE_TAG }}-${{ matrix.target }}.tar.gz" }
+
+  build-dist:
+    name: build dist
+    needs: [upload-assets, man]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: write } # contents: write, drafts are invisible to read-only tokens.
+    env: { RELEASE_TAG: "${{ github.ref_name }}" }
+    steps:
+      - parallel:
+          - uses: actions/checkout@v7
+            with: { persist-credentials: false }
+          - uses: actions/setup-node@v7
+            with: { node-version: latest }
+      - parallel:
+          - name: download release archives
+            env: { GH_TOKEN: "${{ github.token }}" }
+            run: bash .github/scripts/release.sh download-archives
+          - name: download man pages
+            uses: actions/download-artifact@v8
+            with: { name: man-pages, path: packaging/man }
+
+      - name: verify checksums
+        run: bash .github/scripts/release.sh verify-checksums
+
+      - name: build npm packages
+        run: bash .github/scripts/release.sh build-npm-packages
+
+      - name: add bin dir to path
+        run: echo "${GITHUB_WORKSPACE}/packaging/npm/dist/linux-x64-gnu/bin" >> "${GITHUB_PATH}"
+
+      # Only target executable on ubuntu-latest; others exercised at install.
+      - name: smoke-test packaged linux-x64-gnu binary
+        shell: pwsh
+        run: "& (gcm runner -CommandType Application).Path --version"
+
+      - name: tar dist (preserve file modes)
+        run: tar -cf packaging/npm/dist.tar -C packaging/npm dist
+
+      - name: upload packaging/npm/dist artifact
+        uses: actions/upload-artifact@v7
+        with: { name: dist, path: packaging/npm/dist.tar, retention-days: 14, if-no-files-found: error }
+
+  # Flip draft→published once binaries + dist are in place.
+  publish-release:
+    name: publish github release
+    needs: [build-dist]
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: write }
+    env: { GH_TOKEN: "${{ github.token }}", RELEASE_TAG: "${{ github.ref_name }}" }
+    steps: [run: 'gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --draft=false']
+
+  call-npm-release:
+    name: npm publish
+    needs: [publish-release]
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: read, id-token: write, actions: read, attestations: write }
+    uses: $/.github/workflows/npm-release.yml
+    with: { tag: "${{ github.ref_name }}", run-id: "${{ github.run_id }}" }
+
+  call-aur-release:
+    name: aur publish
+    needs: [publish-release]
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.AUR_BLOCKED == 'false'
+    permissions: { contents: read }
+    uses: $/.github/workflows/aur-release.yml
+    secrets: inherit
+    with: { tag: "${{ github.ref_name }}" }
+
+  call-docker-release:
+    name: docker publish
+    needs: [publish-release]
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: read, packages: write, actions: read, id-token: write, attestations: write }
+    uses: $/.github/workflows/docker-release.yml
+    secrets: inherit
+    with: { tag: "${{ github.ref_name }}", run-id: "${{ github.run_id }}" }
+
+  call-crates-release:
+    name: crates publish
+    needs: [publish-release]
+    if: github.repository == 'kjanat/runner' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions: { contents: read, id-token: write, actions: read }
+    uses: $/.github/workflows/crates-release.yml
+    with: { tag: "${{ github.ref_name }}", run-id: "${{ github.run_id }}" }

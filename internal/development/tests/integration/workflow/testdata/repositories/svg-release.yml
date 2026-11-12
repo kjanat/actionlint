@@ -1,0 +1,220 @@
+# source: https://github.com/kjanat/svg/blob/26c7414e2f02f854dab4102fba4c930936d2c18c/.github/workflows/release.yml
+# covers: dynamic matrix include, conditional build paths, reusable workflow inputs and inherited secrets
+# Tag-push (v*) pipeline. Multi-step logic lives in .github/actions/*.
+#
+#   verify ────────────────── cargo clippy + cargo test
+#     ├─ create-release ───── draft GH release + notes
+#     │    └─ build-and-upload ─ per-target build matrix (needs: matrix);
+#     │                          actions/package-asset|verify-asset
+#     └─ matrix ───────────── actions/release-matrix from distribution/npm/targets.json
+#   build-dist (needs: build-and-upload)
+#     └─ actions/download-archives → build-packages.ts;
+#        artifact `dist` (tarred: keeps exec bits)
+#   runtime-smoke (needs: build-dist) ── required native/Alpine artifact checks
+#   publish-release (needs: runtime-smoke) ── draft → published
+#     └─ call-npm-release ──→ npm-release.yml: setup → runtime-smoke
+#                              → per-package publish matrix → facades (actions/npm-publish)
+---
+name: release
+run-name: "release ${{ github.ref_name }}"
+on: { push: { tags: [v*] } }
+# Serialize runs per tag without cancelling an active publish mid-flight.
+concurrency: { group: "release-${{ github.ref }}", cancel-in-progress: false }
+permissions: { contents: read }
+env: { CARGO_TERM_COLOR: always }
+
+jobs:
+  version-check:
+    name: versions
+    permissions: { contents: read }
+    uses: $/.github/workflows/version-check.yml
+
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with: { persist-credentials: false }
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2
+        with: { tool: rust+clippy }
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - run: cargo clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings
+      - run: cargo test --workspace
+
+  create-release:
+    name: create draft release
+    needs: [verify, version-check]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with: { persist-credentials: false }
+
+      - name: create github release
+        uses: taiki-e/create-gh-release-action@eba8ea96c86cca8a37f1b56e94b4d13301fba651 # v1
+        # allow-missing-changelog: prerelease tags (v0.1.0-rc.1) have no
+        # changelog section; the auto-generated notes are appended regardless.
+        with: { token: "${{ github.token }}", changelog: CHANGELOG.md, draft: true, branch: master, allow-missing-changelog: true }
+
+      - name: append GitHub auto-generated notes
+        uses: $/.github/actions/append-release-notes
+        with: { tag: "${{ github.ref_name }}", token: "${{ github.token }}" }
+
+  matrix:
+    name: build matrix
+    needs: [verify, version-check]
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    outputs: { include: "${{ steps.gen.outputs.include }}" }
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          sparse-checkout: ".github/actions\ndistribution/npm/targets.json"
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - id: gen
+        uses: $/.github/actions/release-matrix
+
+  build-and-upload:
+    name: ${{ matrix.target }}
+    needs: [matrix, create-release]
+    runs-on: ${{ matrix.runner }}
+    # Tier-3 build-std legs compile core+std from source.
+    timeout-minutes: 60
+    permissions: { contents: write }
+    strategy: { fail-fast: false, matrix: { include: "${{ fromJSON(needs.matrix.outputs.include) }}" } }
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      # KAJ-274: windows-11-arm runners intermittently fail crate fetches with
+      # HTTP/2 stream errors; forcing HTTP/1.1 there is the standard workaround.
+      CARGO_HTTP_MULTIPLEXING: ${{ matrix.runner == 'windows-11-arm' && 'false' || 'true' }}
+      CARGO_NET_RETRY: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with: { persist-credentials: false }
+
+      - name: install stable rust
+        if: matrix.build-tool == 'cargo-cross-toolchain'
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with: { toolchain: stable, targets: "${{ matrix.target }}" }
+
+      - name: install nightly rust (tier-3 build-std)
+        if: matrix.build-tool == 'cargo-build-std'
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # nightly
+        with: { toolchain: nightly, components: rust-src }
+
+      # Tier-2/3 cross targets: installs the cross C toolchain and exports
+      # CARGO_TARGET_*_LINKER so host cargo can link the target.
+      - name: setup cross toolchain
+        if: contains(fromJSON('["cargo-cross-toolchain", "cargo-build-std"]'), matrix.build-tool)
+        uses: taiki-e/setup-cross-toolchain-action@3d9770ce98eb7dbcf378563182a5e8031165f75b # v1
+        with: { target: "${{ matrix.target }}" }
+
+      - name: build and upload binaries (taiki-e)
+        if: contains(fromJSON('["cargo", "cross", "cargo-cross-toolchain"]'), matrix.build-tool)
+        uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1
+        with:
+          token: ${{ github.token }}
+          bin: svg-language-server,svg-lint,svg-format
+          target: ${{ matrix.target }}
+          build-tool: ${{ matrix.build-tool == 'cargo-cross-toolchain' && 'cargo' || matrix.build-tool }}
+          archive: svg-$tag-$target
+          tar: all
+          zip: none
+          checksum: sha256
+          include: README.md,LICENSE
+          locked: true
+
+      # Tier-3: build/archive/upload manually since upload-rust-binary-action
+      # can't inject `-Z build-std`.
+      - name: build (cargo + -Z build-std)
+        if: matrix.build-tool == 'cargo-build-std'
+        env: { TARGET: "${{ matrix.target }}" }
+        run: cargo +nightly build --release --locked -Z build-std --target "${TARGET}" --bin svg-language-server --bin svg-lint --bin svg-format
+
+      - name: package and upload (cargo-build-std)
+        if: matrix.build-tool == 'cargo-build-std'
+        uses: $/.github/actions/package-asset
+        with:
+          tag: ${{ github.ref_name }}
+          target: ${{ matrix.target }}
+          bin-dir: ${{ github.workspace }}/target/${{ matrix.target }}/release
+          token: ${{ github.token }}
+
+      - name: verify asset uploaded
+        uses: $/.github/actions/verify-asset
+        with:
+          tag: ${{ github.ref_name }}
+          target: ${{ matrix.target }}
+          token: ${{ github.token }}
+
+  build-dist:
+    name: build dist
+    needs: build-and-upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: write }
+    env: { RELEASE_TAG: "${{ github.ref_name }}" }
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with: { persist-credentials: false }
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with: { node-version: latest }
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      # Packaging uses JavaScript dependencies; grammar addon builds are unrelated.
+      - run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: download and verify release archives
+        uses: $/.github/actions/download-archives
+        with: { tag: "${{ github.ref_name }}", token: "${{ github.token }}" }
+
+      - name: build npm packages
+        run: node distribution/npm/scripts/build-packages.ts --version "${RELEASE_TAG#v}"
+
+      - name: report archive and package evidence
+        run: node .github/actions/npm-smoke/runtime.mjs inventory
+
+      - name: tar dist (preserve file modes)
+        run: tar -cf distribution/npm/dist.tar -C distribution/npm dist downloads
+
+      - name: upload dist artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with: { name: dist, path: distribution/npm/dist.tar, retention-days: 14, if-no-files-found: error }
+
+  runtime-smoke:
+    name: validate distributed runtimes
+    needs: build-dist
+    permissions: { contents: read, actions: read }
+    uses: $/.github/workflows/runtime-smoke.yml
+    with:
+      tag: ${{ github.ref_name }}
+      run-id: ${{ github.run_id }}
+      report-prefix: release-runtime
+
+  publish-release:
+    name: publish github release
+    needs: [build-dist, runtime-smoke]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    env: { GH_TOKEN: "${{ github.token }}", RELEASE_TAG: "${{ github.ref_name }}" }
+    steps: [run: 'gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --draft=false']
+
+  call-npm-release:
+    name: npm publish
+    needs: [publish-release]
+    permissions: { contents: read, id-token: write, actions: read }
+    uses: $/.github/workflows/npm-release.yml
+    with: { tag: "${{ github.ref_name }}", run-id: "${{ github.run_id }}" }
+    secrets: inherit
+
+  call-crates-release:
+    name: crates publish
+    needs: [publish-release]
+    permissions: { contents: read, id-token: write }
+    uses: $/.github/workflows/crates-release.yml
+    with: { tag: "${{ github.ref_name }}" }
+    secrets: inherit

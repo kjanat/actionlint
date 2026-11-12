@@ -1,0 +1,100 @@
+package composites
+
+import (
+	"slices"
+	"testing"
+
+	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+)
+
+func TestPreparedScriptsRetainIndependentShells(t *testing.T) {
+	source := `on: push
+defaults: {run: {shell: python}}
+jobs:
+  first:
+    runs-on: ubuntu-latest
+    defaults: {run: {shell: bash}}
+    steps:
+      - run: echo first
+      - run: print('explicit')
+        shell: python3
+  second:
+    runs-on: ubuntu-latest
+    steps:
+      - run: print('inherited')
+`
+	content := []byte(source)
+	document := parsing.Workflow(content)
+	if len(document.SyntaxErrors) != 0 {
+		t.Fatal(document.SyntaxErrors)
+	}
+	registry, snapshot := registeredWorkflowSnapshot(t, content, document)
+	workflow := workflowView(t, snapshot)
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: workspaceactions.NewResolver(nil, nil)}
+	startWorkflowEntry(t, collector, registry, snapshot)
+	if err := collector.beginWorkflow(workflow); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"first", "second"} {
+		job := workflowJob(t, workflow, id)
+		if err := collector.beginJob(job); err != nil {
+			t.Fatal(err)
+		}
+		for step := range job.Steps() {
+			if err := collector.collectScript(step, nil, collector.jobScriptShell, collector.workflowScriptShell); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	batch := prepareCollectedScripts(t, collector)
+	var shells []string
+	for _, script := range batch.Scripts() {
+		if script.Shell != nil {
+			shells = append(shells, *script.Shell)
+		} else {
+			shells = append(shells, "")
+		}
+	}
+	if !slices.Equal(shells, []string{"bash", "python3", "python"}) {
+		t.Fatal(shells)
+	}
+	// Composite declarations receive explicit shells from the indexed AST.
+	meta, err := actionmeta.Parse("action.yml", []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo composite\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, _, snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	actionSnapshot, err := snapshots.Action("action.yml", meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflowGraph, err := invocation.NewBuilder(invocation.EntryAction, actionSnapshot.Reference(), invocation.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	deployment, err := scriptexecution.NewDeployment(registry, actionSnapshot, snapshots.Path(meta.Path()), meta.Path(), meta.SourceMapped)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actionCollector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: registry, invocations: workflowGraph}, sourceSnapshot: actionSnapshot, context: workflowGraph.RootContext()}
+	paths := execution.Paths{}
+	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
+	actionCollector.scriptScope = &scriptexecution.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}
+	actionCollector.scriptScopes = []*scriptexecution.Scope{actionCollector.scriptScope}
+	actionSteps := actionStepViews(t, actionSnapshot)
+	if len(actionSteps) != 1 {
+		t.Fatal("composite declarations unavailable")
+	}
+	if err := actionCollector.collectScript(actionSteps[0], nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	actionBatch := prepareCollectedScripts(t, actionCollector)
+	if got := actionBatch.Scripts()[0].Shell; got == nil || *got != "bash" {
+		t.Fatalf("composite explicit shell was not bound: %v", got)
+	}
+}

@@ -1,0 +1,6 @@
+[lint]
+[lint.rules]
+[lint.rules.security]
+[lint.rules.security.unpinned-reference]
+level = 'on'
+options = true

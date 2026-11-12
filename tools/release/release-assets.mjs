@@ -291,7 +291,7 @@ export async function publishWinget(directory, version, env = process.env, reque
 		}
 		// Keep the attempt tag permanently, including after timeouts, closed PRs and branch deletion.
 		await github(request, token, `${wingetFork}/git/refs`, { ref: `refs/${attempt}`, sha }, 'POST');
-		// An uncertain creation or withdrawal retains the global lock for maintainer inspection.
+		// An ambiguous PR response requires maintainer inspection before unlocking.
 		releaseLock = false;
 		const pull = await github(request, token, `${wingetRepository}/pulls`, {
 			title: `New version: kjanat.actionlint ${version}`,
@@ -337,7 +337,7 @@ export async function publishWinget(directory, version, env = process.env, reque
 			: new Error(
 				`${
 					String(error)
-				}; the shared submission lock has been retained because the PR state is uncertain. Inspect WinGet before removing it.`,
+				}; the shared submission lock remains held because the PR state is uncertain. Inspect WinGet before removing it.`,
 			);
 	} finally {
 		if (releaseLock) {

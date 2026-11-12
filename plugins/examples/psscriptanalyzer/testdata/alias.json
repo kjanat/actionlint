@@ -1,0 +1,53 @@
+[
+  {
+    "RuleName": "PSAvoidUsingCmdletAliases",
+    "Message": "'gci' is an alias of 'Get-ChildItem'. Alias can introduce possible problems and make scripts hard to maintain. Please consider changing alias to its full content.",
+    "Severity": 1,
+    "Extent": {
+      "File": null,
+      "StartScriptPosition": {
+        "File": null,
+        "LineNumber": 1,
+        "ColumnNumber": 20,
+        "Line": "Write-Output '😀'; gci .",
+        "Offset": 19
+      },
+      "EndScriptPosition": {
+        "File": null,
+        "LineNumber": 1,
+        "ColumnNumber": 23,
+        "Line": "Write-Output '😀'; gci .",
+        "Offset": 22
+      },
+      "StartLineNumber": 1,
+      "StartColumnNumber": 20,
+      "EndLineNumber": 1,
+      "EndColumnNumber": 23,
+      "Text": "gci",
+      "StartOffset": 19,
+      "EndOffset": 22
+    },
+    "SuggestedCorrections": [
+      {
+        "File": null,
+        "Description": "Replace gci with Get-ChildItem",
+        "StartLineNumber": 1,
+        "StartColumnNumber": 20,
+        "EndLineNumber": 1,
+        "EndColumnNumber": 23,
+        "Text": "Get-ChildItem",
+        "Lines": [
+          "Get-ChildItem"
+        ],
+        "Start": {
+          "Line": 1,
+          "Column": 20
+        },
+        "End": {
+          "Line": 1,
+          "Column": 23
+        }
+      }
+    ]
+  }
+]

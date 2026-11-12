@@ -1,0 +1,11 @@
+[repository]
+runners=["second"]
+secrets=["TWO"]
+[repository.variables]
+SECOND="2"
+[repository.environments.prod]
+secrets=["SECOND"]
+[repository.environments.prod.variables]
+REGION="east"
+[local-actions]
+"$/dist"="./second"

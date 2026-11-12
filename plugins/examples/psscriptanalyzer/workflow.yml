@@ -1,0 +1,14 @@
+# Example input: both steps should report PSAvoidUsingCmdletAliases.
+on: push
+jobs:
+  powershell:
+    runs-on: windows-latest
+    steps:
+      - name: PowerShell Core
+        shell: pwsh
+        run: |
+          Write-Output '😀'; gci .
+      - name: Windows PowerShell
+        shell: powershell
+        run: |
+          gci .

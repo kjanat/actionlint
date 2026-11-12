@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/render"
+	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"golang.org/x/sys/execabs"
 )
@@ -23,7 +23,7 @@ type prettyJSONOutput struct {
 	explicit bool
 }
 
-func (out *prettyJSONOutput) writeJSON(value any) error {
+func (out *prettyJSONOutput) WriteJSON(value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err

@@ -1,0 +1,4 @@
+[tools.ruff.backend.process]
+executable = 'ruff'
+args = ['check']
+env = { MODE = 'strict' }

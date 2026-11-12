@@ -1,0 +1,11 @@
+#:tombi toml-version = "v1.1.0"
+[repository]
+runners=["ubuntu-*", "self-hosted"]
+secrets=["TOKEN"]
+default-workflow-permissions="read"
+[repository.variables]
+FOO="bar"
+[repository.environments.prod.variables]
+FOO="x"
+[repository.environments.prod]
+secrets=["DEPLOY"]

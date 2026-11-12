@@ -1,0 +1,28 @@
+# source: https://github.com/octokit/request-action/blob/3d6703deef41a82916a2e5ca87096f93035cef66/action.yml
+# uses: octokit/request-action@v3.x
+# repository-id: 213507602
+# ref: refs/heads/v3.x
+---
+name: GitHub API Request
+description: "Send arbitrary requests to GitHub's REST API"
+branding:
+  icon: "box"
+  color: gray-dark
+inputs:
+  route:
+    description: "HTTP Verb + path as shown on https://developer.github.com/v3/"
+    required: true
+  mediaType:
+    description: "Custom media type in the Accept header"
+    required: false
+    default: "{}"
+outputs:
+  status:
+    description: "Response status code."
+  headers:
+    description: "Response headers as JSON string with lower cased header names."
+  data:
+    description: "Response body as string."
+runs:
+  using: "node24"
+  main: "dist/index.js"

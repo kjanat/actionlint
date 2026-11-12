@@ -1,0 +1,6 @@
+#:tombi toml-version = "v1.1.0"
+config-variables=["FOO"]
+config-secrets=["TOKEN"]
+assume-default-permissions="permissive"
+[self-hosted-runner]
+labels=["gpu"]

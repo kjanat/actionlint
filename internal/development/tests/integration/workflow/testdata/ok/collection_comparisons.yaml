@@ -1,0 +1,30 @@
+# GitHub accepts these comparisons, including collection and scalar coercions.
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        o:
+          - { }
+        a:
+          - [true]
+        a2:
+          - [{ }]
+    steps:
+      # String/object equality uses numeric coercion.
+      - run: echo '${{ 'foo' == matrix.o }}'
+      # An array converts to NaN for comparison with a number.
+      - run: echo '${{ 42 != matrix.a }}'
+      # Arrays are compared by instance identity.
+      - run: echo '${{ matrix.a == matrix.a }}'
+      # Null converts to zero.
+      - run: echo '${{ 1 > null }}'
+      # Boolean ordering converts false and true to zero and one.
+      - run: echo '${{ false < true }}'
+      # Object ordering uses NaN.
+      - run: echo '${{ 'foo' >= matrix.o }}'
+      # Array ordering uses NaN.
+      - run: echo '${{ false <= matrix.a }}'
+permissions: {}

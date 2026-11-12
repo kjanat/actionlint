@@ -1,3 +1,0 @@
-workflows/test.yaml:11:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-workflows/test.yaml:12:24: property "undefined_output" is not defined in steps.root.outputs [expression-reference]
-workflows/test.yaml:15:11: input "undefined_input" is not defined in action "Root action" defined at "$/". available inputs are "message" [action]

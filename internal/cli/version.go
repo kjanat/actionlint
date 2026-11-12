@@ -6,7 +6,9 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 )
 
 func documentationRef(version string, info *debug.BuildInfo) string {
@@ -33,7 +35,7 @@ func commandBuild() commandBuildInfo {
 func writeVersion(out io.Writer, asJSON, legacy bool) error {
 	b := commandBuild()
 	if asJSON {
-		return writeCommandJSON(out, b)
+		return commandstreams.WriteJSON(out, b)
 	}
 	if !legacy {
 		_, err := fmt.Fprintf(out, "actionlint %s\nInstalled: %s\nBuild: %s, %s/%s\n", b.Version, b.InstalledFrom, b.GoVersion, b.OS, b.GOARCH)

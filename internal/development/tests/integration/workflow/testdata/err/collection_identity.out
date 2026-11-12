@@ -1,0 +1,1 @@
+test.yaml:10:24: this comparison checks object or array instance identity. Compare the relevant fields or elements to check their contents [collection-comparison]

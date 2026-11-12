@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.security]
+[lint.rules.security.missing-permissions]
+level = 'warn'
+
+[lint.rules.security.missing-permissions.options]
+require-at = ['workflow', 'every-job']

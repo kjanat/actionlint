@@ -1,0 +1,70 @@
+# source: https://github.com/kjanat/svg-converter-action/blob/3ee1a7fc44a3d5588cbc120f16e0aa142cc8f11e/action.yml
+# uses: kjanat/svg-converter-action@master
+# repository-id: 1002072635
+# ref: refs/heads/master
+---
+name: "SVG Converter"
+description: "Converts SVG files to multiple formats: ICO, PNG, React JS, and React Native JS with enhanced security and performance"
+author: "kjanat"
+
+branding:
+  icon: "image"
+  color: "purple"
+
+inputs:
+  svg-path:
+    description: "Path to the SVG file to convert"
+    required: true
+
+  output-dir:
+    description: "Directory to output converted files"
+    required: false
+    default: "./"
+
+  formats:
+    description: "Comma-separated list of formats to generate: ico,png,react,react-native"
+    required: false
+    default: "ico,png,react,react-native"
+
+  png-sizes:
+    description: 'Comma-separated list of PNG sizes (e.g., "16,32,64,128,256")'
+    required: false
+    default: "16,32,64,128,256"
+
+  ico-sizes:
+    description: 'Comma-separated list of ICO sizes (e.g., "16,32,48,64")'
+    required: false
+    default: "16,32,48,64"
+
+  base-name:
+    description: "Base name for output files (without extension). If not provided, uses SVG filename"
+    required: false
+
+  react-typescript:
+    description: "Generate TypeScript React components instead of JS"
+    required: false
+    default: "false"
+
+  react-props-interface:
+    description: "Interface name for React component props"
+    required: false
+    default: "SVGProps"
+
+  debug:
+    description: "Enable debug output for troubleshooting"
+    required: false
+    default: "false"
+
+outputs:
+  files-created:
+    description: "JSON array of created file paths"
+
+  summary:
+    description: "Human-readable summary of conversion results"
+
+  conversion-time:
+    description: "Time taken for conversion in seconds"
+
+runs:
+  using: "docker"
+  image: "Dockerfile"

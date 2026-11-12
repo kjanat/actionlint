@@ -1,0 +1,34 @@
+{
+  "diagnostics": [
+    {
+      "filename": "actionlint.py",
+      "code": "invalid-syntax",
+      "name": "invalid-syntax",
+      "message": "Expected a parameter or the end of the parameter list",
+      "severity": "error",
+      "location": {
+        "row": 1,
+        "column": 7
+      },
+      "end_location": {
+        "row": 1,
+        "column": 8
+      }
+    },
+    {
+      "filename": "actionlint.py",
+      "code": "invalid-syntax",
+      "name": "invalid-syntax",
+      "message": "Expected `)`, found newline",
+      "severity": "error",
+      "location": {
+        "row": 1,
+        "column": 8
+      },
+      "end_location": {
+        "row": 2,
+        "column": 1
+      }
+    }
+  ]
+}

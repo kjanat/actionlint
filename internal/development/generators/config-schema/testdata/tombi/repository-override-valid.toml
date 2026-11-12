@@ -1,0 +1,8 @@
+#:tombi toml-version = "v1.1.0"
+[[overrides]]
+includes=["**/*.yml"]
+excludes=["a.yml"]
+[overrides.repository]
+secrets=["TOKEN"]
+[overrides.local-actions]
+"./dist"="./src"

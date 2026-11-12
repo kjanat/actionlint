@@ -1,0 +1,1 @@
+{"comments":[{"file":"-","line":1,"endLine":1,"column":3,"endColumn":13,"level":"warning","code":1094,"message":"Parsing of sourced file failed. Ignoring it.","fix":null},{"file":"scripts/lib.sh","line":1,"endLine":1,"column":6,"endColumn":10,"level":"info","code":2086,"message":"reported source","fix":{"replacements":[]}}],"sources":["scripts/lib.sh"]}

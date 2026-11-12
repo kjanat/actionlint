@@ -1,66 +1,69 @@
 # npm packaging
 
-Sources for the npm distribution. The published package is
+This directory contains the sources for the npm distribution. The published package is
 [`@kjanat/actionlint`](https://www.npmjs.com/package/@kjanat/actionlint).
 
 ```text
 distribution/npm/
   targets.json         the platforms published, and the release asset each is cut from
   targets.schema.json  schema for the above
+  src/                 TypeScript package builder and CLI
+  test/                Synthetic-archive and package-output tests
   facade/              the facade template: launcher sources and unstamped manifest
   dist/                build output, gitignored
 ```
 
 ## Layout of the published packages
 
-One facade plus one package per platform, the usual shape for shipping a native
-binary through npm:
+The distribution consists of a facade package that launches actionlint and a
+separate binary package for each supported platform:
 
 - `@kjanat/actionlint` contains no binary. It declares every platform package in
   `optionalDependencies`, pinned to the exact same version, and its `bin` entry
   is a small launcher. It also includes the manual and configuration schema.
 - `@kjanat-actionlint/actionlint-<os>-<cpu>` contains one executable and declares `os` and
   `cpu`, so a package manager downloads only the one matching the host. The
-  platform packages sit in their own npm organisation, `kjanat-actionlint`, so
-  eleven binary-only packages nobody installs by hand stay out of `@kjanat/*`.
+  platform packages use a separate npm organisation, `kjanat-actionlint`, to keep
+  the eleven packages installed automatically out of `@kjanat/*`.
 
 Every package exports `./package.json`. The facade exports its configuration schema as `./schema`, pointing to
 `./actionlint.schema.json`, copied from the repository checkout during packaging. Published builds use the schema from
 the release tag.
 
 At run time the launcher looks up `actionlint-<process.platform>-<process.arch>`
-among the declared platform packages, resolves the match, and execs the binary inside.
+among the declared platform packages, resolves the match, and starts its binary.
+It forwards command-line arguments, standard input/output and the exit status.
 Matching by name keeps resolution independent of the order
 `optionalDependencies` is written in. `targets.json` therefore requires every
 `pkg` to equal `<os>-<cpu>`, and both the builder and the launcher tests assert
 it.
 
-There is deliberately no libc dimension. The release binaries are built with
-`CGO_ENABLED=0` and are statically linked, so one `linux-<cpu>` package serves
-glibc and musl hosts alike. The equivalent layout for a Rust binary has to
-detect the host libc and choose between a gnu and a musl build; this does not.
+There are no separate packages for C standard libraries. The release binaries
+are built with `CGO_ENABLED=0` and are statically linked, so one `linux-<cpu>`
+package supports both glibc and musl hosts. This launcher does not need to detect
+which C standard library is installed.
 
 ## Where the binaries come from
 
-They are not rebuilt. `.github/actions/npm-packages` downloads the GoReleaser
+For releases, the builder under `distribution/npm/src/` downloads the GoReleaser
 archives already attached to the GitHub release, checks each one against the
 release's own published checksums manifest, and unpacks the executable. What
-npm serves is byte-for-byte what the release attested, and a truncated download
-or a swapped asset fails the build.
+npm distributes is the executable from that release archive. A truncated
+download or an asset that does not match the checksum fails the build.
 
 ## Building locally
 
 ```bash
-cd .github/actions/npm-packages
-GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
-  INPUT_REPOSITORY=kjanat/actionlint \
+INPUT_REPOSITORY=kjanat/actionlint \
   INPUT_VERSION=2.0.0 \
-  go run .
+  node distribution/npm/src/cli.ts build
 ```
 
 That fetches the release archives for the given version and writes the tree to
 `distribution/npm/dist/`. Add `INPUT_DOWNLOADS=/path/to/archives` to use already-downloaded
-assets, and `INPUT_ONLY=linux-x64` (or `facade`) to build just one package.
+assets, and `INPUT_ONLY=linux-x64` (or `facade`) to build just one package. Run
+`node distribution/npm/src/cli.ts build --help` for flags and examples. The
+`.github/actions/npm-packages` composite action passes its inputs to this CLI.
 
 ## Tests
 
@@ -68,7 +71,7 @@ The launcher's resolution logic, including every failure path, is covered
 without needing any platform package installed:
 
 ```bash
-npm test --workspace @kjanat/actionlint
+bun run --filter @kjanat/actionlint test
 ```
 
 The builder has its own tests, which assemble synthetic release archives, run
@@ -76,7 +79,7 @@ the whole pipeline, and assert each package ends up with its own binary and the
 facade with the manual and the workspace's schema:
 
 ```bash
-cd .github/actions/npm-packages && go test ./...
+bun run --filter @kjanat/actionlint-npm test
 ```
 
 Run published-package smoke tests from a directory outside this checkout:
@@ -127,7 +130,7 @@ Releases are published with [npm provenance][provenance], set through the
 under the `next` dist-tag.
 
 Use the workflow's `dry-run` input to build and smoke-test without publishing;
-it forces provenance off, there being nothing for the registry to attest.
+it turns provenance off because no package is being published.
 Dry runs use the packaging sources from the selected workflow commit and binaries from the requested release, so
 packaging changes can be tested with an existing release. Publishing uses the packaging sources from the release tag.
 

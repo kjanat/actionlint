@@ -1,6 +1,6 @@
 # GitHub Actions schema audit
 
-Audit date: 2026-09-13. The work started from detached commit [`kjanat/actionlint@adeac5c`] in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and retained linter policy.
+Audit date: 2026-09-13. The work started from detached commit [`kjanat/actionlint@adeac5c`] in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and existing linter policy.
 
 ## Coverage and authorities
 
@@ -18,7 +18,7 @@ Workflow support now includes root description, cancellation timeouts, correct r
 
 Action metadata validation retains raw schema structure while checking Docker/JavaScript/composite/internal-plugin variants, required properties and field types. Generated manifest constraints have a pinned schema fixture. Docker lifecycle conditions and env contexts, composite scalar conversion, step IDs, insertion recursion and explicit tags are checked. Metadata input checks permit a dynamic workflow with mapping without inventing missing inputs.
 
-## Retained differences
+## Differences
 
 The detailed reports distinguish unsupported legacy/internal event names, intentional nonempty/no-op checks, numeric/boolean type strictness, source-version disagreements and opaque runtime expression values. Known conformance differences remain reviewable in [the exact diagnostic baseline]. Runtime expression evaluation, external action behavior and GitHub-hosted workflow execution were not tested by dispatching workflows.
 
@@ -27,18 +27,18 @@ The conformance fixture archive is separately pinned by [sources.json]. Its runn
 ## Validation
 
 - `go test ./...`: passed across all packages. Windows used Git Bash on PATH for shell-based tests.
-- `go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance`: passed against the pinned archives: 1,721 cases, 1,394 agreements, 327 recorded differences. This resolves 27 previous differences and records one new SchemaStore discrepancy: its composite example repeats a step ID rejected by runner conversion.
+- `go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/development/tests/conformance`: passed against the pinned archives: 1,721 cases, 1,394 agreements, 327 recorded differences. This resolves 27 previous differences and records one new SchemaStore discrepancy: its composite example repeats a step ID rejected by runner conversion.
 - `golangci-lint run`: passed, zero issues.
 - `dprint check` on changed non-fixture sources and reports, CommentCop, and `git diff --check`: passed. The conformance JSON was also formatted and checked explicitly.
-- `internal/rulecatalog/check-docs`: all examples passed using a temporary copy that normalized one expected missing-file error to Windows path/error wording. The canonical document has no other regeneration differences. A Linux attempt could not run the shellcheck example because shellcheck/pyflakes are absent from WSL.
+- `internal/development/tests/integration/documentation`: all examples passed using a temporary copy that normalized one expected missing-file error to Windows path/error wording. The canonical document has no other regeneration differences. A Linux attempt could not run the shellcheck example because shellcheck/pyflakes are absent from WSL.
 
 These checks ran locally in the isolated checkout. No remote CI, workflow dispatch, commit or publication was performed. Investigation logs, the temporary platform-normalized document, and downloaded reference copies were removed after recording these results.
 
 [Action metadata]: schema-audit-actions.md
 [Expression contexts, functions and scalars]: schema-audit-contexts.md
 [Workflow structure and nested definitions]: schema-audit-nested.md
-[sources.json]: ../internal/conformance/sources.json
-[the exact diagnostic baseline]: ../internal/conformance/testdata/differences.json
+[sources.json]: ../internal/development/tests/conformance/sources.json
+[the exact diagnostic baseline]: ../internal/development/tests/conformance/testdata/differences.json
 
 <!-- specific commit refs -->
 

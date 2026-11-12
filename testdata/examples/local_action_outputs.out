@@ -1,3 +1,0 @@
-test.yaml:8:23: property "my_action" is not defined in steps [expression-reference]
-test.yaml:13:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-test.yaml:15:23: property "some-value" is not defined in steps.my_action.outputs; did you mean "some_value"? [expression-reference]

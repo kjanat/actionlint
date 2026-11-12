@@ -1,0 +1,52 @@
+# source: https://github.com/kjanat/install-dprint/blob/c2cdca92154b44b2a2c15222d25d91d1cddfca1b/action.yml
+# uses: kjanat/install-dprint@master
+# repository-id: 1152883456
+# ref: refs/heads/master
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+#
+# Also check out the dprint check action, which gives a simple pass/fail result:
+# https://github.com/marketplace/actions/dprint-check-action
+---
+name: Install dprint
+description: A GitHub Action to install the dprint code formatter with caching.
+author: kjanat
+branding: { icon: terminal, color: blue }
+
+inputs:
+  repository:
+    description: GitHub repository containing dprint releases (owner/repo).
+    required: false
+    default: kjanat/dprint
+  version:
+    description: The dprint version to install (e.g., "0.55.2"; defaults to "latest").
+    required: false
+    default: latest
+  cache:
+    description: Cache the dprint plugin store (DPRINT_CACHE_DIR).
+    required: false
+    default: "true"
+  cache-binary:
+    description: Cache the dprint binary via tool-cache and actions/cache.
+    required: false
+    default: "false"
+  config-path:
+    description: Path or glob to dprint config file(s) for the plugin cache key (auto-detected if not set; every glob match is hashed).
+    required: false
+    default: ""
+  warmup:
+    description: Pre-download WASM plugins after a cache miss so the post step saves a complete store (set to "false" to disable).
+    required: false
+    default: "true"
+
+outputs:
+  version: { description: Installed dprint version }
+  location: { description: Path to the installed dprint binary }
+  cache-hit: { description: "Whether the dprint binary was restored from tool-cache or actions/cache" }
+  plugin-cache-hit: { description: "Whether the WASM plugin cache was restored (exact key match)" }
+  plugin-cache-key: { description: "The cache key used for WASM plugin cache" }
+
+runs:
+  using: node24
+  main: dist/main.mjs
+  post: dist/post.mjs
+  post-if: always() # A failing format check is the common CI outcome; the plugins it downloaded should still warm the next run.

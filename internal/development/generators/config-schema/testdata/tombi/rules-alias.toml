@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.conventions]
+disallow-suppressions = 'off'
+require-job-timeout = 'on'
+
+[lint.rules.security]
+require-commit-hash = 'warn'

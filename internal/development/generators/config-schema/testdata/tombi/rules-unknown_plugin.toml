@@ -1,0 +1,8 @@
+[lint]
+[lint.rules]
+[lint.rules.security]
+[lint.rules.security.example-plugin]
+level = 'warn'
+
+[lint.rules.security.example-plugin.options]
+custom = 1.0

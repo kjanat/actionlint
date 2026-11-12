@@ -1,0 +1,18 @@
+{"name":"joined annotation","shell":"bash","script":"printf '::notice'; echo '::ok'","stdout":"::notice::ok\n","exit":0,"findings":0}
+{"name":"joined stop token","shell":"bash","script":"printf '::stop-commands::'; echo token; echo '::notice: bad'","stdout":"::stop-commands::token\n::notice: bad\n","exit":0,"findings":0}
+{"name":"joined resume token","shell":"bash","script":"echo '::stop-commands::token'; printf '::to'; echo 'ken::'; echo '::notice: bad'","stdout":"::stop-commands::token\n::token::\n::notice: bad\n","exit":0,"findings":1}
+{"name":"errexit termination","shell":"bash","script":"false; echo '::notice: bad'","stdout":"","exit":1,"findings":0}
+{"name":"disabled errexit","shell":"bash","script":"set +e; false; echo '::notice: bad'","stdout":"::notice: bad\n","exit":0,"findings":1}
+{"name":"invocation disabled errexit","shell":"bash +e {0}","script":"false; echo '::notice: bad'","stdout":"::notice: bad\n","exit":0,"findings":1}
+{"name":"restored errexit","shell":"bash","script":"set +e; set -e; false; echo '::notice: bad'","stdout":"","exit":1,"findings":0}
+{"name":"ignored group","shell":"bash","script":"{ false; echo '::notice: bad'; } || :","stdout":"::notice: bad\n","exit":0,"findings":1}
+{"name":"negated group","shell":"bash","script":"! { false; echo '::notice: bad'; }","stdout":"::notice: bad\n","exit":1,"findings":1}
+{"name":"condition list","shell":"bash","script":"if false; echo '::notice: bad'; then :; fi","stdout":"::notice: bad\n","exit":0,"findings":1}
+{"name":"explicit exit","shell":"bash","script":"exit 0; echo '::notice: bad'","stdout":"","exit":0,"findings":0}
+{"name":"partial final line","shell":"bash","script":"printf '::notice'; false; echo '::ok'","stdout":"::notice","exit":1,"findings":1}
+{"name":"subshell options isolated","shell":"bash","script":"(set +e; false); false; echo '::notice: bad'","stdout":"","exit":1,"findings":0}
+{"name":"split carriage return newline","shell":"bash","script":"printf '::notice::ok\\r'; printf '\\n::notice:bad\\n'","stdout":"::notice::ok\r\n::notice:bad\n","exit":0,"findings":1}
+{"name":"failed subshell terminates parent","shell":"bash","script":"(set +e; false); echo '::notice: bad'","stdout":"","exit":1,"findings":0}
+{"name":"failed substitution terminates assignment","shell":"bash","script":"x=$(false); echo '::notice: bad'","stdout":"","exit":1,"findings":0}
+{"name":"last substitution succeeds","shell":"bash","script":"x=$(false) y=$(true); echo '::notice: bad'","stdout":"::notice: bad\n","exit":0,"findings":1}
+{"name":"substitution stdout stays captured","shell":"bash","script":"x=$(echo '::notice: bad'); echo '::notice::ok'","stdout":"::notice::ok\n","exit":0,"findings":0}

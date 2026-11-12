@@ -1,11 +1,11 @@
 # References
 
-This document describes links to resources related to actionlint and GitHub Actions.
+These resources cover actionlint and GitHub Actions.
 
 - Repository: https://github.com/kjanat/actionlint
 - Playground: https://kjanat.github.io/actionlint/
 - GitHub Actions changelog reader: https://actionlint.kjanat.dev/github-changelog/
-- GitHub Actions official documentations
+- Official GitHub Actions documentation
   - Workflow syntax: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
   - Expression syntax: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions
   - Built-in functions: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#functions
@@ -20,4 +20,4 @@ This document describes links to resources related to actionlint and GitHub Acti
 
 ---
 
-[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Go API](api.md)
+[Checks](checks.md) | [Installation](install.md) | [Usage](usage.md) | [Configuration](config.md) | [Integration interfaces](api.md)

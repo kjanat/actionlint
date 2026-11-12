@@ -1,0 +1,19 @@
+# source: https://github.com/actions/download-artifact/blob/246d7188e736d3686f6d19628d253ede9697bd55/action.yml
+# uses: actions/download-artifact@v3-node20
+# repository-id: 192626254
+# ref: refs/tags/v3-node20
+# object: 7472b11854edc6c65b5924934f0904d64f5e1f38
+---
+name: 'Download a Build Artifact'
+description: 'Download a build artifact that was previously uploaded in the workflow by the upload-artifact action'
+author: 'GitHub'
+inputs:
+  name:
+    description: 'Artifact name'
+    required: false
+  path:
+    description: 'Destination path'
+    required: false
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

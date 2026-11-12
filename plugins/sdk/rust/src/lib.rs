@@ -1,0 +1,248 @@
+#![doc = include_str!("../README.md")]
+
+/// Reference selection with repository objects fetched by actionlint.
+#[cfg(feature = "reference-resolver")]
+pub mod reference_resolver {
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "reference-resolver-plugin",
+        generate_all,
+        pub_export_macro: true,
+    });
+
+    pub use self::exports::kjanat::actionlint_resolver::reference_resolver::{
+        Content, Guest, Kind, Request, Resolution, SelectedBy,
+    };
+    pub use self::kjanat::actionlint_resolver::repository_objects;
+}
+
+/// Generated types, guest traits and host imports from the WIT interface definitions.
+pub mod bindings {
+    #[cfg(not(any(
+        feature = "source-annotations",
+        feature = "tool-integration",
+        feature = "script-environments",
+        feature = "shell-script-inputs"
+    )))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "plugin",
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(
+        feature = "source-annotations",
+        not(any(
+            feature = "tool-integration",
+            feature = "script-environments",
+            feature = "shell-script-inputs"
+        ))
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "annotated-plugin",
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(feature = "tool-integration", not(feature = "script-environments")))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "managed-plugin",
+        with: { "kjanat:actionlint-script/shell-script-inputs@0.3.0": generate },
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(
+        feature = "script-environments",
+        not(any(
+            feature = "source-annotations",
+            feature = "tool-integration",
+            feature = "shell-script-inputs"
+        ))
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "environment-plugin",
+        with: { "kjanat:actionlint-script/environments@0.3.0": generate },
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(
+        feature = "script-environments",
+        feature = "source-annotations",
+        not(any(feature = "tool-integration", feature = "shell-script-inputs"))
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "environment-annotated-plugin",
+        with: { "kjanat:actionlint-script/environments@0.3.0": generate },
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(feature = "script-environments", feature = "tool-integration"))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "environment-managed-plugin",
+        with: {
+            "kjanat:actionlint-script/shell-script-inputs@0.3.0": generate,
+            "kjanat:actionlint-script/environments@0.3.0": generate,
+        },
+        pub_export_macro: true,
+    });
+    #[cfg(all(
+        feature = "shell-script-inputs",
+        not(feature = "tool-integration"),
+        not(feature = "script-environments"),
+        not(feature = "source-annotations")
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "shell-plugin",
+        with: {
+            "kjanat:actionlint-script/shell-script-inputs@0.3.0": generate,
+        },
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(
+        feature = "shell-script-inputs",
+        not(feature = "tool-integration"),
+        not(feature = "script-environments"),
+        feature = "source-annotations"
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "annotated-shell-plugin",
+        with: {
+            "kjanat:actionlint-script/shell-script-inputs@0.3.0": generate,
+        },
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(
+        feature = "shell-script-inputs",
+        not(feature = "tool-integration"),
+        feature = "script-environments",
+        not(feature = "source-annotations")
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "environment-shell-plugin",
+        with: {
+            "kjanat:actionlint-script/shell-script-inputs@0.3.0": generate,
+            "kjanat:actionlint-script/environments@0.3.0": generate,
+        },
+        pub_export_macro: true,
+    });
+
+    #[cfg(all(
+        feature = "shell-script-inputs",
+        not(feature = "tool-integration"),
+        feature = "script-environments",
+        feature = "source-annotations"
+    ))]
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "environment-annotated-shell-plugin",
+        with: {
+            "kjanat:actionlint-script/shell-script-inputs@0.3.0": generate,
+            "kjanat:actionlint-script/environments@0.3.0": generate,
+        },
+        pub_export_macro: true,
+    });
+}
+
+/// Generated script-engine guest types, export macros and packaging descriptors.
+/// Export SDK bindings with `with_types_in` followed by their versioned module path.
+pub mod script_engine {
+    // Public export macros defer export metadata until a guest invokes them.
+    // Distinct world names prevent collisions between wit-bindgen crate-level macros.
+    /// Types from the 0.2.0 template-aware script engine world.
+    pub mod v0_2 {
+        wit_bindgen::generate!({
+            path: "wit",
+            inline: "package kjanat:actionlint-sdk; world template-script-engine-v0-2 { include kjanat:actionlint/template-script-engine-plugin@0.2.0; }",
+            world: "template-script-engine-v0-2",
+            generate_all,
+            pub_export_macro: true,
+            export_macro_name: "export_template_script_engine_v0_2",
+        });
+    }
+    /// Types from the 0.3.0 template-aware script engine world.
+    pub mod v0_3 {
+        wit_bindgen::generate!({
+            path: "wit/deps/actionlint-0.3.0",
+            inline: "package kjanat:actionlint-sdk; world template-script-engine-v0-3 { include kjanat:actionlint/template-script-engine-plugin@0.3.0; }",
+            world: "template-script-engine-v0-3",
+            generate_all,
+            pub_export_macro: true,
+            export_macro_name: "export_template_script_engine_v0_3",
+        });
+    }
+}
+
+/// Guest exports use one namespace even when host imports have another version.
+pub mod exports {
+    pub mod kjanat {
+        pub use crate::bindings::exports::kjanat::actionlint0_2_0 as actionlint;
+    }
+}
+
+/// Host imports selected by the SDK features, independent of generated version suffixes.
+pub mod kjanat {
+    #[cfg(any(
+        feature = "tool-integration",
+        feature = "script-environments",
+        feature = "shell-script-inputs"
+    ))]
+    pub use crate::bindings::kjanat::actionlint_script;
+    pub mod actionlint {
+        pub use crate::bindings::kjanat::actionlint0_2_0::*;
+    }
+}
+
+pub use exports::kjanat::actionlint::analyzer::*;
+
+/// Canonical analyzer interface implemented by this SDK.
+pub const ANALYZER_INTERFACE: &str = "kjanat:actionlint/analyzer@0.2.0";
+/// Analyzer WIT source, independent of optional host imports.
+pub const ANALYZER_WIT: &str = include_str!("../wit/analyzer.wit");
+/// SHA-256 of the analyzer WIT source with LF line endings.
+pub const ANALYZER_WIT_SHA256: &str = env!("ACTIONLINT_ANALYZER_WIT_SHA256");
+
+/// Runner-provider interface used by snapshot-based runner extensions.
+pub const RUNNER_PROVIDER_INTERFACE: &str = "kjanat:actionlint/runner-provider@0.2.0";
+/// Runner-provider WIT source for guest binding generation.
+pub const RUNNER_PROVIDER_WIT: &str = include_str!("../wit/runner.wit");
+/// SHA-256 of the runner-provider WIT source with LF line endings.
+pub const RUNNER_PROVIDER_WIT_SHA256: &str = env!("ACTIONLINT_RUNNER_WIT_SHA256");
+
+/// script-engine 0.2.0 WIT source.
+pub const SCRIPT_ENGINE_02_WIT: &str = include_str!("../wit/script-engine.wit");
+/// SHA-256 of the script-engine 0.2.0 WIT source with LF line endings.
+pub const SCRIPT_ENGINE_02_WIT_SHA256: &str = env!("ACTIONLINT_SCRIPT_ENGINE_02_WIT_SHA256");
+/// template-effects 0.2.0 WIT source.
+pub const TEMPLATE_EFFECTS_02_WIT: &str = include_str!("../wit/template-effects.wit");
+/// SHA-256 of the template-effects 0.2.0 WIT source with LF line endings.
+pub const TEMPLATE_EFFECTS_02_WIT_SHA256: &str = env!("ACTIONLINT_TEMPLATE_EFFECTS_02_WIT_SHA256");
+/// script-engine 0.3.0 WIT source.
+pub const SCRIPT_ENGINE_03_WIT: &str =
+    include_str!("../wit/deps/actionlint-0.3.0/script-engine.wit");
+/// SHA-256 of the script-engine 0.3.0 WIT source with LF line endings.
+pub const SCRIPT_ENGINE_03_WIT_SHA256: &str = env!("ACTIONLINT_SCRIPT_ENGINE_03_WIT_SHA256");
+/// template-effects 0.3.0 WIT source.
+pub const TEMPLATE_EFFECTS_03_WIT: &str =
+    include_str!("../wit/deps/actionlint-0.3.0/template-effects.wit");
+/// SHA-256 of the template-effects 0.3.0 WIT source with LF line endings.
+pub const TEMPLATE_EFFECTS_03_WIT_SHA256: &str = env!("ACTIONLINT_TEMPLATE_EFFECTS_03_WIT_SHA256");
+
+/// Export the component using this crate's generated bindings.
+#[macro_export]
+macro_rules! export_plugin {
+    ($plugin:ident) => {
+        $crate::bindings::export!($plugin with_types_in $crate::bindings);
+    };
+}
+
+#[cfg(feature = "package")]
+pub mod package;

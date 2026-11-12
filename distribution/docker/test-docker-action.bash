@@ -9,11 +9,11 @@ fi
 
 image="$1"
 platform="${2:-linux/amd64}"
-workspace="$(pwd)"
+fixtures="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/testdata"
 temporary="$(mktemp -d)"
 trap 'rm -rf "${temporary}"' EXIT
 mkdir -p "${temporary}/workspace/.git" "${temporary}/commands"
-ruff_environment=()
+tool_environment=()
 
 output() {
 	awk -v name="$1" '
@@ -46,11 +46,11 @@ expect_status() {
 	docker run --rm --platform "${platform}" \
 		--mount "type=bind,source=${temporary}/workspace,target=/github/workspace" \
 		--mount "type=bind,source=${temporary}/commands,target=/github/file_commands" \
-		--mount "type=bind,source=${workspace}/testdata,target=/github/workspace/testdata,readonly" \
+		--mount "type=bind,source=${fixtures},target=/github/workspace/testdata,readonly" \
 		--workdir /github/workspace \
 		-e GITHUB_ACTIONS=true -e GITHUB_WORKSPACE=/github/workspace \
 		-e GITHUB_OUTPUT=/github/file_commands/output \
-		"${ruff_environment[@]}" \
+		"${tool_environment[@]}" \
 		"${image}" "$@" >"${temporary}/action.log" 2>&1 || status=$?
 	if [[ "${status}" != "${expected}" ]]; then
 		printf 'Expected exit %s, got %s\n' "${expected}" "${status}" >&2
@@ -84,20 +84,22 @@ expect_output problem-count 0
 expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' true false . '' false
 problem_count="$(output problem-count)"
 [[ "${problem_count}" -gt 0 ]]
+# The shellcheck and pyflakes positions are ignored; disable-tools turns tools off.
+tool_environment=(-e INPUT_DISABLE-TOOLS=shellcheck)
 expect_status 0 testdata/err/shellcheck_default_shell_detection.yaml json '' '' false false . '' true
 expect_output problem-count 0
 
-cp nix/integration.yml "${temporary}/workspace/python.yml"
+cp "${fixtures}/python.yml" "${temporary}/workspace/python.yml"
 expect_status 1 python.yml json '' '' false false . '' true
 expect_output problem-count 1
 output output | jq -e 'any(.diagnostics[]; .rule == "ruff" and .code == "F821")' >/dev/null
-ruff_environment=(-e INPUT_RUFF=false)
+tool_environment=(-e 'INPUT_DISABLE-TOOLS=shellcheck,ruff')
 expect_status 0 python.yml json '' '' false false . '' true
 expect_output problem-count 0
-ruff_environment=()
+tool_environment=()
 
 mkdir -p "${temporary}/workspace/sub/.github/workflows"
-cp testdata/ok/minimal.yaml "${temporary}/workspace/sub/.github/workflows/check.yaml"
+cp "${fixtures}/ok/minimal.yaml" "${temporary}/workspace/sub/.github/workflows/check.yaml"
 printf 'plugins: []\nself-hosted-runner:\n  labels: [custom-runner]\n' >"${temporary}/workspace/sub/lint.yaml"
 expect_status 0 '.github/workflows/check.yaml' json '' lint.yaml false false sub reports/result.json true
 expect_output output-file reports/result.json
@@ -112,8 +114,6 @@ test "${report_owner}" = "${owner}"
 
 expect_status 2 '' invalid '' '' true true . '' true
 expect_status 2 '' '' '' '' true true . '' true
-expect_status 2 '' json '' '' '' true . '' true
-expect_status 2 '' json '' '' true '' . '' true
 expect_status 2 '' json '' '' true true . '' ''
 expect_status 2 --help json '' '' true true . '' true
 expect_status 2

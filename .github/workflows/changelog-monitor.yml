@@ -21,6 +21,9 @@ permissions:
   contents: read
 
 env:
+  MISE_CACHE_DIR: ${{ github.workspace }}-mise/cache
+  MISE_LOCKED: "1"
+  MISE_TASK_RUN_AUTO_INSTALL: "false"
   CHANGELOG_LABEL: github-changelog
 
 jobs:
@@ -28,17 +31,25 @@ jobs:
     if: github.repository_owner == 'kjanat' && github.ref_name == 'master'
     runs-on: ubuntu-latest
     permissions: { contents: read, issues: read }
+    env: { MISE_ENABLE_TOOLS: "bun,node", BUN_INSTALL_CACHE_DIR: "${{ github.workspace }}-mise/cache/bun" }
     outputs:
       drafts: ${{ steps.monitor.outputs.drafts }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: { node-version-file: .node-version, cache: npm }
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}-mise"
+          cache: true
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('bun.lock', '.mise/locks/**') }}"
+          cache_save_post: true
+          monorepo: false
+          add_shims_to_path: false
       - name: Install workspace dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Build the workspace changelog package
-        run: npm run build --workspace @kjlint/changelog-rss
+        run: bun run --filter @kjlint/changelog-rss build
       - name: Collect new Actions changelog entries
         id: monitor
         uses: $/.github/actions/changelog-monitor
@@ -52,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     steps:
-      - uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+      - uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
         id: beepboop
         with: { permission-contents: read, permission-issues: write }
       - name: Open issues for the collected changelog entries

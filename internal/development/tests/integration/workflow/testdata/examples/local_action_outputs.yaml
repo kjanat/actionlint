@@ -1,0 +1,16 @@
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # ERROR: The step is not yet run
+      - run: echo ${{ steps.my_action.outputs.some_value }}
+      # The action runs here and sets its outputs
+      - uses: ./.github/actions/my-action-with-output
+        id: my_action
+      # ERROR: Dynamic output is interpolated into shell source.
+      - run: echo ${{ steps.my_action.outputs.some_value }}
+      # ERROR: Undeclared JavaScript outputs are strings too; this interpolation is unsafe.
+      - run: echo ${{ steps.my_action.outputs.some-value }}
+permissions: {}

@@ -445,11 +445,11 @@ test('WinGet never retries PR creation after an ambiguous timeout, even if the b
 	assert.equal(f.state.issues.length, 1);
 });
 
-test('WinGet retains its lock and reports both errors when PR withdrawal fails', async t => {
+test('WinGet keeps its lock and reports both errors when PR withdrawal fails', async t => {
 	const f = await wingetFixture(t);
 	f.state.onCreate = () => f.state.pulls.push(f.pull(99, [f.files[0].path]));
 	f.state.failAt = 'repos/microsoft/winget-pkgs/pulls/123';
-	await assert.rejects(f.submit(), /Concurrent.*could not withdraw.*HTTP 503.*lock has been retained/);
+	await assert.rejects(f.submit(), /Concurrent.*could not withdraw.*HTTP 503.*lock remains held/);
 	assert.ok(f.state.refs.has('refs/heads/actionlint-winget-submission-lock'));
 	assert.ok(f.state.refs.has('refs/tags/actionlint-winget-attempt-1.2.3'));
 	assert.equal(f.state.issues.length, 1);

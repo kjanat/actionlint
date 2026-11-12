@@ -12,7 +12,6 @@
 /actionlint-workflow-ast
 /actionlint.exe
 /actionlint_fuzz-fuzz.zip
-/bump-version
 /cli
 /corpus
 /coverage.html
@@ -23,7 +22,16 @@
 /env.sh
 /man/actionlint.1
 /man/actionlint.1.html
-/packages/*/dist/
+/libraries/*/dist/
+/applications/*/dist/
+/plugins/sdk/typescript/dist/
+# Generated TypeScript plugin packages.
+/plugins/examples/**/actionlint.js
+/plugins/examples/**/actionlint.mjs
+/plugins/examples/**/actionlint-provider.json
+/plugins/examples/**/plugin-layout/
+/plugins/examples/**/*.tgz
+/plugins/sdk/typescript/*.tgz
 /playground-dist
 /result
 /result-*
@@ -32,5 +40,16 @@ blockers.md
 docs/releases/vX.Y.Z.md
 node_modules/
 target/
+control/evidence/
 
 /.bin/
+docs/superpowers
+
+# Temporary local fixtures from private repositories.
+runny-*
+commitish
+!internal/plugins/bundled/commitish/
+*.log
+/.review-artifacts/
+!internal/checking/cache
+/custom-gcl*

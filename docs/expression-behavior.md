@@ -2,7 +2,7 @@
 
 Expressions decide which steps run and how workflow inputs are interpreted. A condition can look reasonable and still run a step you expected to skip: the string `'false'` is truthy, missing properties can compare equal to `false`, and the same numeric text can acquire different values in different parsers.
 
-If your workflows use step outputs, supplied inputs or JSON to make decisions, this guide explains the pitfalls and shows how to validate values before using them. Each example connects the observed behavior to a practical change you can make in your workflow. The [probe corpus](../internal/expression/probe/cases.ts) and [measurement workflow](../.github/workflows/expr-conformance-probe.yml) let you reproduce the results yourself.
+If your workflows use step outputs, supplied inputs or JSON to make decisions, this guide explains the pitfalls and shows how to validate values before using them. Each example connects the observed behavior to a practical change you can make in your workflow. The [probe corpus](../internal/development/tests/conformance/expressions/cases.ts) and [measurement workflow](../.github/workflows/expr-conformance-probe.yml) let you reproduce the results yourself.
 
 The key distinction is where a value is interpreted. An expression literal, a string used in a comparison, a `fromJSON()` argument, and a declared `number` input do not necessarily pass through the same parser. The examples below follow those differences through to the resulting workflow decisions.
 
@@ -19,19 +19,19 @@ every interpolation safe: `${{ inputs.flag }}` as a command can execute `true` o
 to `echo` or `printf` in successfully parsed Bash or POSIX shell scripts. It honors
 step, job and workflow shell selection. Command names, redirections, expansions,
 other commands and unsupported or unresolved shells receive no scalar exemption.
-Raw null values already fail template type validation; serialized null values
-follow the scalar position check.
+Null converts to an empty string. Both raw and serialized null values follow
+the scalar position check.
 
 This is a narrow syntax check, not proof of runtime command identity or behavior;
 aliases, functions and application-specific argument semantics are not modeled.
 Use environment variables and the interpreter's data-access mechanism elsewhere.
 Unknown string values still warn inside quotes. Separately, constrained strings
-such as `github.repository` retain their character-based proof.
+such as `github.repository` are checked against their permitted characters.
 
 Bash/POSIX reserved words such as `fi` also require a proved data argument.
 This applies to constants and known environment or matrix values. A repository
 owner login can be a reserved word, so `github.repository_owner` needs the same
-position check. Matrix alternatives retain their weakest applicable proof.
+position check. A matrix expression is safe only if every alternative satisfies the applicable check.
 
 Misspelled contexts and functions receive a correction only when one close name
 is available at that workflow location. Ambiguous names receive no guess. Dynamic
@@ -62,8 +62,7 @@ The [template reader][condition-reader] and [condition converter][condition-conv
 at runner revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd` define these stages.
 Local step-schema evaluation covers both expression engines with loose JSON and
 anchors rejected. The Go regression tests cover step, job, and snapshot parsing.
-This evidence comes from source inspection and local SDK checks. Hosted behavior
-for these cases remains unmeasured.
+This evidence comes from source inspection and local SDK checks; it does not establish hosted behavior.
 
 ### String flags can disagree with boolean comparisons
 
@@ -82,9 +81,9 @@ flag bare string gates and comparisons with numeric or boolean literals.
 Object lookup ignores case. Literal `fromJSON('{"approved":false,"APPROVED":true}')`
 has two spellings of the same member. In local SDK comparisons, loose parsing keeps
 the last member and strict parsing keeps the first. Actionlint reports such
-collisions recursively, retaining repeated occurrences and JSON offsets, and avoids
+collisions recursively with the spelling and JSON offset of each repeated key, and avoids
 inferring a selected value. Composite action output declarations already reject
-case-colliding names. Outputs created by scripts remain outside that static check.
+case-colliding names. This check validates output declarations.
 
 The comparison uses revision `80bb1fb827fa44d489263061e71ef4adba7ad8cd`, the next
 engine's `FromJson` entrypoint, and changes only `StrictJsonParsing`. Anchors do not
@@ -95,7 +94,7 @@ within that engine. The comparison leaves github.com's parsing mode unverified.
 
 In local strategy evaluation, an expression returning an array inside a sequence
 inserts its elements into that sequence. `[before, ${{ fromJSON('["one","two"]') }}, after]`
-produces four axis values. A literal nested `[one, two]` remains one value, producing
+produces four axis values. A literal nested `[one, two]` counts as one value, producing
 three. An expression returning `[]` inserts nothing; one returning `[[1,2],[3,4]]`
 inserts two arrays. Array-producing entries in `include` and `exclude` follow the
 same sequence rule.
@@ -115,9 +114,8 @@ an identity. The local expression comparisons use runner revision
 `80bb1fb827fa44d489263061e71ef4adba7ad8cd`: engine comparisons keep JSON loose;
 JSON-mode comparisons keep the next engine fixed. Anchors do not apply.
 
-Actionlint's condition evaluator leaves serialization and ambiguous JSON values
-unknown. Regression tests require these values to remain unknown because the
-result depends on the runtime mode. The existing hosted negative-zero result
+Actionlint's condition evaluator treats serialization and ambiguous JSON values
+as unknown because the result depends on runtime mode. The existing hosted negative-zero result
 is linked in [Read the evidence](#read-the-evidence).
 
 [condition-reader]: https://github.com/actions/runner/blob/80bb1fb827fa44d489263061e71ef4adba7ad8cd/src/Sdk/DTObjectTemplating/ObjectTemplating/TemplateReader.cs
@@ -175,6 +173,12 @@ The corpus tests hexadecimal numbers, leading and trailing decimal points, singl
 | `{"role":"user","role":"admin"}` | Object with `role: "admin"`; the last duplicate key wins | [Results](expression-results/2026-09-14.md#json-duplicate-role)         |
 
 JavaScript's `JSON.parse()` rejects the first four inputs. It accepts the duplicate-key input and also keeps the last value.
+
+Actionlint uses the runner-compatible loose reader for literal validation and
+constant evaluation. For finite matrices it evaluates each row independently,
+so nested `fromJSON(format(...))` input mappings retain their property types
+without mixing values from different rows. Ambiguous member collisions and
+unsupported constructor serialization remain unknown.
 
 When input must be JSON, validate the entire document with a JSON parser and validate its shape and values. A `fromJSON()` call succeeding is not that validation. If duplicate keys must be forbidden, select a parser that explicitly rejects them.
 
@@ -408,23 +412,23 @@ The repository must already have `.github/workflows/expr-conformance-probe.yml` 
 
 ```sh
 # Inspect the cases without network access.
-node internal/expression/probe/probe.ts list
+node internal/development/tests/conformance/expressions/probe.ts list
 
 # Capture the full corpus into a new directory.
-node internal/expression/probe/probe.ts run \
+node internal/development/tests/conformance/expressions/probe.ts run \
   --repo OWNER/REPO --output .cache/expression-probe/my-capture
 
 # Or measure one group / one case.
-node internal/expression/probe/probe.ts run \
+node internal/development/tests/conformance/expressions/probe.ts run \
   --repo OWNER/REPO --output .cache/expression-probe/json-capture --group from-json
-node internal/expression/probe/probe.ts run \
+node internal/development/tests/conformance/expressions/probe.ts run \
   --repo OWNER/REPO --output .cache/expression-probe/one-case --case json-leading-zero
 
 # Recollect evidence for existing run IDs without dispatching again.
-node internal/expression/probe/probe.ts collect --output .cache/expression-probe/my-capture
+node internal/development/tests/conformance/expressions/probe.ts collect --output .cache/expression-probe/my-capture
 
 # Finish cleanup if the driver was interrupted.
-node internal/expression/probe/probe.ts cleanup --output .cache/expression-probe/my-capture
+node internal/development/tests/conformance/expressions/probe.ts cleanup --output .cache/expression-probe/my-capture
 ```
 
 After a full capture and cleanup succeed, the last console line is:
@@ -467,6 +471,6 @@ The report distinguishes expression-parser rejection, dispatch-input rejection, 
 
 ## Relationship to actionlint and upstream documentation
 
-actionlint checks constant `fromJSON()` string arguments with a strict JSON parser. A literal argument such as `fromJSON('017')` can therefore be diagnosed even when GitHub accepts it at runtime. Dynamic input needs runtime validation. Deliberately invalid expressions are stored as test data and exercised through isolated probe workflows.
+Actionlint checks constant `fromJSON()` string arguments with its runner-compatible loose reader. For example, it accepts `fromJSON('017')` and interprets the number as octal. Dynamic input still needs runtime validation. Deliberately invalid expressions are stored as test data and exercised through isolated probe workflows.
 
 GitHub's [expression reference](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions) describes the public language contract. Captures record the API version, runner versions and measurement times. A discrepancy can be reported with the relevant case, generated workflow and saved output.

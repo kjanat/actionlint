@@ -1,0 +1,3 @@
+#:tombi toml-version = "v1.1.0"
+[repository]
+default-workflow-permissions="banana"

@@ -20,13 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
+permissions: {}
 `),
 		Stdout: &output,
 		Stderr: &output,
 	}
 
 	// Run the command end-to-end. Note that given args should contain program name
-	status := cmd.Main([]string{"actionlint", "--no-config", "--shellcheck=", "--ruff=", "-"})
+	status := cmd.Main([]string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "-"})
 
 	fmt.Println("Exited with status", status)
 	// Output: Exited with status 0

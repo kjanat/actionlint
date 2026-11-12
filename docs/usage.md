@@ -6,18 +6,52 @@ This document describes how to use [actionlint](../README.md).
 
 ## `actionlint` command
 
-With no argument, actionlint checks workflows and `action.yml`/`action.yaml`
-manifests in the current repository, including actions that no workflow references.
-Repositories containing only actions are supported too.
+With no arguments inside a Git repository, `actionlint` checks workflows and
+`action.yml`/`action.yaml` manifests in that repository. Outside a repository,
+it prints help to stdout and exits 0. `actionlint check` explicitly requests
+repository discovery and reports an error outside a repository.
+
+Discovery includes actions that no workflow references. Repositories containing
+only actions are supported too. If discovery finds no inputs, the check exits 3.
 
 ```sh
-actionlint
+actionlint check
 ```
 
 When paths to YAML workflow files are given as arguments, actionlint checks them.
 
 ```sh
 actionlint path/to/workflow1.yaml path/to/workflow2.yaml
+```
+
+Directories are search roots: actionlint finds `action.yml`/`action.yaml` manifests
+and YAML files below `.github/workflows`, including in nested repositories.
+Each repository uses its own Git ignore rules, configuration and plugins.
+Other YAML files are not selected by directory discovery. Overlapping paths and
+aliases check each physical file once. An empty selection reports an error.
+
+Directories and glob matches respect configured file filters and Git ignore rules.
+A literally named file overrides both, even outside the conventional locations.
+Use `--no-ignore` to scan Git-ignored workflows and actions or files excluded by
+your actionlint configuration.
+
+Quote globs to let actionlint expand `*`, `?` and `[]` consistently across shells.
+A leading `~/` expands to the home directory.
+
+```sh
+actionlint .
+actionlint .github/
+actionlint check .github/workflows/ .github/actions/
+actionlint '~/projects/*'
+actionlint ~/projects --no-ignore
+```
+
+Use `-C DIR` to run from another directory, including configuration discovery and
+relative input/output paths. Repeated relative `-C` values build on the previous one:
+
+```sh
+actionlint -C path/to/repository .github/
+actionlint -C path/to/repository -C testdata .
 ```
 
 Explicit `action.yml` and `action.yaml` inputs are checked as action metadata,
@@ -32,28 +66,24 @@ When a selected workflow references a selected action, both use the supplied
 action content. Shared metadata defects are reported once at their declaration;
 caller-specific input errors still point to the workflow's `uses:` step.
 
-Files directly under `.github/workflows` remain workflows, even when named
-`action.yml` or `action.yaml`.
+Files directly under `.github/workflows` are parsed as workflows regardless of filename.
 
 Metadata findings point into the action file. Configuration overrides, rule levels
-and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
-`.venv`, `venv`, `.cache`, `.worktrees` and `testdata` directories, nested Git repositories,
-and symlinked action files or directories. Inside a Git repository, discovery
+and ignores apply to that file. Repository discovery without paths stays in that
+repository; directory searches also enter nested repositories. Directory symlinks
+are not followed unless explicitly named, and discovered action file symlinks are skipped.
+Inside a Git repository, discovery
 asks `git` 2.8 or newer which paths its ignore rules exclude: `.gitignore`,
 `.git/info/exclude` and the global excludes file apply, and tracked manifests in
 ignored directories stay discovered. Discovery fails when `git` is missing or
-reports an incomplete listing. `files.excludes` remains the explicit override.
+reports an incomplete listing.
 Use [file exclusions](config.md) to
-omit fixtures or generated actions. Explicit paths can select actions in skipped
-directories; configured file exclusions still apply.
+omit fixtures or generated actions. Literally named files bypass discovery filters.
 
 Standalone actions have no known runner, so `executable-bit` is checked only when
-an action is reached through a workflow with a known runner. The Go API's
-`OnRulesCreated` hook applies to workflow inputs only; standalone metadata uses
-the built-in metadata and script checks, without invoking custom workflow rules.
+an action is reached through a workflow with a known runner.
 
-When `-` argument is given, actionlint reads inputs from stdin and checks it as
-workflow source.
+Pass `-` to read workflow source from stdin.
 
 ```sh
 cat path/to/workflow.yaml | actionlint -
@@ -83,26 +113,25 @@ actionlint doctor
 actionlint version
 ```
 
-`check` accepts workflow files, action manifests or a lone `-` for stdin. With no
-paths, it uses the same repository discovery as the root. Directory
-arguments are not supported. Use `--stdin-filename=action.yml` to check action
+`check` accepts workflow files, action manifests, directories or a lone `-` for stdin. With no
+paths, it uses repository discovery. Use `--stdin-filename=action.yml` to check action
 metadata from stdin.
 
-An existing regular file named `check`, `config`, `rules`, `doctor`, `completion`,
-`version` or `help` takes precedence over the corresponding root command. Use `--`
-to force filenames or `--command NAME` to force a command despite a matching file.
+A first argument named `check`, `config`, `rules`, `doctor`, `completion`,
+`version` or `help` selects that command. To check a file with one of those names,
+pass it as `./version`, after `--`, or to `check`.
 Root options still belong before filenames:
 
 ```sh
 actionlint -- --workflow.yml
-actionlint --command check workflow.yml --json
+actionlint ./version
+actionlint check version --json
 ```
 
 Normal help and completion recommend the modern names. `--help-legacy` lists the
-supported old names without deprecation warnings. `--format` remains an alias for
-Go templates; it never interprets template text as a built-in format name.
+supported old names without deprecation warnings. `--format` selects a Go template.
 `-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
-`-v` remains available for progress logging; new examples use `--log-level=info`.
+Use `--log-level=info` or legacy `-v` for progress logging.
 `-V` is the short form of `--version` and preserves its three-line output.
 Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
 
@@ -122,8 +151,9 @@ An explicit color request overrides those environment settings.
 `--no-color` and `check --color=never` disable styling. Root color flags belong
 before `--help`, since root help exits immediately. Redirected JSON help is uncolored.
 
-Help can make the project name and documentation URLs clickable using OSC 8
-terminal hyperlinks. The documentation URL uses the release tag or the build's
+Pretty diagnostics make HTTP and HTTPS URLs clickable using OSC 8 terminal
+hyperlinks. When a URL wraps across lines, each part opens the full URL.
+Help also links the project name and documentation URLs. Its documentation URL uses the release tag or the build's
 source commit. Without embedded version or VCS metadata, it falls back to `HEAD`;
 use `go run -buildvcs=true ./cmd/actionlint --help` to include the checkout revision
 when running from source.
@@ -133,12 +163,11 @@ file and resolved executables. Select `--hyperlinks=auto|always|never` independe
 color. The default `auto` follows the [no-hyperlinks convention](https://no-hyperlinks.org/spec):
 non-empty `NO_HYPERLINKS` disables links, then non-empty `FORCE_HYPERLINKS`
 enables them, then the output stream's TTY status and known terminal capabilities decide:
-stderr for help, stdout for doctor.
+stderr for help, stdout for doctor and diagnostic output for pretty reports.
 Even `0` is a non-empty value. Explicit `always` or `never` overrides both variables.
 Unknown terminals and multiplexers use plain URLs in auto mode; `always` can
 enable links when the terminal and multiplexer are configured to pass them through.
-Both modes keep destination URLs visible. JSON, diagnostics, templates, version
-output and generated completion scripts remain free of added hyperlink sequences.
+Both modes show destination URLs.
 
 ```sh
 actionlint --hyperlinks=always --help
@@ -166,16 +195,61 @@ actionlint check --json
 actionlint check --output-format=jsonl
 actionlint check --output-format=sarif --output-file=actionlint.sarif
 actionlint check --output-format=github
+actionlint check --output-format=gcc
 actionlint check --template-file=report.tmpl
 actionlint check --help --json
 actionlint version --json
 ```
 
-`--output-format` accepts `text`, `oneline`, `json`, `jsonl`, `sarif` and `github`.
+`--output-format` accepts `text`, `pretty`, `oneline`, `gcc`, `json`, `jsonl`, `sarif` and `github`.
+`pretty` is the default. Repeat `--output-format`, `--output` or `-o` to render
+the same analysis in multiple formats, in order. For example,
+`actionlint --output github --output pretty` emits annotations followed by terminal
+diagnostics. Repeated identical formats are emitted once.
+
+Set `output.formats`, `output.log-level`, `output.summary`, `output.network-stats`
+and `output.quiet` in the configuration file to use them as defaults for checks.
+An explicit `--config` selects those defaults. Otherwise actionlint uses the
+configuration in the repository containing the current directory, including
+the directory selected with `-C`. That choice applies to the entire command,
+even when it scans several repositories. Each scanned repository still supplies
+its own lint rules. CLI flags override environment settings, which override
+configured defaults. `--no-config` disables both reporting and lint configuration.
+`gcc` emits one uncoloured `file:line:column: severity: message [code]` line per
+finding, using its native diagnostic code or rule name. Information is emitted
+as `note`; multiline messages are flattened without source excerpts.
 `--json` selects JSON. `--template` and its supported `--format` alias render the
 existing Go-template fields and functions. `--template-file` reads the same syntax
 from a file. A template cannot be combined with a built-in output selector.
 The legacy `-oneline` option still yields to a nonempty template.
+
+For compact terminal diagnostics with severity colours, separate locations and
+wrapped messages:
+
+```sh
+actionlint check --output-format=pretty --diagnostic-width=80 --color=auto
+```
+
+`pretty` includes captured source, range indicators, diagnostic-specific advice,
+related locations and fix descriptions. Native diagnostic codes appear beside
+the rule name. The `config` line shows where to configure the rule, for example
+`lint.rules.suspicious.case-insensitive-conditions`. Use `actionlint rules RULE`
+for the rule's explanation and options.
+Messages and paths
+wrap; long source lines show a window around the diagnostic. Tabs use four-column
+stops. Width defaults to 100 columns; `--diagnostic-width` accepts 40 to 400 and
+requires `pretty`. Use `--color=always` to force ANSI colours or `--color=never`
+to disable them. Automatic colour respects `NO_COLOR`.
+
+```text
+warning[expression-reference]
+  unknown variable
+  --> ci.yml:1:3
+  |
+1 |   bad
+  |   ^^^
+  = help: Use a declared value.
+```
 
 JSON returns a versioned document. Each diagnostic has `rule`, `message`, `path`,
 `start`, `end` and an optional `snippet`. Positions use one-based Unicode character
@@ -205,7 +279,7 @@ columns, and the end position is exclusive. Ranges may span multiple lines. For 
 CLI and Action share [one result contract](results.md), published as a JSON Schema
 and TypeScript types in the npm package. A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
 individual diagnostic objects with `schema_version: 1` on every record, or nothing for a clean result. Legacy
-`-format '{{json .}}'` retains its original array and field names, including
+`-format '{{json .}}'` emits the legacy diagnostic array with fields including
 `kind`, `filepath` and `end_column`. SARIF uses the bundled renderer. `github`
 emits escaped workflow annotation commands; it is enabled only by that explicit
 format choice, including when running inside GitHub Actions.
@@ -230,25 +304,33 @@ actionlint --experimental
 actionlint check --strict --experimental
 ```
 
-`--strict` selects all stable catalog rules, including non-recommended suspicious checks
-and opt-in repository policies. Explicit group and individual rule exceptions remain in effect, as do
-configured timeout bounds, permission scopes, suppression report modes and
-rule-ID/path ignores. It does not invent a
-`required-actions` list or install missing external linters. `--experimental`
-enables nursery rules while retaining individual exclusions. Strict
+`--strict` enables stable `correctness`, `security` and `suspicious` rules,
+including non-recommended checks. It does not enable additional `conventions`
+rules. Select those through configuration, individually or with `preset: all`.
+Strict mode respects explicit group and rule exceptions,
+timeout bounds, permission scopes, suppression report modes and rule-ID/path
+ignores. It does not install missing external linters. `--experimental`
+enables nursery rules except those explicitly excluded. Strict
 mode alone does not enable nursery rules. Both switches apply after file
-overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
-`--strict=false` removes the strict preset. Policies enabled in configuration remain active.
+overrides; `--experimental=false` clears only nursery selections. The `join-literal` rule is in nursery.
+`--strict=false` removes the strict preset; configure policies separately to disable them.
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
+Set `lint.experimental: true` to enable nursery rules in a repository's
+configuration. `ACTIONLINT_EXPERIMENTAL` and explicit `--experimental` flags
+override that setting, including `false`.
 
-`--log-level=none|info|debug` controls logging. Checks print workflow and finding
-counts on stderr by default. `--summary=false` disables the summary.
+`--log-level=none|info|debug` controls logging. Checks print file and finding
+counts on stderr by default. When findings exist, the summary also counts them per
+source file and per rule/diagnostic code, sorted by count. `--summary=false` disables the summary.
 `--quiet` suppresses logs and summaries while preserving requested results
-and errors. In JSON modes, check failures on stderr use the same result contract, with
+and errors. In JSON modes, stderr contains newline-delimited records for logs,
+summaries and errors. Check failures use the same result contract, with
 `completed: false`, `error`, and `exit_code`. Metadata commands keep their own
 error records. Log
 records have `log`, and the summary has `summary.files` and `summary.findings`.
+Nonempty summaries also include `summary.by_file` (`path`, `count`) and
+`summary.by_diagnostic` (`rule`, optional `code`, `count`).
 Check the exit status before interpreting empty stdout as success.
 
 | Exit status | Meaning                                                                       |
@@ -259,25 +341,104 @@ Check the exit status before interpreting empty stdout as success.
 | `3`         | Could not initialize or complete, including invalid config, regex or template |
 
 `--help --json` describes commands, flags, choices, defaults and exit codes.
-`version --json` exposes build metadata. The old `-version` and `--version` flags
-retain their original three-line text output.
+`version --json` exposes build metadata.
+
+Use `--verbose` or `--debug` to include version and build information in the log.
 
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use
-`--json-pretty=false` to disable this. Without an explicit pretty flag, pipes and
-files retain their existing output. Missing or failing `jq` falls back to the
+`--json-pretty=false` to disable this. Pipes and files require an explicit
+pretty flag. Missing or failing `jq` falls back to the
 original JSON. It is never installed automatically.
 
 Explicit `--json-pretty` also selects JSON when no other output format is set.
 For example, `actionlint rules --json-pretty` prints the rules as JSON. The default
 value and `--json-pretty=false` do not change the selected output format.
 Explicit `--json-pretty` also indents JSON written to pipes and files, using
-built-in formatting without color codes or a jq dependency. JSONL, templates and
-stderr records retain their existing output.
+built-in formatting without color codes or a jq dependency.
 
 CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
 take precedence, including empty strings and `false`.
+
+Remote action metadata is fetched in online mode by default. Use
+`--action-metadata=offline` to check cached metadata without network requests,
+or `--action-metadata=off` to skip acquisition. Offline cache misses appear in
+JSON coverage without failing the check. See [remote action metadata](remote-actions.md)
+for the supported references and resolver configuration.
+
+### Network accounting
+
+Use `--network-stats` to write grouped network statistics as a final JSON record
+on stderr. Diagnostic JSON on stdout is unchanged:
+
+```sh
+actionlint check --network-stats --output=json .github
+```
+
+Each group identifies the host, request kind, purpose and priority. The `credentials`
+field is `provided` when credentials were supplied, `absent` when none were supplied,
+or `unknown` when an external process did not report them. It does not prove that
+the credentials were accepted. Reports exclude credential values, request paths and
+query strings.
+
+`attempts` counts HTTP transport attempts or provider-reported Git operations.
+Retries and redirects are separate attempts at the instrumented transport.
+`failures` counts transport errors and HTTP error responses. `quota_rejections` counts
+rejected requests or batch admission checks, before transport, because of observed
+limits or reservations. A rejected batch counts once, regardless of its size.
+`cache_hits` records cached or coalesced external resolver calls.
+`resolver_calls` counts resolver calls independently of their network attempts.
+`unreported_resolver_calls` counts calls whose internal network activity is not
+fully reported; these are not presented as HTTP request counts.
+`resolver_reported_attempts` identifies attempts reported by an external resolver.
+
+GitHub metadata acquisition checks `/rate_limit` once per credential scope before
+its request batch and updates estimates from subsequent response headers.
+REST and GraphQL quotas are separate. Primary exhaustion and `Retry-After` stop
+further applicable requests without sleeping through the reset window. A plain
+permission-denied response does not imply rate-limit exhaustion. These controls
+follow [GitHub's rate-limit guidance](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
+
+An HTTP caller can reserve quota units for later required requests. The tracker
+then blocks lower-priority requests from spending those units. A quota check is
+not a guarantee: another process can use the same server quota after actionlint
+observes it. Unknown quota information does not mean the quota is zero. These
+statistics belong to one invocation and are not lint configuration settings.
+
+External resolvers can add a `network` request report to their response:
+
+```json
+{
+  "network": {
+    "all_requests_reported": true,
+    "requests": [
+      {
+        "host": "github.com",
+        "request_kind": "git",
+        "credentials": "unknown",
+        "attempts": 1,
+        "failures": 0
+      },
+      {
+        "host": "api.github.com",
+        "request_kind": "rest",
+        "credentials": "provided",
+        "attempts": 2,
+        "failures": 0
+      }
+    ]
+  }
+}
+```
+
+Add this field to the resolver's response alongside its resolution results.
+Set `all_requests_reported` only when every remote attempt is included,
+including failures. Supported kinds are `http`, `rest`, `graphql`, `git` and `oci`.
+The host is an authority without userinfo, a path or a query. Old resolvers work
+without this field, but their calls are counted under `unreported_resolver_calls`. In-process providers can
+use the shared HTTP transport. Actionlint cannot observe network requests made
+directly by subprocesses or WebAssembly guests.
 
 ### Configuration inspection
 
@@ -285,18 +446,21 @@ take precedence, including empty strings and `false`.
 actionlint check --config=other.yml workflow.yml
 actionlint check --no-config workflow.yml
 actionlint config init
+actionlint config init --toml
+actionlint config init --jsonc
 actionlint config path
 actionlint config show --origin
 actionlint config validate
+actionlint config schema
 ```
 
-Configuration selection remains one explicit file or the repository's
-`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, then
+Select an explicit configuration file or use repository discovery in this order:
+`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, `.github/actionlint.jsonc`, then
 `.github/actionlint.toml`. There is no new global
 configuration search or merge policy. `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
-both. `--no-config` skips
-configuration loading. An explicit `check --config` also avoids parsing an
+both. `--no-config`, `--no-rc` and `--norc` skip configuration loading.
+An explicit `check --config` also avoids parsing an
 unselected repository config.
 
 `config path` prints the selected path, or nothing when none is selected. It can
@@ -310,13 +474,19 @@ value does not imply that the user explicitly set it.
 `config validate` uses the same parser and validation as analysis, including its
 current handling of unknown keys described in [Configuration](config.md). It does
 not silently introduce the stricter JSON Schema validation policy.
-`config init` retains the repository destination, refuses to overwrite either
-config filename, and includes the YAML Language Server schema directive.
-It creates a commented configuration reference with lint rules and tools first.
+`config schema` prints the configuration JSON schema with an entry under `tools`
+for each tool provider that `--plugin` or the configuration installs; see
+[Configuration](config.md).
+`config init` creates `.github/actionlint.yaml`. Use `--json`, `--jsonc`, `--toml`,
+`--yaml` or `--yml` to choose the format and extension. The flags cannot be combined.
+The generated file includes its editor schema URL. YAML, JSONC and TOML also
+include commented rule examples generated from the rule declarations.
+The command refuses to create another config when any supported config file exists.
 `init`, `init-config`, `--init` and `--init-config` are compatibility aliases;
 `config --init` and `config --init-config` also work. The success message displays
 a path relative to the working directory, linked to the file when terminal
-hyperlinks are enabled. JSON output retains the absolute path.
+hyperlinks are enabled. Put `--json` before `config init` to receive the absolute
+path as JSON, for example `actionlint --json config init --toml`.
 
 `rules` lists checks by name, description and category; `rules NAME` explains one
 check. `doctor` reports the selected config and resolves configured external-tool
@@ -380,6 +550,18 @@ actionlint completion powershell | Out-String | Invoke-Expression
 Every registered diagnostic rule supports [inline exceptions](config.md#inline-diagnostic-suppressions)
 with a rule name and an optional reason. Place the comment on the reported line, or use
 `actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
+Trailing comments also accept `# actionlint-ignore RULE`, `# ignore RULE` and `# ignore[RULE]`.
+Separate multiple rule IDs with commas, spaces, or both. The preceding-line form
+also accepts `# actionlint-ignore-next-line RULE` and `# ignore-next-line RULE`.
+
+`unused-suppression` reports each inline selector that matches no enabled findings.
+It is informational by default and an error with `--strict`; explicit rule settings
+still take precedence. Script-internal directives such as `# shellcheck disable=...`
+belong to their tool and are not audited by this rule.
+Use `actionlint fix --apply` or the editor quick fix to remove unused selectors.
+Selectors that suppress findings are preserved, along with the directive spelling,
+reason and line endings. A suppression comment is removed when all its selectors
+are unused.
 
 ```yaml
 cache-mode: write # actionlint:ignore cache-write-untrusted -- this job runs reviewed default-branch code only
@@ -396,31 +578,50 @@ to validate the checked-in manifest. For intentional exceptions, use a short com
 [Reusable ignores](config.md#reusable-ignores) let you declare an exception once
 for matching files, jobs, steps or action references.
 
-To ignore some errors, `-ignore` option offers to filter errors by messages
-using regular expression. The option is repeatable. The regular expression
-syntax is the same as [RE2][re2].
+Use `--ignore` to filter findings by exact rule name or diagnostic code. Repeat
+the flag to ignore several rules or codes. A bare code matches any rule that
+emits it. Use `rule/code` to limit the match to one rule. Rule aliases also work.
+Ignored findings do not affect the exit status or summary and their fixes are
+excluded from `actionlint fix`.
 
 ```sh
-actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
+actionlint check --ignore missing-permissions --ignore SC2086 workflow.yml
+actionlint check --ignore shellcheck/SC2086 workflow.yml
 ```
 
-The `-shellcheck` option accepts a command name, path, or command line with arguments.
-An empty value disables ShellCheck.
+`--ignore` and `-ignore` previously accepted message regexes. Use
+`--ignore-regex` for those patterns.
+
+`--ignore-regex` filters findings by regular expression. It
+matches the message and, when a diagnostic has a code, `CODE: message`. Repeat
+the option to add patterns. The syntax is the same as [RE2][re2].
 
 ```sh
-actionlint -shellcheck=
-actionlint --shellcheck='shellcheck -e SC2086'
+actionlint --ignore-regex 'SC2086:' --ignore-regex 'label ".+" is unknown'
 ```
 
-Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. A bare
-`--ruff` selects `ruff` on `PATH`. Use `--ruff=COMMAND` for a custom executable or
-command line, and `--no-ruff` to disable it. ShellCheck follows the same pattern:
-`--shellcheck`, `--shellcheck=COMMAND`, and `--no-shellcheck`.
-Optional command values require `=` so the next argument remains a workflow path.
-A disable flag wins if both forms are supplied and skips the tool's environment
-settings. Legacy single-dash spellings follow the same rules at the root and after
-subcommands. The older `=false` and empty values also remain supported.
+External tools are selected by id. The bundled tools are `shellcheck` and `ruff`;
+plugins may add more. `--tool ID` runs a tool with its own command on `PATH` and
+fails when that command cannot run. `--tool ID=COMMAND` accepts a command name, path,
+or command line with arguments. `--no-tool ID`, `--tool ID=false` and
+`--tool ID=` disable the tool, including plugins that provide it.
+
+```sh
+actionlint --no-tool shellcheck
+actionlint --tool shellcheck='shellcheck -e SC2086'
+```
+
+Ruff checks Python `run:` steps when `ruff` is installed on `PATH`.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
+Both flags are repeatable; the last `--tool` or `--no-tool` for an id wins and
+replaces the tool's environment settings. Legacy single-dash spellings follow the
+same rules at the root and after subcommands. A plugin's ids are its lock entry's
+name and alias and the engine and rule names in its metadata. An id that names no
+bundled tool and no plugin is rejected with the list of valid ids.
+
+The actionlint v1 option `-shellcheck COMMAND`, which the bundled ShellCheck tool
+declares, remains as a hidden, deprecated alias of `--tool shellcheck=COMMAND`; an
+empty command disables ShellCheck. Each use prints a deprecation warning.
 
 Repository configuration can select native executables through
 `tools.<name>.backend.process`. Authorize these selections with
@@ -428,16 +629,15 @@ Repository configuration can select native executables through
 including inherited files and overrides. Explicit CLI and environment commands
 already authorize their own executable.
 
-The deprecated `-pyflakes COMMAND` option selects Ruff's Pyflakes (`F`) rules
-when no Ruff option is supplied. The command value is never executed.
-An empty value or `false` disables Python linting. Explicit Ruff options take precedence.
+The deprecated actionlint v1 option `-pyflakes COMMAND`, which the bundled Ruff tool declares,
+selects Ruff's Pyflakes (`F`) rules when nothing else selects Ruff. The command
+value is never executed. An empty value or `false` disables Ruff.
 
 To configure executables, arguments and child environments separately, use
-`ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
-`ACTIONLINT_SHELLCHECK_ENV`.
-Ruff has matching `ACTIONLINT_RUFF_BIN`, `ACTIONLINT_RUFF_FLAGS`, and
-`ACTIONLINT_RUFF_ENV` settings.
-An explicit tool flag overrides all three environment settings for that tool.
+`ACTIONLINT_TOOL_<ID>_BIN`, `ACTIONLINT_TOOL_<ID>_FLAGS`, and
+`ACTIONLINT_TOOL_<ID>_ENV`, where `<ID>` is the tool id upper-cased with dashes
+replaced by underscores, such as `ACTIONLINT_TOOL_SHELLCHECK_BIN`.
+`--tool` and `--no-tool` override all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
 
@@ -465,16 +665,16 @@ By default, `--norc` disables rc discovery. Set
 file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
 files (`-x`) can be disabled in
 configuration and is disabled when the step's working directory cannot be resolved
-locally. Additional options can use `-shellcheck '<command line>'` or the
+locally. Additional options can use `--tool shellcheck='<command line>'` or the
 [`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ).
 
 <a id="format"></a>
 
 ### Format error messages
 
-`-format` option can flexibly format error messages with [Go template syntax][go-template].
+Use `-format` to format error messages with [Go template syntax][go-template].
 
-Before explaining the formatting details, let's see some examples.
+The following examples show how to format diagnostics.
 
 #### Example: Legacy template JSON
 
@@ -536,22 +736,27 @@ Output:
 
 ````sh
 actionlint -format '
-{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```
+{{range $err := .}}::error file={{escapeProperty $err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{escapeData $err.Message}}%0A```%0A{{escapeData $err.Snippet}}%0A```
 {{end}}
-' -ignore 'SC2016:'
+' --ignore SC2016
 ````
 
 Output:
 
-<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/ga-annotate.png" alt="annotations on GitHub Actions" width="731" height="522"/>
+For a reference to `missing.value` on line 6 of `.github/workflows/ci.yml`, the
+template emits this annotation command:
 
-To include newlines in the annotation body, it prints `%0A`. (ref
-actions/toolkit#193). And it
-suppresses `SC2016` shellcheck rule error since it complains about the template
-argument.
+````text
+::error file=.github/workflows/ci.yml,line=6,col=24::undefined variable "missing". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars"%0A```%0A      - run: echo '${{ missing.value }}'%0A                       ^~~~~~~%0A```
+````
 
-Basically it is more recommended to use [Problem Matchers](#problem-matchers) or
-reviewdog as explained in ['Tools integration' section](#tools-integ) below.
+`escapeData` encodes `%`, carriage returns and newlines in the annotation body.
+`escapeProperty` also encodes `:` and `,` in property values such as the file path.
+Both follow [`@actions/core` workflow-command escaping](https://github.com/actions/toolkit/blob/main/packages/core/src/command.ts).
+The example suppresses ShellCheck's `SC2016` diagnostic about the template argument.
+
+Use `actionlint --output github` for standard annotations. Templates let you
+customize the annotation body.
 
 #### Example: [SARIF format][sarif]
 
@@ -565,14 +770,14 @@ actionlint --output sarif > actionlint.sarif
 
 Native SARIF output is a typed JSON document.
 
-Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
+See the [SARIF output example](../internal/development/tests/integration/output/testdata/format/test.sarif).
 
 #### Formatting syntax
 
 In [Go template syntax][go-template], `.` within `{{ }}` means the target object. Here, the target object is a sequence of error
 objects.
 
-The sequence can be traversed with `range` action, which is like `for ... = range ... {}` in Go.
+Use the `range` action to traverse the sequence, as you would use `for ... = range ... {}` in Go.
 
 ```text
 {{range $err := .}} this part iterates error objects with the iteration variable $err {{end}}
@@ -587,6 +792,8 @@ The error object has the following fields.
 | `{{$err.Message}}`   | Body of error message                                 | `property "platform" is not defined in object type {os: string}`    |
 | `{{$err.Snippet}}`   | Code snippet to indicate error position               |  <code>          node_version: 16.x\n          ^~~~~~~~~~~~~</code> |
 | `{{$err.Kind}}`      | Name of rule the error belongs to                     | `expression`                                                        |
+| `{{$err.Code}}`      | Native diagnostic identifier, when supplied           | `SC2086`                                                            |
+| `{{$err.Severity}}`  | Diagnostic level; empty means error                   | `info`                                                              |
 | `{{$err.Filepath}}`  | Canonical relative file path of the error position    | `.github/workflows/ci.yml`                                          |
 | `{{$err.Line}}`      | Line number of the error position (1-based)           | `9`                                                                 |
 | `{{$err.Column}}`    | Column number of the error's start position (1-based) | `11`                                                                |
@@ -594,20 +801,21 @@ The error object has the following fields.
 
 <!-- dprint-ignore-end -->
 
-Functions called in `{{ }}` placeholder are template actions. There are many
-actions defined by Go standard library. In addition, there are a few custom
-actions defined by actionlint. Most useful action would be `json` as we already
-used it in the above JSON example. List of all custom actions are as follows:
+Functions called inside `{{ }}` are template actions. In addition to the actions
+defined by the Go standard library, actionlint provides the following custom
+actions. The JSON example above uses `json`.
 
-| Action           | Description                                                                      | Example usage                             |
-| ---------------- | -------------------------------------------------------------------------------- | ----------------------------------------- |
-| `json x`         | Serialize `x` as JSON string followed by newline character                       | `{{json $err}}`                           |
-| `replace x y z`  | Replace string `y` with `z` in `x`                                               | `{{replace $err.Filepath "\\" "/"}}`      |
-| `toPascalCase x` | Convert `x` into PascalCase (e.g. 'foo-bar' to 'FooBar')                         | `{{toPascalCase $err.Kind}}`              |
-| `allKinds`       | Return an array of kind objects. The kind object is explained in the below table | `{{range $ = allKinds}}{{$.Name}}{{end}}` |
-| `getVersion`     | Return the version of actionlint as string                                       | `{{getVersion}}`                          |
+| Action             | Description                                                                      | Example usage                             |
+| ------------------ | -------------------------------------------------------------------------------- | ----------------------------------------- |
+| `json x`           | Serialize `x` as JSON string followed by newline character                       | `{{json $err}}`                           |
+| `replace x y z`    | Replace string `y` with `z` in `x`                                               | `{{replace $err.Filepath "\\" "/"}}`      |
+| `escapeData x`     | Escape string `x` for a GitHub Actions command body (`%`, CR, LF)                | `{{$err.Snippet \| escapeData}}`          |
+| `escapeProperty x` | Escape string `x` for a GitHub Actions command property (also `:` and `,`)       | `{{$err.Filepath \| escapeProperty}}`     |
+| `toPascalCase x`   | Convert `x` into PascalCase (e.g. 'foo-bar' to 'FooBar')                         | `{{toPascalCase $err.Kind}}`              |
+| `allKinds`         | Return an array of kind objects. The kind object is explained in the below table | `{{range $ = allKinds}}{{$.Name}}{{end}}` |
+| `getVersion`       | Return the version of actionlint as string                                       | `{{getVersion}}`                          |
 
-The kind object returned from `allKinds` action has the following fields.
+The `allKinds` action returns kind objects with the following fields.
 
 | Field                   | Description                   | Example                                     |
 | ----------------------- | ----------------------------- | ------------------------------------------- |
@@ -626,16 +834,14 @@ will produce output like below.
 line is 21, col is 20, message is "property \"platform\" is not defined in object type {os: string}"
 ```
 
-In `{{ }}` placeholder, input can be piped and action can be used to transform
-texts. In above example, the message is piped with `|` and transformed with
-`printf "%q"`.
+Inside `{{ }}`, you can pipe a value to an action to transform it. In the
+example above, `|` pipes the message to `printf "%q"`.
 
-Note that special characters escaped with backslash like `\n` in the format
-string are automatically unescaped.
+Backslash escapes such as `\n` in the format string are automatically unescaped.
 
 ### Exit status
 
-`actionlint` command exits with one of the following exit statuses.
+The `actionlint` command exits with one of the following statuses.
 
 | Status | Description                                             |
 | ------ | ------------------------------------------------------- |
@@ -653,13 +859,11 @@ optional PR reviews, tools and the complete input/output reference.
 
 ### Manual installation
 
-The download script remains useful when direct access to the executable is
-preferred. It sets an absolute file path of the downloaded
+Use the download script for direct access to the executable. It sets the absolute path of the downloaded
 executable to the `executable` output for following steps.
 
-Here is an example of simple workflow to run actionlint on GitHub Actions.
-Please ensure `shell: bash` since the default shell for Windows runners is
-`pwsh`.
+This workflow runs actionlint on GitHub Actions. Set `shell: bash` because the
+default shell on Windows runners is `pwsh`.
 
 ```yaml
 name: Lint GitHub Actions workflows
@@ -677,7 +881,7 @@ jobs:
         shell: bash
       - name: Check workflow files
         env: { actionlint: "${{ steps.get_actionlint.outputs.executable }}" }
-        run: "${actionlint}" -color
+        run: '"${actionlint}" --output github'
         shell: bash
 ```
 
@@ -687,20 +891,19 @@ Or simply download the executable and run it in one step:
 - name: Check workflow files
   run: |
     bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
-    ./actionlint -color
+    ./actionlint --output github
   shell: bash
 ```
 
-The download script allows to specify the version of actionlint and the download
-directory. Try to give `--help` argument to the script for more usage details.
+The download script accepts an actionlint version and a download directory.
+Pass `--help` to the script for more details.
 
 If you want to enable
 [shellcheck integration](checks.md#check-shellcheck-integ), install `shellcheck`
 command. Note that shellcheck is
 [pre-installed on Ubuntu worker][preinstall-ubuntu].
 
-If you want to [annotate errors][ga-annotate-error] from actionlint on GitHub,
-consider using [Problem Matchers](#problem-matchers).
+`--output github` emits [GitHub annotations](#github-annotations) directly.
 
 If you prefer Docker image to running a downloaded executable, using
 [actionlint Docker image](#docker) is another option.
@@ -718,20 +921,19 @@ jobs:
       - name: Check workflow files
         uses: docker://ghcr.io/kjanat/actionlint:latest
         with:
-          args: -color
+          args: --output github
 ```
 
 ## Online playground
 
-Thanks to WebAssembly, actionlint playground is available on your browser. It
-never sends any data to outside your browser.
+The actionlint playground runs in your browser using WebAssembly. It does not
+send data outside your browser.
 
 <https://kjanat.github.io/actionlint>
 
-Paste your workflow content to the code editor at left pane. It automatically
-shows the results at right pane. When editing the workflow content in the code
-editor, the results will be updated on the fly. Clicking an error message in the
-results table moves a cursor to position of the error in the code editor.
+Paste your workflow into the editor on the left. Results appear on the right and
+update as you edit. Click an error in the results table to move the cursor to its
+location in the editor.
 
 <a id="docker"></a>
 
@@ -754,8 +956,8 @@ Available tags are:
 
 The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
 `kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
-whichever your setup pulls from more easily. Previous `action-*` images remain
-available for older action refs; new releases use the JavaScript action.
+whichever your setup pulls from more easily. Older action refs use `action-*`
+images; new releases use the JavaScript action.
 The ordinary binary also supports `-github-action` to run the action adapter
 with `INPUT_*`, `GITHUB_WORKSPACE`, and `GITHUB_OUTPUT` environment variables.
 
@@ -775,8 +977,7 @@ default working directory, `/w`:
 docker run --rm -v "$(git rev-parse --show-toplevel):/w" ghcr.io/kjanat/actionlint:latest -color
 ```
 
-To check a file with actionlint in a Docker container, pass the file content via
-stdin and use `-` argument:
+To check a file in a Docker container, pass its contents through stdin and use `-`:
 
 ```sh
 cat /path/to/workflow.yml | docker run --rm -i ghcr.io/kjanat/actionlint:latest -color -
@@ -802,7 +1003,7 @@ there.
 
 ## Using actionlint from Go program
 
-Go APIs are available. See [the Go API document](api.md) for more details.
+Use the [integration interfaces](api.md) to connect other programs or write plugins.
 
 <a id="tools-integ"></a>
 
@@ -850,34 +1051,17 @@ Pass additional actionlint options through `actionlint_flags`. See the
 
 <a id="problem-matchers"></a>
 
-### Problem Matchers
+### GitHub annotations
 
-> [!NOTE]
-> The example below downloads this fork and installs this fork's problem matcher,
-> so annotations include fork-specific checks.
-
-[Problem Matchers][problem-matchers] is a feature to extract GitHub Actions
-annotations from terminal outputs of linters.
-
-Copy [actionlint-matcher.json][actionlint-matcher] to
-`.github/actionlint-matcher.json` in your repository.
-
-Then enable the matcher using `add-matcher` command before running `actionlint`
-in the step of your workflow.
+The [GitHub Action](action.md) emits annotations by default. With an installed
+CLI, select GitHub output:
 
 ```yaml
 - name: Check workflow files
-  run: |
-    echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
-    ./actionlint -color
-  shell: bash
+  run: actionlint check --output github
 ```
 
-When you change your workflow and the changed line causes a new error, CI will
-annotate the diff with the extracted error message.
-
-<img src="https://cdn.jsdelivr.net/gh/rhysd/ss@5530c2526b44ad28dc12f91a3d71bcd57940f008/actionlint/problem-matcher.png" alt="annotation by Problem Matchers" width="715" height="221" />
+This writes annotation commands directly to the runner, including findings from plugins.
 
 ### super-linter
 
@@ -956,7 +1140,7 @@ repos:
 The default `actionlint` hook installs an exact `actionlint-kjanat` wheel dependency
 in pre-commit's Python environment. The wheel contains the native host binary; no Go
 compiler or separate native ShellCheck/Ruff installer is needed. The project's
-[plugin declarations and lockfile](plugins.md) select and pin Wasm analyzers.
+[plugin declarations](plugins.md) select exact registry releases or digest-pinned Wasm artifacts.
 Initialize or migrate those files with actionlint before committing them.
 
 The distribution also offers `actionlint-system` for an existing installation and
@@ -973,8 +1157,8 @@ metadata validation; missing actions report `missing-local-action`.
 #### Updating pre-commit hooks
 
 Change the `repo:` URL explicitly when migrating from v1: `pre-commit autoupdate`
-does not move a configuration to another repository. Old immutable v1 hook revisions
-remain available at the old URL. See [v2 migration](migration-v2.md).
+does not move a configuration to another repository. For v1 hooks, use the old
+repository URL. See [v2 migration](migration-v2.md).
 
 After the first v2 hook release, update within the dedicated repository:
 
@@ -983,9 +1167,9 @@ pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint-pre-c
 ```
 
 Only completed stable hook releases receive tags in that repository; unrelated
-source, Action-channel, and development tags remain in the host repository.
+source, Action-channel, and development tags belong to the host repository.
 Review the selected release and commit the updated revision. A frozen revision pins
-the hook installation; `actionlint.plugins.lock.json` separately pins the project's plugins.
+the hook installation; exact declarations in actionlint configuration select the project's plugins.
 
 ### VS Code
 
@@ -994,9 +1178,9 @@ the hook installation; `actionlint.plugins.lock.json` separately pins the projec
 > which defaults to `actionlint` on `PATH`. It uses this fork when that command
 > resolves to a fork build; it does not download actionlint itself.
 
-[Linter extension][vsc-extension] for [VS Code][vscode] is available. The
-extension automatically detects `.github/workflows` directory, runs `actionlint`
-command, and reports errors in the code editor while editing workflow files.
+The [Linter extension][vsc-extension] for [VS Code][vscode] detects the
+`.github/workflows` directory, runs `actionlint`, and reports errors in the
+editor as you edit workflow files.
 
 ### Emacs
 
@@ -1020,15 +1204,11 @@ Their respective repositories are
 > command can be overridden, and ALE exposes
 > `g:ale_yaml_actionlint_executable`, so either can select this fork.
 
-[nvim-lint][nvim-lint] supports actionlint on Neovim. The plugin automatically
-and asynchronously runs actionlint and notifies errors on the fly when you edit
-GitHub Actions CI workflows. Please read the plugin's documentation for more
-details.
+[nvim-lint][nvim-lint] runs actionlint asynchronously and reports errors as you
+edit GitHub Actions workflows in Neovim. See the plugin documentation for details.
 
-[ALE][vim-ale] supports actionlint on Vim and Neovim. Similar to nvim-lint, The
-plugin automatically and asynchronously runs actionlint and notifies errors on
-the fly when you edit GitHub Actions CI workflows. Please read the plugin's
-documentation for more details.
+[ALE][vim-ale] runs actionlint asynchronously and reports errors as you edit
+GitHub Actions workflows in Vim or Neovim. See the plugin documentation for details.
 
 ### Pulsar Edit
 
@@ -1037,11 +1217,9 @@ documentation for more details.
 > which defaults to `actionlint` on `PATH`. Point that setting at this fork's
 > binary to use fork-specific checks.
 
-A [Linter package][pulsar-linter] for [Pulsar Edit][pulsar] is available. The
-package automatically detects a `workflows` directory, executes the `actionlint`
-command on any detected GitHub Actions files within the directory, and reports
-returned information in the code editor display tab while editing workflow
-files.
+The [Linter package][pulsar-linter] for [Pulsar Edit][pulsar] detects a
+`workflows` directory, runs `actionlint` on GitHub Actions files in that directory,
+and shows its findings in the editor as you work.
 
 ### Nova
 
@@ -1101,9 +1279,8 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 
 ---
 
-[Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Go API](api.md) | [References](reference.md)
+[Checks](checks.md) | [Installation](install.md) | [Configuration](config.md) | [Integration interfaces](api.md) | [References](reference.md)
 
-[actionlint-matcher]: https://raw.githubusercontent.com/kjanat/actionlint/HEAD/.github/actionlint-matcher.json
 [cmd-manual]: https://kjanat.github.io/actionlint/usage.html
 [docker-badge]: https://img.shields.io/docker/v/kjanat/actionlint?logo=docker&logoColor=white&label=Docker&labelColor=2496ED&color=black
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint
@@ -1115,7 +1292,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [emacs-flymake]: https://www.gnu.org/software/emacs/manual/html_node/flymake/
 [emacs-melpa]: https://melpa.org/
 [ga-annotate-error]: https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#setting-an-error-message
-[go-install]: https://go.dev/doc/install
 [go-template]: https://pkg.go.dev/text/template
 [jsonl]: https://jsonlines.org/
 [nova-extension]: https://extensions.panic.com/extensions/org.netwrk/org.netwrk.actionlint/
@@ -1123,7 +1299,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [nvim-lint]: https://github.com/mfussenegger/nvim-lint
 [pre-commit]: https://pre-commit.com
 [preinstall-ubuntu]: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
-[problem-matchers]: https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md
 [pulsar-linter]: https://web.pulsar-edit.dev/packages/linter-github-actions
 [pulsar]: https://pulsar-edit.dev/
 [re2]: https://golang.org/s/re2syntax
@@ -1149,6 +1324,12 @@ versioned open buffers, ranged changes, diagnostic publication, and versioned
 quick-fix edits. Open document changes invalidate analysis of open dependants.
 The client applies edits; the server never writes editor buffers to disk.
 
+For an allowed diagnostic, choose **Suppress RULE for this declaration** from the
+editor's quick-fix menu. The action adds a suppression comment or extends an
+existing one while retaining its reason. Multiline scripts are suppressed at the
+YAML declaration. The target buffer must be open; edits carry its current version.
+Rules prohibited by `forbidden-suppression` do not offer this action.
+
 `actionlint fix [files...]` previews source edits as JSON. `--apply` writes the
 validated edits and checks the files again. Only fixes marked safe are selected
 by default; `--include-suggested` also includes edits requiring review. Conflicting
@@ -1156,33 +1337,33 @@ edits or stale source revisions abort preparation. Writes are atomic per file;
 an I/O failure during a multi-file application reports how many files were written.
 
 `actionlint plugin search` discovers published plugins. `plugin install owner/repo@TAG`
-adds a dependency to the config's root `plugins` list and pins its verified artifact
-in the adjacent `actionlint.plugins.lock.json`; commit both files.
+adds the canonical package and exact version to the config's root `plugins` list;
+commit that file. Registry evidence and verified resolutions stay in the user cache.
 Check, fix, rules and LSP load declared plugins using their pins. `plugin install`
 without a name resolves manually edited declarations or migrates older lock-only projects.
 `plugin sync` restores exact pins; `plugin update` explicitly refreshes declared versions.
 See [plugin installation](plugins.md#install-from-the-registry)
 for version selection, overrides and offline behavior.
 
-`--plugin PATH` accepts document-analyzer components, runner providers or the Ruff core WebAssembly
-engine. The Ruff engine replaces the native Ruff process while retaining the
-host's workflow expression masking and YAML position mapping.
+`--plugin PATH` loads a WebAssembly plugin. A `.json` path loads a
+[local tool provider manifest](plugins.md#local-tool-provider-manifests) that runs a native command.
 
-Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
-provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The
-commitish provider is maintained separately as `actionlint-plugin-commitish`. Build it
-from that project with `cargo build --locked --release`. Its executable accepts `--token-env NAME` only when
-you explicitly choose a credential variable. It resolves action and reusable
-workflow references using their respective commitish semantics, and proposes
-reviewable commit pins. Provider errors fail analysis instead of implying absence.
-The default local analysis makes no resolution requests.
+Online metadata lookup uses the bundled Commitish WebAssembly plugin to resolve
+branches, tags and commit references. Actionlint performs the plugin's requested
+lookups and includes them in `--network-stats`. Use `--action-metadata=offline`
+for cached metadata or `--action-metadata=off` to skip it.
+
+Load a replacement resolver component with `--plugin`. To use a native resolver,
+select it with `--resolve-with EXECUTABLE`; repeat `--resolver-arg VALUE` for
+literal arguments. This option also enables commit-pin suggestions. See
+[remote metadata and reference resolution](remote-actions.md).
 
 The language server provides expression property completions, including
 `github.event` payload fields selected by the workflow's triggers and activity
 filters. Dot access, quoted bracket access, array indices and wildcard access
 use the same types as expression diagnostics. Completions use the current editor
 buffer, including unsaved changes. Unknown events and caller-provided payloads
-remain open; conditions do not yet narrow the event type within a branch.
+allow arbitrary properties; conditions do not yet narrow the event type within a branch.
 
 Expression findings have independent rule settings. For example, allowing unknown
 payload properties does not disable script-injection checks:

@@ -1,4 +1,5 @@
 #:schema https://www.schemastore.org/golangci-lint.json
+#:tombi schema.strict = false
 # this breaks in current tombi, something about the schema and tombi is wrong.
 # https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
 
@@ -7,23 +8,28 @@ version = "2"
 [linters]
 default = "standard"
 enable  = [
-  "contextcheck",
-  "exhaustive",
+  "dogsled",
   "asasalint",
   "asciicheck",
   "bidichk",
   "bodyclose",
+  "contextcheck",
   "copyloopvar",
+  "depguard",
+  "dupl",
   "dupword",
   "durationcheck",
   "errname",
   "errorlint",
+  "exhaustive",
   "exptostd",
   "fatcontext",
   "forbidigo",
   "forcetypeassert",
   "gocheckcompilerdirectives",
+  "gochecksumtype",
   "gocritic",
+  "gomoddirectives",
   "intrange",
   "iotamixing",
   "makezero",
@@ -38,6 +44,7 @@ enable  = [
   "predeclared",
   "reassign",
   "recvcheck",
+  "thelper",
   "unconvert",
   "unparam",
   "usestdlibvars",
@@ -46,17 +53,63 @@ enable  = [
 ]
 
 [linters.settings.forbidigo]
-forbid = [
-  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through fsread.Reader" },
-  { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through fsread.Reader" },
-  { pattern = '^fsread\.(Disk|ProbeDir)$', msg = "fsread.Disk and fsread.ProbeDir skip recording; read through fsread.Reader" },
+analyze-types = true
+forbid        = [
+  { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through files.Reader" },
+  { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through files.Reader" },
+  { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/input/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
+  { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only the invocation owner registers occurrence IDs" },
 ]
 
-[linters.settings.staticcheck]
-checks = ["all", "-ST1003"]
+# A file can match several rules' file patterns. Every such rule applies.
+# Deny entries block imports beginning with the listed path.
+
+[linters.settings.depguard.rules.yaml-types]
+files = [
+  "**/internal/checking/constraints/**",
+  "**/internal/checking/passes/*.go",
+  "**/internal/model/workflows/definition/*.go",
+  "**/internal/model/workflows/mappings/*.go",
+  "!$test",
+]
+deny  = [{ pkg = "github.com/kjanat/go-yaml/v4", desc = "parser types stay behind the YAML codec" }]
+
+[linters.settings.depguard.rules.invocation]
+files = ["**/internal/model/calls/invocation/*.go", "!$test"]
+deny  = [
+  { pkg = "os", desc = "the invocation owner has no host capabilities" },
+  { pkg = "io", desc = "the invocation owner has no host capabilities" },
+  { pkg = "net", desc = "the invocation owner has no host capabilities" },
+  { pkg = "syscall", desc = "the invocation owner has no host capabilities" },
+  { pkg = "unsafe", desc = "the invocation owner has no host capabilities" },
+  { pkg = "crypto/rand", desc = "the invocation owner has no host capabilities" },
+  { pkg = "math/rand", desc = "the invocation owner has no host capabilities" },
+]
+
+[linters.settings.depguard.rules.tool-providers]
+files = ["**/internal/plugins/manifests/**", "!$test"]
+deny  = [
+  { pkg = "github.com/kjanat/wazero", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
+  { pkg = "github.com/kjanat/wacogo", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
+]
+
+[linters.settings.depguard.rules.oci-transport]
+files = ["$all", "!**/internal/plugins/artifacts/oci/**"]
+deny  = [
+  { pkg = "github.com/oras-project/oras-go", desc = "oci:// sources are pulled only by internal/plugins/artifacts/oci; everything else reads the artifact Store" },
+]
 
 [linters.settings.exhaustive]
 default-signifies-exhaustive = true
+
+[linters.settings.recvcheck]
+exclusions = ["*.DecodeConfig"]
+
+[linters.settings.gochecksumtype]
+default-signifies-exhaustive = false
+
+[linters.settings.staticcheck]
+checks = ["all", "-ST1003"]
 
 [linters.exclusions]
 generated = "lax"
@@ -67,21 +120,22 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path    = '_test\.go$|^(\.github|cmd|fuzz|playground|tools)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/(actioncatalog/(generate|metadata)|expression/context/generate|webhook/generate|rulecatalog/check-docs|documentation/check-readme)/'
+path    = '_test\.go$|^(\.github|cmd|fuzz|tools)/|^internal/(cli|input/files)/|^internal/development/(generators|tests/(conformance|integration/(documentation|plugins/package-fixture)))/'
+text    = "files\\.(Reader|Disk|ProbeDir)"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/(workspace/(project|session)|config/(config|inspection))\.go$'
-text    = "fsread\\.Disk"
+path    = '_test\.go$|^internal/model/calls/invocation/'
+text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/workflow/names/index\.go$'
-text    = "fsread\\.ProbeDir"
+path    = '^internal/input/files/names/index\.go$'
+text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/(genfile/write_new|testutil/ruff)\.go$'
+path    = '^internal/development/(generators/files/write_new|tests/support/ruff)\.go$'
 text    = 'use of `os\.OpenFile`'
 linters = ["forbidigo"]
 

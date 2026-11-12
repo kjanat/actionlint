@@ -1,0 +1,4 @@
+[lint]
+[lint.rules]
+[lint.rules.policy]
+required-actions = 'on'

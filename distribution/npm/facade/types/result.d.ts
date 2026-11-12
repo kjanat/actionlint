@@ -2,7 +2,14 @@
 export type Position = { line: number; column: number };
 export type Edit = { path: string; start: Position; end: Position; replacement: string };
 export type SourceReference = { document: string; revision: string; node: string; address: string };
-export type RelatedLocation = { message: string; path: string; start: Position; end: Position };
+export type SourceRevision = { document: string; digest: string };
+export type SourceCoordinates = 'yaml' | 'raw-lf';
+export type RelatedLocation =
+	& { message: string; path: string; start: Position; end: Position }
+	& (
+		| { revision?: never; coordinates?: never }
+		| { revision: SourceRevision; coordinates: SourceCoordinates }
+	);
 export type Fix = {
 	description: string;
 	edits: Edit[];
@@ -94,7 +101,7 @@ export type ActionRunsOutline =
 	}
 	| { kind: 'plugin'; plugin: string }
 	| { kind: 'unknown'; using?: string };
-/** Syntactic classification; host resolution, dialect support and provider identity remain separate. */
+/** Declared source of an action or reusable workflow. */
 export type UsesReference =
 	| {
 		kind: 'repository';
@@ -131,13 +138,64 @@ export type StepOutline = {
 	steps?: StepOutline[];
 };
 
+export type ActionMetadataProblem = {
+	message: string;
+	path: string;
+	/** One-based manifest coordinates; zero means unavailable. */
+	start: Position;
+	end: Position;
+};
+export type ActionMetadataSelection = {
+	host: string;
+	repository: string;
+	repository_id: number;
+	commit: string;
+	directory?: string;
+	observed_at?: string;
+	manifest: string;
+	selected_object: string;
+	selected_ref?: string;
+};
+export type ActionMetadata =
+	& { reference: string }
+	& (
+		| {
+			state: 'unavailable';
+			reason:
+				| 'not-fetched'
+				| 'offline'
+				| 'lookup-disabled'
+				| 'denied'
+				| 'failed'
+				| 'not-found'
+				| 'unsupported'
+				| 'cache-miss'
+				| 'not-found-or-inaccessible'
+				| 'limit-exceeded';
+		}
+		| (ActionMetadataSelection & { state: 'available'; reason?: never; problems?: never })
+		| (ActionMetadataSelection & { state: 'invalid'; reason?: never; problems: ActionMetadataProblem[] })
+	);
+
+export type IncompleteCheck = {
+	source: SourceReference;
+	/** Absent when the failure occurred before a call could be identified. */
+	invocation?: { entry: SourceReference; id: string };
+	rule?: string;
+	reason: string;
+};
+
 export type ResultData = {
+	/** Checks that could not finish in at least one invocation of a source revision. */
+	incomplete_checks?: IncompleteCheck[];
 	schema_version: 1;
 	file_count: number | null;
 	diagnostics: Diagnostic[];
 	configurations: ResultConfig[];
 	hints: string[];
 	documents?: DocumentOutline[];
+	/** Outcomes for distinct remote references requested by metadata checks. */
+	action_metadata?: ActionMetadata[];
 	sarif?: Record<string, unknown>;
 	error?: string;
 };

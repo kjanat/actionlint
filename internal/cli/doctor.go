@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"runtime"
 	"slices"
-	"strings"
 	"text/tabwriter"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
-
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
+	checking "actionlint.kjanat.dev/v2/internal/checking"
+	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 type doctorTool struct {
@@ -36,7 +37,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if err != nil {
 		return err
 	}
-	config, configErr := localapp.InspectConfig(ctx, req.Config, req.Plugins, false)
+	config, configErr := checking.InspectConfig(ctx, req.Config, req.Plugins, false)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -51,18 +52,27 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	tools := []struct {
+	manifests, err := pluginmanifests.Bundled()
+	if err != nil {
+		return err
+	}
+	if err := checkDoctorTools(manifests, req.NamedTools); err != nil {
+		return err
+	}
+	type doctorItem struct {
 		name, command string
 		options       *processconfig.Options
-	}{
-		{"shellcheck", req.ShellCheck, req.ShellcheckOptions},
-		{"ruff", req.Ruff, req.RuffOptions},
-		{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}},
+		manifest      *pluginmanifests.Manifest
 	}
-	for _, item := range tools {
-		if item.name == "resolver" && item.command == "" {
-			continue
-		}
+	items := make([]doctorItem, 0, len(manifests)+1)
+	for i := range manifests {
+		selection := req.Tools[manifests[i].Rule.Name]
+		items = append(items, doctorItem{manifests[i].Rule.Name, selection.Command, selection.Process, &manifests[i]})
+	}
+	if req.ResolverCommand != "" {
+		items = append(items, doctorItem{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}, nil})
+	}
+	for _, item := range items {
 		if item.options != nil && item.options.Executable != nil {
 			item.command = *item.options.Executable
 		}
@@ -70,8 +80,8 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 		if item.command != "" {
 			tool.Path, tool.Arguments, err = processconfig.ResolveOptions(item.command, item.options)
 			tool.Status = "available"
-			if err == nil && item.name == "ruff" && item.options != nil && item.options.Optional {
-				err = probeDoctorRuff(ctx, tool.Path, item.options)
+			if err == nil && item.manifest != nil && item.options != nil && item.options.Optional {
+				err = probeDoctorVersion(ctx, *item.manifest, item.command, item.options)
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
@@ -83,7 +93,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 		report.Tools = append(report.Tools, tool)
 	}
 	if req.JSON {
-		err = writeCommandJSON(out, report)
+		err = commandstreams.WriteJSON(out, report)
 	} else {
 		file, terminal := terminalFile(out)
 		links := req.Hyperlinks.enabled(terminal, os.Getenv)
@@ -117,24 +127,44 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	return configErr
 }
 
-func probeDoctorRuff(ctx context.Context, executable string, options *processconfig.Options) error {
+// checkDoctorTools rejects tool ids named by --tool or --no-tool that no
+// bundled provider has. Doctor loads no plugins, so only bundled tools count.
+func checkDoctorTools(manifests []pluginmanifests.Manifest, named []string) error {
+	known := make([]string, len(manifests))
+	for i, manifest := range manifests {
+		known[i] = manifest.Rule.Name
+	}
+	var unknown []string
+	for _, id := range named {
+		if !slices.Contains(known, id) {
+			unknown = append(unknown, id)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	return commandargs.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
+}
+
+// probeDoctorVersion runs the manifest's version probe against command, as
+// analysis does before it uses an automatically discovered tool. A provider
+// without a version probe passes.
+func probeDoctorVersion(ctx context.Context, manifest pluginmanifests.Manifest, command string, options *processconfig.Options) error {
+	if manifest.Process == nil || manifest.Process.Version == nil {
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var result error
-	run := func(args []string, stdin string, callback func([]byte, error) error) {
-		cmd := exec.CommandContext(ctx, executable, args...)
-		cmd.WaitDelay = time.Second
-		cmd.Dir = options.WorkingDir
-		cmd.Stdin = strings.NewReader(stdin)
-		cmd.Env = append(cmd.Environ(), options.Environment...)
-		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
-			name, _, _ := strings.Cut(entry, "=")
-			return slices.ContainsFunc(ruff.UnsetEnvironment(), func(unset string) bool {
-				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
-			})
-		})
-		output, err := cmd.Output()
-		result = callback(output, err)
+	processes := hostprocess.NewProcessPool(ctx, 1)
+	defer processes.Wait()
+	resolved, err := processes.ConfiguredCommandRunner(command, options, false)
+	if err != nil {
+		return err
 	}
-	return ruff.CheckCompatibility(ctx, run, func() error { return result })
+	backend, err := process.NewBackend(manifest, resolved, process.Options{Programs: bundled.Program, Required: true})
+	if err != nil {
+		return err
+	}
+	_, err = backend.ProbeVersion(ctx)
+	return err
 }

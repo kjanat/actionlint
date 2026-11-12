@@ -27,11 +27,12 @@ export function updateToolchain(version, { root = process.cwd(), run, write = wr
 		if (!/^[a-f0-9]{40}$/.test(candidate)) throw new Error('Invalid nixpkgs commit ID');
 		let source = '';
 		try {
-			source = run('gh', [
-				'api',
-				`repos/NixOS/nixpkgs/contents/${compilerPath}?ref=${candidate}`,
-				'-H',
-				'Accept: application/vnd.github.raw+json',
+			source = run('curl', [
+				'--fail',
+				'--silent',
+				'--show-error',
+				'--location',
+				`https://raw.githubusercontent.com/NixOS/nixpkgs/${candidate}/${compilerPath}`,
 			]);
 		} catch {
 			// A new Go family can be absent from the currently locked revision.
@@ -65,7 +66,8 @@ export function updateToolchain(version, { root = process.cwd(), run, write = wr
 	// Validate every replacement before touching the repository.
 	const replacements = (/** @type {[string, RegExp, string][]} */ ([
 		['go.mod', /^toolchain go\d+\.\d+\.\d+$/m, `toolchain ${version}`],
-		['Dockerfile', /^ARG GOLANG_VER=\d+\.\d+\.\d+$/m, `ARG GOLANG_VER=${expected}`],
+		['.mise.toml', /^go(\s*=\s*)"\d+\.\d+\.\d+"$/m, `go$1"${expected}"`],
+		['distribution/docker/Dockerfile', /^ARG GOLANG_VER=\d+\.\d+\.\d+$/m, `ARG GOLANG_VER=${expected}`],
 		['CONTRIBUTING.md', /--build-arg GOLANG_VER=\d+\.\d+\.\d+/g, `--build-arg GOLANG_VER=${expected}`],
 		[
 			'flake.nix',

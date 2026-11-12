@@ -1,0 +1,140 @@
+// Package completion supplies workflow language features without an LSP transport.
+package completion
+
+import (
+	"strings"
+	"unicode/utf8"
+
+	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+
+	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+
+	expr "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+
+	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+
+	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
+
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+
+	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+)
+
+// Complete returns expression property edits against the supplied buffer.
+func Complete(content string, offset int) []Item {
+	if offset < 0 || offset > len(content) {
+		return nil
+	}
+	before := content[:offset]
+	lineStart := strings.LastIndexByte(before, '\n') + 1
+	if strings.HasPrefix(strings.TrimSpace(before[lineStart:]), "#") {
+		return nil
+	}
+	start := strings.LastIndex(before, "${{")
+	root, err := codec.Parse([]byte(content))
+	if err != nil {
+		return nil
+	}
+	key := keyAt(root, content, offset)
+	if start >= 0 && !strings.Contains(before[start+3:], "}}") {
+		start += 3
+	} else {
+		// Conditions also accept bare expressions.
+		if !strings.HasSuffix(key, ".if") {
+			return nil
+		}
+		colon := strings.IndexByte(content[lineStart:], ':')
+		if colon < 0 || lineStart+colon >= offset {
+			return nil
+		}
+		start = lineStart + colon + 1
+	}
+	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
+	c.SetAvailability(contextspec.WorkflowExpressionScope(key))
+	parsed, _ := workflowparser.Parse([]byte(content))
+	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
+	contextspec.SetEventPayloadType(c, events.Type(w))
+	if w.Present() {
+		for event := range w.On() {
+			if dispatch, ok := event.WorkflowDispatchEvent(); ok {
+				var inputs exprtypes.ObjectBuilder
+				for name, input := range dispatch.Inputs() {
+					ty := exprtypes.StringType()
+					switch input.Type() {
+					case workflow.WorkflowDispatchEventInputTypeBoolean:
+						ty = exprtypes.BoolType()
+					case workflow.WorkflowDispatchEventInputTypeNumber:
+						ty = exprtypes.NumberType()
+					case workflow.WorkflowDispatchEventInputTypeNone,
+						workflow.WorkflowDispatchEventInputTypeString,
+						workflow.WorkflowDispatchEventInputTypeChoice,
+						workflow.WorkflowDispatchEventInputTypeEnvironment:
+					}
+					inputs.Set(strings.ToLower(name), ty)
+				}
+				contextspec.SetDispatchInputTypes(c, inputs.Build())
+			}
+		}
+	}
+	result := completeExpression(c, content[start:], offset-start)
+	for i := range result {
+		result[i].Start += start
+		result[i].End += start
+	}
+	return result
+}
+
+// keyAt finds the workflow field containing the scalar preceding the cursor.
+// Block scalars keep their field path across lines. Sequence indices are omitted
+// because context availability is defined by field paths.
+func keyAt(root *syntax.Node, content string, offset int) string {
+	before := content[:offset]
+	line := strings.Count(before, "\n") + 1
+	column := utf8.RuneCountInString(before[strings.LastIndexByte(before, '\n')+1:]) + 1
+	bestLine, bestColumn := 0, 0
+	key := ""
+	var walk func(*syntax.Node, []string)
+	walk = func(n *syntax.Node, path []string) {
+		if n == nil {
+			return
+		}
+		switch n.Kind {
+		case syntax.DocumentNode, syntax.SequenceNode:
+			for _, child := range n.Content {
+				walk(child, path)
+			}
+		case syntax.MappingNode:
+			for i := 0; i+1 < len(n.Content); i += 2 {
+				name := n.Content[i].Value
+				if len(path) == 1 && path[0] == "jobs" {
+					name = "<job_id>"
+				}
+				if len(path) > 0 && (path[len(path)-1] == "services") {
+					name = "<service_id>"
+				}
+				next := append(append([]string{}, path...), name)
+				walk(n.Content[i+1], next)
+			}
+		case syntax.ScalarNode:
+			if (n.Line < line || n.Line == line && n.Column <= column) && (n.Line > bestLine || n.Line == bestLine && n.Column > bestColumn) {
+				bestLine, bestColumn = n.Line, n.Column
+				key = strings.Join(path, ".")
+			}
+		case syntax.AliasNode:
+		}
+	}
+	walk(root, nil)
+	for key != "" {
+		if contexts, _ := contextspec.WorkflowKeyAvailability(key); len(contexts) > 0 {
+			return key
+		}
+		at := strings.LastIndexByte(key, '.')
+		if at < 0 {
+			break
+		}
+		key = key[:at]
+	}
+	return ""
+}

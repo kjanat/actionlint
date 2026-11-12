@@ -11,6 +11,11 @@ concurrency:
 
 permissions: { contents: read }
 
+env:
+  MISE_CACHE_DIR: "${{ github.workspace }}-mise/cache"
+  MISE_LOCKED: "1"
+  MISE_TASK_RUN_AUTO_INSTALL: "false"
+
 jobs:
   generate:
     name: Regenerate the Go tables
@@ -19,47 +24,26 @@ jobs:
     permissions: { contents: read, id-token: write }
     steps:
       - &Beepboop
-        uses: kjanat/beepboop/actions/token@b1beb87ed2769aed465dfa68705cf42cd2613b99 # v1
+        uses: kjanat/beepboop/actions/token@7b199879046b5a8b4d445db31a3cea97e415e6d0 # v1.4.8
         id: beepboop
         with: { permission-contents: write, permission-pull-requests: write }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - &Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - &SetupGo
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
-      - name: Check new release on GitHub
-        shell: bash -euo pipefail {0}
-        run: |
-          detector="$(mktemp)"
-          trap 'rm -f "${detector}"' EXIT
-          go build -o "${detector}" ./internal/actioncatalog/generate
-          # Run directly: go run turns the detector's exit 2 into exit 1.
-          status=0
-          releases="$("${detector}" -d)" || status=$?
-          if [[ -n "${releases}" ]]; then
-            printf '%s\n' "${releases}"
-          fi
-          if [[ "${status}" -eq 2 ]]; then
-            echo '::notice title=New major releases::A tracked action has a new major. See the job summary.'
-            cat >> "${GITHUB_STEP_SUMMARY}" <<'SUMMARY'
-          ## New major releases
-
-          Move each version into the tags list and bump next in
-          internal/actioncatalog/generate/popular_actions.json.
-
-          SUMMARY
-            printf '%s\n' "${releases}" >> "${GITHUB_STEP_SUMMARY}"
-          elif [[ "${status}" -ne 0 ]]; then
-            exit "${status}"
-          fi
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - &SetupNode
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .node-version, package-manager-cache: false }
-      - uses: $/.github/actions/setup-formatters
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: kjanat/install-dprint@7dafce0e5019151901bae232b12cf8b7bd330b2a # v2
       - name: Install catalogue generator dependencies
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Refresh upstream action and workflow metadata
-        run: go generate -skip generate-config-schema
+        run: mise run generate:rules generate:contexts generate:events generate:actions
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
         with:
           token: &BeepboopToken ${{ steps.beepboop.outputs.token }}
           committer: &BeepboopCommitter "${{ steps.beepboop.outputs.bot-login }} <${{ steps.beepboop.outputs.bot-email }}>"
@@ -67,65 +51,43 @@ jobs:
           branch: ci/go-generate
           delete-branch: true
           add-paths: |
-            internal/actioncatalog/popular_actions.json
-            internal/webhook/payload/catalogue.json
+            internal/model/contexts/events/payload/catalogue.json
             :(glob)internal/**/*.gen.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
           body: |
-            `go generate` refreshed the popular actions, webhook events, workflow availability, runner action-metadata tables, or JavaScript runtime lifecycle.
+            `go generate` refreshed webhook events, workflow availability, runner action-metadata tables, or JavaScript runtime lifecycle.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
             area:codegen
             type:maintenance
           assignees: ${{ github.repository_owner }}
+
   readme:
     name: Refresh the README demo section
     if: github.repository_owner == 'kjanat' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
+    env: { MISE_ENABLE_TOOLS: "node" }
     steps:
       - *Beepboop
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: $/.github/actions/setup-shellcheck
-      - name: Keep mise metadata with cached tools
-        shell: bash
-        run: |
-          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
-          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
-          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
-      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+      - *Checkout
+      - *SetupGo
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
+          version: 2026.11.4
+          mise_dir: "${{ github.workspace }}-mise"
           cache: true
-          auto_update: true
-          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}"
           cache_save_post: true
-          cache_key: >-
-            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: github:kjanat/actionlint github:rhysd/actionlint
+          monorepo: false
           add_shims_to_path: false
-        # The verified helper already supplies this transitive dependency.
         env:
-          MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint"
-          MISE_DISABLE_TOOLS: "shellcheck,github:koalaman/shellcheck,rshellcheck,github:kjanat/shellcheck-rs"
-      - run: go run ./internal/documentation/check-readme -fix ./README.md
+          MISE_ENABLE_TOOLS: node
+      - run: node tools/docs/readme-demo.mjs --fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
-      - name: Read the versions the section now describes
-        id: versions
-        shell: bash -euo pipefail {0}
-        run: |
-          fork="$(awk '/^\*\*This fork / { print $3; exit }' README.md)"
-          upstream="$(awk '/^\*\*Upstream actionlint / { print $3; exit }' README.md)"
-          test -n "${fork}" && test -n "${upstream}"
-          {
-            echo "fork=${fork}"
-            echo "upstream=${upstream}"
-          } >> "${GITHUB_OUTPUT}"
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
         with:
           token: *BeepboopToken
           committer: *BeepboopCommitter
@@ -133,34 +95,38 @@ jobs:
           branch: ci/readme-demo
           delete-branch: true
           add-paths: README.md
-          commit-message: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
-          title: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
+          commit-message: "Refresh the README example"
+          title: "Refresh the README example"
           body: |
-            `internal/documentation/check-readme -fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
+            `node tools/docs/readme-demo.mjs --fix` rebuilt actionlint and refreshed the diagnostics for the README example.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
             documentation
             type:maintenance
           assignees: ${{ github.repository_owner }}
+
   go-toolchain:
     name: Bump Go toolchain
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository_owner == 'kjanat'
     runs-on: ubuntu-latest
+    env: { MISE_ENABLE_TOOLS: "bun,npm:runner-run" }
     permissions: { contents: read, id-token: write }
     steps:
       - *Beepboop
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        with: { go-version-file: go.mod }
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with: { node-version-file: .node-version, package-manager-cache: false }
+      - *Checkout
+      - *SetupGo
+      - *SetupNode
       - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # 31.11.3
-      - uses: $/.github/actions/setup-runner
-        with: { version-file: .tool-versions }
-      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
-        with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with: {
+          version: 2026.11.4,
+          mise_dir: "${{ github.workspace }}-mise",
+          cache: true,
+          cache_key: "{{default}}-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('.mise/locks/**') }}",
+          monorepo: false,
+          add_shims_to_path: false,
+        }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: run //tools/toolchain:test
@@ -176,7 +142,7 @@ jobs:
           fi
           node tools/toolchain/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      - uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8.1.2
         with:
           token: *BeepboopToken
           committer: *BeepboopCommitter
@@ -185,14 +151,15 @@ jobs:
           delete-branch: true
           add-paths: |
             go.mod
-            Dockerfile
+            .mise.toml
+            distribution/docker/Dockerfile
             CONTRIBUTING.md
             flake.nix
             flake.lock
           commit-message: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           title: "Bump Go toolchain to ${{ steps.version.outputs.version }}"
           body: |
-            Updates the preferred Go toolchain, Docker builder, contributor example, and verified Nix compiler pin to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
+            Updates the preferred Go toolchain, mise, Docker builder, contributor example, and verified Nix compiler pin to `${{ steps.version.outputs.version }}`. The minimum supported Go version remains unchanged.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
